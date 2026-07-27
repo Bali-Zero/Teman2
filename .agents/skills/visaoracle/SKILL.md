@@ -318,7 +318,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
@@ -389,6 +389,50 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   extension (after window data); Track C wiring 4a/4b (Pro, briefed); Track B FASE 2
   (Mini, briefed); G-d drill + flip only at all-green. Seat status: codex CLI dead on M5,
   GLM Keychain-only, Opus caps ~4-5h — graders fall back to Opus/Fable per Zero.
+- 2026-07-27 (M5): **TRACK C claimed by M5/2026-07-27 — SHADOW WIRING BUILT AND LIVE-PROVEN.**
+  Track C was free (no branch/PR/worktree; Pro was briefed 07-25 but never started). Per spec §B.1
+  the SHADOW era changes the UI by NOTHING: the only new runtime behaviour is an invisible
+  fire-and-forget POST. NEW `_lib/fact-mapper.ts` (pure, all 40 wire keys) + NEW `_lib/shadow-client.ts`
+  (the route's only network code, `keepalive`, errors swallowed, never awaited) + MOD `OracleShell.tsx`
+  (dedupe effect) + MOD `flow.ts` (`FlowState.attempt`). 147 tests / 9 files green, `tsc --noEmit`
+  clean — both re-run by the orchestrator, not taken on report.
+  **TWO SPEC-vs-REALITY CORRECTIONS (the spec is 2026-07-19 and predates its own dependencies):**
+  (1) it says "35-key wire shape" — the live `ApplicantFactsData` has **40** required dotted-alias
+  fields, `extra="forbid"`, so a 35-key mapper 422s on every call; the delta is the 5 `secondhome.*`
+  fields the E33 vertical added on 07-23 (#3044). `FactPath` = 43 members (40 applicant + 3 `derived.*`,
+  correctly absent from the wire). (2) it targets `POST /api/v1/visa-oracle/recommend`; the endpoint that
+  actually shipped is **`POST /api/visa-oracle/evaluate`** (#3061, 07-24). Do not build from the spec's
+  §B.2 table without re-grounding both.
+  **LIVE PROOF (end-to-end, first time ever performed):** the mapper's real payload POSTed to prod
+  returned **HTTP 200** with a genuine engine verdict (`HUMAN_REVIEW_REQUIRED` / `CALLING_VISA_REVIEW`
+  — the calling-visa overlay firing because nationality is UNKNOWN), `mode:CURATED`, `rule_pack sequence 1`,
+  `decision_id` present; row landed in `visa_decisions` at `2026-07-26T18:12:26Z` — `engine_mode SHADOW`,
+  `request_category long_tourism` **derived server-side from the facts** (not the caller's hint), 32-byte
+  HMAC fingerprint, `ruleset_activation_id` set.
+  **THREE DEFECT ROUNDS, all found by DRIVING the component, none by reading it** — record this, it is the
+  method: (R1) the one-shot ref latched at first verdict arrival, so `REVIEW_ANSWERS`/`SELECT_CATEGORY`
+  sent the user's PRE-EDIT answers — a wrong audit row is worse than a missing one; (R2) the cure enumerated
+  those two paths and missed **`RESTART`** (two honest interviews, one row) while keying on RAW UI facts
+  instead of the wire payload (editing `remote_income`, which has no FactPath, produced a byte-identical
+  duplicate row). Root cause of both: one key wrong in BOTH dimensions — content and lifetime.
+  **CURE (final):** `flow.ts` gains `FlowState.attempt`, bumped ONLY by a new `resetFlow()` (the reducer's
+  single reset primitive); `OracleShell` holds `{attempt, keys:Set<string>}` keyed on
+  `stableFactsKey(mapOracleFactsToApplicantFacts(...).facts)` — the SAME transform the POST applies.
+  Contract: exactly one POST per **(interview attempt × distinct wire payload)**. Any future action that
+  returns to the verdict by TRUNCATING history is covered by construction — there is no path list to keep
+  in sync. **Do not "simplify" this back to a boolean ref: that shape has now failed twice.**
+  **W100 CONFIRMED AGAIN:** the external GLM seat reviewed R1's diff statically and returned **SHIP** while
+  the defect was live; the house lane refused the verdict, drove the component, and falsified it. Static
+  review is not acceptable evidence on this surface — a reviewer must RUN the tree.
+  **NEW GATE FINDING (owner-relevant, unresolved):** our own verification POSTs persist with
+  `traffic_source='real'` (3 such rows on 07-26). The probe/smoke label is NOT separated from organic
+  traffic, so **G-a-vol currently counts our own tests as real end-user requests**. This must be fixed
+  before the collection window means anything — it is the same defect class as the 11 bootstrap rows.
+  **Infra facts established (re-usable):** endpoint is fully anonymous (exact-match in `public_endpoints.py`);
+  CORS already allows `https://balizero.com`; `next.config.ts` CSP `connect-src` already allowlists
+  `nuzantara-rag.fly.dev` (no CSP change needed); rate limit 30 req/60s per IP; `VISA_ENGINE_DRIVER_TOKEN`
+  gates ONLY the synthetic traffic classes (header `X-Visa-Driver-Token`), never normal calls; an
+  all-UNKNOWN payload is contract-VALID ("thin facts are NEVER rejected"). GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { e2eEmail } from "../support/credentials";
 
 const QUESTIONS = [
   // Identity
@@ -167,7 +168,7 @@ test.describe("Zantara Full Stress Test (30 Qs)", () => {
   test.beforeEach(async ({ page }) => {
     console.log("Logging in...");
     await page.goto("/login");
-    await page.fill('input[name="email"]', "zero@balizero.com");
+    await page.fill('input[name="email"]', e2eEmail());
     await page.fill('input[name="pin"]', "123456");
     await page.click('button[type="submit"]');
     await page.waitForURL("/chat");

@@ -134,7 +134,11 @@ def _tg_gateway() -> Path | None:
     candidates += [
         Path(__file__).resolve().parent.parent / "tg_notify.py",  # repo checkout
         HOME / "nuzantara" / "scripts" / "tg_notify.py",
-        HOME / "Desktop" / "nuzantara" / "scripts" / "tg_notify.py",
+        # No old TCC-protected-home fallback here (dropped 2026-07-27, #3259
+        # antidotes): the repo moved out of the user's home Desktop folder on
+        # 2026-07-16 for TCC immunity (W84 — launchd can silently lose that
+        # grant); a candidate list is not an exemption from that move, it is
+        # the same hazard one entry deeper.
     ]
     for path in candidates:
         if path.is_file():

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
@@ -601,13 +600,16 @@ async def test_claim_steal_expired_lease(pool, seed):
                             params={"claim_token": new_token})
 
 
-# Parametrize on an OFFSET, never on an absolute instant. A `datetime.now(...) +
-# timedelta(minutes=5)` written here is evaluated when pytest COLLECTS the module, not
-# when the case runs: in the full suite (~57 min) these three "live lease" cases executed
-# ~50 minutes later, by which time the lease had expired and the guard answered 409
-# instead of 403/400. Deterministic, not flaky — and it blocked every push whose suite
-# was slower than the margin. Same disease this repo files under W106: a measurement of
-# the world frozen into a constant and read later as if it still held.
+# OFFSETS, not absolute instants. A `datetime.now(...) + timedelta(minutes=5)`
+# written here is evaluated when pytest COLLECTS this module, not when the test
+# runs — so in the full backend suite (~55 min) the three "live lease" cases
+# reached the assertion long after their lease had expired, and the guard
+# correctly answered 409 (expired) instead of 403/400. Diagnosed 2026-07-27
+# after a pre-push failure whose three failing ids were exactly the three
+# `+5 minutes` cases; the same three pass in a fast isolated run, which is what
+# made it look like flake. Same family as W106: a measurement of the world
+# frozen into a constant, consumed much later as if it were still current.
+# The lease instant is now computed INSIDE the test — it cannot go stale.
 @pytest.mark.parametrize(
     ("lease_offset", "lease_owner", "claim_token", "expected_status"),
     [
@@ -633,8 +635,9 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
     """
     from backend.app.routers.intake_review import _require_active_claim
 
-    # Resolved HERE, at run time — see the note on the parametrize above.
-    lease_expires_at = None if lease_offset is None else datetime.now(timezone.utc) + lease_offset
+    lease_expires_at = (
+        None if lease_offset is None else datetime.now(timezone.utc) + lease_offset
+    )
 
     active_token = uuid.uuid4()
     prop = {
@@ -658,42 +661,71 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
     assert exc_info.value.status_code == expected_status
 
 
-def _absolute_datetimes_in_parametrize(namespace):
-    """Absolute datetimes baked into the parametrize argvalues of `namespace`.
+def _frozen_instants(namespace):
+    """Absolute instants baked into the parametrize marks of `(name, obj)` pairs.
 
-    A datetime written inside a `@pytest.mark.parametrize` is evaluated at COLLECTION
-    time and then ages while the suite runs. Any assertion that depends on it still
-    being in the future silently flips once the run outlives the margin.
+    Returns `(offenders, seen_parametrize)` so callers can tell "found nothing"
+    from "looked at nothing".
     """
-    frozen = []
-    for name, obj in namespace:
-        for mark in getattr(obj, "pytestmark", None) or []:
-            if getattr(mark, "name", None) != "parametrize":
+    import datetime as _dt
+
+    offenders = []
+    seen_parametrize = 0
+    for name, fn in namespace:
+        for mark in getattr(fn, "pytestmark", []) or []:
+            if mark.name != "parametrize":
                 continue
-            argvalues = mark.args[1] if len(mark.args) > 1 else ()
-            for row in argvalues:
-                for cell in row if isinstance(row, (tuple, list)) else (row,):
-                    if isinstance(cell, datetime):
-                        frozen.append(f"{name} -> {cell!r}")
-    return frozen
+            seen_parametrize += 1
+            for row in mark.args[1]:
+                cells = row if isinstance(row, (tuple, list)) else (row,)
+                for cell in cells:
+                    if isinstance(cell, (_dt.datetime, _dt.date)):
+                        offenders.append((name, cell))
+    return offenders, seen_parametrize
 
 
-def test_parametrize_never_bakes_an_absolute_datetime():
-    """Guilt + innocence for the trap that made three cases in this file fail at ~50min.
+def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
+    """Guard the fix above: a collection-time `datetime.now()` is a time bomb.
 
-    Innocence: this module, as it stands, bakes none. Guilt: the detector must actually
-    see one when it is there — a check that has only ever met the passing case proves
-    nothing about what it would reject.
+    It judges by ENTITY (is this value an absolute instant?) rather than by
+    grepping the source for `datetime.now`, so it cannot be dodged by an alias
+    or an import rename, and it cannot over-match a comment. Verified 2026-07-27:
+    no parametrize in this module legitimately carries a datetime, so a hit here
+    is always the bug, never a false positive.
+
+    Asserted in all three directions: innocence (this module is clean), blindness
+    (a scan that looked at nothing is not a clean scan), and guilt (the detector
+    must actually see a frozen instant when one is there).
     """
-    module = sys.modules[__name__]
-    assert _absolute_datetimes_in_parametrize(vars(module).items()) == []
+    import sys
 
+    module = sys.modules[__name__]
+    offenders, seen_parametrize = _frozen_instants(
+        (name, getattr(module, name)) for name in dir(module)
+    )
+
+    # Blindness guard: if the scan sees no parametrize at all it went blind
+    # (decorator API changed / tests moved), which is not the same as clean.
+    assert seen_parametrize >= 1, (
+        "No parametrize marks found in this module — this guard went blind "
+        "rather than finding the module clean."
+    )
+    assert not offenders, (
+        f"Parametrize values frozen at collection time: {offenders}. "
+        "In the full backend suite this module is collected up to ~55 minutes "
+        "before these tests run, so any absolute instant is stale by then. "
+        "Pass a timedelta offset and compute the instant inside the test."
+    )
+
+    # Guilt: innocence plus a blindness guard still cannot distinguish a working
+    # detector from one whose isinstance() never matches anything.
     class _Guilty:
         pytestmark = [
             pytest.mark.parametrize("lease", [(datetime.now(timezone.utc),)]).mark
         ]
 
-    assert _absolute_datetimes_in_parametrize([("_Guilty", _Guilty)])
+    guilty, _ = _frozen_instants([("_Guilty", _Guilty)])
+    assert guilty, "the detector missed a datetime baked into a parametrize"
 
 
 async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, seed):
