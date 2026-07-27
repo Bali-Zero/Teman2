@@ -1,0 +1,318 @@
+"""Tests for the GARUDA VOA intake orchestration (spec §3 trap 3 close).
+
+Covers the two derivations the engine itself leaves open — passport
+validity and days-until-expiry — plus the client-facing/internal Safe
+Clock checkpoint boundary (spec §6, charter).
+"""
+
+from __future__ import annotations
+
+import dataclasses
+from datetime import date, timedelta
+
+import pytest
+
+from backend.services.garuda_flow.constants import MIN_PASSPORT_VALIDITY_DAYS
+from backend.services.garuda_flow.eligibility import Decision
+from backend.services.garuda_flow.intake import (
+    CaseType,
+    Purpose,
+    VoaIntakeRequest,
+    build_verdict,
+)
+from backend.services.garuda_flow.operating_calendar import COVERAGE_END
+
+
+def _issuance(**overrides: object) -> VoaIntakeRequest:
+    """A fully-eligible fresh issuance request; override fields per test."""
+    today = date(2026, 7, 27)
+    base: dict[str, object] = {
+        "case_type": CaseType.ISSUANCE,
+        "nationality": "USA",
+        "entry_date": today + timedelta(days=5),
+        "passport_expiry_date": today + timedelta(days=400),
+        "purpose": Purpose.TOURISM,
+        "travellers": 1,
+        "self_pay": True,
+    }
+    base.update(overrides)
+    return VoaIntakeRequest(**base)  # type: ignore[arg-type]
+
+
+def _extension(**overrides: object) -> VoaIntakeRequest:
+    """A fully-eligible extension request well within the D-10 runway."""
+    today = date(2026, 7, 27)
+    base: dict[str, object] = {
+        "case_type": CaseType.EXTENSION,
+        "nationality": "USA",
+        "entry_date": today - timedelta(days=20),
+        "passport_expiry_date": today + timedelta(days=400),
+        "voa_expiry_date": today + timedelta(days=18),
+        "extension_already_used": False,
+        "purpose": Purpose.TOURISM,
+        "travellers": 1,
+        "self_pay": True,
+    }
+    base.update(overrides)
+    return VoaIntakeRequest(**base)  # type: ignore[arg-type]
+
+
+_TODAY = date(2026, 7, 27)
+
+
+class TestPassportValidityDerivation:
+    def test_passport_valid_well_beyond_6_months_accepts(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.decision is Decision.ACCEPT
+        assert verdict.decline_reasons == []
+
+    def test_passport_exactly_at_threshold_accepts(self) -> None:
+        entry = _TODAY + timedelta(days=5)
+        req = _issuance(passport_expiry_date=entry + timedelta(days=MIN_PASSPORT_VALIDITY_DAYS))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.accepted is True
+
+    def test_passport_one_day_short_declines(self) -> None:
+        entry = _TODAY + timedelta(days=5)
+        req = _issuance(
+            passport_expiry_date=entry + timedelta(days=MIN_PASSPORT_VALIDITY_DAYS - 1)
+        )
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert any("6 mont" in r for r in verdict.decline_reasons)
+
+    def test_passport_already_expired_by_entry_declines(self) -> None:
+        entry = _TODAY + timedelta(days=5)
+        req = _issuance(passport_expiry_date=entry - timedelta(days=1))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+
+
+class TestExtensionDaysUntilExpiryDerivation:
+    def test_extension_well_within_d10_accepts(self) -> None:
+        verdict = build_verdict(_extension(), today=_TODAY)
+        assert verdict.accepted is True
+
+    def test_extension_exactly_d10_accepts(self) -> None:
+        req = _extension(voa_expiry_date=_TODAY + timedelta(days=10))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.accepted is True
+
+    def test_extension_below_d10_declines_with_handoff_reason(self) -> None:
+        req = _extension(voa_expiry_date=_TODAY + timedelta(days=9))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert any("below D-10" in r and "ordinary channel" in r for r in verdict.decline_reasons)
+
+    def test_extension_already_overstaying_declines(self) -> None:
+        req = _extension(voa_expiry_date=_TODAY - timedelta(days=2))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+
+    def test_issuance_ignores_extension_only_fields(self) -> None:
+        # A fresh issuance has no expiry pressure — the D-10 gate must not
+        # apply even if voa_expiry_date/extension_already_used are populated.
+        req = _issuance()
+        assert req.voa_expiry_date is None
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.ACCEPT
+
+
+class TestSecondExtensionLimit:
+    """VisaType.B1 allows only one extension (30 + 1x30 days) — this is a
+    VOA/B1-shape fact from the catalogue, not a generic pilot-intake
+    criterion, so it is layered on top of `screen()` rather than folded
+    into it."""
+
+    def test_extension_already_used_declines_even_with_full_runway(self) -> None:
+        req = _extension(extension_already_used=True, voa_expiry_date=_TODAY + timedelta(days=25))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert any("only one extension" in r for r in verdict.decline_reasons)
+
+    def test_extension_already_used_false_does_not_trigger_the_reason(self) -> None:
+        req = _extension(extension_already_used=False)
+        verdict = build_verdict(req, today=_TODAY)
+        assert all("only one extension" not in r for r in verdict.decline_reasons)
+
+    def test_extension_already_used_on_issuance_is_a_no_op(self) -> None:
+        # The field is structurally extension-only; an issuance case must
+        # never be declined by it even if the client sent a stray True.
+        req = _issuance(extension_already_used=True)
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.ACCEPT
+
+
+class TestIssuanceSubmissionWindowGate:
+    """Owner ruling (2026-07-27): a VOA is issued in a few hours, so the
+    online funnel accepts an issuance request up to the day BEFORE arrival
+    — counting Bali Zero's systems closed on Saturday, Sunday, and any
+    Indonesian national holiday/cuti bersama (`operating_calendar.py`).
+    Issuance-only; the extension path (its own D-10 test class below) must
+    be completely unaffected.
+
+    Two of these are the exact pinned dates verified by hand this session:
+    departure Tue 18 Aug 2026 (cutoff Fri 14 Aug, Independence Day Monday in
+    between) and departure Mon 28 Dec 2026 (cutoff Wed 23 Dec, a run of two
+    decreed closed days plus the weekend in between).
+    """
+
+    def test_ordinary_midweek_departure_cutoff_is_the_previous_day(self) -> None:
+        # Entry Wed 29 Jul 2026 (no weekend/holiday in between) — the
+        # cutoff is simply the immediately preceding day.
+        today = date(2026, 7, 28)
+        req = _issuance(entry_date=date(2026, 7, 29))
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date == date(2026, 7, 28)
+
+    def test_monday_departure_with_no_holiday_cutoff_is_the_previous_friday(self) -> None:
+        today = date(2026, 7, 31)  # Friday
+        req = _issuance(entry_date=date(2026, 8, 3))  # Monday
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date == date(2026, 7, 31)
+
+    def test_departure_today_declines_the_window_has_already_closed(self) -> None:
+        # Submitting ON the day of arrival is exactly one day too late — the
+        # window closes the day BEFORE departure.
+        today = date(2026, 7, 29)  # Wednesday
+        req = _issuance(entry_date=date(2026, 7, 29))
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_TOO_SOON" in verdict.decline_codes
+        assert verdict.submit_by_date == date(2026, 7, 28)
+
+    def test_departure_tomorrow_accepts_at_the_last_possible_moment(self) -> None:
+        today = date(2026, 7, 29)  # Wednesday, open
+        req = _issuance(entry_date=date(2026, 7, 30))  # Thursday
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date == today
+
+    def test_departure_tue_18_aug_cutoff_is_fri_14_aug(self) -> None:
+        # 17 Aug is Independence Day (a Monday) — last open day before is
+        # Fri 14 Aug (16/15 Aug are the weekend).
+        today = date(2026, 8, 14)
+        req = _issuance(entry_date=date(2026, 8, 18))
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date == date(2026, 8, 14)
+
+    def test_one_day_past_the_aug_18_departure_cutoff_declines(self) -> None:
+        today = date(2026, 8, 15)  # Saturday — one day past the Fri 14 Aug cutoff
+        req = _issuance(entry_date=date(2026, 8, 18))
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_TOO_SOON" in verdict.decline_codes
+        assert verdict.submit_by_date == date(2026, 8, 14)
+
+    def test_departure_mon_28_dec_cutoff_is_wed_23_dec(self) -> None:
+        # 24 Dec (Thu, cuti bersama) and 25 Dec (Fri, libur nasional) are
+        # closed, and 26-27 Dec is the weekend -- last open day is Wed 23 Dec.
+        today = date(2026, 12, 23)
+        req = _issuance(entry_date=date(2026, 12, 28))
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date == date(2026, 12, 23)
+
+    def test_departure_past_coverage_end_fails_closed_and_hands_off_to_a_human(
+        self,
+    ) -> None:
+        # A 2027 arrival date -- the 2027 SKB does not exist yet, so the
+        # cutoff cannot be computed without guessing. Must NEVER silently
+        # guess a date, and must decline distinctly from "too soon".
+        today = date(2026, 6, 1)
+        req = _issuance(entry_date=COVERAGE_END + timedelta(days=5))
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_DATE_UNCONFIRMED" in verdict.decline_codes
+        assert "ARRIVAL_TOO_SOON" not in verdict.decline_codes
+        assert verdict.submit_by_date is None
+
+    def test_extension_path_is_completely_unaffected_by_this_gate(self) -> None:
+        # An extension's entry_date is the ORIGINAL entry (always in the
+        # past) -- if this issuance-only gate ever ran for extensions it
+        # would decline every one of them. It must never run: the decision
+        # here is governed purely by the (untouched) D-10 runway gate, and
+        # submit_by_date must stay None.
+        today = date(2026, 7, 27)
+        req = _extension()  # entry_date = today - 20 days, well within D-10
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date is None
+
+    def test_extension_past_coverage_end_entry_date_is_still_unaffected(self) -> None:
+        # Belt-and-braces: even an extension whose (past) original entry_date
+        # sits outside the calendar's coverage window must not trip the
+        # issuance-only fail-closed path.
+        today = date(2026, 7, 27)
+        req = _extension(entry_date=date(2020, 1, 1), voa_expiry_date=today + timedelta(days=18))
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert verdict.submit_by_date is None
+
+
+class TestReasonCompleteness:
+    def test_collects_multiple_failing_reasons(self) -> None:
+        entry = _TODAY + timedelta(days=5)
+        req = _issuance(
+            self_pay=False,
+            passport_expiry_date=entry,  # 0 days validity — well short
+        )
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert len(verdict.decline_reasons) >= 2
+
+
+class TestClientFacingBoundary:
+    """Spec §6 charter: only D-7 may ever reach a visitor."""
+
+    def test_published_filing_deadline_is_the_d7_date(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.published_filing_deadline == verdict.stay_window.published_filing_deadline
+
+    def test_only_one_client_facing_checkpoint(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert len(verdict.client_facing_checkpoints) == 1
+        assert verdict.client_facing_checkpoints[0].label == "D-7"
+
+    def test_internal_checkpoints_cover_d14_d10_d3_d1(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        labels = {c.label for c in verdict.internal_checkpoints}
+        assert labels == {"D-14", "D-10", "D-3", "D-1"}
+
+    def test_client_and_internal_checkpoints_partition_all_of_them(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        all_labels = {c.label for c in verdict.stay_window.checkpoints}
+        split_labels = {c.label for c in verdict.client_facing_checkpoints} | {
+            c.label for c in verdict.internal_checkpoints
+        }
+        assert all_labels == split_labels
+
+    def test_checkpoint_at_looks_up_by_label(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        d7 = verdict.checkpoint_at("D-7")
+        assert d7 == verdict.published_filing_deadline
+
+
+class TestPurity:
+    def test_intake_request_is_frozen(self) -> None:
+        req = _issuance()
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            req.self_pay = False  # type: ignore[misc]
+
+    def test_verdict_is_frozen(self) -> None:
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            verdict.decision = Decision.DECLINE  # type: ignore[misc]
+
+    def test_same_input_and_today_is_deterministic(self) -> None:
+        # No I/O, no wall-clock inside — same (request, today) must always
+        # produce the same verdict.
+        req = _extension()
+        v1 = build_verdict(req, today=_TODAY)
+        v2 = build_verdict(req, today=_TODAY)
+        assert v1.decision == v2.decision
+        assert v1.decline_reasons == v2.decline_reasons
+        assert v1.stay_window == v2.stay_window

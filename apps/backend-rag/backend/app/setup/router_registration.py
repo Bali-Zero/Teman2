@@ -209,6 +209,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(lead_capture.router)  # POST /api/lead/capture
     api.include_router(visa_check.router)  # /api/visa/check|clock|match (Clock + Match branches)
     api.include_router(funnel_email.router)  # /api/funnel_email (drip + unsubscribe)
+    if settings.garuda_flow_enabled:
+        from backend.app.routers import garuda_voa
+
+        api.include_router(garuda_voa.router)  # /api/visa/voa|voa/{hash} (Slice A)
 
     # CRM routers
     api.include_router(crm_clients.router)
@@ -640,6 +644,10 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(lead_capture.router)  # POST /api/lead/capture
     api.include_router(visa_check.router)  # /api/visa/check|clock|match (Clock + Match branches)
     api.include_router(funnel_email.router)  # /api/funnel_email (drip + unsubscribe)
+    if settings.garuda_flow_enabled:
+        from backend.app.routers import garuda_voa
+
+        api.include_router(garuda_voa.router)  # /api/visa/voa|voa/{hash} (Slice A)
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)

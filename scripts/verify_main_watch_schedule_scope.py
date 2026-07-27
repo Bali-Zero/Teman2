@@ -57,10 +57,22 @@ old that verdict is (zero staleness); if they differ, staleness is
 measured from when the first unverified commit landed, not from the old
 verdict's timestamp. `compute_stale_minutes()` below models this.
 
+Task #37/#41 red-path proof, workflow_dispatch addendum (2026-07-26): the
+arithmetic above was verified by re-executing the shipped bash against
+real API data, but that alone doesn't prove the WIRING — that this job
+actually runs under GitHub Actions, that the Telegram step actually
+executes, that secrets resolve. `workflow_dispatch` with a
+`force_test_alert` boolean input (default false) closes that gap: it
+widens `verdict-liveness`'s job-level `if:` to also run on manual
+dispatch, and overrides ONLY the final should_alert decision (never the
+arithmetic feeding it, never THRESHOLD_MINUTES) when the input is
+explicitly `true`. Every such send is `[TEST`-prefixed so it can never be
+mistaken for a real alert in the chat history.
+
 Self-check: if a future edit changes either job's `if:`, the aggregation
-step's `run:` script, the escalation constants, or the commit-comparison
-logic in the YAML, this script fails loudly (exit 2) instead of silently
-proving the wrong thing.
+step's `run:` script, the escalation constants, the commit-comparison
+logic, or the workflow_dispatch test-mode override in the YAML, this
+script fails loudly (exit 2) instead of silently proving the wrong thing.
 """
 import re
 import sys
@@ -89,7 +101,7 @@ EXPECTED_ALERT_IF = (
     "github.event.workflow_run.conclusion == 'timed_out')"
 )
 
-EXPECTED_LIVENESS_IF = "github.event_name == 'schedule'"
+EXPECTED_LIVENESS_IF = "github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'"
 
 AGGREGATE_STEP_NAME = "Aggregate every currently-failing push-or-schedule main run on this commit"
 EXPECTED_AGGREGATE_SELECT_SUBSTRING = (
@@ -106,6 +118,18 @@ EXPECTED_ESCALATION_CONSTANTS = ("THRESHOLD_MINUTES=45", "CHECK_INTERVAL_MINUTES
 # just "the constants exist") is what catches a future edit that reverts
 # to the verdict-to-now measure while leaving the constants untouched.
 EXPECTED_QUIET_PERIOD_SHORT_CIRCUIT = '"${LAST_VERIFIED_SHA}" = "${CURRENT_HEAD}"'
+
+TELEGRAM_STEP_NAME = "Telegram alert — main has an unverified commit sitting too long"
+
+# The exact override substring that proves the #37/#41 red-path proof
+# mechanism is present: force_test_alert=true overrides SHOULD_ALERT
+# without touching the arithmetic feeding it. Checking for this literal
+# comparison (not just "FORCE_TEST_ALERT is referenced somewhere") is
+# what catches a future edit that wires the input to something that
+# ALSO changes THRESHOLD_MINUTES or the escalation math — which would
+# turn the "escape hatch" into a second, undocumented production path.
+EXPECTED_TEST_MODE_OVERRIDE = 'if [ "${FORCE_TEST_ALERT}" = "true" ]; then'
+EXPECTED_TEST_MODE_PREFIX = '[TEST — manual workflow_dispatch red-path proof, NOT a real alert]'
 
 
 def _normalize(s: str) -> str:
@@ -220,6 +244,65 @@ def self_check() -> None:
         )
         sys.exit(2)
 
+    if EXPECTED_TEST_MODE_OVERRIDE not in check_run_raw:
+        print(
+            f"FATAL: step '{CHECK_STEP_NAME}'.run no longer contains the\n"
+            "  force_test_alert override (#37/#41 red-path proof) this\n"
+            "  script models.\n"
+            f"  expected substring: {EXPECTED_TEST_MODE_OVERRIDE!r}\n"
+            "  Update EXPECTED_TEST_MODE_OVERRIDE and test_mode_forces_alert()\n"
+            "  below to match the new YAML before trusting this script's\n"
+            "  verdict again.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    # PyYAML's default (YAML 1.1) resolver coerces the bare key `on:` to
+    # the boolean `True`, not the string "on" — confirmed empirically
+    # here (`list(data.keys())` prints `[..., True, ...]`), a distinct
+    # instance of the "guard on FORM not ENTITY" family
+    # (cicatrix-superscar #3): `data.get("on")` would silently return
+    # None forever, exactly the "blind self_check" failure mode this
+    # function exists to prevent becoming.
+    on_block = data.get(True) or data.get("on") or {}
+    workflow_dispatch = (on_block.get("workflow_dispatch") or {})
+    inputs = workflow_dispatch.get("inputs") or {}
+    force_input = inputs.get("force_test_alert")
+    if force_input is None or force_input.get("default") is not False:
+        print(
+            "FATAL: on.workflow_dispatch.inputs.force_test_alert missing or\n"
+            "  its default is not `false`.\n"
+            f"  actual: {force_input!r}\n"
+            "  A non-false default would mean an ordinary/unparameterized\n"
+            "  manual dispatch sends a test alert by itself — the exact\n"
+            "  'escape hatch becomes the live setting' footgun this input\n"
+            "  was built to avoid.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    telegram_step = _step_by_name(liveness_job, TELEGRAM_STEP_NAME)
+    if telegram_step is None:
+        print(
+            f"FATAL: step '{TELEGRAM_STEP_NAME}' not found in job "
+            f"'{LIVENESS_JOB_NAME}'.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    telegram_run_raw = telegram_step.get("run") or ""
+    if EXPECTED_TEST_MODE_PREFIX not in telegram_run_raw:
+        print(
+            f"FATAL: step '{TELEGRAM_STEP_NAME}'.run no longer contains the\n"
+            "  [TEST] prefix this script models.\n"
+            f"  expected substring: {EXPECTED_TEST_MODE_PREFIX!r}\n"
+            "  Without this, a red-path proof send is indistinguishable from\n"
+            "  a real alert in the chat history. Update\n"
+            "  EXPECTED_TEST_MODE_PREFIX below to match the new YAML before\n"
+            "  trusting this script's verdict again.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
 
 def alert_fires(
     top_event_name: str, wr_event: str, head_branch: str, conclusion: str
@@ -243,7 +326,7 @@ def alert_fires(
 
 def liveness_job_runs(top_event_name: str) -> bool:
     """Models the job-level `if:` on the `verdict-liveness` job."""
-    return top_event_name == "schedule"
+    return top_event_name in ("schedule", "workflow_dispatch")
 
 
 UNKNOWN_STALE_SENTINEL = 999999
@@ -322,6 +405,26 @@ def should_alert(
     overflow = stale_minutes - threshold
     boundary = overflow % escalation
     return overflow < check_interval or boundary < check_interval
+
+
+def test_mode_forces_alert(
+    top_event_name: str, force_test_alert_input: bool, arithmetic_would_alert: bool
+) -> bool:
+    """Models the #37/#41 red-path proof override in the `check` step.
+
+    `FORCE_TEST_ALERT` (the env var feeding this) is itself an expression —
+    `github.event_name == 'workflow_dispatch' && inputs.force_test_alert ==
+    true` — so it can only ever be true under workflow_dispatch, never
+    under schedule, regardless of what a caller passes as
+    `force_test_alert_input`. The override, once active, forces
+    should_alert=true UNCONDITIONALLY — it does not matter what the real
+    arithmetic (`arithmetic_would_alert`) computed, which is the entire
+    point: this proves delivery, not staleness.
+    """
+    force_active = top_event_name == "workflow_dispatch" and force_test_alert_input
+    if force_active:
+        return True
+    return arithmetic_would_alert
 
 
 def counts_toward_aggregate(event: str, conclusion: str) -> bool:
@@ -420,9 +523,45 @@ LIVENESS_JOB_SCENARIOS = [
         "schedule", True,
     ),
     (
+        "GUILT (red-path proof, 2026-07-26) — a manual workflow_dispatch "
+        "must also run the liveness job, or force_test_alert has nothing "
+        "to override",
+        "workflow_dispatch", True,
+    ),
+    (
         "INNOCENCE — a workflow_run event (the alert job's trigger) must "
         "not also run the liveness job",
         "workflow_run", False,
+    ),
+]
+
+# (label, top_event_name, force_test_alert_input, arithmetic_would_alert,
+#  expect_should_alert)
+TEST_MODE_SCENARIOS = [
+    (
+        "GUILT — workflow_dispatch with force_test_alert=true must alert "
+        "even though the real arithmetic says the gap is healthy (the "
+        "whole point: this proves DELIVERY, not staleness)",
+        "workflow_dispatch", True, False, True,
+    ),
+    (
+        "INNOCENCE — workflow_dispatch with force_test_alert=false (the "
+        "declared default) must defer entirely to the real arithmetic — "
+        "an ordinary/unparameterized manual dispatch changes nothing",
+        "workflow_dispatch", False, False, False,
+    ),
+    (
+        "INNOCENCE — schedule event can never have force_test_alert=true "
+        "in practice (FORCE_TEST_ALERT is itself gated on "
+        "event_name=='workflow_dispatch'), and must still alert correctly "
+        "off the real arithmetic when it says so",
+        "schedule", True, True, True,
+    ),
+    (
+        "INNOCENCE — schedule event, arithmetic says healthy: must not "
+        "alert, confirming the override cannot leak into the production "
+        "schedule path",
+        "schedule", True, False, False,
     ),
 ]
 
@@ -541,6 +680,17 @@ def main() -> None:
         if not ok:
             failures.append(label)
 
+    print("\n== #37/#41 red-path proof: force_test_alert override ==")
+    for label, top_event, force_input, arith_would, expect in TEST_MODE_SCENARIOS:
+        got = test_mode_forces_alert(top_event, force_input, arith_would)
+        ok = got == expect
+        print(f"[{'PASS' if ok else 'FAIL'}] {label}\n"
+              f"         top_event={top_event} force_test_alert_input={force_input} "
+              f"arithmetic_would_alert={arith_would} "
+              f"-> should_alert={got} (expected {expect})")
+        if not ok:
+            failures.append(label)
+
     print("\n== verdict-liveness escalation arithmetic (task #41) ==")
     for label, stale_minutes, expect in ESCALATION_SCENARIOS:
         got = should_alert(stale_minutes)
@@ -566,6 +716,7 @@ def main() -> None:
         len(ALERT_SCENARIOS)
         + len(AGGREGATE_SCENARIOS)
         + len(LIVENESS_JOB_SCENARIOS)
+        + len(TEST_MODE_SCENARIOS)
         + len(ESCALATION_SCENARIOS)
         + len(STALE_MINUTES_SCENARIOS)
     )

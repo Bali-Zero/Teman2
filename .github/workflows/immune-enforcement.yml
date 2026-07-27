@@ -18,10 +18,11 @@ name: Immune enforcement (superscar antidotes)
 on:
   workflow_dispatch:
   pull_request:
+  merge_group:
 
 concurrency:
   group: immune-enforcement-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   antidotes:
