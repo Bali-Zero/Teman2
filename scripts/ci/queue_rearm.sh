@@ -40,11 +40,39 @@ APPLY=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLASSIFY="$SCRIPT_DIR/queue_rearm_classify.sh"
 [[ -x "$CLASSIFY" ]] || { echo "FATAL: $CLASSIFY missing or not executable"; exit 3; }
+POPULATION="$SCRIPT_DIR/queue_rearm_population.sh"
+[[ -x "$POPULATION" ]] || { echo "FATAL: $POPULATION missing or not executable"; exit 3; }
 
 # Patterns that identify a red NOT attributable to the diff. Widen ONLY with a
 # cause observed live, never by resemblance — every pattern here is a red this
 # fleet actually produced.
-INFRA_RE='registry-1\.docker\.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal|The self-hosted runner.*lost communication|Failed to initialize container'
+# `gh-readonly-queue/.*not found` is the EJECTION'S OWN WAKE, added 2026-07-28 from a
+# cause observed live on #3372 — never by resemblance, which this list forbids. Order of
+# events, each measured: the P6 gate's `actions/checkout@v7` hung and was killed at 603s
+# against a 600s budget -> `cancelled` -> the cancelled REQUIRED check ejected the entry ->
+# the queue destroyed `gh-readonly-queue/main/pr-3372-<sha>` -> CodeQL, still running,
+# finished cleanly ("scanned 5703 out of 5703 Python files") and then FAILED uploading its
+# SARIF to a ref that no longer existed. Read without ordering, that reads as "Security
+# Scanning failed" and sends you debugging security for an event twelve minutes earlier in
+# a different workflow. It is a straggler tripping over the eject, and says nothing about
+# the pull request's health — so it must not be scored as a CODE red that forbids the
+# retry. Unanimity (rule 2 of the classifier) still protects this: one genuinely
+# non-infrastructural failure anywhere in the set still forbids the re-arm.
+#
+# The ejection is NOT the only way that ref dies. Second attempt on the same pull request,
+# also measured: P6 passed, the only red was `Snyk Docker Security` (NOT a required
+# context, so it cannot eject) — and both CodeQL jobs still died on the identical missing
+# ref. The queue also destroys the temporary branch when it REBUILDS the group after an
+# entry ahead leaves. Same wake, two different upstream events, and neither is the diff.
+#
+# ANCHOR ON THE REF PATH, NOT ON THE SENTENCE. The first version of this pattern ended in
+# `not found in the repository`; GitHub actually writes `not found in THIS repository`, so
+# it matched nothing that the fleet had ever produced. It went undetected because the guilt
+# fixture beside it was typed from memory instead of copied off the artifact — corpus and
+# code wrong in the same direction, which is the one failure a corpus cannot catch about
+# itself. The wording is form and belongs to GitHub; `refs/heads/gh-readonly-queue/…` +
+# `not found` is the entity, and it is the entity that makes this red the queue's own.
+INFRA_RE='registry-1\.docker\.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal|The self-hosted runner.*lost communication|Failed to initialize container|ref .refs/heads/gh-readonly-queue/.*not found'
 
 # ---------------------------------------------------------------------------
 # 1. Who is IN the queue right now. Anyone inside is not orphaned, whatever
@@ -94,12 +122,35 @@ if (( open_count == 0 )); then
   exit 3
 fi
 
-cand=$(printf '%s' "$all_open" \
-       | jq -r '.[]|select(.mergeable=="MERGEABLE" and .autoMergeRequest==null)|"\(.number)\t\(.title[0:70])"')
-
+cand=$(printf '%s' "$all_open" | "$POPULATION" --candidates)
 total=$(printf '%s\n' "$cand" | grep -c .)
+
+# THE THIRD VALUE — see the scar documented at the top of
+# `queue_rearm_population.sh`. `mergeable` is not a boolean: GitHub answers
+# UNKNOWN while it recomputes, and it recomputes for EVERY open pull request
+# after every push to the base branch. So a merge to main opens a window in
+# which genuine orphans read as not-MERGEABLE and quietly leave the candidate
+# set — and a scheduled run is most likely to fire exactly then. An unresolved
+# population must never be reported as an empty one.
+undecidable=$(printf '%s' "$all_open" | "$POPULATION" --undecidable)
+if [[ -z "$undecidable" || ! "$undecidable" =~ ^[0-9]+$ ]]; then
+  echo "🔌 could not count undecided mergeable states — refusing to report a verdict on a partially-read set."
+  exit 3
+fi
+
 echo "unarmed candidates: $total (of $open_count open pull request(s))"
+if (( undecidable > 0 )); then
+  echo "   ⏳ $undecidable unarmed pull request(s) have an UNDECIDED mergeable state — GitHub"
+  echo "      recomputes mergeability after every push to the base branch, so this list is"
+  echo "      INCOMPLETE right now. Re-run in a minute for the full picture."
+fi
+
 if (( total == 0 )); then
+  if (( undecidable > 0 )); then
+    echo "🔌 zero decidable candidates, but $undecidable await recomputation. That is"
+    echo "   'ask again shortly', never 'nothing is orphaned'. No verdict."
+    exit 3
+  fi
   echo "✅ no orphaned pull request — every open one is armed, queued or conflicting."
   exit 0
 fi
@@ -112,9 +163,39 @@ while IFS=$'\t' read -r n title; do
 
   # 3. This pull request's most recent merge_group runs. `pr-<n>-` is how the
   #    queue names its temporary branches.
+  #
+  # NO `--arg`: `gh run list` does not accept it. It is a `jq` flag, and `gh`
+  # only forwards the EXPRESSION to its embedded engine — passing it makes gh
+  # exit 1 with `unknown command "n" for "gh run list"`. Measured 2026-07-28,
+  # the day after this tool was armed: with `--arg` the query returned nothing
+  # for EVERY pull request, so every candidate was filed "no merge_group run
+  # found … LEAVING ALONE" and the tool could never reach a verdict on anything
+  # — including a pull request that had 20 such runs at that very moment. The
+  # re-armer was decorative by construction: the exact "exists != armed" disease
+  # it was built to cure, living inside the cure (superscar #2).
+  #
+  # `$n` is interpolated into the expression instead. It comes from this script's
+  # own jq extraction of `.number`, but it is re-asserted as digits below rather
+  # than trusted, so nothing can be smuggled into the expression.
+  if [[ ! "$n" =~ ^[0-9]+$ ]]; then
+    echo "  ❓ #$n is not a pull-request number — refusing to build a query from it"
+    undecided=$((undecided + 1))
+    continue
+  fi
   rows=$(gh run list --repo "$REPO" --event merge_group --limit 150 \
          --json databaseId,name,status,conclusion,headBranch,createdAt \
-         --jq --arg n "$n" '[.[]|select(.headBranch|test("pr-"+$n+"-"))]|sort_by(.createdAt)|reverse|.[0:25][]|"\(.databaseId)\t\(.status)\t\(.conclusion // "")\t\(.name)"' 2>/dev/null)
+         --jq "[.[]|select(.headBranch|test(\"pr-${n}-\"))]|sort_by(.createdAt)|reverse|.[0:25][]|\"\(.databaseId)\t\(.status)\t\(.conclusion // \"\")\t\(.name)\"" 2>/tmp/qr_runs.err)
+  runs_rc=$?
+
+  # A FAILED probe is not an EMPTY one. Swallowing gh's stderr into an empty
+  # string is precisely what let the `--arg` usage error masquerade as "this
+  # pull request has no runs" for as long as it did.
+  if (( runs_rc != 0 )); then
+    echo "  🔌 #$n run probe FAILED (rc=$runs_rc): $(tr '\n' ' ' < /tmp/qr_runs.err | cut -c1-120)"
+    echo "     no verdict for this pull request — a probe that could not read is never a clean read."
+    undecided=$((undecided + 1))
+    continue
+  fi
 
   if [[ -z "$rows" ]]; then
     echo "  ❓ #$n no merge_group run found — never queued, or too old to see. LEAVING ALONE ($title)"
