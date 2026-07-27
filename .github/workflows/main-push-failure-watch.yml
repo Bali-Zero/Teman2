@@ -121,6 +121,10 @@ on:
       - Magazine auto-assets contract
       - Migration Lint (Squawk)
       - npm lock sync
+      # Registered with the workflow itself (2026-07-27). Inserted here rather
+      # than appended: PR #3295 is adding its own entry at the END of this list,
+      # and two PRs appending to the same line would conflict for no reason.
+      - prepush-guards
       - Nuz Status Control
       - Organ conformance (DNA genome — genes at birth)
       - P1 STRATO-2 incremental mutation gate

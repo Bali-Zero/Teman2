@@ -1,0 +1,70 @@
+name: prepush-guards
+
+# Runs the guard tests for the LOCAL pre-push gate on an isolated runner.
+#
+# WHY THIS FILE EXISTS AT ALL: the two tests below were written, passed
+# manually, and were wired into nothing. Adversarial review caught that before
+# merge and blocked it, correctly — `scripts/tests/` is not swept by any glob in
+# this repo (insight-cover-cards.yml says so in its own header: a file there
+# "runs only because some workflow names it"), so the claim "these keep the
+# hook and the manifest in sync" would have been false on the day it merged.
+# A guard nobody runs is cicatrix-superscar.md family #2 (esiste != armato) —
+# and the hook these tests guard is itself a #2 fix. Shipping an unarmed guard
+# for an unarmed-gate bug is the disease curing itself into a mirror.
+#
+# NO top-level `paths:` filter on pull_request, deliberately (W69): a
+# paths-filtered required check never reports on a path-miss PR and blocks the
+# merge forever. Both tests are pure-python, dependency-light and finish in
+# ~2s, so there is nothing to save by filtering — it always runs, it always
+# reports.
+#
+# Registered in main-push-failure-watch.yml, because an unwatched watcher is
+# the same disease one level up (learned the hard way on #3295, where
+# scripts/check_watcher_coverage.py caught exactly that omission).
+
+on:
+  pull_request: # NO paths: — always trigger, always report
+  merge_group:
+  push:
+    branches: [main]
+    paths:
+      - ".husky/pre-push"
+      - "scripts/tests/test_prepush_honest_verdict.py"
+      - "scripts/tests/test_test_deps_declared.py"
+      - "apps/backend-rag/requirements-test.txt"
+      - ".github/workflows/tests.yml"
+      - ".github/workflows/prepush-guards.yml"
+
+concurrency:
+  group: prepush-guards-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+permissions:
+  contents: read
+
+jobs:
+  prepush-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # PyYAML only: test_test_deps_declared parses tests.yml per-JOB (it must
+      # read the backend job alone — a whole-file scan previously dragged the
+      # MCP app's `fastmcp` into the backend manifest, re-importing 8 Dependabot
+      # alerts' worth of dependency).
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      # Run each explicitly and separately so a failure names which guard broke.
+      # These run as __main__ (not under pytest) on purpose: they are standalone
+      # by design so they also work from a developer's shell with no test deps.
+      - name: Guard — the pre-push verdict cannot claim an unearned pass
+        run: python3 scripts/tests/test_prepush_honest_verdict.py
+
+      - name: Guard — backend test deps declared, not just inline-installed
+        run: python3 scripts/tests/test_test_deps_declared.py

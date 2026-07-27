@@ -430,12 +430,28 @@ else
         # FAILED" (round 1, the 3-way classification below), (2) that
         # classification being unreachable under `sh -e` (round 2, this
         # `|| TEST_RC=$?` guard). Reference: scripts/tests/test_prepush_failclosed.sh.
+        #
+        # INTAKE_TEST_DSN (added 2026-07-27) — the third env var below. CI has
+        # exported it since it was introduced (.github/workflows/tests.yml, whose
+        # comment says pointing it at the disposable CI database "instead of their
+        # local-dev fallback (nuzantara_dev)" un-skipped 50 tests); this hook never
+        # did. backend/tests/services/intake/test_intake_writer.py:34 reads
+        # `os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_dev")`
+        # — a default that fails OPEN onto the machine's SHARED dev database rather
+        # than skipping. Measured on Pro (2026-07-27): 12,408 client rows there, 9 of
+        # them created in 6 hours by these tests' real-commit cases, and the file's own
+        # `assert after == before, "CRM mutated!"` guard seeing writes it did not cause
+        # — it rejected a push whose diff touched only this hook, a requirements file
+        # and two files under scripts/tests/. Exporting the per-push clone here makes
+        # the local gate match CI exactly: same isolation, nothing skipped, and the
+        # shared dev DB stops being test scratch space.
         TEST_RC=0
         ( cd apps/backend-rag \
             && rm -rf .pytest_cache backend/.pytest_cache \
             && source .venv/bin/activate 2>/dev/null \
             && DATABASE_URL="postgresql://test:test@localhost:5432/$CLONE_DB" \
                TEST_DATABASE_URL="postgresql://test:test@localhost:5432/$CLONE_DB" \
+               INTAKE_TEST_DSN="postgresql://test:test@localhost:5432/$CLONE_DB" \
                JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
                API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
                OLLAMA_URL="http://127.0.0.1:9" \
@@ -496,8 +512,9 @@ if [ "$PREPUSH_RUN_BACKEND" = "1" ] && [ "${BACKEND_SUITE_RAN:-0}" != "1" ]; the
     echo "⚠️  PUSH NOT VERIFIED LOCALLY — the backend suite was REQUIRED for this diff but never ran"
     echo "    (${BACKEND_SUITE_SKIP_REASON:-reason not recorded})."
     echo "    This is NOT a passing verdict: no test judged this diff on this machine."
-    echo "    The merge queue re-tests every entry against main — that is the only gate this push met."
-    echo "    To make this machine's gate real, fix the cause above; do not read this as green."
+    echo "    Nothing has judged it yet: CI on the PR, and then the merge queue re-testing"
+    echo "    the entry against main, are the gates that still have to. Do not read this as green."
+    echo "    To make this machine's gate real, fix the cause above."
 else
     echo "✅ All pre-push checks passed!"
 fi
