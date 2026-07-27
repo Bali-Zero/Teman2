@@ -235,17 +235,33 @@ class TestPerfRegression:
         chunker = _chunker(chunk_size=200)
         text = ("paragraph with some words. " * 50 + "\n\n") * 20  # ~28K chars
 
-        # Direct semantic_chunk — upper bound on fallback cost.
-        t0 = time.perf_counter()
+        # INTERLEAVED and MIN-of-N, not two sequential means. Measured
+        # 2026-07-27: this test blocked a push at "41.11ms vs 1.72ms" — a 24x
+        # ratio — on a laptop running 21 concurrent pushes, while passing in
+        # isolation on the same tree moments later.
+        #
+        # The old shape timed all 5 baselines, THEN all 5 fallbacks, and
+        # averaged each. That is robust to STEADY load but not to load that
+        # CHANGES between the two windows, which is exactly what a fleet of
+        # starting/finishing pushes produces. Averaging makes it worse: a mean
+        # absorbs every descheduling spike into the number it reports.
+        #
+        # Interleaving puts both operations under the same load regime, and the
+        # minimum is the right estimator here because timing noise is
+        # ONE-SIDED — contention can only ever make a run slower, never faster,
+        # so min() is the closest thing to the true cost. The regression signal
+        # is fully preserved: real added overhead in chunk_by_pages raises its
+        # MINIMUM too, and no amount of quiet machine hides it.
+        baseline = float("inf")
+        fallback = float("inf")
         for _ in range(5):
+            t0 = time.perf_counter()
             chunker.semantic_chunk(text)
-        baseline = (time.perf_counter() - t0) / 5
+            baseline = min(baseline, time.perf_counter() - t0)
 
-        # chunk_by_pages with no markers — same call path internally.
-        t0 = time.perf_counter()
-        for _ in range(5):
+            t0 = time.perf_counter()
             chunker.chunk_by_pages(text, page_markers=None)
-        fallback = (time.perf_counter() - t0) / 5
+            fallback = min(fallback, time.perf_counter() - t0)
 
         # Allow 3x slack for CI noise; the two should be effectively identical.
         assert fallback < baseline * 3 + 0.01, (

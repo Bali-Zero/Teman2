@@ -289,7 +289,12 @@ class TestRealPGNotificationRouting:
         notify_conn = None
         try:
             await bus.start()
-            for _ in range(30):
+            # W58 (2026-07-27): a real "listener never opens" regression means
+            # bus._conn stays None forever, not that it opens late — a generous
+            # ceiling (10s @ 0.1s poll) preserves full discriminating power
+            # while removing dependence on the connection getting scheduled
+            # within the old 3.0s ceiling under DB-pool contention.
+            for _ in range(100):
                 if bus._conn is not None:
                     break
                 await asyncio.sleep(0.1)
@@ -310,7 +315,9 @@ class TestRealPGNotificationRouting:
                 ),
             )
 
-            await asyncio.wait_for(done.wait(), timeout=3.0)
+            # Same reasoning: a broken NOTIFY/LISTEN wiring never delivers, it
+            # doesn't deliver late — generous bound, no lost discrimination.
+            await asyncio.wait_for(done.wait(), timeout=15.0)
         finally:
             if notify_conn is not None:
                 await notify_conn.close()

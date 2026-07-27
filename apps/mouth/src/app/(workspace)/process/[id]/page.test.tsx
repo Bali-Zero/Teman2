@@ -246,7 +246,7 @@ describe("CaseDetailPage", () => {
     await renderLoaded();
 
     expect(screen.getAllByText("John Doe").length).toBeGreaterThan(0);
-    expect(screen.getByText("john@example.com")).toHaveAttribute(
+    expect(screen.getByText("john@example.com").closest("a")).toHaveAttribute(
       "href",
       "mailto:john@example.com",
     );
@@ -272,6 +272,19 @@ describe("CaseDetailPage", () => {
         expect.anything(),
       );
     });
+  });
+
+  it("wraps long client email addresses inside the contact card", async () => {
+    const longEmail =
+      "synthetic.client.with.a.very.long.address@example-company.test";
+    await renderLoaded(makePractice({ client_email: longEmail }));
+
+    const emailLink = screen.getByRole("link", { name: longEmail });
+    expect(emailLink.className).toContain("min-w-0");
+    expect(emailLink.querySelector("svg")?.className.baseVal).toContain(
+      "shrink-0",
+    );
+    expect(emailLink.querySelector("span")?.className).toContain("break-all");
   });
 
   it("keeps rendering when profile/metrics initialization fails", async () => {
