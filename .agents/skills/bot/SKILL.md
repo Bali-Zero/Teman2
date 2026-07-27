@@ -22,6 +22,43 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
+- **🔴 THREE FAST-PATHS RETURN BEFORE THE ABSTAIN GATE — AND BEFORE ANALYTICS (2026-07-27).**
+  In `orchestrator_core.py::process_query_core`, three branches `return CoreResult(...)`
+  early: Phase-6 multi-agent (`:1237`), SpecializedServiceRouter (`:1260`), KG fast-path
+  (`:1283`). The single `_log_query_analytics` call is at `:1416` and the abstain gate is
+  further down still, so **all three skip both**. Two of the three hardcode `sources=[]`
+  (multi-agent, specialized router); the KG fast-path does attach real `neo4j_kg_entity`
+  sources. Consequence for anyone reading dashboards: `query_analytics` holds 6771 rows and
+  **zero** are `multi-agent-coordinator` — that measures the blindness, not the rarity. Never
+  cite that table as evidence a fast-path is unused.
+  - **PROVEN CLIENT HARM (live probe, 2026-07-27, `ask_legal` E23 cost+timeline)**: returned
+    `sources: []`, `context_length: 0`, `evidence_score: 0`, `abstain: false`,
+    `abstain_reason: null` — with an **invented government fee "up to IDR 1.2 billion"**
+    printed beside the real PricingTool figure, a **split price** (service fee + government +
+    notary, against the 2026-07-17 single-all-inclusive ruling), and a fabricated **38-60 day**
+    phase breakdown matching `TimelineAgent`'s prompt template line for line.
+  - **Why it fabricates**: `TimelineAgent`'s prompt literally asks the model to fill in
+    "1. Document preparation: X days / 2. Submission: Y days …"; with an empty grounding block
+    `_synthesize_outputs` degrades to "be specific". Nothing on the path can say "I don't
+    know". The 2026-07-18 grounding work is intact and deliberate — it left TimelineAgent to
+    inherit facts _transitively via legal_analysis_ — but that inheritance conveys nothing
+    when there is no evidence to inherit. **The gap is the zero-evidence case, not the
+    grounding design: do not "fix" TimelineAgent by feeding it grounding directly.**
+  - **`requires_multi_agent()` fires on cost+timeline keywords** (EN/ID/IT
+    substrings) — the "how much and how long" shape. Do NOT claim it is the most
+    common client question: measured on the real inbound corpus it is 2 of 59
+    WhatsApp inbound messages with text (3.4%), and the full-domain-cache design
+    itself notes ~72 inbound is too small a sample to rank query frequency. The
+    severity here comes from WHAT it answers (prices, legal deadlines) with zero
+    evidence, not from how often.
+  - **Fix in flight**: evidence precondition on the Phase-6 branch (run it only when
+    `curated_qa_context` is non-empty; otherwise fall through to the ReAct loop, which
+    retrieves and can abstain). Guilt+innocence in
+    `test_curated_qa_grounding_injection.py`; O9/O10 in `test_orchestrator_state_machine_wave2.py`
+    updated to satisfy the precondition (what they assert is unchanged).
+  - **STILL OPEN**: (a) the SpecializedServiceRouter branch has the same source-free shape and
+    is NOT covered by that fix; (b) none of the three early returns writes analytics.
+
 - **🚫 DO NOT RE-OPEN: coalescing of a RETRYING outbox row is sound (REFUTED 2026-07-27).**
   The suspicion was that `_coalesce_thread_bursts` kills a customer question that is only
   waiting for its retry — its predicate filters `status='pending'` but not `attempts` or
