@@ -17,6 +17,7 @@ name: adversarial-review-gate
 
 on:
   pull_request:
+  merge_group:
 
 jobs:
   gate:
@@ -34,14 +35,29 @@ jobs:
 
       - name: Fetch base ref
         env:
-          BASE_REF: ${{ github.base_ref }}
+          # merge_group readiness (2026-07-27): github.base_ref is a branch
+          # NAME, populated only for pull_request/pull_request_target — empty
+          # under merge_group, which made this fetch a no-op and the next
+          # step's `origin/${BASE_REF}` resolve to `origin/` (REF-BREAKAGE:
+          # check_adversarial_review.py's git-diff subprocess raises
+          # CalledProcessError -> main() exit 2 -> the R1 gate fails on every
+          # single queue entry, not just changed ones). SHA-fallback mirrors
+          # the pattern already proven in hot-zone-pr-gate.yml, and also
+          # sidesteps the base-advanced race this step already guards below.
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         # NO --depth=1 here: a shallow fetch re-points origin/<base> to a tip with
         # severed history, so if base advanced between checkout and this step the
         # merge-base with HEAD is unreachable -> "fatal: no merge base" (seen live
         # on PR #2033, high-traffic day). Full fetch is cheap after fetch-depth: 0.
-        run: git fetch origin "$BASE_REF" || true
+        run: git fetch origin "$BASE_SHA" || true
 
       - name: R1 gate — adversarial review present
         env:
-          BASE_REF: ${{ github.base_ref }}
-        run: python scripts/check_adversarial_review.py --diff "origin/${BASE_REF}"
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        # scripts/check_adversarial_review.py --diff shells out to
+        # `git diff --name-only ... "{base}...HEAD"` (_git_diff_files) — base
+        # is an opaque git revision never string-parsed for an "origin/<name>"
+        # shape, so a bare SHA is a valid --diff argument (verified on disk
+        # 2026-07-27, no origin/ prefix required; three-dot diff resolves the
+        # merge-base from either a branch name or a SHA identically).
+        run: python scripts/check_adversarial_review.py --diff "$BASE_SHA"

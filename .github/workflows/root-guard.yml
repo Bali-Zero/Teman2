@@ -4,12 +4,13 @@ on:
   pull_request:
     # Run on every PR — the check is fast (~0.2s) and catches root-pollution
     # attempts that slip past pre-commit (e.g. someone commits with --no-verify).
+  merge_group:
   push:
     branches: [main]
 
 concurrency:
   group: root-guard-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   root-guard:
