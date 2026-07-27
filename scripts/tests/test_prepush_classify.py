@@ -833,6 +833,260 @@ def test_edge_cli_sentinel_via_stdin_end_to_end() -> None:
     assert proc.stdout.strip() == pc.VERDICT_FULL
 
 
+# ===========================================================================
+# v4 — apps/mouth/src (.ts/.tsx/.css)
+#
+# Why this entry exists: it is the last high-traffic tree with no rule, so
+# every frontend-only PR paid the full ~43min backend suite. On 2026-07-27
+# that cost FOUR consecutive pushes of a single frontend-only branch — the
+# suite simply outlives the background task's budget.
+#
+# Why it is safe: measured on disk, no backend test opens a file under
+# apps/mouth (10 mention it, all as string literals fed to a path->command
+# mapper). The dangerous suffix is `.mdx`, which has a REAL reader
+# (backend/scripts/index_mdx_to_balizero_news.py does rglob("*.mdx") +
+# read_text) — hence excluded, and pinned as GUILT below.
+# ===========================================================================
+
+
+def test_innocence_mouth_src_ts_and_tsx_skip() -> None:
+    """The shapes this entry exists for: a lib module, a component, a page."""
+    for path in (
+        "apps/mouth/src/lib/kbli-bali-block.ts",
+        "apps/mouth/src/lib/kbli-bali-block.test.ts",
+        "apps/mouth/src/components/kbli/LicensingSection.tsx",
+        "apps/mouth/src/app/kbli/[code]/page.tsx",
+        "apps/mouth/src/app/globals.css",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_innocence_real_frontend_only_pr_skips() -> None:
+    """The actual file list of PR #3262 (frontend files only) — the diff
+    whose four pushes died paying for a suite that could not see it."""
+    verdict, unknown = pc.classify(
+        [
+            "apps/mouth/src/lib/kbli-bali-block.ts",
+            "apps/mouth/src/lib/kbli-bali-block.test.ts",
+            "apps/mouth/src/components/kbli/LicensingSection.tsx",
+            "apps/mouth/src/app/kbli/[code]/page.tsx",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_mouth_mdx_still_forces_full() -> None:
+    """`.mdx` is excluded because a real backend reader exists:
+    backend/scripts/index_mdx_to_balizero_news.py rglob()s and read_text()s
+    the articles tree. 3360 of the 3835 tracked files under src/ are .mdx —
+    admitting them would be the single largest hole this entry could open."""
+    verdict, unknown = pc.classify(
+        ["apps/mouth/src/content/articles/business/kbli-2025-great-transition.mdx"]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [
+        "apps/mouth/src/content/articles/business/kbli-2025-great-transition.mdx"
+    ]
+
+
+def test_guilt_mouth_dataset_outside_src_forces_full() -> None:
+    """Scoped to src/ specifically, NOT apps/mouth wholesale: the KBLI
+    dataset copies live in apps/mouth/data/ and are data-plane artifacts."""
+    for path in (
+        "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json",
+        "apps/mouth/data/kbli-gold-all.json",
+        "apps/mouth/next.config.ts",
+        "apps/mouth/package.json",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_wrong_suffix_forces_full() -> None:
+    """Suffix scoping is the mechanism — a .json or .yaml under src/ is not
+    admitted just because its directory is."""
+    for path in (
+        "apps/mouth/src/data/services_data.json",
+        "apps/mouth/src/i18n/messages.json",
+        "apps/mouth/src/app/opengraph.png",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_lookalike_prefix_forces_full() -> None:
+    """#3's recurring disease: a prefix check without a boundary anchor
+    over-matches. `srcarchive` is not `src`."""
+    for path in (
+        "apps/mouth/srcarchive/old.ts",
+        "apps/mouth/src-backup/old.tsx",
+        "apps/mouth-legacy/src/old.ts",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_mixed_with_backend_forces_full() -> None:
+    """One backend file anywhere in the diff still forces the full suite."""
+    verdict, unknown = pc.classify(
+        [
+            "apps/mouth/src/lib/kbli-bali-block.ts",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_mouth_src_traversal_escape_forces_full() -> None:
+    """HARDENING-2 still holds for the new entry: `..` must not let a path
+    suffix-match its way out of the allowlisted directory."""
+    verdict, _ = pc.classify(
+        ["apps/mouth/src/../../backend-rag/backend/services/rag/reasoning.ts"]
+    )
+    assert verdict == pc.VERDICT_FULL
+
+
+def test_allowlist_version_bumped_for_the_new_entry() -> None:
+    """The skip-banner logs the allowlist version that approved a skip, so a
+    rules change that does not bump it makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 4
+    assert ("apps/mouth/src", (".ts", ".tsx", ".css")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+# ===========================================================================
+# v5 — .agents/skills (.md) and scripts/ci (.sh)
+#
+# Why these entries exist: measured live 2026-07-27 on M5, load average 41,
+# 9 concurrent full `pytest backend/tests/` suites (one 1h21m in). Tracing
+# each running suite to its worktree/merge-base diff found 7 of the 9
+# guarded diffs contained ZERO backend files — two were pure markdown-only
+# diffs whose ONLY changed file sits under `.agents/skills/`, a third was
+# blocked solely by `scripts/ci/setup_merge_queue_ruleset.sh`.
+#
+# Why .agents/skills is safe: `.agents/skills/README.md` (verified on disk)
+# states this tree is the CANONICAL cross-agent skill store (established
+# 2026-07-23) — `.claude/skills/<name>` is a SYMLINK to it for 4 of 8
+# corners (bot/kbli-navigator/visaoracle/wr2, `git ls-tree` mode 120000
+# verified), so a SKILL.md edit through either path lands its `git diff` on
+# the `.agents/skills/**` blob, which the pre-v5 `.claude/skills` rule never
+# covered. Innocence measured on disk: zero matches for the DIRECTORY-
+# ANCHORED string `.agents/` anywhere under apps/backend-rag/backend/
+# (tests or modules) — a bare `\.agents` grep instead false-positives on
+# Python dotted-module paths like `backend.app.agents.graph`.
+#
+# Why scripts/ci is safe: mirrors the DECLARED .sh precedent already
+# accepted for infra/launchagents. Innocence measured on disk: zero matches
+# for the DIRECTORY-ANCHORED string `scripts/ci/` under
+# apps/backend-rag/backend/ — a bare `scripts/ci` grep instead
+# false-positives on the unrelated `apps/backend-rag/scripts/ci_bootstrap_
+# schema.py`. Also zero basename-only hits for each of the 3 real .sh
+# files, in case a test subprocess-invokes one without the dir prefix.
+# ===========================================================================
+
+
+def test_innocence_agents_skills_md_skips() -> None:
+    """The two live-worktree shapes the v5 measurement actually caught:
+    one-file SKILL.md-only diffs under the canonical .agents/skills store."""
+    for path in (
+        ".agents/skills/bot/SKILL.md",
+        ".agents/skills/kbli-navigator/SKILL.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_innocence_scripts_ci_setup_merge_queue_ruleset_skips() -> None:
+    """The third v5-measurement diff: blocked solely by this one .sh file."""
+    verdict, unknown = pc.classify(["scripts/ci/setup_merge_queue_ruleset.sh"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_real_agents_one_file_diffs_skip() -> None:
+    """The two REAL one-file diffs measured live 2026-07-27
+    (docs-kbli-night-findings, ops-bot-corner-refresh worktrees) — each
+    changed exactly one .agents/skills/**/SKILL.md file and each had been
+    paying a full backend suite before this entry existed."""
+    for path in (
+        ".agents/skills/kbli-navigator/SKILL.md",
+        ".agents/skills/bot/SKILL.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP
+        assert unknown == []
+
+
+def test_innocence_real_pr_c_three_file_list_skips() -> None:
+    """PR-C's real 3-file diff — a workflow + a runbook + this PR's new
+    scripts/ci .sh entry, all three now provably innocent together."""
+    verdict, unknown = pc.classify(
+        [
+            ".github/workflows/merge-queue-watch.yml",
+            "docs/runbooks/merge-queue-discipline.md",
+            "scripts/ci/setup_merge_queue_ruleset.sh",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_agents_non_md_forces_full() -> None:
+    """Suffix scoping is the mechanism — the one real non-.md file that
+    lives under .agents/skills/ today must NOT be admitted just because its
+    directory is."""
+    path = ".agents/skills/wr2/_research/2026-07-21-ir-phase1-replay-metrics.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_scripts_ci_py_forces_full() -> None:
+    """Suffix scoping again — the 2 real .py utilities in scripts/ci/ stay
+    OUT, same shape as the infra/launchagents .py exclusion above."""
+    for path in (
+        "scripts/ci/l5_2_phase2b_auto_analyzer.py",
+        "scripts/ci/redis_lease_check.py",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_agents_mixed_with_backend_forces_full() -> None:
+    """One backend file anywhere in the diff still forces the full suite,
+    even alongside an otherwise-innocent .agents/skills edit."""
+    verdict, unknown = pc.classify(
+        [
+            ".agents/skills/bot/SKILL.md",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_prepush_classify_itself_forces_full() -> None:
+    """This very PR's own diff touches scripts/prepush_classify.py, a
+    NEVER_INNOCENT_EXACT_PATHS entry — correct by design, so this PR's own
+    push pays the full suite it is trying to spare OTHER diffs from."""
+    verdict, unknown = pc.classify(["scripts/prepush_classify.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/prepush_classify.py"]
+
+
+def test_allowlist_version_bumped_to_5_for_the_v5_entries() -> None:
+    """The skip-banner logs the allowlist version that approved a skip, so a
+    rules change that does not bump it makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 5
+    assert (".agents/skills", (".md",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("scripts/ci", (".sh",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
 # ---------------------------------------------------------------------------
 # The gate's INPUT, not its rules: `.husky/pre-push` must enumerate changed
 # files against the MERGE-BASE with origin/main, never against $remote_sha.

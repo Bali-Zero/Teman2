@@ -858,6 +858,7 @@ class TestProcessQueryBranches:
                 query,
                 conversation_history=None,
                 session_id=None,
+                memory_subject=None,
             ):
                 # Trigger real apply_context_window_management with the history_to_summarize.
                 # This calls mock_cwm_instance.trim_conversation_history → needs_summarization=True

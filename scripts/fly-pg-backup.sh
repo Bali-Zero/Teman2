@@ -297,6 +297,15 @@ elif command -v aws &> /dev/null; then
            verify_offsite_object "$TIGRIS_BUCKET" "$TIGRIS_ENDPOINT" "$(basename "$BACKUP_FILE")"; then
             OFFSITE_OK=1
             log "Verified off-site: s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")"
+            # Receipt for cell.sensors.backup_sensor. Written ONLY here — on the one path
+            # where a remote listing has actually shown the object — so the sensor can
+            # stop inferring "backup exists" from the LOCAL dump, which is present even
+            # when the upload never happened (2026-07-15: local file fine, bucket empty,
+            # sensor green). Freshness of this file IS freshness of the off-site copy.
+            printf '{"object":"%s","verified_at":"%s","bucket":"%s"}\n' \
+                "$(basename "$BACKUP_FILE")" \
+                "$(date -u +%Y-%m-%dT%H:%M:%S)" \
+                "$TIGRIS_BUCKET" > "$BACKUP_DIR/.offsite-verified.json"
         else
             log "ERROR: upload finished but the object is NOT in the bucket."
         fi

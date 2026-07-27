@@ -146,18 +146,34 @@ def test_module_import_under_150ms() -> None:
     for k in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_ENABLED"):
         env.pop(k, None)
 
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        capture_output=True,
-        text=True,
-        env=env,
-        cwd=backend_rag_root,
-        timeout=30,
-        check=False,
+    def _measure() -> float:
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=backend_rag_root,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        return float(result.stdout.strip())
+
+    # Best-of-N, not a single sample. Contention can only INFLATE an import
+    # measurement, never deflate it, so the minimum over independent cold imports
+    # is the honest estimate of what the module actually costs — and a real
+    # regression raises the floor, so the guard keeps all its power.
+    #
+    # A single sample measures the machine, not the module: this assertion went
+    # red at 346.75ms on 2026-07-27 while several sibling test suites were running
+    # on the same laptop, with the module unchanged. The threshold had already been
+    # walked 50 → 150 for the same reason; raising it again would just move the next
+    # false failure further out instead of removing it.
+    samples = [_measure() for _ in range(3)]
+    assert min(samples) < 150.0, (
+        f"observability module import took {min(samples):.2f}ms (>150ms) "
+        f"at best over {len(samples)} runs: {[f'{s:.2f}' for s in samples]}"
     )
-    assert result.returncode == 0, result.stderr
-    dt_ms = float(result.stdout.strip())
-    assert dt_ms < 150.0, f"observability module import took {dt_ms:.2f}ms (>150ms)"
 
 
 # ── 3. Startup isolation ────────────────────────────────────────────

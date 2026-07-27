@@ -312,3 +312,57 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     expect(SECTION).toContain("but not open to a PT PMA in Bali");
   });
 });
+
+describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFTH overall", () => {
+  // Missed by the L2.10 sweep because it looked for the licensing frame's
+  // wording; `kbli-faq.ts` carried its own hardcoded copy. Curing the banner
+  // without this one did not leave the FAQ stale — it put the two in
+  // CONTRADICTION on the same page, which is worse than either alone.
+  const HERE = dirname(fileURLToPath(import.meta.url));
+  const FAQ = readFileSync(join(HERE, "kbli-faq.ts"), "utf8");
+
+  it("GUILT: the builder no longer hardcodes a cause", () => {
+    expect(FAQ).not.toContain("(reserved for UMKM / 2026 moratorium)");
+  });
+
+  it("it derives the cause, and gates the reason, with the same two functions", () => {
+    expect(FAQ).toContain("baliBlockClause(code.baliL4?.status)");
+    expect(FAQ).toContain("shouldShowReason(code.baliL4?.status");
+  });
+
+  it("pins the population: 455 answers, only 39 are MSME-reserved", () => {
+    // Mirrors the builder's own guard: pma.status === "open" && baliL4.blocked,
+    // where mapPmaStatus treats anything but TERBATAS/TERTUTUP as open.
+    const openNationally = (r: RawRecord) => {
+      const s = (r.pma_status ?? "").toUpperCase();
+      return s !== "TERBATAS" && s !== "TERTUTUP";
+    };
+    const answers = BLOCKED.filter(openNationally);
+    const msme = answers.filter(
+      (r) => r.l4_bali?.status === "CHIUSO_PMA_NO_BESAR",
+    );
+    expect(answers.length).toBe(455);
+    expect(msme.length).toBe(39);
+    // 416 answers named a cause that was not theirs — in the visible Q&A and in
+    // the FAQPage JSON-LD, which is the copy that leaves the site.
+    expect(answers.length - msme.length).toBe(416);
+  });
+
+  it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
+    // Establishes they are different populations, so neither pin can be
+    // derived from the other and a future edit cannot silently merge them.
+    const nationallyClosed = (r: RawRecord) =>
+      r.pma_cap_special !== true &&
+      ((r.pma_status ?? "").toUpperCase() === "TERTUTUP" ||
+        (r.pma_max_asing ?? 0) === 0);
+    const banner = BLOCKED.filter((r) => !nationallyClosed(r));
+    const faq = BLOCKED.filter((r) => {
+      const s = (r.pma_status ?? "").toUpperCase();
+      return s !== "TERBATAS" && s !== "TERTUTUP";
+    });
+    const bannerCodes = new Set(banner.map((r) => r.kode_kbli_2025));
+    const onlyFaq = faq.filter((r) => !bannerCodes.has(r.kode_kbli_2025));
+    expect(onlyFaq).toHaveLength(0);
+    expect(banner.length - faq.length).toBe(1);
+  });
+});

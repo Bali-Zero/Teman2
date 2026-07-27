@@ -228,3 +228,113 @@ def test_kbli_documents_queries_read_metadata_not_flat_business_columns() -> Non
         "router no longer reads business fields from this table (fine, update "
         "this test), or it started assuming a flat schema that doesn't exist."
     )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 4 — the committed team roster carries NO plaintext login PIN
+# ---------------------------------------------------------------------------
+#
+# Added 2026-07-27. Until that day both roster files in backend/data/ carried a
+# plaintext `pin` for all 19 team members, and backend/scripts/seed_users.py
+# hashed it straight into `team_members.pin_hash` — the column
+# app/routers/auth.py authenticates against. This repository is PUBLIC: those
+# were not fixtures, they were published live credentials, and the chain from
+# committed file to working login was complete.
+#
+# Removal alone does not hold: the field is convenient, and the next person who
+# wants a one-command local seed will put it back. These assertions are what
+# makes the removal survive.
+
+
+def _roster_json_entries() -> list[dict]:
+    path = _repo_root() / "apps/backend-rag/backend/data/team_members.json"
+    assert path.exists(), f"team roster missing at {path}"
+    entries = json.loads(path.read_text(encoding="utf-8"))
+    # Blindness guard (W97): an empty/renamed roster must fail, not pass green.
+    assert len(entries) >= 10, (
+        f"Only {len(entries)} roster entries parsed from {path} — the roster "
+        "moved or changed shape and this tripwire went blind, which is not the "
+        "same thing as the roster being clean."
+    )
+    return entries
+
+
+def test_team_roster_json_carries_no_plaintext_pin() -> None:
+    """A `pin` key here is a published credential, not a fixture."""
+    offenders = [e.get("email", "<no email>") for e in _roster_json_entries() if "pin" in e]
+    assert not offenders, (
+        f"{len(offenders)} roster entries in team_members.json carry a plaintext "
+        f"`pin` field: {offenders[:5]}. That file is committed to a PUBLIC repo "
+        "and seed_users.py hashes this value into team_members.pin_hash, which "
+        "is what /api/auth/login checks — so it is a live credential. PINs "
+        "belong outside the repo (TEAM_PINS_FILE); see seed_users.load_pins()."
+    )
+
+
+def test_team_roster_python_module_carries_no_plaintext_pin() -> None:
+    """Same invariant on the .py twin — curing one copy of two cures neither."""
+    from backend.data.team_members import TEAM_MEMBERS
+
+    assert len(TEAM_MEMBERS) >= 10, (
+        f"Only {len(TEAM_MEMBERS)} entries in team_members.py — tripwire blind."
+    )
+    offenders = [m.get("email", "<no email>") for m in TEAM_MEMBERS if "pin" in m]
+    assert not offenders, (
+        f"{len(offenders)} entries in backend/data/team_members.py carry a "
+        f"plaintext `pin`: {offenders[:5]}. See the JSON twin's message."
+    )
+
+
+def test_collaborator_profile_cannot_serialize_a_pin() -> None:
+    """The profile that fans out to tools/routers must not be able to emit one.
+
+    Before 2026-07-27 `CollaboratorProfile` had a `pin` field and `to_dict()`
+    serialized it. No route returned that dict at the time — it was one wiring
+    away, which is exactly the state that turns into an incident later.
+    """
+    import dataclasses
+
+    from backend.services.crm.collaborator_service import CollaboratorProfile
+
+    field_names = {f.name for f in dataclasses.fields(CollaboratorProfile)}
+    assert "pin" not in field_names, (
+        "CollaboratorProfile grew a `pin` field again. This object is built "
+        "from the committed roster and serialized by to_dict(); a credential "
+        "must not be reachable from it."
+    )
+    # Blindness guard: prove we are looking at the real profile, not a stub.
+    assert {"email", "role", "department"} <= field_names, (
+        f"CollaboratorProfile fields look wrong ({sorted(field_names)}) — the "
+        "class moved or was replaced and this tripwire is checking a phantom."
+    )
+
+    profile = CollaboratorProfile(
+        id="t1",
+        email="t@balizero.com",
+        name="T",
+        role="Member",
+        department="Ops",
+        team="Ops",
+        language="en",
+    )
+    assert "pin" not in profile.to_dict(), "to_dict() emits a `pin` key again."
+
+
+def test_seeder_does_not_read_a_pin_from_the_committed_roster() -> None:
+    """The seeder is what made those PINs *live*. Keep its source out of them."""
+    path = _repo_root() / "apps/backend-rag/backend/scripts/seed_users.py"
+    assert path.exists(), f"seed_users.py missing at {path}"
+    src = path.read_text(encoding="utf-8")
+
+    for pattern in ('user["pin"]', "user['pin']", 'user.get("pin")', "user.get('pin')"):
+        assert pattern not in src, (
+            f"seed_users.py reads {pattern} again — that re-arms the chain "
+            "committed roster -> pin_hash -> /api/auth/login. PINs must come "
+            "from TEAM_PINS_FILE, outside the repository."
+        )
+
+    assert "load_pins" in src, (
+        "seed_users.py no longer has load_pins() — the out-of-repo PIN source "
+        "was removed. If it was replaced, point this test at the replacement "
+        "rather than deleting the check."
+    )
