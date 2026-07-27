@@ -53,12 +53,28 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 
 # Constants
 MAX_LIMIT = 200
+PRACTICE_CLIENT_CONTACT_FIELDS = (
+    "client_name",
+    "client_email",
+    "client_phone",
+    "client_lead",
+)
+PRACTICE_CLEARABLE_FIELDS = {
+    "assigned_to",
+    "start_date",
+    "completion_date",
+    "expiry_date",
+    "notes",
+    "internal_notes",
+    "client_summary",
+}
+REVENUE_GROWTH_CACHE_NAMESPACE = "crm_practices_revenue_growth"
 
 
 async def _create_hr_bonus_on_completed(
     db_pool: asyncpg.Pool,
     practice_id: int,
-    practice_data: dict[str, Any],
+    assigned_to: str | None,
 ) -> None:
     """Auto-create HR bonus ledger entry when a practice is completed via UI.
 
@@ -66,7 +82,6 @@ async def _create_hr_bonus_on_completed(
     Guards: table existence, active rate, employee record, duplicate check.
     """
     try:
-        assigned_to = practice_data.get("assigned_to")
         if not assigned_to:
             return
 
@@ -1033,7 +1048,15 @@ async def get_practice(
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")
 
-            return dict(row)
+            practice = dict(row)
+            if practices_filter:
+                user_email = str(current_user.get("email") or "").lower()
+                created_by_match = str(practice.get("created_by") or "").lower() == user_email
+                client_lead_match = str(practice.get("client_lead") or "").lower() == user_email
+                if not (created_by_match or client_lead_match):
+                    for field in PRACTICE_CLIENT_CONTACT_FIELDS:
+                        practice.pop(field, None)
+            return practice
 
     except HTTPException:
         raise
@@ -1072,6 +1095,7 @@ async def update_practice(
             practice_client_visible: bool = True
             practice_created_by: str | None = None
             practice_assigned_to: str | None = None
+            practice_client_lead: str | None = None
             old_start_date: Any = None
             old_completion_date: Any = None
             old_discount_amount: Decimal | None = None
@@ -1080,11 +1104,13 @@ async def update_practice(
             try:
                 old_row = await conn.fetchrow(
                     """
-                    SELECT status, client_id, client_visible, created_by, assigned_to,
-                           start_date, completion_date, discount_amount, metadata,
-                           quoted_price
-                    FROM practices
-                    WHERE id = $1
+                    SELECT p.status, p.client_id, p.client_visible, p.created_by,
+                           p.assigned_to, p.start_date, p.completion_date,
+                           p.discount_amount, p.metadata, p.quoted_price,
+                           c.assigned_to AS client_lead
+                    FROM practices p
+                    LEFT JOIN clients c ON p.client_id = c.id
+                    WHERE p.id = $1
                     """,
                     practice_id,
                 )
@@ -1098,6 +1124,7 @@ async def update_practice(
                     )
                     practice_created_by = old_row.get("created_by", "")
                     practice_assigned_to = old_row.get("assigned_to", "")
+                    practice_client_lead = old_row.get("client_lead", "")
                     old_start_date = old_row.get("start_date")
                     old_completion_date = old_row.get("completion_date")
                     old_discount_amount = old_row.get("discount_amount")
@@ -1115,10 +1142,12 @@ async def update_practice(
                 if getattr(e, "sqlstate", None) == "42703":
                     old_row = await conn.fetchrow(
                         """
-                        SELECT status, client_id, created_by, assigned_to,
-                               start_date, completion_date
-                        FROM practices
-                        WHERE id = $1
+                        SELECT p.status, p.client_id, p.created_by, p.assigned_to,
+                               p.start_date, p.completion_date,
+                               c.assigned_to AS client_lead
+                        FROM practices p
+                        LEFT JOIN clients c ON p.client_id = c.id
+                        WHERE p.id = $1
                         """,
                         practice_id,
                     )
@@ -1128,6 +1157,7 @@ async def update_practice(
                         practice_client_visible = True
                         practice_created_by = old_row.get("created_by", "")
                         practice_assigned_to = old_row.get("assigned_to", "")
+                        practice_client_lead = old_row.get("client_lead", "")
                         old_start_date = old_row.get("start_date")
                         old_completion_date = old_row.get("completion_date")
                 else:
@@ -1136,11 +1166,14 @@ async def update_practice(
             # RBAC: Check ownership or admin status
             user_is_admin = is_crm_admin(current_user)
             user_email_lower = user_email.lower()
+            created_by_match = bool(
+                practice_created_by and practice_created_by.lower() == user_email_lower
+            )
+            client_lead_match = bool(
+                practice_client_lead and practice_client_lead.lower() == user_email_lower
+            )
             if not user_is_admin:
                 # Check if user is creator or assigned to this practice
-                created_by_match = (
-                    practice_created_by and practice_created_by.lower() == user_email_lower
-                )
                 assigned_to_match = (
                     practice_assigned_to and practice_assigned_to.lower() == user_email_lower
                 )
@@ -1194,11 +1227,16 @@ async def update_practice(
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
 
-                if value is not None:
-                    column_name = field_mapping[field]
-                    update_fields.append(f"{column_name} = ${param_index}")
-                    params.append(value)
-                    param_index += 1
+                if value is None and field not in PRACTICE_CLEARABLE_FIELDS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{field} cannot be null",
+                    )
+
+                column_name = field_mapping[field]
+                update_fields.append(f"{column_name} = ${param_index}")
+                params.append(value)
+                param_index += 1
 
             # Autoset date fields on status transitions (only if not already in DB
             # and caller did not pass an explicit value). Uses NOW() server-side,
@@ -1256,10 +1294,25 @@ async def update_practice(
             # Column names are from a whitelist (field_mapping), values are parameterized
             # nosemgrep: sqlalchemy-execute-raw-query
             query = f"""
-                UPDATE practices
-                SET {update_fields_str}
-                WHERE id = ${param_index}
-                RETURNING *
+                WITH updated AS (
+                    UPDATE practices
+                    SET {update_fields_str}
+                    WHERE id = ${param_index}
+                    RETURNING *
+                )
+                SELECT
+                    updated.*,
+                    c.full_name as client_name,
+                    c.email as client_email,
+                    c.phone as client_phone,
+                    c.assigned_to as client_lead,
+                    pt.name as practice_type_name,
+                    pt.code as practice_type_code,
+                    pt.category as practice_category,
+                    pt.required_documents as required_documents
+                FROM updated
+                LEFT JOIN clients c ON updated.client_id = c.id
+                LEFT JOIN practice_types pt ON updated.practice_type_id = pt.id
             """
             params.append(practice_id)
 
@@ -1269,6 +1322,11 @@ async def update_practice(
                 raise HTTPException(status_code=404, detail="Practice not found")
 
             updated_practice = dict(row)
+            response_practice = dict(updated_practice)
+            can_view_client_details = user_is_admin or created_by_match or client_lead_match
+            if not can_view_client_details:
+                for field in PRACTICE_CLIENT_CONTACT_FIELDS:
+                    response_practice.pop(field, None)
 
             # Discount audit log (owner decision Q3=c, 2026-05-06): append an
             # entry to metadata.discount_log every time discount_amount is
@@ -1317,6 +1375,7 @@ async def update_practice(
                         practice_id,
                     )
                     updated_practice["metadata"] = new_meta
+                    response_practice["metadata"] = new_meta
             except Exception as audit_exc:
                 # Audit failure must NOT roll back the user-visible discount
                 # update — the business write already succeeded. Log + move on.
@@ -1385,12 +1444,11 @@ async def update_practice(
                     )
 
                     notif_service = PortalNotificationService(db_pool)
-                    # RETURNING * only has practice_type_id (FK), not the code/name
-                    pt_row = await conn.fetchrow(
-                        "SELECT code FROM practice_types WHERE id = $1",
-                        updated_practice.get("practice_type_id"),
+                    practice_type = (
+                        response_practice.get("practice_type_code")
+                        or response_practice.get("practice_type_name")
+                        or "Practice"
                     )
-                    practice_type = (pt_row["code"] if pt_row else None) or "Practice"
                     spawn(
                         notif_service.notify_practice_status_changed(
                             client_id=practice_client_id,
@@ -1492,7 +1550,11 @@ async def update_practice(
 
                 # 🎯 HR Bonus Auto-Creation: create bonus ledger entry for assigned team member
                 spawn(
-                    _create_hr_bonus_on_completed(db_pool, practice_id, updated_practice),
+                    _create_hr_bonus_on_completed(
+                        db_pool,
+                        practice_id,
+                        updated_practice.get("assigned_to"),
+                    ),
                 )
 
             log_success(
@@ -1502,8 +1564,9 @@ async def update_practice(
                 updated_by=user_email,
             )
             await invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache(f"zantara:{REVENUE_GROWTH_CACHE_NAMESPACE}:*")
             await invalidate_cache("zantara:crm_clients_stats:*")
-            return updated_practice
+            return response_practice
 
     except HTTPException:
         raise
@@ -1777,7 +1840,7 @@ async def get_practices_stats(
 
 
 @router.get("/stats/revenue-growth")
-@cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_practices_revenue_growth")
+@cached(ttl=CACHE_TTL_STATS_SECONDS, prefix=REVENUE_GROWTH_CACHE_NAMESPACE)
 async def get_practices_revenue_growth(
     request: Any = None,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -1822,9 +1885,7 @@ async def get_practices_revenue_growth(
 
         # Month boundaries (UTC), computed in Python so the SQL only binds dates.
         now = datetime.now(timezone.utc)
-        current_start = now.replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        )
+        current_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         # First day of previous month.
         prev_start = (current_start - timedelta(days=1)).replace(day=1)
         next_start = (current_start + timedelta(days=32)).replace(day=1)

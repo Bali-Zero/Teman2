@@ -51,6 +51,7 @@ jobs:
           while IFS= read -r f; do
             case "$f" in
               scripts/lint_home_fork.py|\
+              scripts/proprioception.py|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
               scripts/lint_plist_keepalive.py|\
@@ -61,6 +62,8 @@ jobs:
               scripts/test_lint_test_reward_hacking.py|\
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
+              scripts/tests/test_home_fork_stale_side_attribution.py|\
+              scripts/tests/test_proprioception_home_fork_merge.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
@@ -129,6 +132,8 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_lint_home_fork.py \
+            scripts/tests/test_home_fork_stale_side_attribution.py \
+            scripts/tests/test_proprioception_home_fork_merge.py \
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \

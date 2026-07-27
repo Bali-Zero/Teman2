@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   getPractice: vi.fn(),
   updatePractice: vi.fn(),
   deletePractice: vi.fn(),
+  invalidateClient: vi.fn(),
   isAdmin: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -102,6 +103,10 @@ vi.mock("@/hooks/useTeamMembers", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useClientDetail", () => ({
+  useInvalidateClient: () => mocks.invalidateClient,
+}));
+
 vi.mock("./RequiredDocumentsCard", () => ({
   RequiredDocumentsCard: ({ practiceId }: { practiceId: number }) => (
     <div data-testid="required-documents">Documents for {practiceId}</div>
@@ -174,8 +179,12 @@ describe("CaseDetailPage", () => {
     mocks.useParams.mockReturnValue({ id: "42" });
     mocks.getProfile.mockResolvedValue(profile);
     mocks.isAdmin.mockReturnValue(true);
-    mocks.updatePractice.mockResolvedValue(undefined);
+    mocks.updatePractice.mockImplementation(
+      async (_practiceId: number, updates: Partial<Practice>) =>
+        makePractice(updates),
+    );
     mocks.deletePractice.mockResolvedValue(undefined);
+    mocks.invalidateClient.mockResolvedValue(undefined);
     vi.spyOn(window, "open").mockImplementation(() => null);
     vi.mocked(window.confirm).mockReturnValue(true);
   });
@@ -420,15 +429,18 @@ describe("CaseDetailPage", () => {
     expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
-  it("closes an unchanged edit and submits changed fields with a reload", async () => {
+  it("uses the canonical update response without a stale reload or losing joined labels", async () => {
     const original = makePractice();
-    const updated = makePractice({
+    const canonicalUpdateResponse = makePractice({
       priority: "urgent",
       quoted_price: 2_000_000,
     });
-    mocks.getPractice
-      .mockResolvedValueOnce(original)
-      .mockResolvedValueOnce(updated);
+    delete canonicalUpdateResponse.client_name;
+    delete canonicalUpdateResponse.client_email;
+    delete canonicalUpdateResponse.client_phone;
+    delete canonicalUpdateResponse.client_lead;
+    mocks.getPractice.mockResolvedValueOnce(original);
+    mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
     const user = userEvent.setup();
     render(<CaseDetailPage />);
     await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
@@ -463,14 +475,96 @@ describe("CaseDetailPage", () => {
         priority: "urgent",
         quoted_price: 2_000_000,
       });
-      expect(mocks.getPractice).toHaveBeenCalledTimes(2);
     });
+    expect(mocks.getPractice).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidateClient).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Cycle priority" }),
+    ).toHaveTextContent("urgent");
+    expect(
+      screen.getByRole("button", { name: "Edit quoted price" }),
+    ).toHaveTextContent("Rp 2.000.000");
+    expect(
+      screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("John Doe").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("link", { name: "john@example.com" }),
+    ).toHaveAttribute("href", "mailto:john@example.com");
     expect(mocks.trackCaseUpdate).toHaveBeenCalledWith(
       42,
       ["priority", "quoted_price"],
       "details",
       profile.email,
     );
+  });
+
+  it("persists cleared assignee and start date from the canonical response", async () => {
+    const original = makePractice();
+    const canonicalUpdateResponse = makePractice({
+      assigned_to: null,
+      start_date: null,
+    });
+    mocks.getPractice.mockResolvedValueOnce(original);
+    mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
+    const user = userEvent.setup();
+    render(<CaseDetailPage />);
+    await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const modal = screen.getByRole("heading", { name: "Edit Process #42" })
+      .parentElement?.parentElement as HTMLElement;
+    await user.selectOptions(within(modal).getAllByRole("combobox")[2], "");
+    await user.clear(within(modal).getByDisplayValue("2026-02-01"));
+    await user.click(
+      within(modal).getByRole("button", { name: "Save Changes" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.updatePractice).toHaveBeenCalledWith(42, {
+        assigned_to: null,
+        start_date: null,
+      });
+    });
+    expect(screen.queryByText("Zero Tester")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows server-derived completion data immediately after an edit", async () => {
+    const original = makePractice({ status: "on_process" });
+    const canonicalUpdateResponse = makePractice({
+      status: "completed",
+      completion_date: "2026-07-27T08:30:00.000Z",
+    });
+    mocks.getPractice.mockResolvedValueOnce(original);
+    mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
+    const user = userEvent.setup();
+    render(<CaseDetailPage />);
+    await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const modal = screen.getByRole("heading", { name: "Edit Process #42" })
+      .parentElement?.parentElement as HTMLElement;
+    await user.selectOptions(
+      within(modal).getAllByRole("combobox")[0],
+      "completed",
+    );
+    await user.click(
+      within(modal).getByRole("button", { name: "Save Changes" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.updatePractice).toHaveBeenCalledWith(42, {
+        status: "completed",
+      });
+    });
+    expect(screen.getByText("Completion Date")).toBeInTheDocument();
+    expect(screen.getByText("July 27, 2026")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
+    ).toBeInTheDocument();
   });
 
   it("maps authorization errors from edit requests to a user-safe message", async () => {

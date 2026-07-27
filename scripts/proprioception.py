@@ -251,7 +251,41 @@ def load_declared_fork_pairs(root: Path, machine: str) -> list[dict]:
     return out
 
 
+def origin_main_sha(root: Path, rel: str) -> str | None:
+    """sha256 of `origin/main:<rel>` — the fleet's copy, not this checkout's.
+
+    Twin of lint_home_fork.origin_main_sha (kept local: lint_home_fork already
+    imports THIS module's pairs, so importing back would close a cycle). If you
+    change the attribution rule, change BOTH — they are pinned by tests that
+    name each other.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "show", f"origin/main:{rel}"],
+            capture_output=True, timeout=15,
+        )
+        if proc.returncode != 0:
+            return None
+        out = proc.stdout
+        blob = out.encode("utf-8", "replace") if isinstance(out, str) else bytes(out)
+        return hashlib.sha256(blob).hexdigest()
+    except (OSError, subprocess.TimeoutExpired, TypeError, ValueError, AttributeError):
+        # A probe that raises takes the whole proprioception run with it.
+        return None
+
+
 def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Live-vs-checkout sha256 over declared pairs — with the side ATTRIBUTED.
+
+    A bare live≠checkout comparison cannot say which side is stale, yet the
+    remedy it printed ("realign live from repo") only makes sense when the
+    checkout is the current one. On 2026-07-27 this probe reported P1 DIVERGED
+    on M5 for two files whose LIVE copies matched origin/main exactly — the M5
+    checkout was 144 commits behind, and it is deliberately left behind
+    (pulling it races ~45 live worktrees). Acting on that P1 would have
+    overwritten a current worktree-isolation hook with a two-day-old one.
+    So: only the LIVE copy being stale is a finding.
+    """
     ev, findings, probeable = [], 0, 0
     seen: set[tuple[str, str]] = set()
     pairs = list(args.get("pairs", [])) + load_declared_fork_pairs(root, machine_label())
@@ -269,9 +303,24 @@ def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, 
             findings += 1
             ev.append(f"NO REPO COUNTERPART: {live} executes live with no source of truth in repo")
             continue
-        if sha256_file(live) != sha256_file(repo):
-            findings += 1
-            ev.append(f"DIVERGED: {live} != {pair['repo']} — a fix is stranded on one side")
+        live_sha, repo_sha = sha256_file(live), sha256_file(repo)
+        if live_sha == repo_sha:
+            continue
+        upstream = origin_main_sha(root, pair["repo"])
+        if upstream is not None and live_sha == upstream:
+            ev.append(
+                f"CHECKOUT-STALE: {pair['repo']} — the LIVE copy {live} already "
+                f"matches origin/main. Update the checkout; do NOT realign live from it."
+            )
+            continue
+        findings += 1
+        if upstream is None:
+            why = "no origin/main to compare — direction unattributable"
+        elif repo_sha == upstream:
+            why = "the checkout matches origin/main, so the LIVE copy is stale"
+        else:
+            why = "BOTH sides differ from origin/main — read both before porting"
+        ev.append(f"DIVERGED: {live} != {pair['repo']} — a fix is stranded on one side ({why})")
     if probeable == 0:
         return UNPROBEABLE, 0, ["no configured live copies exist on this machine"]
     return (DIVERGED if findings else RECONCILED), findings, ev

@@ -11,6 +11,7 @@ import type {
   KBLIGoldContent,
 } from "./kbli-types";
 import { resolveLicenseType } from "./kbli-derive";
+import { resolvePmaCap } from "./kbli-pma-cap";
 import { deriveProvenance } from "./kbli-provenance";
 
 // Section names mapping
@@ -296,7 +297,7 @@ function transformCode(
     sectionName: SECTION_NAMES_EN[section] || section,
     pma: {
       status: mapPmaStatus(raw.pma_status),
-      maxForeign: raw.pma_max_asing || 0,
+      maxForeign: resolvePmaCap(raw),
       condition: raw.pma_kondisi,
       isPriority: raw.pma_prioritas || false,
       note: raw.pma_nota,
