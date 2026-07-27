@@ -5,13 +5,60 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
   schedule:
     - cron: "0 0 * * 0" # Weekly scan on Sunday
   workflow_dispatch:
 
 concurrency:
   group: security-${{ github.ref }}
-  cancel-in-progress: false
+  # Cancel superseded runs on PR branches; NEVER on main.
+  #
+  # This was a flat `false` since #770 (the bulk "add concurrency groups to 21
+  # workflows" pass), which gave main the protection it needs and gave PR
+  # branches nothing. This workflow owns 4 of the 25 required status checks —
+  # CodeQL x2, Detect Secrets, Bandit, ~20 billed minutes measured — so every
+  # re-push to a PR left a full previous round running to completion while the
+  # new one queued behind it. On a repo merging ~50 PRs/day that is the single
+  # largest source of self-inflicted queue latency.
+  #
+  # Same expression `tests.yml` has used all along (its `github.ref !=
+  # 'refs/heads/main'` form), deliberately copied rather than reinvented: on
+  # main every security scan still runs to completion, because a cancelled
+  # scan on a commit that LANDS would leave a gap in the security record.
+  #
+  # merge_group readiness (2026-07-27). Under merge_group, github.ref resolves
+  # to the queue's own temporary ref, which is != 'refs/heads/main', so the
+  # expression above evaluates TRUE for a queue entry and leaves
+  # cancel-in-progress armed on a run that owns 4 of the 25 required contexts.
+  #
+  # HONEST SCOPE, because the first draft of this comment claimed a failure
+  # this cannot actually produce and a wrong diagnosis in a debugging surface
+  # costs more than no comment (W106). It said a newer entry joining the queue
+  # behind this one would cancel it. It cannot: the concurrency GROUP above is
+  # keyed on github.ref, and a queue entry's ref carries its own PR number and
+  # SHA. Measured on this repo the same day —
+  # `gh-readonly-queue/main/pr-3302-23dcbfe78add…`, 4 distinct refs across 60
+  # merge_group runs — so two entries are never in the same group and cannot
+  # cancel each other.
+  #
+  # What this guard is actually for, which is still worth having:
+  #   1. UNIFORMITY. Twelve sibling workflows carry this exact composed form
+  #      (PR #3285). Being the one exception means every future reader has to
+  #      re-derive why, and the derivation above is not obvious.
+  #   2. It survives the group key changing. The safety here is a property of
+  #      `group:`, not of this line — coarsen the key (say to a PR number or a
+  #      ref_name) and parallel queue builds WOULD start cancelling each other,
+  #      silently, because a cancelled run reports no failure at all. This line
+  #      makes that mistake non-fatal.
+  # It is defence in depth, not a live bug fix. Do not delete it, and do not
+  # cite it as evidence that the queue was ever losing verdicts.
+  #
+  # Composed, same pattern as tests.yml: AND `github.event_name != 'merge_group'`
+  # onto the existing expression rather than replacing it, so the PR-vs-main
+  # asymmetry above is preserved byte-for-byte; only the merge_group case is
+  # forced to false.
+  cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   snyk-python:

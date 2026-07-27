@@ -635,6 +635,19 @@ class Settings(BaseSettings):
     # of sending PII to the cloud. Set OCR_ALLOW_CLOUD_VISION=true ONLY for
     # non-PII document flows where cloud OCR is acceptable. Set via env var.
     ocr_allow_cloud_vision: bool = False  # Set via OCR_ALLOW_CLOUD_VISION env var
+    # GARUDA VOA public request funnel (BUILD-SPEC-SLICE-A-2026-07-27.md §3).
+    # Default True — this flag's default lives in git and ships by `git push`;
+    # `fly.toml` is an off-limits file and a `fly secrets set` override would
+    # be config drift invisible to the repo. The STOP-SALE guarantee for this
+    # slice comes from the *content* (no payment/document-upload/PII surface
+    # exists yet), not from this flag — it exists only as a kill-switch.
+    garuda_flow_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable the public GARUDA VOA request funnel (/api/visa/voa). "
+            "Default True; set via GARUDA_FLOW_ENABLED env var."
+        ),
+    )
 
     # ========================================
     # NOTIFICATION SERVICES
@@ -1072,6 +1085,23 @@ class Settings(BaseSettings):
     # never fires (fail-safe: no persona override, not an open door).
     # Rotate via `fly secrets set WA_INBOX_BOT_PROFILE_KEY=...`.
     wa_inbox_bot_profile_key: str | None = None
+
+    # HMAC key for the per-sender pseudonymous long-term-memory subject
+    # (`_memory_identity.derive_wa_memory_subject`, W-1 follow-up to P0-MEM
+    # #3036). P0-MEM contained a cross-client bleed by disabling long-term
+    # memory for the SHARED `wa-mirror-internal` identity — correct, but it
+    # left every WhatsApp client amnesiac. This secret re-enables memory
+    # keyed on the individual sender instead of the shared bucket.
+    # A DEDICATED secret, deliberately not `wa_inbox_bot_profile_key`:
+    #   - the digest must be unforgeable by anyone holding a shared key;
+    #   - and rotating THIS value is a MEMORY WIPE, not a key rotation —
+    #     every subject changes and every client silently starts from zero.
+    #     Rotating the profile key must stay a consequence-free routine, so
+    #     the two cannot share a value.
+    # Unset → `derive_wa_memory_subject` returns None → today's containment
+    # behaviour, unchanged (fail-closed: the feature never arms itself).
+    # Set via `fly secrets set WA_MEMORY_SUBJECT_SALT=...` (≥32 random chars).
+    wa_memory_subject_salt: str | None = None
 
     # T4 (spec `2026-07-24-zantara-bot-consultant-assistant-spec.md` §5):
     # unify the WhatsApp `_caller_profile` identity with the ReAct-loop

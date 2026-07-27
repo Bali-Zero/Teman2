@@ -1,0 +1,115 @@
+name: Frontend Live Sentinel
+
+# 2026-07-27: balizero.com served 13-hour-old code while 25 commits landed on main. Nothing
+# said so. The Vercel GitHub App had lost its installation on the repo, so no deployment was
+# ever created — and because balizero.com plus every subdomain (kita/my/prime/visa/tax/zantara)
+# lives on ONE Vercel project, the whole public surface was frozen, not one page.
+#
+# The workflow that carried the right name — "Vercel Build Guard" — printed
+# "Frontend files changed - Vercel build proceeding" and verified nothing. It was green
+# throughout. This replaces it.
+#
+# This job asks no registry whether a deploy was ANNOUNCED. It asks production which commit it
+# is RUNNING. That distinction matters twice over:
+#   1. GitHub's deployments API measures reporting, not deploying — it has been observed frozen
+#      while Vercel was in fact deploying, so a check built on it cries wolf.
+#   2. A deployment can go READY and still leave the custom domains pointed at the previous
+#      build. That happened the same day: perfect success in every record, stale page in
+#      production. Only a behavioural probe sees it.
+#
+# No new credentials: it reads a public endpoint.
+# Scar family #2 (exists != armed), plus the W88 rule — verify by content, never by proxy.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mouth/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vercel.json"
+      - "apps/mouth/vercel.json"
+
+concurrency:
+  # A newer push makes this wait irrelevant: only the latest sha on main matters.
+  group: frontend-live-sentinel-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  is-production-serving-this-commit:
+    name: Is production serving this commit?
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Poll balizero.com until it serves this sha
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          URL="https://balizero.com/api/health"
+          seen=""
+          # A frontend build plus alias assignment normally lands in 3-6 minutes.
+          # 18 attempts x 60s = 18 minutes of grace before shouting.
+          for i in $(seq 1 18); do
+            # Capture the exit code directly — never through a pipe, which reports the pipe's.
+            body=$(curl -sS --max-time 25 "$URL" 2>&1); rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "attempt $i/18 - curl rc=$rc: ${body:0:160}"
+              sleep 60; continue
+            fi
+            live=$(printf '%s' "$body" | jq -r '.commit // empty')
+            if [ -z "$live" ]; then
+              # Field absent: production predates the change that introduces it, or someone
+              # removed it. Neither is evidence of health, so this is not a pass.
+              echo "attempt $i/18 - /api/health exposes no .commit (production older than this probe?)"
+              seen="(no .commit field)"
+              sleep 60; continue
+            fi
+            seen="$live"
+            echo "attempt $i/18 - production serves ${live:0:8}, expected ${SHA:0:8}"
+            if [ "$live" = "$SHA" ]; then
+              echo "OK - balizero.com is serving this commit."
+              exit 0
+            fi
+            sleep 60
+          done
+          echo "::error::After 18 minutes balizero.com is NOT serving $SHA (last seen: ${seen:-no response})."
+          echo "The public frontend is stale: balizero.com AND every subdomain share one Vercel project."
+          echo "Two known causes, likeliest first:"
+          echo "  1) The Vercel GitHub App is not installed/authorised on the repo, so no deployment"
+          echo "     is created at all. Fix (GUI, owner only): https://github.com/apps/vercel"
+          echo "     -> Configure -> grant access to this repository."
+          echo "  2) A deployment was created and went READY, but the custom domains were not"
+          echo "     repointed. Fix: POST /v10/projects/<projectId>/promote/<deploymentId>."
+          echo "Manual deploy meanwhile: POST /v13/deployments with gitSource, then promote —"
+          echo "that path keeps working even when the project's git link is gone."
+          exit 1
+
+      - name: Tell Telegram once the silence is confirmed
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          if [ -z "${TG_TOKEN:-}" ] || [ -z "${TG_CHAT:-}" ]; then
+            echo "::warning::Telegram secrets absent - no alert sent"
+            exit 0
+          fi
+          MSG="[FRONTEND STALE] balizero.com is not serving ${SHA:0:8} after 18 min. Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. Likely fix: github.com/apps/vercel -> Configure -> grant repo access."
+          # Judge the REPLY, not the exit code: curl exits 0 even when Telegram refuses.
+          resp=$(curl -sS --max-time 20 -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$MSG" 2>&1); rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::curl to Telegram failed (rc=$rc): ${resp:0:200}"
+            exit 0
+          fi
+          case "$resp" in
+            *'"ok":true'*) echo "Telegram alert delivered" ;;
+            *) echo "::warning::Telegram REFUSED the alert: ${resp:0:200}" ;;
+          esac

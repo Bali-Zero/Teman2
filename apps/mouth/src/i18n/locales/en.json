@@ -391,5 +391,164 @@
       "button": "Get my free Fit Memo →",
       "note": "Typical first reply on WhatsApp in under 5 hours."
     }
+  },
+  "garudaVoa": {
+    "wizard": {
+      "title": "Check your Visa on Arrival",
+      "subtitle": "A few quick questions — your VOA eligibility, stay window, and price.",
+      "trust": {
+        "stat1l": "quick questions",
+        "stat2l": "documents to upload here",
+        "stat3l": "payment required now"
+      },
+      "caseType": {
+        "stepTitle": "Case type",
+        "question": "What do you need?",
+        "issuance": "I'm arriving and need a new Visa on Arrival",
+        "extension": "I'm already in Indonesia and need to extend my current VOA",
+        "validate": "Pick one to continue."
+      },
+      "caseDetails": {
+        "stepTitle": "Your dates",
+        "issuanceQuestion": "When do you plan to enter Indonesia?",
+        "entryDateLabel": "Planned entry date",
+        "extensionQuestion": "When does your current VOA expire?",
+        "voaExpiryLabel": "Current VOA expiry date",
+        "extensionEntryQuestion": "When did you originally enter Indonesia on this VOA?",
+        "extensionEntryLabel": "Original entry date",
+        "extensionUsedQuestion": "Have you already extended this VOA once before?",
+        "yes": "Yes",
+        "no": "No",
+        "inPersonNote": "Since 29 May 2025, a VOA extension requires your photo and an in-person interview at the immigration office — it is never fully online.",
+        "validateEntry": "Pick your planned entry date.",
+        "validateVoaExpiry": "Pick your current VOA expiry date.",
+        "validateExtensionEntry": "Pick your original entry date.",
+        "validateExtensionUsed": "Let us know if you've extended before.",
+        "summaryIssuance": "Entering {{date}}",
+        "summaryExtension": "Expires {{date}}"
+      },
+      "passportExpiry": {
+        "stepTitle": "Passport",
+        "question": "When does your passport expire?",
+        "label": "Passport expiry date",
+        "validate": "Enter your passport expiry date."
+      },
+      "nationality": {
+        "stepTitle": "Nationality",
+        "question": "What's your nationality?",
+        "placeholder": "Select one…",
+        "validate": "Pick a nationality.",
+        "options": {
+          "usa": "United States",
+          "gbr": "United Kingdom",
+          "ita": "Italy",
+          "deu": "Germany",
+          "fra": "France",
+          "aus": "Australia",
+          "can": "Canada",
+          "nld": "Netherlands",
+          "sgp": "Singapore",
+          "other": "Other"
+        }
+      },
+      "purpose": {
+        "stepTitle": "Purpose",
+        "question": "What's the purpose of your stay?",
+        "tourism": "Tourism",
+        "family": "Visiting family",
+        "transit": "Transit",
+        "businessMeeting": "Business meeting",
+        "validate": "Pick one."
+      },
+      "travellers": {
+        "stepTitle": "Travellers",
+        "question": "How many people are travelling on this case? ({{count}})",
+        "hintMin": "1",
+        "hintMax": "10"
+      },
+      "selfPay": {
+        "stepTitle": "Payment",
+        "question": "Are you covering the cost of this VOA yourself?",
+        "yes": "Yes, I'm paying",
+        "no": "No, someone else is paying",
+        "validate": "Pick one."
+      },
+      "submitError": {
+        "text": "We could not compute a result. Please try again or",
+        "linkLabel": "message us on WhatsApp"
+      },
+      "whatsappLabel": "Start on WhatsApp →",
+      "otherNationality": {
+        "title": "Let's continue this on WhatsApp",
+        "subtitle": "Your nationality isn't in our quick check yet, so we can't give you an automatic result here — but our visa team can confirm your VOA eligibility directly.",
+        "ctaHeadline": "Talk to our visa team",
+        "ctaDescription": "Tell us your nationality on WhatsApp and we'll confirm eligibility, the stay window, and the price for your case.",
+        "whatsappContextLabel": "Nationality",
+        "whatsappContextValue": "Not in our quick list"
+      }
+    },
+    "result": {
+      "title": "Visa on Arrival",
+      "loading": "Computing your result…",
+      "oneMoment": "One moment.",
+      "notFound": "We could not find this result. It may have expired.",
+      "networkError": "Network error. Try again.",
+      "startAgain": "Start again",
+      "shareTitle": "Bali Zero — VOA check",
+      "decline": {
+        "title": "Let's take this to WhatsApp",
+        "subtitle": "Your case has details our form can't fully capture. A short WhatsApp conversation with our visa team is faster than any guess.",
+        "ctaHeadline": "Talk to our visa team",
+        "ctaDescription": "We'll review your case and confirm the right route — typical first reply on WhatsApp in under 5 hours.",
+        "whatsappContextLabel": "Note"
+      },
+      "eligible": {
+        "title": "Your VOA case looks clear",
+        "subtitle": "Here is your stay window, the filing dates that apply, and the all-inclusive price.",
+        "ctaHeadline": "Want our team to handle it?",
+        "ctaDescription": "Fixed, all-inclusive fee. Start on WhatsApp — we'll pick up in under 5 hours.",
+        "ctaPostScroll": "Start on WhatsApp →",
+        "nationalityCaveat": "One note: eligibility by nationality is confirmed by our team before anything is paid — this result is preliminary on that one point."
+      },
+      "stayWindowHeading": "Your stay window",
+      "entryLabel": "Entry",
+      "mustLeaveByLabel": "Must leave by",
+      "expiryEstimatedNote": "This expiry is an estimate — we'll confirm the exact date from your printed VOA stamp before anything is filed.",
+      "submitByHeading": "Submit by",
+      "submitByLabel": "Start your VOA by",
+      "submitByNote": "This is our own commitment, not a government deadline: a VOA is issued in a few hours once we start, so this is how early we ask you to begin — counting that our systems are closed on weekends and Indonesian public holidays.",
+      "reasonsHeading": "Why",
+      "declineReasons": {
+        "NATIONALITY_NOT_ELIGIBLE": "Your nationality needs a quick manual check — our ordinary channel handles cases like this on a short timeline.",
+        "PURPOSE_NOT_ELIGIBLE": "The purpose of your visit needs a closer look from our team — our ordinary channel handles cases like this on a short timeline.",
+        "GROUP_CASE": "Group and family cases go through our ordinary channel, which handles them on a short timeline.",
+        "PASSPORT_TYPE": "Your passport type needs a manual check — our ordinary channel handles cases like this on a short timeline.",
+        "PASSPORT_VALIDITY": "Your passport validity needs a closer look — our ordinary channel handles cases like this on a short timeline.",
+        "NOT_SELF_PAY": "When someone else is covering the cost, our ordinary channel handles the case on a short timeline.",
+        "FEEDBACK_REQUIRED": "We need one more confirmation from you to finish this check — our ordinary channel can pick it up on a short timeline.",
+        "URGENT_CASE": "Time-sensitive cases go straight to our ordinary channel, which handles them on a short timeline.",
+        "SPECIAL_PASSPORT": "Special passports need a manual check — our ordinary channel handles cases like this on a short timeline.",
+        "PRIOR_ISSUE": "Your case needs a closer look from our team — our ordinary channel handles cases like this on a short timeline.",
+        "FASTLANE_REQUEST": "Airport fast-lane requests go through our ordinary channel, which handles them on a short timeline.",
+        "EXPIRY_UNKNOWN": "We need your exact expiry date to confirm this — our ordinary channel can take it from here on a short timeline.",
+        "EXPIRES_TOO_SOON": "The published filing deadline for this extension has already passed, so our online check can't take it — our ordinary channel will still go through your options with you.",
+        "EXTENSION_ALREADY_USED": "This VOA has already been extended once — our ordinary channel handles further extensions on a short timeline.",
+        "ARRIVAL_TOO_SOON": "Your arrival date is past our online submit-by window — our ordinary channel handles cases like yours on a short timeline.",
+        "ARRIVAL_DATE_UNCONFIRMED": "We can't yet compute a submit-by date this far ahead — our team will confirm it with you directly.",
+        "unknown": "Your case needs a closer look from our team — our ordinary channel handles cases like this on a short timeline."
+      },
+      "filingWindowHeading": "When to file",
+      "filingDeadlineLabel": "Filing deadline",
+      "filingWindowDisclaimer": "This is the published Ngurah Rai filing deadline — always verify against your printed document before filing.",
+      "inPersonNote": "Reminder: since 29 May 2025, extending a VOA requires your photo and an in-person interview at the immigration office.",
+      "priceHeading": "All-inclusive price",
+      "priceNote": "Bali Zero fee, all-inclusive (source: {{source}}). Government fees included — nothing split out.",
+      "priceFallback": "Let's confirm the exact fee on WhatsApp — your case has specifics.",
+      "footer": "Result based on your answers. Government requirements can change — we confirm everything before filing.",
+      "whatsapp": {
+        "priceLabel": "Price",
+        "priceUnknown": "To confirm"
+      }
+    }
   }
 }

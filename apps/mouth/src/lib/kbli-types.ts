@@ -12,10 +12,7 @@ export type KBLIBusinessScale = "Mikro" | "Kecil" | "Menengah" | "Besar";
 
 /** Risk category levels from PP28/2025 */
 export type KBLIRiskCategory =
-  | "Rendah"
-  | "Menengah Rendah"
-  | "Menengah Tinggi"
-  | "Tinggi";
+  "Rendah" | "Menengah Rendah" | "Menengah Tinggi" | "Tinggi";
 
 /** Mapping status indicating how a 2025 code relates to 2020 codes */
 export type KBLIMappingStatus =
@@ -168,10 +165,7 @@ export type KBLITier = "gold" | "silver" | "bronze";
 
 /** Match type for search results */
 export type KBLIMatchType =
-  | "exact_code"
-  | "keyword"
-  | "semantic"
-  | "section_browse";
+  "exact_code" | "keyword" | "semantic" | "section_browse";
 
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
