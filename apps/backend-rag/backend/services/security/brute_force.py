@@ -42,15 +42,30 @@ def report_armed_state(armed: bool, *, reason: str = "") -> None:
     client?". Silence here is the bug this function exists to prevent.
     """
     global _armed_state_reported
+    first_report = _armed_state_reported is None
     if _armed_state_reported is armed:
         return
     _armed_state_reported = armed
     if armed:
-        logger.warning("S03: login rate limiter ARMED (Redis reachable again)")
+        # "again" is only true after an outage. On the first report of a process
+        # there was no outage to recover from, and a log line that misstates the
+        # history is worse than no line at all when someone reads it mid-incident.
+        logger.warning(
+            "S03: login rate limiter ARMED %s",
+            "at startup" if first_report else "again (Redis reachable)",
+        )
     else:
+        # Deliberately NOT "unlimited": /api/auth/login is ALSO covered by
+        # RateLimitMiddleware's "/api/" prefix bucket at 120 req/min per client
+        # IP (verified live on prod via the x-ratelimit-limit response header),
+        # and that limiter keeps working through a Redis outage on its in-memory
+        # fallback. What is lost here is the tight per-(ip+email) failure budget,
+        # so state the real degradation — an incident-time line that overstates
+        # the damage sends whoever reads it after the wrong thing.
         logger.error(
-            "S03: login rate limiter NOT ARMED — /auth/login is accepting "
-            "unlimited attempts per ip+email until Redis returns (%s)",
+            "S03: login rate limiter NOT ARMED — per-(ip+email) failure budget "
+            "is gone; /api/auth/login falls back to the generic 120/min per-IP "
+            "bucket until Redis returns (%s)",
             reason or "no usable Redis client",
         )
 

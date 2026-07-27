@@ -256,7 +256,8 @@ async def login(
             # itself inside the try and may be what failed.
             logger.error(
                 "S03: login rate limiter NOT ARMED — brute-force detection could "
-                "not be initialised, this login is unlimited: %s",
+                "not be initialised, so this login has only the generic 120/min "
+                "per-IP bucket: %s",
                 e,
             )
 
