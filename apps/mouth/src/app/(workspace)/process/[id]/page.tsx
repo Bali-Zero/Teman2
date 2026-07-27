@@ -40,6 +40,7 @@ import {
 } from "@/components/process/kanban-colors";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { useInvalidateClient } from "@/hooks/useClientDetail";
 import { initialsOf } from "@/data/team-roster";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
@@ -94,6 +95,7 @@ export default function CaseDetailPage() {
 
   const { options: teamMemberOptions } = useTeamMemberOptions();
   const [practice, setPractice] = useState<Practice | null>(null);
+  const invalidateClient = useInvalidateClient(practice?.client_id ?? 0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -272,6 +274,7 @@ export default function CaseDetailPage() {
       const user = await api.getProfile();
       await api.crm.updatePractice(caseId, { notes: notesValue });
       setPractice((prev) => (prev ? { ...prev, notes: notesValue } : prev));
+      await invalidateClient();
       toast.success("Notes saved");
       setIsEditingNotes(false);
     } catch (err) {
@@ -294,6 +297,7 @@ export default function CaseDetailPage() {
       setPractice((prev) =>
         prev ? { ...prev, payment_status: nextStatus } : prev,
       );
+      await invalidateClient();
       toast.success("Payment status updated", `→ ${nextStatus}`);
     } catch (err) {
       toast.error("Failed to update payment status", (err as Error).message);
@@ -315,6 +319,7 @@ export default function CaseDetailPage() {
       setPractice((prev) =>
         prev ? { ...prev, priority: nextPriority } : prev,
       );
+      await invalidateClient();
       toast.success("Priority updated", `→ ${nextPriority}`);
     } catch (err) {
       toast.error("Failed to update priority", (err as Error).message);
@@ -335,6 +340,7 @@ export default function CaseDetailPage() {
       const user = await api.getProfile();
       await api.crm.updatePractice(caseId, { [field]: num });
       setPractice((prev) => (prev ? { ...prev, [field]: num } : prev));
+      await invalidateClient();
       toast.success("Price updated");
     } catch (err) {
       toast.error("Failed to update price", (err as Error).message);
@@ -359,6 +365,7 @@ export default function CaseDetailPage() {
       const user = await api.getProfile();
       await api.crm.updatePractice(caseId, { status: newStatus });
       setPractice((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      await invalidateClient();
       toast.success("Status updated", `→ ${newStatus.replace(/_/g, " ")}`);
     } catch (err) {
       toast.error("Failed to update status", (err as Error).message);
@@ -474,7 +481,7 @@ export default function CaseDetailPage() {
         user: user.email,
       });
 
-      await api.crm.updatePractice(caseId, updates);
+      const updatedPractice = await api.crm.updatePractice(caseId, updates);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         "/api/crm/practices/update",
@@ -485,9 +492,12 @@ export default function CaseDetailPage() {
         user.email,
       );
 
-      // Reload practice data with dedicated endpoint
-      const updatedPractice = await api.crm.getPractice(caseId);
-      setPractice(updatedPractice);
+      // The PATCH response is authoritative. Merge it into the loaded record so
+      // joined display fields remain available without a stale follow-up GET.
+      setPractice((current) =>
+        current ? { ...current, ...updatedPractice } : updatedPractice,
+      );
+      await invalidateClient();
 
       // Track case update
       casesMetrics.trackCaseUpdate(
@@ -920,6 +930,7 @@ export default function CaseDetailPage() {
                       try {
                         const user = await api.getProfile();
                         await api.crm.deletePractice(caseId, user.email);
+                        await invalidateClient();
                         sonnerToast.success("Process deleted");
                         router.push("/process");
                       } catch (err) {

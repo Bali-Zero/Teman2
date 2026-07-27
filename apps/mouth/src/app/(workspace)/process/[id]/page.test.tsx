@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   getPractice: vi.fn(),
   updatePractice: vi.fn(),
   deletePractice: vi.fn(),
+  invalidateClient: vi.fn(),
   isAdmin: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -102,6 +103,10 @@ vi.mock("@/hooks/useTeamMembers", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useClientDetail", () => ({
+  useInvalidateClient: () => mocks.invalidateClient,
+}));
+
 vi.mock("./RequiredDocumentsCard", () => ({
   RequiredDocumentsCard: ({ practiceId }: { practiceId: number }) => (
     <div data-testid="required-documents">Documents for {practiceId}</div>
@@ -176,6 +181,7 @@ describe("CaseDetailPage", () => {
     mocks.isAdmin.mockReturnValue(true);
     mocks.updatePractice.mockResolvedValue(undefined);
     mocks.deletePractice.mockResolvedValue(undefined);
+    mocks.invalidateClient.mockResolvedValue(undefined);
     vi.spyOn(window, "open").mockImplementation(() => null);
     vi.mocked(window.confirm).mockReturnValue(true);
   });
@@ -420,15 +426,14 @@ describe("CaseDetailPage", () => {
     expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
-  it("closes an unchanged edit and submits changed fields with a reload", async () => {
+  it("closes an unchanged edit and renders the PATCH response without a stale reload", async () => {
     const original = makePractice();
     const updated = makePractice({
       priority: "urgent",
       quoted_price: 2_000_000,
     });
-    mocks.getPractice
-      .mockResolvedValueOnce(original)
-      .mockResolvedValueOnce(updated);
+    mocks.getPractice.mockResolvedValueOnce(original);
+    mocks.updatePractice.mockResolvedValueOnce(updated);
     const user = userEvent.setup();
     render(<CaseDetailPage />);
     await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
@@ -463,8 +468,15 @@ describe("CaseDetailPage", () => {
         priority: "urgent",
         quoted_price: 2_000_000,
       });
-      expect(mocks.getPractice).toHaveBeenCalledTimes(2);
     });
+    expect(mocks.getPractice).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidateClient).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Cycle priority" }),
+    ).toHaveTextContent("urgent");
+    expect(
+      screen.getByRole("button", { name: "Edit quoted price" }),
+    ).toHaveTextContent("Rp 2.000.000");
     expect(mocks.trackCaseUpdate).toHaveBeenCalledWith(
       42,
       ["priority", "quoted_price"],
