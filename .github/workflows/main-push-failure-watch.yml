@@ -150,6 +150,13 @@ on:
       - worker-plane review panel tests
       - WR2 master template guard
       - wr2-queue-tests
+      # Added with the workflow itself: scripts/check_watcher_coverage.py is
+      # the meta-guard that makes this list mandatory rather than aspirational,
+      # and it caught merge-queue-watch missing here on this very PR's first
+      # run ("1 violation(s)"). A watcher that is not itself watched is the
+      # exact shape of superscar #2 — the queue's own ejection detector going
+      # silently dead would be invisible.
+      - merge-queue-watch
     types: [completed]
   # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
   # exists — a reactive workflow_run watcher structurally cannot see the
