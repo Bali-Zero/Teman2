@@ -118,6 +118,7 @@ def _shape_matter(row: asyncpg.Record) -> dict[str, Any]:
     return {
         "id": row["id"],
         "title": row["title"],
+        "status": status,
         "type": matter_type,
         "progress": _STATUS_TO_PROGRESS.get(status, 50),
         "pending_docs": pending,

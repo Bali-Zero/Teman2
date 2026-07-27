@@ -1,0 +1,394 @@
+# merge-queue-watch.yml — poll-based watcher for merge-queue ejections and
+# automerge-armed-but-stuck PRs.
+#
+# WHY POLL-BASED, NOT EVENT-BASED (verified 2026-07-27 against GitHub's own docs,
+# not assumed): the `merge_group` webhook payload documents two actions,
+# `checks_requested` and `destroyed` — but the Actions `on: merge_group` trigger
+# reference states plainly: "Although only the checks_requested activity type is
+# supported, specifying the activity type will keep your workflow specific if
+# more activity types are added in the future." `destroyed` (queue ejection) is
+# not delivered to any Actions workflow today. GraphQL is therefore the only
+# reliable source for ejection detection — this workflow polls it.
+#
+# WHAT THIS WATCHES FOR (docs/runbooks/merge-queue-discipline.md is the doctrine
+# this workflow implements):
+#   1. EJECTED-WITHOUT-MERGE — a PR was removed from the queue in the last 15
+#      minutes and is still OPEN (RemovedFromMergeQueueEvent on the timeline).
+#   2. ARMED-BUT-STUCK — automerge has been armed >30 min, the PR is not in the
+#      queue, and either every required check reports SUCCESS (the "why hasn't
+#      this merged" mystery class) or a required check silently never reported
+#      at all (the #3263/absent class — cf. memory
+#      lesson_absent_required_checks_can_let_automerge_fire_2026_07_27).
+#   3. SELF-DEGRADATION — the GraphQL query itself failed. The job is made to
+#      fail loudly in this case (superscar #2 "esiste ≠ armato": a watcher that
+#      silently stops watching is worse than no watcher).
+#
+# SCHEMA DELTA vs the original spec (documented per the brief's own instruction
+# to fall back to what the live schema offers and record the difference):
+#   - The plan called for cross-referencing each open PR's number against a
+#     `repository.mergeQueue.entries(first:50)` snapshot to decide queue
+#     membership. Live introspection (2026-07-27) found `PullRequest.
+#     isInMergeQueue: Boolean!` and `PullRequest.mergeQueueEntry` — direct,
+#     per-PR, authoritative fields that need no snapshot cross-reference and
+#     have no "beyond the first 50" blind spot. Used instead; the queue
+#     snapshot is still fetched (see query below) purely for the human-readable
+#     depth line in the alert, not for the stuck-verdict.
+#   - The plan implied one GraphQL call per open PR (up to 50). Live testing
+#     showed `repository.pullRequests(states:[OPEN], first:50)` can carry every
+#     per-PR sub-field (autoMergeRequest, isInMergeQueue, timelineItems,
+#     statusCheckRollup) as nested selections in ONE request — measured
+#     `rateLimit.cost: 2` (of 5000/hr). Used instead of a per-PR loop.
+#   - `CheckRun.isRequired` / `StatusContext.isRequired` exist but *require* a
+#     literal `pullRequestNumber` argument per call — GraphQL cannot bind that
+#     to the enclosing list item's own number, so it cannot be used inside the
+#     one-shot multi-PR query above. Required-check names are instead fetched
+#     once via REST (`branches/main/protection`, 25 contexts measured live) and
+#     cross-referenced by name against each PR's reported checks in the eval
+#     step. If that REST call fails, the workflow degrades to judging only the
+#     checks a PR actually reported (noted in the alert as degraded).
+#   - `RemovedFromMergeQueueEvent` also carries `reason` and `actor` (not in the
+#     original field list) — `reason` is included in the ejection alert line,
+#     it is exactly the "why" a human needs first.
+#
+# Kept as a documented, unsolved residual (see runbook): a dead schedule cannot
+# alert on its own death. Liveness of this workflow is checked opportunistically
+# via GitHub's own workflow-failure emails and the runbook's manual `--status`
+# probe — building a watcher-for-the-watcher is explicitly out of scope here.
+
+name: merge-queue-watch
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    name: Poll merge queue + automerge-armed PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      # -----------------------------------------------------------------
+      # Step 1 — single combined GraphQL query: queue snapshot + every
+      # open PR's automerge/queue-membership/timeline/check-rollup state.
+      # continue-on-error so a failure here can still trigger the
+      # self-degradation alert below, before the job is made to fail.
+      # -----------------------------------------------------------------
+      - name: Query merge queue + open PRs (GraphQL)
+        id: query
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          REPO_OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+
+          # shellcheck disable=SC2016 # deliberate: $owner/$name below are GraphQL
+          # variable references sent literally via `gh api graphql -f owner=... -f
+          # name=...`, not bash variables — single-quoting is correct, not a typo.
+          QUERY='
+          query($owner: String!, $name: String!) {
+            rateLimit { cost }
+            repository(owner: $owner, name: $name) {
+              mergeQueue(branch: "main") {
+                entries(first: 50) {
+                  totalCount
+                  nodes { position enqueuedAt estimatedTimeToMerge pullRequest { number title } }
+                }
+              }
+              pullRequests(states: [OPEN], first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+                totalCount
+                nodes {
+                  number
+                  title
+                  state
+                  autoMergeRequest { enabledAt }
+                  isInMergeQueue
+                  mergeQueueEntry { state position }
+                  timelineItems(last: 5, itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT]) {
+                    nodes {
+                      ... on RemovedFromMergeQueueEvent { createdAt reason beforeCommit { oid } }
+                    }
+                  }
+                  commits(last: 1) {
+                    nodes {
+                      commit {
+                        statusCheckRollup {
+                          state
+                          contexts(first: 100) {
+                            nodes {
+                              ... on CheckRun { name conclusion }
+                              ... on StatusContext { context state }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }'
+
+          # Random per-run delimiter for the multi-line GITHUB_OUTPUT write below.
+          # A static delimiter here would be an output-injection vector: GraphQL
+          # error text can echo back query/variable content, so treat it like any
+          # other semi-untrusted string and never give it a guessable terminator
+          # to collide with (same discipline as the PR-title case in Step 3).
+          MQW_ERR_DELIM_SUFFIX="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          export MQW_ERR_DELIM="MQW_ERR_${MQW_ERR_DELIM_SUFFIX}"
+
+          if gh api graphql -f query="$QUERY" -f owner="$REPO_OWNER" -f name="$REPO_NAME" \
+               > /tmp/mq.json 2>/tmp/mq.err; then
+            export MQW_GH_EXIT=0
+          else
+            export MQW_GH_EXIT=$?
+          fi
+
+          python3 - <<'PYEOF'
+          import json, os
+
+          delim = os.environ['MQW_ERR_DELIM']
+
+          def emit(ok, error_summary=None):
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"ok={'true' if ok else 'false'}\n")
+                  if error_summary is not None:
+                      f.write(f"error_summary<<{delim}\n")
+                      f.write(error_summary + "\n")
+                      f.write(f"{delim}\n")
+
+          if os.environ['MQW_GH_EXIT'] != '0':
+              tail = ''
+              if os.path.exists('/tmp/mq.err'):
+                  tail = open('/tmp/mq.err').read()[-300:].replace('\n', ' ')
+              emit(False, f"gh api graphql exited non-zero: {tail}")
+          else:
+              try:
+                  d = json.load(open('/tmp/mq.json'))
+              except Exception as e:
+                  emit(False, f"could not parse GraphQL response JSON: {type(e).__name__}")
+                  raise SystemExit(0)
+
+              if 'errors' in d and not d.get('data', {}).get('repository'):
+                  parts = [f"{e.get('type', '?')}: {e.get('message', '')[:150]}" for e in d.get('errors', [])]
+                  summary = '; '.join(parts)[:400] or 'GraphQL returned errors with no detail'
+                  emit(False, summary)
+              else:
+                  emit(True)
+          PYEOF
+
+      # -----------------------------------------------------------------
+      # Step 2 — required-check names, best-effort. A failure here degrades
+      # the armed-but-stuck check (condition 2) rather than the whole run;
+      # only Step 1 (the GraphQL query) is the self-degradation signal.
+      # -----------------------------------------------------------------
+      - name: Fetch required-check names (best-effort)
+        id: required
+        if: steps.query.outputs.ok == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/branches/main/protection" \
+               --jq '.required_status_checks.checks[].context' \
+               > /tmp/required.txt 2>/tmp/required.err; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::required-check list fetch failed — armed-but-stuck check degrades to reported-checks-only. $(tail -c 200 /tmp/required.err | tr '\n' ' ')"
+            : > /tmp/required.txt
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # -----------------------------------------------------------------
+      # Step 3 — evaluate the three alert conditions against the captured
+      # JSON. Pure function of /tmp/mq.json + /tmp/required.txt; no network.
+      # -----------------------------------------------------------------
+      - name: Evaluate alert conditions
+        id: eval
+        if: steps.query.outputs.ok == 'true'
+        run: |
+          # Random per-run delimiter for the multi-line GITHUB_OUTPUT write below.
+          # `message` embeds PR titles verbatim, and PR titles are attacker-
+          # controlled on a public repo (any fork PR sets its own title, no write
+          # access required) — a static delimiter would let a crafted title that
+          # contains it early-terminate the multi-line value and inject fake
+          # `key=value` lines into this job's outputs. Never give untrusted
+          # content a guessable terminator to collide with.
+          MQW_MSG_DELIM_SUFFIX="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          export MQW_MSG_DELIM="MQW_MSG_${MQW_MSG_DELIM_SUFFIX}"
+
+          python3 - <<'PYEOF'
+          import json, os
+          from datetime import datetime, timezone, timedelta
+
+          with open('/tmp/mq.json') as f:
+              repo = json.load(f)['data']['repository']
+
+          try:
+              with open('/tmp/required.txt') as f:
+                  required = {line.strip() for line in f if line.strip()}
+          except FileNotFoundError:
+              required = set()
+
+          now = datetime.now(timezone.utc)
+
+          def parse(ts):
+              return datetime.fromisoformat(ts.replace('Z', '+00:00'))
+
+          mq = repo.get('mergeQueue') or {}
+          entries = ((mq.get('entries') or {}).get('nodes')) or []
+          queue_summary = f"queue depth {len(entries)}" if entries else "queue empty or inactive"
+
+          alerts = []
+
+          for pr in repo['pullRequests']['nodes']:
+              if pr['state'] != 'OPEN':
+                  continue
+              num, title = pr['number'], pr['title']
+
+              # Condition 1 — ejected without merge in the last 15 minutes.
+              for ev in pr['timelineItems']['nodes']:
+                  if not ev:
+                      continue
+                  created = parse(ev['createdAt'])
+                  age_min = (now - created).total_seconds() / 60
+                  if age_min <= 15:
+                      reason = ev.get('reason') or 'no reason reported'
+                      sha = ((ev.get('beforeCommit') or {}).get('oid') or '???????')[:8]
+                      alerts.append(
+                          f"EJECTED #{num} \"{title}\" — removed from queue {int(age_min)}m ago "
+                          f"(reason: {reason}, before {sha}), still OPEN"
+                      )
+
+              # Condition 2 — armed but stuck.
+              amr = pr.get('autoMergeRequest')
+              if amr and amr.get('enabledAt'):
+                  age_min = (now - parse(amr['enabledAt'])).total_seconds() / 60
+                  if age_min > 30 and not pr.get('isInMergeQueue'):
+                      present = {}
+                      rollup_nodes = ((pr.get('commits') or {}).get('nodes') or [{}])
+                      rollup = (rollup_nodes[0].get('commit', {}) if rollup_nodes else {}).get('statusCheckRollup') or {}
+                      for c in ((rollup.get('contexts') or {}).get('nodes')) or []:
+                          if not c:
+                              continue
+                          name = c.get('name') or c.get('context')
+                          state = c.get('conclusion') or c.get('state')
+                          if name:
+                              present[name] = state
+
+                      if required:
+                          missing = sorted(required - present.keys())
+                          failed = sorted(n for n in required if present.get(n) not in (None, 'SUCCESS'))
+                          if missing:
+                              shown = ', '.join(missing[:5]) + ('…' if len(missing) > 5 else '')
+                              alerts.append(
+                                  f"ARMED-STUCK #{num} \"{title}\" — automerge armed {int(age_min)}m ago, "
+                                  f"{len(missing)} required check(s) never reported: {shown}"
+                              )
+                          elif not failed:
+                              alerts.append(
+                                  f"ARMED-STUCK #{num} \"{title}\" — automerge armed {int(age_min)}m ago, "
+                                  f"all {len(required)} required checks green, not in queue"
+                              )
+                          # else: a required check is genuinely red — expected wait, not our alert.
+                      elif present and all(v == 'SUCCESS' for v in present.values()):
+                          alerts.append(
+                              f"ARMED-STUCK #{num} \"{title}\" — automerge armed {int(age_min)}m ago, "
+                              f"reported checks green (degraded mode: required-check list unavailable), not in queue"
+                          )
+
+          # Telegram sendMessage caps text at 4096 chars; keep this one message,
+          # truncate the finding list defensively rather than risk a 400 that
+          # would make a real alert fail silently.
+          shown_alerts = alerts[:25]
+          omitted = len(alerts) - len(shown_alerts)
+          lines = list(shown_alerts)
+          if omitted > 0:
+              lines.append(f"(+{omitted} more finding(s) — see this run for the full list)")
+          lines.append(queue_summary)
+
+          delim = os.environ['MQW_MSG_DELIM']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"has_alerts={'true' if alerts else 'false'}\n")
+              f.write(f"message<<{delim}\n")
+              f.write('\n'.join(lines) + '\n')
+              f.write(f"{delim}\n")
+          PYEOF
+
+      # -----------------------------------------------------------------
+      # Step 4 — Telegram send. Pattern reused from hot-zone-pr-gate.yml
+      # (~lines 213-223): same bot-token/chat-id secrets, same bare `curl
+      # -d` POST relying on Telegram's server-side %0A decode. Adapted for
+      # a real multi-line aggregated body (sed converts actual newlines to
+      # literal %0A instead of the single hardcoded %0A the reference used
+      # for its fixed two-line message).
+      #
+      # Runs whenever there is something to say: a real finding, OR the
+      # query itself failed (self-degradation). If secrets are missing at
+      # that point, FAIL LOUD — per this workflow's brief, a watcher that
+      # cannot report must not exit green (superscar #2).
+      # -----------------------------------------------------------------
+      - name: Send Telegram alert
+        if: always() && (steps.query.outputs.ok == 'false' || steps.eval.outputs.has_alerts == 'true')
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          QUERY_OK: ${{ steps.query.outputs.ok }}
+          ERROR_SUMMARY: ${{ steps.query.outputs.error_summary }}
+          EVAL_MESSAGE: ${{ steps.eval.outputs.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+
+          if [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -z "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
+            echo "::error::Telegram secrets missing — a real finding could not be delivered. Failing loudly (never silent-green)."
+            exit 1
+          fi
+
+          if [[ "$QUERY_OK" == "false" ]]; then
+            BODY_TEXT="[merge-queue-watch] self-degraded: GraphQL query failed.
+          ${ERROR_SUMMARY}
+          ${RUN_URL}"
+          else
+            BODY_TEXT="[merge-queue-watch]
+          ${EVAL_MESSAGE}
+          ${RUN_URL}"
+          fi
+
+          # newline -> literal "%0A" so Telegram's form-urlencoded decode turns
+          # it back into a real line break server-side (same mechanism the
+          # hot-zone-pr-gate.yml reference relies on for its one hardcoded
+          # %0A). Done in python, not sed: BSD sed (macOS, local dev/test) does
+          # not accept the GNU `:a;N;$!ba` multi-line-join idiom — verified by
+          # running this step locally, where it failed silently (no `set -e`
+          # on a sed error) and let raw newlines reach curl uncorrected. A
+          # portable one-liner beats a shell idiom that only works on one of
+          # the two platforms this file is ever exercised on.
+          ENC_BODY=$(printf '%s' "$BODY_TEXT" | python3 -c "import sys; sys.stdout.write(sys.stdin.read().replace('\n', '%0A'))")
+
+          curl -sS --max-time 10 -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
+            -d "text=${ENC_BODY}" \
+            > /tmp/tg-response.json || { echo "::error::Telegram send failed (network)"; exit 1; }
+          cat /tmp/tg-response.json | head -3
+
+          if [[ "$QUERY_OK" == "false" ]]; then
+            # Alert delivered, but this run still failed at its actual job
+            # (querying the queue) — the Actions tab must show that in red.
+            exit 1
+          fi

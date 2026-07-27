@@ -33,10 +33,17 @@ class OrchestratorContextManager:
         session_id: str | None = None,
         conversation_history: list[dict[str, Any]] | None = None,
         deep_think_mode: bool = False,
+        memory_subject: str | None = None,
     ) -> dict[str, Any]:
         """
         Recupera il profilo utente, i facts (personali/collettivi), valida e comprime
         la history della conversazione rispettando il budget di token.
+
+        Args:
+            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Forwarded to
+                ``context_manager.get_user_context`` verbatim — see that
+                function's docstring for the full rationale. ``None`` is a
+                complete no-op.
         """
         with trace_span("orchestrator.prepare_query_context"):
             start_time = time.time()
@@ -50,6 +57,7 @@ class OrchestratorContextManager:
                     query=query,
                     deep_think_mode=deep_think_mode,
                     session_id=session_id,
+                    memory_subject=memory_subject,
                 )
 
                 # 2. Gestione History: diamo priorità a quella passata via API (es. streaming dal frontend)
@@ -92,6 +100,7 @@ class OrchestratorContextManager:
         query: str,
         conversation_history: list[dict[str, Any]] | None = None,
         session_id: str | None = None,
+        memory_subject: str | None = None,
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """
         Load full user context and return (context_dict, optimized_history) tuple.
@@ -104,6 +113,10 @@ class OrchestratorContextManager:
             query: Current query string
             conversation_history: Optional conversation history from API
             session_id: Optional session identifier
+            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Forwarded to
+                this class's own ``prepare_query_context`` (below), which
+                forwards to ``context_manager.get_user_context`` for the FACTS
+                read. ``None`` is a complete no-op.
 
         Returns:
             Tuple of (user_context_dict, optimized_history_list)
@@ -113,6 +126,7 @@ class OrchestratorContextManager:
             query=query,
             session_id=session_id,
             conversation_history=conversation_history,
+            memory_subject=memory_subject,
         )
         optimized_history = context_data.get("history", [])
         return context_data, optimized_history

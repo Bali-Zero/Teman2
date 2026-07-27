@@ -3,18 +3,30 @@
 A faithful, auditable encoding of SOP-v0-GARUDA-B1 §1 segmentation:
 
     ACCEPT only if ALL true: eligible nationality/entry · simple tourism ·
-    1 adult traveler · clean ordinary passport (>=6 months validity) · at
-    least D-10 of runway (extension case) · self-pay · willing to give
-    anonymous feedback.
+    1 adult traveler · clean ordinary passport (>=6 months validity) ·
+    still filable under the published Ngurah Rai filing deadline
+    (extension case) · self-pay · willing to give anonymous feedback.
 
     EXCLUDE (decline politely, log reason): urgent · families/groups ·
     special passports · work/business purpose · prior overstay/refusal/
-    blacklist · airport fast-lane requests · extension below D-10.
+    blacklist · airport fast-lane requests · extension past the published
+    filing deadline.
 
 The screen collects EVERY failing reason (never short-circuits) so the case
 sheet can log a complete "why declined" — SOP §1 "decline politely, log reason".
-The D-10 gate is the enforceable version of the Gate-1 SIM-2 criterion that was
-"not testable" on 2026-07-20 because the threshold did not yet exist.
+
+Owner ruling (2026-07-27): the extension runway gate accepts a case
+whenever it can still be filed under the PUBLISHED Ngurah Rai deadline —
+``PUBLISHED_FILING_DEADLINE_DAYS`` (constants.py), "paling lambat 7 hari
+sebelum masa izin tinggal berakhir". This retires the earlier D-10
+pilot-conservatism gate (``PILOT_INTAKE_THRESHOLD_DAYS``), which was
+declining cases (e.g. 8 days of runway) that are still legally filable —
+our threshold and the office's published deadline are now the SAME line,
+with no added margin. ``PILOT_INTAKE_THRESHOLD_DAYS`` survives ONLY as the
+SOP §6 internal staff-escalation checkpoint inside
+``safe_clock.compute_stay`` — it is no longer an ACCEPT/DECLINE gate
+anywhere in this module, and this module never hardcodes the day-count
+literal: it is always read from ``PUBLISHED_FILING_DEADLINE_DAYS``.
 """
 
 from __future__ import annotations
@@ -22,7 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from backend.services.garuda_flow.constants import PILOT_INTAKE_THRESHOLD_DAYS
+from backend.services.garuda_flow.constants import PUBLISHED_FILING_DEADLINE_DAYS
 
 
 class Decision(str, Enum):
@@ -30,13 +42,58 @@ class Decision(str, Enum):
     DECLINE = "DECLINE"
 
 
+class DeclineCode(str, Enum):
+    """Stable machine code for each decline reason `screen()` can emit —
+    one code per ``reasons.append(...)`` call site below (plus
+    ``EXTENSION_ALREADY_USED``, appended by ``intake.build_verdict`` for a
+    VOA/B1-shape rule layered on top of this generic screen).
+
+    This is the ONLY form of a decline reason that may ever cross the wire
+    to a visitor (`app/routers/garuda_voa.py::VoaResponse.reason_codes`) —
+    the human strings in ``decline_reasons`` are engine-internal audit
+    prose (English, and occasionally naming an internal checkpoint like
+    "D-10" — see constants.py) and must stay server-side only. Every code
+    here is neutral vocabulary a visitor could see without harm: no
+    threshold number, no "pilot"/"D-N" wording, ever.
+    """
+
+    NATIONALITY_NOT_ELIGIBLE = "NATIONALITY_NOT_ELIGIBLE"
+    PURPOSE_NOT_ELIGIBLE = "PURPOSE_NOT_ELIGIBLE"
+    GROUP_CASE = "GROUP_CASE"
+    PASSPORT_TYPE = "PASSPORT_TYPE"
+    PASSPORT_VALIDITY = "PASSPORT_VALIDITY"
+    NOT_SELF_PAY = "NOT_SELF_PAY"
+    FEEDBACK_REQUIRED = "FEEDBACK_REQUIRED"
+    URGENT_CASE = "URGENT_CASE"
+    SPECIAL_PASSPORT = "SPECIAL_PASSPORT"
+    PRIOR_ISSUE = "PRIOR_ISSUE"
+    FASTLANE_REQUEST = "FASTLANE_REQUEST"
+    EXPIRY_UNKNOWN = "EXPIRY_UNKNOWN"
+    EXPIRES_TOO_SOON = "EXPIRES_TOO_SOON"
+    # Not emitted by `screen()` itself — layered on by
+    # `intake.build_verdict` for the VOA/B1 "only one extension" rule.
+    # Declared here so every decline code the funnel can ever emit has one
+    # SSOT enum, and the guard test (test_no_internal_prose_on_wire.py)
+    # can enumerate the whole set from this one place.
+    EXTENSION_ALREADY_USED = "EXTENSION_ALREADY_USED"
+    # Not emitted by `screen()` either — layered on by
+    # `intake.build_verdict` for the issuance-only submission-window gate
+    # (owner ruling 2026-07-27; `operating_calendar.py`). Two distinct
+    # codes so the visitor-facing routing can distinguish "come back to the
+    # ordinary channel, you're just past our online cutoff" from "we
+    # genuinely cannot compute this yet — a human will confirm":
+    ARRIVAL_TOO_SOON = "ARRIVAL_TOO_SOON"
+    ARRIVAL_DATE_UNCONFIRMED = "ARRIVAL_DATE_UNCONFIRMED"
+
+
 @dataclass(frozen=True)
 class EligibilityInput:
     """Structured intake for the pilot eligibility screen.
 
-    ``is_extension`` distinguishes a fresh VOA issuance (the D-10 runway gate
-    does not apply) from an extension case (it does). ``days_until_expiry`` is
-    required for an extension case and ignored otherwise.
+    ``is_extension`` distinguishes a fresh VOA issuance (the runway gate
+    does not apply) from an extension case (it does — see ``screen()`` for
+    the published-deadline boundary). ``days_until_expiry`` is required for
+    an extension case and ignored otherwise.
     """
 
     # ── Must ALL be true to ACCEPT (SOP §1 positive criteria) ──
@@ -65,6 +122,12 @@ class EligibilityInput:
 class EligibilityResult:
     decision: Decision
     decline_reasons: list[str] = field(default_factory=list)  # empty ⇔ ACCEPT
+    # Parallel to ``decline_reasons`` — same length, same order, index-for-
+    # index the machine-code twin of the human string at that index. Purely
+    # additive (BUILD-SPEC decline-code-fix-2026-07-27): `decline_reasons`
+    # keeps carrying the exact same audit prose it always has, for the
+    # existing callers/tests that read it.
+    decline_codes: list[str] = field(default_factory=list)
 
     @property
     def accepted(self) -> bool:
@@ -74,53 +137,77 @@ class EligibilityResult:
 def screen(inp: EligibilityInput) -> EligibilityResult:
     """Apply the SOP §1 pilot intake screen; return decision + all reasons."""
     reasons: list[str] = []
+    codes: list[str] = []
+
+    def _decline(code: DeclineCode, message: str) -> None:
+        codes.append(code.value)
+        reasons.append(message)
 
     # ── Positive criteria (all must hold) ──
     if not inp.nationality_entry_eligible:
-        reasons.append("nationality or entry point not eligible for VOA")
+        _decline(
+            DeclineCode.NATIONALITY_NOT_ELIGIBLE,
+            "nationality or entry point not eligible for VOA",
+        )
     if not inp.simple_tourism:
-        reasons.append("not a simple-tourism case")
+        _decline(DeclineCode.PURPOSE_NOT_ELIGIBLE, "not a simple-tourism case")
     if not inp.single_adult_traveler:
-        reasons.append("not a single adult traveler")
+        _decline(DeclineCode.GROUP_CASE, "not a single adult traveler")
     if not inp.clean_ordinary_passport:
-        reasons.append("not a clean ordinary passport")
+        _decline(DeclineCode.PASSPORT_TYPE, "not a clean ordinary passport")
     if not inp.passport_valid_6mo_from_entry:
-        reasons.append("passport not valid >= 6 months from entry")
+        _decline(DeclineCode.PASSPORT_VALIDITY, "passport not valid >= 6 months from entry")
     if not inp.self_pay:
-        reasons.append("not self-pay")
+        _decline(DeclineCode.NOT_SELF_PAY, "not self-pay")
     if not inp.willing_anonymous_feedback:
-        reasons.append("not willing to give anonymous feedback")
+        _decline(DeclineCode.FEEDBACK_REQUIRED, "not willing to give anonymous feedback")
 
     # ── Exclusion signals (any triggers a decline) ──
     if inp.urgent_case:
-        reasons.append("urgent case (excluded from pilot)")
+        _decline(DeclineCode.URGENT_CASE, "urgent case (excluded from pilot)")
     if inp.family_or_group:
-        reasons.append("family/group case (excluded from pilot)")
+        _decline(DeclineCode.GROUP_CASE, "family/group case (excluded from pilot)")
     if inp.special_passport:
-        reasons.append("special passport (excluded from pilot)")
+        _decline(DeclineCode.SPECIAL_PASSPORT, "special passport (excluded from pilot)")
     if inp.work_or_business_purpose:
-        reasons.append("work/business purpose (B1 does not permit work)")
+        _decline(
+            DeclineCode.PURPOSE_NOT_ELIGIBLE,
+            "work/business purpose (B1 does not permit work)",
+        )
     if inp.prior_overstay_refusal_blacklist:
-        reasons.append("prior overstay/refusal/blacklist (excluded from pilot)")
+        _decline(
+            DeclineCode.PRIOR_ISSUE,
+            "prior overstay/refusal/blacklist (excluded from pilot)",
+        )
     if inp.wants_airport_fastlane:
-        reasons.append("airport fast-lane request (excluded from pilot)")
+        _decline(DeclineCode.FASTLANE_REQUEST, "airport fast-lane request (excluded from pilot)")
 
-    # ── D-10 runway gate (extension cases only) ──
+    # ── Runway gate (extension cases only) — owner ruling 2026-07-27: the
+    # ONLY source of truth for "too late" is the published filing deadline
+    # (``PUBLISHED_FILING_DEADLINE_DAYS``). A case with EXACTLY that many
+    # days of runway left is still ACCEPTED (the deadline day itself is
+    # filable — "paling lambat N hari sebelum ... berakhir" reads as "at
+    # the latest"); one day tighter DECLINES. Never a hardcoded literal.
     if inp.is_extension:
         if inp.days_until_expiry is None:
-            reasons.append("extension case missing days-until-expiry (cannot verify D-10 runway)")
-        elif inp.days_until_expiry < PILOT_INTAKE_THRESHOLD_DAYS:
-            reasons.append(
-                f"below D-{PILOT_INTAKE_THRESHOLD_DAYS} pilot threshold "
-                f"({inp.days_until_expiry} days to expiry) — hand off to the ordinary channel"
+            _decline(
+                DeclineCode.EXPIRY_UNKNOWN,
+                "extension case missing days-until-expiry (cannot verify filing-deadline runway)",
+            )
+        elif inp.days_until_expiry < PUBLISHED_FILING_DEADLINE_DAYS:
+            _decline(
+                DeclineCode.EXPIRES_TOO_SOON,
+                f"past the published D-{PUBLISHED_FILING_DEADLINE_DAYS} filing deadline "
+                f"({inp.days_until_expiry} days to expiry) — hand off to the ordinary channel",
             )
 
     decision = Decision.ACCEPT if not reasons else Decision.DECLINE
-    return EligibilityResult(decision=decision, decline_reasons=reasons)
+    return EligibilityResult(decision=decision, decline_reasons=reasons, decline_codes=codes)
 
 
 __all__ = [
     "Decision",
+    "DeclineCode",
     "EligibilityInput",
     "EligibilityResult",
     "screen",

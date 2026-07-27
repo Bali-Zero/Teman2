@@ -34,6 +34,7 @@ def _row(**overrides) -> dict:
 def test_shape_matter_maps_category_and_progress() -> None:
     matter = _shape_matter(_row())
     assert matter["type"] == "visa"
+    assert matter["status"] == "in_progress"
     assert matter["progress"] == 60  # 'in_progress' → 60
     assert matter["pending_docs"] == ["passport_scan", "bank_statement"]
     assert matter["next_deadline"].startswith("2026-12-31")
