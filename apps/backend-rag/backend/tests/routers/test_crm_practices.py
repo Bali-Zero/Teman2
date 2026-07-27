@@ -204,8 +204,8 @@ class TestUpdatePractice:
                     "client_visible": True,
                     "created_by": "test@balizero.com",
                     "assigned_to": "test@balizero.com",
+                    "client_lead": "test@balizero.com",
                 },
-                _practice_row(status="on_process"),
                 {
                     **_practice_row(status="on_process"),
                     "client_name": "Alice Example",

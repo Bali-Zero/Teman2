@@ -435,6 +435,10 @@ describe("CaseDetailPage", () => {
       priority: "urgent",
       quoted_price: 2_000_000,
     });
+    delete canonicalUpdateResponse.client_name;
+    delete canonicalUpdateResponse.client_email;
+    delete canonicalUpdateResponse.client_phone;
+    delete canonicalUpdateResponse.client_lead;
     mocks.getPractice.mockResolvedValueOnce(original);
     mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
     const user = userEvent.setup();
@@ -494,8 +498,8 @@ describe("CaseDetailPage", () => {
   it("persists cleared assignee and start date from the canonical response", async () => {
     const original = makePractice();
     const canonicalUpdateResponse = makePractice({
-      assigned_to: undefined,
-      start_date: undefined,
+      assigned_to: null,
+      start_date: null,
     });
     mocks.getPractice.mockResolvedValueOnce(original);
     mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);

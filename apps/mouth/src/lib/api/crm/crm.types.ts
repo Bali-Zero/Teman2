@@ -20,8 +20,8 @@ export interface Practice {
   actual_price?: number;
   paid_amount?: number;
   payment_status: string;
-  assigned_to?: string;
-  start_date?: string;
+  assigned_to?: string | null;
+  start_date?: string | null;
   completion_date?: string;
   expiry_date?: string;
   notes?: string;
@@ -35,11 +35,7 @@ export interface Practice {
 
 export type TaxCompanyPilotKey = "ocean" | "bimala";
 export type TaxCompanyPilotConfidence =
-  | "confirmed"
-  | "high"
-  | "medium"
-  | "low"
-  | "unconfirmed";
+  "confirmed" | "high" | "medium" | "low" | "unconfirmed";
 
 export interface TaxCompanyPilotEntity {
   name: string;
@@ -344,12 +340,7 @@ export interface FamilyMember {
   client_id: number;
   full_name: string;
   relationship:
-    | "spouse"
-    | "child"
-    | "parent"
-    | "sibling"
-    | "dependent"
-    | "other";
+    "spouse" | "child" | "parent" | "sibling" | "dependent" | "other";
   date_of_birth?: string;
   nationality?: string;
   passport_number?: string;
@@ -384,11 +375,7 @@ export interface FamilyMemberCreate {
 // ============================================
 
 export type DocumentCategoryType =
-  | "immigration"
-  | "pma"
-  | "tax"
-  | "personal"
-  | "other";
+  "immigration" | "pma" | "tax" | "personal" | "other";
 
 export interface ClientDocument {
   id: number;
@@ -549,12 +536,7 @@ export interface CreateClientParams {
   tags?: string[];
   address?: string;
   lead_source?:
-    | "website"
-    | "whatsapp"
-    | "referral"
-    | "social_media"
-    | "walk_in"
-    | "other";
+    "website" | "whatsapp" | "referral" | "social_media" | "walk_in" | "other";
   service_interest?: string[]; // e.g., ['kitas', 'pt_pma', 'tax']
   avatar_url?: string;
 }

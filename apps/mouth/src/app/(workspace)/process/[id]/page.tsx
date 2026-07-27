@@ -258,13 +258,21 @@ export default function CaseDetailPage() {
     loadPractice();
   }, [caseId]);
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return "Not set";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
+  };
+
+  const applyPracticeUpdate = (updatedPractice: Practice) => {
+    setPractice((currentPractice) =>
+      currentPractice
+        ? { ...currentPractice, ...updatedPractice }
+        : updatedPractice,
+    );
   };
 
   const saveNotes = async () => {
@@ -275,7 +283,7 @@ export default function CaseDetailPage() {
       const updatedPractice = await api.crm.updatePractice(caseId, {
         notes: notesValue,
       });
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
       await invalidateClient();
       toast.success("Notes saved");
       setIsEditingNotes(false);
@@ -298,7 +306,7 @@ export default function CaseDetailPage() {
       const updatedPractice = await api.crm.updatePractice(caseId, {
         payment_status: nextStatus,
       });
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
       await invalidateClient();
       toast.success("Payment status updated", `→ ${nextStatus}`);
     } catch (err) {
@@ -320,7 +328,7 @@ export default function CaseDetailPage() {
       const updatedPractice = await api.crm.updatePractice(caseId, {
         priority: nextPriority,
       });
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
       await invalidateClient();
       toast.success("Priority updated", `→ ${nextPriority}`);
     } catch (err) {
@@ -343,7 +351,7 @@ export default function CaseDetailPage() {
       const updatedPractice = await api.crm.updatePractice(caseId, {
         [field]: num,
       });
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
       await invalidateClient();
       toast.success("Price updated");
     } catch (err) {
@@ -370,7 +378,7 @@ export default function CaseDetailPage() {
       const updatedPractice = await api.crm.updatePractice(caseId, {
         status: newStatus,
       });
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
       await invalidateClient();
       toast.success("Status updated", `→ ${newStatus.replace(/_/g, " ")}`);
     } catch (err) {
@@ -487,7 +495,7 @@ export default function CaseDetailPage() {
         user.email,
       );
 
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
       await invalidateClient();
 
       // Track case update

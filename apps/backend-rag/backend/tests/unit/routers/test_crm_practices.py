@@ -727,20 +727,17 @@ class TestUpdatePractice:
             "created_by": "admin@balizero.com",
             "assigned_to": "team@balizero.com",
         }
-        updated_row = {
+        canonical_row = {
             "id": 1,
             "status": "waiting_documents",
             "client_visible": True,
             "practice_type_id": 10,
             "client_id": 42,
-        }
-        canonical_row = {
-            **updated_row,
             "practice_type_code": "ext_b1_voa",
             "practice_type_name": "B1 Visa on Arrival",
             "completion_date": None,
         }
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, updated_row, canonical_row])
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, canonical_row])
         mock_db_conn.execute = AsyncMock(return_value=None)
 
         updates = PracticeUpdate(status="waiting_documents")
@@ -779,7 +776,7 @@ class TestUpdatePractice:
             "metadata": {},
             "quoted_price": Decimal("15000000"),
         }
-        raw_updated_row = {
+        canonical_row = {
             "id": 1,
             "status": "on_process",
             "client_visible": True,
@@ -787,18 +784,12 @@ class TestUpdatePractice:
             "client_id": 42,
             "assigned_to": None,
             "start_date": None,
-            "practice_type_code": None,
-        }
-        canonical_row = {
-            **raw_updated_row,
             "client_name": "Synthetic Client",
             "practice_type_code": "ext_b1_voa",
             "practice_type_name": "B1 Visa on Arrival",
             "required_documents": [],
         }
-        mock_db_conn.fetchrow = AsyncMock(
-            side_effect=[old_row, raw_updated_row, canonical_row]
-        )
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, canonical_row])
         mock_db_conn.execute = AsyncMock(return_value=None)
 
         updates = PracticeUpdate(assigned_to=None, start_date=None)
@@ -824,6 +815,133 @@ class TestUpdatePractice:
         assert result["assigned_to"] is None
         assert result["start_date"] is None
         assert result["practice_type_code"] == "ext_b1_voa"
+        assert "WITH updated AS" in update_query
+        assert "LEFT JOIN practice_types" in update_query
+
+    @pytest.mark.asyncio
+    async def test_update_assignee_only_does_not_disclose_client_contact_fields(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "creator@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "client_lead": "lead@balizero.com",
+        }
+        canonical_row = {
+            "id": 1,
+            "status": "inquiry",
+            "priority": "high",
+            "client_id": 42,
+            "client_visible": True,
+            "client_name": "Synthetic Client",
+            "client_email": "synthetic@example.com",
+            "client_phone": "+620000000",
+            "client_lead": "lead@balizero.com",
+            "practice_type_code": "ext_b1_voa",
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, canonical_row])
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=False),
+            patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()),
+            patch("backend.app.routers.crm_practices.to_jsonb", return_value="{}"),
+        ):
+            result = await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(priority="high"),
+                db_pool=mock_db_pool,
+                current_user=team_user,
+            )
+
+        assert result["practice_type_code"] == "ext_b1_voa"
+        assert "client_name" not in result
+        assert "client_email" not in result
+        assert "client_phone" not in result
+        assert "client_lead" not in result
+
+    @pytest.mark.asyncio
+    async def test_update_applies_explicit_null_to_nullable_fields(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "on_process",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+        }
+        canonical_row = {
+            "id": 1,
+            "status": "on_process",
+            "client_id": 42,
+            "notes": None,
+            "expiry_date": None,
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, canonical_row])
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()),
+            patch("backend.app.routers.crm_practices.to_jsonb", return_value="{}"),
+        ):
+            result = await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(notes=None, expiry_date=None),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+
+        update_query = mock_db_conn.fetchrow.await_args_list[1].args[0]
+        update_params = mock_db_conn.fetchrow.await_args_list[1].args[1:]
+        assert "expiry_date = $1" in update_query
+        assert "notes = $2" in update_query
+        assert update_params[:2] == (None, None)
+        assert result["notes"] is None
+        assert result["expiry_date"] is None
+
+    @pytest.mark.asyncio
+    async def test_update_rejects_null_for_non_clearable_fields(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "status": "inquiry",
+                "client_id": 42,
+                "client_visible": True,
+                "created_by": "admin@balizero.com",
+                "assigned_to": "team@balizero.com",
+            }
+        )
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await update_practice(
+                    request=MagicMock(),
+                    practice_id=1,
+                    updates=PracticeUpdate(status=None),
+                    db_pool=mock_db_pool,
+                    current_user=admin_user,
+                )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "status cannot be null"
 
     @pytest.mark.asyncio
     async def test_update_no_fields(
