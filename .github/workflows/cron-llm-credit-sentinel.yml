@@ -33,15 +33,35 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           set -uo pipefail
+          # Errexit-immune capture. `set -uo pipefail` above does NOT clear the
+          # `-e` this block is INVOKED with (Actions runs it as `bash -e {0}`),
+          # so a bare `OUT=$(flyctl ...)` aborts the step the moment the probe
+          # fails — before the "unreachable is not a billing event" branch below
+          # can run. That branch would have been dead code on the only path it
+          # exists for. W101, 4th instance; caught by the antidotes lint
+          # (scripts/lint_workflow_errexit_decap.py), not by a human reading it.
+          RC=0
           OUT=$(flyctl ssh console -a nuzantara-rag \
-                  -C "python3 -m backend.services.hardening.llm_credit_sentinel_cli" 2>&1)
-          RC=$?
+                  -C "python3 -m backend.services.hardening.llm_credit_sentinel_cli" 2>&1) || RC=$?
           echo "$OUT"
           STATE=$(printf '%s\n' "$OUT" | sed -n 's/^STATE=//p' | tail -1)
 
-          # An unreachable machine is not a billing event: if the CLI never got
-          # to print a STATE line, say so and stay quiet rather than guess.
           if [ -z "$STATE" ]; then
+            # Two different worlds produce no STATE line and only one is
+            # quiet-worthy. A briefly unreachable machine is not a billing
+            # event. A machine we DID reach that has no sentinel module is
+            # deploy drift, and staying quiet about it is how a credit watch
+            # ends up believed-armed and blind (superscar #2). Merging this
+            # workflow does auto-trigger fly-deploy — its `paths:` filter
+            # includes apps/backend-rag/**, where the sentinel lives — so the
+            # normal case self-heals within one deploy; this branch is here for
+            # the deploy that FAILS, which would otherwise be silent forever.
+            case "$OUT" in
+              *"No module named"*|*ModuleNotFoundError*)
+                echo "::error::il sentinel NON è nell'immagine di nuzantara-rag (rc=$RC) — redeploy; fino ad allora i crediti NON sono sorvegliati"
+                exit 1
+                ;;
+            esac
             echo "::warning::sentinel non ha prodotto uno STATE (rc=$RC) — macchina irraggiungibile?"
             exit 0
           fi
