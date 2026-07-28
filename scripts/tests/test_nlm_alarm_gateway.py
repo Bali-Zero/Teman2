@@ -62,6 +62,33 @@ def test_no_wrapper_talks_to_telegram_directly():
     )
 
 
+def test_no_wrapper_reports_a_failure_through_a_path_resolved_interpreter():
+    """The alarm must not run on the interpreter whose breakage it reports.
+
+    Every one of these wrappers activates `apps/backend-rag/.venv` before its
+    job. A bare `python3 .../tg_notify.py` on the failure path therefore runs
+    the VENV's python — so a corrupted venv (a leading reason for the job to
+    fail at all) takes down the report together with the thing reported. The
+    alarm's dependencies must be disjoint from the job's; `_alert.sh` calls
+    /usr/bin/python3 by absolute path for exactly this reason.
+
+    Found by the ubuntu runner, not here: on this Mac the wrapper's own
+    `export PATH=/opt/homebrew/bin:...` put a working python3 in front of the
+    broken venv, so the alarm fired by accident of PATH order and the test
+    passed for a reason that has nothing to do with the code being right.
+    """
+    bare = re.compile(r"(?<![/\w])python3?\s+[^\n]*tg_notify\.py")
+    offenders = []
+    for p in _wrappers():
+        for i, line in enumerate(_code_only(p.read_text(encoding="utf-8")).split("\n")):
+            if bare.search(line):
+                offenders.append(f"{p.name}:{i + 1}")
+    assert offenders == [], (
+        f"{offenders} invoke the gateway through a PATH-resolved interpreter. "
+        "Use `alert <tier> <msg>` — it holds an absolute interpreter and logs its own rc."
+    )
+
+
 def test_every_caller_of_alert_carries_the_helper():
     """A wrapper that calls `alert` without sourcing `_alert.sh` fails at exactly
     the moment it is trying to report a failure."""
