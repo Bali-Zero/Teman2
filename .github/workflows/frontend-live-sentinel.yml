@@ -136,7 +136,12 @@ jobs:
           seen=""
           for i in $(seq 1 "$ATTEMPTS"); do
             # Capture the exit code directly — never through a pipe, which reports the pipe's.
-            body=$(curl -sS --max-time 25 "$URL" 2>&1); rc=$?
+            # And capture it errexit-immune (W101): this file declares no `shell:`, so Actions
+            # runs the block as `bash -e`, and a bare `body=$(curl …)` aborts the whole step on
+            # the first failed curl — the retry loop below it could never run. The `|| rc=$?`
+            # puts the assignment in a condition context, which errexit ignores.
+            rc=0
+            body=$(curl -sS --max-time 25 "$URL" 2>&1) || rc=$?
             if [ "$rc" -ne 0 ]; then
               echo "attempt $i/$ATTEMPTS - curl rc=$rc: ${body:0:160}"
               sleep 60; continue
@@ -199,8 +204,12 @@ jobs:
           fi
           MSG="[FRONTEND STALE] balizero.com does not include ${SHA:0:8} (${AGE_MIN} min old). Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. Fix: github.com/apps/vercel -> Configure -> grant repo access. Stopgap: python3 scripts/vercel_prod_deploy.py"
           # Judge the REPLY, not the exit code: curl exits 0 even when Telegram refuses.
+          # Capture errexit-immune (W101) — under the default `bash -e` a bare assignment
+          # would abort here on a network failure, and this alert exists precisely for the
+          # case where things are already going wrong.
+          rc=0
           resp=$(curl -sS --max-time 20 -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
-            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$MSG" 2>&1); rc=$?
+            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$MSG" 2>&1) || rc=$?
           if [ "$rc" -ne 0 ]; then
             echo "::warning::curl to Telegram failed (rc=$rc): ${resp:0:200}"
             exit 0
