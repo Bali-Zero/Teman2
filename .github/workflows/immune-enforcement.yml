@@ -282,11 +282,18 @@ jobs:
       - name: Telegram delivery verdict corpus (guilt + innocence + fail-closed)
         if: steps.paths.outputs.relevant == 'true'
         run: |
-          # W104 on the CI surface: 12 of the 14 `curl .../sendMessage` calls in this
-          # repo judged their own delivery by curl's EXIT CODE, which is 0 whenever the
-          # server answers — including HTTP 401 with a well-formed
+          # W104 on the CI surface: 25 of the 28 `curl .../sendMessage` calls in this
+          # repo's workflows judged their own delivery by curl's EXIT CODE, which is 0
+          # whenever the server answers — including HTTP 401 with a well-formed
           # {"ok":false,"description":"Unauthorized"} after a token rotation. Every one
           # of those alarms was, by construction, unable to report its own silence.
+          #
+          # (An earlier draft of this comment said "12 of 14". That was my own
+          # undercount from a line-anchored grep, blind to the prevailing shape in this
+          # repo — `curl -sS -X POST \` with the URL on the NEXT line. The real figures
+          # come from joining continuations before scanning: 28 sites, 18 files. Left
+          # recorded rather than quietly overwritten, because a wrong census is exactly
+          # what the widened `lint_tg_direct_senders.py` scan exists to prevent.)
           #
           # What this pins: 401/403/400/429 are refusals, `"ok":false` under an HTTP 200
           # is a refusal (the status line is not the authority, the body is), the word
