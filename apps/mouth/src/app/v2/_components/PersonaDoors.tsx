@@ -111,7 +111,7 @@ const DOORS: Door[] = [
       sub: "deadlines",
       href: "https://tax.balizero.com/",
     },
-    href: "https://tax.balizero.com/",
+    href: "/taxes/gap",
     alsoNeeded: "Also needed: NPWP registration + SPT filing",
   },
   {

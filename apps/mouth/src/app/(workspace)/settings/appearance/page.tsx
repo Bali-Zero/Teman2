@@ -11,6 +11,10 @@ import {
   Save,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  useTheme,
+  type Theme as CoreTheme,
+} from "@balizero/core/components/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
@@ -34,9 +38,28 @@ const accentColors: { id: AccentColor; label: string; color: string }[] = [
   { id: "pink", label: "Pink", color: "var(--bz-neon-rose)" },
 ];
 
+// This page offers a 3-way choice; the token system has five concrete themes
+// (tokens/themes/*.css) and no "system" among them. Both directions of the
+// mapping are therefore explicit, and "system" is resolved to a real theme at
+// save time — never persisted, because the pre-paint script writes whatever it
+// finds straight onto data-theme and `data-theme="system"` styles nothing.
+function resolveSelection(selection: Theme): CoreTheme {
+  if (selection !== "system") return selection;
+  const prefersDark =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return prefersDark ? "dark" : "light";
+}
+
+function selectionFromTheme(theme: CoreTheme): Theme {
+  return theme === "light" || theme === "operative-light" ? "light" : "dark";
+}
+
 export default function AppearanceSettingsPage() {
   const router = useRouter();
   const { success } = useToast();
+  const { theme, setTheme } = useTheme();
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<Theme>("dark");
   const [selectedAccent, setSelectedAccent] = useState<AccentColor>("cyan");
@@ -44,33 +67,37 @@ export default function AppearanceSettingsPage() {
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
 
   useEffect(() => {
-    // Load saved preferences
-    const savedTheme = localStorage.getItem("theme") as Theme;
+    // Load saved preferences. The theme is NOT read from localStorage here —
+    // it comes from the provider, the single owner of the `bz-theme` key.
     const savedAccent = localStorage.getItem("accentColor") as AccentColor;
     const savedCompact = localStorage.getItem("compactMode") === "true";
     const savedAnimations = localStorage.getItem("animations") !== "false";
 
-    if (savedTheme) setSelectedTheme(savedTheme);
     if (savedAccent) setSelectedAccent(savedAccent);
     setCompactMode(savedCompact);
     setAnimationsEnabled(savedAnimations);
   }, []);
 
+  // Reflect the theme actually in force (set by the provider, which has already
+  // reconciled localStorage + the pre-paint persona default) onto the radio.
+  useEffect(() => {
+    setSelectedTheme(selectionFromTheme(theme));
+  }, [theme]);
+
   const handleSave = async () => {
     setIsSaving(true);
 
     // Save to localStorage
-    localStorage.setItem("theme", selectedTheme);
     localStorage.setItem("accentColor", selectedAccent);
     localStorage.setItem("compactMode", String(compactMode));
     localStorage.setItem("animations", String(animationsEnabled));
 
-    // Apply theme changes
-    if (selectedTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (selectedTheme === "light") {
-      document.documentElement.classList.remove("dark");
-    }
+    // Apply the theme through the provider — the ONE writer of `bz-theme` and
+    // of data-theme. Before WS4 this page wrote a `theme` key nobody reads and
+    // toggled a `.dark` class no selector consults (globals.css defines the
+    // `dark:` variant on [data-theme], not on that class), so "Appearance
+    // saved" was reported while nothing whatsoever was applied.
+    setTheme(resolveSelection(selectedTheme));
 
     setTimeout(() => {
       setIsSaving(false);

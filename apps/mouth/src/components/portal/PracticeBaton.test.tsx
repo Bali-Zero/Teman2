@@ -71,6 +71,21 @@ describe("PracticeBaton — rendering", () => {
     expect(onAction).toHaveBeenCalledOnce();
   });
 
+  it("uses the theme foreground token for copper CTA contrast", () => {
+    render(
+      <PracticeBaton
+        status="waiting_documents"
+        nextActionLabel="Upload your passport scan"
+      />,
+    );
+
+    const cta = screen.getByRole("button", {
+      name: "Upload your passport scan",
+    });
+    expect(cta.style.background).toBe("var(--accent)");
+    expect(cta.style.color).toBe("var(--accent-foreground)");
+  });
+
   it("renders a calm reassurance (no CTA) when it's our turn", () => {
     render(
       <PracticeBaton

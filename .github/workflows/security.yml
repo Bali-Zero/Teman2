@@ -5,13 +5,60 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
   schedule:
     - cron: "0 0 * * 0" # Weekly scan on Sunday
   workflow_dispatch:
 
 concurrency:
   group: security-${{ github.ref }}
-  cancel-in-progress: false
+  # Cancel superseded runs on PR branches; NEVER on main.
+  #
+  # This was a flat `false` since #770 (the bulk "add concurrency groups to 21
+  # workflows" pass), which gave main the protection it needs and gave PR
+  # branches nothing. This workflow owns 4 of the 25 required status checks —
+  # CodeQL x2, Detect Secrets, Bandit, ~20 billed minutes measured — so every
+  # re-push to a PR left a full previous round running to completion while the
+  # new one queued behind it. On a repo merging ~50 PRs/day that is the single
+  # largest source of self-inflicted queue latency.
+  #
+  # Same expression `tests.yml` has used all along (its `github.ref !=
+  # 'refs/heads/main'` form), deliberately copied rather than reinvented: on
+  # main every security scan still runs to completion, because a cancelled
+  # scan on a commit that LANDS would leave a gap in the security record.
+  #
+  # merge_group readiness (2026-07-27). Under merge_group, github.ref resolves
+  # to the queue's own temporary ref, which is != 'refs/heads/main', so the
+  # expression above evaluates TRUE for a queue entry and leaves
+  # cancel-in-progress armed on a run that owns 4 of the 25 required contexts.
+  #
+  # HONEST SCOPE, because the first draft of this comment claimed a failure
+  # this cannot actually produce and a wrong diagnosis in a debugging surface
+  # costs more than no comment (W106). It said a newer entry joining the queue
+  # behind this one would cancel it. It cannot: the concurrency GROUP above is
+  # keyed on github.ref, and a queue entry's ref carries its own PR number and
+  # SHA. Measured on this repo the same day —
+  # `gh-readonly-queue/main/pr-3302-23dcbfe78add…`, 4 distinct refs across 60
+  # merge_group runs — so two entries are never in the same group and cannot
+  # cancel each other.
+  #
+  # What this guard is actually for, which is still worth having:
+  #   1. UNIFORMITY. Twelve sibling workflows carry this exact composed form
+  #      (PR #3285). Being the one exception means every future reader has to
+  #      re-derive why, and the derivation above is not obvious.
+  #   2. It survives the group key changing. The safety here is a property of
+  #      `group:`, not of this line — coarsen the key (say to a PR number or a
+  #      ref_name) and parallel queue builds WOULD start cancelling each other,
+  #      silently, because a cancelled run reports no failure at all. This line
+  #      makes that mistake non-fatal.
+  # It is defence in depth, not a live bug fix. Do not delete it, and do not
+  # cite it as evidence that the queue was ever losing verdicts.
+  #
+  # Composed, same pattern as tests.yml: AND `github.event_name != 'merge_group'`
+  # onto the existing expression rather than replacing it, so the PR-vs-main
+  # asymmetry above is preserved byte-for-byte; only the merge_group case is
+  # forced to false.
+  cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   snyk-python:
@@ -120,8 +167,31 @@ jobs:
     name: Snyk Docker Security
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Advisory-only: see snyk-python job comment.
-    continue-on-error: true
+    # This job does TWO different things and they deserve different verdicts:
+    # it BUILDS the production image, and then it SCANS the result.
+    #
+    # A vulnerability finding stays advisory — a CVE in the base image should not
+    # block every pull request — and that is handled where it belongs, by the
+    # step-level `continue-on-error` on "Run Snyk (Docker)" below.
+    #
+    # A BUILD failure is not a finding. It means the production image cannot be
+    # produced at all, and `fly deploy` builds this very Dockerfile. So the
+    # job-level `continue-on-error: true` that used to sit here was removed
+    # (2026-07-28): measured, it let the workflow RUN report `success` while
+    # `Build Docker image` had failed — run 30302472020 (a merge_group!) and run
+    # 30301159955 both concluded green with a broken image. The job's own check
+    # went red either way, but nothing that watches "did security.yml pass" could
+    # see it, and this check cannot be made required because it needs SNYK_TOKEN
+    # (a required context that needs a secret is impassable for Dependabot).
+    #
+    # Removing it changes no gating: `Snyk Docker Security` is not a required
+    # context and the run conclusion is not one either. It only stops the run from
+    # claiming success over a broken build.
+    #
+    # The comment previously here said "Advisory-only: see snyk-python job
+    # comment" — a pointer that had outlived its target: snyk-python is now
+    # documented as a BLOCKING gate, so the reference argued the opposite of what
+    # it was cited for. Stating the reason locally instead of pointing elsewhere.
 
     steps:
       - name: Checkout code
@@ -134,12 +204,51 @@ jobs:
 
       - name: Run Snyk (Docker)
         uses: snyk/actions/docker@master
-        continue-on-error: true
+        continue-on-error: true # vulnerability findings stay advisory (see job comment)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: nuzantara-rag:${{ github.sha }}
           args: --severity-threshold=high
+
+      # A red check on a pull request is seen by its author. A red check on MAIN is
+      # seen by nobody: none of this workflow's eight jobs alarmed, while fly-deploy
+      # and six cron-* workflows all carry `if: failure()` Telegram steps on the same
+      # channel. That asymmetry is why the 2026-07-27 NodeSource 403s — intermittent
+      # failures at 19:57, 19:58, 20:06, 20:20 and 20:24, recovering by 20:42 — broke
+      # the production image build repeatedly without anyone being told.
+      #
+      # Restricted to pushes on main on purpose: on a pull request the author already
+      # has the signal, and duplicating it there would only train people to ignore the
+      # channel. `secrets.*` is available on main pushes.
+      - name: Telegram alert — production image failed to BUILD on main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+        run: |
+          # NOT `curl -s ... || true`. This step IS the alarm — the whole reason the job
+          # stopped carrying `continue-on-error` — so it must be able to fail when the
+          # alarm does not arrive. `telegram_notify.sh` judges the API's REPLY: a rotated
+          # token answers HTTP 401 with a well-formed body and leaves curl's exit code at
+          # 0, which is how an alarm goes green while saying nothing (W104).
+          # No --soft here, deliberately: an undeliverable build-break alert must be
+          # visible as a failure, not as a line in a log nobody opens.
+          # The body is assembled with printf rather than written as a literal
+          # multi-line string: inside a `run: |` block a line that starts at
+          # column 0 CLOSES the YAML scalar, and the file stops being valid
+          # YAML — caught by actionlint before this ever ran.
+          TEXT="$(printf '%s\n' \
+            "🐳 <b>nuzantara-rag image failed to BUILD on main</b>" \
+            "" \
+            "<code>${SHA:0:8}</code>" \
+            "" \
+            "<code>fly deploy</code> builds this same Dockerfile, so a deploy attempted now would fail too. This check is advisory for CVEs, never for a build break." \
+            "" \
+            "${RUN_URL}")"
+          bash scripts/ci/telegram_notify.sh --parse-mode HTML --text "$TEXT"
 
   codeql:
     name: CodeQL Analysis

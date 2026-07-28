@@ -31,7 +31,7 @@ import pytest_asyncio
 
 _DEFAULT_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 
 

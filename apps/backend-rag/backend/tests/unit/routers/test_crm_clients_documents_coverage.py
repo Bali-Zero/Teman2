@@ -790,6 +790,67 @@ async def test_get_client_required_documents_success(mock_db_pool, mock_current_
 
 
 @pytest.mark.asyncio
+async def test_get_client_required_documents_keeps_completed_process_history(
+    mock_db_pool,
+    mock_current_user,
+):
+    from backend.app.routers.crm_clients_documents import get_client_required_documents
+
+    completed_doc = {
+        "id": 2,
+        "practice_id": 11,
+        "process_name": "Completed KITAS",
+        "process_status": "completed",
+        "document_type": "passport",
+        "document_label": "Archived passport request",
+        "description": "Historical requirement",
+        "is_required": True,
+        "uploaded_by_client": False,
+        "status": "pending",
+        "client_notes": None,
+        "team_member_notes": None,
+    }
+
+    async def fetch_visible_documents(
+        query: str,
+        client_id: int,
+    ) -> list[dict[str, object]]:
+        assert client_id == 1
+        if "p.status NOT IN ('completed', 'cancelled')" in query:
+            return []
+        return [completed_doc]
+
+    mock_db_pool._mock_conn.fetch.side_effect = fetch_visible_documents
+
+    with patch(
+        "backend.app.routers.crm_clients_documents.verify_client_access",
+        new=AsyncMock(),
+    ):
+        result = await get_client_required_documents(
+            client_id=1,
+            current_user=mock_current_user,
+            db_pool=mock_db_pool,
+        )
+
+    assert result == [
+        {
+            "id": 2,
+            "practice_id": 11,
+            "process_name": "Completed KITAS",
+            "process_status": "completed",
+            "document_type": "passport",
+            "document_label": "Archived passport request",
+            "description": "Historical requirement",
+            "is_required": True,
+            "uploaded_by_client": False,
+            "status": "pending",
+            "client_notes": None,
+            "team_member_notes": None,
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_get_client_required_documents_empty(mock_db_pool, mock_current_user):
     from backend.app.routers.crm_clients_documents import get_client_required_documents
 

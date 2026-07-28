@@ -1,8 +1,25 @@
 import fetch from "node-fetch"; // or built-in if Node 18+
 
-const API_URL = "https://nuzantara-rag.fly.dev";
-const EMAIL = "zero@balizero.com";
-const PIN = "010719";
+const API_URL = process.env.API_URL || "https://nuzantara-rag.fly.dev";
+
+// Credentials come from the environment — no defaults, by design. This script
+// signs in to PRODUCTION, so a default here is a published working credential,
+// not a convenience (this repository is public).
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    console.error(
+      `${name} is not set. This script authenticates against production, ` +
+        `so the credential has to come from the environment — there is ` +
+        `deliberately no default.\n  export ${name}=...   (never commit it)`,
+    );
+    process.exit(1);
+  }
+  return value;
+}
+
+const EMAIL = requireEnv("ASK_DIRECT_EMAIL");
+const PIN = requireEnv("ASK_DIRECT_PIN");
 
 async function main() {
   console.log("1. Authenticating...");

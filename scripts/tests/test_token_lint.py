@@ -43,6 +43,10 @@ WORKSPACE_PAGE = "apps/mouth/src/app/(workspace)/accounting/page.tsx"
 PORTAL_PAGE = "apps/mouth/src/app/portal/dashboard/page.tsx"
 MARKETING_PAGE = "apps/mouth/src/app/(marketing)/page.tsx"
 TOKEN_FILE = "packages/core/tokens/semantic.css"
+# Task #12 fixture (team-lead's assignment, 2026-07-26): the real file whose
+# `accentColors` array — an accent-colour PICKER's option list — triggered
+# the false positive. Real path, verified on disk in this repo.
+APPEARANCE_PAGE = "apps/mouth/src/app/(workspace)/settings/appearance/page.tsx"
 
 
 def make_diff(path: str, added: list[str], *, start: int = 1, new_file: bool = True) -> str:
@@ -397,6 +401,85 @@ def test_innocence_4_out_of_scope_marketing_page() -> None:
     result = tl.scan(make_diff(MARKETING_PAGE, ['const C = "#d4845a";']), [MARKETING_PAGE])
     assert result.violations == []
     assert result.scanned_file_count == 0
+
+
+def test_innocence_5_palette_record_accent_colors_array() -> None:
+    """Innocence-5 / task #12 (2026-07-26): the exact violating shape from
+    PR #3165 — six `{ id: ..., label: ..., color: "#hex" }` swatch entries
+    in the accentColors picker array. The old gate flagged 2 of 6 (only the
+    ones that happened to land in that diff); a CORRECT rule flags all six
+    or none — this asserts none, since the hex values are the picker's data,
+    not styling. This is the acceptance test from the task."""
+    lines = [
+        '  { id: "cyan",   label: "Cyan",   color: "#22D3EE" },',
+        '  { id: "purple", label: "Purple", color: "#A78BFA" },',
+        '  { id: "blue",   label: "Blue",   color: "#60A5FA" },',
+        '  { id: "green",  label: "Green",  color: "#34D399" },',
+        '  { id: "amber",  label: "Amber",  color: "#FBBF24" },',
+        '  { id: "pink",   label: "Pink",   color: "#F472B6" },',
+    ]
+    result = tl.scan(make_diff(APPEARANCE_PAGE, lines, start=28), [APPEARANCE_PAGE])
+    assert result.violations == []
+
+
+def test_innocence_palette_record_single_line_id_label_order_independent() -> None:
+    """The id/label signature does not depend on key order in the object
+    literal."""
+    line = '{ color: "#22D3EE", label: "Cyan", id: "cyan" }'
+    result = tl.scan(make_diff(APPEARANCE_PAGE, [line]), [APPEARANCE_PAGE])
+    assert result.violations == []
+
+
+def test_guilt_color_key_without_id_label_still_flagged() -> None:
+    """A hex on a `color:`-keyed line WITHOUT sibling id/label is NOT a
+    palette record — the lone-`color:`-key case must still trip, since
+    `color:` alone is also a legitimate style-object key (this is the AND
+    requirement, exercised with NO style=/className= prop present at all,
+    so it proves the id+label check itself gates the exemption — not the
+    separate style-wins branch covered elsewhere)."""
+    line = '{ color: "#22D3EE" }'
+    result = tl.scan(make_diff(APPEARANCE_PAGE, [line]), [APPEARANCE_PAGE])
+    assert [v.hex for v in result.violations] == ["#22D3EE"]
+
+
+def test_guilt_style_prop_position_in_appearance_page_still_flagged() -> None:
+    """Guilt fixture for task #12 (same file as the innocence case): a hex
+    literal in an actual `style=` position must still trip — this is the
+    swatch button's inline background, i.e. genuine styling, not the picker
+    array's data."""
+    line = '<div style={{ backgroundColor: "#22D3EE" }} />'
+    result = tl.scan(make_diff(APPEARANCE_PAGE, [line], start=161), [APPEARANCE_PAGE])
+    assert [v.hex for v in result.violations] == ["#22D3EE"]
+
+
+def test_guilt_classname_arbitrary_hex_still_flagged() -> None:
+    """Guilt fixture: a Tailwind arbitrary-value hex in `className=` must
+    still trip — className is a styling context even without `style=`."""
+    line = '<div className="bg-[#22D3EE]" />'
+    result = tl.scan(make_diff(APPEARANCE_PAGE, [line]), [APPEARANCE_PAGE])
+    assert [v.hex for v in result.violations] == ["#22D3EE"]
+
+
+def test_guilt_id_label_with_style_prop_guilt_wins() -> None:
+    """Corner case the exemption defends against: id/label attrs overloaded
+    onto a STYLED element on one line — style/className wins over the
+    id/label signature, so this is still flagged rather than silently
+    exempted."""
+    line = '<div id="cyan" label="Cyan" style={{ color: "#22D3EE" }} />'
+    result = tl.scan(make_diff(APPEARANCE_PAGE, [line]), [APPEARANCE_PAGE])
+    assert [v.hex for v in result.violations] == ["#22D3EE"]
+
+
+def test_innocence_is_palette_record_line_pure_function() -> None:
+    """Direct unit coverage of the exemption predicate, independent of the
+    scan()-level integration tests above."""
+    assert tl.is_palette_record_line('{ id: "cyan", label: "Cyan", color: "#22D3EE" }')
+    assert not tl.is_palette_record_line('style={{ color: "#22D3EE" }}')
+    assert not tl.is_palette_record_line('{ id: "cyan", color: "#22D3EE" }')  # no label
+    assert not tl.is_palette_record_line('{ label: "Cyan", color: "#22D3EE" }')  # no id
+    assert not tl.is_palette_record_line(
+        'id="cyan" label="Cyan" style={{ color: "#22D3EE" }}'
+    )  # style wins
 
 
 def test_innocence_non_color_shapes_not_flagged() -> None:

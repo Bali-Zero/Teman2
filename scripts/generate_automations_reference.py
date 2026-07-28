@@ -16,6 +16,7 @@ Run:  python scripts/generate_automations_reference.py [--dry-run]
 from __future__ import annotations
 
 import json
+import plistlib
 import re
 import subprocess
 import sys
@@ -25,8 +26,17 @@ from pathlib import Path
 
 NUZANTARA_ROOT = Path(__file__).parent.parent
 OUTPUT_FILE = NUZANTARA_ROOT / "docs" / "AUTOMATIONS_REFERENCE.md"
+REPO_LAUNCHAGENTS_DIR = NUZANTARA_ROOT / "infra" / "launchagents"
 
 WRITE_BLOCKLIST = {"CLAUDE.md", "zantara_core.py", "fly.toml", ".env", ".env.production", ".env.local"}
+
+# Shared with _parse_launchagents below — a repo-canon plist is only "ours" (and
+# therefore eligible for the pending-live-snapshot section) if it matches one of
+# these label prefixes, same as a live-installed one would be.
+OUR_LAUNCHAGENT_PREFIXES = (
+    "ai.openclaw.", "com.balizero.", "com.nuzantara.", "com.cell.",
+    "com.claude-max-api", "com.openclaw.", "com.user.", "homebrew.mxcl.",
+)
 
 REGISTRY_PATH = Path.home() / ".agent" / "decisions" / "job_registry.json"
 SENTINEL_STATUS_PATH = Path.home() / ".agent" / "decisions" / "sentinel_status.json"
@@ -287,10 +297,7 @@ def _parse_launchctl(raw: str) -> dict[str, dict]:
 
 
 def _parse_launchagents(machine: str) -> list[Job]:
-    our_prefixes = (
-        "ai.openclaw.", "com.balizero.", "com.nuzantara.", "com.cell.",
-        "com.claude-max-api", "com.openclaw.", "com.user.", "homebrew.mxcl.",
-    )
+    our_prefixes = OUR_LAUNCHAGENT_PREFIXES
 
     if machine == "Pro":
         plist_dir = Path.home() / "Library" / "LaunchAgents"
@@ -473,6 +480,103 @@ def _humanize_single(sched: str) -> str:
     return sched
 
 
+def _humanize_plist_schedule(parsed: dict) -> str:
+    """Humanize a parsed plist's StartInterval / StartCalendarInterval / RunAtLoad."""
+    if "StartInterval" in parsed:
+        secs = parsed["StartInterval"]
+        if isinstance(secs, int) and secs % 3600 == 0:
+            return f"every {secs // 3600}h"
+        if isinstance(secs, int) and secs % 60 == 0:
+            return f"every {secs // 60}m"
+        return f"every {secs}s"
+    interval = parsed.get("StartCalendarInterval")
+    if isinstance(interval, dict):
+        hr, mi = interval.get("Hour"), interval.get("Minute")
+        if hr is not None and mi is not None:
+            return f"daily {hr:02d}:{mi:02d} WITA"
+        if mi is not None:
+            return f"hourly :{mi:02d}"
+    if parsed.get("RunAtLoad"):
+        return "RunAtLoad"
+    return "—"
+
+
+def _extract_plist_purpose(raw_text: str) -> str:
+    """Best-effort purpose string from a plist's leading XML comment, if any.
+    Most repo-canon plists document their intent in a `<!-- ... -->` header
+    comment (convention, not enforced) — reuse it rather than duplicate free
+    text in a hand-authored table that a full-overwrite regen would delete."""
+    m = re.search(r"<!--(.*?)-->", raw_text, re.DOTALL)
+    if not m:
+        return ""
+    text = " ".join(m.group(1).split())
+    for prefix in ("Repo canon of the LIVE plist on Pro (~/Library/LaunchAgents). Committed", "Repo canon."):
+        if text.startswith(prefix):
+            text = text[len(prefix):].strip()
+            break
+    # Some plist header comments are multi-paragraph runbooks, not a single markdown
+    # table cell — keep only the first sentence, bounded, so the table stays readable.
+    first_sentence = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0]
+    if len(first_sentence) > 160:
+        first_sentence = first_sentence[:157].rstrip() + "..."
+    return first_sentence
+
+
+def _find_pending_live_snapshot(installed_labels: set[str]) -> list[dict]:
+    """LaunchAgents committed as repo-canon (infra/launchagents/*.plist) that are
+    NOT yet counted in the live totals above (i.e. not present in pro_la/mini_la).
+    Derived from repo state so this section survives a regen instead of depending
+    on a human remembering to re-add it by hand (task #10, 2026-07-26)."""
+    if not REPO_LAUNCHAGENTS_DIR.is_dir():
+        return []
+    rows: list[dict] = []
+    for plist_path in sorted(REPO_LAUNCHAGENTS_DIR.glob("*.plist")):
+        label = plist_path.stem
+        if not any(label.startswith(p) for p in OUR_LAUNCHAGENT_PREFIXES):
+            continue
+        try:
+            raw_text = plist_path.read_text()
+            with plist_path.open("rb") as f:
+                parsed = plistlib.load(f)
+        except Exception:
+            continue
+        label = parsed.get("Label", label)
+        if label in installed_labels:
+            continue
+        low = raw_text.lower()
+        host = "Mini" if ("mini-only" in low or "mini pro2" in low) else "Pro"
+        purpose = _extract_plist_purpose(raw_text) or f"(see `infra/launchagents/{plist_path.name}`)"
+        rows.append({
+            "label": label,
+            "host": host,
+            "schedule": _humanize_plist_schedule(parsed),
+            "purpose": purpose,
+        })
+    return rows
+
+
+def _render_pending_snapshot_section(rows: list[dict]) -> list[str]:
+    if not rows:
+        return []
+    lines = [
+        "## Repo-canon additions pending live snapshot",
+        "",
+        "These entries are committed as repo-canon LaunchAgents but are not counted in",
+        "the generated live totals above until installed on the target host and included",
+        "in the next automation snapshot. Derived from `infra/launchagents/*.plist` on",
+        "every run — never hand-edit this table, edit the plist instead.",
+        "",
+        "| Label | Host | Schedule | Purpose |",
+        "| --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(f"| `{row['label']}` | {row['host']} | {row['schedule']} | {row['purpose']} |")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    return lines
+
+
 def generate(dry_run: bool = False) -> str:
     _check_output_safety(OUTPUT_FILE)
     generated_at = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
@@ -486,6 +590,8 @@ def generate(dry_run: bool = False) -> str:
     mini_cron = _consolidate_cron(_parse_crontab(_ssh_mini("crontab -l 2>/dev/null"), "Mini"))
     pro_la = _parse_launchagents("Pro")
     mini_la = _parse_launchagents("Mini")
+    installed_launchagent_labels = {j.plist_label for j in pro_la + mini_la if j.plist_label}
+    pending_snapshot = _find_pending_live_snapshot(installed_launchagent_labels)
 
     all_jobs = pro_cron + mini_cron + pro_la + mini_la
     _check_log_health_pro(all_jobs)
@@ -520,6 +626,7 @@ def generate(dry_run: bool = False) -> str:
         "",
         "---",
         "",
+        *_render_pending_snapshot_section(pending_snapshot),
         "## System Health Summary",
         "",
         "| Metric | Value |",

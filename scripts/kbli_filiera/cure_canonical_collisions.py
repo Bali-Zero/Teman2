@@ -139,6 +139,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from _prose_disclosure import reattach, split_disclosure  # noqa: E402
+
 logger = logging.getLogger("kbli_filiera.cure_canonical_collisions")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -268,8 +270,21 @@ class CurePlan:
 
 
 def _current_whatyouneed(record: dict[str, Any]) -> Any:
+    """The part of `whatYouNeed` THIS compiler owns.
+
+    A second writer (`cure_l3_prose_gap_disclosure.py`) appends a recorded risk-tier
+    disclosure paragraph to 152 records, some of which a lot cure also owns. Comparing
+    the WHOLE body against the spec would report those records as needing a rewrite
+    forever, and the rewrite would delete the disclosure — a cure reverting a cure, on
+    exactly the pages that need it (measured live on 42999/52299 before this split).
+    So this compiler reads, compares and writes only the base; the appendix is carried
+    across by `_set_whatyouneed`. See `_prose_disclosure` for the shared rule.
+    """
     intel = record.get("intel_2026")
-    return intel.get("whatYouNeed") if isinstance(intel, dict) else None
+    if not isinstance(intel, dict):
+        return None
+    body = intel.get("whatYouNeed")
+    return split_disclosure(body)[0] if isinstance(body, str) else body
 
 
 def _current_whatchanged(record: dict[str, Any]) -> Any:
@@ -527,7 +542,9 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
                 f"{entry['code']}: cannot set whatYouNeed — intel_2026 is missing or not a dict"
             )
         intel = dict(intel)
-        intel["whatYouNeed"] = target_wyn
+        # Preserve any recorded disclosure appendix this compiler does not own.
+        _, appendix = split_disclosure(intel.get("whatYouNeed") or "")
+        intel["whatYouNeed"] = reattach(target_wyn, appendix)
         new_record["intel_2026"] = intel
 
     target_status_mapping = entry.get("status_mapping_correction")

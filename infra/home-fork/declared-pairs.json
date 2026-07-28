@@ -23,6 +23,12 @@
       "machines": ["pro", "m5"]
     },
     {
+      "live": "~/.claude/agents/regulatory-watcher.md",
+      "repo": ".claude/agents/regulatory-watcher.md",
+      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' — this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair; same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini).",
+      "machines": ["pro", "m5"]
+    },
+    {
       "live": "~/scripts/wr2-deploy-pull.sh",
       "repo": "scripts/wr2-deploy-pull.sh",
       "machines": ["pro"]
@@ -429,6 +435,120 @@
       "repo": "infra/launchagents/wrappers/garuda-gap-detector.sh",
       "_note": "W104 class-audit (2026-07-25): same decorative `redis-cli ping` gate as garuda-consumer.sh, armed by com.garuda.gap-detector.twice-daily. Same cure, same 3/3 proof.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/daily_ops.py",
+      "repo": "scripts/cron-agent-python/daily_ops.py",
+      "_note": "task #17 promotion (2026-07-26): part of the 15-file cron-agent-python census (16 crontab lines through run.sh, only log-anomaly-detector had a repo twin before this). Reads client_name via a runtime .get() accessor, no hardcoded identity — pattern+structural double-pass clean.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/pajak_monitor.py",
+      "repo": "scripts/cron-agent-python/pajak_monitor.py",
+      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts (fingerprints the ops host's username/home layout, this organism's own HOME-fork anti-pattern) — now derived from __file__.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/intel_radar.py",
+      "repo": "scripts/cron-agent-python/intel_radar.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes; DSN via os.getenv(DATABASE_URL), no hardcoded credentials.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/fly_watcher.py",
+      "repo": "scripts/cron-agent-python/fly_watcher.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/client_health_monitor.py",
+      "repo": "scripts/cron-agent-python/client_health_monitor.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes; no direct creds, all CRM/DB access via agent_job's shared helpers.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/compliance_ops.py",
+      "repo": "scripts/cron-agent-python/compliance_ops.py",
+      "_note": "task #17 promotion (2026-07-26). Reads client_name via runtime .get() accessors, no hardcoded identity.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/system_doctor.py",
+      "repo": "scripts/cron-agent-python/system_doctor.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes. Its single rule (telegram_alert side-effect AND status==\"ok\" simultaneously) gates tech_orchestrator's deploy path — see #20.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/bi_exchange_rate.py",
+      "repo": "scripts/cron-agent-python/bi_exchange_rate.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/oss_monitor.py",
+      "repo": "scripts/cron-agent-python/oss_monitor.py",
+      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts — now derived from __file__, same fix as pajak_monitor.py/imigrasi_monitor.py.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/imigrasi_monitor.py",
+      "repo": "scripts/cron-agent-python/imigrasi_monitor.py",
+      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts — now derived from __file__, same fix as pajak_monitor.py/oss_monitor.py.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/intel_feed_processor.py",
+      "repo": "scripts/cron-agent-python/intel_feed_processor.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/fact_checker.py",
+      "repo": "scripts/cron-agent-python/fact_checker.py",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/tdd_pipeline.py",
+      "repo": "scripts/cron-agent-python/tdd_pipeline.py",
+      "_note": "task #17/#42 promotion (2026-07-26). Fixed in the same commit: success path logged only a hash via log_step() while the failure path logged plaintext — 3mo/14 runs/18 successful writes into the live checkout, none reconstructable. Added its own explicit plaintext success log (filename + tests_added + test path, none PII) mirroring the failure branch's shape; shared log_step() hashing left untouched (used by PII-handling siblings). Uses --dangerously-skip-permissions unattended — see #42.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/vision_doc_extractor.py",
+      "repo": "scripts/cron-agent-python/vision_doc_extractor.py",
+      "_note": "task #17 promotion (2026-07-26). Redacted in the same commit: NB_OPS_ID_DEFAULT (a NotebookLM UUID) and a hardcoded Telegram chat id were fallback literals with no credential SHAPE (invisible to pattern scans, only a docstring said what they pointed to) — both now env-required, fail loud when unset. Also noted (not fixed): _push_to_nb2() shells out to an nlm CLI binary that does not exist on Pro — dormant, 0/620 runs ever exercised it, same fail-open-by-never-exercised shape as tech_orchestrator's diff gate.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/tech_orchestrator.py",
+      "repo": "scripts/cron-agent-python/tech_orchestrator.py",
+      "_note": "task #17/#20 promotion (2026-07-26). Fixed in the same commit: diff_size_check()'s subprocess.run had no check=True, so a nonzero git-diff returncode never raised and empty stdout on failure was byte-identical to a genuinely clean tree — safe:True either way. Dormant in practice (0/3067 runs over 3.5mo acted) but a proven fail-open behind a door nobody has opened yet. Now returns safe:False with the git error surfaced. correlate() itself deliberately untouched. Meta-finding across this census: tech_orchestrator (3067 runs/0 actions), vision_doc_extractor (620/0), tdd_pipeline (42 attempts/18) — 2 of 3 never once entered their own core execution path in 3+ months, each hiding a latent defect nobody could discover because the trigger never fired.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-backup.sh",
+      "repo": "infra/scripts/fly-backup.sh",
+      "_note": "2026-07-27: the live copy had DIVERGED — 13 extra lines sourcing ~/Desktop/secretkey.env as a secondary credentials location, added 2026-05-27. That file no longer exists, so the block could never fire; realigned to a symlink after the nightly run completed. Declared so the next divergence is caught instead of discovered.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-pg-backup.sh",
+      "repo": "scripts/fly-pg-backup.sh",
+      "_note": "2026-07-27: already a symlink, declared alongside its caller. This is the payload BOTH nightly runs execute (03:00 via fly-backup.sh, 03:20 via cron-wrapper.sh), so a fork here means production loses its Postgres backup — the W106 shape.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-state.sh",
+      "repo": "scripts/cron-state.sh",
+      "_note": "2026-07-27: a REAL file, byte-identical to the repo copy that day — the most dangerous shape of #1, because identical today reads as 'not a fork'. 27 Pro cron jobs invoke it, including the 03:00 Postgres backup, and the failure-alert added the same day is exactly the change that would have diverged it.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-runner.sh",
+      "repo": "scripts/cron-runner.sh",
+      "machines": ["all"],
+      "_note": "Largest of the FIVE receipt producers in ~/.agent/decisions/state (36 receipts, 30 invocations = 25 crontab + 5 plist on Pro, vs cron-state's 28/27). Undeclared until 2026-07-28, which is why Mini read clean 96/96 while carrying a 10-line ANCESTOR of this script that writes no receipt at all (inert there: 0 crontab invocations, 0 receipts). Declared so the divergence is visible and so the failure-alert added here cannot be merged-but-inert: Pro's live copy is a real file, not a symlink, so a git pull alone does not reach it."
     }
   ],
   "allow": [

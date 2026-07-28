@@ -16,13 +16,22 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "sentence-transformers"
         update-types: ["version-update:semver-major"]
-      # datasets==4.8.5 caps fsspec at <=2026.2.0; a group bump that raises
-      # fsspec past the cap makes the WHOLE minor-and-patch group unsatisfiable
-      # (uv resolver error -> one failed install cascades into 4 red required
-      # checks; see closed group PR #2062). Drop this ignore when datasets
-      # raises its fsspec ceiling - dependabot will then move the pair together.
+      # datasets caps fsspec, and a group bump that raises fsspec past the cap
+      # makes the WHOLE minor-and-patch group unsatisfiable (uv resolver error ->
+      # one failed install cascades into 4 red required checks; see closed group
+      # PR #2062). The ceiling MOVES with datasets, so this bound is raised in
+      # step with it, never dropped: removing it lets dependabot propose the next
+      # fsspec release the current datasets forbids, which is the same outage.
+      #
+      # 2026-07-28, after datasets 4.8.5 -> 5.0.0 landed (#3366): measured on
+      # PyPI, datasets 5.0.0 declares `fsspec[http]<=2026.4.0,>=2023.1.0`, so the
+      # bound goes 2026.2.0 -> 2026.4.0. (The lock still resolves fsspec==2026.2.0;
+      # this ignore is what keeps the gap between the lock and the cap safe to
+      # cross.) Re-measure the ceiling at the NEXT datasets major before touching
+      # this line — the note the previous bump left said "drop this when datasets
+      # raises its ceiling", which would have been the wrong move.
       - dependency-name: "fsspec"
-        versions: [">2026.2.0"]
+        versions: [">2026.4.0"]
       # presidio 2.2.363 REGRESSED its cryptography ceiling to <47.0.0 —
       # colliding with OUR deliberate CVE floor cryptography>=48.0.1
       # (requirements.txt, GHSA-537c-gmf6-5ccf; prod lock runs 49.x fine with
@@ -80,6 +89,21 @@ updates:
           - "openai"
           - "langchain*"
           - "tiktoken"
+          # "anthropic" travels WITH langchain-anthropic or the group cannot
+          # resolve. langchain-anthropic 1.5.2 requires anthropic<1.0.0,>=0.120.0
+          # (verified on PyPI), so a group that raises langchain-anthropic while
+          # leaving anthropic pinned at the lock's 0.117.0 is unsatisfiable as a
+          # unit — uv's exact words on PR #3357: "Because langchain-anthropic
+          # >=1.5.2 depends on anthropic>=0.120.0 and you require
+          # anthropic==0.117.0 ... your requirements are unsatisfiable."
+          # This is the same shape as the fsspec/datasets, grpcio and websockets
+          # notes above; the difference is that those were cured by IGNORING the
+          # co-constrained package, which cannot work here — the constraint is a
+          # floor that rises, not a ceiling that blocks, so freezing anthropic
+          # would freeze langchain-anthropic with it. Group them instead.
+          # Safe for the third dependent: openinference-instrumentation-anthropic
+          # 1.0.6 asks only for anthropic>=0.84.0, no upper bound.
+          - "anthropic"
         update-types:
           - "minor"
           - "patch"
@@ -88,6 +112,10 @@ updates:
           - "openai"
           - "langchain*"
           - "tiktoken"
+          # mirrors the openai-stack patterns above — a package left in both
+          # groups is claimed by whichever matches first, which makes the pairing
+          # above depend on ordering instead of on the declaration.
+          - "anthropic"
         update-types:
           - "minor"
           - "patch"

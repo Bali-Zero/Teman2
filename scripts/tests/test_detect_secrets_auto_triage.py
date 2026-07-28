@@ -70,9 +70,10 @@ LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES = [
 
 
 def test_rule_registered_and_scoped_to_exactly_two_files() -> None:
-    """Sanity: exactly one content-keyed rule, path-scoped to the two
-    worker-plane review files — not a blanket match on scripts/*.py."""
-    assert len(CONTENT_KEYED_RULES) == 1
+    """Sanity: exactly one content-keyed rule for worker-plane, path-scoped
+    to the two worker-plane review files — not a blanket match on
+    scripts/*.py. (A second, unrelated content-keyed rule for KBLI
+    gold-set data is added below — this test stays scoped to rule 0.)"""
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[0]
     assert path_pat.search(CHECK_WORKER_PLANE_REVIEW)
     assert path_pat.search(LAUNCH_WORKER_PLANE_REVIEW_PANEL)
@@ -169,3 +170,228 @@ def test_innocence_pin_followed_by_second_statement_not_approved() -> None:
         '; api_key="sk-realsecretvalue1234567890ABCDEF"\n'
     )
     assert content_pat.search(compound_line) is None
+
+
+# --- KBLI gold-set sentence_sha256 rule (2026-07-26) ------------------------
+#
+# Context (PR #3181, apps/mouth/data/kbli-gold-all.json): the L3 prose-gap-
+# disclosure cure (scripts/kbli_filiera/cure_l3_prose_gap_disclosure.py)
+# writes a `sentence_sha256` idempotency marker on every record it touches —
+# a 16-hex-char truncated digest of the appended disclosure sentence, so a
+# re-run of the cure can tell its own prior work apart from an untouched
+# record. `Detect Secrets` flagged 3 as "Hex High Entropy String" (findings
+# verified live on PR #3181's head 2026-07-26: lines 15773/17523/29285, all
+# `"sentence_sha256": "<16 lowercase hex>"`, no trailing comma — the field is
+# the last key in its object in every observed instance).
+#
+# Unlike the other three KBLI rules in AUTO_APPROVE_RULES (data/kbli-filiera/,
+# cure_specs/, and the canonical dataset + sync'd copies), kbli-gold-all.json
+# has an OPEN writer set — kbli_audit_patcher.py, kbli_enrich_write.py, and
+# kbli_enrich_pipeline.py all write it directly, plus cure specs patching it
+# value-in-place — so a path-only rule here would be the first KBLI rule
+# without the closed-writer-set argument that makes the others safe.
+# Content-keyed instead: approval requires the line to be structurally
+# exactly `"sentence_sha256": "<16 lowercase hex>"[,]`, end-anchored, mirroring
+# the worker-plane rule's own discipline above.
+#
+# The real flagged lines are not reachable via `classify(path, line_number)`
+# in THIS test's checkout: apps/mouth/data/kbli-gold-all.json exists on main,
+# but the sentence_sha256 field itself is new content that only exists on the
+# still-unmerged PR #3181 branch (0 occurrences on main as of 2026-07-26).
+# The guilt cases below use the literal source lines copied verbatim from
+# that PR's head instead of a live file read.
+
+KBLI_GOLD_ALL = "apps/mouth/data/kbli-gold-all.json"
+
+# Copied verbatim from PR #3181 head 61c2e532, lines 15773 / 17523 / 29285.
+KBLI_GOLD_SENTENCE_SHA256_REAL_LINES = [
+    '      "sentence_sha256": "398e623b02c49ba5"',
+    '      "sentence_sha256": "bcbf0d7b6a2cd71d"',
+    '      "sentence_sha256": "af4b83d5bbc0e35f"',
+]
+
+
+def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
+    only — not the other KBLI files, which stay on the closed-writer-set
+    path rules in AUTO_APPROVE_RULES."""
+    assert len(CONTENT_KEYED_RULES) == 3
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
+    assert path_pat.search(KBLI_GOLD_ALL)
+    assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
+    assert not path_pat.search("data/kbli-filiera/some_manifest.json")
+    assert "credential" in reason
+
+
+def test_guilt_kbli_gold_real_pr3181_findings_approved() -> None:
+    """The 3 real findings Detect Secrets flagged on PR #3181's head must be
+    approved by this rule's content pattern."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    for line in KBLI_GOLD_SENTENCE_SHA256_REAL_LINES:
+        assert content_pat.match(line), f"should be approved: {line!r}"
+
+
+def test_guilt_kbli_gold_trailing_comma_variant_approved() -> None:
+    """Every observed occurrence has sentence_sha256 as the LAST key in its
+    object (no trailing comma), but the pattern allows an optional trailing
+    comma too — a future cure that reorders fields must not silently stop
+    matching."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    assert content_pat.match('  "sentence_sha256":"0123456789abcdef",')
+
+
+def test_innocence_kbli_gold_wrong_key_name_not_approved() -> None:
+    """A real secret assigned to a DIFFERENT key in the same file — even one
+    with the exact 16-hex shape — must still be flagged. Proves the rule is
+    keyed on the field NAME, not merely on hex shape."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    fake_line = '      "api_key": "398e623b02c49ba5"'
+    assert content_pat.match(fake_line) is None
+
+
+def test_innocence_kbli_gold_wrong_value_shape_not_approved() -> None:
+    """A real credential assigned to `sentence_sha256` must not be approved
+    on the key name alone — the value has to actually be 16 lowercase hex
+    chars. `ghp_...` is GitHub's real token prefix shape."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    fake_line = '      "sentence_sha256": "ghp_realtoken1234567"'
+    assert content_pat.match(fake_line) is None
+
+
+def test_innocence_kbli_gold_wrong_length_not_approved() -> None:
+    """15 or 17 hex chars must not match — the shape is exactly 16, not
+    'roughly hex-shaped'."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    assert content_pat.match('      "sentence_sha256": "398e623b02c49ba"') is None  # 15
+    assert content_pat.match('      "sentence_sha256": "398e623b02c49ba5a"') is None  # 17
+
+
+def test_innocence_kbli_gold_uppercase_hex_not_approved() -> None:
+    """Uppercase hex must not match — the cure only ever emits lowercase
+    (verified against all 39 occurrences on PR #3181's head); an uppercase
+    variant is a shape a real pasted credential could take that a lowercase-
+    only cure output never would."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    assert content_pat.match('      "sentence_sha256": "398E623B02C49BA5"') is None
+
+
+def test_innocence_kbli_gold_ride_along_statement_not_approved() -> None:
+    """A legitimate sentence_sha256 line followed by an unrelated assignment
+    must not approve the ride-along, mirroring the worker-plane rule's own
+    end-anchor discipline."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    compound_line = (
+        '      "sentence_sha256": "398e623b02c49ba5"; "api_key": "realsecret123456"'
+    )
+    assert content_pat.match(compound_line) is None
+
+
+def test_innocence_kbli_gold_other_file_with_same_shape_not_approved() -> None:
+    """The identical sentence_sha256 line shape approves on CONTENT alone
+    (proving the content pattern itself is permissive enough to need the
+    path scope), but a real end-to-end call through `classify()` against a
+    file OUTSIDE kbli-gold-all.json must not be auto-approved — proves the
+    path scope, not just the content pattern, is load-bearing. Uses the same
+    "scripts/some_other_script.py" control path the worker-plane innocence
+    test above already proves matches zero AUTO_APPROVE_RULES too (so a
+    False here can only come from the content-keyed path scope, never from
+    an unrelated rule picking it up incidentally — the first version of this
+    test used `__file__`, which is itself a `test_*.py` file and got
+    silently approved by the UNRELATED `test_*/_test` fixture rule instead
+    of exercising this rule's path scope at all), monkeypatched to return
+    the gold-set line's text so only the PATH differs from the guilt case."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    line = KBLI_GOLD_SENTENCE_SHA256_REAL_LINES[0]
+    assert content_pat.match(line)  # content shape alone: matches
+
+    import scripts.detect_secrets_auto_triage as triage_mod
+
+    real_line_text = triage_mod._line_text
+    try:
+        triage_mod._line_text = lambda file_path, line_number: line  # noqa: ARG005
+        auto, reason = triage_mod.classify("scripts/some_other_script.py", 1)
+        assert not auto, "same content, wrong path must not be approved"
+        assert reason == "no rule matched"
+    finally:
+        triage_mod._line_text = real_line_text
+
+
+# --- article translation freshness stamp (2026-07-28) -----------------------
+#
+# Context (PR #3379): scripts/translate-articles.py used to skip on the mere
+# EXISTENCE of the target file, so every translation froze at birth and an
+# English correction never reached its locales — measured, 1275 of 2664
+# translations were behind their source, and the hourly organ reported
+# "0 translated, 1592 skipped/failed" every hour while exiting 0. It now skips
+# on FRESHNESS: each translation records `source_sha256`, the digest of the
+# English source BODY it was made from, in its own frontmatter. Deliberately
+# not mtime — a checkout resets mtime, so the digest has to travel inside the
+# file.
+#
+# `Detect Secrets` flagged all 1294 of them as "Hex High Entropy String" on
+# that PR — correctly, by shape. The value is recomputable by anyone from the
+# public English article: an integrity anchor, never a credential.
+#
+# Content-keyed rather than path-only because the writer set for article .mdx
+# files is as open as it gets — the translator, the editorial pipeline, and
+# humans editing prose by hand. A path rule would blanket-approve any future
+# finding anywhere in 2500+ content files.
+
+ARTICLE_IT = "apps/mouth/src/content/articles/business/art-of-strategic-patience.it.mdx"
+
+# Copied verbatim from the stamped corpus on this branch.
+ARTICLE_STAMP_REAL_LINES = [
+    'source_sha256: "5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d"',
+    'source_sha256: "73268c78bc925d2d18d31d60f4a6a1daaa1d69d02feb80a704cc1c19f5242595"',
+]
+
+
+def test_article_stamp_rule_registered_and_scoped_to_translations_only() -> None:
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[2]
+    assert path_pat.search(ARTICLE_IT)
+    for loc in ("id", "ru", "fr"):
+        assert path_pat.search(f"apps/mouth/src/content/articles/business/x.{loc}.mdx")
+    assert "credential" in reason
+
+
+def test_innocence_english_source_is_out_of_scope() -> None:
+    """The stamp only ever lands in a translation. An English source .mdx that
+    grows a 64-hex line is NOT covered by this rule and stays unaudited."""
+    path_pat, _content_pat, _reason = CONTENT_KEYED_RULES[2]
+    assert not path_pat.search("apps/mouth/src/content/articles/business/x.mdx")
+
+
+def test_innocence_other_content_paths_are_out_of_scope() -> None:
+    path_pat, _content_pat, _reason = CONTENT_KEYED_RULES[2]
+    assert not path_pat.search("apps/mouth/src/content/homepage-layout.json")
+    assert not path_pat.search("apps/backend-rag/backend/config.it.mdx")
+
+
+def test_guilt_real_stamp_lines_are_approved() -> None:
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    for line in ARTICLE_STAMP_REAL_LINES:
+        assert content_pat.match(line), f"should be approved: {line!r}"
+
+
+def test_innocence_a_credential_on_another_frontmatter_key_is_not_approved() -> None:
+    """The whole point of content-keying: only THIS key, in THIS shape."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    for line in (
+        'api_key: "5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d"',
+        'token: "ghp_reallivetokenvaluethatmustneverbeapproved0001"',
+        'source_sha256_backup: "5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d"',
+    ):
+        assert not content_pat.match(line), f"must NOT be approved: {line!r}"
+
+
+def test_innocence_wrong_shape_is_not_approved() -> None:
+    """Uppercase hex, wrong length, unquoted, or a second value riding along on
+    the same line all fail — the pattern is end-anchored."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    for line in (
+        'source_sha256: "5F0AED5D76A50A055AB3F3D636B7A18FD7D98E791D12B8711086B19EE414786D"',
+        'source_sha256: "5f0aed5d"',
+        "source_sha256: 5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d",
+        'source_sha256: "5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d" api_key: "ghp_x"',
+    ):
+        assert not content_pat.match(line), f"must NOT be approved: {line!r}"

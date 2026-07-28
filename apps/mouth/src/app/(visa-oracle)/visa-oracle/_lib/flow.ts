@@ -31,6 +31,18 @@ export interface FlowState {
   history: OracleNode[];
   facts: OracleFacts;
   language: Language;
+  /**
+   * Identifies the current INTERVIEW ATTEMPT (SHADOW-dedupe bug fix,
+   * 2026-07-27) — a counter bumped ONLY by `resetFlow` below, never by any
+   * other action. Every action that returns the user to "verdict" via
+   * history-truncation (REVIEW_ANSWERS, SELECT_CATEGORY's happy path, and
+   * whatever gets added next) leaves `attempt` untouched by construction:
+   * none of them call `resetFlow`/`initialFlowState`, so there is nothing
+   * to enumerate and nothing for a future action to accidentally break.
+   * Only a TRUE reset — full history + facts wipe, back to "framing" — is
+   * a new attempt, and `resetFlow` is the one place that happens.
+   */
+  attempt: number;
 }
 
 export type FlowAction =
@@ -53,8 +65,25 @@ export type FlowAction =
   | { type: "RESTART" }
   | { type: "SET_LANGUAGE"; language: Language };
 
-export function initialFlowState(language: Language = "en"): FlowState {
-  return { history: [{ kind: "framing" }], facts: {}, language };
+export function initialFlowState(
+  language: Language = "en",
+  attempt = 0,
+): FlowState {
+  return { history: [{ kind: "framing" }], facts: {}, language, attempt };
+}
+
+/**
+ * The reducer's ONE reset primitive (SHADOW-dedupe bug fix, 2026-07-27):
+ * a full wipe back to `initialFlowState`, with `attempt` incremented so
+ * every consumer that needs to know "is this a genuinely new interview"
+ * (OracleShell's SHADOW-dedupe effect) can key off `state.attempt`
+ * instead of enumerating which actions perform a reset. Called from
+ * RESTART and from SELECT_CATEGORY's defensive fallback below — both
+ * discard the ENTIRE interview (facts + history), which is exactly what
+ * makes them resets rather than ordinary forward/backward navigation.
+ */
+function resetFlow(state: FlowState): FlowState {
+  return initialFlowState(state.language, state.attempt + 1);
 }
 
 function sameNode(a: OracleNode, b: OracleNode): boolean {
@@ -221,7 +250,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         // from NO_SUPPORTED_PATH, which requires a completed interview
         // that passed through "category"). Restart rather than risk
         // dispatching into an inconsistent mid-flow state.
-        return initialFlowState(state.language);
+        return resetFlow(state);
       }
       const truncated = truncateToNode(state.history, target);
       const prunedFacts = pruneFacts(state.facts, truncated);
@@ -237,7 +266,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return { ...state, history, facts: pruneFacts(state.facts, history) };
     }
     case "RESTART":
-      return initialFlowState(state.language);
+      return resetFlow(state);
     case "SET_LANGUAGE":
       // Facts are keys, never localized strings — switching languages
       // never touches them (design doc §3 "instant, no lost history").

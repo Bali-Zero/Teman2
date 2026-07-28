@@ -380,7 +380,7 @@ def minimal_valid_pack(source_record: M.SourceRecord) -> M.RulePack:
 
 _DEFAULT_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 
 _BACKEND_DIR = Path(__file__).resolve().parents[3]

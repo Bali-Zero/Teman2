@@ -21,11 +21,7 @@ import ast
 from pathlib import Path
 
 ROUTER_PATH = (
-    Path(__file__).resolve().parents[5]
-    / "backend"
-    / "app"
-    / "routers"
-    / "crm_practices.py"
+    Path(__file__).resolve().parents[5] / "backend" / "app" / "routers" / "crm_practices.py"
 )
 
 
@@ -45,8 +41,7 @@ def _revenue_growth_func() -> ast.FunctionDef:
         if isinstance(node, ast.AsyncFunctionDef) and any(
             isinstance(d, ast.Call)
             and any(
-                isinstance(a, ast.Constant) and a.value == "/stats/revenue-growth"
-                for a in d.args
+                isinstance(a, ast.Constant) and a.value == "/stats/revenue-growth" for a in d.args
             )
             for d in node.decorator_list
         ):
@@ -56,7 +51,16 @@ def _revenue_growth_func() -> ast.FunctionDef:
 
 def test_route_exists() -> None:
     """GUILT: the route is registered on the practices router."""
-    _route_source()
+    source = _route_source()
+    assert '"/stats/revenue-growth"' in source
+
+
+def test_cache_namespace_matches_mutation_invalidation() -> None:
+    """The cached route and practice mutations share one namespace constant."""
+    source = ROUTER_PATH.read_text(encoding="utf-8")
+    assert 'REVENUE_GROWTH_CACHE_NAMESPACE = "crm_practices_revenue_growth"' in source
+    assert "prefix=REVENUE_GROWTH_CACHE_NAMESPACE" in source
+    assert 'f"zantara:{REVENUE_GROWTH_CACHE_NAMESPACE}:*"' in source
 
 
 def test_returns_fe_contract_keys() -> None:

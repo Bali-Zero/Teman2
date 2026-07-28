@@ -48,6 +48,7 @@ import {
   PracticeBaton,
   statusToBaton,
 } from "@/components/portal/PracticeBaton";
+import type { PortalMatter } from "@/lib/api/portal";
 
 // Status configurations — WS3 slice 4 (GARUDA Day Edition, 2026-07-24):
 // state colors read the semantic --state-* tokens (WS2 operative-light AA
@@ -177,12 +178,16 @@ function DocumentUploadModal({
   onClose,
   onUpload,
   isUploading,
+  flowPosition,
+  flowTotal,
 }: {
   document: ClientRequiredDocument | null;
   isOpen: boolean;
   onClose: () => void;
   onUpload: (file: string, fileName: string, notes: string) => Promise<void>;
   isUploading: boolean;
+  flowPosition?: number;
+  flowTotal?: number;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -219,13 +224,37 @@ function DocumentUploadModal({
 
   if (!document) return null;
 
+  const isUploadFlow = Boolean(flowPosition && flowTotal);
+  const hasNextDocument =
+    isUploadFlow && (flowPosition as number) < (flowTotal as number);
+  const submitLabel = isUploadFlow
+    ? hasNextDocument
+      ? "Upload & continue"
+      : "Upload last document"
+    : "Upload";
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Upload Document</DialogTitle>
+          <DialogTitle>
+            {isUploadFlow ? "Upload documents" : "Upload required document"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {isUploadFlow && (
+            <div
+              className="flex items-center justify-between text-sm"
+              aria-live="polite"
+            >
+              <span className="font-medium">
+                Document {flowPosition} of {flowTotal}
+              </span>
+              <span style={{ color: "var(--bz-text-2)" }}>
+                One file for each requirement
+              </span>
+            </div>
+          )}
           <div
             className="p-3 rounded-lg backdrop-blur-md"
             style={{ background: "var(--glass-rim)" }}
@@ -245,8 +274,10 @@ function DocumentUploadModal({
             maxSize={10 * 1024 * 1024}
             onFileSelect={handleFileSelect}
             error={fileError}
-            compact
           />
+          <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+            Accepted formats: PDF, JPG or PNG. Maximum file size: 10 MB.
+          </p>
 
           <div>
             <label
@@ -270,7 +301,11 @@ function DocumentUploadModal({
           </div>
 
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose} disabled={isUploading}>
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isUploading}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={!file || isUploading}>
@@ -282,7 +317,7 @@ function DocumentUploadModal({
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload
+                  {submitLabel}
                 </>
               )}
             </Button>
@@ -583,12 +618,17 @@ export default function PortalProcessPage() {
     id: number;
     fullName: string;
   } | null>(null);
+  const [matters, setMatters] = useState<PortalMatter[]>([]);
   const [documents, setDocuments] = useState<ClientRequiredDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadDoc, setUploadDoc] = useState<ClientRequiredDocument | null>(
     null,
   );
+  const [uploadFlow, setUploadFlow] = useState<{
+    position: number;
+    total: number;
+  } | null>(null);
 
   // Load profile and documents — stable reference, no toast dependency in deps
   const loadData = useCallback(
@@ -600,15 +640,17 @@ export default function PortalProcessPage() {
           setIsLoading(true);
         }
 
-        // Get profile
-        const profileData = await api.portal.getProfile();
+        const [profileData, mattersData, docs] = await Promise.all([
+          api.portal.getProfile(),
+          api.portal.listMatters(),
+          // The portal-scoped endpoint resolves client_id from the caller's
+          // JWT, unlike the CRM endpoint which rejects plain client JWTs.
+          api.portal.getMyRequiredDocuments() as Promise<
+            ClientRequiredDocument[]
+          >,
+        ]);
         setProfile({ id: profileData.id, fullName: profileData.fullName });
-
-        // Get required documents via portal-scoped endpoint. The CRM version
-        // 403s for plain client JWTs — this route resolves client_id from
-        // the caller's JWT so shareholders can load their own checklist.
-        const docs =
-          (await api.portal.getMyRequiredDocuments()) as ClientRequiredDocument[];
+        setMatters(mattersData.matters);
         setDocuments(docs);
       } catch (err) {
         if (showErrorToast) {
@@ -631,6 +673,31 @@ export default function PortalProcessPage() {
     loadData();
   }, [loadData]);
 
+  const pendingUploadDocuments = documents.filter(
+    (doc) => doc.status === "pending" || doc.status === "rejected",
+  );
+
+  const openSingleDocumentUpload = (doc: ClientRequiredDocument) => {
+    setUploadFlow(null);
+    setUploadDoc(doc);
+  };
+
+  const closeDocumentUpload = () => {
+    setUploadDoc(null);
+    setUploadFlow(null);
+  };
+
+  const startDocumentUploadFlow = () => {
+    const firstPendingDocument = pendingUploadDocuments[0];
+    if (!firstPendingDocument) return;
+
+    setUploadFlow({
+      position: 1,
+      total: pendingUploadDocuments.length,
+    });
+    setUploadDoc(firstPendingDocument);
+  };
+
   // Handle document upload
   const handleUpload = async (
     file: string,
@@ -639,10 +706,11 @@ export default function PortalProcessPage() {
   ) => {
     if (!uploadDoc) return;
 
+    const currentUploadDoc = uploadDoc;
     setIsUploading(true);
     try {
-      await api.crm.uploadClientDocument(uploadDoc.practice_id, {
-        required_doc_id: uploadDoc.id,
+      await api.crm.uploadClientDocument(currentUploadDoc.practice_id, {
+        required_doc_id: currentUploadDoc.id,
         file,
         file_name: fileName,
         notes,
@@ -650,7 +718,7 @@ export default function PortalProcessPage() {
 
       setDocuments((currentDocuments) =>
         currentDocuments.map((doc) =>
-          doc.id === uploadDoc.id
+          doc.id === currentUploadDoc.id
             ? {
                 ...doc,
                 uploaded_by_client: true,
@@ -660,12 +728,27 @@ export default function PortalProcessPage() {
             : doc,
         ),
       );
+
+      const nextDocument = uploadFlow
+        ? pendingUploadDocuments.find((doc) => doc.id !== currentUploadDoc.id)
+        : undefined;
       toastRef.current.success(
         "Document uploaded",
-        "Your document has been submitted for review",
+        nextDocument
+          ? "Select the next required document"
+          : "Your document has been submitted for review",
       );
-      setUploadDoc(null);
-      void loadData({ showLoading: false, showErrorToast: false });
+
+      if (nextDocument && uploadFlow) {
+        setUploadFlow({
+          position: uploadFlow.position + 1,
+          total: uploadFlow.total,
+        });
+        setUploadDoc(nextDocument);
+      } else {
+        closeDocumentUpload();
+        void loadData({ showLoading: false, showErrorToast: false });
+      }
     } catch (err) {
       toastRef.current.error("Upload failed", "Please try again");
       logger.error("Failed to upload document", {}, err as Error);
@@ -674,21 +757,29 @@ export default function PortalProcessPage() {
     }
   };
 
-  // Group documents by process
-  const processGroups: ProcessGroup[] = documents.reduce((groups, doc) => {
-    const existing = groups.find((g) => g.practiceId === doc.practice_id);
+  const processGroups: ProcessGroup[] = matters.map((matter) => ({
+    practiceId: matter.id,
+    processName: matter.title,
+    processStatus: matter.status,
+    documents: documents.filter((doc) => doc.practice_id === matter.id),
+  }));
+
+  for (const doc of documents) {
+    const existing = processGroups.find(
+      (group) => group.practiceId === doc.practice_id,
+    );
     if (existing) {
-      existing.documents.push(doc);
-    } else {
-      groups.push({
-        practiceId: doc.practice_id,
-        processName: doc.process_name,
-        processStatus: doc.process_status,
-        documents: [doc],
-      });
+      continue;
     }
-    return groups;
-  }, [] as ProcessGroup[]);
+    processGroups.push({
+      practiceId: doc.practice_id,
+      processName: doc.process_name,
+      processStatus: doc.process_status,
+      documents: documents.filter(
+        (candidate) => candidate.practice_id === doc.practice_id,
+      ),
+    });
+  }
 
   // Stats
   const totalDocs = documents.length;
@@ -826,33 +917,43 @@ export default function PortalProcessPage() {
         <div className="space-y-4">
           {pendingDocs > 0 && (
             <div
-              className="rounded-lg p-4 flex items-start gap-3"
+              className="rounded-lg p-4 flex flex-col gap-4 sm:flex-row sm:items-center"
               style={{
                 background: "var(--bz-card)",
                 border:
                   "1px solid color-mix(in srgb, var(--state-warning) 30%, transparent)",
               }}
             >
-              <AlertTriangle
-                className="w-5 h-5 shrink-0 mt-0.5"
-                style={{ color: "var(--state-warning)" }}
-              />
-              <div>
-                <p
-                  className="font-medium"
+              <div className="flex flex-1 items-start gap-3">
+                <AlertTriangle
+                  className="w-5 h-5 shrink-0 mt-0.5"
                   style={{ color: "var(--state-warning)" }}
-                >
-                  Documents Required
-                </p>
-                <p
-                  className="text-sm"
-                  style={{ color: "var(--state-warning)" }}
-                >
-                  You have {pendingDocs} document{pendingDocs > 1 ? "s" : ""}{" "}
-                  waiting to be uploaded. Please upload them to proceed with
-                  your process.
-                </p>
+                />
+                <div>
+                  <p
+                    className="font-medium"
+                    style={{ color: "var(--state-warning)" }}
+                  >
+                    Documents Required
+                  </p>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--state-warning)" }}
+                  >
+                    You have {pendingDocs} document
+                    {pendingDocs > 1 ? "s" : ""} waiting to be uploaded. Please
+                    upload them to proceed with your process.
+                  </p>
+                </div>
               </div>
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={startDocumentUploadFlow}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload {pendingDocs > 1 ? "documents" : "document"}
+              </Button>
             </div>
           )}
 
@@ -860,7 +961,7 @@ export default function PortalProcessPage() {
             <ProcessCard
               key={process.practiceId}
               process={process}
-              onUploadClick={setUploadDoc}
+              onUploadClick={openSingleDocumentUpload}
             />
           ))}
         </div>
@@ -868,11 +969,14 @@ export default function PortalProcessPage() {
 
       {/* Upload Modal */}
       <DocumentUploadModal
+        key={uploadDoc?.id ?? "closed"}
         document={uploadDoc}
         isOpen={!!uploadDoc}
-        onClose={() => setUploadDoc(null)}
+        onClose={closeDocumentUpload}
         onUpload={handleUpload}
         isUploading={isUploading}
+        flowPosition={uploadFlow?.position}
+        flowTotal={uploadFlow?.total}
       />
     </div>
   );

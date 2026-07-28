@@ -54,7 +54,45 @@ from typing import Iterable
 # Constants
 # ---------------------------------------------------------------------------
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+def _derive_repo_root() -> Path:
+    """The MAIN checkout, never the worktree this script happens to be sitting in.
+
+    W105 upstream half (2026-07-26). This used to be `Path(__file__).resolve().parents[1]`
+    — derived from the SCRIPT's location — so running the copy that lives inside a
+    worktree pointed `WORKTREES_DIR` at `<worktree>/.worktrees` and the broker cheerfully
+    nested a worktree inside a worktree (W63). That is not a hypothetical: every agent
+    lane cds into its worktree, and `python scripts/agent_start.py` there is the
+    documented quick-start, so the wrong copy is the CONVENIENT one to run.
+
+    `git rev-parse --git-common-dir` answers with the MAIN repo's `.git` from anywhere
+    inside it, including from a linked worktree — which is exactly the question being
+    asked. Same derivation the worktree-isolation hook already uses for the same reason
+    (`infra/claude-hooks/worktree_isolation.py::_derive_repo_root`); two tools that must
+    agree about "where is the main checkout" should not each invent an answer.
+
+    Signature-guarded: a derived root that does not carry `scripts/agent_start.py` is
+    refused, so a cwd that has wandered into some OTHER git repo can never silently
+    retarget the broker. On any failure we fall back to the old script-relative answer —
+    unchanged behaviour when git is unavailable — and the nesting refusal below is the
+    backstop that keeps the fallback honest.
+    """
+    script_dir = Path(__file__).resolve().parents[1]
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=str(script_dir), capture_output=True, text=True, timeout=5,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            common = Path(out.stdout.strip())
+            root = common.parent if common.name == ".git" else common.parent
+            if (root / "scripts" / "agent_start.py").is_file():
+                return root
+    except Exception:
+        pass
+    return script_dir
+
+
+REPO_ROOT = _derive_repo_root()
 WORKTREES_DIR = REPO_ROOT / ".worktrees"
 TASK_METADATA_FILENAME = ".agent-task.json"
 # Broker-generated files that must NOT count as user WIP (otherwise every
@@ -244,6 +282,54 @@ def _run_git(
 
 def _branch_name(host: str, lane: str, task_id: str) -> str:
     return f"agent/{host}/{lane}/{task_id}"
+
+
+
+def _refuse_if_nested(target: Path) -> None:
+    """SystemExit if `target` would land inside an existing worktree (W63/W105).
+
+    Judges the ENTITY: only paths git actually reports as worktrees count, and the main
+    checkout is excluded (every worktree is "inside" it by construction — treating that
+    as nesting would refuse every creation). A probe failure is NOT read as "nothing is
+    nested" (family #2); it degrades to the structural check that a `.worktrees` segment
+    must not appear twice in the path, which is the shape nesting always takes.
+    """
+    try:
+        target_real = target.resolve()
+    except Exception:
+        target_real = target
+    if str(target_real).count("/.worktrees/") > 1:
+        raise SystemExit(
+            f"ERROR: refusing to create a worktree inside another worktree: {target_real}\n"
+            "       (a `.worktrees` segment appears twice — run agent_start.py against the "
+            "main checkout)"
+        )
+    try:
+        out = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=5,
+        )
+        if out.returncode != 0:
+            return
+    except Exception:
+        return
+    repo_real = REPO_ROOT.resolve()
+    for line in out.stdout.splitlines():
+        if not line.startswith("worktree "):
+            continue
+        try:
+            known = Path(line[len("worktree "):].strip()).resolve()
+        except Exception:
+            continue
+        if known == repo_real:
+            continue  # the main checkout contains them all — not nesting
+        if known == target_real or known in target_real.parents:
+            raise SystemExit(
+                f"ERROR: refusing to create a worktree inside an existing one.\n"
+                f"       target : {target_real}\n"
+                f"       inside : {known}\n"
+                "       Run agent_start.py against the main checkout instead."
+            )
 
 
 def _worktree_path(lane: str, task_id: str) -> Path:
@@ -438,6 +524,14 @@ def cmd_create(
         start_point,
         ttl_minutes,
     )
+
+    # BACKSTOP (W105 upstream half): never create a worktree INSIDE another one.
+    # `_derive_repo_root()` above already makes this unreachable in the normal case,
+    # but it falls back to the script-relative answer when git cannot be asked — and a
+    # fallback that can still nest is a fallback that will, eventually. `git worktree
+    # list` is the authority on what is already a worktree; a path that lands under one
+    # is refused with the reason, never created and explained afterwards (W63).
+    _refuse_if_nested(worktree)
 
     try:
         _run_git(["worktree", "add", "-b", branch, str(worktree), start_point])

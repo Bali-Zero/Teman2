@@ -351,6 +351,7 @@ class AgenticRAGOrchestrator:
         profile: dict[str, Any] | None = None,
         max_steps: int | None = None,
         agent_role: Any | None = None,
+        memory_subject: str | None = None,
     ) -> CoreResult:
         """
         Process query with full RAG pipeline - Delegates to OrchestratorCore.
@@ -380,6 +381,14 @@ class AgenticRAGOrchestrator:
                 except an authenticated/trusted principal) is a complete
                 no-op, matching `agent_role`'s pre-existing streaming-only
                 contract.
+            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Server-
+                derived per-sender pseudonymous subject for the trusted
+                WhatsApp bot (`_memory_identity.derive_wa_memory_subject`).
+                Forwarded to `OrchestratorCore.process_query_core` for the
+                FACTS read, and to the memory-save dispatch below — the SAME
+                value at both ends, never re-derived. None (every caller
+                except the trusted WA bot with the salt provisioned) is a
+                complete no-op.
 
         Returns:
             CoreResult with answer, sources, and metadata
@@ -415,11 +424,23 @@ class AgenticRAGOrchestrator:
                 profile=profile,
                 max_steps=max_steps,
                 agent_role=agent_role,
+                memory_subject=memory_subject,
             )
 
             # 🧠 MEMORY PERSISTENCE: Save facts in background (Sync Path Fix)
             # This ensures parity with stream_query
-            if user_id and user_id != "anonymous":
+            #
+            # Gate on the EFFECTIVE subject, not user_id: for the trusted WA
+            # bot, user_id is "whatsapp_<phone>" (never "anonymous") but a
+            # subject may still be absent (salt unprovisioned, or the sender
+            # resolved to neither owner nor team) — in which case there is
+            # nothing safe to key the save on and it must be skipped, same as
+            # today. `create_save_task`/`save_conversation_memory` re-check
+            # `is_non_personal_memory_identity` on the effective subject
+            # regardless; this outer gate just avoids dispatching a task that
+            # would immediately no-op.
+            effective_subject = memory_subject or user_id
+            if effective_subject and effective_subject != "anonymous":
                 try:
                     self.memory_handler.create_save_task(
                         user_id=user_id,
@@ -427,8 +448,11 @@ class AgenticRAGOrchestrator:
                         answer=result.answer,
                         session_id=session_id,
                         metrics_collector=metrics_collector,
+                        memory_subject=memory_subject,
                     )
-                    logger.debug("🧠 [Sync] Dispatched memory save task for %s", user_id)
+                    logger.debug(
+                        "🧠 [Sync] Dispatched memory save task for %s", effective_subject
+                    )
                 except Exception as mem_err:
                     logger.warning("⚠️ [Sync] Failed to dispatch memory save: %s", mem_err)
 

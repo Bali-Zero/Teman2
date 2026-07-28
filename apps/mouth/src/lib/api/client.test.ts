@@ -256,7 +256,22 @@ describe("ApiClientBase", () => {
       if (callArgs[1]) {
         expect(callArgs[1].method || "GET").toBe("GET");
         expect(callArgs[1].credentials).toBe("include");
+        expect(callArgs[1].cache).toBe("no-store");
       }
+    });
+
+    it("should preserve an explicit GET cache policy", async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({}),
+      });
+
+      await (client as any).request("/test", { cache: "force-cache" });
+
+      const callArgs = (global.fetch as any).mock.calls[0];
+      expect(callArgs[1].cache).toBe("force-cache");
     });
 
     it("should add Authorization header when token exists", async () => {

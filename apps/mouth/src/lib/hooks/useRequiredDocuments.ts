@@ -80,18 +80,29 @@ export function useRequiredDocuments(
 
       setIsLoading(true);
       try {
-        await api.post<RequiredDocument>(
+        const created = await api.post<RequiredDocument>(
           `/api/crm/practices/${practiceId}/required-documents`,
           data,
         );
-        await fetchPracticeDocuments();
+        setDocuments((current) => {
+          const existingIndex = current.findIndex(
+            (document) => document.id === created.id,
+          );
+          if (existingIndex === -1) {
+            return [...current, created];
+          }
+
+          return current.map((document, index) =>
+            index === existingIndex ? created : document,
+          );
+        });
       } catch (err) {
         throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    [practiceId, fetchPracticeDocuments],
+    [practiceId],
   );
 
   // Update a required document (team member review)
@@ -101,18 +112,22 @@ export function useRequiredDocuments(
 
       setIsLoading(true);
       try {
-        await api.patch<RequiredDocument>(
+        const updated = await api.patch<RequiredDocument>(
           `/api/crm/practices/${practiceId}/required-documents/${docId}`,
           data,
         );
-        await fetchPracticeDocuments();
+        setDocuments((current) =>
+          current.map((document) =>
+            document.id === updated.id ? updated : document,
+          ),
+        );
       } catch (err) {
         throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    [practiceId, fetchPracticeDocuments],
+    [practiceId],
   );
 
   // Delete a required document
@@ -125,14 +140,16 @@ export function useRequiredDocuments(
         await api.delete<void>(
           `/api/crm/practices/${practiceId}/required-documents/${docId}`,
         );
-        await fetchPracticeDocuments();
+        setDocuments((current) =>
+          current.filter((document) => document.id !== docId),
+        );
       } catch (err) {
         throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    [practiceId, fetchPracticeDocuments],
+    [practiceId],
   );
 
   // Client uploads a document

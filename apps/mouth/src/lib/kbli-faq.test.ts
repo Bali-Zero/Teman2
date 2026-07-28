@@ -159,3 +159,88 @@ describe("buildKbliFaq", () => {
     expect(verifiedAnswer).not.toContain("crosswalk adjudication is pending");
   });
 });
+
+// =============================================================================
+// The FAQ was the FIFTH render site of the Bali-block cause — and the one that
+// leaves the page.
+//
+// It was missed by the L2.10 sweep because the sweep looked for the licensing
+// frame's wording. This builder had its own: "(reserved for UMKM / 2026
+// moratorium)", hardcoded for every blocking status. Its own header comment
+// claims every fact "comes from dataset fields already rendered elsewhere on
+// the same page (PMA verdict banner …)" — so curing the banner alone did not
+// leave the FAQ merely stale, it put the two copies in contradiction.
+//
+// This one also emits FAQPage JSON-LD, so the wrong cause is what a search
+// engine ingests, not just what a reader sees.
+// =============================================================================
+describe("buildKbliFaq — the Bali-block cause is derived, and Italian never leaves", () => {
+  const blocked = (status: string, reason: string): KBLICode => {
+    const base = getCode("56101") as KBLICode;
+    return {
+      ...base,
+      pma: { ...base.pma, status: "open" },
+      baliL4: { ...(base.baliL4 ?? {}), blocked: true, status, reason },
+    } as KBLICode;
+  };
+
+  it("GUILT: a statutory ownership bar is no longer blamed on the moratorium or on UMKM", () => {
+    const answer = buildKbliFaq(
+      blocked("TERTUTUP", "Reserved to Indonesian citizens by UU 30/2004."),
+    )[0].answer;
+    expect(answer).not.toContain("reserved for UMKM");
+    // Not a ban on the WORD: this clause deliberately says "— not by the Bali
+    // moratorium", and that denial is what makes it useful. What must not
+    // survive is the moratorium being ASSERTED as the cause.
+    expect(answer).not.toContain("under the 13 May 2026 moratorium");
+    expect(answer).toContain("ownership restriction on the activity itself");
+  });
+
+  it("GUILT: a sectoral-regulator closure states its own cause", () => {
+    const answer = buildKbliFaq(
+      blocked(
+        "CHIUSO_REGOLATORE_SETTORIALE",
+        "Sector regulator bars private capital.",
+      ),
+    )[0].answer;
+    expect(answer).not.toContain("reserved for UMKM");
+    expect(answer).toContain("the sector's own regulator");
+  });
+
+  it("INNOCENCE: the genuinely MSME-reserved codes keep the meaning they always had", () => {
+    const answer = buildKbliFaq(
+      blocked("CHIUSO_PMA_NO_BESAR", "Besar scale not permitted."),
+    )[0].answer;
+    expect(answer).toContain("micro/small/medium enterprises");
+  });
+
+  it("GUILT: 69104's Italian reason never reaches the answer — nor the JSON-LD built from it", () => {
+    // Verbatim from the canonical record; it was spliced in unconditionally.
+    const answer = buildKbliFaq(
+      blocked(
+        "TERTUTUP",
+        "Notaio/PPAT è ufficio personale e statale, solo WNI (UU 30/2004 mod. UU 2/2014). PMA impossibile.",
+      ),
+    )[0].answer;
+    expect(answer).not.toContain("Notaio");
+    expect(answer).not.toContain("impossibile");
+    // The cause survives the suppression — it comes from the status, not the prose.
+    expect(answer).toContain("ownership restriction on the activity itself");
+  });
+
+  it("INNOCENCE: a useful English reason is still spliced in", () => {
+    const answer = buildKbliFaq(
+      blocked(
+        "CHIUSO_PMA_NO_BESAR",
+        "For PMA use 86103 (klinik, TERBATAS 67%).",
+      ),
+    )[0].answer;
+    expect(answer).toContain("For PMA use 86103");
+  });
+
+  it("no double space is left where the reason was suppressed", () => {
+    const answer = buildKbliFaq(blocked("TERTUTUP", "PMA impossibile."))[0]
+      .answer;
+    expect(answer).not.toContain("  ");
+  });
+});

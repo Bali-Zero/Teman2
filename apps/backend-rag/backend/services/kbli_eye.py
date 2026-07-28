@@ -1,7 +1,10 @@
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class KBLIEye:
@@ -33,6 +36,17 @@ class KBLIEye:
         "47191",
     }
 
+    # Valori di `pma_kondisi` che dichiarano una RISERVA a favore di K-UMKM.
+    # "Kemitraan dengan UMKM/Koperasi" è deliberatamente ASSENTE: un obbligo di
+    # PARTNERSHIP non è una riserva, e confondere le due cose è esattamente il
+    # modo in cui la vecchia derivazione `not is_open_pma` etichettava 68 codici
+    # come "riservati alle UMKM" senza che il dato lo dicesse da nessuna parte.
+    UMKM_RESERVED_KONDISI: frozenset = frozenset({"UMKM only"})
+
+    # Nome della colonna del lampiran Perpres 10/2021 che alloca un'attività a
+    # cooperative/UMKM. Token strutturato in maiuscolo, non prosa libera.
+    UMKM_ALLOCATION_MARKER: str = "DIALOKASIKAN"
+
     def __init__(self, db_path: str = "source_documents/KBLI_2025_FINAL_CLEAN.json") -> None:
         # Risolviamo il path rispetto alla root del progetto
         self.db_path = Path(db_path)
@@ -46,7 +60,21 @@ class KBLIEye:
             if alt_path.exists():
                 self.db_path = alt_path
             else:
-                return  # Database non caricato, get_decision darà errore
+                # Un `return` NUDO qui ha tenuto questo organo morto e MUTO in
+                # produzione: il dataset non entra nell'immagine Docker (il
+                # Dockerfile copia backend/scripts/training-data, mai `data/`),
+                # quindi ogni get_decision() risponde DATABASE_NOT_LOADED e i
+                # due endpoint consumatori degradano il blocco KBLI a
+                # `state: "ERROR"` senza che nulla lo dica. Il rifiuto va
+                # LOGGATO: un fallimento silenzioso non è un fallimento visto.
+                logger.error(
+                    "KBLIEye: dataset non trovato (%s né %s) — get_decision() "
+                    "risponderà DATABASE_NOT_LOADED a ogni codice. cwd=%s",
+                    self.db_path,
+                    alt_path,
+                    Path.cwd(),
+                )
+                return
 
         with open(self.db_path) as f:
             content = json.load(f)
@@ -54,6 +82,61 @@ class KBLIEye:
                 self.data = content["data"]
             else:
                 self.data = content  # Backup se fosse già una lista
+
+    @staticmethod
+    def _foreign_cap(kbli: dict) -> tuple[int | None, str | None, bool]:
+        """Risolve il tetto di proprietà straniera (%) per un codice.
+
+        Il tetto NON è derivabile da `pma_status` da solo: TERBATAS copre 0%,
+        49%, 100% e un regime "special" senza percentuale. Il dataset porta già
+        la cifra aggiudicata per codice (`pma_max_asing`, con
+        `pma_official_basis` che cita il lampiran Perpres 10/2021) — si legge
+        quella invece di ri-derivare un binario che il caso di mezzo non sa
+        esprimere.
+
+        Ritorna `(cap, basis, verified)`. `cap is None` significa "non possiamo
+        dichiarare una cifra": è un gap dichiarato, mai uno 0 silenzioso.
+        """
+        raw = kbli.get("pma_max_asing")
+        basis = kbli.get("pma_cap_note") or kbli.get("pma_official_basis")
+        verified = bool(kbli.get("pma_cap_verified"))
+
+        # `bool` è sottoclasse di `int` in Python: va escluso PRIMA del check.
+        if isinstance(raw, bool):
+            raw = None
+        if isinstance(raw, int):
+            return raw, basis, verified
+        if isinstance(raw, str) and raw.strip().isdigit():
+            return int(raw.strip()), basis, verified
+        if raw is not None:
+            # es. "special": regime condizionato, nessuna percentuale sulla riga.
+            return None, basis, verified
+
+        # Nessuna cifra aggiudicata sul record: si ricade sullo status, che è
+        # inequivocabile SOLO ai due estremi.
+        status = kbli.get("pma_status")
+        if status == "TERBUKA":
+            return 100, "Derived from pma_status=TERBUKA (no per-code cap on record)", False
+        if status == "TERTUTUP":
+            return 0, "Derived from pma_status=TERTUTUP (no per-code cap on record)", False
+        return None, None, False
+
+    @classmethod
+    def _umkm_reserved(cls, kbli: dict) -> bool | None:
+        """`True` solo se il dato NOMINA una riserva K-UMKM; `None` = ignoto.
+
+        Un codice chiuso agli stranieri lo è per molte ragioni (difesa,
+        ambiente, cultura, cabotaggio…): dedurne "riservato alle UMKM" è
+        un'asserzione plausibile-ma-non-fondata. Meglio un gap dichiarato.
+        """
+        kondisi = (kbli.get("pma_kondisi") or "").strip()
+        if kondisi in cls.UMKM_RESERVED_KONDISI:
+            return True
+        if cls.UMKM_ALLOCATION_MARKER in (kbli.get("pma_official_basis") or ""):
+            return True
+        if kbli.get("pma_status") == "TERBUKA":
+            return False
+        return None
 
     def get_decision(self, code: str, is_pma: bool = True, location: str = "Bali") -> dict:
         """
@@ -69,6 +152,7 @@ class KBLIEye:
 
         # 2. Parametri di input per la matrice
         is_open_pma = kbli.get("pma_status") == "TERBUKA"
+        cap, cap_basis, cap_verified = self._foreign_cap(kbli)
 
         # Gestione dati per_skala (può essere una lista o un dict a seconda del cleanup)
         per_skala = kbli.get("per_skala", [{}])
@@ -79,9 +163,16 @@ class KBLIEye:
         # 3. Matrice di Decisione (Determinismo puro)
         resolved_code = kbli["kode_kbli_2025"]
 
-        if is_pma and not is_open_pma:
+        if is_pma and cap == 0:
             state = "REJECTED"
-            reason = "PERPRES_10_2021_RESERVATION"  # DNI list
+            reason = "PERPRES_10_2021_RESERVATION"  # DNI list — 0% asing
+        elif is_pma and not is_open_pma:
+            # Limitato, NON chiuso. Un PMA può salire fino a `cap` (o deve
+            # soddisfare una condizione non-percentuale). WARNING, mai
+            # REJECTED: il vecchio binario trasformava una quota lecita del
+            # 49% in un rifiuto.
+            state = "WARNING"
+            reason = "PERPRES_10_2021_FOREIGN_CAP"
         elif is_pma and location == "Bali" and resolved_code in self.BALI_GOV_LETTER_CODES:
             # 9 codici citati nella Surat Gubernur 28 Gen 2026
             state = "WARNING"
@@ -107,8 +198,15 @@ class KBLIEye:
             },
             "compliance_stack": primary_skala.get("kewajiban", []),
             "pma_logic": {
-                "max_foreign_ownership": 100 if is_open_pma else 0,
-                "is_umkm_reserved": not is_open_pma,
+                # int | None — None = nessuna cifra dichiarabile (gap onesto)
+                "max_foreign_ownership": cap,
+                "max_foreign_ownership_basis": cap_basis,
+                "max_foreign_ownership_verified": cap_verified,
+                # bool | None — None = chiuso/limitato per un motivo che il
+                # record non dichiara: NON assumere che sia una riserva UMKM
+                "is_umkm_reserved": self._umkm_reserved(kbli),
+                # verbatim: "Kemitraan dengan ..." è una condizione, non un tetto
+                "pma_condition": kbli.get("pma_kondisi"),
             },
             "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         }

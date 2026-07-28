@@ -359,7 +359,7 @@ Sign-off Antonello richiesto prima di flip `dry_run=false`.
 ## Decisioni acquisite (2026-05-16)
 
 1. **Selezione 5 VIP per pilot**: Antonello indica `client_id` al Giorno 5 (sign-off prima di flip `dry_run=false`)
-2. **Chrome profile**: profilo Workspace `zero@balizero.com`, PIN sessione `010719` (auth persistente in `~/.config/google-chrome/CRM-Guardian/`). PIN gestito via macOS Keychain (`security find-generic-password -s "crm-guardian-chrome-pin"`), MAI in env vars o repo.
+2. **Chrome profile**: profilo Workspace `zero@balizero.com`, PIN sessione `<redacted 2026-07-27 — read it from the Keychain>` (auth persistente in `~/.config/google-chrome/CRM-Guardian/`). PIN gestito via macOS Keychain (`security find-generic-password -s "crm-guardian-chrome-pin"`), MAI in env vars o repo.
 3. **Re-extraction tax_records**: AGGRESSIVA — quando qualunque file in cartella company cambia, re-estraggo `tax_records` + `lkpm_history` from scratch. No cache 7gg. Trade-off accettato: più Playwright calls vs freschezza garantita
 4. **Narrative**: SOLO `narrative_en` (inglese). Rimuovere `narrative_id` dallo schema L1 v2 — inglese sempre, anche per UI italiana
 
