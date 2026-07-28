@@ -52,6 +52,7 @@ and --fix was not given.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -70,6 +71,32 @@ EXEMPT_VALUE = (
 )
 EXEMPT_LINE = f"adversarial_review: {EXEMPT_VALUE}"
 DELIM = "---"
+
+# The exemption above is not a formality — it is a CLAIM about the document:
+# "generated artifact, not a research deliverable". Stamping it on a document
+# that is a deliverable makes this gate write something false, and the R1 gate
+# then passes it on that false basis.
+#
+# Not hypothetical. research/nb-health/ is the curator's OUTPUT directory, and
+# it also holds 2026-05-28-nb3-kbli-corrections.md — a human-facing correction
+# report on KBLI 2025, verified against a 623-page primary source, carrying an
+# explicit "decision → operator" line. It has frontmatter without the R1 key,
+# which is precisely the shape --fix rewrites. A backfill over the directory
+# would have stamped "generated artifact" on it, and been green.
+#
+# So: judge the DOCUMENT, never its location (superscar #3 — location is a form,
+# deliverable-ness is the entity). The research-capture convention (CLAUDE.md
+# §15) makes these keys mandatory for a real deliverable and absent from a
+# machine snapshot, so their presence is the discriminator.
+#
+# LIMIT, declared: this can only see a document that HAS frontmatter. A
+# deliverable with no frontmatter at all is indistinguishable from a health
+# snapshot here and would still be stamped. The live path is unaffected (the
+# wrapper passes the one report it just wrote); the exposure is bulk/backfill
+# runs, where the operator reads the refusals.
+DELIVERABLE_KEY_RE = re.compile(
+    r"^\s*(sources|client_case|discovered_by)\s*:", re.IGNORECASE
+)
 
 OK = 0
 USAGE = 2
@@ -142,6 +169,19 @@ def evaluate(report: Path) -> Tuple[int, str, Optional[str]]:
             "refusing to guess where the header ends",
             None,
         )
+
+    if fm_lines is not None and not _has_key(fm_lines):
+        claimed = [ln.split(":", 1)[0].strip() for ln in fm_lines if DELIVERABLE_KEY_RE.match(ln)]
+        if claimed:
+            return (
+                REFUSED,
+                f"REFUSING TO EXEMPT {report.name}: its frontmatter declares "
+                f"{', '.join(sorted(set(claimed)))} — that is a research deliverable, and the "
+                "machine exemption asserts the opposite ('generated artifact, not a research "
+                "deliverable'). Stamping it would make this gate write a false statement and the "
+                "R1 gate pass on it. It needs a real adversarial review, by a seat, by hand.",
+                None,
+            )
 
     if fm_lines is not None and _has_key(fm_lines):
         verdict = r1.evaluate_file(report)
