@@ -215,7 +215,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 2
+    assert len(CONTENT_KEYED_RULES) == 3
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -314,3 +314,13 @@ def test_innocence_kbli_gold_other_file_with_same_shape_not_approved() -> None:
         assert reason == "no rule matched"
     finally:
         triage_mod._line_text = real_line_text
+
+
+def test_mouth_article_source_sha256_rule_is_content_and_path_scoped() -> None:
+    path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    digest = "a" * 64
+    assert path_pat.search("apps/mouth/src/content/articles/business/example.it.mdx")
+    assert not path_pat.search("apps/mouth/src/content/pages/example.it.mdx")
+    assert content_pat.match(f'source_sha256: "{digest}"')
+    assert content_pat.match(f'api_key: "{digest}"') is None
+    assert content_pat.match(f'source_sha256: "{digest}"; api_key: "secret"') is None
