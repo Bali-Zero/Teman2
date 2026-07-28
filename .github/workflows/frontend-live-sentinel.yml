@@ -19,6 +19,27 @@ name: Frontend Live Sentinel
 #
 # No new credentials: it reads a public endpoint.
 # Scar family #2 (exists != armed), plus the W88 rule — verify by content, never by proxy.
+#
+# ---------------------------------------------------------------------------------------
+# 2026-07-28, three changes, each paid for by something measured the night before.
+#
+# A SCHEDULE, because a push trigger cannot see a silence. The App is still uninstalled —
+# vercel[bot]'s last GitHub Deployment is 2026-07-26T20:07:27Z, none since. Overnight,
+# production sat 6 hours and 8 commits behind main and this workflow never ran once: none of
+# those commits touched a frontend path, so nothing woke it. A sentinel that can only speak
+# when the thing it guards is being changed is blind exactly when the change stops arriving.
+#
+# THE VERDICT IS "DOES PRODUCTION INCLUDE THIS COMMIT", NOT "DOES IT EQUAL THIS SHA". The
+# equality test demanded a deploy for commits that cannot change the built app: at 17:19Z it
+# went red for a commit that touched only apps/mouth/e2e/**. Now the expected commit is the
+# newest one touching a path that actually reaches the bundle (e2e excluded), and the test is
+# ancestry — production may legitimately be AHEAD of it, never behind. Ancestry is the right
+# semantic here and not a W88-style lying proxy: both shas live on main's linear history, and
+# a served sha that is absent from history fails closed rather than passing.
+#
+# ONE ALERT PER STALE COMMIT. At */30 a permanent outage would send 48 Telegrams a day, and a
+# channel that always shouts is a channel nobody reads (the P0 budget is 12/day). The cache
+# key is the expected sha, so a NEW stale commit still speaks immediately.
 
 on:
   push:
@@ -30,10 +51,17 @@ on:
       - "package-lock.json"
       - "vercel.json"
       - "apps/mouth/vercel.json"
+  schedule:
+    # Every 30 minutes. The job is a shallow-ish clone plus a curl; the cost of running it is
+    # far below the cost of one more silent stale night.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
 
 concurrency:
-  # A newer push makes this wait irrelevant: only the latest sha on main matters.
-  group: frontend-live-sentinel-${{ github.ref }}
+  # A newer push makes this wait irrelevant: only the latest sha on main matters. The event
+  # name is part of the group on purpose — a scheduled tick must never cancel an in-flight
+  # push run: a cancelled run reports neither pass nor fail, which is how a red turns silent.
+  group: frontend-live-sentinel-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 permissions:
@@ -45,39 +73,95 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Poll balizero.com until it serves this sha
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history: the ancestry test needs both shas present
+          # blob:none — every commit and tree, file contents fetched on demand. A full clone
+          # of this repo moves 2,289 MB and has already eaten an entire job budget elsewhere.
+          filter: blob:none
+
+      - name: Which commit must production include?
+        id: expected
         env:
-          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -uo pipefail
+          # Paths that can change what the browser receives. apps/mouth/e2e is excluded: those
+          # specs run in CI and never reach the bundle, so demanding a deploy for them
+          # manufactures a red with no user-visible referent.
+          sha=$(git log -1 --format=%H -- \
+            apps/mouth packages package.json package-lock.json vercel.json \
+            ':(exclude)apps/mouth/e2e')
+          if [ -z "$sha" ]; then
+            echo "::warning::no commit touches the deploy-relevant paths — nothing to assert"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          age_s=$(( $(date -u +%s) - $(git show -s --format=%ct "$sha") ))
+          echo "expected  : $sha"
+          echo "age       : $(( age_s / 60 )) min"
+          echo "event     : $EVENT"
+
+          # One decision, one write per key: a duplicated key in $GITHUB_OUTPUT is a coin toss
+          # nobody should have to reason about.
+          skip=false
+          attempts=3
+          if [ "$EVENT" = "push" ]; then
+            # A frontend build plus alias assignment normally lands in 3-6 minutes.
+            # 18 attempts x 60s = 18 minutes of grace before shouting.
+            attempts=18
+          elif [ "$age_s" -lt 2700 ]; then
+            # Younger than 45 min on a scheduled tick: a deploy may still be in flight, and
+            # the push-triggered run is the one that owns that window. Do not double-shout.
+            echo "::notice::expected commit is $(( age_s / 60 )) min old — inside the deploy window, deferring to the push run"
+            skip=true
+          fi
+
+          {
+            echo "skip=$skip"
+            echo "sha=$sha"
+            echo "age_min=$(( age_s / 60 ))"
+            echo "attempts=$attempts"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Poll balizero.com until it includes that commit
+        id: probe
+        if: steps.expected.outputs.skip != 'true'
+        env:
+          SHA: ${{ steps.expected.outputs.sha }}
+          ATTEMPTS: ${{ steps.expected.outputs.attempts }}
         run: |
           set -uo pipefail
           URL="https://balizero.com/api/health"
           seen=""
-          # A frontend build plus alias assignment normally lands in 3-6 minutes.
-          # 18 attempts x 60s = 18 minutes of grace before shouting.
-          for i in $(seq 1 18); do
+          for i in $(seq 1 "$ATTEMPTS"); do
             # Capture the exit code directly — never through a pipe, which reports the pipe's.
             body=$(curl -sS --max-time 25 "$URL" 2>&1); rc=$?
             if [ "$rc" -ne 0 ]; then
-              echo "attempt $i/18 - curl rc=$rc: ${body:0:160}"
+              echo "attempt $i/$ATTEMPTS - curl rc=$rc: ${body:0:160}"
               sleep 60; continue
             fi
             live=$(printf '%s' "$body" | jq -r '.commit // empty')
             if [ -z "$live" ]; then
               # Field absent: production predates the change that introduces it, or someone
               # removed it. Neither is evidence of health, so this is not a pass.
-              echo "attempt $i/18 - /api/health exposes no .commit (production older than this probe?)"
+              echo "attempt $i/$ATTEMPTS - /api/health exposes no .commit (production older than this probe?)"
               seen="(no .commit field)"
               sleep 60; continue
             fi
             seen="$live"
-            echo "attempt $i/18 - production serves ${live:0:8}, expected ${SHA:0:8}"
-            if [ "$live" = "$SHA" ]; then
+            # Ancestor-or-equal: production is allowed to be AHEAD of the expected commit
+            # (a later e2e-only or CI-only commit deployed with something else), never behind.
+            # An unknown sha makes this exit non-zero, which is a fail — deliberately closed.
+            if git merge-base --is-ancestor "$SHA" "$live" 2>/dev/null; then
+              echo "attempt $i/$ATTEMPTS - production serves ${live:0:8}, which includes ${SHA:0:8}"
               echo "OK - balizero.com is serving this commit."
               exit 0
             fi
+            echo "attempt $i/$ATTEMPTS - production serves ${live:0:8}, which does NOT include ${SHA:0:8}"
             sleep 60
           done
-          echo "::error::After 18 minutes balizero.com is NOT serving $SHA (last seen: ${seen:-no response})."
+          echo "::error::balizero.com does NOT include $SHA (last seen: ${seen:-no response})."
           echo "The public frontend is stale: balizero.com AND every subdomain share one Vercel project."
           echo "Two known causes, likeliest first:"
           echo "  1) The Vercel GitHub App is not installed/authorised on the repo, so no deployment"
@@ -85,23 +169,35 @@ jobs:
           echo "     -> Configure -> grant access to this repository."
           echo "  2) A deployment was created and went READY, but the custom domains were not"
           echo "     repointed. Fix: POST /v10/projects/<projectId>/promote/<deploymentId>."
-          echo "Manual deploy meanwhile: POST /v13/deployments with gitSource, then promote —"
+          echo "Manual deploy meanwhile: scripts/vercel_prod_deploy.py (gitSource + promote) —"
           echo "that path keeps working even when the project's git link is gone."
           exit 1
 
-      - name: Tell Telegram once the silence is confirmed
+      # Dedup lives between the failure and the alert, never inside the alert: the cache is
+      # keyed by the expected sha, so a permanent outage speaks once and a NEW stale commit
+      # speaks again immediately.
+      - name: Has this stale commit already been announced?
+        id: announced
         if: failure()
+        uses: actions/cache/restore@v4
+        with:
+          path: .stale-alert-marker
+          key: frontend-stale-alert-${{ steps.expected.outputs.sha }}
+
+      - name: Tell Telegram once the silence is confirmed
+        if: failure() && steps.announced.outputs.cache-hit != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ steps.expected.outputs.sha }}
+          AGE_MIN: ${{ steps.expected.outputs.age_min }}
         run: |
           set -uo pipefail
           if [ -z "${TG_TOKEN:-}" ] || [ -z "${TG_CHAT:-}" ]; then
             echo "::warning::Telegram secrets absent - no alert sent"
             exit 0
           fi
-          MSG="[FRONTEND STALE] balizero.com is not serving ${SHA:0:8} after 18 min. Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. Likely fix: github.com/apps/vercel -> Configure -> grant repo access."
+          MSG="[FRONTEND STALE] balizero.com does not include ${SHA:0:8} (${AGE_MIN} min old). Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. Fix: github.com/apps/vercel -> Configure -> grant repo access. Stopgap: python3 scripts/vercel_prod_deploy.py"
           # Judge the REPLY, not the exit code: curl exits 0 even when Telegram refuses.
           resp=$(curl -sS --max-time 20 -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
             --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$MSG" 2>&1); rc=$?
@@ -111,5 +207,15 @@ jobs:
           fi
           case "$resp" in
             *'"ok":true'*) echo "Telegram alert delivered" ;;
-            *) echo "::warning::Telegram REFUSED the alert: ${resp:0:200}" ;;
+            *) echo "::warning::Telegram REFUSED the alert: ${resp:0:200}"; exit 0 ;;
           esac
+          date -u +%FT%TZ > .stale-alert-marker
+
+      # Saved only when an alert actually went out, so a refused Telegram does not buy silence
+      # for the next 30 minutes.
+      - name: Remember that this stale commit was announced
+        if: failure() && steps.announced.outputs.cache-hit != 'true' && hashFiles('.stale-alert-marker') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .stale-alert-marker
+          key: frontend-stale-alert-${{ steps.expected.outputs.sha }}
