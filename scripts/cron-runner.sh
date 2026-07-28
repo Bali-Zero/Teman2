@@ -93,8 +93,49 @@ PY
     mv "$tmp" "$state_file"
 }
 
+# ── Alert on failure (2026-07-28) ───────────────────────────────────────────
+# Until now this wrapper only wrote a receipt, exactly like cron-state.sh did
+# before 2026-07-27. Giving cron-state a voice and stopping there was half a
+# fix, and it cured the smaller wrapper: censused on Pro the next day by the
+# `source` field of the receipts, there are FIVE producers, and cron-runner is
+# the largest (36 receipts, 30 invocations = 25 crontab + 5 plist) against
+# cron-state's 28 / 27. Two cron-runner jobs failed in the 24h after that fix
+# shipped — garuda_indexer 27/07 20:36 and run_ops_briefing 27/07 00:00 — with
+# zero `cron-fail:` in the 239-row P0 archive or the 54-row digest spool.
+# Nobody heard either one.
+#
+# Same gateway, tier and `cron-fail:` dedup key as cron-state.sh and
+# cron-wrapper.sh, so a flapping job collapses to one alert per window, the
+# reserved lane (TG_CRON_FAIL_RESERVE) applies, and with no credentials the
+# alert lands in the digest spool instead of vanishing.
+#
+# Deliberately fail-open: the job's exit code is the contract this wrapper
+# exists to preserve, and an alerting problem must never rewrite it.
+alert_failure() {  # alert_failure <job_key> <exit_code> <start_ts> <end_ts> <tail>
+    local job_key="$1" exit_code="$2" start_ts="$3" end_ts="$4" tail_text="$5"
+    local gateway
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    [ -f "$gateway" ] || return 0
+    python3 "$gateway" \
+        --tier p0 \
+        --source "cron:${job_key}" \
+        --dedup-key "cron-fail:${job_key}" \
+        -- "CRON FAIL $HOSTNAME_SHORT
+Job: $job_key
+Exit: $exit_code
+Duration: $((end_ts - start_ts))s
+$(printf '%s' "$tail_text" | tail -c 600)" >/dev/null 2>&1 || true
+}
+
 if [ -z "$SCRIPT" ]; then
     echo "Usage: cron-runner.sh <script> [args...]" >&2
+    # A crontab line that lost its argument fails this way on EVERY tick and
+    # writes no receipt at all — the most invisible of the three exits. Fixed
+    # key because there is no job identity to derive; dedup collapses the
+    # repeats to one alert per window.
+    _now="$(date +%s)"
+    alert_failure "_cron_runner_usage" 64 "$_now" "$_now" "cron-runner.sh invoked with no script argument"
     exit 64
 fi
 
@@ -105,6 +146,9 @@ if [ ! -f "$SCRIPT" ]; then
     END_TS="$(date +%s)"
     echo "ERROR: $SCRIPT not found" >&2
     write_state "$JOB_KEY" "failed" "$START_TS" "$END_TS" 1 "$SCRIPT" "$@"
+    # Armed to nothing (W81): the cron is scheduled, the payload is gone. This
+    # says so out loud instead of leaving it in an unread receipt.
+    alert_failure "$JOB_KEY" 1 "$START_TS" "$END_TS" "script not found: $SCRIPT"
     exit 1
 fi
 
@@ -130,4 +174,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 [ -n "$ERR_TMP" ] && rm -f "$ERR_TMP"
 write_state "$JOB_KEY" "$STATUS" "$START_TS" "$END_TS" "$EXIT_CODE" "$SCRIPT" "$@"
+if [ "$EXIT_CODE" -ne 0 ]; then
+    alert_failure "$JOB_KEY" "$EXIT_CODE" "$START_TS" "$END_TS" "${CRON_RUNNER_LAST_ERROR:-}"
+fi
 exit "$EXIT_CODE"

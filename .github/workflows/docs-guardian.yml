@@ -23,6 +23,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # needed for `git log -1 --format=%ct` mtime derivation
+          filter: blob:none
 
       - uses: actions/setup-python@v7
         with:

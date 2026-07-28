@@ -40,6 +40,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the PR base ref is resolvable for the diff
+          filter: blob:none
 
       - uses: actions/setup-python@v7
         with:

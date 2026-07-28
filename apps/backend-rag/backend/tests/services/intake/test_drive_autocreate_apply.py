@@ -28,7 +28,7 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
-DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_dev")
+DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_test")
 
 pytestmark = pytest.mark.asyncio
 

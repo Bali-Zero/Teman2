@@ -2,7 +2,7 @@
   "name": "admin-dashboard-local",
   "version": "0.1.0",
   "private": true,
-  "description": "Pro-only LLM cost dashboard. NOT deployed anywhere — localhost:3100.",
+  "description": "Pro-only LLM cost dashboard. NOT deployed anywhere \u2014 localhost:3100.",
   "scripts": {
     "dev": "next dev -p 3100",
     "build": "next build",
@@ -15,19 +15,19 @@
     "bcryptjs": "^3.0.3",
     "next": "^16.2.12",
     "pg": "^8.22.0",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "recharts": "^2.13.0"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26",
     "@types/pg": "^8.11.4",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "autoprefixer": "^10.5.4",
-    "postcss": "^8.5.20",
-    "tailwindcss": "^3.4.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "postcss": "^8.5.23",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }

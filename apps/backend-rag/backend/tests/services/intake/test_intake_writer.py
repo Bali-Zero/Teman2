@@ -1,4 +1,9 @@
-"""FASE 5B — CRM writer DRY-RUN tests (real local DB: nuzantara_dev).
+"""FASE 5B — CRM writer DRY-RUN tests (real local Postgres).
+
+Target DB comes from ``INTAKE_TEST_DSN``; the default is ``nuzantara_test``,
+NOT ``nuzantara_dev`` (corrected 2026-07-28 — see the note in the root
+conftest: the fail-closed guard watched only ``TEST_DATABASE_URL``, so this
+module's own fallback pointed at the operational intake queue on Pro).
 
 The cardinal assertion of 5B: the writer logic runs end-to-end, but writes
 NOTHING to the CRM. Every test that exercises approve/execute_commit also asserts
@@ -32,7 +37,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.services.intake import writer as intake_writer
 
-DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_dev")
+DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_test")
 PIPELINE = "test-5b"
 
 ADMIN = {"id": "1", "email": "zero@balizero.com", "role": "admin"}
@@ -2371,10 +2376,14 @@ async def test_enrichment_equal_normalization_still_fills(pool, seed):
 
 
 class _FakeNpwpNibConn:
-    """Minimal Connection stand-in for a schema that HAS npwp/nib (local
-    nuzantara_dev currently lacks both columns — verified live this session via
-    information_schema — so the real DB pool can't exercise this branch; the
-    schema-drift guard in client_enricher.py already no-ops there)."""
+    """Minimal Connection stand-in for a schema that HAS npwp/nib.
+
+    Observed live via information_schema: local ``nuzantara_dev`` lacked both
+    columns, so the real pool could not exercise this branch. That reading is
+    kept as recorded rather than restated for ``nuzantara_test`` (2026-07-28,
+    when the default DSN moved) — it was measured on the DB it names, and a
+    stand-in is the right shape either way; the schema-drift guard in
+    client_enricher.py already no-ops where the columns are missing."""
 
     def __init__(self, client_row: dict) -> None:
         self.client_row = client_row

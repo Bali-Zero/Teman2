@@ -77,6 +77,21 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 # ============================================================================
 PREPUSH_RUN_BACKEND=1
 
+# ---------------------------------------------------------------------------
+# The pre-push protocol stream, captured ONCE, before any branch below.
+#
+# It used to be consumed inside the path-aware gate's `else` arm, which meant
+# the two bypass branches (PREPUSH_FULL / PREPUSH_PATHAWARE=0) never saw it at
+# all. Two readers need it now — that gate, and the tip-drift check at the very
+# end of this file — and a stream can only be read once, so it is slurped to a
+# file here and both read the FILE. Capturing it unconditionally also means the
+# drift check still runs on the bypass paths, which is exactly where a gate is
+# most worth having.
+PREPUSH_REFS="$(mktemp 2>/dev/null || true)"
+if [ -n "$PREPUSH_REFS" ]; then
+    cat > "$PREPUSH_REFS" || true
+fi
+
 if [ "${PREPUSH_FULL:-0}" = "1" ]; then
     echo "🧭 PREPUSH_FULL=1 — path-aware gate bypassed, full suite unconditionally."
 elif [ "${PREPUSH_PATHAWARE:-1}" = "0" ]; then
@@ -107,9 +122,10 @@ else
         DIFF_ERROR=1
     else
         : > "$UNION_FILE"
-        # Reads THIS hook's own stdin (the git pre-push protocol stream) —
-        # must happen before anything else below reads stdin. Nothing later
-        # in this file does, so consuming it fully here is safe.
+        # Reads the pre-push protocol lines captured at the top of this file
+        # (they used to be read straight off stdin here; a second reader — the
+        # tip-drift check at the end — now needs them too, and a stream serves
+        # exactly one reader).
         while read -r local_ref local_sha remote_ref remote_sha; do
             [ -z "$local_ref" ] && continue  # trailing blank line safety
             REFS_SEEN=$((REFS_SEEN + 1))
@@ -171,8 +187,11 @@ else
                 DIFF_ERROR=1
                 break
             fi
-        done
+        done < "${PREPUSH_REFS:-/dev/null}"
 
+        # An unreadable capture is indistinguishable from an empty push here,
+        # and both must fail closed — which the REFS_SEEN test below already
+        # does, since /dev/null yields zero lines.
         [ "$REFS_SEEN" -eq 0 ] && DIFF_ERROR=1
     fi
 
@@ -565,6 +584,49 @@ fi
 # only the claim, which is the part that was false.
 # Defaults on both vars: the path-aware SKIP branch never enters the block that
 # initialises them, and this hook runs under `sh -e`.
+# ---------------------------------------------------------------------------
+# TIP-DRIFT — did the branch move while everything above was running?
+#
+# Everything above judged the sha git handed this hook on stdin. If a commit
+# landed on the branch in the meantime, that verdict describes a DIFFERENT tree
+# than the one about to be sent — measured 2026-07-28: the hook validated
+# f3bf5632, GitHub recorded a single PushEvent 418d187c -> d45c116e, and git's
+# own summary line still named f3bf5632. Rationale, evidence and the reason
+# this one REFUSES (unlike the softer verdict below it) are in the checker.
+#
+# Errexit-immune capture on purpose: a bare `TIP_RC=$(...)` under this hook's
+# `sh -e` would abort here on the very exit code it exists to read — W101, the
+# scar whose fourth instance shipped the same week.
+if [ -n "${PREPUSH_REFS:-}" ] && [ -x scripts/ci/prepush_tip_drift.sh ]; then
+    TIP_RC=0
+    TIP_OUT=$(sh scripts/ci/prepush_tip_drift.sh "$PREPUSH_REFS" 2>&1) || TIP_RC=$?
+    case "$TIP_RC" in
+        0)
+            # Print the receipt. Measured on this check's OWN first real push:
+            # it passed and emitted nothing, so 238KB of push log contained no
+            # evidence it had run at all — a hook without this block produces
+            # the identical silence. The rc=2 branch below already refuses to
+            # be silent for exactly this reason; the same argument applies to
+            # the happy path, where it is easier to forget and cheaper to fix.
+            printf '%s\n' "$TIP_OUT"
+            ;;
+        1)
+            printf '%s\n' "$TIP_OUT"
+            rm -f "$PREPUSH_REFS"
+            exit 1
+            ;;
+        *)
+            # CANNOT-VERIFY (deletion-only push, vanished ref, unreadable
+            # capture). Not drift, so it must not block — but it must not be
+            # silent either: an unverified push that reads like a verified one
+            # is the whole failure mode this check exists for.
+            echo "⚠️  tip-drift check could not verify this push (rc=$TIP_RC):"
+            printf '%s\n' "$TIP_OUT" | sed 's/^/    /'
+            ;;
+    esac
+fi
+[ -n "${PREPUSH_REFS:-}" ] && rm -f "$PREPUSH_REFS"
+
 if [ "$PREPUSH_RUN_BACKEND" = "1" ] && [ "${BACKEND_SUITE_RAN:-0}" != "1" ]; then
     echo "⚠️  PUSH NOT VERIFIED LOCALLY — the backend suite was REQUIRED for this diff but never ran"
     echo "    (${BACKEND_SUITE_SKIP_REASON:-reason not recorded})."

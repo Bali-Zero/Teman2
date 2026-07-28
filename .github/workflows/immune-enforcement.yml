@@ -95,6 +95,10 @@ jobs:
               scripts/tests/test_lint_doc_executable_refs.py|\
               scripts/lint_worktree_husky_symlink.py|\
               scripts/tests/test_lint_worktree_husky_symlink.py|\
+              scripts/tests/test_root_manifest_does_not_contradict_itself.py|\
+              package.json|\
+              apps/*/package.json|\
+              packages/*/package.json|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
@@ -111,12 +115,15 @@ jobs:
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
               scripts/tests/test_prepush_failclosed.sh|\
+              scripts/tests/test_prepush_tip_drift.sh|\
+              scripts/ci/prepush_tip_drift.sh|\
               scripts/docs_audit.py|\
               scripts/docs_inventory_refresh_liveness.py|\
               scripts/docs_inventory_regen.sh|\
               scripts/tests/test_docs_audit.py|\
               scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
+              scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
               scripts/lib/offsite_verify.sh|\
@@ -126,6 +133,8 @@ jobs:
               scripts/cron-wrapper.sh|\
               scripts/cron-state.sh|\
               scripts/test_cron_state_alert.sh|\
+              scripts/cron-runner.sh|\
+              scripts/test_cron_runner_alert.sh|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
               scripts/ci/queue_rearm.sh|\
@@ -133,11 +142,18 @@ jobs:
               scripts/ci/queue_rearm_population.sh|\
               scripts/ci/test_queue_rearm_classify.sh|\
               scripts/ci/test_queue_rearm_population.sh|\
+              scripts/ci/telegram_verdict.sh|\
+              scripts/ci/telegram_notify.sh|\
+              scripts/ci/test_telegram_verdict.sh|\
               scripts/tests/test_fly_backup_timeouts.py|\
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
+              scripts/tests/test_lint_workflow_errexit_decap.py|\
+              scripts/lint_workflow_errexit_decap.py|\
+              scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
+              apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
@@ -172,6 +188,7 @@ jobs:
             scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
             scripts/tests/test_lint_worktree_husky_symlink.py \
+            scripts/tests/test_root_manifest_does_not_contradict_itself.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
@@ -181,9 +198,12 @@ jobs:
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
+            scripts/tests/test_docs_inventory_render_is_clock_free.py \
             scripts/tests/test_fly_backup_timeouts.py \
             scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/tests/test_ci_service_images_use_mirror.py \
+            scripts/tests/test_lint_workflow_errexit_decap.py \
+            scripts/tests/test_intake_dsn_guard_covers_every_var.py \
             scripts/tests/test_husky_prepush_venv_guard.py \
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
             scripts/test_lint_test_reward_hacking.py ; do
@@ -196,6 +216,16 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: No run-block decapitates its own failure branch (W101, 4th instance)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Running the CORPUS is not running the LINT. The corpus proves the
+          # detector still bites; only this step proves the repo is clean. On
+          # 2026-07-28 the same omission is what let three live decapitations
+          # sit on main — including the one that had silently killed every
+          # scheduled run of the merge-queue re-armer since it was armed.
+          python3 scripts/lint_workflow_errexit_decap.py
 
       - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
         if: steps.paths.outputs.relevant == 'true'
@@ -228,6 +258,16 @@ jobs:
           # must go red rather than quietly pass.
           bash scripts/tests/test_prepush_failclosed.sh
 
+      - name: tip-drift corpus — the branch cannot move under the gate (guilt + innocence + W84)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Same POSIX-sh reasoning as the step above: its own step, exit code
+          # read directly, no `if [ -f ]` skip. `prepush-guards.yml` runs this
+          # corpus too and is the REQUIRED context; this second executor is
+          # deliberate — the guard it covers is what makes that context mean
+          # anything, and a single executor is a single point of silence.
+          bash scripts/tests/test_prepush_tip_drift.sh
+
       - name: cron-state failure alert corpus (guilt + innocence + fail-open)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -235,6 +275,17 @@ jobs:
           # under it, so its failure was silent while the 03:20 twin alerted. Named here at
           # birth: an alarm nobody exercises is the thing it was built to prevent.
           bash scripts/test_cron_state_alert.sh
+
+      - name: cron-runner failure alert corpus (3 exits + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The sibling of the step above, and the reason it exists: curing cron-state
+          # and stopping there left the BIGGER of five producers mute (cron-runner: 36
+          # receipts, 30 invocations, vs cron-state's 28/27). Measured the next morning,
+          # two cron-runner jobs had failed within 24h of that fix with zero cron-fail:
+          # anywhere. All three exits are asserted — a fix that covers only the path
+          # that bit you is half a fix.
+          bash scripts/test_cron_runner_alert.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
@@ -262,6 +313,29 @@ jobs:
           # same code, same world.
           bash scripts/ci/test_queue_rearm_classify.sh
           bash scripts/ci/test_queue_rearm_population.sh
+
+      - name: Telegram delivery verdict corpus (guilt + innocence + fail-closed)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # W104 on the CI surface: 25 of the 28 `curl .../sendMessage` calls in this
+          # repo's workflows judged their own delivery by curl's EXIT CODE, which is 0
+          # whenever the server answers — including HTTP 401 with a well-formed
+          # {"ok":false,"description":"Unauthorized"} after a token rotation. Every one
+          # of those alarms was, by construction, unable to report its own silence.
+          #
+          # (An earlier draft of this comment said "12 of 14". That was my own
+          # undercount from a line-anchored grep, blind to the prevailing shape in this
+          # repo — `curl -sS -X POST \` with the URL on the NEXT line. The real figures
+          # come from joining continuations before scanning: 28 sites, 18 files. Left
+          # recorded rather than quietly overwritten, because a wrong census is exactly
+          # what the widened `lint_tg_direct_senders.py` scan exists to prevent.)
+          #
+          # What this pins: 401/403/400/429 are refusals, `"ok":false` under an HTTP 200
+          # is a refusal (the status line is not the authority, the body is), the word
+          # "true" appearing anywhere else in the payload is NOT a delivery, and an
+          # absent status is CANNOT-VERIFY rather than success — a blind check is not a
+          # clean check.
+          bash scripts/ci/test_telegram_verdict.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'

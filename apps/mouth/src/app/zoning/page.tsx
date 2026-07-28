@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ZoningCheckCTA } from "./_components/ZoningCheckCTA";
 
 export const metadata: Metadata = {
-  title: "Zoning Check — Verifikasi Zonasi Properti Bali Anda | Bali Zero",
+  title: "Zoning Check — Verifikasi Zonasi Properti Bali Anda",
   description:
     "Pastikan properti atau lahan Anda di Bali sesuai zonasi yang berlaku sebelum membeli atau membangun. Tim Bali Zero memverifikasi status zonasi dan risiko regulasi untuk PT PMA dan investor asing.",
   alternates: {
