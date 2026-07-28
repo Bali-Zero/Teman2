@@ -24,7 +24,19 @@ unset ANTHROPIC_API_KEY
 unset ANTHROPIC_API_KEY
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-LOCK_FILE="/tmp/nb-curator.lock"
+# Sibling scripts resolve from THIS file's own directory, never from $HOME: the
+# gate and the notification gateway must be the versions that ship with this
+# wrapper, or the wrapper is verifying itself against a copy it did not bring
+# (superscar #1 — HOME-fork). OUTPUT_DIR deliberately stays $HOME-anchored: the
+# reports belong to the machine's checkout, not to whatever worktree happens to
+# be executing.
+SCRIPT_DIR="${0:A:h}"
+ARTIFACT_GATE="$SCRIPT_DIR/nb_curator_artifact_gate.py"
+TG_NOTIFY="$SCRIPT_DIR/tg_notify.py"
+# Overridable so a test can take its OWN lock instead of the machine-wide one —
+# a test that grabs /tmp/nb-curator.lock would block (or be blocked by) the real
+# 04:00 cron on Pro (W96: tests must never touch production state).
+LOCK_FILE="${NB_CURATOR_LOCK_FILE:-/tmp/nb-curator.lock}"
 LOG="$HOME/logs/nb-curator.log"
 OUTPUT_DIR="$HOME/nuzantara/research/nb-health"
 DEDUP_SCRIPT="$HOME/nuzantara/apps/bali-intel-scraper/scripts/nb_dedup_exact_url.py"
@@ -32,19 +44,57 @@ DATE_STR=$(TZ=Asia/Makassar date +%Y-%m-%d)
 MONTH_STR=$(TZ=Asia/Makassar date +%Y-%m)
 DOW=$(TZ=Asia/Makassar date +%u)   # 1=Mon..7=Sun
 DAY=$(TZ=Asia/Makassar date +%-d)  # day-of-month
-TG_CHAT="1125336968"
+# (TG_CHAT removed: the gateway resolves the destination. A hardcoded chat_id
+# left behind here would read like a knob and change nothing when turned.)
 
 mkdir -p "$HOME/logs" "$OUTPUT_DIR"
 
 # ── flock — prevent overlapping runs ──────────────────────────────────────────
+# `flock` is NOT a macOS builtin — it arrives via homebrew util-linux and is
+# present on Pro (/opt/homebrew/bin/flock) and absent on M5 (measured
+# 2026-07-28). The old form was `flock -n 9 || { log "already running"; exit 0; }`,
+# so on a machine without the binary the 127 took the same branch as a held lock:
+# every run would log "already running, skipping" and exit 0 having done nothing,
+# green and inert (superscar #2 — the guard's own failure is indistinguishable
+# from the state it guards). Missing binary now degrades LOUDLY to an unlocked
+# run; only a genuinely held lock skips.
 exec 9>"$LOCK_FILE"
-flock -n 9 || {
-    echo "$(TZ=Asia/Makassar date '+%Y-%m-%dT%H:%M:%S WITA'): nb-curator already running, skipping" >> "$LOG"
-    exit 0
-}
+if command -v flock >/dev/null 2>&1; then
+    flock -n 9 || {
+        echo "$(TZ=Asia/Makassar date '+%Y-%m-%dT%H:%M:%S WITA'): nb-curator already running, skipping" >> "$LOG"
+        exit 0
+    }
+else
+    echo "$(TZ=Asia/Makassar date '+%Y-%m-%dT%H:%M:%S WITA'): WARN: flock not found — running WITHOUT the overlap lock (brew install util-linux)" >> "$LOG"
+fi
 
 log() { echo "$(TZ=Asia/Makassar date '+%Y-%m-%dT%H:%M:%S WITA'): $*" >> "$LOG"; }
 log "nb-curator-daily started (DOW=$DOW DAY=$DAY)"
+
+# ── Telegram: through the gateway, never a naked curl ─────────────────────────
+# `curl … >/dev/null 2>&1` makes a 401, a wrong chat_id and a delivered message
+# indistinguishable — judge the REPLY, never the exit code (W104) — and it needs
+# TELEGRAM_BOT_TOKEN to already be in this process's environment, which on a
+# launchd cron is exactly the thing that goes missing. tg_notify.py owns the
+# token chain (env -> ~/.nuzantara-secrets.env -> ssh relay -> spool) and never
+# fails its caller; the one thing it cannot do is exist when it is absent, so
+# THAT case is the loud one — an alarm that cannot be delivered still leaves a
+# trace in the log instead of evaporating.
+tg() {  # tg <tier> <text...>
+    local tier="$1"; shift
+    if [ ! -f "$TG_NOTIFY" ]; then
+        log "ALERT NOT SENT — gateway missing at $TG_NOTIFY [$tier]: $*"
+        return 1
+    fi
+    local out rc
+    if out=$(/usr/bin/python3 "$TG_NOTIFY" --tier "$tier" --source nb-curator "$*" 2>&1); then
+        rc=0
+    else
+        rc=$?
+    fi
+    log "tg[$tier] rc=$rc ${out:-<no output>}"
+    return $rc
+}
 
 # ── Step 1: deterministic exact-URL dedup (auto-apply, cap 20) ────────────────
 DEDUP_DELETED=0
@@ -54,9 +104,7 @@ if [ -f "$DEDUP_SCRIPT" ]; then
     DEDUP_DELETED=$(echo "$DEDUP_OUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('deleted',0))" 2>/dev/null || echo 0)
     # cap-exceeded (exit 2) → alert: anomaly, possible matching bug
     if echo "$DEDUP_OUT" | grep -q 'aborted_cap'; then
-        curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TG_CHAT}" \
-            -d "text=⚠️ nb-curator dedup ABORT: planned deletes > cap 20 (possible matching bug). Check ~/logs/nb-curator.log" >/dev/null 2>&1
+        tg p0 "⚠️ nb-curator dedup ABORT: planned deletes > cap 20 (possible matching bug). Check ~/logs/nb-curator.log"
     fi
 else
     log "WARN: dedup script missing at $DEDUP_SCRIPT"
@@ -76,9 +124,7 @@ if [ "${NB_CURATOR_CHALLENGE_SWEEP_ENABLED:-true}" = "true" ] && [ -f "$DEDUP_SC
     log "challenge-sweep: $SWEEP_OUT"
     CHALLENGE_DELETED=$(echo "$SWEEP_OUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('challenge_deleted',0))" 2>/dev/null || echo 0)
     if echo "$SWEEP_OUT" | grep -q 'aborted_cap'; then
-        curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TG_CHAT}" \
-            -d "text=⚠️ nb-curator challenge-sweep ABORT: planned deletes > cap 20 (possible title-match bug). Check ~/logs/nb-curator.log" >/dev/null 2>&1
+        tg p0 "⚠️ nb-curator challenge-sweep ABORT: planned deletes > cap 20 (possible title-match bug). Check ~/logs/nb-curator.log"
     fi
 else
     log "challenge-sweep skipped (NB_CURATOR_CHALLENGE_SWEEP_ENABLED!=true or script missing)"
@@ -188,6 +234,28 @@ fi
 log "brain used: $BRAIN_USED (exit=$EXIT)"
 cat "$TMPOUT" >> "$LOG"
 
+# ── Step 3b: ARTIFACT GATE — did the brain actually write the report? ─────────
+# Everything below this line reads the brain's STDOUT. Nothing read the FILE.
+# A run whose brain prints a flawless `SUMMARY:` line and writes no report at all
+# used to land here as "OK — no action/anomaly" with a green cron receipt, and
+# the R1 frontmatter that the prompt mandates verbatim was enforced by nothing
+# but the model's compliance — which measured 3-of-4 on the reports that reached
+# main (2026-07-27 arrived with no frontmatter; PR #3254 merged with the required
+# R1 check RED; #3416 was blocked by it). This step is the deterministic half.
+# `|| GATE_RC=$?` is the errexit-immune capture (W101): a bare assignment aborts
+# the script under `set -e` BEFORE the verdict can be read, which is exactly how
+# a fail-closed branch gets decapitated.
+GATE_RC=0
+if [ -f "$ARTIFACT_GATE" ]; then
+    /usr/bin/python3 "$ARTIFACT_GATE" --report "$REPORT_PATH" --fix >>"$LOG" 2>&1 || GATE_RC=$?
+    log "artifact gate rc=$GATE_RC on $REPORT_PATH"
+else
+    # Not a silent skip: an absent gate means the artifact is unverified, and
+    # "unverified" must never read the same as "verified clean" (superscar #2).
+    GATE_RC=127
+    log "ARTIFACT GATE MISSING at $ARTIFACT_GATE — report NOT verified"
+fi
+
 # ── Step 4: Telegram digest ONLY if action/anomaly ────────────────────────────
 SUMMARY_LINE=$(grep -oE 'SUMMARY: broken=[0-9]+ stale=[0-9]+ proposals=[0-9]+ press_new=[0-9]+' "$TMPOUT" | tail -1)
 rm -f "$TMPOUT"
@@ -197,16 +265,26 @@ PROPOSALS=$(echo "$SUMMARY_LINE" | grep -oE 'proposals=[0-9]+' | cut -d= -f2); P
 
 if [ "$EXIT" -ne 0 ]; then
     log "nb-curator ALL TIERS FAILED (exit=$EXIT)"
-    curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TG_CHAT}" \
-        -d "text=⚠️ nb-curator daily FAILED (exit=$EXIT). Log: ~/logs/nb-curator.log" >/dev/null 2>&1
+    tg p0 "⚠️ nb-curator daily FAILED (exit=$EXIT). Log: ~/logs/nb-curator.log"
+elif [ "$GATE_RC" -ne 0 ]; then
+    # The brain said it succeeded and the artifact says otherwise. Believing the
+    # brain here is the whole disease: green receipt, no report.
+    log "nb-curator ARTIFACT GATE FAILED (rc=$GATE_RC) despite brain exit=0"
+    tg p0 "⚠️ nb-curator $DATE_STR: brain OK but the report failed the artifact gate (rc=$GATE_RC) — ${REPORT_PATH##*/}. Log: ~/logs/nb-curator.log"
 elif [ "$DEDUP_DELETED" -gt 0 ] || [ "$CHALLENGE_DELETED" -gt 0 ] || [ "$BROKEN" -gt 0 ] || [ "$PROPOSALS" -gt 0 ]; then
     MSG="🗂 nb-curator $DATE_STR: ${DEDUP_DELETED} exact-dup + ${CHALLENGE_DELETED} challenge removed · ${BROKEN} broken · ${PROPOSALS} proposals. Report: ${REPORT_PATH##*/}"
-    curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TG_CHAT}" -d "text=$MSG" >/dev/null 2>&1
-    log "Telegram sent: $MSG"
+    tg digest "$MSG"
 else
     log "nb-curator daily OK — no action/anomaly, no Telegram (dedup=0 challenge=0 broken=0 proposals=0)"
 fi
 
+# The old unconditional `exit 0` made every cron receipt green, including the
+# runs that reported ALL TIERS FAILED two lines above — the receipt is the only
+# thing a downstream watcher reads (W107: five wrapper families write receipts,
+# and a job that never fails is a job nobody ever looks at).
+if [ "$EXIT" -ne 0 ]; then
+    exit 1
+elif [ "$GATE_RC" -ne 0 ]; then
+    exit 2
+fi
 exit 0

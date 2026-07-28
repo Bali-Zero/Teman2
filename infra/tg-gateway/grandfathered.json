@@ -157,7 +157,6 @@
     "scripts/mini-migration/idempotent-runner.sh",
     "scripts/mini-migration/overlap-detector.sh",
     "scripts/mini/mini-git-pull.sh",
-    "scripts/nb-curator-daily.sh",
     "scripts/nextdns-weekly-digest.sh",
     "scripts/nextdns_tamper_detect.py",
     "scripts/nlm_activation/nlm_shadow_run_all.sh",
