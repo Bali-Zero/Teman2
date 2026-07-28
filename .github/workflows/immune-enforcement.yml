@@ -111,6 +111,8 @@ jobs:
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
               scripts/tests/test_prepush_failclosed.sh|\
+              scripts/tests/test_prepush_tip_drift.sh|\
+              scripts/ci/prepush_tip_drift.sh|\
               scripts/docs_audit.py|\
               scripts/docs_inventory_refresh_liveness.py|\
               scripts/docs_inventory_regen.sh|\
@@ -248,6 +250,16 @@ jobs:
           # file is on main, so absent means deleted, and a deleted corpus
           # must go red rather than quietly pass.
           bash scripts/tests/test_prepush_failclosed.sh
+
+      - name: tip-drift corpus — the branch cannot move under the gate (guilt + innocence + W84)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Same POSIX-sh reasoning as the step above: its own step, exit code
+          # read directly, no `if [ -f ]` skip. `prepush-guards.yml` runs this
+          # corpus too and is the REQUIRED context; this second executor is
+          # deliberate — the guard it covers is what makes that context mean
+          # anything, and a single executor is a single point of silence.
+          bash scripts/tests/test_prepush_tip_drift.sh
 
       - name: cron-state failure alert corpus (guilt + innocence + fail-open)
         if: steps.paths.outputs.relevant == 'true'

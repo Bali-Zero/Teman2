@@ -422,6 +422,30 @@ def test_intake_dsn_is_isolated_to_the_per_push_clone() -> None:
     )
 
 
+def test_the_tip_drift_check_is_not_silent_when_it_passes() -> None:
+    """MEASURED on this check's own first real push (2026-07-28): the guard ran,
+    passed, and printed nothing — so 238KB of push log held no evidence it had
+    executed, and a hook WITHOUT the block produces byte-identical silence. A
+    pass nobody can observe is indistinguishable from a guard that never ran,
+    which is superscar #2 inside the guard written to close a #2-adjacent hole.
+    The rc=2 branch already argues this in its own comment; the rc=0 branch is
+    where it is easy to forget, so it is pinned here rather than trusted."""
+    text = _hook_text()
+    m = re.search(
+        r"TIP_OUT=\$\(sh scripts/ci/prepush_tip_drift\.sh.*?\n\s*case \"\$TIP_RC\" in\n(.*?)\n\s*esac",
+        text,
+        re.DOTALL,
+    )
+    assert m, "tip-drift case block not found in the hook — re-anchor this test"
+    # Only the rc=0 arm, up to the next arm label at the same indentation.
+    zero_arm = re.search(r"^\s*0\)(.*?)^\s{8}\d\)", m.group(1) + "\n        1)", re.DOTALL | re.MULTILINE)
+    assert zero_arm, "the rc=0 arm of the tip-drift case is not shaped as expected"
+    assert "$TIP_OUT" in zero_arm.group(1), (
+        "the tip-drift SUCCESS arm must print $TIP_OUT. Swallowing it makes a "
+        "verified push look exactly like one where the check never ran."
+    )
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):
