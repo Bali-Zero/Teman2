@@ -128,6 +128,37 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "path-only — see the KBLI canonical-dataset rule above for the "
         "closed-writer-set contrast)",
     ),
+    # Translated articles carry `source_sha256` in their frontmatter: the
+    # sha256 of the English source BODY they were translated from, written by
+    # scripts/translate-articles.py. It is the freshness marker that lets the
+    # hourly translator skip on FRESHNESS instead of on the target file's mere
+    # existence — before it, every translation froze at birth and an English
+    # correction never reached its locales (measured: 1275 of 2664
+    # translations behind their source). Anyone can recompute the value from
+    # the public article; it is an integrity anchor, never a credential.
+    #
+    # Content-keyed, not path-only, for the same reason as the rule above: the
+    # writer set for article .mdx files is wide open (the translator, the
+    # editorial pipeline, and humans editing prose by hand), so a path rule
+    # would blanket-approve any future finding anywhere in 2500+ content
+    # files. Narrowed to a line that is exactly `source_sha256: "<64 hex>"`,
+    # end-anchored, in a translation file only (`.<locale>.mdx` — English
+    # sources never carry the field).
+    #
+    # HONEST LIMIT, same as its two siblings: a live 64-hex credential pasted
+    # into this field's value slot is byte-indistinguishable from a real
+    # digest. This narrows the approved surface to that exact shape on that
+    # exact key; it does not certify article files secret-free.
+    (
+        re.compile(
+            r"(^|/)apps/mouth/src/content/articles/.+\.(id|it|ru|fr)\.mdx$"
+        ),
+        re.compile(r'^source_sha256:\s*"[0-9a-f]{64}"\s*$'),
+        "article translation freshness stamp (scripts/translate-articles.py): "
+        "sha256 of the English source body the translation was made from — a "
+        "recomputable integrity anchor, never a credential (open writer set, "
+        "so content-keyed and restricted to translation files)",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
