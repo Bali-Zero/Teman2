@@ -4,7 +4,7 @@ import { BZLogo } from "@balizero/core/components/BZLogo";
 import { Footer } from "../../_components/Footer";
 
 export const metadata: Metadata = {
-  title: "Careers — Bali Zero",
+  title: "Careers",
   description:
     "Join the team building the infrastructure for foreigners to thrive in Bali.",
   robots: { index: false, follow: false },

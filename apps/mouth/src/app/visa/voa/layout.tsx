@@ -17,8 +17,7 @@ import { I18nProvider } from "@/i18n";
 // (guaranteed approval / guaranteed turnaround / fully-online extension) binds
 // SEO copy exactly as it binds the page body.
 export const metadata: Metadata = {
-  title:
-    "Visa on Arrival (B1) Indonesia — eligibility, dates, price | Bali Zero",
+  title: "Visa on Arrival (B1) Indonesia — eligibility, dates, price",
   description:
     "Check a Visa on Arrival or its extension in 7 questions: whether the case is straightforward, your stay window, the published filing deadline, and our all-inclusive fee. No documents to upload, no payment to check.",
   openGraph: {
