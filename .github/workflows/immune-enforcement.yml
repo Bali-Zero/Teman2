@@ -133,6 +133,9 @@ jobs:
               scripts/ci/queue_rearm_population.sh|\
               scripts/ci/test_queue_rearm_classify.sh|\
               scripts/ci/test_queue_rearm_population.sh|\
+              scripts/ci/telegram_verdict.sh|\
+              scripts/ci/telegram_notify.sh|\
+              scripts/ci/test_telegram_verdict.sh|\
               scripts/tests/test_fly_backup_timeouts.py|\
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
@@ -262,6 +265,22 @@ jobs:
           # same code, same world.
           bash scripts/ci/test_queue_rearm_classify.sh
           bash scripts/ci/test_queue_rearm_population.sh
+
+      - name: Telegram delivery verdict corpus (guilt + innocence + fail-closed)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # W104 on the CI surface: 12 of the 14 `curl .../sendMessage` calls in this
+          # repo judged their own delivery by curl's EXIT CODE, which is 0 whenever the
+          # server answers — including HTTP 401 with a well-formed
+          # {"ok":false,"description":"Unauthorized"} after a token rotation. Every one
+          # of those alarms was, by construction, unable to report its own silence.
+          #
+          # What this pins: 401/403/400/429 are refusals, `"ok":false` under an HTTP 200
+          # is a refusal (the status line is not the authority, the body is), the word
+          # "true" appearing anywhere else in the payload is NOT a delivery, and an
+          # absent status is CANNOT-VERIFY rather than success — a blind check is not a
+          # clean check.
+          bash scripts/ci/test_telegram_verdict.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
