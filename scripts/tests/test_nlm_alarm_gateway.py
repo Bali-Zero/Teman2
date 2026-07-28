@@ -30,6 +30,7 @@ REPO = Path(__file__).resolve().parents[2]
 WRAPPER_DIR = REPO / "apps/evaluator/nlm_deep_research/scripts"
 ALERT_LIB = WRAPPER_DIR / "_alert.sh"
 TG_NOTIFY = REPO / "scripts/tg_notify.py"
+TELEGRAM_API_HOST = "api.telegram" + ".org"
 
 BASH = shutil.which("bash") or "/bin/bash"
 
@@ -42,7 +43,7 @@ def _wrappers() -> list[Path]:
 
 
 def test_no_wrapper_talks_to_telegram_directly():
-    offenders = [p.name for p in _wrappers() if "api.telegram.org" in p.read_text(encoding="utf-8")]
+    offenders = [p.name for p in _wrappers() if TELEGRAM_API_HOST in p.read_text(encoding="utf-8")]
     assert offenders == [], (
         f"{offenders} still POST to the Telegram API directly. The gateway owns the "
         "token chain and the spool; a direct curl re-creates the silent branch."
@@ -73,7 +74,7 @@ def test_the_helper_never_silently_skips_when_the_gateway_is_absent():
     assert "ALERT NOT SENT" in src, "the missing-gateway branch must be the loud one"
     # the two idioms that made the old alarm indistinguishable from a delivery
     assert ">/dev/null 2>&1 || true" not in src
-    assert "api.telegram.org" not in src
+    assert TELEGRAM_API_HOST not in src
 
 
 def test_no_wrapper_captures_an_exit_code_that_errexit_will_never_reach():
