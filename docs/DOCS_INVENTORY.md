@@ -19,7 +19,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on | refs_in | broken | drift | cluster | action |
 |------|--------|--------------------|---------------------|--------------------|--------:|-------:|-------|---------|--------|
 | docs/AI_DISPATCH_REFERENCE.md | LIVE | 2026-05-22 | 2026-08-20 | — | 2 | 0 | no | — | — |
-| docs/AI_ONBOARDING.md | LIVE | 2026-07-27 | 2026-10-25 | — | 21 | 0 | no | — | — |
+| docs/AI_ONBOARDING.md | LIVE | 2026-07-28 | 2026-10-26 | — | 21 | 0 | no | — | — |
 | docs/ANTHROPIC_API_REFERENCE.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
 | docs/API_REFERENCE.md | LIVE | 2026-02-26 | 2026-05-27 | — | 4 | 0 | no | — | whitelist |
 | docs/APPLICAZIONE_COMPONENTI_UTILITY.md | ARCHIVED | 2026-04-24 | 2026-07-23 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-24, refs=0 |
