@@ -4,7 +4,7 @@ domain: visa
 client_case: none
 author: Claude Opus 5 (Air-M5) — ENFORCE-GATE measurement against the live SHADOW substrate
 adversarial_review: codex
-status: MEASURED — the collecting lane is the one that cannot mature; the lane that can is OFF
+status: MEASURED — NEITHER lane can currently mature G-a, for two different reasons
 sources:
   - prod `visa_decisions` (read-only role `nuzantara_readonly`, queries reproduced below)
   - `fly secrets list -a nuzantara-rag` (run 2026-07-28)
@@ -13,15 +13,17 @@ sources:
   - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-001.source.json
 ---
 
-# SHADOW gate measurement — the collecting lane is not the lane that can pass
+# SHADOW gate measurement — neither lane can currently mature G-a
 
 The corner's GATE STATUS has said 🔴 RED since 2026-07-21 with the reason "production
 collection is still dark". Collection has in fact been writing since 2026-07-25. This is the
 first read of *what it wrote*, from the production audit log rather than from the ledger's
 narration of it.
 
-The headline is not "the gate is far away". It is that **the surface currently feeding the
-audit log structurally cannot satisfy G-a, while the surface that could is switched off.**
+The headline is not "the gate is far away". It is that **neither of the two surfaces the
+collector counts can currently mature G-a**, for two unrelated reasons: the one that is
+collecting abstains by construction (§2), and the one that has the right facts and the right
+traffic does not label its rows, so they would be discarded from both G-a gates (§7).
 
 ## 1. What the audit log contains (measured 2026-07-28)
 
@@ -105,7 +107,7 @@ open. What is not open is the label: these rows carry `traffic_source='real'`, t
 production adoption. Same defect class as the one flagged on 2026-07-27, three orders of
 magnitude larger.
 
-## 4. The lane that can actually pass the gate is OFF
+## 4. The other lane has the right facts and the right traffic — and is OFF
 
 The MATCH shadow twin (STEP-6c, #2916) is a different story on every axis that blocks
 RECOMMEND:
@@ -149,9 +151,10 @@ So G-d is *drillable now*; what is missing is the ENGINE render path the flip wo
 
 ## 6. Ordering that follows from the measurement
 
-1. **Arm the MATCH lane** (`VISA_ENGINE_MATCH_MODE=SHADOW` + verify pack/HMAC resolution on
-   that path). This is the highest-value single step: it is the only lane where nationality,
-   per-request fingerprints and organic traffic already coexist.
+1. **Decide the MATCH question (owner call — see §7, this step was mis-stated in the first
+   version of this document).** MATCH is the only lane where nationality, per-request
+   fingerprints and organic traffic already coexist — but arming it alone is a gate no-op,
+   and keeping it dark is a recorded plan decision.
 2. **Separate the probe/synthetic label from `real`** and decide the fate of the 1,464
    contaminated rows (relabel vs restart the window). Until then G-a-vol is not measuring
    adoption.
@@ -165,8 +168,69 @@ So G-d is *drillable now*; what is missing is the ENGINE render path the flip wo
 7. Only then open the ≥7-day window and measure with `visa_shadow_evidence.py`.
 
 GATE STATUS stays 🔴 RED — but for a different reason than the one recorded for the last seven
-days. "Unmeasured" was hiding "the lane we are measuring cannot pass, and the one that can is
-switched off".
+days. "Unmeasured" was hiding a two-sided problem: the lane we are measuring cannot produce
+breadth, and the lane that could is both switched off and, as written, unable to have its rows
+counted.
+
+## 7. Correction — "arm MATCH" was wrong (found while executing it)
+
+The first version of this document made arming MATCH its headline recommendation. That was
+wrong on two counts, both caught before the `fly secrets set` was run.
+
+**(a) The rows would not count.** `shadow.py`'s MATCH writer does not include
+`traffic_source` in its INSERT column list (`shadow.py:538-547`), and the column has **no
+default and is nullable** — verified against the live production schema, not merely the
+migration:
+
+```sql
+SELECT column_name, column_default, is_nullable FROM information_schema.columns
+WHERE table_name='visa_decisions' AND column_name='traffic_source';
+-- => traffic_source | NULL | YES
+```
+
+`shadow_evidence.py:296-303` classifies a NULL marker as **legacy** and counts it toward
+*neither* G-a gate, fail-closed. So arming MATCH as it stands is a **G-a no-op**.
+
+Precisely, because the overstatement matters: those rows are not inert. G-c is deliberately
+**not** split by provenance — "grounding quality is a property of the engine's output and
+applies to every audited row regardless of provenance" (`shadow_evidence.py:28-29`) — so
+unlabelled MATCH rows still flow into the grounding analysis and can move G-c green or red,
+and they still increment the legacy/total/per-surface counts. The accurate claim is: *arming
+MATCH alone cannot advance G-a and therefore cannot make the gate ready* — not that its rows
+"satisfy nothing".
+
+**(b) There was already a decision on record.**
+`research/visa/2026-07-24-shadow-arming-runbook.md:40` states: *"Leave `VISA_ENGINE_MATCH_MODE`
+**OFF**: the v1 thin-fact path stays dark so the window's evidence is full-fact only."* MATCH
+carries 3 of the 40 facts. Whether a 3-fact corpus may certify an engine that ENFORCE would arm
+on 40 is a plan question, not an implementation detail — the runbook's author called it "a plan
+decision, not a code requirement", which is precisely why a session should not flip it silently.
+
+**The fork.** That the choice is the owner's is this author's governance inference, not
+something the runbook states: the runbook records the decision and calls it "a plan decision,
+not a code requirement". It is escalated because it changes what a green gate would certify,
+not because a rule forbids a session from deciding it.
+
+- **(A) Keep MATCH dark, fix the RECOMMEND interview.** Slower; matches the recorded plan.
+  Note the runbook's phrase "full-fact" describes the 40-key *contract*, not the collection:
+  RECOMMEND currently supplies ~8 of those 40 keys, so option A only becomes genuinely
+  wider-fact once the interview is extended.
+- **(B) Teach the MATCH writer to label rows `real`, then arm.** Faster volume from a funnel
+  that already has users; evidence is thin-fact (3/40), so the gate would certify less than it
+  appears to.
+
+**Why no test caught it.** The MATCH writer's integration fixtures layer only migrations
+252+255 onto the shared schema (`test_shadow_match.py:505-518`) — migration 256 is never
+applied there, so `traffic_source` is not even a column in the schema those tests run against,
+and the row assertions (`test_shadow_match.py:668`) could not have checked it. A regression
+test for this defect has to start by applying 256.
+
+**Method note.** The error came from reading the COLLECTOR's surface allow-list
+(`EVIDENCE_ENGINE_SURFACES = {"MATCH", "RECOMMEND"}`) and concluding MATCH rows would count. A
+row is counted only if the **writer** labels it: reader-accepts-the-surface ≠
+writer-emits-the-label. Check the INSERT column list and the column default on the live schema
+before calling any lane "evidence" — and grep the runbooks for a recorded decision before
+executing a step, because this one was a single file away.
 
 ## Adversarial review
 
@@ -201,3 +265,28 @@ being accepted — the refuter is not trusted on its word either (W65).
   zero-malformed conditions (`shadow_evidence.py:183`) are now named in §1.
 - **Not sustained:** nothing. Every objection raised either changed the document or was
   answered with new evidence.
+
+### Second round — adversarial review of the §7 correction
+
+Same seat, same posture, run on the correction diff itself. It refuted the correction's own
+overstatement, which is why §7 now reads "G-a no-op" rather than "satisfies nothing":
+
+- **"'Gate no-op / satisfies nothing / only adds noise' is false for the gate as a whole" —
+  SUSTAINED, wording fixed.** NULL rows are excluded from both G-a accumulators
+  (`shadow_evidence.py:296-303`) but G-c is deliberately not split by provenance
+  (`shadow_evidence.py:28-29`), so they do flow into grounding and into the legacy/total counts.
+  Verified on disk.
+- **"The document still headlines 'the lane that can pass is OFF', which §7 disproves" —
+  SUSTAINED.** Title, `status`, the opening paragraph, §4's heading and the §6 conclusion were
+  all rewritten: neither lane can currently mature G-a, for two different reasons.
+- **"'Full-fact evidence' is misleading when RECOMMEND collects ~8 of 40" — SUSTAINED**, option
+  A now says so explicitly and attributes the phrase to the runbook's contract, not to the
+  collection.
+- **"'Owner call' is a governance inference, not something the runbook states" — SUSTAINED**,
+  now declared as the author's inference with its reason.
+- **"No regression test could have caught the missing label" — SUSTAINED and added** as a
+  finding: the writer's tests never apply migration 256.
+- **K1 (writer omits the label; no trigger/default/backfill sets it) and K3 (the runbook
+  recorded the decision) — could not be refuted**, and K1 was strengthened: the only other
+  production writer, RECOMMEND, sets it explicitly (`evaluate_path.py:459-483`), and migration
+  257 touches only `request_category`.
