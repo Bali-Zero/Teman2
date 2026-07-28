@@ -12,19 +12,106 @@ they are the false positives the first draft of the lint actually produced:
     the SAME line as the assignment, while the draft only looked at the lines
     below. Over-match and under-match, one draft, opposite signs.
 
+A third one bit inside this file: `test_the_lint_imports_nothing_third_party`
+first grepped for the text `import yaml` and failed on the COMMENT explaining
+why that import is absent. Same disease, third surface — so it now judges the
+AST. The rule is not "write a careful regex", it is "a form is not an entity",
+and it has to be re-applied at every predicate, not once per file.
+
 Run:  python3 scripts/tests/test_lint_workflow_errexit_decap.py
       pytest scripts/tests/test_lint_workflow_errexit_decap.py -q
 """
 
 from __future__ import annotations
 
+import ast
 import pathlib
 import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from lint_workflow_errexit_decap import audit, scan_run_block  # noqa: E402
+from lint_workflow_errexit_decap import audit, iter_run_blocks, scan_run_block  # noqa: E402
+
+
+def _workflows_dir() -> pathlib.Path:
+    return pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows"
+
+
+def test_the_lint_imports_nothing_third_party() -> None:
+    """CI caught this one: `import yaml` is fine locally, ModuleNotFoundError on
+    the immune-enforcement runner, which installs nothing. An immune organ that
+    needs a pip install dies whenever the install does.
+
+    Judged on the AST, not on a substring. The first draft of THIS test grepped
+    for the text `import yaml` and duly failed on the comment that explains why
+    the import is absent — form instead of entity, superscar #3, inside the very
+    corpus that punishes it. A module name in prose is not an import statement.
+    """
+    src = (pathlib.Path(__file__).resolve().parents[1] / "lint_workflow_errexit_decap.py").read_text()
+    tree = ast.parse(src)
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            imported.add(node.module.split(".")[0])
+    assert imported, "no imports parsed at all — broken check, not a clean file"
+    third_party = sorted(m for m in imported if m not in sys.stdlib_module_names)
+    assert not third_party, (
+        f"third-party import(s) {third_party} reintroduce a runner-only failure: "
+        "the immune-enforcement job installs nothing"
+    )
+
+
+def test_text_walker_matches_a_yaml_parse_on_the_real_workflow_set() -> None:
+    """The hand-rolled block-scalar walk must agree with YAML, file by file.
+
+    Pins the defect this equivalence check found: a bare `run:` (i.e.
+    `defaults: run:`, a MAPPING) was being treated as a block scalar. Where the
+    phantom block swallowed the real `run: |` below it the count came out LOW
+    (6 cron-*.yml), where it did not it came out HIGH (2 others) — one defect,
+    both signs. A total-only comparison would have partly cancelled them out,
+    so this asserts per-file.
+    """
+    try:
+        import yaml  # noqa: PLC0415 — optional: the lint itself must not need it
+    except ImportError:  # pragma: no cover - runner without PyYAML
+        return
+
+    root = _workflows_dir()
+    files = sorted(list(root.glob("*.yml")) + list(root.glob("*.yaml")))
+    assert files, "no workflows walked — broken scanner, not a clean repo"
+
+    mismatches = []
+    for p in files:
+        text = p.read_text()
+        walked = len(list(iter_run_blocks(text)))
+        try:
+            doc = yaml.safe_load(text)
+        except yaml.YAMLError:
+            continue
+        parsed = sum(
+            1
+            for job in ((doc or {}).get("jobs") or {}).values()
+            if isinstance(job, dict)
+            for s in (job.get("steps") or [])
+            if isinstance(s, dict) and "run" in s
+        )
+        if walked != parsed:
+            mismatches.append(f"{p.name}: walked={walked} yaml={parsed}")
+    assert not mismatches, "text walk disagrees with YAML:\n  " + "\n  ".join(mismatches)
+
+
+def test_a_bare_run_key_is_a_mapping_not_a_script() -> None:
+    """`defaults: run:` must contribute NO run-block and must not swallow the next one."""
+    wf = (
+        "jobs:\n  j:\n    defaults:\n      run:\n        shell: bash\n"
+        "    steps:\n      - name: real\n        run: |\n          out=$(x 2>&1); rc=$?\n"
+    )
+    blocks = list(iter_run_blocks(wf))
+    assert len(blocks) == 1, f"expected exactly the real step, got {len(blocks)}"
+    assert blocks[0][0] == "real", f"label lost: {blocks[0][0]!r}"
 
 
 # --------------------------------------------------------------------------

@@ -62,7 +62,14 @@ import pathlib
 import re
 import sys
 
-import yaml
+# NO third-party imports — deliberately. The first version of this file did
+# `import yaml`, which is correct locally and `ModuleNotFoundError` on the
+# immune-enforcement runner, where the job installs nothing (caught by CI on
+# this very PR). An immune organ that needs a pip install is an organ that dies
+# whenever the install does, and it would be the only reason that job needs a
+# dependency step at all. The block-scalar walk below is hand-rolled and pinned
+# by `test_text_walker_matches_a_yaml_parse_on_the_real_workflow_set`, which
+# runs the equivalence check against PyYAML only where PyYAML happens to exist.
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_WORKFLOWS = REPO_ROOT / ".github" / "workflows"
@@ -136,18 +143,103 @@ def scan_run_block(body: str) -> list[tuple[int, str]]:
     return out
 
 
-def iter_run_blocks(doc: dict):
-    """(job_id, step_index, step_name, shell, run_body) for every step."""
-    jobs = (doc or {}).get("jobs") or {}
-    for job_id, job in jobs.items():
-        if not isinstance(job, dict):
+_RUN_KEY = re.compile(r"^(?P<indent>\s*)-?\s*run:\s*(?P<block>[|>][-+]?)?\s*$")
+# `run:` with no block indicator is AMBIGUOUS: in `defaults: run: {shell: bash}`
+# it is a MAPPING, not a script. Treating it as a block scalar swallowed the
+# real `run: |` beneath it in 6 cron-*.yml (under-count) and invented a block in
+# 2 others (over-count) — one defect, both signs, exactly the shape this lint
+# exists to punish. Decide by what FOLLOWS: a mapping key means `defaults`.
+_MAPPING_KEY = re.compile(r"^\s*[A-Za-z_][\w-]*:\s*(\S.*)?$")
+_RUN_INLINE = re.compile(r"^(?P<indent>\s*)-?\s*run:\s+(?P<cmd>\S.*)$")
+_SHELL_KEY = re.compile(r"^\s*shell:\s*(?P<val>\S.*?)\s*$")
+_NAME_KEY = re.compile(r"^\s*-?\s*name:\s*(?P<val>\S.*?)\s*$")
+
+
+def iter_run_blocks(text: str):
+    """(label, shell, body) for every `run:` in a workflow, by text walk.
+
+    A `run:` block scalar owns every following line that is blank or indented
+    strictly deeper than the `run:` key. The step's own `shell:` sits at the
+    key's indent inside the same step, and a step starts at the nearest `- `
+    at that indent — that neighbourhood is what we search, so a `shell:` from
+    an ADJACENT step can never be attributed to this one.
+    """
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        m = _RUN_KEY.match(lines[i])
+        inline = None if m else _RUN_INLINE.match(lines[i])
+        if not m and not inline:
+            i += 1
             continue
-        job_shell = ((job.get("defaults") or {}).get("run") or {}).get("shell")
-        for idx, step in enumerate(job.get("steps") or []):
-            if not isinstance(step, dict) or "run" not in step:
+        key_indent = len((m or inline).group("indent"))
+
+        if m and not m.group("block"):
+            # Bare `run:` — mapping (defaults) or plain multi-line scalar?
+            nxt = next(
+                (ln for ln in lines[i + 1 :] if ln.strip()),
+                "",
+            )
+            if _MAPPING_KEY.match(nxt) and (len(nxt) - len(nxt.lstrip())) > key_indent:
+                i += 1  # `defaults: run:` — not a script, skip it entirely
                 continue
-            shell = step.get("shell", job_shell)
-            yield job_id, idx, step.get("name", f"step {idx}"), shell, step["run"]
+
+        if inline:  # `run: some-command` on one line
+            body, end = inline.group("cmd"), i
+        else:
+            body_lines, j = [], i + 1
+            while j < len(lines):
+                ln = lines[j]
+                if ln.strip() and (len(ln) - len(ln.lstrip())) <= key_indent:
+                    break
+                body_lines.append(ln)
+                j += 1
+            body, end = "\n".join(body_lines), j - 1
+
+        # Walk the step neighbourhood for `shell:` and a label.
+        shell, label = None, "step"
+        k = i - 1
+        while k >= 0:
+            ln = lines[k]
+            if not ln.strip():
+                k -= 1
+                continue
+            ind = len(ln) - len(ln.lstrip())
+            if ind < key_indent:
+                # The step's own `- name: …` marker sits one level SHALLOWER
+                # than its keys; stopping at the first dedent lost every label.
+                if ln.lstrip().startswith("- "):
+                    nm = _NAME_KEY.match(ln)
+                    if nm and label == "step":
+                        label = nm.group("val")[:44]
+                break
+            if ind == key_indent:
+                sm = _SHELL_KEY.match(ln)
+                if sm and shell is None:
+                    shell = sm.group("val")
+                nm = _NAME_KEY.match(ln)
+                if nm and label == "step":
+                    label = nm.group("val")[:44]
+                if ln.lstrip().startswith("- "):
+                    break
+            k -= 1
+        k = end + 1
+        while k < len(lines):
+            ln = lines[k]
+            if not ln.strip():
+                k += 1
+                continue
+            ind = len(ln) - len(ln.lstrip())
+            if ind < key_indent or ln.lstrip().startswith("- "):
+                break
+            if ind == key_indent:
+                sm = _SHELL_KEY.match(ln)
+                if sm and shell is None:
+                    shell = sm.group("val")
+            k += 1
+
+        yield label, shell, body
+        i = end + 1
 
 
 def audit(root: pathlib.Path) -> tuple[list[str], int, int]:
@@ -155,16 +247,12 @@ def audit(root: pathlib.Path) -> tuple[list[str], int, int]:
     findings: list[str] = []
     blocks = 0
     for path in files:
-        try:
-            doc = yaml.safe_load(path.read_text())
-        except yaml.YAMLError:
-            continue  # malformed YAML is actionlint's job, not ours
-        for job_id, _idx, name, shell, body in iter_run_blocks(doc):
+        for label, shell, body in iter_run_blocks(path.read_text()):
             blocks += 1
             if not _shell_has_errexit(shell):
                 continue
             for _off, text in scan_run_block(body):
-                findings.append(f"{path.name} [{job_id} / {name}]: {text}")
+                findings.append(f"{path.name} [{label}]: {text}")
     return findings, len(files), blocks
 
 
