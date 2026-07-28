@@ -143,6 +143,8 @@ jobs:
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
+              scripts/tests/test_lint_workflow_errexit_decap.py|\
+              scripts/lint_workflow_errexit_decap.py|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -191,6 +193,7 @@ jobs:
             scripts/tests/test_fly_backup_timeouts.py \
             scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/tests/test_ci_service_images_use_mirror.py \
+            scripts/tests/test_lint_workflow_errexit_decap.py \
             scripts/tests/test_intake_dsn_guard_covers_every_var.py \
             scripts/tests/test_husky_prepush_venv_guard.py \
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
@@ -204,6 +207,16 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: No run-block decapitates its own failure branch (W101, 4th instance)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Running the CORPUS is not running the LINT. The corpus proves the
+          # detector still bites; only this step proves the repo is clean. On
+          # 2026-07-28 the same omission is what let three live decapitations
+          # sit on main — including the one that had silently killed every
+          # scheduled run of the merge-queue re-armer since it was armed.
+          python3 scripts/lint_workflow_errexit_decap.py
 
       - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
         if: steps.paths.outputs.relevant == 'true'
