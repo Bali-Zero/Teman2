@@ -1,0 +1,64 @@
+name: cron - LLM credit sentinel (every 20 min)
+
+# Born from the 2026-07-28 outage: the Gemini prepay hit zero and the bot was
+# mute for ~34 hours before a human noticed, with the whole team testing
+# against it. Detection now costs one 9-token call every 20 minutes.
+#
+# The check runs INSIDE the Fly machine because that is the only place holding
+# all three credentials it needs (Gemini key, WhatsApp token, Telegram token).
+# This workflow only needs FLY_API_TOKEN, which already exists as a secret.
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-llm-credit-sentinel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Probe the LLM credit inside prod
+        id: probe
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          OUT=$(flyctl ssh console -a nuzantara-rag \
+                  -C "python3 -m backend.services.hardening.llm_credit_sentinel_cli" 2>&1)
+          RC=$?
+          echo "$OUT"
+          STATE=$(printf '%s\n' "$OUT" | sed -n 's/^STATE=//p' | tail -1)
+
+          # An unreachable machine is not a billing event: if the CLI never got
+          # to print a STATE line, say so and stay quiet rather than guess.
+          if [ -z "$STATE" ]; then
+            echo "::warning::sentinel non ha prodotto uno STATE (rc=$RC) — macchina irraggiungibile?"
+            exit 0
+          fi
+
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          case "$STATE" in
+            depleted)
+              echo "::error::Crediti Gemini ESAURITI — alert inviato a Surya (WhatsApp) e a Zero (Telegram)"
+              exit 1
+              ;;
+            rate_limited)
+              echo "::notice::rate limit transitorio, nessun allarme (corretto)"
+              ;;
+            unknown)
+              echo "::warning::stato non determinabile: $(printf '%s\n' "$OUT" | sed -n 's/^DETAIL=//p' | tail -1)"
+              ;;
+            *)
+              echo "credito OK"
+              ;;
+          esac
