@@ -75,6 +75,8 @@ jobs:
               scripts/lint_plist_keepalive.py|\
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
+              scripts/nb_curator_artifact_gate.py|\
+              scripts/tests/test_nb_curator_artifact_gate.py|\
               scripts/jules_dispatch.py|\
               scripts/lint_test_reward_hacking.py|\
               scripts/test_lint_test_reward_hacking.py|\
@@ -183,6 +185,7 @@ jobs:
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
             scripts/tests/test_tri_llm_claude_seat_token.py \
