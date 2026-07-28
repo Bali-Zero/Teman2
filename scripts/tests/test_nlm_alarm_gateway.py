@@ -122,8 +122,6 @@ def test_no_wrapper_sources_a_maybe_missing_file_behind_only_or_true():
     and EXITS — `|| true` never runs. Measured on bash 3.2.57, the macOS system
     bash these crons use. One wrapper had it unguarded and died at line 37,
     wearing the costume of a tolerant fallback."""
-    import re
-
     offenders = []
     for p in _wrappers():
         lines = p.read_text(encoding="utf-8").split("\n")
