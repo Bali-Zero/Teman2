@@ -39,12 +39,28 @@ on:
       - "scripts/lint_tg_direct_senders.py"
       - "scripts/tests/test_tg_gateway.py"
       - "infra/tg-gateway/**"
+      # These MUST mirror lint_tg_direct_senders.SCAN_SUFFIXES exactly, and
+      # scripts/tests/test_tg_gateway_trigger_symmetry.py fails the build when
+      # they drift. A suffix the lint scans but the trigger ignores is a guard
+      # that never runs on the only diff that could have violated it — the
+      # 2026-07-28 widening found the lint watching 15 suffixes while this list
+      # named 6, so a regrown sender in .yml (18 of them), .rb, .zsh, .bash,
+      # .cjs, .tsx or .jsx could not even start the job (superscar #2).
       - "**/*.sh"
       - "**/*.py"
       - "**/*.js"
       - "**/*.mjs"
+      - "**/*.cjs"
       - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.jsx"
       - "**/*.plist"
+      - "**/*.rb"
+      - "**/*.pl"
+      - "**/*.zsh"
+      - "**/*.bash"
+      - "**/*.yml"
+      - "**/*.yaml"
   workflow_dispatch: {}
 
 jobs:
@@ -63,6 +79,11 @@ jobs:
           python3 scripts/tg_notify.py --selftest
           python3 scripts/tg_digest_flush.py --selftest
           python3 scripts/lint_tg_direct_senders.py --selftest
+          # Stdlib only, so it belongs here rather than in guard-pins-pytest:
+          # it asserts that this workflow's own paths: filter still covers every
+          # suffix the lint scans. Without it the two lists drift apart silently
+          # and the lint keeps passing on diffs it was never started for.
+          python3 scripts/tests/test_tg_gateway_trigger_symmetry.py
 
       - name: Direct-sender lint (anti-regrowth + monotone grandfather)
         run: python3 scripts/lint_tg_direct_senders.py

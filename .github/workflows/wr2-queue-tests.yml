@@ -86,6 +86,22 @@ on:
       - "scripts/tests/test_wr2_daily_reconciler.py"
       - "scripts/tests/test_wr2_wr3_handoff_emit.py"
       - "scripts/wr2_ig_publish.py"
+      # The claim contract the WR2 brief never had. It gates what WR3 inherits
+      # without re-verifying, so it belongs to the same battery as the emitter.
+      - "scripts/wr2_claims.py"
+      - "scripts/tests/test_wr2_claims.py"
+      # WR3 companion lane — the far side of the same handoff. It lives in the
+      # WR2 battery on purpose: this is the WR2→WR3 boundary, the pyyaml dep is
+      # already here for the handoff contract anchor, and a separate workflow
+      # would buy one more queued slot per PR (the CI wall-clock is queue, not
+      # compute) for tests that share exactly these triggers. The mode contract
+      # AND brief-interpreter.yaml are both triggers: the envelope test asserts
+      # the companion's [60,150] is read off WR3's native contract rather than
+      # restated locally, so widening either side must re-run it.
+      - "scripts/wr3_companion_dispatcher.py"
+      - "scripts/tests/test_wr3_companion_envelope.py"
+      - "docs/wr3/contracts/modes/companion-mode.yaml"
+      - "docs/wr3/contracts/brief-interpreter.yaml"
       - "scripts/tests/test_wr2_carousel_ir.py"
       - "scripts/tests/test_wr2_editorial_pregate.py"
       - "scripts/tests/test_wr2_planner_writer.py"
@@ -135,6 +151,8 @@ jobs:
             scripts/tests/test_wr2_pipeline_consolidation.py \
             scripts/tests/test_wr2_daily_reconciler.py \
             scripts/tests/test_wr2_wr3_handoff_emit.py \
+            scripts/tests/test_wr2_claims.py \
+            scripts/tests/test_wr3_companion_envelope.py \
             scripts/tests/test_wr2_carousel_ir.py \
             scripts/tests/test_wr2_editorial_pregate.py \
             scripts/tests/test_wr2_planner_writer.py \

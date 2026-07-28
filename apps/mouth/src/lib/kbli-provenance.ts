@@ -85,6 +85,38 @@ export function isLicensingVerificationPending(code: KBLICode): boolean {
  *   `_l2_source` value, is treated as unaudited, never silently promoted to
  *   verified.
  */
+/** Does the record carry ANY recorded KBLI-2020 ancestry?
+ *
+ * Structured markers only (cicatrix #3 — never prose), and by ENTITY rather than
+ * truthiness: `bps_2020_ancestors` is an object, so a bare `if (raw.bps_2020_ancestors)`
+ * would read an empty `{}` as "has ancestry". Both channels count, because the two
+ * crosswalk layers are independent: BPS records 1,338 of 1,559, and 121 more are
+ * traceable only through `pp28_sources`.
+ */
+function hasRecorded2020Ancestry(raw: KBLIRawCode): boolean {
+  const bps = raw.bps_2020_ancestors?.codes;
+  if (Array.isArray(bps) && bps.length > 0) return true;
+  return (raw.pp28_sources ?? []).length > 0;
+}
+
+/** Provenance of the foreign-ownership verdict — DERIVED, not a constant.
+ *
+ * The Perpres 10/2021 + 49/2021 annexes are KBLI-2020-vintage across the catalog
+ * (FATAL-2), so a code with a recorded 2020 origin is honestly described as
+ * "vintage 2020, per-code crosswalk audit pending". A code with NO recorded 2020
+ * origin cannot be: there is nothing to crosswalk FROM, and saying the crosswalk is
+ * pending would imply a basis we cannot show. Neither branch claims the verdict is
+ * wrong — both describe what our sources can and cannot trace.
+ */
+function pmaProvenance(raw: KBLIRawCode): KBLIProvenance["pma"] {
+  const traceable = hasRecorded2020Ancestry(raw);
+  return {
+    source: raw.pma_source ?? null,
+    vintage: traceable ? "2020" : null,
+    status: traceable ? "pending_crosswalk" : "untraceable_basis",
+  };
+}
+
 export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
   const disputed = getDisputedLicensing(raw);
   const noOssRisk = raw._l2_status === NO_OSS_RISK;
@@ -146,15 +178,7 @@ export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
               vintage: "2025",
               noOssScope: noOssRisk,
             },
-    pma: {
-      source: raw.pma_source ?? null,
-      // Perpres 10/2021 + 49/2021 annexes are KBLI-2020-vintage across the
-      // whole catalog (FATAL-2) — declared as pending until the per-code
-      // crosswalk audit lands. This is a source-vintage disclosure, not a
-      // claim that the value is wrong.
-      vintage: "2020",
-      status: "pending_crosswalk",
-    },
+    pma: pmaProvenance(raw),
     dataNote: raw._data_note ?? null,
     disputed,
   };

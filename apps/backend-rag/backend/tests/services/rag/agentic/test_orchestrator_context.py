@@ -51,6 +51,10 @@ async def test_prepare_query_context_delegates_history_to_context_window_manager
         query="current question",
         deep_think_mode=False,
         session_id=None,
+        # W-1 (P0-MEM follow-up): forwarded verbatim. None here is the
+        # innocence case — this caller passes no subject, so the FACTS key
+        # stays `user_id` exactly as before the parameter existed.
+        memory_subject=None,
     )
     context_window_manager.manage_context.assert_awaited_once_with(
         incoming_history,

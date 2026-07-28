@@ -321,7 +321,21 @@ edges:
       status: BY_DESIGN_OFF,
       notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
     }
-  - { id: com.balizero.wa-viewer, kind: launchd, machine: pro, status: ALIVE }
+  - {
+      id: com.balizero.wa-viewer,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      notes:
+        "RETIRED 2026-05-19 — live plist renamed com.balizero.wa-viewer.plist.retired
+        and the label disabled in launchd. Evidence is not inferred: the removal comment
+        left by PR #1916 (merged 2026-07-02, 'stop bridging 2 retired organs') states the
+        date verbatim at scripts/launchagent-state-bridge.py:482. That PR de-referenced the
+        organ in the state BRIDGE but not here, so verify_connectome kept calling a
+        deliberate retirement a REGRESSION for ~8 weeks. Same disease the 2026-07-03
+        heartbeat TAC already named — 'il ritiro non si propaga' — recurring one consumer up:
+        a retirement must be propagated to EVERY reader of the census, not the first one.",
+    }
   - {
       id: com.balizero.wa-dashboard-m1,
       kind: launchd,
@@ -641,7 +655,8 @@ edges:
       id: com.balizero.wr2.canva-lease-watchdog,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: DEAD,
+      retired_notes: "ABSENT, intent UNDETERMINED (do not read this as a retirement). Measured 2026-07-27: no plist on Pro AND no plist/wrapper has ever shipped in infra/launchagents/ — this was a HOME-only LaunchAgent (family #1). Its target script scripts/wr2_canva_lease_watchdog.py still exists, and the docs disagree with themselves (wr2_image_generator.py's own docstring still names the Canva apply step downstream, while CLAUDE.md declares FlowKit+Playwright as the image backend). Marked DEAD because DEAD is the state that was measured; BY_DESIGN_OFF would assert an intent nobody can evidence. Non-healthy status means the guardian stops crying REGRESSED but keeps probing — a resurrection still surfaces as RECOVERED. Open question tracked in PENDING-ARMS.",
       producer: "600s",
       notes: "W64 lint target — runtime green",
     }
@@ -778,7 +793,8 @@ edges:
       id: com.balizero.wr2.canva-oauth-watchdog,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: DEAD,
+      retired_notes: "ABSENT, intent UNDETERMINED (do not read this as a retirement). Measured 2026-07-27: no plist on Pro AND no plist/wrapper has ever shipped in infra/launchagents/ — this was a HOME-only LaunchAgent (family #1). Its target script scripts/wr2_canva_oauth_watchdog.py still exists, and the docs disagree with themselves (wr2_image_generator.py's own docstring still names the Canva apply step downstream, while CLAUDE.md declares FlowKit+Playwright as the image backend). Marked DEAD because DEAD is the state that was measured; BY_DESIGN_OFF would assert an intent nobody can evidence. Non-healthy status means the guardian stops crying REGRESSED but keeps probing — a resurrection still surfaces as RECOVERED. Open question tracked in PENDING-ARMS.",
       producer: "21600s",
     }
   - {
@@ -1031,7 +1047,8 @@ edges:
       id: com.balizero.wr2.canva-token-watchdog,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: DEAD,
+      retired_notes: "ABSENT, intent UNDETERMINED (do not read this as a retirement). Measured 2026-07-27: no plist on Pro AND no plist/wrapper has ever shipped in infra/launchagents/ — this was a HOME-only LaunchAgent (family #1). Its target script scripts/wr2_canva_token_watchdog.py still exists, and the docs disagree with themselves (wr2_image_generator.py's own docstring still names the Canva apply step downstream, while CLAUDE.md declares FlowKit+Playwright as the image backend). Marked DEAD because DEAD is the state that was measured; BY_DESIGN_OFF would assert an intent nobody can evidence. Non-healthy status means the guardian stops crying REGRESSED but keeps probing — a resurrection still surfaces as RECOVERED. Open question tracked in PENDING-ARMS.",
       producer: "daily 9:00",
     }
   - {
@@ -1283,7 +1300,8 @@ edges:
       id: com.balizero.wr2.canva-gc.weekly,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: DEAD,
+      retired_notes: "ABSENT, intent UNDETERMINED (do not read this as a retirement). Measured 2026-07-27: no plist on Pro AND no plist/wrapper has ever shipped in infra/launchagents/ — this was a HOME-only LaunchAgent (family #1). Its target script scripts/wr2_canva_garbage_collector.py still exists, and the docs disagree with themselves (wr2_image_generator.py's own docstring still names the Canva apply step downstream, while CLAUDE.md declares FlowKit+Playwright as the image backend). Marked DEAD because DEAD is the state that was measured; BY_DESIGN_OFF would assert an intent nobody can evidence. Non-healthy status means the guardian stops crying REGRESSED but keeps probing — a resurrection still surfaces as RECOVERED. Open question tracked in PENDING-ARMS.",
       producer: "Mon 4:30",
       notes: "Canva GC scheduled though renderer unloaded — harmless residue",
     }

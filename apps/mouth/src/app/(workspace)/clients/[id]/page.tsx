@@ -41,7 +41,9 @@ import {
   useClientTimeline,
   useDocumentCategories,
   useInvalidateClient,
+  useSetClientCache,
 } from "@/hooks/useClientDetail";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // Local component imports
 import type { TabType, ModalType } from "./components/types";
@@ -101,6 +103,7 @@ export default function ClientDetailPage() {
   const { data: timelineData } = useClientTimeline(clientId);
   const { data: docCategoriesData } = useDocumentCategories();
   const invalidateClient = useInvalidateClient(clientId);
+  const setClientCache = useSetClientCache(clientId);
   const businessStoryQuery = useClientBusinessStory(
     clientId,
     profile?.client.full_name ?? "",
@@ -147,6 +150,12 @@ export default function ClientDetailPage() {
   const [logSaved, setLogSaved] = useState(false);
   const logTextareaRef = useRef<HTMLTextAreaElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+  useClickOutside(
+    statusMenuRef,
+    () => setShowStatusMenu(false),
+    showStatusMenu,
+  );
 
   const submitLog = async () => {
     if (!logSummary.trim()) return;
@@ -186,8 +195,13 @@ export default function ClientDetailPage() {
     setShowStatusMenu(false);
     try {
       const user = await api.getProfile();
-      await api.crm.updateClient(clientId, { status: newStatus }, user.email);
-      await invalidateClient();
+      const updatedClient = await api.crm.updateClient(
+        clientId,
+        { status: newStatus },
+        user.email,
+      );
+      setClientCache(updatedClient);
+      void invalidateClient();
       toast.success(`Status updated to ${newStatus}`);
     } catch (err) {
       toast.error("Failed to update status", {
@@ -197,14 +211,6 @@ export default function ClientDetailPage() {
       setIsUpdatingStatus(false);
     }
   };
-
-  // Close status menu on outside click
-  useEffect(() => {
-    if (!showStatusMenu) return;
-    const handleClick = () => setShowStatusMenu(false);
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showStatusMenu]);
 
   // Fix hydration mismatch: only render dates on client
   useEffect(() => {
@@ -458,7 +464,7 @@ export default function ClientDetailPage() {
                 {client.full_name}
               </h1>
               {/* Status badge — click to change */}
-              <div className="relative">
+              <div ref={statusMenuRef} className="relative">
                 <button
                   onClick={() => setShowStatusMenu((v) => !v)}
                   disabled={isUpdatingStatus}
@@ -829,7 +835,7 @@ export default function ClientDetailPage() {
           },
           {
             key: "process",
-            label: `Process (${stats.practices_count ?? activePractices.length + completedPractices.length})`,
+            label: `Process (${activePractices.length + completedPractices.length})`,
             icon: FolderOpen,
           },
           {

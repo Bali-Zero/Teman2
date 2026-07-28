@@ -69,7 +69,7 @@ export function SuperuserImpersonationBar() {
     return (
       <div className="flex items-center gap-2">
         <span
-          className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-[var(--bz-copper)]/20 text-[var(--bz-copper)] border border-[var(--bz-copper)]/40"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-[var(--bz-copper)]/10 text-[var(--bz-copper-text)] border border-[var(--bz-copper)]"
           title={target.email ?? ""}
         >
           Viewing as: {label}
@@ -105,10 +105,10 @@ export function SuperuserImpersonationBar() {
           setTimeout(() => setIsOpen(false), 120);
         }}
         placeholder="Search client to impersonate…"
-        className="w-56 md:w-72 bg-[rgba(255,255,255,0.05)] border border-[var(--glass-rim)] rounded-lg px-3 py-1.5 text-sm text-[var(--tx-pure)] placeholder:text-[var(--tx-secondary)]/60 focus:outline-none focus:border-[var(--bz-copper)]/60"
+        className="w-56 md:w-72 bg-[var(--glass-highlight)] border border-[var(--bz-border)] rounded-lg px-3 py-1.5 text-sm text-[var(--tx-pure)] placeholder:text-[var(--tx-secondary)] focus:outline-none focus:border-[var(--bz-copper)]"
       />
       {isOpen && (query.length >= 2 || loading) && (
-        <div className="absolute top-full mt-1 right-0 left-0 z-40 max-h-80 overflow-y-auto rounded-lg border border-[var(--glass-rim)] bg-[rgba(29,39,59,0.95)] backdrop-blur-[24px] shadow-xl">
+        <div className="absolute top-full mt-1 right-0 left-0 z-40 max-h-80 overflow-y-auto rounded-lg border border-[var(--bz-border)] bg-[var(--bz-elevated)] backdrop-blur-[24px] shadow-xl">
           {loading && (
             <div className="px-3 py-2 text-xs text-[var(--tx-secondary)]">
               Searching…

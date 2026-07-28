@@ -70,6 +70,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the PR base is resolvable for the sentinel diff
+          filter: blob:none
 
       - name: Did worker-plane review surfaces change?
         id: relevant

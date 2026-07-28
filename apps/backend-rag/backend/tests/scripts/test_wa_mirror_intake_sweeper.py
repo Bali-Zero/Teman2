@@ -32,7 +32,7 @@ _SWEEPER_PATH = _REPO_ROOT / "scripts" / "wa_mirror_intake_sweeper.py"
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 
 

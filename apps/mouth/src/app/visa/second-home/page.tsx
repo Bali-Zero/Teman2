@@ -4,7 +4,7 @@ import { SECOND_HOME_FAQS } from "@/lib/seo/faq-data";
 import { SecondHomeLanding } from "./SecondHomeLanding";
 
 export const metadata: Metadata = {
-  title: "E33 Second Home Visa Indonesia 2026 | Free Fit Memo | Bali Zero",
+  title: "E33 Second Home Visa Indonesia 2026 | Free Fit Memo",
   description:
     "Indonesia's Second Home Visa (E33): up to 5 years of long-term residence via a USD 130,000 own-name deposit at a state-owned Indonesian bank or USD 1,000,000 completed strata-title property. Free fit memo from Bali Zero.",
   openGraph: {

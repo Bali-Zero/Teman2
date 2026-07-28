@@ -831,3 +831,660 @@ def test_edge_cli_sentinel_via_stdin_end_to_end() -> None:
     proc = _run_cli([], stdin_text=f"{pc.ERROR_SENTINEL}\n")
     assert proc.returncode == 0
     assert proc.stdout.strip() == pc.VERDICT_FULL
+
+
+# ===========================================================================
+# v4 — apps/mouth/src (.ts/.tsx/.css)
+#
+# Why this entry exists: it is the last high-traffic tree with no rule, so
+# every frontend-only PR paid the full ~43min backend suite. On 2026-07-27
+# that cost FOUR consecutive pushes of a single frontend-only branch — the
+# suite simply outlives the background task's budget.
+#
+# Why it is safe: measured on disk, no backend test opens a file under
+# apps/mouth (10 mention it, all as string literals fed to a path->command
+# mapper). The dangerous suffix is `.mdx`, which has a REAL reader
+# (backend/scripts/index_mdx_to_balizero_news.py does rglob("*.mdx") +
+# read_text) — hence excluded, and pinned as GUILT below.
+# ===========================================================================
+
+
+def test_innocence_mouth_src_ts_and_tsx_skip() -> None:
+    """The shapes this entry exists for: a lib module, a component, a page."""
+    for path in (
+        "apps/mouth/src/lib/kbli-bali-block.ts",
+        "apps/mouth/src/lib/kbli-bali-block.test.ts",
+        "apps/mouth/src/components/kbli/LicensingSection.tsx",
+        "apps/mouth/src/app/kbli/[code]/page.tsx",
+        "apps/mouth/src/app/globals.css",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_innocence_real_frontend_only_pr_skips() -> None:
+    """The actual file list of PR #3262 (frontend files only) — the diff
+    whose four pushes died paying for a suite that could not see it."""
+    verdict, unknown = pc.classify(
+        [
+            "apps/mouth/src/lib/kbli-bali-block.ts",
+            "apps/mouth/src/lib/kbli-bali-block.test.ts",
+            "apps/mouth/src/components/kbli/LicensingSection.tsx",
+            "apps/mouth/src/app/kbli/[code]/page.tsx",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_mouth_mdx_still_forces_full() -> None:
+    """`.mdx` is excluded because a real backend reader exists:
+    backend/scripts/index_mdx_to_balizero_news.py rglob()s and read_text()s
+    the articles tree. 3360 of the 3835 tracked files under src/ are .mdx —
+    admitting them would be the single largest hole this entry could open."""
+    verdict, unknown = pc.classify(
+        ["apps/mouth/src/content/articles/business/kbli-2025-great-transition.mdx"]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [
+        "apps/mouth/src/content/articles/business/kbli-2025-great-transition.mdx"
+    ]
+
+
+def test_guilt_mouth_dataset_outside_src_forces_full() -> None:
+    """Scoped to src/ specifically, NOT apps/mouth wholesale: the KBLI
+    dataset copies live in apps/mouth/data/ and are data-plane artifacts."""
+    for path in (
+        "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json",
+        "apps/mouth/data/kbli-gold-all.json",
+        "apps/mouth/next.config.ts",
+        "apps/mouth/package.json",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_wrong_suffix_forces_full() -> None:
+    """Suffix scoping is the mechanism — a .json or .yaml under src/ is not
+    admitted just because its directory is."""
+    for path in (
+        "apps/mouth/src/data/services_data.json",
+        "apps/mouth/src/i18n/messages.json",
+        "apps/mouth/src/app/opengraph.png",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_lookalike_prefix_forces_full() -> None:
+    """#3's recurring disease: a prefix check without a boundary anchor
+    over-matches. `srcarchive` is not `src`."""
+    for path in (
+        "apps/mouth/srcarchive/old.ts",
+        "apps/mouth/src-backup/old.tsx",
+        "apps/mouth-legacy/src/old.ts",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_mixed_with_backend_forces_full() -> None:
+    """One backend file anywhere in the diff still forces the full suite."""
+    verdict, unknown = pc.classify(
+        [
+            "apps/mouth/src/lib/kbli-bali-block.ts",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_mouth_src_traversal_escape_forces_full() -> None:
+    """HARDENING-2 still holds for the new entry: `..` must not let a path
+    suffix-match its way out of the allowlisted directory."""
+    verdict, _ = pc.classify(
+        ["apps/mouth/src/../../backend-rag/backend/services/rag/reasoning.ts"]
+    )
+    assert verdict == pc.VERDICT_FULL
+
+
+def test_allowlist_version_bumped_for_the_new_entry() -> None:
+    """The skip-banner logs the allowlist version that approved a skip, so a
+    rules change that does not bump it makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 4
+    assert ("apps/mouth/src", (".ts", ".tsx", ".css")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+# ===========================================================================
+# v5 — .agents/skills (.md) and scripts/ci (.sh)
+#
+# Why these entries exist: measured live 2026-07-27 on M5, load average 41,
+# 9 concurrent full `pytest backend/tests/` suites (one 1h21m in). Tracing
+# each running suite to its worktree/merge-base diff found 7 of the 9
+# guarded diffs contained ZERO backend files — two were pure markdown-only
+# diffs whose ONLY changed file sits under `.agents/skills/`, a third was
+# blocked solely by `scripts/ci/setup_merge_queue_ruleset.sh`.
+#
+# Why .agents/skills is safe: `.agents/skills/README.md` (verified on disk)
+# states this tree is the CANONICAL cross-agent skill store (established
+# 2026-07-23) — `.claude/skills/<name>` is a SYMLINK to it for 4 of 8
+# corners (bot/kbli-navigator/visaoracle/wr2, `git ls-tree` mode 120000
+# verified), so a SKILL.md edit through either path lands its `git diff` on
+# the `.agents/skills/**` blob, which the pre-v5 `.claude/skills` rule never
+# covered. Innocence measured on disk: zero matches for the DIRECTORY-
+# ANCHORED string `.agents/` anywhere under apps/backend-rag/backend/
+# (tests or modules) — a bare `\.agents` grep instead false-positives on
+# Python dotted-module paths like `backend.app.agents.graph`.
+#
+# Why scripts/ci is safe: mirrors the DECLARED .sh precedent already
+# accepted for infra/launchagents. Innocence measured on disk: zero matches
+# for the DIRECTORY-ANCHORED string `scripts/ci/` under
+# apps/backend-rag/backend/ — a bare `scripts/ci` grep instead
+# false-positives on the unrelated `apps/backend-rag/scripts/ci_bootstrap_
+# schema.py`. Also zero basename-only hits for each of the 3 real .sh
+# files, in case a test subprocess-invokes one without the dir prefix.
+# ===========================================================================
+
+
+def test_innocence_agents_skills_md_skips() -> None:
+    """The two live-worktree shapes the v5 measurement actually caught:
+    one-file SKILL.md-only diffs under the canonical .agents/skills store."""
+    for path in (
+        ".agents/skills/bot/SKILL.md",
+        ".agents/skills/kbli-navigator/SKILL.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_innocence_scripts_ci_setup_merge_queue_ruleset_skips() -> None:
+    """The third v5-measurement diff: blocked solely by this one .sh file."""
+    verdict, unknown = pc.classify(["scripts/ci/setup_merge_queue_ruleset.sh"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_real_agents_one_file_diffs_skip() -> None:
+    """The two REAL one-file diffs measured live 2026-07-27
+    (docs-kbli-night-findings, ops-bot-corner-refresh worktrees) — each
+    changed exactly one .agents/skills/**/SKILL.md file and each had been
+    paying a full backend suite before this entry existed."""
+    for path in (
+        ".agents/skills/kbli-navigator/SKILL.md",
+        ".agents/skills/bot/SKILL.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP
+        assert unknown == []
+
+
+def test_innocence_real_pr_c_three_file_list_skips() -> None:
+    """PR-C's real 3-file diff — a workflow + a runbook + this PR's new
+    scripts/ci .sh entry, all three now provably innocent together."""
+    verdict, unknown = pc.classify(
+        [
+            ".github/workflows/merge-queue-watch.yml",
+            "docs/runbooks/merge-queue-discipline.md",
+            "scripts/ci/setup_merge_queue_ruleset.sh",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_agents_non_md_forces_full() -> None:
+    """Suffix scoping is the mechanism — the one real non-.md file that
+    lives under .agents/skills/ today must NOT be admitted just because its
+    directory is."""
+    path = ".agents/skills/wr2/_research/2026-07-21-ir-phase1-replay-metrics.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_scripts_ci_py_forces_full() -> None:
+    """Suffix scoping again — the 2 real .py utilities in scripts/ci/ stay
+    OUT, same shape as the infra/launchagents .py exclusion above."""
+    for path in (
+        "scripts/ci/l5_2_phase2b_auto_analyzer.py",
+        "scripts/ci/redis_lease_check.py",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_agents_mixed_with_backend_forces_full() -> None:
+    """One backend file anywhere in the diff still forces the full suite,
+    even alongside an otherwise-innocent .agents/skills edit."""
+    verdict, unknown = pc.classify(
+        [
+            ".agents/skills/bot/SKILL.md",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_prepush_classify_itself_forces_full() -> None:
+    """This very PR's own diff touches scripts/prepush_classify.py, a
+    NEVER_INNOCENT_EXACT_PATHS entry — correct by design, so this PR's own
+    push pays the full suite it is trying to spare OTHER diffs from."""
+    verdict, unknown = pc.classify(["scripts/prepush_classify.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/prepush_classify.py"]
+
+
+def test_allowlist_version_bumped_to_5_for_the_v5_entries() -> None:
+    """The skip-banner logs the allowlist version that approved a skip, so a
+    rules change that does not bump it makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 5
+    assert (".agents/skills", (".md",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("scripts/ci", (".sh",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+# ===========================================================================
+# v6 — the root `.gitignore` (exact) and infra/home-fork (.json)
+#
+# Found by REPLAY rather than by being bitten: all 3458 non-merge commits of
+# the last 90 days had their file lists classified twice, once against v5 and
+# once against v5+these two entries, counting only verdict FLIPS full->skip.
+# 813 already skipped, 2465 correctly stay full, exactly 24 flip — 15 of them
+# on `.gitignore`, 10 on infra/home-fork, one commit (2b5d2b915e) on both.
+#
+# The lists asserted below are the REAL file lists of flipped commits, not
+# hand-authored plausible ones. `f1254477cb` is the extreme case: 19 files of
+# pure launchd config plus one JSON declaration, paying a full ~17k-test
+# backend suite.
+#
+# The `.gitignore` entry is deliberately root-EXACT, never by basename: 22
+# `.gitignore` files are tracked repo-wide and one of them lives at
+# `apps/backend-rag/backend/data/.gitignore`, INSIDE the tree whose tests the
+# skip would spare. Guilt+innocence for exactly that distinction below —
+# without the guilt half, a "tidying" edit to a basename rule would look
+# green.
+# ===========================================================================
+
+
+def test_innocence_root_gitignore_skips() -> None:
+    """10 of the 24 replayed flips are literally this one-file diff."""
+    verdict, unknown = pc.classify([".gitignore"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_home_fork_declared_pairs_skips() -> None:
+    """The HOME-fork guard's pair registry (superscar #1) — the only tracked
+    file under infra/home-fork/ today, 31 commits in its lifetime."""
+    verdict, unknown = pc.classify(["infra/home-fork/declared-pairs.json"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_real_v6_replay_flips_skip() -> None:
+    """Four REAL flipped commits from the 90-day replay, verbatim file lists.
+
+    Each of these paid a full backend suite for a diff containing zero
+    Python and zero backend files.
+    """
+    real_flips = {
+        # f1254477cb — 19 files: launchd canon reconcile.
+        "f1254477cb": [
+            "infra/home-fork/declared-pairs.json",
+            "infra/launchagents/com.balizero.codex-spalla-calibrate.plist",
+            "infra/launchagents/com.nuzantara.merge-train.plist",
+            "infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh",
+            "infra/launchagents/wrappers/wa-media-pull-run.sh",
+        ],
+        # 17eed8ebbd — .gitignore riding along with a research capture.
+        "17eed8ebbd": [
+            ".gitignore",
+            "research/visa/2026-06-01-c5a-local-ban-sources.md",
+        ],
+        # b2f7264824 — .gitignore plus one LaunchAgent plist.
+        "b2f7264824": [
+            ".gitignore",
+            "infra/launchagents/com.balizero.wr2.html-apply.plist",
+        ],
+        # 70db573245 — the ledger plus the pair declaration.
+        "70db573245": [
+            ".claude/skills/modus/PENDING-ARMS.md",
+            "infra/home-fork/declared-pairs.json",
+        ],
+    }
+    for sha, files in real_flips.items():
+        verdict, unknown = pc.classify(files)
+        assert verdict == pc.VERDICT_SKIP, f"{sha} should skip, got {verdict} ({unknown})"
+        assert unknown == []
+
+
+def test_innocence_both_v6_entries_in_one_diff_skip() -> None:
+    """COMPOSITION, not just each entry alone.
+
+    Ported from the stranded `99-allowlist-v6-gitignore-homefork` branch,
+    which reached the same two-entry design independently — this was the one
+    case its corpus had that the replay-driven corpus here did not. W94's
+    lesson: a corpus that tests each rule in isolation misses the shape where
+    two of them have to agree, and commit 2b5d2b915e is exactly that shape
+    (both entries in one diff).
+    """
+    verdict, unknown = pc.classify([".gitignore", "infra/home-fork/declared-pairs.json"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_nested_gitignore_under_backend_forces_full() -> None:
+    """THE load-bearing guilt test for v6.
+
+    `apps/backend-rag/backend/data/.gitignore` is a real tracked file
+    (verified on disk). A basename-shaped rule would have admitted it — i.e.
+    a file inside the backend tree would have authorised skipping the backend
+    tests. The root-exact entry must not.
+    """
+    path = "apps/backend-rag/backend/data/.gitignore"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL, "a .gitignore INSIDE the backend tree must force full"
+    assert unknown == [path]
+
+
+def test_guilt_non_root_gitignore_anywhere_forces_full() -> None:
+    """The same rule outside the backend tree: nested `.gitignore` files are
+    not admitted either. 22 are tracked; only the root one is allowlisted, so
+    this is the general case and the test above is its worst instance."""
+    for path in (
+        "apps/mouth/.gitignore",
+        "apps/backend-rag/.gitignore",
+        "packages/core/.gitignore",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_gitignore_lookalike_names_force_full() -> None:
+    """The `(".gitignore", (".gitignore",))` shape must match the FILE, not
+    names that merely start with it — the prefix test admits only equality or
+    a `.gitignore/` DIRECTORY, and the suffix test only the exact name."""
+    for path in (
+        ".gitignore.bak",
+        ".gitignore-old",
+        ".gitignoreignore",
+        ".gitignore.save/.gitignore",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_home_fork_non_json_forces_full() -> None:
+    """Suffix scoping is the mechanism: a future .py helper or .md note in
+    infra/home-fork/ must not inherit a blessing measured on a JSON data
+    file."""
+    for path in (
+        "infra/home-fork/sync.py",
+        "infra/home-fork/README.md",
+        "infra/home-fork/realign.sh",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_home_fork_lookalike_prefix_forces_full() -> None:
+    """Directory-boundary anchoring: `infra/home-fork-legacy/x.json` starts
+    with the prefix as a STRING but is a different directory."""
+    for path in (
+        "infra/home-fork-legacy/old.json",
+        "infra/home-forked/pairs.json",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_v6_entries_mixed_with_backend_force_full() -> None:
+    """Unanimity is unchanged: one backend file in the diff still forces the
+    full suite, alongside either new entry."""
+    backend = "apps/backend-rag/backend/services/rag/reasoning.py"
+    for extra in (".gitignore", "infra/home-fork/declared-pairs.json"):
+        verdict, unknown = pc.classify([extra, backend])
+        assert verdict == pc.VERDICT_FULL
+        assert unknown == [backend]
+
+
+def test_allowlist_version_bumped_to_6_for_the_v6_entries() -> None:
+    """The skip-banner logs the version that approved a skip; a rules change
+    without a bump makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 6
+    assert (".gitignore", (".gitignore",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("infra/home-fork", (".json",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+def test_edge_v6_added_no_second_allowlist_mechanism() -> None:
+    """ANTI-DRIFT. The odd-looking `(".gitignore", (".gitignore",))` shape is
+    the price of keeping ONE uniform mechanism. The tempting "tidy" is a
+    second exact-match allowlist container — which is exactly what the v2
+    MUST-FIX removed (`ALLOWLIST_INNOCENT_PREFIXES`). Same self-check as
+    test_edge_allowlist_prefixes_have_no_trailing_slash, one generation on.
+    """
+    for forbidden in (
+        "ALLOWLIST_INNOCENT_PREFIXES",
+        "ALLOWLIST_EXACT_PATHS",
+        "ALLOWLIST_INNOCENT_EXACT_PATHS",
+        "ROOT_LEVEL_INNOCENT_EXACT",
+    ):
+        assert not hasattr(pc, forbidden), (
+            f"{forbidden} exists — a second allowlist mechanism reintroduces the "
+            "class of bug v2 removed; express exact matches through "
+            "ALLOWLIST_PREFIX_SUFFIX_PAIRS instead"
+        )
+
+
+# ---------------------------------------------------------------------------
+# The gate's INPUT, not its rules: `.husky/pre-push` must enumerate changed
+# files against the MERGE-BASE with origin/main, never against $remote_sha.
+#
+# The hook used to branch: merge-base for a brand-new branch, `$remote_sha`
+# ("only the NEW commits") for one already on the remote. That asymmetry meant
+# a branch that merged origin/main in — the normal way to resolve a conflict —
+# handed this classifier every file MAIN had gained since the last push, and
+# the verdict came back `full` on files already merged and already tested.
+# Measured 2026-07-26: a two-file diff whose files are BOTH on the allowlist
+# was reported as "11/20 changed file(s) are NOT on the innocent allowlist",
+# naming .gitignore, published_articles.json, escalations_pro.jsonl … Three
+# ~40-minute full-suite runs; the same delta re-cut from main passed in
+# seconds. The RULES were right — the INPUT lied. W102's shape, in the
+# pre-push gate rather than in CI.
+#
+# These live here (and not in test_prepush_failclosed.sh, the other pre-push
+# test) because `.github/workflows/immune-enforcement.yml` names THIS file on a
+# real pytest line, and names that one nowhere: a guard no workflow runs is
+# written, not armed (superscar #2).
+# ---------------------------------------------------------------------------
+
+HOOK_PATH = Path(__file__).resolve().parents[2] / ".husky" / "pre-push"
+
+
+def _git(cwd: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=cwd, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+def _hook_source() -> str:
+    """Fails loudly if the hook is missing rather than vacuously passing on ''."""
+    assert HOOK_PATH.is_file(), f"{HOOK_PATH} not found — re-anchor this pin, do not delete it"
+    return HOOK_PATH.read_text(encoding="utf-8")
+
+
+def test_hook_anchors_the_diff_range_to_the_merge_base() -> None:
+    """INNOCENCE: the live hook computes RANGE_FROM from `git merge-base origin/main`."""
+    src = _hook_source()
+    assert 'RANGE_FROM="$(git merge-base origin/main "$local_sha"' in src, (
+        "the pre-push diff range is no longer anchored to the merge-base with "
+        "origin/main; a branch that merges main in will hand the classifier "
+        "MAIN's files and force the full suite on already-tested work"
+    )
+
+
+def test_hook_never_anchors_the_range_to_remote_sha() -> None:
+    """GUILT: the exact form that caused the defect must not come back.
+
+    Without this half, the innocence test above would still pass if someone
+    re-added the `$remote_sha` branch alongside the merge-base one.
+    """
+    src = _hook_source()
+    assert 'RANGE_FROM="$remote_sha"' not in src, (
+        "RANGE_FROM=$remote_sha is back: for a branch that merged origin/main, "
+        "$remote_sha..$local_sha spans every commit main gained since the last "
+        "push, so MAIN's files get attributed to this push"
+    )
+
+
+def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
+    tmp_path: Path,
+) -> None:
+    """The git-level REASON, proved on a real repo rather than asserted in prose.
+
+    Reproduces the exact shape: branch forks from main, main moves on, branch
+    merges main in, then a push computes its range. `$remote_sha..HEAD` sees
+    main's file; the merge-base range sees only the branch's own.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+
+    (repo / "base.txt").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+
+    # The branch forks here, and this is also what the remote already has.
+    _git(repo, "branch", "feature")
+    remote_sha = _git(repo, "rev-parse", "HEAD")
+
+    # main moves on with a file that has nothing to do with the branch.
+    (repo / "mains_file.txt").write_text("main moved on\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "main moves")
+
+    # The branch adds its own file, then merges main in (conflict resolution).
+    _git(repo, "checkout", "-q", "feature")
+    (repo / "branch_file.txt").write_text("mine\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "branch work")
+    _git(repo, "merge", "-q", "--no-edit", "main")
+    local_sha = _git(repo, "rev-parse", "HEAD")
+
+    def changed(range_from: str) -> set[str]:
+        out = _git(
+            repo, "diff", "--no-ext-diff", "--no-renames", "--name-only",
+            range_from, local_sha,
+        )
+        return set(out.splitlines()) - {""}
+
+    merge_base = _git(repo, "merge-base", "main", local_sha)
+
+    # GUILT: the old anchor attributes main's file to this push.
+    assert "mains_file.txt" in changed(remote_sha)
+    # INNOCENCE: the merge-base anchor sees only what the branch contributes.
+    assert changed(merge_base) == {"branch_file.txt"}
+
+
+# ---------------------------------------------------------------------------
+# The REASON LABEL (added 2026-07-27, after proving v6 live on main).
+#
+# The matching condition `(path == prefix or path.startswith(prefix + "/"))`
+# is ONE mechanism covering two different rule shapes. It classifies both
+# correctly, but the reason string rendered `<prefix>/**` for BOTH — so the
+# v6 root-exact entry printed `.gitignore/** (.gitignore)`, naming a
+# `.gitignore/` DIRECTORY that does not exist and cannot exist as a rule
+# here. Discovered by reading the shipped tool's real output during
+# PROVE-LIVE, not from the diff.
+#
+# Why this is worth pinning rather than shrugging at: the message is the
+# only thing a human reads when asking "why was my suite skipped / why was
+# it NOT skipped?". A reader who takes `.gitignore/**` at face value
+# concludes the rule is directory-shaped and reasons wrongly about whether
+# `apps/backend-rag/backend/data/.gitignore` skips (it must NOT — that
+# guilt case is what makes root-exact the safe shape). Same defect class as
+# W106: the verdict was right and the DIAGNOSIS was anchored to the wrong
+# thing, and the diagnosis is what the next reader acts on.
+#
+# These tests are about the LABEL only. The verdict tests above are the
+# regression guard that this cosmetic change moved no classification.
+# ---------------------------------------------------------------------------
+
+
+def test_label_exact_match_entry_does_not_invent_a_directory() -> None:
+    """GUILT on the old label: the root `.gitignore` entry must NOT render as
+    `.gitignore/**`, which describes a directory rule this table has never
+    had."""
+    reason = pc._innocent_reason(".gitignore")
+    assert reason is not None, "root .gitignore must still be innocent"
+    assert "/**" not in reason, (
+        f"exact-match entry rendered a directory glob: {reason!r} — this is the "
+        "misleading form the label fix exists to remove"
+    )
+    assert reason == ".gitignore (exact match)"
+
+
+def test_label_directory_entry_still_renders_the_glob() -> None:
+    """INNOCENCE: the fix must not swing the other way and strip `/**` from
+    entries that genuinely ARE directory-scoped."""
+    reason = pc._innocent_reason("infra/home-fork/declared-pairs.json")
+    assert reason is not None
+    assert reason == "infra/home-fork/** (.json)"
+
+
+def test_label_change_moved_no_verdict_for_either_v6_class() -> None:
+    """The label branch must be provably cosmetic: both v6 classes still SKIP,
+    alone and together, and the load-bearing nested-.gitignore guilt case
+    still forces FULL. If a label edit ever changes one of these, the edit
+    was not cosmetic."""
+    for files in (
+        [".gitignore"],
+        ["infra/home-fork/declared-pairs.json"],
+        [".gitignore", "infra/home-fork/declared-pairs.json"],
+    ):
+        verdict, unknown = pc.classify(files)
+        assert verdict == pc.VERDICT_SKIP, f"{files} should skip, got {verdict}"
+        assert unknown == []
+
+    for files in (
+        ["apps/backend-rag/backend/data/.gitignore"],
+        ["apps/mouth/.gitignore"],
+        ["x.gitignore"],
+        ["infra/home-fork/README.md"],
+        ["infra/home-fork-extra/declared-pairs.json"],
+    ):
+        verdict, _ = pc.classify(files)
+        assert verdict == pc.VERDICT_FULL, f"{files} should force full, got {verdict}"
+
+
+def test_label_every_allowlist_entry_gets_a_reason_naming_its_own_prefix() -> None:
+    """Sweep the WHOLE table rather than only the entry that bit us (the
+    SYMMETRY clause from the fly-backup scar: a fix that covers only the case
+    that bit you is half a fix). For each entry, a representative matching
+    path must produce a reason that names that entry's prefix and does not
+    invent a directory for exact-match entries."""
+    for prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
+        suffix = suffixes[0]
+        exact_shaped = prefix.endswith(suffix)
+        sample = prefix if exact_shaped else f"{prefix}/probe{suffix}"
+        reason = pc._innocent_reason(sample)
+        if reason is None:
+            # A NEVER_INNOCENT_* net legitimately outranks the table for some
+            # samples; that is a different rule, not a label defect.
+            continue
+        assert prefix in reason, f"reason {reason!r} does not name its prefix {prefix!r}"
+        if sample == prefix:
+            assert "/**" not in reason, (
+                f"entry {prefix!r} matched EXACTLY but was labelled with a "
+                f"directory glob: {reason!r}"
+            )

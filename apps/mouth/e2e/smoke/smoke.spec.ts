@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { e2eEmail, e2ePin } from "../support/credentials";
 
 /**
  * ZANTARA Smoke Tests - Production Health Check
@@ -16,14 +17,22 @@ import { test, expect, Page } from "@playwright/test";
  *   npx playwright test --config=playwright.smoke.config.ts
  *
  * Environment variables:
- *   E2E_TEST_EMAIL - test user email (default: zero@balizero.com)
- *   E2E_TEST_PIN - test user PIN (default: 010719)
+ *   E2E_TEST_EMAIL - test user email (REQUIRED — no default, by design)
+ *   E2E_TEST_PIN - test user PIN (REQUIRED — no default, by design)
  *   E2E_BASE_URL - base URL (default: https://kita.balizero.com)
  */
 
 const CONFIG = {
-  email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
-  pin: process.env.E2E_TEST_PIN || "010719",
+  // Lazy on purpose: Playwright IMPORTS every spec during collection, even the
+  // ones --grep will not run. Calling e2eEmail() here demanded the credential at
+  // import time and failed the whole job wherever the secret is absent. Getters
+  // keep every CONFIG.email call site unchanged and move the throw to first use.
+  get email() {
+    return e2eEmail();
+  },
+  get pin() {
+    return e2ePin();
+  },
   baseUrl: process.env.E2E_BASE_URL || "https://kita.balizero.com",
 };
 

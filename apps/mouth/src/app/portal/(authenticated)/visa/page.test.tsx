@@ -176,6 +176,18 @@ describe("VisaPage (WS3 day pass)", () => {
     expect(await screen.findByText("No visa information")).toBeInTheDocument();
   });
 
+  it("treats the superuser client-selection response as a neutral state", async () => {
+    mockGetVisaStatus.mockRejectedValue(
+      new Error("Superuser: select a client via ?as_client=<id>"),
+    );
+    render(<VisaPage />);
+
+    expect(
+      await screen.findByText("Select a client to view visa information"),
+    ).toBeInTheDocument();
+    expect(mockToastError).not.toHaveBeenCalled();
+  });
+
   it("shows a toast when loading fails", async () => {
     mockGetVisaStatus.mockRejectedValue(new Error("boom"));
     render(<VisaPage />);

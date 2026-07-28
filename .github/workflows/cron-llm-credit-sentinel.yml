@@ -1,0 +1,84 @@
+name: cron - LLM credit sentinel (every 20 min)
+
+# Born from the 2026-07-28 outage: the Gemini prepay hit zero and the bot was
+# mute for ~34 hours before a human noticed, with the whole team testing
+# against it. Detection now costs one 9-token call every 20 minutes.
+#
+# The check runs INSIDE the Fly machine because that is the only place holding
+# all three credentials it needs (Gemini key, WhatsApp token, Telegram token).
+# This workflow only needs FLY_API_TOKEN, which already exists as a secret.
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-llm-credit-sentinel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Probe the LLM credit inside prod
+        id: probe
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          # Errexit-immune capture. `set -uo pipefail` above does NOT clear the
+          # `-e` this block is INVOKED with (Actions runs it as `bash -e {0}`),
+          # so a bare `OUT=$(flyctl ...)` aborts the step the moment the probe
+          # fails — before the "unreachable is not a billing event" branch below
+          # can run. That branch would have been dead code on the only path it
+          # exists for. W101, 4th instance; caught by the antidotes lint
+          # (scripts/lint_workflow_errexit_decap.py), not by a human reading it.
+          RC=0
+          OUT=$(flyctl ssh console -a nuzantara-rag \
+                  -C "python3 -m backend.services.hardening.llm_credit_sentinel_cli" 2>&1) || RC=$?
+          echo "$OUT"
+          STATE=$(printf '%s\n' "$OUT" | sed -n 's/^STATE=//p' | tail -1)
+
+          if [ -z "$STATE" ]; then
+            # Two different worlds produce no STATE line and only one is
+            # quiet-worthy. A briefly unreachable machine is not a billing
+            # event. A machine we DID reach that has no sentinel module is
+            # deploy drift, and staying quiet about it is how a credit watch
+            # ends up believed-armed and blind (superscar #2). Merging this
+            # workflow does auto-trigger fly-deploy — its `paths:` filter
+            # includes apps/backend-rag/**, where the sentinel lives — so the
+            # normal case self-heals within one deploy; this branch is here for
+            # the deploy that FAILS, which would otherwise be silent forever.
+            case "$OUT" in
+              *"No module named"*|*ModuleNotFoundError*)
+                echo "::error::il sentinel NON è nell'immagine di nuzantara-rag (rc=$RC) — redeploy; fino ad allora i crediti NON sono sorvegliati"
+                exit 1
+                ;;
+            esac
+            echo "::warning::sentinel non ha prodotto uno STATE (rc=$RC) — macchina irraggiungibile?"
+            exit 0
+          fi
+
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          case "$STATE" in
+            depleted)
+              echo "::error::Crediti Gemini ESAURITI — alert inviato a Surya (WhatsApp) e a Zero (Telegram)"
+              exit 1
+              ;;
+            rate_limited)
+              echo "::notice::rate limit transitorio, nessun allarme (corretto)"
+              ;;
+            unknown)
+              echo "::warning::stato non determinabile: $(printf '%s\n' "$OUT" | sed -n 's/^DETAIL=//p' | tail -1)"
+              ;;
+            *)
+              echo "credito OK"
+              ;;
+          esac

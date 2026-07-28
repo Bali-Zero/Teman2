@@ -291,7 +291,12 @@ async def test_save_concurrent_different_sessions_not_serialized(
             # Second entrant flips the barrier so both can complete.
             both_entered.set()
         try:
-            await asyncio.wait_for(both_entered.wait(), timeout=1.0)
+            # W58 (2026-07-27): a genuine serialization regression means
+            # both_entered NEVER fires (only one branch ever enters), not that
+            # it fires late — a generous bound preserves full discriminating
+            # power while removing dependence on both coroutines getting CPU
+            # time within 1s under contention.
+            await asyncio.wait_for(both_entered.wait(), timeout=5.0)
         except asyncio.TimeoutError as exc:
             raise AssertionError(
                 "Session-scoped saves were serialized unexpectedly; "

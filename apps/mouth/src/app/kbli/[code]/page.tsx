@@ -13,6 +13,7 @@ import {
   getKbliDatasetLastModified,
 } from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
+import { baliBlockClause } from "@/lib/kbli-bali-block";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
@@ -316,9 +317,16 @@ export default async function KBLICodePage({
                           National procedure — does not apply to a PT PMA in
                           Bali
                         </p>
+                        {/* This sentence used to assert ONE cause — "reserved
+                            for MSMEs" — for every blocked code, while the Bali
+                            badge a few lines below derived the real one from
+                            the status. 456 pages render this notice and only
+                            39 are MSME-reserved, so 417 contradicted their own
+                            badge above the fold. The cause is now derived from
+                            the same total function the licensing frame uses. */}
                         <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
-                          In Bali this activity is reserved for MSMEs; a PT PMA
-                          (large enterprise) cannot register it. The national
+                          In Bali this activity is{" "}
+                          {baliBlockClause(kbli.baliL4?.status)}. The national
                           procedure below applies only to non-PMA operators.
                         </p>
                       </div>
@@ -1112,7 +1120,11 @@ export default async function KBLICodePage({
                     kbli.baliL4?.blocked &&
                     /\b(PT PMA|100% foreign|foreign-owned)\b/i.test(op)
                   ) {
-                    return `Looking at KBLI ${kbli.code} — ${kbli.titleEn}? Note this code is currently blocked for a PT PMA in Bali (reserved UMKM / 2026 moratorium). Ask me about the national procedure, the Bali restriction, or alternatives.`;
+                    // The parenthetical named two causes at once — "reserved
+                    // UMKM / 2026 moratorium" — on every blocked code. This
+                    // string seeds the assistant's context, so a wrong cause
+                    // here is a wrong cause in the answer. Derived instead.
+                    return `Looking at KBLI ${kbli.code} — ${kbli.titleEn}? Note that in Bali this code is currently ${baliBlockClause(kbli.baliL4?.status)}. Ask me about the national procedure, the Bali restriction, or alternatives.`;
                   }
                   return op;
                 })()}

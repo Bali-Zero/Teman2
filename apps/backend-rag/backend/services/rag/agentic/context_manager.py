@@ -236,6 +236,7 @@ async def get_user_context(
     query: str | None = None,
     deep_think_mode: bool = False,
     session_id: str | None = None,
+    memory_subject: str | None = None,
 ) -> dict[str, Any]:
     """
     Retrieve user profile, history, and memory facts.
@@ -250,6 +251,21 @@ async def get_user_context(
         query: Optional query for query-aware collective memory retrieval
         deep_think_mode: Whether deep thinking mode is enabled
         session_id: Optional session ID to filter conversation history by specific session
+        memory_subject: W-1 follow-up to P0-MEM (2026-07-27). When the caller
+            is the trusted WhatsApp bot, the router derives a per-sender
+            pseudonymous subject (``_memory_identity.derive_wa_memory_subject``)
+            and passes it here. Long-term FACTS are then keyed on it instead of
+            on ``user_id`` — which for WhatsApp is the SHARED
+            ``wa-mirror-internal`` identity and is why memory had to be
+            disabled there at all. ``None`` (every non-WA caller, and WA itself
+            while the salt is unprovisioned) leaves behaviour byte-identical:
+            facts stay keyed on ``user_id`` and the containment predicate still
+            rejects the shared bucket.
+
+            Deliberately narrow: it replaces the key for FACTS only. Profile
+            and conversation history keep using ``user_id`` — they are not the
+            cross-client bleed surface, and widening the substitution would
+            silently change the A/B and history-lookup semantics too.
 
     Returns:
         Dictionary containing:
@@ -282,14 +298,30 @@ async def get_user_context(
         except (KeyError, ValueError, RuntimeError) as e:
             logger.warning("⚠️ Memory cache lookup failed: %s", e, exc_info=True)
 
-    # Keep original user_id (email) for memory queries
-    original_user_id = user_id
+    # Key long-term facts on the per-sender pseudonymous subject when the
+    # router derived one (W-1, 2026-07-27); otherwise on the user_id, as
+    # before. `memory_subject` is server-derived and gated on the WA bot's
+    # own secret — it can never come from a request body.
+    original_user_id = memory_subject or user_id
 
-    # P0-MEM containment: treat the shared/service identity (e.g. the
-    # WhatsApp wa-mirror-internal pseudo-identity) exactly like
-    # "anonymous" — never fetch facts keyed on a bucket shared by many
-    # real clients. See is_non_personal_memory_identity docstring.
-    if not db_pool or is_non_personal_memory_identity(user_id):
+    # P0-MEM containment, now applied per-surface because the two surfaces
+    # no longer share a key.
+    #
+    #   FACTS   are keyed on `original_user_id` (the pseudonymous subject
+    #           when there is one) — that is the value the predicate must
+    #           judge, or a subject would be rejected for the sins of the
+    #           shared identity it replaced.
+    #   PROFILE and HISTORY are still keyed on `user_id`, which for WhatsApp
+    #           IS the shared identity. They must stay suppressed. Gating the
+    #           whole function on `original_user_id` alone would have let a
+    #           WA request through to `fetch_profile_and_history(user_id=…)`
+    #           and handed every client the shared bucket's profile and
+    #           conversation history — the same bleed as P0-MEM, one surface
+    #           over.
+    facts_allowed = not is_non_personal_memory_identity(original_user_id)
+    profile_allowed = not is_non_personal_memory_identity(user_id)
+
+    if not db_pool or not (facts_allowed or profile_allowed):
         logger.debug(
             "🧠 [ContextManager] DB Pool missing or non-personal identity, returning empty context",
         )
@@ -300,12 +332,16 @@ async def get_user_context(
     # We measure individual timings by wrapping each task with timing logic
     async def _timed_profile_fetch() -> Any:
         task_start = time.time()
+        if not profile_allowed:
+            return {}, 0.0
         result = await fetch_profile_and_history(db_pool, user_id, session_id)
         task_time = time.time() - task_start
         return result, task_time
 
     async def _timed_memory_fetch() -> Any:
         task_start = time.time()
+        if not facts_allowed:
+            return {"facts": [], "collective_facts": []}, 0.0
         result = await fetch_memory_facts(memory_orchestrator, original_user_id, query)
         task_time = time.time() - task_start
         return result, task_time

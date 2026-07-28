@@ -555,6 +555,48 @@ class TestTimeline:
 
 
 # ============================================
+# PROCESS DOCUMENT TESTS
+# ============================================
+
+
+class TestProcessDocuments:
+    """Tests for GET /api/portal/process/required-documents."""
+
+    def test_completed_process_documents_remain_visible(self, client, mock_db_pool):
+        """Completed matters retain their document history in the client portal."""
+        completed_doc = {
+            "id": 7,
+            "practice_id": 81,
+            "process_name": "Completed KITAS",
+            "process_status": "completed",
+            "document_type": "passport",
+            "document_label": "Passport copy",
+            "description": "Historical requirement",
+            "is_required": True,
+            "uploaded_by_client": False,
+            "status": "pending",
+            "client_notes": None,
+            "team_member_notes": None,
+        }
+
+        async def fetch_visible_documents(
+            query: str,
+            client_id: int,
+        ) -> list[dict[str, object]]:
+            assert client_id == 42
+            if "p.status NOT IN ('completed', 'cancelled')" in query:
+                return []
+            return [completed_doc]
+
+        mock_db_pool._mock_conn.fetch.side_effect = fetch_visible_documents
+
+        response = client.get("/api/portal/process/required-documents")
+
+        assert response.status_code == 200
+        assert response.json()["data"] == [completed_doc]
+
+
+# ============================================
 # PROFILE TESTS
 # ============================================
 

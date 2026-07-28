@@ -107,6 +107,7 @@ class MemoryHandler:
         answer: str,
         session_id: str | None = None,
         metrics_collector: "MetricsCollector | None" = None,
+        memory_subject: str | None = None,
     ) -> None:
         """
         Save memory facts from conversation for future personalization.
@@ -129,25 +130,38 @@ class MemoryHandler:
             session_id: Optional session identifier used to scope the lock.
                 Pass ``None`` (default) for backward-compatible behaviour.
             metrics_collector: Optional metrics collector for recording lock contention
+            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Server-derived
+                per-sender pseudonymous subject for the trusted WhatsApp bot
+                (``_memory_identity.derive_wa_memory_subject``). When present it
+                REPLACES ``user_id`` as the subject facts are written under —
+                and, necessarily, in the lock key too: two different senders
+                sharing one lock would serialise unrelated saves and, worse,
+                make the lock claim a co-tenancy the storage no longer has.
+                ``None`` (every non-WA caller) is byte-identical to before.
 
         Note:
             - Skips anonymous AND non-personal/shared-service identities
               (see is_non_personal_memory_identity — P0-MEM containment:
               the shared wa-mirror-internal WhatsApp identity must never
-              anchor long-term memory, same treatment as "anonymous")
+              anchor long-term memory, same treatment as "anonymous").
+              The check runs on the EFFECTIVE subject: with a subject
+              present, the shared user_id it replaced is no longer what
+              anything is keyed on, and judging it would reject the very
+              case the subject exists to enable.
             - Non-blocking: uses asyncio.create_task() in caller
             - Logs success metrics (facts extracted/saved, processing time)
             - Gracefully handles errors without failing the main flow
             - Lock timeout: configurable (default 5 seconds)
         """
-        if is_non_personal_memory_identity(user_id):
+        subject = memory_subject or user_id
+        if is_non_personal_memory_identity(subject):
             return
 
         # Evict unlocked entries when dict grows too large
         if len(self._memory_locks) > self._MAX_LOCKS:
             self._evict_stale_locks()
 
-        lock_key = f"{user_id}::{session_id or '__nosession__'}"
+        lock_key = f"{subject}::{session_id or '__nosession__'}"
         lock = self._memory_locks[lock_key]
         lock_start_time = time.time()
 
@@ -160,7 +174,7 @@ class MemoryHandler:
                     return
 
                 result = await orchestrator.process_conversation(
-                    user_email=user_id,
+                    user_email=subject,
                     user_message=query,
                     ai_response=answer,
                 )
@@ -168,7 +182,7 @@ class MemoryHandler:
                 if result.success and result.facts_saved > 0:
                     logger.info(
                         f"Saved {result.facts_saved}/{result.facts_extracted} "
-                        f"facts for {user_id} ({result.processing_time_ms:.1f}ms)",
+                        f"facts for {subject} ({result.processing_time_ms:.1f}ms)",
                     )
 
                 # Record lock contention metric
@@ -198,6 +212,7 @@ class MemoryHandler:
         answer: str,
         session_id: str | None = None,
         metrics_collector: "MetricsCollector | None" = None,
+        memory_subject: str | None = None,
     ) -> asyncio.Task | None:
         """
         Create a background task to save conversation memory.
@@ -213,11 +228,20 @@ class MemoryHandler:
                 ``save_conversation_memory`` for session-scoped locking
                 and task naming.
             metrics_collector: Optional metrics collector
+            memory_subject: Per-sender pseudonymous subject (W-1, 2026-07-27).
+                Forwarded verbatim to ``save_conversation_memory``, which owns
+                the "subject or user_id" decision — this method must not make
+                it a second time, or the two copies drift.
 
         Returns:
-            The created task, or None if user_id is invalid
+            The created task, or None if there is no usable subject or answer
         """
-        if not user_id or user_id == "anonymous" or not answer:
+        # Gate on the EFFECTIVE subject — `user_id` alone would reject a
+        # caller that has a real `memory_subject` but no separate `user_id`
+        # (not today's WA shape, but the two must not silently diverge).
+        if (not user_id and not memory_subject) or not answer:
+            return None
+        if (memory_subject or user_id) == "anonymous":
             return None
 
         task = asyncio.create_task(
@@ -227,8 +251,12 @@ class MemoryHandler:
                 answer=answer,
                 session_id=session_id,
                 metrics_collector=metrics_collector,
+                memory_subject=memory_subject,
             ),
-            name=f"memory-save:{user_id}:{session_id or '__nosession__'}",
+            # Task name follows the effective subject: for WhatsApp `user_id`
+            # is the SHARED identity, so naming every sender's task alike
+            # would make concurrent saves indistinguishable in a task dump.
+            name=f"memory-save:{memory_subject or user_id}:{session_id or '__nosession__'}",
         )
         self._inflight_tasks.add(task)
         task.add_done_callback(self._on_save_task_done)

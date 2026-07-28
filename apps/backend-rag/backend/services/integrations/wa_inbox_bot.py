@@ -44,6 +44,7 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
 from backend.channels.format import format_rich_text
+from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
 
 logger = logging.getLogger("zantara.backend")
 
@@ -292,20 +293,30 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         The bot reply text to send.
 
     Raises:
-        RuntimeError: feature flag off, no customer message, RAG abstained, or
-            RAG returned an empty answer. The worker's guard turns this into a
-            retry/backoff and eventually ``failed`` — never a wrong send.
+        BotStandingCondition: the feature flag is off, or the loaded window
+            holds no customer message. A ``RuntimeError`` subclass, so the
+            worker's retry/backoff policy applies UNCHANGED — the only thing it
+            buys is a distinct line in the ledger. (Measured 2026-07-27: 49 of
+            the 52 give-ups ever recorded were one of these two, all filed under
+            the same sentinel as a genuine crash. See ``wa_bot_outcomes``.)
+        RuntimeError: RAG abstained, or returned an empty answer. The worker's
+            guard turns this into a retry/backoff and eventually ``failed`` —
+            never a wrong send.
         httpx errors propagate (also caught by the worker guard) → retry.
     """
     if not is_bot_autoreply_enabled():
-        raise RuntimeError("wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)")
+        raise BotStandingCondition(
+            "wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)"
+        )
 
     thread_id = thread["thread_id"]
     phone = thread["counterpart_phone"]
 
     query, history = await _load_thread_context(pool, thread_id)
     if not query:
-        raise RuntimeError(f"wa-inbox bot: no customer message in thread {thread_id}")
+        raise BotStandingCondition(
+            f"wa-inbox bot: no customer message in thread {thread_id}"
+        )
 
     # Team-assistant V1 (2026-07-19) used to resolve the sender's identity
     # HERE and forward it as a `profile` request field. P0-ID containment

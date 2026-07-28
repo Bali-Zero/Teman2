@@ -49,6 +49,30 @@ def _run_audit(repo: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
+def _col(inventory_text: str, name: str) -> int:
+    """Index into `line.split("|")` for the inventory column called `name`.
+
+    Resolved from the rendered header, never hardcoded. The tests below hand-
+    edit individual cells to manufacture guilt, and they used to address them
+    by literal index. When #3405's churn fix removed the `mtime_days` column,
+    every one of those indices silently pointed one cell to the left. Three of
+    them happened to fail loudly (`date.fromisoformat('—')`); the rest would
+    have quietly asserted about the wrong column — a guilt test that mutates
+    the wrong cell still goes red, for the wrong reason, and an innocence test
+    that reads the wrong cell can go green while the property it names is
+    broken.
+
+    `split("|")` on `| a | b |` yields ['', ' a ', ' b ', ''], so the header's
+    Nth column is index N+1.
+    """
+    header = next(
+        ln for ln in inventory_text.splitlines() if ln.startswith("| File | Status |")
+    )
+    names = [h.strip() for h in header.strip().strip("|").split("|")]
+    assert name in names, f"column {name!r} is not in the inventory header: {names}"
+    return names.index(name) + 1
+
+
 def test_classify_live_doc(aged_fixture):
     result = _run_audit(
         aged_fixture,
@@ -247,15 +271,32 @@ def test_check_flag_exit_codes(aged_fixture):
     assert "+++ generated/" in result.stderr
 
 
-def test_check_ignores_mtime_days_drift(aged_fixture):
-    """`--check` must NOT fail when the only delta is mtime_days incrementing.
+def test_the_inventory_has_no_clock_derived_cell_for_a_day_to_change(aged_fixture):
+    """END-TO-END: a day passing cannot move this file, because nothing in it
+    is derived from the clock.
 
-    Calendar time advances every day; if `--check` flagged that, every PR
-    touching `docs/**` would fail Docs Guardian on the day after the last
-    inventory regen — making the gate noise instead of signal. Regression
-    for the 2026-05-01 incident on PR #401, where the `inventory-check`
-    job in `.github/workflows/docs-guardian.yml` flagged a 1-day
-    mtime_days drift on every row even though no doc was actually stale.
+    HISTORY, and why this test was rewritten rather than left alone. It used to
+    be `test_check_ignores_mtime_days_drift`: it hand-incremented every
+    `mtime_days` cell and asserted `--check` still exited 0, protecting the
+    2026-05-01 / PR #401 incident where a 1-day drift on every row failed
+    `inventory-check` for PRs that had changed nothing.
+
+    That protection was masking, and masking only silenced the GATE. The FILE
+    still changed every day, which is the half that hurt: measured on #3405,
+    633 of 699 changed rows (90.6%) differed ONLY in that integer, the
+    twice-daily refresh opened a churn PR on every run because it decides with
+    `git diff --quiet` on the raw file, and any two branches that regenerated
+    collided on those 633 lines.
+
+    The column is now gone (render_inventory emits absolute `last_touched_date`
+    instead), so the old body had nothing left to increment: its loop looked for
+    a `mtime_days` header, never found one, mutated nothing, and asserted that
+    an unmodified file passes `--check`. It PASSED, vacuously, and would have
+    kept passing if the cure were reverted. A test that can no longer fail is
+    worse than no test — it reports coverage it does not have.
+
+    So the assertion is now the stronger, source-level one, still driven
+    end-to-end through the real script.
     """
     common = [
         "--whitelist",
@@ -273,43 +314,37 @@ def test_check_ignores_mtime_days_drift(aged_fixture):
     ]
     # Generate inventory at the fixture's current "today".
     _run_audit(aged_fixture, *common)
-
-    # Bump every mtime_days by 1 to simulate "the next calendar day".
     inventory = aged_fixture / "docs" / "DOCS_INVENTORY.md"
-    bumped: list[str] = []
-    in_table = False
-    for line in inventory.read_text().splitlines():
-        if line.startswith("|") and "mtime_days" in line:
-            in_table = True
-            bumped.append(line)
-            continue
-        if in_table and line.startswith("| ") and "---" not in line:
-            parts = line.split("|")
-            # | path | STATUS | mtime_days | refs_in | broken | drift | …
-            if len(parts) >= 9:
-                try:
-                    parts[3] = f" {int(parts[3].strip()) + 1} "
-                    line = "|".join(parts)
-                except ValueError:
-                    pass
-        line = re.sub(
-            r"mtime=(\d+)d",
-            lambda match: f"mtime={int(match.group(1)) + 1}d",
-            line,
-        )
-        bumped.append(line)
-    inventory.write_text("\n".join(bumped) + "\n")
+    text = inventory.read_text()
 
-    # Drift is mtime-only → the fix in render_inventory's strip_volatile
-    # must mask it, so --check must still exit 0.
+    # NON-VACUITY FIRST. Everything below is "X is absent", and an empty or
+    # table-less file satisfies all of it. This is the exact trap the previous
+    # version of this test fell into.
+    header = [ln for ln in text.splitlines() if ln.startswith("| File | Status |")]
+    assert len(header) == 1, f"expected exactly one file-table header, got {len(header)}"
+    doc_rows = [ln for ln in text.splitlines() if ln.startswith("| docs/")]
+    assert doc_rows, "no doc rows in the generated table — the assertions below would be vacuous"
+
+    # No cell may be an AGE. Absolute dates are fine (a date is a tree fact and
+    # does not change on its own); a days-ago count is not.
+    ages = re.findall(r"mtime=\d+d|\(mtime[^)]*\)|\b\d+ days ago\b", text)
+    assert not ages, (
+        f"the inventory renders age tokens {ages[:5]} — these increment daily "
+        "and are what made this generated-but-tracked file rewrite itself "
+        "nightly (#3405: 633/699 rows changed by nothing but the clock)"
+    )
+    assert "mtime_days" not in header[0], (
+        "the mtime_days column is back in the table header. It is redundant "
+        "with last_touched_date beside it, and it is the churn source."
+    )
+
+    # And the gate agrees with the file it just wrote.
     result = _run_audit(aged_fixture, *common, "--check")
     assert result.returncode == 0, result.stdout + result.stderr
 
-    # Sanity: re-running without --check must rewrite the file with the
-    # real (smaller) mtime values, restoring byte-identical state.
+    # Regeneration is idempotent: a second write must not move a byte.
     _run_audit(aged_fixture, *common)
-    result = _run_audit(aged_fixture, *common, "--check")
-    assert result.returncode == 0
+    assert inventory.read_text() == text, "regenerating twice produced different bytes"
 
 
 def test_check_still_catches_real_drift(aged_fixture):
@@ -844,11 +879,55 @@ def _commit_and_push(repo: Path, message: str = "snapshot") -> None:
     subprocess.run(["git", "push", "-q", "origin", "main"], cwd=repo, check=True, env=env)
 
 
+# The column order every `cells[N]` index in this file is written against.
+# `split("|")` on `| a | b |` yields ['', ' a ', ' b ', ''], so column K here is
+# index K+1 there:
+#   1=File  2=Status  3=last_touched_date  4=orphan_eligible_on
+#   5=orphan_flipped_on  6=refs_in  7=broken  8=drift  9=cluster  10=action
+_EXPECTED_LAYOUT = [
+    "File",
+    "Status",
+    "last_touched_date",
+    "orphan_eligible_on",
+    "orphan_flipped_on",
+    "refs_in",
+    "broken",
+    "drift",
+    "cluster",
+    "action",
+]
+
+
 def _row_cells(inventory_text: str, path: str) -> list[str]:
     """Split the `## Files` table row for `path` into raw `|`-delimited cells
     (including the leading/trailing empty strings from split), so a test can
     mutate a SPECIFIC column by index without hand-building a whole row.
+
+    Every caller addresses cells by literal index, and ~20 of them do. When
+    #3405's churn fix removed the `mtime_days` column, every one of those
+    indices silently pointed one cell to the left: a guilt test forged the
+    wrong column (red for the wrong reason), and an innocence test read the
+    wrong column (green while the property it names was untested). Only the
+    two that happened to feed `date.fromisoformat()` failed loudly.
+
+    So the layout is asserted HERE, once, instead of being re-derived at
+    twenty call sites: the next column change fails immediately with the two
+    layouts printed side by side, rather than producing twenty quiet lies.
     """
+    header = next(
+        (ln for ln in inventory_text.splitlines() if ln.startswith("| File | Status |")),
+        None,
+    )
+    assert header is not None, f"no file-table header in inventory:\n{inventory_text[:400]}"
+    names = [h.strip() for h in header.strip().strip("|").split("|")]
+    assert names == _EXPECTED_LAYOUT, (
+        "the inventory column layout changed, so every cells[N] index in this "
+        "file now addresses the wrong column.\n"
+        f"  expected: {_EXPECTED_LAYOUT}\n"
+        f"  rendered: {names}\n"
+        "Update _EXPECTED_LAYOUT *and* the indices together — a silent shift "
+        "here is how a guilt test starts forging the wrong cell."
+    )
     for line in inventory_text.splitlines():
         if line.startswith(f"| {path} |"):
             return line.split("|")
@@ -1014,15 +1093,36 @@ def test_p3prime_organ_flip_then_check_stays_green_carried_forward(tmp_path):
 # ============================================================================
 
 
-def test_p3prime_guilt_dated_regen_committed_on_branch_fails_check(tmp_path):
-    """GUILT (footgun repro, PR #2626 2026-07-19): a write-mode regen using a
-    dated --as-of (the shape docs_inventory_regen.sh's OLD default silently
-    produced) advances a fresh orphan flip that origin/main's trusted
-    provenance never recorded. If that content is committed directly (never
-    pushed through the organ), a LATER --check on the same branch must
-    correctly flag it as drift — this is the exact failure that caught PR
-    #2626's own landing attempt, reproduced here as a permanent regression
-    proof that --check WOULD catch it (and did).
+def test_p3prime_1a_innocence_earned_unlanded_flip_passes_check(tmp_path):
+    """INNOCENCE (option 1a-surgical, 2026-07-25 — this is the ENTIRE POINT
+    of the change). Originally this test was named
+    `test_p3prime_guilt_dated_regen_committed_on_branch_fails_check` and
+    asserted returncode == 1 for exactly this shape: a write-mode regen using
+    a dated --as-of advances a fresh orphan flip that origin/main's trusted
+    provenance never recorded, committed directly on a branch without going
+    through the organ. That was the correct, and only possible, verdict from
+    2026-07-19 (PR #2626 footgun repro) through 2026-07-24: --check had no
+    way to distinguish "a genuinely earned, plausible new flip" from
+    forgery, so it rejected EVERY unlanded flip categorically — including
+    honest ones. PR #3126 (2026-07-25) hit exactly this wall running the
+    organ's own sanctioned `--organ` regen path: structurally legitimate,
+    provably not forgery, and still red, because rejection was categorical
+    rather than evidence-based (see
+    research/operations/2026-07-25-docs-inventory-check-blocker2-structural-cure.md).
+
+    The surgical fix (`_tolerated_orphan_flip_paths` in docs_audit.py) makes
+    --check evidence-based instead: a claimed flip is tolerated ONLY when (1)
+    trusted-ref has no entry for the path (so nothing is being hidden or
+    resurrected), (2) the doc is structurally eligible right now (refs_in==0,
+    freshly computed — never trust the committed claim), (3) the claimed
+    orphan_flipped_on is bounded on BOTH sides — not before orphan_eligible_on
+    (not premature) and not after the PR's own inventory-commit date (not
+    future-dated), and (4) the committed refs_in claim agrees with reality.
+    This exact scenario satisfies all four, so it must now PASS. Both forgery
+    directions this could have reopened remain independently guarded and
+    tested — see the test_p3prime_1a_guilt_* family below, plus the
+    pre-existing test_redteam_blocker2_* family (unaffected: trusted-ref HAS
+    an entry there, so tolerance condition 1 excludes them by construction).
     """
     repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
     probe = json.loads(
@@ -1032,18 +1132,21 @@ def test_p3prime_guilt_dated_regen_committed_on_branch_fails_check(tmp_path):
         {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
     )
     # origin/main has NO flip recorded for this doc at all (no organ run in
-    # this repo's history) — the dated regen below invents one from nothing.
+    # this repo's history) — the dated regen below invents one from nothing,
+    # but plausibly: the claimed date is well past eligibility and nothing
+    # is being hidden.
     dated_as_of = (eligible_on + timedelta(days=10)).isoformat()
     result = _run_audit(repo, "--orphan-days", "90", "--as-of", dated_as_of)
     assert result.returncode == 1  # "content changed" — expected for a write mode
     inventory = (repo / "docs" / "DOCS_INVENTORY.md").read_text()
     row = _row_cells(inventory, "docs/OLD_DOC.md")
-    assert row[2].strip() == "ARCHIVED", "sanity: the footgun shape must actually invent a flip"
+    assert row[2].strip() == "ARCHIVED", "sanity: the shape must actually produce a flip"
 
     # Commit the dated regen's output directly on this branch — WITHOUT
     # pushing to origin/main first (origin/main still has no flip recorded),
-    # simulating "a contributor ran the dated/organ-mode regen locally and
-    # committed its output on their feature branch".
+    # simulating "a contributor ran the organ/dated-mode regen locally and
+    # committed its output on their feature branch" — the exact PR #3126
+    # shape.
     env = {
         **os.environ,
         "GIT_AUTHOR_NAME": "T",
@@ -1053,7 +1156,78 @@ def test_p3prime_guilt_dated_regen_committed_on_branch_fails_check(tmp_path):
     }
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
     subprocess.run(
-        ["git", "commit", "-q", "-m", "dated regen (guilty)"],
+        ["git", "commit", "-q", "-m", "dated regen (earned, unlanded)"],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 0, (
+        "innocent: a genuinely-earned, date-bounded, non-hiding orphan flip "
+        "absent only because the organ hasn't landed it yet must be "
+        f"tolerated by --check. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+# ============================================================================
+# option 1a-surgical guilt family (2026-07-25, cross-family red-team on the
+# design before any code landed — 3 refinements, each with its own guilt
+# test below): tolerance for an unlanded orphan flip must NOT reopen either
+# BLOCKER-2 forgery direction. See _tolerated_orphan_flip_paths()'s 4-way
+# gate in docs_audit.py. Guilt tests here prove each gate condition is load-
+# bearing BY ITSELF — every scenario below satisfies every OTHER condition
+# and violates exactly one.
+# ============================================================================
+
+
+def test_p3prime_1a_guilt_premature_flip_claim_rejected(tmp_path):
+    """GUILT (option-1a-surgical, BLOCKER-2 direction (a) — premature-
+    archival forgery): a PR claims an orphan flip with a plausible-looking
+    STATUS=ARCHIVED + action text, but the claimed orphan_flipped_on
+    predates the doc's own orphan_eligible_on — i.e. it claims the doc was
+    archived before it was even structurally eligible to be. Tolerance
+    requires `orphan_eligible_on <= claimed_flipped_on`; this claim violates
+    that lower bound, so --check must still reject it even though
+    trusted-ref (origin/main) has no entry for this doc at all — which is
+    otherwise the condition that makes tolerance available in the first
+    place.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    # A genuinely-shaped dated regen (structurally valid on its own) —
+    # produces ARCHIVED with orphan_flipped_on = eligible_on + 10.
+    dated_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", dated_as_of)
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+    premature = (eligible_on - timedelta(days=5)).isoformat()
+    cells[5] = f" {premature} "  # forge: claimed flip predates eligibility
+    forged_row = "|".join(cells)
+    lines = inventory.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inventory.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "premature flip claim (guilty)"],
         cwd=repo,
         check=True,
         env=env,
@@ -1061,8 +1235,473 @@ def test_p3prime_guilt_dated_regen_committed_on_branch_fails_check(tmp_path):
 
     result = _run_audit(repo, "--orphan-days", "90", "--check")
     assert result.returncode == 1, (
-        "guilt: a dated flip absent from trusted origin/main provenance must "
-        f"be flagged as drift. stdout={result.stdout} stderr={result.stderr}"
+        "guilt: a claimed orphan_flipped_on before orphan_eligible_on must "
+        f"never be tolerated. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_1a_guilt_future_dated_flip_claim_rejected_refinement1(tmp_path):
+    """GUILT (option-1a-surgical, Refinement 1 — restore the upper bound on
+    the claimed flip date): a claimed orphan_flipped_on set to a wildly
+    future date (well past the PR's own inventory-commit date) must be
+    rejected even though it is >= orphan_eligible_on. Without this upper
+    bound, a PR could claim ANY future date (e.g. 2099-01-01) and slip
+    through tolerance on the lower-bound check alone — this is exactly the
+    gap the first surgical draft left open before red-team review caught it.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    dated_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", dated_as_of)
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+    cells[5] = " 2099-01-01 "  # wildly future — past any real commit date
+    forged_row = "|".join(cells)
+    lines = inventory.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inventory.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "future-dated flip claim (guilty)"],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: a claimed orphan_flipped_on after the PR's own inventory "
+        f"commit date must never be tolerated. stdout={result.stdout} "
+        f"stderr={result.stderr}"
+    )
+
+
+def test_p3prime_1a_guilt_refs_in_nonzero_forged_archive_rejected_refinement2(
+    tmp_path,
+):
+    """GUILT (option-1a-surgical, Refinement 2 — orphan_eligible_on must be
+    present, non-empty, and already past, BY CONSTRUCTION): a doc with a REAL
+    inbound reference (refs_in > 0, computed FRESH from the current tree —
+    such a doc is never an orphan candidate in the first place, so its own
+    orphan_eligible_on stays empty) has its committed row hand-forged to
+    STATUS=ARCHIVED with a plausible-looking orphan_flipped_on AND a lying
+    refs_in="0" claim in the committed table. Tolerance must never engage for
+    a doc that isn't structurally eligible — this is what stops a doc from
+    sliding through on a forged claim just because the other 3 conditions
+    happen to look satisfiable, and it must be checked against the FRESH
+    recomputed refs_in, never the candidate's own claimed value (that's
+    Refinement 3's job, tested separately below).
+    """
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    (repo / "docs" / "OLD_DOC.md").write_text(
+        "# Old doc\n\nReferenced by REFERRER.md.\n", encoding="utf-8"
+    )
+    (repo / "docs" / "REFERRER.md").write_text(
+        "# Referrer\n\nSee OLD_DOC.md for details.\n", encoding="utf-8"
+    )
+    _init_git_repo(repo, backdate_days=200)
+
+    result = _run_audit(repo, "--orphan-days", "90", "--regen-only")
+    assert result.returncode in (0, 1), result.stderr
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
+    assert cells[6].strip() != "0", (
+        "test setup sanity failed: OLD_DOC.md must have a real inbound "
+        f"reference from REFERRER.md — refs_in cell: {cells}"
+    )
+    # Forge: STATUS=ARCHIVED, a plausible flip date, action text, AND lie
+    # about refs_in in the committed table (claim 0 despite the real
+    # inbound reference) — refinement 2 must catch this on the FRESH
+    # (recomputed) refs_in, not the candidate's own claimed value.
+    plausible_flip = (date.today() - timedelta(days=1)).isoformat()
+    cells[2] = " ARCHIVED "
+    cells[5] = f" {plausible_flip} "
+    cells[6] = " 0 "
+    cells[10] = " archive: orphan, last_touched=2026-01-01, refs=0 "
+    forged_row = "|".join(cells)
+    lines = inventory.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inventory.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "forged archive on referenced doc (guilty)"],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: a doc with real inbound references must never be tolerated "
+        f"into ARCHIVED. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_1a_guilt_row_deletion_hides_flip_still_rejected_refinement3(
+    tmp_path,
+):
+    """GUILT (option-1a-surgical, Refinement 3 — verify row-SET equality on
+    disk, direction: deletion). A PR candidate deletes the ENTIRE row for an
+    already-organ-flipped doc from its own docs/DOCS_INVENTORY.md (rather
+    than editing its fields, as
+    test_redteam_blocker2_forged_candidate_deletes_flip_caught_red does) —
+    hiding the flip by omission instead of falsification. The tolerant gate
+    must still catch this: the freshly-regenerated table (which always
+    includes every real doc, tolerated or not) will contain a row the
+    candidate's own committed table is missing, so the whole-table string
+    comparison must still differ regardless of any per-path tolerance logic
+    — tolerance only ever MASKS specific columns of a row that's present in
+    both sides, it never manufactures a missing row's absence into a match.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of)
+    _commit_and_push(repo, "organ flip")  # trusted main now has the flip
+
+    candidate = _clone_origin(repo, tmp_path / "candidate")
+    inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
+    lines = inv_path.read_text().splitlines()
+    before_len = len(lines)
+    lines = [line for line in lines if not line.startswith("| docs/OLD_DOC.md |")]
+    assert len(lines) == before_len - 1, "test setup sanity failed: row not removed"
+    inv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    result = _run_audit(candidate, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: deleting a row to hide an already-flipped doc must still be "
+        f"caught red. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_1a_guilt_fabricated_row_for_nonexistent_path_rejected_refinement3(
+    tmp_path,
+):
+    """GUILT (option-1a-surgical, Refinement 3 — verify row-SET equality on
+    disk, direction: addition). A PR candidate APPENDS a fabricated row for a
+    path that does not exist on disk at all — classify() never walks it, so
+    the freshly-regenerated table never mentions it — while the candidate's
+    own committed table claims it as a plausible-looking, structurally
+    eligible, date-bounded ARCHIVED orphan flip (every condition an attacker
+    might try to satisfy at once). Tolerance operates on paths present in the
+    FRESH classify() output (see `_tolerated_orphan_flip_paths` iterating
+    `rows`, never the committed table alone) — a phantom row for a
+    nonexistent file can never be a member of that set, so the whole-table
+    string comparison must still catch the extra line and go red.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    result = _run_audit(repo, "--orphan-days", "90", "--regen-only")
+    assert result.returncode in (0, 1), result.stderr
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    lines = inventory.read_text().splitlines()
+    real_row = next(
+        line for line in lines if line.startswith("| docs/OLD_DOC.md |")
+    )
+    cells = real_row.split("|")
+    cells[1] = " docs/GHOST_DOC.md "  # path that never existed on disk
+    cells[2] = " ARCHIVED "
+    cells[4] = f" {(date.today() - timedelta(days=91)).isoformat()} "  # eligible_on
+    cells[5] = f" {(date.today() - timedelta(days=1)).isoformat()} "  # flipped_on
+    cells[6] = " 0 "
+    cells[10] = " archive: orphan, last_touched=2026-01-01, refs=0 "
+    fabricated_row = "|".join(cells)
+    lines.append(fabricated_row)
+    inventory.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fabricated row for nonexistent path (guilty)"],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: a fabricated row for a path that does not exist on disk must "
+        f"still be caught red. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+# ============================================================================
+# Cross-family red-team round 2 (Kimi K3, 2026-07-25) against the FIRST
+# version of option 1a-surgical above. Verdict: FAIL. One real bypass
+# (Finding 1, fixed by anchoring the upper bound to max(trusted-ref-tip,
+# real "now") instead of the PR's own commit metadata) plus two test-
+# integrity gaps proven by live mutation (Findings 2 and 3 — the shipped
+# CODE was already correct on both, only the TEST COVERAGE was thin).
+# Tests below close all three permanently.
+# ============================================================================
+
+
+def test_p3prime_1a_guilt_forged_committer_date_cannot_defeat_ceiling_refinement1(
+    tmp_path,
+):
+    """GUILT (Finding 1 — the real bypass, Kimi K3, 2026-07-25). The FIRST
+    version of Refinement 1's upper bound was anchored to
+    `compute_last_commit_date(repo, inventory_path)` — `git log -1
+    --format=%ct` against the PR's OWN checked-out branch. `GIT_COMMITTER_
+    DATE` is fully attacker-controlled, so a PR could forge BOTH the
+    claimed `orphan_flipped_on` and the commit's own committer date to the
+    same far-future value. Demonstrated live: claim
+    `orphan_flipped_on=2099-01-01`, commit the forged inventory with
+    `GIT_COMMITTER_DATE=2099-06-01` (comfortably after the claim) —
+    `--check` went GREEN outright, and Kimi chained the harm further:
+    after "merge" (push to origin), the 2099 flip became trusted
+    provenance, and an honest edit with a REAL 2026-07-25 commit date did
+    NOT resurrect the doc — `_flip_is_still_valid()` has no upper bound,
+    so the forged flip pinned the doc ARCHIVED for 73 years, immune to
+    MAJOR-5's resurrection guarantee, with the organ's `--apply` ready to
+    physically `git mv` an actively-edited doc into `docs/archive/` on the
+    strength of it.
+
+    The fix anchors the ceiling to `max(trusted-ref-tip-date, real "now"
+    at check-time)` instead — see `main()`'s comment block above
+    `_tolerated_orphan_flip_paths(...)` for why using real "now" here does
+    NOT reintroduce the wall-clock dependence P3-prime eliminates (it is
+    monotonic-safe: a claim already `<= now` stays tolerated forever as
+    real time advances, and this can only ever turn a rejection into a
+    tolerance later — never the reverse, which is the only direction
+    P3-prime actually forbids). This test reproduces Kimi's exact exploit
+    shape and proves it is now rejected: the PR's own committer date on
+    its own commit no longer has ANY influence on the ceiling at all.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    dated_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", dated_as_of)
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+    cells[5] = " 2099-01-01 "  # the far-future claim refinement 1 names as its example
+    forged_row = "|".join(cells)
+    lines = inventory.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inventory.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # The exploit itself: forge the COMMIT's own committer/author date to
+    # comfortably exceed the claim — this is what defeated the FIRST
+    # version of the upper bound. Explicit UTC offset (not bare
+    # "2099-01-01T00:00:00") — Kimi's first attempt without one landed on
+    # 2098-12-31 after local-tz conversion, which is a fixture-precision
+    # footgun, not evidence the bound holds; being explicit here avoids it.
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+        "GIT_AUTHOR_DATE": "2099-06-01T00:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2099-06-01T00:00:00+00:00",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "forged committer date (guilty)"],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: forging the commit's OWN committer date must not defeat "
+        "the upper bound — the ceiling must be anchored to something the "
+        f"PR branch does not control. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+    # Team-lead (2026-07-25, endorsing the fix): asserting only --check's
+    # exit code proves the GATE is red, not that the HARM is blocked — the
+    # same shape as Finding 2, where a test measured a correlated proxy
+    # instead of the thing it named. The actual damage Kimi chained was two
+    # steps past the gate: the doc gets pinned ARCHIVED, and --apply
+    # physically moves it. Assert both directly, on this SAME forged tree.
+    #
+    # (1) The gate's OWN fresh computation (the --json payload, built from
+    # `rows` — the STRICT, non-tolerant classify() output) must show the
+    # doc as LIVE, not just report a nonzero exit code that some OTHER
+    # unrelated mismatch could also have produced.
+    probe_after_forgery = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    fresh_status = {f["path"]: f for f in probe_after_forgery["files"]}[
+        "docs/OLD_DOC.md"
+    ]["status"]
+    assert fresh_status == "LIVE", (
+        "the fresh (non-tolerant) computation must show the doc LIVE even "
+        f"with the forged claim sitting in the committed table, got {fresh_status!r}"
+    )
+
+    # (2) --apply must leave the file exactly where it is. Use
+    # --gate-consistent (not plain --apply): plain write-mode trusts the
+    # LOCAL working tree's own content by design (parse_prev_flipped on
+    # old_content) — that trust model assumes the caller is always the
+    # organ's own fresh checkout of trusted main, never a hostile forged
+    # branch, so plain --apply on THIS tree would be fooled by design, not
+    # by a bug in this fix. --gate-consistent is the write-mode twin that
+    # re-derives provenance from trusted-ref instead (the same safe source
+    # --check itself uses) — this is the actually-safe write path, and the
+    # one docs_inventory_regen.sh uses by default.
+    result = _run_audit(repo, "--orphan-days", "90", "--gate-consistent", "--apply")
+    assert (repo / "docs" / "OLD_DOC.md").exists(), (
+        "--gate-consistent --apply must leave the doc at its original path — "
+        f"a forged claim must never cause a physical git mv. stdout={result.stdout} "
+        f"stderr={result.stderr}"
+    )
+    assert not list((repo / "docs" / "archive").rglob("OLD_DOC.md")), (
+        "the doc must not have been archived under docs/archive/ on the "
+        "strength of the forged claim"
+    )
+
+
+def test_p3prime_1a_guilt_date_creep_on_recorded_flip_rejected(tmp_path):
+    """GUILT (Finding 3 — real coverage gap on EXISTING logic, Kimi K3,
+    2026-07-25). Condition 1 (`r.path in prev_flipped: continue`) is the
+    ONLY defense against "date-creep" on an already-recorded flip: a PR
+    that leaves a trusted flip in place but nudges its claimed date a few
+    days later — still in-window (>= orphan_eligible_on, <= the ceiling),
+    nothing deleted, nothing future-dated relative to real time. The
+    pre-existing BLOCKER-2 family only tests flip DELETION (cell -> "—"),
+    caught by the `claimed_raw in ("", "—")` skip plus the strict diff —
+    never by condition 1 itself. Kimi proved this gap by live mutation:
+    removing conditions 1+2 together left ALL 10 pre-existing + new
+    p3prime tests green, so no test in the suite would notice condition
+    1's removal; a dedicated date-creep repro then confirmed mutated=green
+    (creep tolerated), restored=red (blocked) — condition 1 is genuinely
+    load-bearing, just untested until now. This test closes that gap.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of)
+    _commit_and_push(repo, "organ flip")  # trusted main now records flip = late_as_of
+
+    candidate = _clone_origin(repo, tmp_path / "candidate")
+    inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+    assert cells[5].strip() == late_as_of, "test setup sanity failed: unexpected flip date"
+
+    # Nudge the RECORDED flip's date forward 5 days — still in-window
+    # (>= eligible_on, <= real today), row still present, refs_in claim
+    # untouched. Only condition 1 (trusted-ref already has this path) can
+    # catch this — every other condition is satisfied by construction.
+    crept = (date.fromisoformat(late_as_of) + timedelta(days=5)).isoformat()
+    cells[5] = f" {crept} "
+    forged_row = "|".join(cells)
+    lines = inv_path.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    result = _run_audit(candidate, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: nudging an ALREADY-recorded flip's date forward, in-window, "
+        "without deleting it, must still be rejected — trusted-ref's own "
+        f"record must be untouchable. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_1a_unit_tolerated_paths_excludes_refs_in_nonzero_refinement2(
+    tmp_path,
+):
+    """UNIT (Finding 2 — test vacuity, Kimi K3, 2026-07-25). The CLI-level
+    guilt test for refinement 2
+    (`test_p3prime_1a_guilt_refs_in_nonzero_forged_archive_rejected_refinement2`)
+    passes even with condition 2 deleted from `_tolerated_orphan_flip_paths`
+    — proven by live mutation. The red verdict in that scenario actually
+    comes from `classify()`'s own structural gate independently
+    backstopping in the tolerant re-render (a referenced doc's carry-
+    forward branch never fires), not from condition 2 itself. That CLI
+    test still earns its keep — it proves the END-TO-END property holds —
+    but it cannot prove condition 2 is load-bearing IN ISOLATION. This
+    unit test calls `_tolerated_orphan_flip_paths()` directly, bypassing
+    classify()'s backstop entirely, so a future removal of condition 2 is
+    caught here even if some later refactor stops re-deriving through
+    classify().
+    """
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    row = docs_audit.DocRow(
+        path="docs/REFERENCED.md",
+        status="LIVE",
+        mtime_days=200,
+        refs_in=3,  # genuinely referenced — never orphan-eligible
+        orphan_eligible_on="2026-01-01",
+        orphan_flipped_on=None,
+    )
+    committed_claims = {
+        "docs/REFERENCED.md": {"orphan_flipped_on": "2026-06-01", "refs_in": "0"},
+    }
+    tolerated = docs_audit._tolerated_orphan_flip_paths(
+        rows=[row],
+        prev_flipped={},
+        committed_claims=committed_claims,
+        trusted_ref_ceiling_date=date(2026, 7, 1),
+    )
+    assert tolerated == set(), (
+        "a doc with real inbound references (refs_in != 0) must never be "
+        "admitted to the tolerated set, regardless of what the committed "
+        f"table claims. got={tolerated}"
     )
 
 
@@ -1096,7 +1735,7 @@ def test_p3prime_innocence_gate_consistent_regen_committed_on_branch_passes_chec
         "innocence: --gate-consistent must NOT invent a fresh flip just "
         "because the doc is genuinely old by real wall-clock"
     )
-    assert row[6].strip() == "—"  # orphan_flipped_on column stays empty
+    assert row[5].strip() == "—"  # orphan_flipped_on column stays empty
 
     _commit_and_push(repo, "gate-consistent regen (innocent)")
 
@@ -1144,7 +1783,7 @@ def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_
     inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
     cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
     assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
-    trusted_flip_date = cells[6].strip()
+    trusted_flip_date = cells[5].strip()
     assert trusted_flip_date != "—", "test setup sanity failed: no flip date recorded"
 
     # Forge the candidate's LOCAL working tree only (never pushed): flip
@@ -1152,8 +1791,8 @@ def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_
     # test, but this time the forged file is what --gate-consistent's WRITE
     # step will see as "old_content" if it (incorrectly) reads local state.
     cells[2] = " LIVE "
-    cells[6] = " — "
-    cells[11] = " — "
+    cells[5] = " — "
+    cells[10] = " — "
     forged_row = "|".join(cells)
     lines = inv_path.read_text().splitlines()
     lines = [
@@ -1174,10 +1813,10 @@ def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_
         "to local-file provenance would silently resurrect the doc: "
         + rewritten
     )
-    assert row[6].strip() == trusted_flip_date, (
+    assert row[5].strip() == trusted_flip_date, (
         "--gate-consistent must reproduce origin/main's ORIGINAL flip "
         f"date ({trusted_flip_date!r}), not invent a new one or keep the "
-        f"forged blank: got {row[6].strip()!r}"
+        f"forged blank: got {row[5].strip()!r}"
     )
 
 
@@ -1192,15 +1831,17 @@ def test_p3prime_guilt_last_touched_date_inconsistent_with_git_history(tmp_path)
     _run_audit(repo, "--orphan-days", "90")  # baseline (real today, not eligible)
 
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
-    lines = inventory.read_text().splitlines()
+    raw = inventory.read_text()
+    lines = raw.splitlines()
+    touched_i = _col(raw, "last_touched_date")
     mutated_lines = []
     found = False
     for line in lines:
         if line.startswith("| docs/OLD_DOC.md |"):
             found = True
             parts = line.split("|")
-            true_date = date.fromisoformat(parts[4].strip())
-            parts[4] = f" {(true_date - timedelta(days=7)).isoformat()} "
+            true_date = date.fromisoformat(parts[touched_i].strip())
+            parts[touched_i] = f" {(true_date - timedelta(days=7)).isoformat()} "
             line = "|".join(parts)
         mutated_lines.append(line)
     assert found, "fixture assumption broken — OLD_DOC.md row not found"
@@ -1223,15 +1864,17 @@ def test_p3prime_guilt_orphan_eligible_on_inconsistent(tmp_path):
     _run_audit(repo, "--orphan-days", "90")
 
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
-    lines = inventory.read_text().splitlines()
+    raw = inventory.read_text()
+    lines = raw.splitlines()
+    eligible_i = _col(raw, "orphan_eligible_on")
     mutated_lines = []
     found = False
     for line in lines:
         if line.startswith("| docs/OLD_DOC.md |"):
             found = True
             parts = line.split("|")
-            true_eligible = date.fromisoformat(parts[5].strip())
-            parts[5] = f" {(true_eligible + timedelta(days=1)).isoformat()} "
+            true_eligible = date.fromisoformat(parts[eligible_i].strip())
+            parts[eligible_i] = f" {(true_eligible + timedelta(days=1)).isoformat()} "
             line = "|".join(parts)
         mutated_lines.append(line)
     assert found, "fixture assumption broken — OLD_DOC.md row not found"
@@ -1260,17 +1903,27 @@ def test_p3prime_guilt_status_archived_without_organ_flip(tmp_path):
     _run_audit(repo, "--orphan-days", "90", "--as-of", early_as_of)
 
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
-    lines = inventory.read_text().splitlines()
+    raw = inventory.read_text()
+    lines = raw.splitlines()
+    status_i = _col(raw, "Status")
+    flipped_i = _col(raw, "orphan_flipped_on")
+    touched_i = _col(raw, "last_touched_date")
     mutated_lines = []
     found = False
     for line in lines:
         if line.startswith("| docs/OLD_DOC.md |"):
             found = True
             parts = line.split("|")
-            assert parts[2].strip() == "LIVE", parts
-            assert parts[6].strip() == "—", parts  # orphan_flipped_on untouched
-            parts[2] = " ARCHIVED "  # hand-edit STATUS only
-            parts[-2] = " archive: orphan, mtime=200d, refs=0 "  # and action text
+            assert parts[status_i].strip() == "LIVE", parts
+            assert parts[flipped_i].strip() == "—", parts  # orphan_flipped_on untouched
+            parts[status_i] = " ARCHIVED "  # hand-edit STATUS only
+            # …and the action text, in the CURRENT rendered format. A forgery
+            # written in a stale format would be rejected for looking wrong
+            # rather than for being unbacked by an organ flip — the test would
+            # go green while proving something else.
+            parts[-2] = (
+                f" archive: orphan, last_touched={parts[touched_i].strip()}, refs=0 "
+            )
             line = "|".join(parts)
         mutated_lines.append(line)
     assert found, "fixture assumption broken — OLD_DOC.md row not found"
@@ -1479,8 +2132,8 @@ def test_redteam_blocker2_forged_candidate_deletes_flip_caught_red(tmp_path):
     # (column 2) — a PR author's hand-edit / bad merge-conflict resolution,
     # never touching the working tree's OLD_DOC.md itself.
     cells[2] = " LIVE "
-    cells[6] = " — "
-    cells[11] = " — "
+    cells[5] = " — "
+    cells[10] = " — "
     forged_row = "|".join(cells)
     lines = inv_path.read_text().splitlines()
     lines = [

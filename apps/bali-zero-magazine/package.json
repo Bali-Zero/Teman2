@@ -19,8 +19,8 @@
     "@cf-wasm/photon": "0.3.7",
     "drizzle-orm": "0.45.2",
     "next": "16.2.6",
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
@@ -38,7 +38,7 @@
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
-    "vite": "8.0.13",
+    "vite": "8.0.16",
     "wrangler": "4.92.0"
   },
   "type": "module"

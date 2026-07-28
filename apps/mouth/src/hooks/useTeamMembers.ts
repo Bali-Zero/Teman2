@@ -35,16 +35,43 @@ export function useTeamMemberOptions() {
   const { data: members = [], ...rest } = useTeamMembers();
   // Stabilize reference — without useMemo, filter+map creates a new array every render,
   // causing infinite re-render loops in consumers that depend on this in useEffect deps
-  const options = useMemo(
-    () =>
-      members
-        .filter((m) => m.role?.toLowerCase() !== "client")
-        .map((m) => ({
-          value: m.email,
-          label: m.full_name || m.name,
-          avatar: m.avatar_url ?? m.avatar ?? undefined,
-        })),
-    [members],
-  );
+  const options = useMemo(() => {
+    const uniqueMembers = new Map<
+      string,
+      TeamMember & { normalizedEmail: string; displayName: string }
+    >();
+
+    for (const member of members) {
+      const normalizedEmail = member.email.trim().toLowerCase();
+      if (
+        !normalizedEmail ||
+        member.role?.trim().toLowerCase() === "client" ||
+        uniqueMembers.has(normalizedEmail)
+      ) {
+        continue;
+      }
+      uniqueMembers.set(normalizedEmail, {
+        ...member,
+        normalizedEmail,
+        displayName:
+          member.full_name?.trim() || member.name?.trim() || normalizedEmail,
+      });
+    }
+
+    const labelCounts = new Map<string, number>();
+    for (const member of uniqueMembers.values()) {
+      const key = member.displayName.toLowerCase();
+      labelCounts.set(key, (labelCounts.get(key) ?? 0) + 1);
+    }
+
+    return Array.from(uniqueMembers.values()).map((member) => ({
+      value: member.normalizedEmail,
+      label:
+        (labelCounts.get(member.displayName.toLowerCase()) ?? 0) > 1
+          ? `${member.displayName} (${member.normalizedEmail})`
+          : member.displayName,
+      avatar: member.avatar_url ?? member.avatar ?? undefined,
+    }));
+  }, [members]);
   return { options, ...rest };
 }
