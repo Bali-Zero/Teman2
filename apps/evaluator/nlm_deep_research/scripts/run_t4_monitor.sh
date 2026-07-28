@@ -3,6 +3,15 @@
 # Schedule: 0 */6 * * *  (every 6 hours)
 # Machine:  Air (antonellosiano@Nuzantara-9)
 # Log:      ~/.openclaw/logs/t4_monitor.log
+# Shared alarm gateway — see _alert.sh.
+. "$(cd "$(dirname "$0")" && pwd)/_alert.sh" 2>/dev/null || true
+# A missing helper must not turn "no alarm" into "the wrapper dies while
+# handling a failure": fall back to a LOUD no-op, never a silent one.
+command -v alert >/dev/null 2>&1 || alert() {
+    echo "ALERT NOT SENT — _alert.sh missing [$1]: ${*:2}" >&2
+    return 1
+}
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -50,9 +59,23 @@ fi
 
 echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [START] T4 monitor (PID $$)" >> "$LOG_FILE"
 
+set +e  # errexit would abort ON the pipeline, before the capture below
 PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.t4_monitor \
     --notebook-id "cff93ab0-813a-42f2-a8de-36987e724271" \
     --log-level INFO \
     2>&1 | tee -a "$LOG_FILE"
+EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
-echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [DONE] T4 monitor completed" >> "$LOG_FILE"
+# This wrapper had no alarm at all: it ran the job and echoed [DONE], which
+# under errexit simply never printed when the job died. `t4_monitor` is one of
+# the 9 jobs the Cell's cron_sensor watches for STALENESS, so a dead run was
+# eventually noticed — but "eventually, by absence" is not a failure report.
+if [ "$EXIT_CODE" -ne 0 ]; then
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [FAIL] T4 monitor failed (exit $EXIT_CODE)" >> "$LOG_FILE"
+    alert p0 "⚠️ T4 monitor FAILED (exit $EXIT_CODE) — check $LOG_FILE"
+else
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [DONE] T4 monitor completed" >> "$LOG_FILE"
+fi
+
+exit "$EXIT_CODE"

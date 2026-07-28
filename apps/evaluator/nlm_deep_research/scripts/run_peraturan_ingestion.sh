@@ -10,6 +10,15 @@
 #   ./scripts/run_peraturan_ingestion.sh --dry-run  # preview only
 #   ./scripts/run_peraturan_ingestion.sh --row 5    # single row
 
+# Shared alarm gateway — see _alert.sh for what the old inline curl hid.
+. "$(cd "$(dirname "$0")" && pwd)/_alert.sh" 2>/dev/null || true
+# A missing helper must not turn "no alarm" into "the wrapper dies while
+# handling a failure": fall back to a LOUD no-op, never a silent one.
+command -v alert >/dev/null 2>&1 || alert() {
+    echo "ALERT NOT SENT — _alert.sh missing [$1]: ${*:2}" >&2
+    return 1
+}
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -53,20 +62,17 @@ fi
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Peraturan ingestion starting..." >> "$LOG_FILE"
 
 # ── Run trigger ───────────────────────────────────────────────────────────────
+set +e  # errexit would abort ON the pipeline, before the capture below
 PYTHONPATH="$PROJECT_ROOT" python -m apps.evaluator.nlm_deep_research.peraturan_ingestion_trigger \
     "$@" \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
 # ── Alert on failure ──────────────────────────────────────────────────────────
 if [ "$EXIT_CODE" -ne 0 ]; then
-    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
-        curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
-            -d text="⚠️ Peraturan ingestion failed (exit $EXIT_CODE). Check peraturan_ingestion.log" \
-            > /dev/null 2>&1
-    fi
+    alert p0 "⚠️ Peraturan ingestion failed (exit $EXIT_CODE). Check peraturan_ingestion.log"
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Peraturan ingestion FAILED (exit $EXIT_CODE)" >> "$LOG_FILE"
 else
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Peraturan ingestion completed OK" >> "$LOG_FILE"

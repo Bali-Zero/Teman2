@@ -7,6 +7,15 @@
 #
 # Pass argument: --scan OR --remediate-stale
 
+# Shared alarm gateway — see _alert.sh for what the old inline curl hid.
+. "$(cd "$(dirname "$0")" && pwd)/_alert.sh" 2>/dev/null || true
+# A missing helper must not turn "no alarm" into "the wrapper dies while
+# handling a failure": fall back to a LOUD no-op, never a silent one.
+command -v alert >/dev/null 2>&1 || alert() {
+    echo "ALERT NOT SENT — _alert.sh missing [$1]: ${*:2}" >&2
+    return 1
+}
+
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
@@ -43,20 +52,18 @@ source "$VENV/bin/activate"
 echo "$(date '+%H:%M:%S') [FreshnessMonitor] Starting $ACTION" | tee -a "$LOG_FILE"
 
 cd "$PROJECT_ROOT"
+set +e  # errexit would abort ON the pipeline, before the capture below
 PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.freshness_monitor "$ACTION" 2>&1 | tee -a "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
 if [ "$EXIT_CODE" -eq 0 ]; then
     PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
         --record "freshness_monitor" 2>/dev/null || true
 else
     echo "$(date '+%H:%M:%S') [FreshnessMonitor] FAILED (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"
-    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
-        MSG="🚨 FreshnessMonitor FAILED ($ACTION, exit $EXIT_CODE) — check $LOG_FILE"
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
-            -d "text=${MSG}" >/dev/null 2>&1 || true
-    fi
+    MSG="🚨 FreshnessMonitor FAILED ($ACTION, exit $EXIT_CODE) — check $LOG_FILE"
+    alert p0 "${MSG}"
 fi
 
 echo "$(date '+%H:%M:%S') [FreshnessMonitor] Done (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"

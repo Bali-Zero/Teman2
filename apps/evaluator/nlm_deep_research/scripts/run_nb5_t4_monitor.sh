@@ -36,11 +36,13 @@ echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] NB-5 T4 monitor starting..." >> "$LOG_FIL
 
 # Run T4 monitor for NB-5 Property & Real Estate
 # notebook-id = d9438180-5e63-4e2a-a473-6061101f6a8d (from t4_nb5_config.json)
+set +e  # errexit would abort ON the pipeline, before the capture below
 python -m apps.evaluator.nlm_deep_research.t4_monitor \
     --notebook-id "d9438180-5e63-4e2a-a473-6061101f6a8d" \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
 # Alert on failure — routed through the Telegram gateway (cohort pattern, see
 # scripts/disk_watchdog.sh), replacing the previous direct HTTP call. The
