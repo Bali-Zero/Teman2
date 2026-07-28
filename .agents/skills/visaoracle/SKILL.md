@@ -51,8 +51,8 @@ gate — a green gate certifies the engine as it was measured, not future edits.
   recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
   engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
 
-**GATE STATUS: 🔴 RED (2026-07-28 — collection is LIVE and MEASURED; the lane that is collecting cannot
-pass, the lane that can is OFF).** Receipt: `research/visa/2026-07-28-shadow-gate-measurement.md`
+**GATE STATUS: 🔴 RED (2026-07-28 — collection is LIVE and MEASURED; NEITHER of the two counted lanes can
+currently mature G-a, for two different reasons).** Receipt: `research/visa/2026-07-28-shadow-gate-measurement.md`
 (re-runnable SQL inline). Measured on prod `visa_decisions`: **1,483 rows / 14 distinct fingerprints /
 4 days / 3 categories / 0 distinct visa codes**, every row `HUMAN_REVIEW_REQUIRED` with an EMPTY
 `candidate_summary` — G-a red on every component.
@@ -66,8 +66,10 @@ fingerprint is `SHA-256` of a per-submission RANDOM token (`shadow.py:399`, `rep
 1,000-distinct threshold is traffic-bounded, NOT interview-bounded), and the collector counts it
 (`EVIDENCE_ENGINE_SURFACES={"MATCH","RECOMMEND"}`). It has ZERO rows because it is off: `fly secrets list`
 (run 07-28) shows TRUST_STORE / DRIVER_TOKEN / EVALUATE_MODE / FINGERPRINT_KEYS deployed and **no
-`VISA_ENGINE_MATCH_MODE`**, which defaults OFF (`shadow.py:207`). **⇒ Arming MATCH is the highest-value
-single step.** Also: 1,464 rows are THREE byte-identical payloads at 3-4s cadence, all labelled
+`VISA_ENGINE_MATCH_MODE`**, which defaults OFF (`shadow.py:207`). **⇒ BUT DO NOT JUST ARM IT — see the
+07-28 correction below: the MATCH writer does not label its rows, so they would land `traffic_source
+IS NULL` = legacy = counted toward NEITHER G-a gate. Arming alone is a **G-a** no-op (those rows DO
+still feed G-c, which is deliberately not split by provenance).** Also: 1,464 rows are THREE byte-identical payloads at 3-4s cadence, all labelled
 `traffic_source='real'` (the 07-27 contamination defect, 3 orders of magnitude larger) — G-a-vol is not
 measuring adoption until that label is split. **On ENFORCE, correcting a wrong first reading:** the
 authoritative render IS unbuilt (`resolve_response_mode()` returns literal `CURATED`,
@@ -472,6 +474,30 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   itself was checked, and its `MATCH_MODE never set` objection was right on method (inference from a zero
   count) even though the conclusion survived once real Fly evidence replaced the inference.
   GATE STATUS updated above: 🔴 RED, now with numbers and with the right reason.
+- 2026-07-28 (M5, same session, hours later): **CORRECTION TO THE ENTRY ABOVE — "arm MATCH" was wrong, and
+  the 07-24 runbook was right.** Caught while executing it, before the `fly secrets set`. Two facts, both
+  verified: (1) `shadow.py`'s MATCH writer does NOT include `traffic_source` in its INSERT column list
+  (`shadow.py:538-547`) and the column has **no default and is nullable** (checked on the live prod schema,
+  not just the migration) — so every MATCH row would land NULL = **legacy = counted toward NEITHER G-a
+  gate** (`shadow_evidence.py:296-303`, fail-closed). Arming MATCH without first teaching the writer to
+  label its rows is a **G-a no-op** — precisely: those rows cannot advance G-a-vol or G-a-breadth, but they
+  DO flow into G-c, which is deliberately not split by provenance (`shadow_evidence.py:28-29`), so they can
+  still move a criterion. **Why no test caught it:** the MATCH writer's fixtures layer only migrations
+  252+255 (`test_shadow_match.py:505-518`) — 256 is never applied, so `traffic_source` is not even a column
+  in the schema those tests assert against. (2) `research/visa/2026-07-24-shadow-arming-runbook.md:40`
+  had already recorded "leave `VISA_ENGINE_MATCH_MODE` OFF" as a deliberate **plan decision** — the window's
+  evidence is to be **full-fact only**, since MATCH carries 3 of 40 facts. That decision is not mine to flip
+  unilaterally: a 3-fact corpus certifies a thinner engine than the one ENFORCE would arm. **So the fork is
+  an owner call**: (A) keep MATCH dark and fix the RECOMMEND interview → slower, full-fact evidence, matches
+  the plan; (B) label MATCH rows `real` + arm → faster volume, thin-fact evidence. Do NOT execute (B)
+  without a ruling.
+  **METHOD NOTE — the lesson that keeps costing:** I read the COLLECTOR's surface allow-list
+  (`EVIDENCE_ENGINE_SURFACES={"MATCH","RECOMMEND"}`) and concluded MATCH rows would count. But **a row is
+  counted only if the WRITER labels it** — reader-accepts-the-surface ≠ writer-emits-the-label. Check the
+  INSERT column list and the column default on the LIVE schema, not the migration file, before calling any
+  lane "evidence". Same shape as the earlier two refutations this session: a property verified at one end of
+  a pipe, asserted about the whole pipe. And: **before executing a step, grep the runbooks for a recorded
+  decision about it** — the 07-24 rationale was one file away.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
