@@ -1,7 +1,15 @@
-"""FASE 5A — review-queue API tests (real local DB: nuzantara_dev).
+"""FASE 5A — review-queue API tests (real local Postgres).
 
-These tests run against the LOCAL Pro Postgres (nuzantara_dev), where the
-document-intake tables live (Law 2 — PII never leaves the Pro). They:
+Target DB comes from ``INTAKE_TEST_DSN``; the default is ``nuzantara_test``,
+NOT ``nuzantara_dev``. Corrected 2026-07-28: the default used to be the
+operational database that carries the live Intake/WhatsApp queue on Pro, and
+the root conftest's fail-closed guard could not see it — it watched only
+``TEST_DATABASE_URL``. CI and the pre-push hook both export an isolated DSN,
+so the exposure was a bare manual ``pytest``, which is exactly how a session
+runs these.
+
+These tests run against a LOCAL Postgres, where the document-intake tables
+live (Law 2 — PII never leaves the Pro). They:
   * build a synthetic intake chain (document_instances → intake_queue →
     document_routing_proposal) + synthetic clients,
   * mount the FULL app via create_app()-style include_routers (registration
@@ -31,7 +39,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.setup.route_walk import iter_leaf_routes
 
-DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_dev")
+DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_test")
 PIPELINE = "test-5a"
 
 ADMIN = {"id": "1", "email": "zero@balizero.com", "role": "admin"}

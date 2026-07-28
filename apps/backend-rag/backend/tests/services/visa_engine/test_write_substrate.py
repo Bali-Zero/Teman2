@@ -119,7 +119,7 @@ def _read_migration(path: Path) -> tuple[str, str]:
 # CREATE DATABASE / DROP DATABASE against.
 _ADMIN_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 ).rsplit("/", 1)[0] + "/postgres"
 
 

@@ -23,15 +23,35 @@ os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/tes
 # Fail closed for integration tests that historically defaulted to
 # ``nuzantara_dev``.  That database carries the live local Intake/WhatsApp
 # queue on Pro, so a manual pytest run must never claim or rewrite its rows.
-# CI and operators can still provide an explicit isolated TEST_DATABASE_URL.
+# CI and operators can still provide an explicit isolated DSN.
+#
+# 2026-07-28: this is a LIST, not one variable, because the guard used to know
+# only about ``TEST_DATABASE_URL`` while three intake tests resolve their DSN
+# from ``INTAKE_TEST_DSN`` — a door the guard could not see. CI (tests.yml) and
+# the pre-push hook both export it at a safe target, so the exposure was the
+# path neither of them covers: a bare manual ``pytest``, where the module-level
+# fallback in those tests is literally ``.../nuzantara_dev``. A guard that
+# watches one variable while the code reads another is the same shape as a
+# scan surface that skips a file type (superscar #3, UNDER-match).
+#
+# ``scripts/tests/test_intake_dsn_guard_covers_every_var.py`` fails the build if
+# a test module ever introduces a FOURTH variable without adding it here.
 os.environ.setdefault(
     "TEST_DATABASE_URL",
     "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
-if os.environ["TEST_DATABASE_URL"].split("?", 1)[0].rstrip("/").endswith("/nuzantara_dev"):
-    raise RuntimeError(
-        "Refusing to run pytest against operational nuzantara_dev; use nuzantara_test"
-    )
+# INTAKE_TEST_DSN follows TEST_DATABASE_URL rather than carrying its own
+# literal: one knob to point the whole suite at an isolated database, and no
+# second default that can drift away from the first.
+os.environ.setdefault("INTAKE_TEST_DSN", os.environ["TEST_DATABASE_URL"])
+
+TEST_DSN_ENV_VARS: tuple[str, ...] = ("TEST_DATABASE_URL", "INTAKE_TEST_DSN")
+for _dsn_var in TEST_DSN_ENV_VARS:
+    if os.environ[_dsn_var].split("?", 1)[0].rstrip("/").endswith("/nuzantara_dev"):
+        raise RuntimeError(
+            f"Refusing to run pytest against operational nuzantara_dev "
+            f"({_dsn_var}); use nuzantara_test"
+        )
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "test")
