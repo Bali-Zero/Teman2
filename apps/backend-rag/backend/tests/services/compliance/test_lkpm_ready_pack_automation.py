@@ -136,7 +136,7 @@ async def _insert_incomplete_report(
 async def db_pool() -> asyncpg.Pool:
     import os
 
-    url = os.environ.get("TEST_DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_dev")
+    url = os.environ.get("TEST_DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_test")
     pool = await asyncpg.create_pool(url, min_size=1, max_size=5)
     yield pool
     await pool.close()

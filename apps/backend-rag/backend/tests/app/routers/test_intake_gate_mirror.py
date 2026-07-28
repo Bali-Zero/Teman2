@@ -28,7 +28,7 @@ from backend.services.intake.gate_evaluator import evaluate_gate_status
 pytestmark = pytest.mark.integration
 
 _DB_URL = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_dev"
+    "TEST_DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_test"
 )
 _BRIDGE_KEY = "test-bridge-key-219"
 

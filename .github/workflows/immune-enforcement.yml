@@ -143,6 +143,8 @@ jobs:
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
+              scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
+              apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
@@ -189,6 +191,7 @@ jobs:
             scripts/tests/test_fly_backup_timeouts.py \
             scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/tests/test_ci_service_images_use_mirror.py \
+            scripts/tests/test_intake_dsn_guard_covers_every_var.py \
             scripts/tests/test_husky_prepush_venv_guard.py \
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
             scripts/test_lint_test_reward_hacking.py ; do
