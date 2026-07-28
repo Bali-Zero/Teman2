@@ -601,7 +601,15 @@ if [ -n "${PREPUSH_REFS:-}" ] && [ -x scripts/ci/prepush_tip_drift.sh ]; then
     TIP_RC=0
     TIP_OUT=$(sh scripts/ci/prepush_tip_drift.sh "$PREPUSH_REFS" 2>&1) || TIP_RC=$?
     case "$TIP_RC" in
-        0) : ;;  # every pushed ref still points where the gate judged it
+        0)
+            # Print the receipt. Measured on this check's OWN first real push:
+            # it passed and emitted nothing, so 238KB of push log contained no
+            # evidence it had run at all — a hook without this block produces
+            # the identical silence. The rc=2 branch below already refuses to
+            # be silent for exactly this reason; the same argument applies to
+            # the happy path, where it is easier to forget and cheaper to fix.
+            printf '%s\n' "$TIP_OUT"
+            ;;
         1)
             printf '%s\n' "$TIP_OUT"
             rm -f "$PREPUSH_REFS"
