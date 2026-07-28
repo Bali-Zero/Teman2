@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { TaxGapCTA } from "./_components/TaxGapCTA";
 
 export const metadata: Metadata = {
-  title:
-    "Tax Gap Analysis — Periksa & Optimalkan Pajak Bisnis Anda | Bali Zero",
+  title: "Tax Gap Analysis — Periksa & Optimalkan Pajak Bisnis Anda",
   description:
     "Evaluasi kepatuhan pajak dan temukan potensi penghematan serta risiko pajak PT PMA Anda di Indonesia dengan analisis Tax Gap dari Bali Zero.",
   alternates: {

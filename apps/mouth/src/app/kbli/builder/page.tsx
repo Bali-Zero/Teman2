@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { KBLIBuilderCTA } from "./_components/KBLIBuilderCTA";
 
 export const metadata: Metadata = {
-  title:
-    "KBLI Builder — Susun Struktur Kode KBLI untuk PT PMA Anda | Bali Zero",
+  title: "KBLI Builder — Susun Struktur Kode KBLI untuk PT PMA Anda",
   description:
     "Mau mendirikan PT PMA di Bali? Tim Bali Zero menyusun struktur kode KBLI 2025 yang tepat untuk proses inkorporasi dan kepatuhan investasi asing Anda.",
   alternates: {
