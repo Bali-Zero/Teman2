@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   description:
     "Mau mendirikan PT PMA di Bali? Tim Bali Zero menyusun struktur kode KBLI 2025 yang tepat untuk proses inkorporasi dan kepatuhan investasi asing Anda.",
   alternates: {
-    canonical: "https://kita.balizero.com/kbli/builder",
+    canonical: "https://balizero.com/kbli/builder",
   },
   openGraph: {
     title: "KBLI Builder — Susun Struktur Kode KBLI untuk PT PMA Anda",
     description:
       "Mau mendirikan PT PMA di Bali? Tim Bali Zero menyusun struktur kode KBLI 2025 yang tepat untuk proses inkorporasi dan kepatuhan investasi asing Anda.",
-    url: "https://kita.balizero.com/kbli/builder",
+    url: "https://balizero.com/kbli/builder",
     siteName: "Bali Zero",
     type: "website",
   },
