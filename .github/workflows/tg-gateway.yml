@@ -112,5 +112,12 @@ jobs:
           # above, and a `gateway` violation can no longer hide behind this
           # job's own unrelated breakage. Task #35 split this out of `gateway`
           # for exactly that reason (2026-07-26).
+          # test_nlm_alarm_gateway.py: stdlib + bash only, no new install line.
+          # It is here rather than left to `scripts/tests/ sweep` because that
+          # sweep is `continue-on-error: true` and gates nothing — a guard whose
+          # only executor cannot go red is the superscar #2 shape it was written
+          # to catch. This is Stage 2 of that workflow's own staged plan
+          # ("genuinely-passing -> promote to a real per-file workflow entry"),
+          # applied to the two files this PR authored, not to the other 173.
           python3 -m pip -q install pytest httpx structlog asyncpg
-          python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py -q
+          python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py scripts/tests/test_nlm_alarm_gateway.py -q
