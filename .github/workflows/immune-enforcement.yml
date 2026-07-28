@@ -126,6 +126,8 @@ jobs:
               scripts/cron-wrapper.sh|\
               scripts/cron-state.sh|\
               scripts/test_cron_state_alert.sh|\
+              scripts/cron-runner.sh|\
+              scripts/test_cron_runner_alert.sh|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
               scripts/ci/queue_rearm.sh|\
@@ -235,6 +237,17 @@ jobs:
           # under it, so its failure was silent while the 03:20 twin alerted. Named here at
           # birth: an alarm nobody exercises is the thing it was built to prevent.
           bash scripts/test_cron_state_alert.sh
+
+      - name: cron-runner failure alert corpus (3 exits + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The sibling of the step above, and the reason it exists: curing cron-state
+          # and stopping there left the BIGGER of five producers mute (cron-runner: 36
+          # receipts, 30 invocations, vs cron-state's 28/27). Measured the next morning,
+          # two cron-runner jobs had failed within 24h of that fix with zero cron-fail:
+          # anywhere. All three exits are asserted — a fix that covers only the path
+          # that bit you is half a fix.
+          bash scripts/test_cron_runner_alert.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
