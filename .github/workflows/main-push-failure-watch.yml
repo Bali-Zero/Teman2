@@ -86,6 +86,7 @@ on:
       - cron - fly restart loop detector (every 15 min)
       - cron - fly watcher (every 15 min)
       - Cron — KG staging promotion
+      - cron - LLM credit sentinel (every 20 min)
       - cron - notifiers all (daily 00:00 WITA)
       - cron - notifiers birthday (DISARMED 2026-07-12 — manual only)
       - cron - notifiers compliance-forecast (daily 06:30 WITA)
