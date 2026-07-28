@@ -448,11 +448,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          # No `set -e`: the assignment below must survive a non-zero exit, or
-          # the verdict is decapitated before it is ever read (W101).
+          # W101, RECIDIVA (measured 2026-07-28): the previous version of these
+          # three lines said "No `set -e`" and then wrote `set -uo pipefail` —
+          # which does NOT clear the `-e` GitHub already applied. Actions runs
+          # every `run:` block as `/usr/bin/bash -e {0}` (this file declares no
+          # `shell:`), so a BARE `out=$(...)` aborted the step the instant the
+          # script exited non-zero: before `rc=$?`, before the `printf`, before
+          # the `case`. Proof from run 30319258460 (2026-07-28 01:05Z): the step
+          # lived 1.0s, emitted ZERO lines — not the population line, not the
+          # tool's own "queue probe FAILED" — and died with the script's rc=3.
+          # Every scheduled run had done that since the job was armed, so the
+          # re-armer has never once produced a readable verdict, and the reason
+          # was unreadable BECAUSE of this bug. The comment cited the scar it
+          # was reintroducing.
+          #
+          # Cure = the errexit-immune capture this repo already uses in
+          # docs-inventory-refresh.yml: `|| rc=$?` puts the assignment in a
+          # condition context, which errexit ignores by definition.
           set -uo pipefail
 
-          out=$(bash scripts/ci/queue_rearm.sh 2>&1); rc=$?
+          rc=0
+          out=$(bash scripts/ci/queue_rearm.sh 2>&1) || rc=$?
           printf '%s\n' "$out"
 
           # Judge the tool by the contract it documents, not by "did it exit 0":

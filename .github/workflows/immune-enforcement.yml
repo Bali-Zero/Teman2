@@ -95,6 +95,10 @@ jobs:
               scripts/tests/test_lint_doc_executable_refs.py|\
               scripts/lint_worktree_husky_symlink.py|\
               scripts/tests/test_lint_worktree_husky_symlink.py|\
+              scripts/tests/test_root_manifest_does_not_contradict_itself.py|\
+              package.json|\
+              apps/*/package.json|\
+              packages/*/package.json|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
@@ -111,6 +115,8 @@ jobs:
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
               scripts/tests/test_prepush_failclosed.sh|\
+              scripts/tests/test_prepush_tip_drift.sh|\
+              scripts/ci/prepush_tip_drift.sh|\
               scripts/docs_audit.py|\
               scripts/docs_inventory_refresh_liveness.py|\
               scripts/docs_inventory_regen.sh|\
@@ -143,6 +149,8 @@ jobs:
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
+              scripts/tests/test_lint_workflow_errexit_decap.py|\
+              scripts/lint_workflow_errexit_decap.py|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -179,6 +187,7 @@ jobs:
             scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
             scripts/tests/test_lint_worktree_husky_symlink.py \
+            scripts/tests/test_root_manifest_does_not_contradict_itself.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
@@ -191,6 +200,7 @@ jobs:
             scripts/tests/test_fly_backup_timeouts.py \
             scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/tests/test_ci_service_images_use_mirror.py \
+            scripts/tests/test_lint_workflow_errexit_decap.py \
             scripts/tests/test_intake_dsn_guard_covers_every_var.py \
             scripts/tests/test_husky_prepush_venv_guard.py \
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
@@ -204,6 +214,16 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: No run-block decapitates its own failure branch (W101, 4th instance)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Running the CORPUS is not running the LINT. The corpus proves the
+          # detector still bites; only this step proves the repo is clean. On
+          # 2026-07-28 the same omission is what let three live decapitations
+          # sit on main — including the one that had silently killed every
+          # scheduled run of the merge-queue re-armer since it was armed.
+          python3 scripts/lint_workflow_errexit_decap.py
 
       - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
         if: steps.paths.outputs.relevant == 'true'
@@ -235,6 +255,16 @@ jobs:
           # file is on main, so absent means deleted, and a deleted corpus
           # must go red rather than quietly pass.
           bash scripts/tests/test_prepush_failclosed.sh
+
+      - name: tip-drift corpus — the branch cannot move under the gate (guilt + innocence + W84)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Same POSIX-sh reasoning as the step above: its own step, exit code
+          # read directly, no `if [ -f ]` skip. `prepush-guards.yml` runs this
+          # corpus too and is the REQUIRED context; this second executor is
+          # deliberate — the guard it covers is what makes that context mean
+          # anything, and a single executor is a single point of silence.
+          bash scripts/tests/test_prepush_tip_drift.sh
 
       - name: cron-state failure alert corpus (guilt + innocence + fail-open)
         if: steps.paths.outputs.relevant == 'true'
