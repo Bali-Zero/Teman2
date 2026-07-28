@@ -52,8 +52,21 @@ on:
       - "vercel.json"
       - "apps/mouth/vercel.json"
   schedule:
-    # Every 30 minutes. The job is a shallow-ish clone plus a curl; the cost of running it is
-    # far below the cost of one more silent stale night.
+    # DECLARED every 30 minutes. DELIVERED far less often, and the gap is not a detail anyone
+    # sizing an incident response should have to discover the hard way.
+    #
+    # Measured on this repo 2026-07-28, on a workflow that has asked for `*/15` for months
+    # (cron-fly-restart-detector.yml): over 16 continuous hours its scheduled runs arrive at a
+    # MEDIAN interval of 91 minutes — 63, 64, 65, 77, 90, 94, 111, 150, 157. Six times slower
+    # than declared, worst case ten. GitHub documents that scheduled workflows are delayed
+    # under load and may be dropped entirely; with 86 workflows here, that is the steady state,
+    # not a bad night. GitHub Status reported Actions fully operational throughout.
+    #
+    # So: a `cron:` expression is a request, never an interval, and this sentinel's real
+    # worst-case detection latency is roughly an hour — still two orders of magnitude better
+    # than the 13-hour silence it exists to prevent, but do not promise 30 minutes to anyone.
+    # The `push` trigger above is what fires promptly; the schedule is the backstop that
+    # notices a silence, and a backstop is allowed to be slow.
     - cron: "*/30 * * * *"
   workflow_dispatch:
 
