@@ -179,7 +179,7 @@ jobs:
       - name: Has this stale commit already been announced?
         id: announced
         if: failure()
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .stale-alert-marker
           key: frontend-stale-alert-${{ steps.expected.outputs.sha }}
@@ -215,7 +215,7 @@ jobs:
       # for the next 30 minutes.
       - name: Remember that this stale commit was announced
         if: failure() && steps.announced.outputs.cache-hit != 'true' && hashFiles('.stale-alert-marker') != ''
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .stale-alert-marker
           key: frontend-stale-alert-${{ steps.expected.outputs.sha }}
