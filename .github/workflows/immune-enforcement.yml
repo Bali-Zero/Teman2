@@ -123,6 +123,7 @@ jobs:
               scripts/tests/test_docs_audit.py|\
               scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
+              scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
               scripts/lib/offsite_verify.sh|\
@@ -197,6 +198,7 @@ jobs:
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
+            scripts/tests/test_docs_inventory_render_is_clock_free.py \
             scripts/tests/test_fly_backup_timeouts.py \
             scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/tests/test_ci_service_images_use_mirror.py \

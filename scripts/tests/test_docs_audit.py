@@ -49,6 +49,30 @@ def _run_audit(repo: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
+def _col(inventory_text: str, name: str) -> int:
+    """Index into `line.split("|")` for the inventory column called `name`.
+
+    Resolved from the rendered header, never hardcoded. The tests below hand-
+    edit individual cells to manufacture guilt, and they used to address them
+    by literal index. When #3405's churn fix removed the `mtime_days` column,
+    every one of those indices silently pointed one cell to the left. Three of
+    them happened to fail loudly (`date.fromisoformat('—')`); the rest would
+    have quietly asserted about the wrong column — a guilt test that mutates
+    the wrong cell still goes red, for the wrong reason, and an innocence test
+    that reads the wrong cell can go green while the property it names is
+    broken.
+
+    `split("|")` on `| a | b |` yields ['', ' a ', ' b ', ''], so the header's
+    Nth column is index N+1.
+    """
+    header = next(
+        ln for ln in inventory_text.splitlines() if ln.startswith("| File | Status |")
+    )
+    names = [h.strip() for h in header.strip().strip("|").split("|")]
+    assert name in names, f"column {name!r} is not in the inventory header: {names}"
+    return names.index(name) + 1
+
+
 def test_classify_live_doc(aged_fixture):
     result = _run_audit(
         aged_fixture,
@@ -247,15 +271,32 @@ def test_check_flag_exit_codes(aged_fixture):
     assert "+++ generated/" in result.stderr
 
 
-def test_check_ignores_mtime_days_drift(aged_fixture):
-    """`--check` must NOT fail when the only delta is mtime_days incrementing.
+def test_the_inventory_has_no_clock_derived_cell_for_a_day_to_change(aged_fixture):
+    """END-TO-END: a day passing cannot move this file, because nothing in it
+    is derived from the clock.
 
-    Calendar time advances every day; if `--check` flagged that, every PR
-    touching `docs/**` would fail Docs Guardian on the day after the last
-    inventory regen — making the gate noise instead of signal. Regression
-    for the 2026-05-01 incident on PR #401, where the `inventory-check`
-    job in `.github/workflows/docs-guardian.yml` flagged a 1-day
-    mtime_days drift on every row even though no doc was actually stale.
+    HISTORY, and why this test was rewritten rather than left alone. It used to
+    be `test_check_ignores_mtime_days_drift`: it hand-incremented every
+    `mtime_days` cell and asserted `--check` still exited 0, protecting the
+    2026-05-01 / PR #401 incident where a 1-day drift on every row failed
+    `inventory-check` for PRs that had changed nothing.
+
+    That protection was masking, and masking only silenced the GATE. The FILE
+    still changed every day, which is the half that hurt: measured on #3405,
+    633 of 699 changed rows (90.6%) differed ONLY in that integer, the
+    twice-daily refresh opened a churn PR on every run because it decides with
+    `git diff --quiet` on the raw file, and any two branches that regenerated
+    collided on those 633 lines.
+
+    The column is now gone (render_inventory emits absolute `last_touched_date`
+    instead), so the old body had nothing left to increment: its loop looked for
+    a `mtime_days` header, never found one, mutated nothing, and asserted that
+    an unmodified file passes `--check`. It PASSED, vacuously, and would have
+    kept passing if the cure were reverted. A test that can no longer fail is
+    worse than no test — it reports coverage it does not have.
+
+    So the assertion is now the stronger, source-level one, still driven
+    end-to-end through the real script.
     """
     common = [
         "--whitelist",
@@ -273,43 +314,37 @@ def test_check_ignores_mtime_days_drift(aged_fixture):
     ]
     # Generate inventory at the fixture's current "today".
     _run_audit(aged_fixture, *common)
-
-    # Bump every mtime_days by 1 to simulate "the next calendar day".
     inventory = aged_fixture / "docs" / "DOCS_INVENTORY.md"
-    bumped: list[str] = []
-    in_table = False
-    for line in inventory.read_text().splitlines():
-        if line.startswith("|") and "mtime_days" in line:
-            in_table = True
-            bumped.append(line)
-            continue
-        if in_table and line.startswith("| ") and "---" not in line:
-            parts = line.split("|")
-            # | path | STATUS | mtime_days | refs_in | broken | drift | …
-            if len(parts) >= 9:
-                try:
-                    parts[3] = f" {int(parts[3].strip()) + 1} "
-                    line = "|".join(parts)
-                except ValueError:
-                    pass
-        line = re.sub(
-            r"mtime=(\d+)d",
-            lambda match: f"mtime={int(match.group(1)) + 1}d",
-            line,
-        )
-        bumped.append(line)
-    inventory.write_text("\n".join(bumped) + "\n")
+    text = inventory.read_text()
 
-    # Drift is mtime-only → the fix in render_inventory's strip_volatile
-    # must mask it, so --check must still exit 0.
+    # NON-VACUITY FIRST. Everything below is "X is absent", and an empty or
+    # table-less file satisfies all of it. This is the exact trap the previous
+    # version of this test fell into.
+    header = [ln for ln in text.splitlines() if ln.startswith("| File | Status |")]
+    assert len(header) == 1, f"expected exactly one file-table header, got {len(header)}"
+    doc_rows = [ln for ln in text.splitlines() if ln.startswith("| docs/")]
+    assert doc_rows, "no doc rows in the generated table — the assertions below would be vacuous"
+
+    # No cell may be an AGE. Absolute dates are fine (a date is a tree fact and
+    # does not change on its own); a days-ago count is not.
+    ages = re.findall(r"mtime=\d+d|\(mtime[^)]*\)|\b\d+ days ago\b", text)
+    assert not ages, (
+        f"the inventory renders age tokens {ages[:5]} — these increment daily "
+        "and are what made this generated-but-tracked file rewrite itself "
+        "nightly (#3405: 633/699 rows changed by nothing but the clock)"
+    )
+    assert "mtime_days" not in header[0], (
+        "the mtime_days column is back in the table header. It is redundant "
+        "with last_touched_date beside it, and it is the churn source."
+    )
+
+    # And the gate agrees with the file it just wrote.
     result = _run_audit(aged_fixture, *common, "--check")
     assert result.returncode == 0, result.stdout + result.stderr
 
-    # Sanity: re-running without --check must rewrite the file with the
-    # real (smaller) mtime values, restoring byte-identical state.
+    # Regeneration is idempotent: a second write must not move a byte.
     _run_audit(aged_fixture, *common)
-    result = _run_audit(aged_fixture, *common, "--check")
-    assert result.returncode == 0
+    assert inventory.read_text() == text, "regenerating twice produced different bytes"
 
 
 def test_check_still_catches_real_drift(aged_fixture):
@@ -844,11 +879,55 @@ def _commit_and_push(repo: Path, message: str = "snapshot") -> None:
     subprocess.run(["git", "push", "-q", "origin", "main"], cwd=repo, check=True, env=env)
 
 
+# The column order every `cells[N]` index in this file is written against.
+# `split("|")` on `| a | b |` yields ['', ' a ', ' b ', ''], so column K here is
+# index K+1 there:
+#   1=File  2=Status  3=last_touched_date  4=orphan_eligible_on
+#   5=orphan_flipped_on  6=refs_in  7=broken  8=drift  9=cluster  10=action
+_EXPECTED_LAYOUT = [
+    "File",
+    "Status",
+    "last_touched_date",
+    "orphan_eligible_on",
+    "orphan_flipped_on",
+    "refs_in",
+    "broken",
+    "drift",
+    "cluster",
+    "action",
+]
+
+
 def _row_cells(inventory_text: str, path: str) -> list[str]:
     """Split the `## Files` table row for `path` into raw `|`-delimited cells
     (including the leading/trailing empty strings from split), so a test can
     mutate a SPECIFIC column by index without hand-building a whole row.
+
+    Every caller addresses cells by literal index, and ~20 of them do. When
+    #3405's churn fix removed the `mtime_days` column, every one of those
+    indices silently pointed one cell to the left: a guilt test forged the
+    wrong column (red for the wrong reason), and an innocence test read the
+    wrong column (green while the property it names was untested). Only the
+    two that happened to feed `date.fromisoformat()` failed loudly.
+
+    So the layout is asserted HERE, once, instead of being re-derived at
+    twenty call sites: the next column change fails immediately with the two
+    layouts printed side by side, rather than producing twenty quiet lies.
     """
+    header = next(
+        (ln for ln in inventory_text.splitlines() if ln.startswith("| File | Status |")),
+        None,
+    )
+    assert header is not None, f"no file-table header in inventory:\n{inventory_text[:400]}"
+    names = [h.strip() for h in header.strip().strip("|").split("|")]
+    assert names == _EXPECTED_LAYOUT, (
+        "the inventory column layout changed, so every cells[N] index in this "
+        "file now addresses the wrong column.\n"
+        f"  expected: {_EXPECTED_LAYOUT}\n"
+        f"  rendered: {names}\n"
+        "Update _EXPECTED_LAYOUT *and* the indices together — a silent shift "
+        "here is how a guilt test starts forging the wrong cell."
+    )
     for line in inventory_text.splitlines():
         if line.startswith(f"| {path} |"):
             return line.split("|")
@@ -1130,7 +1209,7 @@ def test_p3prime_1a_guilt_premature_flip_claim_rejected(tmp_path):
     cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
     assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
     premature = (eligible_on - timedelta(days=5)).isoformat()
-    cells[6] = f" {premature} "  # forge: claimed flip predates eligibility
+    cells[5] = f" {premature} "  # forge: claimed flip predates eligibility
     forged_row = "|".join(cells)
     lines = inventory.read_text().splitlines()
     lines = [
@@ -1183,7 +1262,7 @@ def test_p3prime_1a_guilt_future_dated_flip_claim_rejected_refinement1(tmp_path)
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
     cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
     assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
-    cells[6] = " 2099-01-01 "  # wildly future — past any real commit date
+    cells[5] = " 2099-01-01 "  # wildly future — past any real commit date
     forged_row = "|".join(cells)
     lines = inventory.read_text().splitlines()
     lines = [
@@ -1245,7 +1324,7 @@ def test_p3prime_1a_guilt_refs_in_nonzero_forged_archive_rejected_refinement2(
     assert result.returncode in (0, 1), result.stderr
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
     cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
-    assert cells[7].strip() != "0", (
+    assert cells[6].strip() != "0", (
         "test setup sanity failed: OLD_DOC.md must have a real inbound "
         f"reference from REFERRER.md — refs_in cell: {cells}"
     )
@@ -1255,9 +1334,9 @@ def test_p3prime_1a_guilt_refs_in_nonzero_forged_archive_rejected_refinement2(
     # (recomputed) refs_in, not the candidate's own claimed value.
     plausible_flip = (date.today() - timedelta(days=1)).isoformat()
     cells[2] = " ARCHIVED "
-    cells[6] = f" {plausible_flip} "
-    cells[7] = " 0 "
-    cells[11] = " archive: orphan, mtime=200d, refs=0 "
+    cells[5] = f" {plausible_flip} "
+    cells[6] = " 0 "
+    cells[10] = " archive: orphan, last_touched=2026-01-01, refs=0 "
     forged_row = "|".join(cells)
     lines = inventory.read_text().splitlines()
     lines = [
@@ -1357,10 +1436,10 @@ def test_p3prime_1a_guilt_fabricated_row_for_nonexistent_path_rejected_refinemen
     cells = real_row.split("|")
     cells[1] = " docs/GHOST_DOC.md "  # path that never existed on disk
     cells[2] = " ARCHIVED "
-    cells[5] = f" {(date.today() - timedelta(days=91)).isoformat()} "  # eligible_on
-    cells[6] = f" {(date.today() - timedelta(days=1)).isoformat()} "  # flipped_on
-    cells[7] = " 0 "
-    cells[11] = " archive: orphan, mtime=200d, refs=0 "
+    cells[4] = f" {(date.today() - timedelta(days=91)).isoformat()} "  # eligible_on
+    cells[5] = f" {(date.today() - timedelta(days=1)).isoformat()} "  # flipped_on
+    cells[6] = " 0 "
+    cells[10] = " archive: orphan, last_touched=2026-01-01, refs=0 "
     fabricated_row = "|".join(cells)
     lines.append(fabricated_row)
     inventory.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -1443,7 +1522,7 @@ def test_p3prime_1a_guilt_forged_committer_date_cannot_defeat_ceiling_refinement
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
     cells = _row_cells(inventory.read_text(), "docs/OLD_DOC.md")
     assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
-    cells[6] = " 2099-01-01 "  # the far-future claim refinement 1 names as its example
+    cells[5] = " 2099-01-01 "  # the far-future claim refinement 1 names as its example
     forged_row = "|".join(cells)
     lines = inventory.read_text().splitlines()
     lines = [
@@ -1557,14 +1636,14 @@ def test_p3prime_1a_guilt_date_creep_on_recorded_flip_rejected(tmp_path):
     inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
     cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
     assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
-    assert cells[6].strip() == late_as_of, "test setup sanity failed: unexpected flip date"
+    assert cells[5].strip() == late_as_of, "test setup sanity failed: unexpected flip date"
 
     # Nudge the RECORDED flip's date forward 5 days — still in-window
     # (>= eligible_on, <= real today), row still present, refs_in claim
     # untouched. Only condition 1 (trusted-ref already has this path) can
     # catch this — every other condition is satisfied by construction.
     crept = (date.fromisoformat(late_as_of) + timedelta(days=5)).isoformat()
-    cells[6] = f" {crept} "
+    cells[5] = f" {crept} "
     forged_row = "|".join(cells)
     lines = inv_path.read_text().splitlines()
     lines = [
@@ -1656,7 +1735,7 @@ def test_p3prime_innocence_gate_consistent_regen_committed_on_branch_passes_chec
         "innocence: --gate-consistent must NOT invent a fresh flip just "
         "because the doc is genuinely old by real wall-clock"
     )
-    assert row[6].strip() == "—"  # orphan_flipped_on column stays empty
+    assert row[5].strip() == "—"  # orphan_flipped_on column stays empty
 
     _commit_and_push(repo, "gate-consistent regen (innocent)")
 
@@ -1704,7 +1783,7 @@ def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_
     inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
     cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
     assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
-    trusted_flip_date = cells[6].strip()
+    trusted_flip_date = cells[5].strip()
     assert trusted_flip_date != "—", "test setup sanity failed: no flip date recorded"
 
     # Forge the candidate's LOCAL working tree only (never pushed): flip
@@ -1712,8 +1791,8 @@ def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_
     # test, but this time the forged file is what --gate-consistent's WRITE
     # step will see as "old_content" if it (incorrectly) reads local state.
     cells[2] = " LIVE "
-    cells[6] = " — "
-    cells[11] = " — "
+    cells[5] = " — "
+    cells[10] = " — "
     forged_row = "|".join(cells)
     lines = inv_path.read_text().splitlines()
     lines = [
@@ -1734,10 +1813,10 @@ def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_
         "to local-file provenance would silently resurrect the doc: "
         + rewritten
     )
-    assert row[6].strip() == trusted_flip_date, (
+    assert row[5].strip() == trusted_flip_date, (
         "--gate-consistent must reproduce origin/main's ORIGINAL flip "
         f"date ({trusted_flip_date!r}), not invent a new one or keep the "
-        f"forged blank: got {row[6].strip()!r}"
+        f"forged blank: got {row[5].strip()!r}"
     )
 
 
@@ -1752,15 +1831,17 @@ def test_p3prime_guilt_last_touched_date_inconsistent_with_git_history(tmp_path)
     _run_audit(repo, "--orphan-days", "90")  # baseline (real today, not eligible)
 
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
-    lines = inventory.read_text().splitlines()
+    raw = inventory.read_text()
+    lines = raw.splitlines()
+    touched_i = _col(raw, "last_touched_date")
     mutated_lines = []
     found = False
     for line in lines:
         if line.startswith("| docs/OLD_DOC.md |"):
             found = True
             parts = line.split("|")
-            true_date = date.fromisoformat(parts[4].strip())
-            parts[4] = f" {(true_date - timedelta(days=7)).isoformat()} "
+            true_date = date.fromisoformat(parts[touched_i].strip())
+            parts[touched_i] = f" {(true_date - timedelta(days=7)).isoformat()} "
             line = "|".join(parts)
         mutated_lines.append(line)
     assert found, "fixture assumption broken — OLD_DOC.md row not found"
@@ -1783,15 +1864,17 @@ def test_p3prime_guilt_orphan_eligible_on_inconsistent(tmp_path):
     _run_audit(repo, "--orphan-days", "90")
 
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
-    lines = inventory.read_text().splitlines()
+    raw = inventory.read_text()
+    lines = raw.splitlines()
+    eligible_i = _col(raw, "orphan_eligible_on")
     mutated_lines = []
     found = False
     for line in lines:
         if line.startswith("| docs/OLD_DOC.md |"):
             found = True
             parts = line.split("|")
-            true_eligible = date.fromisoformat(parts[5].strip())
-            parts[5] = f" {(true_eligible + timedelta(days=1)).isoformat()} "
+            true_eligible = date.fromisoformat(parts[eligible_i].strip())
+            parts[eligible_i] = f" {(true_eligible + timedelta(days=1)).isoformat()} "
             line = "|".join(parts)
         mutated_lines.append(line)
     assert found, "fixture assumption broken — OLD_DOC.md row not found"
@@ -1820,17 +1903,27 @@ def test_p3prime_guilt_status_archived_without_organ_flip(tmp_path):
     _run_audit(repo, "--orphan-days", "90", "--as-of", early_as_of)
 
     inventory = repo / "docs" / "DOCS_INVENTORY.md"
-    lines = inventory.read_text().splitlines()
+    raw = inventory.read_text()
+    lines = raw.splitlines()
+    status_i = _col(raw, "Status")
+    flipped_i = _col(raw, "orphan_flipped_on")
+    touched_i = _col(raw, "last_touched_date")
     mutated_lines = []
     found = False
     for line in lines:
         if line.startswith("| docs/OLD_DOC.md |"):
             found = True
             parts = line.split("|")
-            assert parts[2].strip() == "LIVE", parts
-            assert parts[6].strip() == "—", parts  # orphan_flipped_on untouched
-            parts[2] = " ARCHIVED "  # hand-edit STATUS only
-            parts[-2] = " archive: orphan, mtime=200d, refs=0 "  # and action text
+            assert parts[status_i].strip() == "LIVE", parts
+            assert parts[flipped_i].strip() == "—", parts  # orphan_flipped_on untouched
+            parts[status_i] = " ARCHIVED "  # hand-edit STATUS only
+            # …and the action text, in the CURRENT rendered format. A forgery
+            # written in a stale format would be rejected for looking wrong
+            # rather than for being unbacked by an organ flip — the test would
+            # go green while proving something else.
+            parts[-2] = (
+                f" archive: orphan, last_touched={parts[touched_i].strip()}, refs=0 "
+            )
             line = "|".join(parts)
         mutated_lines.append(line)
     assert found, "fixture assumption broken — OLD_DOC.md row not found"
@@ -2039,8 +2132,8 @@ def test_redteam_blocker2_forged_candidate_deletes_flip_caught_red(tmp_path):
     # (column 2) — a PR author's hand-edit / bad merge-conflict resolution,
     # never touching the working tree's OLD_DOC.md itself.
     cells[2] = " LIVE "
-    cells[6] = " — "
-    cells[11] = " — "
+    cells[5] = " — "
+    cells[10] = " — "
     forged_row = "|".join(cells)
     lines = inv_path.read_text().splitlines()
     lines = [

@@ -817,7 +817,11 @@ def classify(
             row.orphan_flipped_on = as_of.isoformat()
         if row.orphan_flipped_on:
             row.status = "ARCHIVED"
-            row.action = f"archive: orphan, mtime={row.mtime_days}d, refs=0"
+            # Absolute date, never a days-ago count: this string is RENDERED
+            # into the tracked inventory, and "94d" becomes "95d" tomorrow with
+            # no documentation having changed. See render_inventory()'s header
+            # comment for the churn this caused.
+            row.action = f"archive: orphan, last_touched={row.last_touched_date}, refs=0"
             return row
     # else: not (yet) archived via the orphan rule. Any `orphan_flipped_on`
     # from an earlier run is correctly NOT carried here (row keeps the
@@ -892,11 +896,27 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
         "organ ever writes a fresh `orphan_flipped_on`. See docs_audit.py module docstring._"
     )
     out.append("")
+    # NO clock-derived cell is rendered here. `mtime_days` used to be column 3
+    # and it is why this generated-but-TRACKED file changed every single day:
+    # measured on PR #3405, 633 of the 699 changed rows (90.6%) differed ONLY
+    # in that integer going up by one, with no documentation having changed at
+    # all. Two consequences, one root:
+    #   * the scheduled refresh (twice daily) opened a PR on every run, because
+    #     it decides with `git diff --quiet` on the RAW file — 1558 lines of
+    #     which ~90% was clock churn;
+    #   * any two branches that both regenerated collided on those 633 lines,
+    #     the "conflict treadmill" #3334 was closed over.
+    # `mtime_days` is also pure redundancy: `last_touched_date` right beside it
+    # is the same fact in absolute form, and `orphan_eligible_on` is the
+    # deadline it fed. A reader wanting "how old" subtracts; a file does not
+    # have to rewrite itself nightly to tell them.
+    # It stays on DocRow and still drives the orphan RULE (classify()) — this
+    # is about what gets WRITTEN, not about what gets decided.
     out.append(
-        "| File | Status | mtime_days | last_touched_date | orphan_eligible_on | orphan_flipped_on | refs_in | broken | drift | cluster | action |"
+        "| File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on | refs_in | broken | drift | cluster | action |"
     )
     out.append(
-        "|------|--------|-----------:|--------------------|---------------------|--------------------|--------:|-------:|-------|---------|--------|"
+        "|------|--------|--------------------|---------------------|--------------------|--------:|-------:|-------|---------|--------|"
     )
     # MAJOR-7 fix (red-team 2026-07-18): a doc path containing a literal '|'
     # corrupts the Markdown row it's written into (an extra cell), and the
@@ -910,7 +930,7 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
     # in its path, and a hand-rolled escape/unescape pair is itself exactly
     # the kind of parser surface this repo's guard-over/under-match superscar
     # (#3) keeps re-biting on — simpler to make the input impossible.
-    EXPECTED_COLUMNS = 11  # File|Status|mtime_days|last_touched_date|orphan_eligible_on|orphan_flipped_on|refs_in|broken|drift|cluster|action
+    EXPECTED_COLUMNS = 10  # File|Status|last_touched_date|orphan_eligible_on|orphan_flipped_on|refs_in|broken|drift|cluster|action
     for r in rows:
         if "|" in r.path:
             raise SystemExit(
@@ -926,7 +946,7 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
         eligible_s = r.orphan_eligible_on or "—"
         flipped_s = r.orphan_flipped_on or "—"
         row_line = (
-            f"| {r.path} | {r.status} | {r.mtime_days} | {last_touched_s} | "
+            f"| {r.path} | {r.status} | {last_touched_s} | "
             f"{eligible_s} | {flipped_s} | {r.refs_in} | {r.broken} | "
             f"{drift_s} | {cluster_s} | {action_s} |"
         )
@@ -973,9 +993,12 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
 
     orphan_rows = [r for r in rows if r.action.startswith("archive: orphan")]
     if orphan_rows:
-        out.append(f"### Orphans (mtime>{0}d AND refs_in==0)")
+        out.append("### Orphans (past orphan_eligible_on AND refs_in==0)")
         for r in orphan_rows:
-            out.append(f"- `{r.path}` (mtime={r.mtime_days}d, zero inbound refs)")
+            # Absolute again — same reason as the table above.
+            out.append(
+                f"- `{r.path}` (last touched {r.last_touched_date}, zero inbound refs)"
+            )
         out.append("")
 
     while out and out[-1] == "":
@@ -1057,19 +1080,46 @@ def _read_committed_orphan_claims(content: str) -> Dict[str, Dict[str, str]]:
     toward strict comparison, matching this file's existing fail-closed
     posture elsewhere).
     """
+    # Read by COLUMN NAME, never by index. The first version of this reader was
+    # positional (`parts[6]`, `parts[7]`) and skipped the header row by testing
+    # `"mtime_days" in line`. When the mtime_days column was removed (it made
+    # this tracked file rewrite itself nightly — see render_inventory), BOTH of
+    # those silently re-aimed: every index shifted by one, and the header row,
+    # no longer containing the word, stopped being skipped and was parsed as a
+    # data row. Neither failure raises; the function just answers about the
+    # wrong columns, and this one feeds a TOLERANCE decision — the direction in
+    # which being wrong is quietest.
+    #
+    # This still does NOT reuse _parse_inventory_table(): that helper serves a
+    # different caller with a different contract, and the 2026-07-25
+    # option-1a-surgical discussion judged changing it riskier than a second
+    # small reader. What changes here is only HOW this reader addresses a cell.
     claims: Dict[str, Dict[str, str]] = {}
-    for line in content.splitlines():
-        if not line.startswith("| ") or "mtime_days" in line or "---" in line:
+    lines = content.splitlines()
+    header_idx: int | None = None
+    headers: List[str] = []
+    for i, line in enumerate(lines):
+        if line.startswith("| File "):
+            headers = [h.strip() for h in line.strip().strip("|").split("|")]
+            header_idx = i
+            break
+    if header_idx is None:
+        return claims  # no file table (or a hand-edit broke it) — tolerate nothing
+    for line in lines[header_idx + 2 :]:  # skip the header row + alignment row
+        if not line.startswith("| "):
+            break  # table ended
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) != len(headers):
             continue
-        parts = line.split("|")
-        if len(parts) < 12:
-            continue
-        path = parts[1].strip()
-        if not path:
+        row = dict(zip(headers, cells))
+        path = row.get("File", "")
+        # Fail toward strict comparison (docstring above): a row missing either
+        # field yields no claim rather than an empty-string claim.
+        if not path or "orphan_flipped_on" not in row or "refs_in" not in row:
             continue
         claims[path] = {
-            "orphan_flipped_on": parts[6].strip(),
-            "refs_in": parts[7].strip(),
+            "orphan_flipped_on": row["orphan_flipped_on"],
+            "refs_in": row["refs_in"],
         }
     return claims
 
@@ -1421,14 +1471,19 @@ def main() -> int:
             ]
             check_content = render_inventory(tolerant_rows, clusters)
 
-    # Normalise volatile fields before comparing committed vs. rendered:
-    #   * "Last run: …" — wall-clock timestamp, changes every run
-    #   * mtime_days column in the file table — increments daily for every
-    #     row because git commit-mtime grows with calendar time, even if
-    #     no doc was touched. Without stripping this, `--check` returns 1
-    #     on every PR touching docs/** the day after the last regen.
+    # Normalise the one remaining volatile field before comparing committed
+    # vs. rendered: "Last run: …", the generation stamp.
+    #
+    # There used to be a second entry here — the `mtime_days` column, which
+    # incremented daily for every row and made `--check` return 1 on any PR
+    # touching docs/** the day after the last regen. That was cured at the
+    # SOURCE instead of here: render_inventory() no longer emits a
+    # clock-derived cell at all, so there is nothing left to neutralize.
+    # Masking it downstream was always the weaker half — the gate stopped
+    # complaining, but the FILE still changed every day, which is what fed
+    # both the twice-daily churn PR and the cross-branch conflicts.
     # P3-prime note: last_touched_date / orphan_eligible_on / orphan_flipped_on
-    # (columns 4-6, added alongside mtime_days) are DELIBERATELY NOT stripped
+    # are DELIBERATELY NOT stripped
     # here — they are stable/deterministic (pure functions of git history, or
     # a carried-forward provenance date), so any real difference in them IS
     # meaningful drift the gate must catch. STATUS/orphan_flipped_on/action
@@ -1438,27 +1493,25 @@ def main() -> int:
     # option 1a-surgical, so ordinary drift and both BLOCKER-2 forgery
     # directions are still caught byte-for-byte.
     def strip_volatile(s: str) -> str:
+        # Only "Last run:" is dropped now, and even that is a same-day-stable
+        # UTC date rather than a clock time.
+        #
+        # The two mtime normalizers that used to live here are GONE because
+        # render_inventory() no longer emits anything for them to hide: the
+        # `mtime_days` column and the `mtime=<N>d` fragments in the action /
+        # Orphans lines were all replaced by absolute `last_touched_date`.
+        # Removing the positional one is NOT cosmetic — it is required for
+        # correctness. It blanked `parts[3]`, and with the column gone
+        # `parts[3]` is now `last_touched_date`: leaving it would have made
+        # this gate silently blind to every change in a column the comment
+        # right above deliberately calls out as meaningful drift the gate must
+        # catch. A masker that outlives the value it masked stops being dead
+        # code the moment the layout shifts under it — it starts hiding its
+        # neighbour (superscar #3, the UNDER-match direction).
         out: List[str] = []
         for line in s.splitlines():
             if "Last run:" in line:
                 continue
-            line = re.sub(r"mtime=\d+d", "mtime=<mtime>d", line)
-            # File table rows look like:
-            #   | path | STATUS | <int> | <date> | <date> | <date-or-—> | <int> | <int> | yes/no | cluster | action |
-            # mtime_days is column 3 (1-indexed, UNCHANGED position — the new
-            # P3-prime columns were inserted AFTER it) — replace with a
-            # placeholder so daily drift doesn't trip the comparison. Header
-            # row ("File | Status | mtime_days | …") is preserved verbatim.
-            if line.startswith("| ") and "|" in line[2:] and "mtime_days" not in line:
-                parts = line.split("|")
-                # Expected layout: ['', ' path ', ' STATUS ', ' mtime_days ',
-                #                   ' last_touched_date ', ' orphan_eligible_on ',
-                #                   ' orphan_flipped_on ', ' refs_in ', ' broken ',
-                #                   ' drift ', ' cluster ', ' action ', ''].
-                # Skip the alignment row "|------|...".
-                if len(parts) >= 9 and "---" not in line:
-                    parts[3] = " <mtime> "
-                    line = "|".join(parts)
             out.append(line)
         return "\n".join(out)
 
