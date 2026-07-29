@@ -24,11 +24,20 @@ const FULL_ACCESS_USERS = [
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const requestedPage = Number(searchParams.get("page") ?? "1");
+  // `parseInt("abc")` is NaN, and NaN survives Math.max — it would reach pg as
+  // the OFFSET bind and 500 the route.
+  const page = Number.isFinite(requestedPage)
+    ? Math.max(1, Math.floor(requestedPage))
+    : 1;
   const limit = 100;
   const offset = (page - 1) * limit;
 
-  const authUser = request.headers.get("x-user-email") ?? "";
+  // `x-admin-email` is stamped by middleware.ts from the verified JWT, which
+  // strips any inbound copy first. Never read a header the caller can set:
+  // this one decides whether the response is the whole client book or one
+  // person's assignments.
+  const authUser = request.headers.get("x-admin-email") ?? "";
   const hasFullAccess = FULL_ACCESS_USERS.includes(authUser);
 
   try {
@@ -47,9 +56,11 @@ export async function GET(request: Request) {
       client.release();
     }
   } catch (error) {
+    // The detail goes to the log, not to the caller — a pg error string can
+    // carry the connection target and column names.
     logger.error("Clients query error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error) },
+      { error: "clients query failed" },
       { status: 500 },
     );
   }

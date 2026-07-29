@@ -1,5 +1,5 @@
 import { SignJWT } from "jose";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { middleware } from "@/middleware";
@@ -127,6 +127,99 @@ describe("admin-dashboard middleware — HTML pages", () => {
     const res = await middleware(req);
     expect(res!.status).toBe(200);
     expect(res!.headers.get("location")).toBeNull();
+  });
+});
+
+/**
+ * `/api/clients` decides between "the whole client book" and "only the rows
+ * assigned to you" from `x-admin-email`. That header is only trustworthy
+ * because middleware drops whatever the caller sent and re-stamps it from the
+ * verified JWT — so both halves get pinned here.
+ *
+ * The forwarded value is observable through Next's request-override protocol:
+ * `NextResponse.next({ request: { headers } })` emits
+ * `x-middleware-override-headers` plus one `x-middleware-request-<name>` per
+ * overridden header (verified empirically against next ^16.2.12, not assumed).
+ */
+describe("admin-dashboard middleware — x-admin-email is stamped, never accepted", () => {
+  function buildRequestWithHeaders(
+    pathname: string,
+    cookie: string,
+    extra: Record<string, string>,
+  ): NextRequest {
+    const headers = new Headers();
+    headers.set("cookie", `nz_access_token=${cookie}`);
+    for (const [k, v] of Object.entries(extra)) headers.set(k, v);
+    return new NextRequest(new URL(`https://admin.balizero.com${pathname}`), {
+      headers,
+    });
+  }
+
+  const forwarded = (res: NextResponse | undefined): string | null =>
+    res!.headers.get("x-middleware-request-x-admin-email");
+
+  it("GUILT: a caller-supplied x-admin-email is replaced by the verified one", async () => {
+    const token = await sign({
+      email: "ari@balizero.com",
+      role: "admin",
+      type: "access",
+    });
+    const req = buildRequestWithHeaders("/api/clients", token, {
+      // ari is a legitimate admin, but not one of the three full-access users;
+      // this is the escalation attempt.
+      "x-admin-email": "zero@balizero.com",
+    });
+    const res = await middleware(req);
+    expect(res!.status).toBe(200);
+    expect(forwarded(res)).toBe("ari@balizero.com");
+    expect(forwarded(res)).not.toBe("zero@balizero.com");
+  });
+
+  it("GUILT: capitalised header name cannot smuggle a second value", async () => {
+    const token = await sign({
+      email: "ari@balizero.com",
+      role: "admin",
+      type: "access",
+    });
+    const req = buildRequestWithHeaders("/api/clients", token, {
+      "X-Admin-Email": "zero@balizero.com",
+    });
+    const res = await middleware(req);
+    expect(forwarded(res)).toBe("ari@balizero.com");
+  });
+
+  it("INNOCENCE: an ordinary admin request carries their own verified email", async () => {
+    const token = await sign({
+      email: "ari@balizero.com",
+      role: "admin",
+      type: "access",
+    });
+    const req = buildRequestWithHeaders("/api/clients", token, {});
+    const res = await middleware(req);
+    expect(res!.headers.get("x-middleware-override-headers")).toContain(
+      "x-admin-email",
+    );
+    expect(forwarded(res)).toBe("ari@balizero.com");
+  });
+
+  it("INNOCENCE: a full-access owner still reaches the handler as themselves", async () => {
+    const token = await sign({
+      email: "zero@balizero.com",
+      role: "owner",
+      type: "access",
+    });
+    const req = buildRequestWithHeaders("/api/clients", token, {});
+    const res = await middleware(req);
+    expect(forwarded(res)).toBe("zero@balizero.com");
+  });
+
+  it("a rejected request forwards no email at all", async () => {
+    const req = buildRequestWithHeaders("/api/clients", "not-a-jwt", {
+      "x-admin-email": "zero@balizero.com",
+    });
+    const res = await middleware(req);
+    expect(res!.status).toBe(401);
+    expect(forwarded(res)).toBeNull();
   });
 });
 

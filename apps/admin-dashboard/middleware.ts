@@ -91,7 +91,25 @@ export async function middleware(
   const outcome = await verifyAdminToken(token);
 
   if (outcome.ok) {
-    const res = NextResponse.next();
+    // The verified email has to travel on the REQUEST for a route handler to
+    // read it: `res.headers.set` only decorates the response going back to the
+    // browser, so a handler doing `request.headers.get("x-admin-email")` saw
+    // nothing. `/api/clients` scopes its rows by this value — with the header
+    // absent, every non-full-access admin matched `assigned_to = ''` and got an
+    // empty table.
+    //
+    // What must hold is that a caller-supplied `x-admin-email` never survives.
+    // `set` alone already gives that (it replaces every existing value), so the
+    // `delete` is a belt, not the buckle — it is what keeps this safe if anyone
+    // ever reaches for `append`, which would forward BOTH values joined by a
+    // comma. Measured, not assumed: with `set` swapped for `append` the two
+    // GUILT tests in tests/middleware.test.ts go red; dropping the `delete`
+    // alone leaves them green.
+    const forwarded = new Headers(request.headers);
+    forwarded.delete("x-admin-email");
+    forwarded.set("x-admin-email", outcome.email);
+
+    const res = NextResponse.next({ request: { headers: forwarded } });
     res.headers.set("x-admin-email", outcome.email);
     return res;
   }
