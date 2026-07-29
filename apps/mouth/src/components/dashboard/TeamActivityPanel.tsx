@@ -51,93 +51,11 @@ function isExcluded(name: string): boolean {
   return EXCLUDED_NAMES.some((ex) => n.includes(ex));
 }
 
-// One unique color per index — vivid, distinct
-const ROW_PALETTE = [
-  {
-    bg: "rgba(74,142,196,0.13)",
-    border: "rgba(74,142,196,0.28)",
-    accent: "#4a8ec4",
-  }, // blue
-  {
-    bg: "rgba(92,184,138,0.13)",
-    border: "rgba(92,184,138,0.28)",
-    accent: "#5cb88a",
-  }, // green
-  {
-    bg: "rgba(184,154,64,0.13)",
-    border: "rgba(184,154,64,0.28)",
-    accent: "#b89a40",
-  }, // gold
-  {
-    bg: "rgba(152,128,216,0.13)",
-    border: "rgba(152,128,216,0.28)",
-    accent: "#9880d8",
-  }, // violet
-  {
-    bg: "rgba(212,132,90,0.13)",
-    border: "rgba(212,132,90,0.28)",
-    accent: "#d4845a",
-  }, // orange
-  {
-    bg: "rgba(196,92,120,0.13)",
-    border: "rgba(196,92,120,0.28)",
-    accent: "#c45c78",
-  }, // rose
-  {
-    bg: "rgba(74,184,196,0.13)",
-    border: "rgba(74,184,196,0.28)",
-    accent: "#4ab8c4",
-  }, // cyan
-  {
-    bg: "rgba(180,100,220,0.13)",
-    border: "rgba(180,100,220,0.28)",
-    accent: "#b464dc",
-  }, // purple
-  {
-    bg: "rgba(220,160,60,0.13)",
-    border: "rgba(220,160,60,0.28)",
-    accent: "#dca03c",
-  }, // amber
-  {
-    bg: "rgba(80,200,160,0.13)",
-    border: "rgba(80,200,160,0.28)",
-    accent: "#50c8a0",
-  }, // teal
-  {
-    bg: "rgba(240,100,80,0.13)",
-    border: "rgba(240,100,80,0.28)",
-    accent: "#f06450",
-  }, // coral
-  {
-    bg: "rgba(100,160,240,0.13)",
-    border: "rgba(100,160,240,0.28)",
-    accent: "#64a0f0",
-  }, // sky
-  {
-    bg: "rgba(200,120,200,0.13)",
-    border: "rgba(200,120,200,0.28)",
-    accent: "#c878c8",
-  }, // pink
-  {
-    bg: "rgba(120,200,80,0.13)",
-    border: "rgba(120,200,80,0.28)",
-    accent: "#78c850",
-  }, // lime
-  {
-    bg: "rgba(160,140,100,0.13)",
-    border: "rgba(160,140,100,0.28)",
-    accent: "#a08c64",
-  }, // sand
-  {
-    bg: "rgba(60,140,220,0.13)",
-    border: "rgba(60,140,220,0.28)",
-    accent: "#3c8cdc",
-  }, // indigo
-  {
-    bg: "rgba(240,180,60,0.13)",
-    border: "rgba(240,180,60,0.28)",
-    accent: "#f0b43c",
-  }, // yellow
+const ROW_ACCENTS = [
+  "var(--state-info)",
+  "var(--state-success)",
+  "var(--state-warning)",
+  "var(--bz-copper-text)",
 ];
 
 function getInitials(name: string): string {
@@ -167,14 +85,17 @@ function MiniBar({
   return (
     <div
       className="h-[3px] w-full rounded-full mt-1"
-      style={{ background: "rgba(255,255,255,0.07)" }}
+      style={{ background: "var(--surface-sunken)" }}
     >
       <div
         className="h-full rounded-full transition-all duration-700"
         style={{
           width: `${pct}%`,
           background: pct > 0 ? accent : "transparent",
-          boxShadow: pct > 0 ? `0 0 5px ${accent}70` : "none",
+          boxShadow:
+            pct > 0
+              ? `0 0 5px color-mix(in srgb, ${accent} 45%, transparent)`
+              : "none",
         }}
       />
     </div>
@@ -195,14 +116,14 @@ function RevenueCell({
     <div className="px-2 min-w-0">
       <span
         className="text-[11px] font-black tabular-nums leading-none"
-        style={{ color: dim ? "rgba(255,255,255,0.18)" : accent }}
+        style={{ color: dim ? "var(--bz-text-3)" : accent }}
       >
         {dim ? "—" : formatIDRCompact(value)}
       </span>
       <MiniBar
         value={value}
         max={max}
-        accent={dim ? "rgba(255,255,255,0.06)" : accent}
+        accent={dim ? "var(--surface-sunken)" : accent}
       />
     </div>
   );
@@ -223,14 +144,14 @@ function Cell({
     <div className="px-2 min-w-0">
       <span
         className="text-[13px] font-black tabular-nums leading-none"
-        style={{ color: dim ? "rgba(255,255,255,0.18)" : accent }}
+        style={{ color: dim ? "var(--bz-text-3)" : accent }}
       >
         {value}
       </span>
       <MiniBar
         value={value}
         max={max}
-        accent={dim ? "rgba(255,255,255,0.06)" : accent}
+        accent={dim ? "var(--surface-sunken)" : accent}
       />
     </div>
   );
@@ -266,29 +187,31 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
     <div
       className="rounded-xl overflow-hidden"
       style={{
-        background: "rgba(255,255,255,0.016)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: "var(--bz-card)",
+        border: "1px solid var(--bz-border)",
       }}
     >
       {/* ── Panel header ───────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
         <div className="flex items-center gap-2">
-          <Users size={12} className="text-white/30" />
-          <span className="text-[11px] font-semibold text-white/60">
+          <Users size={12} className="text-[var(--bz-text-3)]" />
+          <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
             Team Performance
           </span>
-          <span className="text-[9px] text-white/20">· Current Period</span>
+          <span className="text-[9px] text-[var(--bz-text-3)]">
+            · Current Period
+          </span>
         </div>
         {overview && (
-          <div className="flex items-center gap-4 text-[9px] text-white/25">
+          <div className="flex items-center gap-4 text-[9px] text-[var(--bz-text-3)]">
             <span className="flex items-center gap-1">
               <span
                 className="w-1.5 h-1.5 rounded-full"
                 style={{
                   backgroundColor:
                     overview.active_today > 0
-                      ? "#5cb88a"
-                      : "rgba(255,255,255,0.15)",
+                      ? "var(--state-success)"
+                      : "var(--bz-text-3)",
                 }}
               />
               {overview.active_today} online
@@ -300,15 +223,15 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
 
       {/* ── Column headers — sticky, shown once ────────────── */}
       <div
-        className="grid items-center px-4 py-3 border-b border-white/[0.08]"
+        className="grid items-center px-4 py-3 border-b border-[var(--bz-border)]"
         style={{
           gridTemplateColumns: COLS,
-          background: "rgba(255,255,255,0.03)",
+          background: "var(--surface-raised)",
         }}
       >
         <div className="flex items-center gap-1.5">
-          <TrendingUp size={10} className="text-white/40" />
-          <span className="text-[11px] font-black text-white/50 uppercase tracking-widest">
+          <TrendingUp size={10} className="text-[var(--bz-text-3)]" />
+          <span className="text-[11px] font-black text-[var(--bz-text-2)] uppercase tracking-widest">
             Member
           </span>
         </div>
@@ -319,8 +242,8 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
           { icon: DollarSign, label: "Revenue" },
         ].map(({ icon: Icon, label }) => (
           <div key={label} className="flex items-center gap-1.5 px-2">
-            <Icon size={10} className="text-white/40 flex-shrink-0" />
-            <span className="text-[11px] font-black text-white/55 uppercase tracking-wide">
+            <Icon size={10} className="text-[var(--bz-text-3)] flex-shrink-0" />
+            <span className="text-[11px] font-black text-[var(--bz-text-2)] uppercase tracking-wide">
               {label}
             </span>
           </div>
@@ -334,21 +257,21 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="h-14 mx-3 my-1 rounded-xl bg-white/[0.03] animate-pulse"
+                className="h-14 mx-3 my-1 rounded-xl bg-[var(--surface-raised)] animate-pulse"
               />
             ))}
           </>
         )}
 
         {!isLoading && filteredMembers.length === 0 && (
-          <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+          <div className="flex items-center justify-center py-10 text-[11px] text-[var(--bz-text-3)]">
             No team data
           </div>
         )}
 
         {!isLoading &&
           filteredMembers.map((m, idx) => {
-            const palette = ROW_PALETTE[idx % ROW_PALETTE.length];
+            const accent = ROW_ACCENTS[idx % ROW_ACCENTS.length];
             const top = isTopPerformer(m);
 
             return (
@@ -356,14 +279,14 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                 key={m.email}
                 className="relative mx-3 my-1 rounded-xl overflow-hidden"
                 style={{
-                  background: palette.bg,
-                  border: `1px solid ${palette.border}`,
+                  background: `color-mix(in srgb, ${accent} 8%, var(--bz-card))`,
+                  border: `1px solid color-mix(in srgb, ${accent} 24%, var(--bz-border))`,
                 }}
               >
                 {/* subtle glow at left edge */}
                 <div
                   className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-                  style={{ background: palette.accent, opacity: 0.5 }}
+                  style={{ background: accent, opacity: 0.5 }}
                 />
 
                 <div
@@ -375,10 +298,10 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                     <div
                       className="relative w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-shrink-0"
                       style={{
-                        background: `${palette.accent}25`,
-                        border: `1.5px solid ${palette.accent}55`,
-                        color: palette.accent,
-                        boxShadow: `0 0 12px ${palette.accent}30`,
+                        background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+                        border: `1.5px solid color-mix(in srgb, ${accent} 34%, transparent)`,
+                        color: accent,
+                        boxShadow: `0 0 12px color-mix(in srgb, ${accent} 20%, transparent)`,
                       }}
                     >
                       {getInitials(m.name)}
@@ -386,18 +309,21 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                         <Star
                           size={7}
                           className="absolute -top-1 -right-1"
-                          style={{ color: "#b89a40", fill: "#b89a40" }}
+                          style={{
+                            color: "var(--state-warning)",
+                            fill: "var(--state-warning)",
+                          }}
                         />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p
                         className="text-[13px] font-black leading-tight truncate"
-                        style={{ color: palette.accent }}
+                        style={{ color: accent }}
                       >
                         {m.name}
                       </p>
-                      <p className="text-[8px] font-semibold text-white/35 truncate leading-tight capitalize">
+                      <p className="text-[8px] font-semibold text-[var(--bz-text-3)] truncate leading-tight capitalize">
                         {m.role}
                       </p>
                     </div>
@@ -407,22 +333,22 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                   <Cell
                     value={m.days_worked}
                     max={maxima.days_worked}
-                    accent={palette.accent}
+                    accent={accent}
                   />
                   <Cell
                     value={m.crm_actions}
                     max={maxima.crm_actions}
-                    accent={palette.accent}
+                    accent={accent}
                   />
                   <Cell
                     value={m.practices_completed ?? 0}
                     max={maxima.practices_completed}
-                    accent={palette.accent}
+                    accent={accent}
                   />
                   <RevenueCell
                     value={m.practices_revenue ?? 0}
                     max={maxima.practices_revenue}
-                    accent={palette.accent}
+                    accent={accent}
                   />
                 </div>
               </div>
