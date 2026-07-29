@@ -152,6 +152,23 @@ jobs:
           fi
           command -v zsh
 
+      # test_the_id_whitelist_is_ascii_not_collation needs a locale that actually
+      # COLLATES: `LC_ALL=it_IT.UTF-8` does not create it, and where it is absent
+      # bash warns, falls back to C, and the test passes with the defect restored.
+      # The test now runs a control experiment and fails closed — this step is what
+      # keeps that control satisfiable on a runner image we do not control.
+      - name: Generate the UTF-8 locale the collation test measures under
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          set -euo pipefail
+          if ! locale -a | grep -qi '^it_IT.utf-\?8$'; then
+            sudo apt-get update
+            sudo apt-get install --yes locales
+            sudo locale-gen it_IT.UTF-8
+            sudo update-locale
+          fi
+          locale -a | grep -i '^it_IT.utf-\?8$'
+
       - name: Gate proves guilt AND innocence (own test suites)
         if: steps.relevant.outputs.hit == 'true'
         run: |

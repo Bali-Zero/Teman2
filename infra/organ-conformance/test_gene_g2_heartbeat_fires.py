@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -37,6 +38,10 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 WRAPPER = REPO / "scripts" / "nb-curator-daily.sh"
 ORGAN_ID = "pro.nb_curator_daily"
+
+# The locale the collation test needs. Named once so the test's control
+# experiment and CI's locale-generation step cannot drift apart.
+LOCALE_UTF8 = "it_IT.UTF-8"
 
 # The wrapper is `#!/bin/zsh` and uses zsh-only expansion (`${0:A:h}`), so there
 # is no bash fallback to degrade to. An absent zsh is an ENVIRONMENT fault, not
@@ -507,22 +512,52 @@ def test_the_workflow_arms_this_corpus_on_push_too(tmp_path: Path) -> None:
     the form (the string appears somewhere) instead of the entity (the workflow
     actually filters on it), which is the over-match this repo keeps re-learning
     — and a regression proof that a mutation cannot turn red is not a proof.
+
+    Stripping comments cured only half of that. The version after it split the
+    file on `jobs:` and asked whether the path appeared on each side — which is
+    CONTAINMENT, not configuration: an unrelated `env:` entry naming the path
+    before `jobs:` satisfied the first assertion with both real filter entries
+    deleted. Adversarial review demonstrated that mutation too. So this reads the
+    parsed document: the path must be an ELEMENT of `on.push.paths`, and it must
+    appear in the `run:` body of the step that actually enumerates changed files.
     """
-    wf = (REPO / ".github/workflows/organ-conformance.yml").read_text(
-        encoding="utf-8"
+    import yaml  # local: only this test needs it
+
+    wf_path = REPO / ".github/workflows/organ-conformance.yml"
+    doc = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
+    # PyYAML resolves the bare key `on` to the boolean True (the "Norway
+    # problem"), so both spellings have to be tried or this reads as unarmed.
+    triggers = doc.get("on", doc.get(True)) or {}
+    push_paths = (triggers.get("push") or {}).get("paths") or []
+    assert "scripts/lib/heartbeat.sh" in push_paths, (
+        "scripts/lib/heartbeat.sh is not an element of on.push.paths "
+        f"({push_paths!r}) — the post-merge run would skip this corpus"
     )
-    # Strip comments before judging. A trailing `#` inside a quoted YAML scalar
-    # would be mangled by this, which is why the assertions below look for a bare
-    # path token that never appears inside quotes in this file.
-    live = "\n".join(
-        line.split("#", 1)[0] for line in wf.splitlines()
-    )
-    head, _, tail = live.partition("jobs:")
-    assert "scripts/lib/heartbeat.sh" in head, (
-        "heartbeat.sh missing from on.push.paths — the post-merge run would skip"
-    )
-    assert "scripts/lib/heartbeat.sh" in tail, (
-        "heartbeat.sh missing from the job's changed-paths pathspec"
+
+    # The job's own changed-file enumeration: find the step whose script runs the
+    # diff, and require the path inside THAT script rather than anywhere in the
+    # file. An empty candidate set would pass a bare `all()`, so it is asserted.
+    # Whole-line shell comments come out of the script body first. Deleting the
+    # real pathspec argument leaves behind the comment that EXPLAINS why it is
+    # there, and a raw substring check reads that comment as the configuration —
+    # measured, that mutation stayed green. Only whole-line comments are removed
+    # (a trailing `#` could live inside a quoted argument); the pathspec token
+    # this looks for never appears after code on the same line in this file.
+    def _code(script: str) -> str:
+        return "\n".join(
+            ln for ln in script.splitlines() if not ln.lstrip().startswith("#")
+        )
+
+    steps = [
+        _code(step["run"])
+        for job in (doc.get("jobs") or {}).values()
+        for step in (job.get("steps") or [])
+        if "git diff" in (step.get("run") or "")
+    ]
+    assert steps, "no step runs `git diff` — this test's premise moved"
+    assert any("scripts/lib/heartbeat.sh" in script for script in steps), (
+        "scripts/lib/heartbeat.sh is in no `git diff` pathspec — the job would "
+        "wake up and then decide it has nothing to check"
     )
 
 
@@ -805,22 +840,67 @@ def test_a_failing_date_does_not_kill_an_errexit_caller(
     and `scripts/wr2-cron-wrapper.sh` both run `set -euo pipefail` and call this
     without `|| true`.
 
-    The fallback timestamp must be the EPOCH, not "now-ish": a heartbeat is judged
-    by freshness, so a ts we could not obtain has to read STALE — the direction
-    that raises an alarm — never fresh.
+    Surviving is only half the contract, and the first version of this test got
+    the other half backwards: it asserted the fallback timestamp was the EPOCH,
+    on the reasoning that a ts we could not obtain should read STALE. Checked
+    against the readers rather than reasoned about, that was worse than the
+    disease — so this test now pins the opposite, and would fail against its own
+    earlier expectation:
+
+    - `sentinel-aggregate.py` computes `age = now - ts` and compares it against
+      `expected_hb * DEAD_MULTIPLIER`. An EPOCH ts is an age of ~56 years: a
+      confident, actionable DEAD verdict on an organ that is running fine.
+    - `healer_receptor_registry.py` branches on the sidecar's EXISTENCE first
+      (absent -> `never_armed`). Writing the fake ts overwrote the last GENUINE
+      heartbeat and moved the organ out of the honest bucket.
+
+    The fault was the clock; the receipt accused the organ. So: write nothing,
+    keep the last true beat, and let a genuinely dead organ go stale on its own.
     """
     rc, out, sidecar = _script(
         tmp_path,
         shell,
         f"date-{shell}",
-        f'set -e -o pipefail\nsource "$1"\ndate(){{ return 42; }}\n'
+        f'set -e -o pipefail\nsource "$1"\n'
+        f'organism_heartbeat {PROBE_ID} ok "the last true beat"\n'
+        f"date(){{ return 42; }}\n"
         f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
     )
     assert "SURVIVED" in out, f"{shell}: a failing date killed the caller (rc={rc})"
     assert rc == 0, out
     payload = json.loads(sidecar.read_text())
-    assert payload["ts"].startswith("1970-"), (
-        f"{shell}: an unobtainable timestamp must read stale, got {payload['ts']!r}"
+    assert payload["note"] == "the last true beat", (
+        f"{shell}: a dead clock overwrote the last genuine heartbeat with "
+        f"{payload!r} — that fabricates a death and names the wrong component"
+    )
+    assert not payload["ts"].startswith("1970-"), (
+        f"{shell}: EPOCH ts is read as ~56 years of age by sentinel-aggregate.py, "
+        "i.e. a false DEAD verdict on a healthy organ"
+    )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_dead_clock_with_no_previous_beat_leaves_the_honest_absence(
+    tmp_path: Path, shell: str
+) -> None:
+    """The other half of the same contract, and the reason "write nothing" is safe.
+
+    With no prior sidecar there is nothing to preserve, so the question is what
+    the readers should see. `healer_receptor_registry.py` classifies a MISSING
+    sidecar as `never_armed` — a distinct, honest bucket. Creating an EPOCH file
+    instead moved the organ into `dead`, which pages. Absence is the truth here.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"date-noprev-{shell}",
+        f'set -e -o pipefail\nsource "$1"\ndate(){{ return 42; }}\n'
+        f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
+    )
+    assert "SURVIVED" in out, f"{shell}: rc={rc} {out}"
+    assert not sidecar.exists(), (
+        f"{shell}: a dead clock invented a sidecar ({sidecar.read_text()!r}); "
+        "a never-armed organ must stay never_armed, not become dead"
     )
 
 
@@ -843,24 +923,168 @@ def test_an_errexit_caller_survives_the_whole_call(tmp_path: Path, shell: str) -
 
 
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
+@pytest.mark.parametrize(
+    "reserved", ["_rest", "id", "hb_status", "note", "ts", "tmp", "hb_path"]
+)
 def test_an_internal_local_name_cannot_kill_the_caller(
-    tmp_path: Path, shell: str
+    tmp_path: Path, shell: str, reserved: str
 ) -> None:
-    """`local _rest` aborts a bash caller that has `readonly _rest`.
+    """`local X` aborts a bash caller that has `readonly X` — for EVERY X.
 
-    Measured: `local: _rest: readonly variable`, rc=1, before the function did
-    anything. A library must not be able to kill its caller over the name of one
-    of its own temporaries — so the temporary is gone, not renamed.
+    This test used to name one word, `_rest`, because that was the one that bit.
+    Deleting that single temporary read like a cure and was not: `id`,
+    `hb_status`, `note` and `ts` were each still declared bare, and each still
+    killed a caller that had reserved that word — measured, all four, rc=1
+    `readonly variable`, with the line after the call never reached. One name is
+    an instance; the rule is the class.
+
+    The parameters below are therefore the words the function USED to declare, so
+    a revert of the namespacing is caught by whichever one it brings back.
     """
     rc, out, _ = _script(
         tmp_path,
         shell,
-        f"ro-{shell}",
-        f'set -e\nsource "$1"\nreadonly _rest=caller-sentinel\n'
+        f"ro-{shell}-{reserved}",
+        f'set -e\nsource "$1"\nreadonly {reserved}=caller-sentinel\n'
         f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
     )
-    assert "SURVIVED" in out, f"{shell}: rc={rc} {out}"
+    assert "SURVIVED" in out, (
+        f"{shell}: a caller with `readonly {reserved}` was killed by its own "
+        f"heartbeat writer (rc={rc}): {out}"
+    )
     assert rc == 0, out
+
+
+def test_every_local_the_function_declares_is_namespaced() -> None:
+    """Structural backstop: the next `local` added cannot reopen the class above.
+
+    The parametrised test can only defend the names that exist TODAY. A future
+    edit that declares `local retries` reintroduces exactly the same defect and
+    no runtime test would know to look for it. So the rule is enforced on the
+    text: inside `organism_heartbeat`, every declared local starts with
+    `_organism_hb_` — a namespace the library owns, which neither a caller's
+    `readonly` nor a shell's special parameters (`status`, `path`) can occupy.
+    """
+    src = HB_LIB.read_text().splitlines()
+    start = next(i for i, ln in enumerate(src) if ln.startswith("organism_heartbeat() {"))
+    end = next(i for i, ln in enumerate(src[start:], start) if ln == "}")
+    offenders = [
+        (i + 1, ln.strip())
+        for i, ln in enumerate(src[start:end], start)
+        if re.match(r"\s*local\s+", ln)
+        and not re.match(r"\s*local\s+_organism_hb_", ln)
+    ]
+    assert not offenders, (
+        "every local in organism_heartbeat must be prefixed `_organism_hb_` "
+        f"(a caller's readonly of that name would kill it): {offenders}"
+    )
+    # An empty scan passes the loop above and proves nothing — the same
+    # empty-set-as-clean-bill trap this file guards elsewhere.
+    declared = [ln for ln in src[start:end] if re.match(r"\s*local\s+", ln)]
+    assert len(declared) >= 6, f"only {len(declared)} locals found — scan is broken"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+@pytest.mark.parametrize(
+    "word", ["unhealthy", "panic", "killed", "down", "aborted", "exception"]
+)
+def test_an_unambiguous_failure_word_is_not_softened_to_warning(
+    tmp_path: Path, shell: str, word: str
+) -> None:
+    """The failure-synonym list was arbitrary, and one entry made it incoherent.
+
+    `fail`/`failed`/`failure`/`fatal`/`crash`/`crashed`/`dead`/`timeout` mapped to
+    `error`, while `down`, `panic`, `killed`, `aborted`, `exception` — and
+    `unhealthy` — fell through to the unknown arm and published as `warning`.
+    `unhealthy` is the direct negation of `healthy`, which the SAME list accepts
+    verbatim: a caller writing the negative form of an accepted word had its
+    verdict quietly softened.
+
+    Unknown strings still degrade to `warning` on purpose (see the innocence case
+    below) — this is about words that are not ambiguous.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"word-{shell}-{word}",
+        f'source "$1"\norganism_heartbeat {PROBE_ID} {word} "probe failed"\n',
+    )
+    assert rc == 0, out
+    assert json.loads(sidecar.read_text())["status"] == "error", (
+        f"{shell}: {word!r} published as "
+        f"{json.loads(sidecar.read_text())['status']!r}, not error"
+    )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_an_unrecognised_word_still_only_reaches_warning(
+    tmp_path: Path, shell: str
+) -> None:
+    """Innocence for the arm above: widening the failure list must not widen it
+    into "anything I do not recognise is a death". An unknown string is not
+    evidence of failure, and `error` pages. `warning` is visible without paging.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"unknown-{shell}",
+        f'source "$1"\norganism_heartbeat {PROBE_ID} rebalancing n\n',
+    )
+    assert rc == 0, out
+    assert json.loads(sidecar.read_text())["status"] == "warning"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_sanitiser_that_loses_bytes_cannot_eat_the_callers_own_text(
+    tmp_path: Path, shell: str
+) -> None:
+    """The sentinel strip was `${note%X}`, which trusted a zero exit from `tr`.
+
+    A `tr` that exits zero while dropping its last byte turned a note of `AX`
+    into `A`: the sentinel was gone, so the strip ate the caller's own `X`, and
+    nothing said so. Testing `*X)` alone does NOT catch it — `AX` plus the
+    sentinel is `AXX`, and one dropped byte leaves `AX`, still ending in `X`.
+
+    The proof is length: `tr -c <set> ' '` substitutes and never deletes, so its
+    output cannot be shorter than its input. Shorter means bytes went missing.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"drop-{shell}",
+        f'source "$1"\ntr(){{ sed "s/X$//"; }}\n'
+        f'organism_heartbeat {PROBE_ID} ok "AX"\n',
+    )
+    assert rc == 0, out
+    note = json.loads(sidecar.read_text())["note"]
+    assert note != "A", (
+        f"{shell}: a byte-dropping sanitiser silently ate the caller's trailing X"
+    )
+    assert "dropped" in note, f"{shell}: expected the explicit marker, got {note!r}"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+@pytest.mark.parametrize("note", ["AX", "X", "", "caffè X", "plain"])
+def test_a_working_sanitiser_never_declares_a_note_lost(
+    tmp_path: Path, shell: str, note: str
+) -> None:
+    """Innocence for the length check: it must not fire on real input.
+
+    The comparison is one-sided on purpose. Under UTF-8 a multibyte character
+    counts as ONE in `${#...}` while `tr` turns each of its bytes into a space,
+    so a legitimate run can only ever come out LONGER — hence `caffè X` here,
+    which would trip a naive equality check.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"keep-{shell}-{abs(hash(note)) % 9973}",
+        f'source "$1"\norganism_heartbeat {PROBE_ID} ok "{note}"\n',
+    )
+    assert rc == 0, out
+    assert "dropped" not in json.loads(sidecar.read_text())["note"], (
+        f"{shell}: a healthy sanitiser declared {note!r} lost"
+    )
 
 
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
@@ -872,7 +1096,37 @@ def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> 
     exists to keep shell metacharacters and traversal out of a filesystem path —
     while zsh rejected it. A safety whitelist whose meaning depends on the
     caller's locale is not a whitelist, so the set is enumerated now.
+
+    FAILS CLOSED on the environment. Setting `LC_ALL=it_IT.UTF-8` does not make
+    the locale exist: where it has not been generated the shell warns, falls back
+    to C collation, and `[a-zA-Z]` then rejects `é` all by itself — so every
+    assertion below passes WITH THE DEFECT RESTORED. `ubuntu-latest` is a moving
+    label and no job step generated this locale, so that was the live state, not
+    a hypothetical.
+
+    The fix is a control experiment: before trusting a negative, prove the
+    apparatus can produce a POSITIVE. Under a genuinely collating locale the OLD
+    pattern absorbs `é`; if it does not, this machine cannot exhibit the defect
+    and the test says so instead of nodding. The control is bash-only by
+    measurement — zsh does not collate here (`[é]` vs bash's `[]`), which is why
+    the original bug was invisible from a zsh prompt.
     """
+    if shell == "bash":
+        control = subprocess.run(
+            [shell, "-c", 'v=éa; printf "[%s]" "${v//[a-zA-Z0-9_.]/}"'],
+            env={**os.environ, "LC_ALL": LOCALE_UTF8},
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert control.stdout == "[]", (
+            f"control experiment failed: under LC_ALL={LOCALE_UTF8} this bash did "
+            f"not collate (`{control.stdout}`, stderr={control.stderr.strip()!r}). "
+            "The locale is probably not generated here, so the assertions below "
+            "would pass even with `[a-zA-Z0-9_.]` restored. Generate the locale "
+            "(CI does this explicitly) rather than trusting this test's silence."
+        )
+
     seen = tmp_path / f"seen-locale-{shell}"
     script = tmp_path / f"locale-{shell}.sh"
     script.write_text(
@@ -884,7 +1138,7 @@ def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> 
             env={
                 **os.environ,
                 "ORGANISM_LAST_SEEN_DIR": str(seen),
-                "LC_ALL": "it_IT.UTF-8",
+                "LC_ALL": LOCALE_UTF8,
             },
             capture_output=True,
             text=True,
