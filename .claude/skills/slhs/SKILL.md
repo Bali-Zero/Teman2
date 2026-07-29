@@ -27,8 +27,11 @@ Three consequences that shape everything:
 2. **The government fee is Rp 0.** What we sell is not access; it is _passing the inspection on the
    first attempt_, and _not forgetting the renewal_. Price honesty is therefore a product feature,
    not a marketing choice — see §6.
-3. **It expires in 3 years.** It is a cycle, not a transaction — structurally the same shape as the
-   LKPM cycle Krisna already owns.
+3. **It expires — and the governing text no longer says after how long.** Under Permenkes 11/2025
+   only the renewal _deadline_ survives (file at least 3 months before expiry); the "3 (tiga) tahun"
+   sentence is gone. So the clock is real but its length must be read off **the certificate itself**,
+   per client. It is a cycle, not a transaction — structurally the same shape as the LKPM cycle
+   Krisna already owns. See the red block in §2 before quoting any duration.
 
 ---
 
@@ -55,27 +58,46 @@ Three consequences that shape everything:
 
 ## 2. Verified facts (method stated; do not regress)
 
-> ⚠️ **OPEN RISK on facts 1 and 4 — read before quoting either.** Both were extracted verbatim from
-> the **base text** of Permenkes 14/2021. That regulation has been **amended twice** — Permenkes
-> 8/2022 and Permenkes 17/2024 ("Perubahan Kedua") — and **the amendments have not been read**. So
-> "3 years" and "six KBLI codes" are verified _as of the base text_, not verified _as current_.
-> Until an amendment check lands, quote neither to a client without saying so. This is the W90
-> pattern (ground truth ages) applied to a primary source rather than to a NotebookLM verdict.
+> 🔴 **RESOLVED, AND WORSE THAN FEARED — Permenkes 14/2021 IS NO LONGER THE GOVERNING TEXT.**
+> The amendment check (Lane H) found that the question itself was the wrong question. Both
+> amendments left SLHS intact — 8/2022 does not touch it at all; 17/2024 rewrites the SLHS standard
+> wholesale but keeps `"Masa berlaku SLHS adalah 3 (tiga) tahun."` verbatim and the same six codes.
+> But **Permenkes 11/2025** (in force **2025-10-03**, ~10 months) revokes 14/2021 + 8/2022 + 17/2024
+> _"sepanjang mengatur mengenai standar kegiatan usaha dan/atau produk/jasa pada PB dan PB UMKU
+> subsektor kesehatan"_ — and SLHS is precisely a PB-UMKU subsektor kesehatan. Under the regime that
+> actually governs today:
+>
+> - **The 3-year duration is GONE from the text.** Zero hits for a year-count anywhere in the SLHS
+>   section of the 540-page document. Only a procedural clause survives: renew _"paling lambat
+>   3 (tiga) bulan sebelum masa berlaku PB UMKU SLHS berakhir"_ — so it still expires, the norm just
+>   no longer says after how long. (This explains the 1-vs-3-vs-5-year disagreement across secondary
+>   sources: nobody agrees because the regulation stopped saying.)
+> - **The list is SEVEN codes, not six.** Added: 56103 Kedai Makanan, **56303 Rumah Minum/Kafe**,
+>   68120 Kawasan Pariwisata. Removed: 10391 Tempe, 10392 Tahu — not dropped from oversight, but
+>   **downgraded to the lighter "Label Higiene Sanitasi Pangan" tier**.
+>
+> **Commercially this widens the product**: cafés (56303) are now in scope. On our own book that is
+> 36 (56101) + 1 (56303) = **37 clients** directly in scope, measured on live Postgres 2026-07-29.
+>
+> The rows below are kept as written because they are still true _of the base text_, which is what
+> they cite. Read every one of them through this note. Lesson recorded: W90 said ground truth ages —
+> this is the same disease one level up. Verifying an amendment chain is not the same as asking
+> **"is this instrument still in force at all?"**, and only the second question would have caught it.
 
-| #   | Fact                                                                                                                                                                                                    | How it was verified                                                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Validity = 3 (tiga) tahun** from issue date                                                                                                                                                           | Verbatim from the certificate-template Lampiran: _"Sertifikat Laik Higiene Sanitasi ... berlaku selama 3 (tiga) tahun sejak tanggal diterbitkan"_ |
-| 2   | **Sanctions = PP 28/2024 Pasal 251-252** — teguran lisan → tertulis → penghentian sementara → pencabutan izin                                                                                           | Verbatim `pdftotext`. Note: the pasal does **not** name "SLHS"/"TPP"; it is the umbrella kesehatan-lingkungan clause                              |
-| 3   | **PP 66/2014 abrogated by PP 28/2024 Pasal 1169 huruf q**                                                                                                                                               | Verbatim, BAB XIII Ketentuan Penutup                                                                                                              |
-| 4   | **The SLHS Lampiran names exactly SIX KBLI codes**: 56101 Restoran · 56210 Event Catering · 56290 Jasa Boga Periode Tertentu · 10391 Tempe · 10392 Tahu · 11052 Depot Air Minum                         | Verbatim, Permenkes 14/2021 PDF page 1682, `pdftotext -layout -f 1682 -l 1682`                                                                    |
-| 5   | Of those six, **10391 and 10392 do not exist in KBLI 2025**; the other four do                                                                                                                          | Direct lookup in `KBLI_2025_FINAL_CLEAN.json`                                                                                                     |
-| 6   | **Government filing fee = Rp 0** (Denpasar, Perwali 16/2014); official Denpasar SLA = **7 working days**                                                                                                | Dinkes Denpasar official page + independent national confirmation                                                                                 |
-| 7   | **Realistic all-in cost**: DIY floor ≈ Rp 500k–3jt (lab + one staff certificate). Agencies charge Rp 8.5jt–22jt. Documented broker markup on an adjacent program: Rp 9–30jt against a ~Rp 2jt real cost | Triangulated across city-government page, bahasa explainer, and a national investigative piece                                                    |
-| 8   | **Our client book holds 36 companies on KBLI 56101** — the only code in our book that the Lampiran actually names                                                                                       | `SELECT ... FROM companies WHERE kbli_code LIKE '56%'` on live Postgres                                                                           |
-| 9   | **Zero SLHS practices ever** (0 of 749) and **no `practice_types` entry** — structurally undefined as a service line                                                                                    | Live Postgres                                                                                                                                     |
-| 10  | **Demand is real, organic, and new**: 0 messages/month 2022→May 2026, then June = 10, July = 19, across 10 distinct clients                                                                             | Live WA mirror on Pro (94k+ rows), aggregate counts only                                                                                          |
-| 11  | **No competitor sells proactive renewal**; **no Bali-specific, price-transparent standalone SLHS page exists** in either language across ~25 sources                                                    | Lane C, Codex-reviewed                                                                                                                            |
-| 12  | **`56101-2025` merges the old Restoran AND the old Warung Makan** — so the certificate tier is **not derivable from the KBLI code**                                                                     | `bps_2020_ancestors.codes` reverse index                                                                                                          |
+| #   | Fact                                                                                                                                                                                                                                                                                                                         | How it was verified                                                                                                                                                                |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ⛔ **SUPERSEDED — do not quote.** _Was:_ **Validity = 3 (tiga) tahun** from issue date. **Now:** no year-count anywhere in the governing text; only "renew ≥3 months before expiry" survives                                                                                                                                 | Verbatim from the 14/2021 certificate-template Lampiran: _"... berlaku selama 3 (tiga) tahun sejak tanggal diterbitkan"_ — **that instrument is revoked**, see the red block above |
+| 2   | **Sanctions = PP 28/2024 Pasal 251-252** — teguran lisan → tertulis → penghentian sementara → pencabutan izin                                                                                                                                                                                                                | Verbatim `pdftotext`. Note: the pasal does **not** name "SLHS"/"TPP"; it is the umbrella kesehatan-lingkungan clause                                                               |
+| 3   | **PP 66/2014 abrogated by PP 28/2024 Pasal 1169 huruf q**                                                                                                                                                                                                                                                                    | Verbatim, BAB XIII Ketentuan Penutup                                                                                                                                               |
+| 4   | ⛔ **SUPERSEDED — do not quote.** _Was (14/2021):_ SIX codes — 56101 · 56210 · 56290 · 10391 Tempe · 10392 Tahu · 11052 Depot Air Minum. **Now (11/2025): SEVEN** — 56101 · 56103 Kedai Makanan · 56210 · 56290 · **56303 Rumah Minum/Kafe** · 11052 · 68120 Kawasan Pariwisata; 10391/10392 moved to the lighter Label tier | Old list: verbatim Permenkes 14/2021 PDF p.1682, `pdftotext -layout -f 1682 -l 1682`. New list: Lampiran Permenkes 11/2025 (Lane H, verbatim)                                      |
+| 5   | Of the CURRENT seven, **56103 and 68120 do not exist in KBLI 2025**; 56101 / 56210 / 56290 / 11052 / **56303 Rumah Minum/Kafe** do. (The two dropped codes, 10391/10392, also do not exist in KBLI 2025)                                                                                                                     | Direct lookup in `KBLI_2025_FINAL_CLEAN.json`, field `kode_kbli_2025` — 56303's title matches exactly                                                                              |
+| 6   | **Government filing fee = Rp 0** (Denpasar, Perwali 16/2014); official Denpasar SLA = **7 working days**                                                                                                                                                                                                                     | Dinkes Denpasar official page + independent national confirmation                                                                                                                  |
+| 7   | **Realistic all-in cost**: DIY floor ≈ Rp 500k–3jt (lab + one staff certificate). Agencies charge Rp 8.5jt–22jt. Documented broker markup on an adjacent program: Rp 9–30jt against a ~Rp 2jt real cost                                                                                                                      | Triangulated across city-government page, bahasa explainer, and a national investigative piece                                                                                     |
+| 8   | **Our client book holds 36 companies on 56101 + 1 on 56303 = 37 in scope** under the 11/2025 list (was 36 under the old six-code list — the café code added exactly one)                                                                                                                                                     | `SELECT ... FROM companies WHERE kbli_code LIKE '56%'` on live Postgres, 2026-07-29                                                                                                |
+| 9   | **Zero SLHS practices ever** (0 of 749) and **no `practice_types` entry** — structurally undefined as a service line                                                                                                                                                                                                         | Live Postgres                                                                                                                                                                      |
+| 10  | **Demand is real, organic, and new**: 0 messages/month 2022→May 2026, then June = 10, July = 19, across 10 distinct clients                                                                                                                                                                                                  | Live WA mirror on Pro (94k+ rows), aggregate counts only                                                                                                                           |
+| 11  | **No competitor sells proactive renewal**; **no Bali-specific, price-transparent standalone SLHS page exists** in either language across ~25 sources                                                                                                                                                                         | Lane C, Codex-reviewed                                                                                                                                                             |
+| 12  | **`56101-2025` merges the old Restoran AND the old Warung Makan** — so the certificate tier is **not derivable from the KBLI code**                                                                                                                                                                                          | `bps_2020_ancestors.codes` reverse index                                                                                                                                           |
 
 ### The 3 certification tiers (Lane A; structure CERTAIN, boundaries not fully verified)
 
@@ -88,9 +110,15 @@ Three consequences that shape everything:
 
 ## 3. What is NOT verified (do not assert these)
 
-1. **Which KBLI codes beyond the six actually trigger the obligation in OSS.** The Lampiran names six.
-   Our website currently claims eight, including cafés, bars, nightclubs and warungs — **unverified
-   and probably wrong** (see §4).
+1. **Which KBLI codes beyond the listed seven actually trigger the obligation in OSS.** The current
+   Lampiran (11/2025) names seven. ⚠️ **Partly reversed on 2026-07-29:** this entry used to call our
+   website's eight-code list — cafés, bars, nightclubs, warungs — "unverified and probably wrong".
+   **Cafés are now correct**: 56303 Rumah Minum/Kafe is named by 11/2025. So the site was wrong
+   against 14/2021 and is _partly right_ against 11/2025, by accident rather than by knowledge. That
+   makes the §4 P3 finding narrower but not void: the site's list still contains codes nobody has
+   verified, and it publishes a price and an acronym that remain wrong. **A list that happens to be
+   right for a reason the author didn't know is still not a verified list** — re-derive it against
+   the 11/2025 Lampiran before defending any entry on it.
 2. **Per-kabupaten fees and SLA for Badung, Gianyar, Tabanan, Buleleng** — only Denpasar is confirmed.
    88 of our 161 hospitality clients sit in Badung + Gianyar. This is the most valuable field gap.
 3. **The cost of the PKP course for a private company.** The government course (UPTD Bapelkesmas
@@ -137,15 +165,15 @@ internal contradiction, i.e. the content is LLM-generated and unverified.
 Sequenced so that **nothing client-facing ships before the facts are right**, and each phase produces
 something checkable. F0 is not optional: we are currently publishing wrong claims.
 
-| Phase                               | What                                                                                                                                                                                                    | Done when                                                                                                                          | Owner                       |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| **F0 — Stop the bleeding**          | Fix the three live defects in §4. Correct the acronym, remove the invented codes, and either back the Rp 9jt price with a PricingTool entry or remove the number                                        | The live page passes a content probe: correct expansion present, `56103\|56109\|56702` absent, price either in PricingTool or gone | Krisna + session            |
-| **F1 — Ground truth on the ground** | Close the §3 field gaps that only a phone call closes: fee + SLA for **Badung** and **Gianyar** (88 clients), the real PKP cost and 2026 calendar from UPTD Bapelkesmas, whether PHRI is still required | A dated one-pager per kabupaten, each fact attributed to a named office and a date                                                 | **Krisna**                  |
-| **F2 — The IKL checklist**          | OCR the official IKL form; turn the scoring grid into a **pre-audit checklist** a consultant can walk a kitchen with. This is the product's core                                                        | A printable checklist whose items map 1:1 to the official form's items                                                             | Krisna + session            |
-| **F3 — Pilot on 3 real clients**    | Run the full flow end-to-end on three of the 36 companies on 56101. Measure: real timeline, real cost, where it stalled, what the inspector actually flagged                                            | 3 certificates issued or 3 documented failures, with a written post-mortem each                                                    | **Krisna**                  |
-| **F4 — Price and package**          | With F1+F3 numbers in hand, set the price in **PricingTool** and define the package boundary (what's included, what's a pass-through cost)                                                              | Price lives in PricingTool; the site reads it; no number hardcoded anywhere                                                        | **Zero decides the number** |
-| **F5 — The renewal engine**         | Fork the LKPM cycle (`lkpm_client_config.kbli_codes` already keys eligibility off a KBLI array) into an SLHS expiry tracker: 3-year clock, alert at T-90                                                | An alert fires on a seeded test record and lands where a human sees it                                                             | session                     |
-| **F6 — The honest page**            | One Bali-specific, price-transparent SLHS page — the white space Lane C verified nobody occupies                                                                                                        | Page live, price from PricingTool, every regulatory claim traceable to Lane F                                                      | Krisna + session            |
+| Phase                               | What                                                                                                                                                                                                                                                                                                             | Done when                                                                                                                          | Owner                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| **F0 — Stop the bleeding**          | Fix the three live defects in §4. Correct the acronym, remove the invented codes, and either back the Rp 9jt price with a PricingTool entry or remove the number                                                                                                                                                 | The live page passes a content probe: correct expansion present, `56103\|56109\|56702` absent, price either in PricingTool or gone | Krisna + session            |
+| **F1 — Ground truth on the ground** | Close the §3 field gaps that only a phone call closes: fee + SLA for **Badung** and **Gianyar** (88 clients), the real PKP cost and 2026 calendar from UPTD Bapelkesmas, whether PHRI is still required                                                                                                          | A dated one-pager per kabupaten, each fact attributed to a named office and a date                                                 | **Krisna**                  |
+| **F2 — The IKL checklist**          | OCR the official IKL form; turn the scoring grid into a **pre-audit checklist** a consultant can walk a kitchen with. This is the product's core                                                                                                                                                                 | A printable checklist whose items map 1:1 to the official form's items                                                             | Krisna + session            |
+| **F3 — Pilot on 3 real clients**    | Run the full flow end-to-end on three of the 36 companies on 56101. Measure: real timeline, real cost, where it stalled, what the inspector actually flagged                                                                                                                                                     | 3 certificates issued or 3 documented failures, with a written post-mortem each                                                    | **Krisna**                  |
+| **F4 — Price and package**          | With F1+F3 numbers in hand, set the price in **PricingTool** and define the package boundary (what's included, what's a pass-through cost)                                                                                                                                                                       | Price lives in PricingTool; the site reads it; no number hardcoded anywhere                                                        | **Zero decides the number** |
+| **F5 — The renewal engine**         | Fork the LKPM cycle (`lkpm_client_config.kbli_codes` already keys eligibility off a KBLI array) into an SLHS expiry tracker. **Do NOT hardcode a 3-year clock** — 11/2025 removed the duration; store the expiry date read off each certificate and alert at T-90 (the one deadline the regulation still states) | An alert fires on a seeded test record and lands where a human sees it                                                             | session                     |
+| **F6 — The honest page**            | One Bali-specific, price-transparent SLHS page — the white space Lane C verified nobody occupies                                                                                                                                                                                                                 | Page live, price from PricingTool, every regulatory claim traceable to Lane F                                                      | Krisna + session            |
 
 **Sequencing rule**: F4 cannot start before F1 and F3. We do not price a service we have never
 performed and whose local costs we have not measured.
@@ -154,8 +182,11 @@ performed and whose local costs we have not measured.
 
 > **Proyek: SLHS (Sertifikat Laik Higiene Sanitasi) — kamu pemiliknya.**
 >
-> Kenapa kamu: SLHS berlaku **3 tahun** lalu harus diperpanjang. Bentuknya sama persis dengan siklus
-> LKPM yang sudah kamu pegang — bukan pekerjaan sekali jadi, tapi siklus yang harus dijaga.
+> Kenapa kamu: SLHS **ada masa berlakunya** dan harus diperpanjang — dan sejak Permenkes 11/2025
+> jumlah tahunnya tidak lagi tertulis di peraturan, jadi tanggalnya dibaca dari sertifikat masing-masing
+> klien. Yang pasti: perpanjangan diajukan **paling lambat 3 bulan sebelum habis**. Bentuknya sama
+> persis dengan siklus LKPM yang sudah kamu pegang — bukan pekerjaan sekali jadi, tapi siklus yang
+> harus dijaga.
 >
 > Yang sudah pasti: biaya resmi ke pemerintah **Rp 0**. Yang kita jual bukan aksesnya — yang kita jual
 > adalah **lulus inspeksi pada percobaan pertama** dan **tidak lupa perpanjangannya**.
