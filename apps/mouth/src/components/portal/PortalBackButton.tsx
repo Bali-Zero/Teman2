@@ -31,7 +31,7 @@ export function PortalBackButton({
 }: PortalBackButtonProps) {
   const router = useRouter();
   const baseClass =
-    "inline-flex items-center gap-1 -ml-2 mb-4 px-2 py-1 rounded-md text-sm transition-colors hover:bg-white/5";
+    "inline-flex items-center gap-1 -ml-2 mb-4 px-2 py-1 rounded-md text-sm transition-colors hover:bg-[var(--surface-raised)]";
   const style: React.CSSProperties = { color: "var(--bz-text-2)" };
 
   if (href) {

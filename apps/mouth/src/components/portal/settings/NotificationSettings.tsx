@@ -16,13 +16,13 @@ export function NotificationSettings() {
     useNotificationPrefs();
 
   if (isLoading) {
-    return <p className="text-sm text-[#c9a96e]/60">Loading…</p>;
+    return <p className="text-sm text-[var(--bz-text-2)]">Loading…</p>;
   }
 
   if (migrationMissing) {
     return (
       <section className="space-y-4">
-        <p role="alert" className="text-sm text-[#c9a14a]">
+        <p role="alert" className="text-sm text-[var(--state-warning)]">
           Notification preferences are temporarily unavailable. Our team is
           working on it — please check back soon.
         </p>
@@ -32,7 +32,7 @@ export function NotificationSettings() {
 
   if (error || !data) {
     return (
-      <p role="alert" className="text-sm text-[#c94a4a]">
+      <p role="alert" className="text-sm text-[var(--state-danger)]">
         Unable to load preferences.
       </p>
     );
@@ -54,7 +54,7 @@ export function NotificationSettings() {
         <div>
           <label
             htmlFor="wa-phone-input"
-            className="text-xs uppercase tracking-[2px] text-[#c9a96e]/50 block mb-1"
+            className="text-xs uppercase tracking-[2px] text-[var(--bz-text-3)] block mb-1"
           >
             WhatsApp number
           </label>
@@ -66,9 +66,9 @@ export function NotificationSettings() {
               updatePrefs({ ...data, wa_phone: e.target.value || null })
             }
             placeholder="628123456789"
-            className="w-full px-3 py-2 bg-white/5 rounded border border-white/10 text-sm text-[#f0ece4]"
+            className="w-full px-3 py-2 bg-[var(--bz-card)] rounded border border-[var(--bz-border)] text-sm text-[var(--bz-text-1)]"
           />
-          <p className="text-[10px] text-[#c9a96e]/40 mt-1">
+          <p className="text-[10px] text-[var(--bz-text-3)] mt-1">
             Format: country code + number, no leading +. Example: 628123456789.
           </p>
         </div>
@@ -92,9 +92,9 @@ function Toggle({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 accent-[#d4845a]"
+        className="w-4 h-4 accent-[var(--bz-copper-text)]"
       />
-      <span className="text-sm text-[#f0ece4]">{label}</span>
+      <span className="text-sm text-[var(--bz-text-1)]">{label}</span>
     </label>
   );
 }
