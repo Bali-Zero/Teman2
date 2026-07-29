@@ -3,10 +3,32 @@
 # receives. Wired into the project's `commandForIgnoringBuildStep`, which is capped at 256
 # characters, so the field holds only a pointer to this file and the reasoning lives here.
 #
-# CONTRACT (inverted, and easy to get backwards):
+# CONTRACT — read this twice, it is not the usual shell convention:
+#   exit 0  -> SKIP the build
 #   exit 1  -> BUILD
-#   exit 0  -> SKIP
-# Every failure path exits 1. A build we did not need costs minutes; a build we needed and
+#   ANY OTHER EXIT CODE -> the DEPLOYMENT FAILS. Not "build", not "skip": ERROR.
+#
+# That third line cost 9 failed deployments on 2026-07-29 between 06:26Z and 06:55Z. The first
+# version of the project's ignore setting pointed straight at this file with
+# `bash "$(git rev-parse --show-toplevel)/scripts/ci/vercel_should_build.sh"`, wired up BEFORE
+# the file existed on main, on the reasoning that a missing script exits 127, and 127 is
+# non-zero, and non-zero means build. It does not. `bash: No such file or directory` errored
+# every deployment for half an hour — main included — until the setting was rolled back.
+# (Production itself never went stale: a failed deployment does not replace the live one, and
+# no frontend-relevant commit landed in the window. Vercel's commit status went red but is not
+# among main's required checks.) Vercel documents this precisely — "the build continues if the
+# command exits with code 1, and is ignored if it exits with 0" — and the doc had been read in
+# the same session. The error was generalising "1" to "non-zero".
+#
+# Two consequences, both load-bearing:
+#   1. Every path in this file exits 0 or 1 and nothing else. Pinned by a test that greps for
+#      any other literal exit code, because a `exit 2` added later would look harmless.
+#   2. The project setting must NORMALISE, never point here bare:
+#        S="$(git rev-parse --show-toplevel)/scripts/ci/vercel_should_build.sh"; [ -f "$S" ] || exit 1; bash "$S"; [ $? = 0 ] && exit 0 || exit 1
+#      so a missing file, a syntax error, or a signal all become BUILD instead of ERROR. And it
+#      is armed only AFTER this file is on main — the ordering that was skipped.
+#
+# Every failure path builds. A build we did not need costs minutes; a build we needed and
 # skipped leaves the entire public surface — balizero.com plus kita/my/prime/visa/tax/zantara,
 # all one Vercel project — serving stale code. Those are not symmetric, so this is fail-open
 # by construction and never "clever" at the margin.
@@ -38,6 +60,11 @@ set -u
 
 # Paths that can change the built app. `vercel.json` is included because build settings live
 # there; the previous command omitted it, so a change to how the app is built did not rebuild it.
+# The repo-root `vercel.json` is gone as of this change — the project's Root Directory is
+# `apps/mouth`, so Vercel read `apps/mouth/vercel.json` and the root file was inert. Proven from
+# a real build log, not from the setting: the build ran `next build --webpack` (the apps/mouth
+# value), never the root file's `npm run build -w apps/mouth`. It is still matched here on
+# purpose — if a root `vercel.json` ever comes back, rebuilding on it is the fail-open answer.
 FRONTEND_RE='^(apps/mouth/|packages/|package\.json|package-lock\.json|vercel\.json|apps/mouth/vercel\.json)'
 
 PROD_BRANCH="${VERCEL_GIT_PROD_BRANCH:-main}"
