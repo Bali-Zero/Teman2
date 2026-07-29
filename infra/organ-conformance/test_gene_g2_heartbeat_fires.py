@@ -29,6 +29,7 @@ import os
 import re
 import shlex
 import shutil
+import string
 import subprocess
 import time
 from pathlib import Path
@@ -1167,6 +1168,61 @@ def test_a_working_sanitiser_never_declares_a_note_lost(
     )
 
 
+def test_the_id_whitelist_is_enumerated_never_a_collation_range() -> None:
+    """The id whitelist must not contain a RANGE. Static, so it runs everywhere.
+
+    `[a-z]` inside a shell bracket expression is a collation range: what it
+    matches is decided by the locale, not by the source. A safety whitelist —
+    this one exists to keep shell metacharacters and `..` out of a filesystem
+    path — cannot have a meaning the caller chooses at run time.
+
+    The behavioural sibling above can only speak on a machine whose libc
+    actually collates, and ubuntu-latest's does not (measured 2026-07-29). A
+    property that only one machine can check is a property nothing checks, so
+    the invariant is asserted on the SOURCE here: every bracket expression that
+    guards `_organism_hb_id` must spell its characters out.
+
+    Scoped to the id lines on purpose. `\\40-\\176` in the note sanitiser IS a
+    range, and a legitimate one — it runs under `LC_ALL=C`, where the meaning is
+    fixed. A blanket "no ranges in this file" rule would have to lie about that
+    line, and a guard that must lie about a legitimate case is how the next
+    over-match is born.
+
+    And a `[` is not a bracket expression. The first build of this test matched
+    every `[` on the id lines, so `[ -n "$_organism_hb_id" ]` — the `test`
+    builtin — was read as a character class containing the range ` -n`, and the
+    test failed on correct code. The discriminator is that a character class
+    never contains whitespace, while the `test` builtin always surrounds its
+    arguments with it. That is a stated limit, not a claim of generality: a
+    class holding a literal space would slip past, and no id whitelist has one.
+    """
+    text = HB_LIB.read_text(encoding="utf-8")
+    guarded = [
+        ln
+        for ln in text.splitlines()
+        if "_organism_hb_id" in ln and "[" in ln and not ln.lstrip().startswith("#")
+    ]
+    assert guarded, "found no id-whitelist line at all — has the guard been renamed?"
+    classes = [c for ln in guarded for c in re.findall(r"\[([^]\s]+)\]", ln)]
+    assert classes, (
+        "no character class found on the id-whitelist lines — either the guard "
+        "stopped using one, or this test stopped recognising it; both mean it is "
+        "no longer measuring anything"
+    )
+    for ln in guarded:
+        for cls in re.findall(r"\[([^]\s]+)\]", ln):
+            assert not re.search(r"[^\\]-[^]\s]", cls), (
+                "the id whitelist uses a collation RANGE, whose meaning depends on "
+                f"the caller's locale: {ln.strip()!r}. Enumerate the characters."
+            )
+    enumerated = "".join(classes)
+    for expected in (string.ascii_lowercase, string.ascii_uppercase, string.digits):
+        assert expected in enumerated, (
+            f"the enumerated whitelist lost {expected!r} — it is built by hand, so "
+            "a dropped character silently narrows what ids are accepted"
+        )
+
+
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
 def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> None:
     """`[a-zA-Z]` is a COLLATION range, and its meaning depends on the locale.
@@ -1186,10 +1242,21 @@ def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> 
 
     The fix is a control experiment: before trusting a negative, prove the
     apparatus can produce a POSITIVE. Under a genuinely collating locale the OLD
-    pattern absorbs `é`; if it does not, this machine cannot exhibit the defect
-    and the test says so instead of nodding. The control is bash-only by
-    measurement — zsh does not collate here (`[é]` vs bash's `[]`), which is why
-    the original bug was invisible from a zsh prompt.
+    pattern absorbs `é`; if it does not, this machine cannot exhibit the defect.
+    The control is bash-only by measurement — zsh does not collate here (`[é]`
+    vs bash's `[]`), which is why the original bug was invisible from a zsh
+    prompt.
+
+    A FAILED CONTROL IS A SKIP, NOT A RED — corrected 2026-07-29 after this test
+    turned the `organ-conformance` gate red on ubuntu-latest. Generating the
+    locale is not enough: measured on the runner, that bash still prints `[é]`
+    under a generated `it_IT.UTF-8`, so no amount of CI setup makes the machine
+    able to show the defect. Failing there says "the code is broken" about a
+    property of the runner's glibc — the same manufactured red this repo keeps
+    curing elsewhere. Skipping SILENTLY would be the opposite disease, so the
+    reason is printed, and the property itself no longer depends on this test at
+    all: `test_the_id_whitelist_is_enumerated_never_a_collation_range` pins it
+    statically, on every machine, whether or not any locale collates.
     """
     if shell == "bash":
         control = subprocess.run(
@@ -1199,13 +1266,15 @@ def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> 
             text=True,
             timeout=60,
         )
-        assert control.stdout == "[]", (
-            f"control experiment failed: under LC_ALL={LOCALE_UTF8} this bash did "
-            f"not collate (`{control.stdout}`, stderr={control.stderr.strip()!r}). "
-            "The locale is probably not generated here, so the assertions below "
-            "would pass even with `[a-zA-Z0-9_.]` restored. Generate the locale "
-            "(CI does this explicitly) rather than trusting this test's silence."
-        )
+        if control.stdout != "[]":
+            pytest.skip(
+                f"this machine cannot exhibit the defect: under LC_ALL={LOCALE_UTF8} "
+                f"bash printed {control.stdout!r} instead of '[]' "
+                f"(stderr={control.stderr.strip()!r}), so it does not collate `é` "
+                "into `[a-zA-Z]` and the assertions below would pass even with the "
+                "defect restored. The property is pinned statically by "
+                "test_the_id_whitelist_is_enumerated_never_a_collation_range."
+            )
 
     seen = tmp_path / f"seen-locale-{shell}"
     script = tmp_path / f"locale-{shell}.sh"
