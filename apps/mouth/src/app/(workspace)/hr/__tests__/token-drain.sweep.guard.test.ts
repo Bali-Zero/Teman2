@@ -103,7 +103,7 @@ describe("HR suite drain guard (WS2 slice 6)", () => {
       PAGES.leaveRequest,
     ]) {
       const src = readFileSync(path, "utf8");
-      expect(src).toContain("rgba(35,35,40,0.65)"); // token-lint-ok: drain-guard assertion string, not a color use
+      expect(src).toContain("var(--bz-card)");
       expect(src).toContain("var(--bz-border)");
     }
   });
