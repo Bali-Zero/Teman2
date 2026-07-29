@@ -20,7 +20,17 @@ Bali Zero's Second Home Visa (Indonesian visa index **E33**) product line:
 base E33 (deposit/property route, up to 5y), E33E (senior 55+, 5y),
 E33F (senior 55+, 1y income-only). E33A/B/C (experts/world figures) deferred —
 no sales intent. E33D is an official stub ("Data Belum Tersedia") — hidden.
-E33G = remote worker, NOT second home (different product, don't conflate).
+**E33G** = Second Home Visa, Remote Worker / Digital Nomad — _Visa Rumah Kedua
+Pekerja Jarak Jauh_ (USD 60k/yr foreign income, no sponsor, 1y, 6y cap).
+⚠️ **Corrected 2026-07-30**: this line used to read "E33G = remote worker, NOT
+second home". That is wrong and dangerous. Per the primary factbase
+(`research/visa/2026-07-24-w2-factbase-e33.md:124`) the WHOLE E33 family is
+_Visa Rumah Kedua_ and E33G is a legitimate sub-visa of it. Sentences on our
+live pages saying "E33G falls under the broader Second Home category" are
+**CORRECT** — a sweep driven by the old wording would have broken them.
+The real defect is narrower: **naming the HNW instrument with the remote-worker
+code.** The HNW Second Home is **base E33** (USD 130k BUMN deposit _or_ USD 1M
+strata property). So: don't conflate the _products_; do not deny the _family_.
 
 **Status: LIVE IN PRODUCTION (2026-07-24).** Engine, guard, prices, landing,
 lifecycle all deployed. **Read §4bis before believing any "it's armed" claim** —
@@ -102,7 +112,8 @@ two organs are built-but-not-armed, and the engine answers nothing yet.
   (log + safe fallback note, non-blocking). 10 forbidden patterns:
   USD 1,500, any-bank, E33S/E33R, local work, ITAP-automatic, 5-10y,
   IDR 2M, approval-guaranteed, LPS-full-coverage, BSI, split-deposit.
-- **Landing** `/visa/second-home`: Fit-Memo funnel, EN/ID/IT, CTA =
+- **Landing** `/visa/second-home`: Fit-Memo funnel, **EN only** (the "EN/ID/IT"
+  claim was wrong — `/it/` and `/id/` return 404, probed 2026-07-30), CTA =
   WhatsAppLeadButton `cta_handoff` with product context.
 - **Lifecycle CRM**: 13-stage state machine (`e33_lifecycle.py`), Day-90
   scanner (`e33_guarantee_scanner.py` + cron endpoint
@@ -118,15 +129,16 @@ two organs are built-but-not-armed, and the engine answers nothing yet.
 Method for every row: a live prod probe or a `postgres-nuzantara` query in the
 same turn — never a report. Re-verify before trusting; update when you change it.
 
-| Organ              | Verified state                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pricing            | ✅ **LIVE** — `search_service_pricing` prod returns E33 = 39.000.000 IDR all-inclusive, + E33E 14/16M, E33F 14/16M, E33F extend 10M               |
-| Landing            | ✅ **LIVE** — `balizero.com/visa/second-home`: correct figures, free-Fit-Memo CTA → `wa.me/6282230102328`, zero red-line claims                   |
-| Migration 259      | ✅ **APPLIED in prod** — `e33_cases` exists. (The pre-2026-07-25 corner claimed "NOT applied" — that was **wrong**.)                              |
-| RulePack prod-001  | ✅ **INSERTED + ACTIVATED** — `visa_ruleset_activations` since 2026-07-25 04:17, `operator.zero-2026-07`                                          |
-| Day-90 kill switch | ❌ **DEAD** — `system_settings.e33_guarantee_scan_enabled` **row does not exist** → fails closed, every call skips                                |
-| Day-90 cron        | ❌ **DEAD** — no `.github/workflows/cron-notifiers-e33-guarantee-scan.yml`; its 5 sibling notifiers all have one. Nothing ever calls the endpoint |
-| Engine output      | ⚠️ **ANSWERS NOTHING** — see below                                                                                                                |
+| Organ              | Verified state                                                                                                                                                                                                                                                                                                        |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pricing            | ✅ **LIVE** — `search_service_pricing` prod returns E33 = 39.000.000 IDR all-inclusive, + E33E 14/16M, E33F 14/16M, E33F extend 10M                                                                                                                                                                                   |
+| Landing            | ✅ **LIVE, EN ONLY** — `/visa/second-home` 200, "second home" ×31, "130,000" ×9. **`/it/` and `/id/` are 404** (the EN/ID/IT claim was false). ⚠️ `/visa/second-home-e33`, the URL the playbook calls canonical, returns **200 serving the wrong page** — "second home" ×0                                            |
+| Migration 259      | ✅ **APPLIED in prod** — `e33_cases` exists. (The pre-2026-07-25 corner claimed "NOT applied" — that was **wrong**.)                                                                                                                                                                                                  |
+| RulePack prod-001  | ✅ **STILL THE ONLY ACTIVATION** — `visa_ruleset_activations`: 1 row, PRODUCTION, `operator.zero-2026-07`, created 2026-07-25 04:17, `system_period` still open. No re-authoring has happened                                                                                                                         |
+| **Case entrance**  | 🔴 **DOES NOT EXIST — the row that reframes everything below.** `E33CaseRepository.insert()` has **no production caller**: the repository is imported by exactly two files, a test and the Day-90 scanner, and the scanner only _reads_. There is no E33 router. `e33_cases` = **0 rows** and cannot grow             |
+| Day-90 kill switch | ❌ **STILL UNPROVISIONED** — prod query on `system_settings` for `%e33%`/`%guarantee%` returns **0 rows** (2026-07-30)                                                                                                                                                                                                |
+| Day-90 cron        | ⚠️ **EXISTS AND RUNS — AND IS BLOCKED EVERY TIME.** The workflow the old row said was missing was added by **#3110**; it fires daily 23:10 UTC and has **4 green runs**. Reading the run BODY instead of its checkmark: `"status":"blocked"`, `"reason":"switch_not_provisioned"`. Green ✅ on GitHub, zero work done |
+| Engine output      | ⚠️ **ANSWERS NOTHING** — unchanged; `review.e33.guarantee-maintenance` is still in the signed pack. See below                                                                                                                                                                                                         |
 
 ### The review-saturation finding (2026-07-25)
 
@@ -165,8 +177,22 @@ ceremony + adversarial review. Propose it; never hand-edit a signed pack.
 
 ## 5. Open phases (the roadmap to "done")
 
-- **F4 — Activation**: seed `e33_guarantee_scan_enabled` + add the cron workflow
-  (both session-ownable); harvest QA corrections rounds 3–5 to prod Qdrant
+- **F4 — Activation. ⚠️ THE ORDER IN THIS LINE WAS WRONG — corrected 2026-07-30.**
+  It said "seed `e33_guarantee_scan_enabled` + add the cron workflow". The cron
+  half is DONE (#3110). **Do NOT do the seeding half next.** There is no writer
+  for `e33_cases` (see §4bis), so arming the switch would point a scanner at a set
+  that is structurally empty — and it would trade an honest
+  `"status":"blocked","reason":"switch_not_provisioned"` for a
+  healthy-looking `"scanned": 0`. **Arming the guard before the entrance does not
+  add protection; it removes the last true signal that the organ is unarmed.**
+  Correct order — the order a case travels:
+  **F4a** build the case entrance (a router/service that calls
+  `E33CaseRepository.insert()`, plus whatever creates a case from a Fit-Memo lead);
+  **F4b** then seed `e33_guarantee_scan_enabled` and prove it by a real alert row
+  on a seeded case, not by a green run;
+  **F4c** `/it/` + `/id/` landings (404 today) and the `/visa/second-home-e33`
+  wrong-page URL.
+  Then: harvest QA corrections rounds 3–5 to prod Qdrant
   (review-gated — wrong E33F/KITAP rows are LIVE until then); send addenda **007**
   (Imigrasi) and **008** (banks), both in `~/Downloads/` — operator[physical]:
   sign + stamp + dispatch.
