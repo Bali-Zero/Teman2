@@ -1,6 +1,6 @@
 # Nuzantara Admin Dashboard
 
-A standalone Next.js application to inspect and control Nuzantara data.
+A standalone Next.js application to inspect and control Nuzantara data. Starts on port 3002 via `start_dashboard.sh`.
 
 ## Features
 
