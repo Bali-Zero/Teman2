@@ -322,21 +322,79 @@ def test_sourcing_the_library_and_calling_it_writes_a_heartbeat(
 
 
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
-def test_the_status_whitelist_still_degrades_an_unknown_value(
+def test_an_unrecognised_status_degrades_and_never_greens(
     tmp_path: Path, shell: str
 ) -> None:
-    """Innocence for the rename itself.
+    """This test used to assert the DEFECT, and asserting it is what hid it.
 
-    `status` is not just a variable here — it is whitelisted and rewritten to
-    "ok" when unrecognised. Renaming it means touching the `case`, the fallback
-    assignment and the `printf`; miss one and the sidecar silently reports the
-    wrong field or an empty one.
+    The whitelist's fallback was `*) hb_status="ok"`, and this case pinned that
+    as correct behaviour under the name "still degrades an unknown value" -- but
+    rewriting an unknown value to `ok` is not degrading it, it is the opposite.
+    `sentinel-aggregate.py` maps ok/success/healthy/starting -> ok, so an organ
+    reporting a status this library did not recognise was published as HEALTHY.
+
+    Adversarial review (Codex, generator != grader) found it by asking what
+    happens to the near-misses a caller actually writes. Every one of them fell
+    through: `failed` (the list only had `fail`), any uppercase spelling, and
+    words like `crash` or `timeout` that no vocabulary lists. The fallback is now
+    `warning` -- visible, and not the `dead` that a raw pass-through would page
+    for.
     """
-    rc, out, hb = _source_and_call(
-        tmp_path, shell, PROBE_ID, "not-a-real-status", "n", tag=f"wl-{shell}"
-    )
-    assert rc == 0, out
-    assert hb.get("status") == "ok", f"{shell}: whitelist fallback lost: {hb!r}"
+    for bad in ("not-a-real-status", "failed", "ERROR", "FAIL", "crash", "timeout"):
+        rc, out, hb = _source_and_call(
+            tmp_path, shell, PROBE_ID, bad, "n", tag=f"wl-{shell}-{bad}"
+        )
+        assert rc == 0, out
+        assert hb.get("status") not in (
+            "ok",
+            "success",
+            "healthy",
+            "starting",
+        ), f"{shell}: {bad!r} was published as healthy: {hb!r}"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_failure_synonyms_land_on_error_not_merely_non_ok(
+    tmp_path: Path, shell: str
+) -> None:
+    """Guilt, sharper than "not green": a failure must read as a FAILURE.
+
+    Degrading `failed` to `warning` would satisfy the test above while still
+    under-reporting a dead organ, so pin the actual mapping.
+    """
+    for bad in ("fail", "failed", "failure", "FATAL", "crashed", "dead"):
+        rc, out, hb = _source_and_call(
+            tmp_path, shell, PROBE_ID, bad, "n", tag=f"err-{shell}-{bad}"
+        )
+        assert rc == 0, out
+        assert hb.get("status") == "error", f"{shell}: {bad!r} -> {hb!r}"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_innocence_the_healthy_vocabulary_still_reads_healthy(
+    tmp_path: Path, shell: str
+) -> None:
+    """The other half of the whitelist change.
+
+    A fallback that degrades everything unknown is only safe if the words that
+    SHOULD be green still are -- including `disabled`, whose mapping to `ok` is a
+    deliberate exception documented in the library (passing it through would make
+    the reader call the organ dead and the healer would resurrect exactly the
+    organ an operator switched off).
+    """
+    for good, expected in (
+        ("ok", "ok"),
+        ("OK", "ok"),
+        ("success", "success"),
+        ("healthy", "healthy"),
+        ("starting", "starting"),
+        ("disabled", "ok"),
+    ):
+        rc, out, hb = _source_and_call(
+            tmp_path, shell, PROBE_ID, good, "n", tag=f"ok-{shell}-{good}"
+        )
+        assert rc == 0, out
+        assert hb.get("status") == expected, f"{shell}: {good!r} -> {hb!r}"
 
 
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
@@ -441,11 +499,25 @@ def test_the_workflow_arms_this_corpus_on_push_too(tmp_path: Path) -> None:
     `on.push.paths` is a filter, and a path present only in the job's internal
     `git diff` pathspec is armed for PRs and silently skipped on merge to main.
     Superscar #2: a corpus that does not run is not a gate.
+
+    The first version of this test searched the raw YAML, so the COMMENT
+    explaining why the path is in the pathspec satisfied the assertion on its
+    own: deleting the real `git diff` argument and keeping the comment left the
+    test green. Adversarial review demonstrated exactly that mutation. It judged
+    the form (the string appears somewhere) instead of the entity (the workflow
+    actually filters on it), which is the over-match this repo keeps re-learning
+    — and a regression proof that a mutation cannot turn red is not a proof.
     """
     wf = (REPO / ".github/workflows/organ-conformance.yml").read_text(
         encoding="utf-8"
     )
-    head, _, tail = wf.partition("jobs:")
+    # Strip comments before judging. A trailing `#` inside a quoted YAML scalar
+    # would be mangled by this, which is why the assertions below look for a bare
+    # path token that never appears inside quotes in this file.
+    live = "\n".join(
+        line.split("#", 1)[0] for line in wf.splitlines()
+    )
+    head, _, tail = live.partition("jobs:")
     assert "scripts/lib/heartbeat.sh" in head, (
         "heartbeat.sh missing from on.push.paths — the post-merge run would skip"
     )
@@ -476,3 +548,191 @@ def test_sourcing_alone_does_not_fire_the_cli_path(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     written = sorted(p.name for p in seen.glob("*.json")) if seen.exists() else []
     assert written == [], f"sourcing alone wrote a heartbeat: {written}"
+
+
+# ---------------------------------------------------------------------------
+# Round-2 adversarial findings (Codex, generator != grader). Every one of these
+# was verified on disk before being written down; none was taken on the
+# refuter's word (W65: the refuter hallucinates too).
+# ---------------------------------------------------------------------------
+
+
+def _call_with_env(
+    tmp_path: Path, shell: str, note: str, tag: str, extra_env: dict
+) -> tuple[int, str, Path]:
+    """Like `_source_and_call`, but the caller controls the environment and gets
+    the RAW sidecar path back — these cases are about the file being readable at
+    all, so they must not go through a helper that json.loads()es it for them."""
+    seen = tmp_path / f"last_seen-{tag}"
+    script = tmp_path / f"caller-{tag}.{shell}"
+    script.write_text(
+        f"source {shlex.quote(str(HB_LIB))}\n"
+        f"organism_heartbeat {PROBE_ID} ok {shlex.quote(note)}\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [shell, str(script)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen), **extra_env},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    return proc.returncode, (proc.stdout + proc.stderr), seen / f"{PROBE_ID}.json"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_control_character_in_the_note_still_leaves_parseable_json(
+    tmp_path: Path, shell: str
+) -> None:
+    """The escape chain covered \\n \\r \\t and nothing else in U+0000-U+001F.
+
+    A note assembled from a command's stderr carries those bytes routinely, and a
+    literal 0x08 inside a JSON string is not valid JSON -- so the reader got
+    NOTHING, which is the failure mode this organ exists to prevent. Guilt on the
+    two controls that have JSON escapes (\\b, \\f) and one that does not (\\x1f).
+    """
+    rc, out, sidecar = _call_with_env(
+        tmp_path, shell, "a\bb\fc\x1fd", f"ctl-{shell}", {}
+    )
+    assert rc == 0, out
+    assert sidecar.exists(), f"{shell}: no sidecar written: {out}"
+    payload = json.loads(sidecar.read_text())  # raises = the defect is back
+    assert payload["status"] == "ok"
+    assert "\b" not in payload["note"] and "\x1f" not in payload["note"]
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_multibyte_note_cannot_be_split_by_the_byte_truncation(
+    tmp_path: Path, shell: str
+) -> None:
+    """`${note:0:500}` is CHARACTER-based in a UTF-8 locale and BYTE-based under
+    LC_ALL=C -- and LC_ALL=C is what cron hands you.
+
+    So the exact same code that is safe on a developer's terminal could cut a
+    two-byte character in half on the machine that matters, leaving a lone
+    continuation byte: the file was then not even valid UTF-8 and reading it
+    failed before parsing started. The dev machine was structurally incapable of
+    reproducing it, which is why the env is pinned here rather than inherited.
+    """
+    rc, out, sidecar = _call_with_env(
+        tmp_path, shell, "a" * 499 + "é" + "b" * 40, f"utf-{shell}", {"LC_ALL": "C"}
+    )
+    assert rc == 0, out
+    assert sidecar.exists(), f"{shell}: no sidecar written: {out}"
+    raw = sidecar.read_bytes()
+    raw.decode("utf-8")  # raises UnicodeDecodeError = the defect is back
+    payload = json.loads(raw.decode("utf-8"))
+    assert payload["status"] == "ok"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_calling_with_no_arguments_does_not_kill_a_sourcing_caller(
+    tmp_path: Path, shell: str
+) -> None:
+    """`local id="${1:?...}"` EXITS a non-interactive shell when unset.
+
+    Sourced, that shell is the caller's, so a script that mistyped its own
+    heartbeat call was killed by it -- measured, bash returned 127 and zsh 1, and
+    the line after the call never ran. The library's closing line promises the
+    exact opposite ("heartbeat MUST never break the caller"), and a promise only
+    the happy path keeps is not one.
+    """
+    seen = tmp_path / f"last_seen-noargs-{shell}"
+    script = tmp_path / f"noargs-{shell}.sh"
+    script.write_text(
+        f"source {shlex.quote(str(HB_LIB))}\n"
+        "organism_heartbeat\n"
+        "echo SURVIVED\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [shell, str(script)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert "SURVIVED" in proc.stdout, (
+        f"{shell}: the heartbeat killed its own caller "
+        f"(rc={proc.returncode}): {proc.stdout + proc.stderr}"
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_sourcing_alone_does_not_clobber_a_caller_variable(
+    tmp_path: Path, shell: str
+) -> None:
+    """`_organism_hb_dir` was assigned at FILE scope, so merely sourcing the
+    library overwrote a caller variable of that name.
+
+    Same class as the `set -o pipefail` leak the header already warns about, just
+    quieter -- and the underscore prefix is a convention, not a guarantee that
+    nobody else uses the name.
+
+    BOTH axes, because they are separate defects with the same symptom and a
+    mutation test proved the difference: a file-scope assignment leaks on SOURCE,
+    while dropping `local` from an in-function assignment leaks only once the
+    function is CALLED. A corpus that checks sourcing alone stays green through
+    the second one -- measured, not assumed.
+    """
+    seen = tmp_path / f"last_seen-var-{shell}"
+    script = tmp_path / f"var-{shell}.sh"
+    script.write_text(
+        "_organism_hb_dir=caller-sentinel\n"
+        f"source {shlex.quote(str(HB_LIB))}\n"
+        'echo "after_source=${_organism_hb_dir}"\n'
+        f"organism_heartbeat {PROBE_ID} ok n\n"
+        'echo "dir=${_organism_hb_dir}"\n',
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [shell, str(script)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "after_source=caller-sentinel" in proc.stdout, (
+        f"{shell}: SOURCING clobbered the caller's variable: {proc.stdout}"
+    )
+    assert "dir=caller-sentinel" in proc.stdout, (
+        f"{shell}: CALLING clobbered the caller's variable: {proc.stdout}"
+    )
+    assert (seen / f"{PROBE_ID}.json").exists(), "and it still must do its job"
+
+
+def test_bash_rematch_survives_the_call() -> None:
+    """The zsh twin of this was fixed and the bash one was DECLARED and left.
+
+    The organ-id check used `[[ =~ ]]`, which sets BASH_REMATCH globally; `local
+    BASH_REMATCH` does not shadow it on bash 3.2, so the library clobbered a
+    caller mid-parse. Curing one shell and writing the other down as a "known,
+    smaller residue" is the asymmetric-cure shape (W106b): the fix is to stop
+    using a regex at all, which sets no globals in EITHER shell.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        seen = Path(td) / "last_seen-rematch"
+        script = Path(td) / "rematch.sh"
+        script.write_text(
+            '[[ "pre-42" =~ pre-([0-9]+) ]]\n'
+            f"source {shlex.quote(str(HB_LIB))}\n"
+            f"organism_heartbeat {PROBE_ID} ok n\n"
+            'echo "re=${BASH_REMATCH[0]}/${BASH_REMATCH[1]}"\n',
+            encoding="utf-8",
+        )
+        proc = subprocess.run(
+            ["bash", str(script)],
+            env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "re=pre-42/42" in proc.stdout, (
+            f"the library clobbered the caller's BASH_REMATCH: {proc.stdout}"
+        )
+        assert (seen / f"{PROBE_ID}.json").exists(), "and it still must do its job"

@@ -19,14 +19,24 @@
 # (The function below contains no pipeline, so it never needed it.) CLI mode sets
 # it for itself, at the bottom.
 
-_organism_hb_dir="${ORGANISM_LAST_SEEN_DIR:-${HOME}/.organism/last_seen}"
+# NOTE: nothing is assigned at file scope either. An earlier version set
+# `_organism_hb_dir` here, which meant merely SOURCING the library overwrote a
+# caller variable of that name — the same class of leak as the shell options
+# above, just quieter. Everything the function needs it now computes itself.
 
 # organism_heartbeat <organ_id> <status> [note]
 # - <organ_id> matches the `id` field in organs_registry.yaml (e.g. pro.cpu_monitor)
 # - <status> is one of: ok | error | warning | starting | degraded
 # - [note] free-form short string, embedded as "note" key
 organism_heartbeat() {
-    local id="${1:?heartbeat: organ_id required}"
+    # NOT `${1:?...}`: in a non-interactive shell that construct EXITS the shell,
+    # so a sourcing caller that mistyped the invocation was killed by its own
+    # heartbeat writer — measured, bash returned 127 and zsh 1, and the line
+    # after the call never ran. That directly contradicts this function's own
+    # closing contract ("MUST never break the caller"), which is worth more than
+    # the diagnostic.
+    local id="${1:-}"
+    [ -n "$id" ] || return 0
     # NOT `local status`: in zsh `status` is a READ-ONLY special parameter (an
     # alias for `?`), so that assignment aborted the function with `read-only
     # variable: status` and no sidecar was ever written — while the CLI-mode
@@ -37,19 +47,28 @@ organism_heartbeat() {
     # caller straight onto it. Pinned by test_gene_g2_heartbeat_fires.py.
     local hb_status="${2:-ok}"
     local note="${3:-}"
-    # Sourced from zsh, `[[ =~ ]]` below overwrites the caller's MATCH/MBEGIN/
-    # MEND (zsh's regex specials) — a library must not clobber its caller's
-    # variables. Declaring them local shadows them for the match's duration;
-    # measured to leave the caller's values intact. Bash's BASH_REMATCH is NOT
-    # protected this way (measured: `local BASH_REMATCH` still leaks on bash
-    # 3.2) — a known, smaller residue, not a fixed one.
-    local MATCH MBEGIN MEND
+    local _organism_hb_dir="${ORGANISM_LAST_SEEN_DIR:-${HOME}/.organism/last_seen}"
 
     # Strict whitelist on organ_id to prevent path traversal / shell metachars.
     # Registry id convention: [a-z][a-z0-9_]+(\.[a-z0-9_]+)*  (e.g. pro.cpu_monitor)
-    if ! [[ "$id" =~ ^[a-zA-Z][a-zA-Z0-9_.]{0,80}$ ]] || [[ "$id" == *..* ]]; then
-        return 0  # silently refuse — never break the caller
-    fi
+    #
+    # Done WITHOUT `[[ =~ ]]` on purpose. A regex match sets its shell's match
+    # globals, and a sourced library that clobbers its caller's variables is a
+    # bug however small: zsh's MATCH/MBEGIN/MEND could be shadowed with `local`,
+    # but bash's BASH_REMATCH could NOT (measured: `local BASH_REMATCH` still
+    # leaks on bash 3.2), so the previous version fixed one shell and left a
+    # declared residue in the other. Substring deletion sets no globals in
+    # either shell, so the asymmetry disappears instead of being documented.
+    local _rest="${id//[a-zA-Z0-9_.]/}"
+    case "$id" in
+        [a-zA-Z]*) ;;
+        *) return 0 ;;          # must start with a letter
+    esac
+    [ -z "$_rest" ] || return 0 # no character outside the allowed set
+    [ "${#id}" -le 81 ] || return 0
+    case "$id" in
+        *..*) return 0 ;;       # no traversal
+    esac
     # Whitelist status to the vocabulary the READER understands. This is not
     # cosmetic: `sentinel-aggregate.py` maps ok/success/healthy/starting -> ok,
     # degraded/warning -> warning, and EVERYTHING ELSE -> dead. So an
@@ -59,19 +78,34 @@ organism_heartbeat() {
     # it (its own comment calls it "the heartbeat status=warn"), and the old
     # fallback rewrote it to "ok" — a WIP-skipped reaper reported as healthy.
     #
-    # KNOWN AND DELIBERATELY NOT CHANGED HERE: launchd-liveness-detector.sh
-    # passes "disabled" on its kill switch, which still falls through to "ok".
-    # That IS a false green — but the naive cure is worse than the disease:
+    # DELIBERATE, and now an EXPLICIT arm rather than a fall-through:
+    # launchd-liveness-detector.sh passes "disabled" on its kill switch and we
+    # map it to "ok". That IS a false green — but the naive cure is worse than
+    # the disease:
     # "disabled" is not in the reader's vocabulary, so passing it through makes
     # the organ read DEAD, and the healer would then resurrect precisely the
     # organ an operator intentionally stopped — the exact outcome that
     # wrapper's comment says the disabled heartbeat exists to prevent. Teaching
     # the READER a non-paging "disabled" state is the real fix and it is a
     # fleet-alarm change, not a shell-quoting one.
+    #
+    # THE FALLBACK USED TO BE `ok`, AND THAT WAS THE WHOLE BUG. Only the exact
+    # lowercase spellings below were recognised, so `failed`, `ERROR`, `FAIL`,
+    # `crash`, `timeout` — every near-miss a caller could plausibly write — fell
+    # through to "ok". An organ whose entire job is to report that something died
+    # was declaring healthy everything it did not recognise, and the comment
+    # directly above it already said "an unrecognised value is not a formatting
+    # detail, it is a verdict". Unknown now degrades to `warning`: visible, and
+    # not the `dead` a raw pass-through would page for.
+    hb_status="$(printf '%s' "$hb_status" | LC_ALL=C tr 'A-Z' 'a-z' 2>/dev/null)" \
+        || hb_status="warning"
     case "$hb_status" in
-        ok|error|warning|starting|degraded|fail|success|healthy) ;;
+        ok|error|warning|starting|degraded|success|healthy) ;;
         warn) hb_status="warning" ;;
-        *) hb_status="ok" ;;
+        fail|failed|failure|fatal|crash|crashed|dead|timeout) hb_status="error" ;;
+        disabled) hb_status="ok" ;;   # deliberate — see the note above
+        "") hb_status="ok" ;;         # caller passed nothing; the default is ok
+        *) hb_status="warning" ;;
     esac
 
     mkdir -p "$_organism_hb_dir" 2>/dev/null || return 0
@@ -83,26 +117,50 @@ organism_heartbeat() {
     # (mv's complaint swallowed by its own 2>/dev/null), so the tmp file was
     # written and never renamed: a heartbeat directory accumulating
     # `<organ>.json.tmp.<pid>` and never the file any reader looks for.
-    # Measured, not reasoned: of this function's six locals, `zsh -c 'echo
-    # ${(t)v}'` reports exactly two as special — `status`
-    # (integer-readonly-special) and `path` (array-tied-special). id, note,
-    # tmp and ts are ordinary and keep their names.
+    # Measured, not reasoned: across every name this function declares, `zsh -c
+    # 'echo ${(t)v}'` reports exactly two as special — `status`
+    # (integer-readonly-special) and `path` (array-tied-special). Those two are
+    # renamed to hb_status/hb_path; id, note, tmp and ts are ordinary and keep
+    # their names.
     local hb_path="${_organism_hb_dir}/${id}.json"
     local tmp="${hb_path}.tmp.$$"
     local ts
     ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-    # Truncate the RAW note FIRST, then escape. The other order cut escape
-    # sequences in half: 499 'a' followed by a quote escaped to 501 chars, the
-    # 500-char cut landed between the backslash and its quote, and the trailing
-    # backslash then escaped the JSON's own closing quote — the whole sidecar
-    # became unparseable, so the reader saw NOTHING rather than a long note.
-    # Measured before the fix (json.loads raised on exactly that input).
-    # Escaping after the cut can exceed 500 bytes; bounding the INFORMATION is
-    # the point, and a note that survives is worth more than a round number.
+    # Three passes, in this order: SANITISE -> TRUNCATE -> ESCAPE. Every ordering
+    # here is load-bearing, and two of the three were wrong at some point.
+    #
+    # 1. SANITISE to printable ASCII (plus \n \r \t). Two independent defects die
+    #    here, and both produced a sidecar no reader could parse AT ALL:
+    #    - Raw C0 control bytes went straight through. The escape chain below
+    #      covers \n \r \t but not \b, \f, \v, NUL or anything else in
+    #      U+0000-U+001F, and a note built from a command's stderr carries them
+    #      routinely. A literal 0x08 inside a JSON string is not valid JSON.
+    #    - The truncation below is BYTE-based under LC_ALL=C — the locale cron
+    #      hands you — so a 500-byte cut could land inside a multibyte UTF-8
+    #      character and leave a lone continuation byte. The file was then not
+    #      even valid UTF-8, so reading it failed before parsing began.
+    #    Restricting to single-byte printables makes the cut provably safe rather
+    #    than argued-safe: after this pass one byte is one character, in every
+    #    locale and both shells. The cost is declared, not hidden — an accented
+    #    character in a note becomes a space. A heartbeat note is "rc=42 timeout",
+    #    not prose. If tr is unavailable we drop the note rather than emit a
+    #    sidecar nobody can read: the note is the least valuable field here, and
+    #    the ts/status the reader acts on are worth more than it.
+    note="$(printf '%s' "$note" | LC_ALL=C tr -c '\11\12\15\40-\176' ' ' 2>/dev/null)" \
+        || note="(note dropped: could not sanitise)"
+
+    # 2. TRUNCATE the sanitised-but-unescaped note. Escaping FIRST cut escape
+    #    sequences in half: 499 'a' followed by a quote escaped to 501 chars, the
+    #    500-char cut landed between the backslash and its quote, and the trailing
+    #    backslash then escaped the JSON's own closing quote — the whole sidecar
+    #    became unparseable, so the reader saw NOTHING rather than a long note.
+    #    Measured before the fix (json.loads raised on exactly that input).
+    #    Escaping after the cut can exceed 500 bytes; bounding the INFORMATION is
+    #    the point, and a note that survives is worth more than a round number.
     note="${note:0:500}"
 
-    # Escape JSON-unsafe chars in note: backslash, quote, newline, tab, CR.
+    # 3. Escape JSON-unsafe chars in note: backslash, quote, newline, tab, CR.
     # Backslash MUST stay first — it is the escape character for the rest.
     note="${note//\\/\\\\}"
     note="${note//\"/\\\"}"
