@@ -49,7 +49,7 @@ describe("PortalBottomNav", () => {
     await waitFor(() => {
       expect(screen.getByText("Home")).toBeInTheDocument();
       expect(screen.getByText("Vault")).toBeInTheDocument();
-      expect(screen.getByText("Chat")).toBeInTheDocument();
+      expect(screen.getByText("Messages")).toBeInTheDocument();
       expect(screen.getByText("Profile")).toBeInTheDocument();
     });
   });
@@ -117,7 +117,9 @@ describe("PortalBottomNav", () => {
     // The badge element has specific classes, so we check for absence of badge content
     expect(screen.queryByText("99+")).not.toBeInTheDocument();
     // No numeric badge should be visible (checking for the badge span specifically)
-    const badges = container.querySelectorAll(".bg-red-500");
+    const badges = container.querySelectorAll(
+      ".bg-\\[var\\(--state-danger\\)\\]",
+    );
     expect(badges.length).toBe(0);
   });
 
