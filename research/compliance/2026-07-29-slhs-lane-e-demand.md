@@ -6,9 +6,23 @@ sources:
   - postgres-nuzantara (Fly prod, nuzantara_readonly role) — tables whatsapp_message_context, conversation_messages, meta_inbox_messages, query_analytics
   - Pro local mirror DB `nuzantara_dev` (nuzantara@Nuzantara, live WhatsApp mirror, current through 2026-07-29) — table whatsapp_message_context
   - mcp__nuzantara-mcp__get_failed_queries / get_query_analytics (both 404 — endpoint not deployed, declared as [LACUNA])
+adversarial_review: codex
 ---
 
 # Lane E — Does real client demand for SLHS exist?
+
+## Adversarial review — Codex GPT-5.6 `sol` (effort high), 2026-07-29
+
+> ⛔ **VERDETTO: DO-NOT-SHIP come guida corrente.** Generatore = Claude (lane Sonnet); grader = Codex, famiglia diversa. Le obiezioni sotto sono quelle SOPRAVVISSUTE: ognuna è stata riletta contro il file e, dove tocca un numero, ri-verificata a mano sul dataset canonico.
+>
+> Questo file è archiviato come **nota di lavoro superata**, non come fonte. Serve la tracciabilità di come ci siamo arrivati; le sue conclusioni non si citano. L'autorità sul regime vigente è `2026-07-29-slhs-lane-h-amendments.md`, l'arbitro sui codici è `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (campo `kode_kbli_2025`).
+>
+> Difetti concreti trovati dal reviewer (seat di famiglia diversa dall'autore):
+>
+> 1. Il finding centrale "domanda in crescita" poggia su conteggi non riproducibili e su due contraddizioni dirette fra le presunte copie della stessa fonte.
+> 2. Il dato è più debole di come il titolo lo fa sembrare: dei 29 messaggi, **16 sono outbound** (scritti da noi) e i numeri di telefono distinti sono **6**, non 10 — 10 è il numero di `client_id`. Questa correzione è stata riportata nei PDF consegnati a Krisna.
+> 3. Esclude che i soggetti siano operatori SPPG "per quanto si può dire senza toccare PII": la conclusione non è ricavabile dagli aggregati usati.
+
 
 > ⚠️ **CORREZIONE APPOSTA DOPO LA STESURA (2026-07-29) — la staleness qui descritta è più stretta
 > di come è scritta.** Il file dice che il Postgres prod dietro l'MCP `postgres-nuzantara` è "fermo

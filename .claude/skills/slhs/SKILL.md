@@ -37,6 +37,14 @@ Three consequences that shape everything:
 
 ## 1. Where the truth lives (in order)
 
+> ⛔ **Six of the eight lanes carry a DO-NOT-SHIP verdict** from a cross-family adversarial review
+> (Codex GPT-5.6 `sol`, 2026-07-29 — generator was Claude, grader was not). Each one now opens with
+> an `## Adversarial review` section listing its own concrete defects. **They are an audit trail, not
+> a source.** Do not cite a number from lanes A/B/D/E/F/G without checking it against Lane H (for
+> what is in force) and against `KBLI_2025_FINAL_CLEAN.json` (for whether a code exists). The two
+> most common failure modes across them: reasoning on Permenkes 14/2021 as if current, and asserting
+> KBLI codes of 2020 vintage as "KBLI 2025".
+
 1. **This file** — state, decisions, phase plan.
 2. **`research/compliance/2026-07-29-slhs-lane-h-amendments.md`** — **the authority on WHICH TEXT IS
    IN FORCE.** Read it before any other lane. It establishes that Permenkes 14/2021 (and its two

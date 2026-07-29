@@ -19,9 +19,23 @@ sources:
   - https://phri.or.id/
   - https://dpmptsp.badungkab.go.id/
   - https://dpmptsp.gianyarkab.go.id/
+adversarial_review: codex
 ---
 
 # SLHS a Bali — procedura operativa (LANE B)
+
+## Adversarial review — Codex GPT-5.6 `sol` (effort high), 2026-07-29
+
+> ⛔ **VERDETTO: DO-NOT-SHIP come guida corrente.** Generatore = Claude (lane Sonnet); grader = Codex, famiglia diversa. Le obiezioni sotto sono quelle SOPRAVVISSUTE: ognuna è stata riletta contro il file e, dove tocca un numero, ri-verificata a mano sul dataset canonico.
+>
+> Questo file è archiviato come **nota di lavoro superata**, non come fonte. Serve la tracciabilità di come ci siamo arrivati; le sue conclusioni non si citano. L'autorità sul regime vigente è `2026-07-29-slhs-lane-h-amendments.md`, l'arbitro sui codici è `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (campo `kode_kbli_2025`).
+>
+> Difetti concreti trovati dal reviewer (seat di famiglia diversa dall'autore):
+>
+> 1. L'intera procedura poggia su Permenkes 14/2021, revocata per questa materia dal 2025-10-03.
+> 2. Mancano due conflitti KBLI 2025 (56103 e 68120 non esistono nel dataset canonico).
+> 3. Requisiti, SLA e costi presentati come operativi risultano in parte falsi o non tracciati a una fonte.
+
 
 > Tag obbligatorio su ogni numero: **[D]** DICHIARATO (fonte ufficiale) · **[O]** OSSERVATO (racconto/prassi di terzi, non ufficiale) · **[S]** STIMATO (mia stima, assunzioni dichiarate). Un numero senza tag non è nella tabella finale.
 >

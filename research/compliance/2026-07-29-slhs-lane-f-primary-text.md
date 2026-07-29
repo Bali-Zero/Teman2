@@ -6,9 +6,27 @@ sources:
   - https://keslan.kemkes.go.id/unduhan/regulasi/No_14.pdf (Permenkes 14/2021, official Kemenkes mirror, primary)
   - https://peraturan.go.id/files/pp-no-28-tahun-2024.pdf (PP 28/2024, official peraturan.go.id, primary)
   - https://peraturan.go.id/files/bn55-2023.pdf (Permenkes 2/2023, official peraturan.go.id, primary)
+adversarial_review: codex
 ---
 
 # SLHS — Lane F: primary-text grep (verbatim only)
+
+## Adversarial review — Codex GPT-5.6 `sol` (effort high), 2026-07-29
+
+> ⛔ **VERDETTO: DO-NOT-SHIP come guida corrente.** Generatore = Claude (lane Sonnet); grader = Codex, famiglia diversa. Le obiezioni sotto sono quelle SOPRAVVISSUTE: ognuna è stata riletta contro il file e, dove tocca un numero, ri-verificata a mano sul dataset canonico.
+>
+> Questo file è archiviato come **nota di lavoro superata**, non come fonte. Serve la tracciabilità di come ci siamo arrivati; le sue conclusioni non si citano. L'autorità sul regime vigente è `2026-07-29-slhs-lane-h-amendments.md`, l'arbitro sui codici è `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (campo `kode_kbli_2025`).
+>
+> Difetti concreti trovati dal reviewer (seat di famiglia diversa dall'autore):
+>
+> 1. Presenta come vigenti una durata ("3 tahun", "chiude il conflitto 3 vs 5 anni") e un elenco di 6 codici che sono entrambi abrogati per questa materia.
+> 2. 10391 e 10392 sono dichiarati "da verificare": il dataset canonico li chiude già — **non esistono** in `kode_kbli_2025`. Nemmeno 56103 e 68120 esistono; 11052 e 56303 sì.
+> 3. Chiede "a qualcuno con accesso MCP/Qdrant/Postgres" di verificare codici che un JSON locale già presente decide da solo.
+> 4. Tratta come ipotetico un emendamento (17/2024) che invece riscrive espressamente la sezione SLHS — cioè omette proprio quello materialmente pertinente.
+> 5. Il rule-out di Pasal 1080-1090 esibisce un comando su **pagina 22208** mentre lo stesso file colloca la fine della norma a pagina 477-483: è un numero di riga passato come numero di pagina, quindi la prova non è riproducibile.
+> 6. Le prove negative ("0 hits", "nessun 5 (lima) tahun") non hanno comando né output allegato: non sono auditabili.
+> 7. Contraddizione interna: chiama Permenkes 17/2024 "the 2026 amendment".
+
 
 **Method note:** all 3 documents were fetched as PDF from official government mirrors, converted with
 `pdftotext -layout`, and every claim below was independently re-verified with a **second, page-scoped**

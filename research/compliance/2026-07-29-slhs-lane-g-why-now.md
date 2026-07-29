@@ -16,10 +16,28 @@ sources:
   - https://kaltim.tribunnews.com/news/1158890/883-dapur-mbg-ditutup-permanen-bgn-bongkar-penyebabnya-higienitas-keracunan-masalah-sanitasi
   - https://mistar.id/news/kesehatan/kemenkes-percepat-penerbitan-slhs-untuk-sppg-program-makan-bergizi-gratis (SE Kemenkes No. HK.02.02/C.I/4202/2025, SPPG-specific SLHS acceleration circular)
   - https://ekonomi.bisnis.com/read/20260603/12/1978086/syarat-jadi-mitra-mbg-wajib-punya-badan-hukum-dapur-dan-modal-awal (2026-06-03, MBG private-partner recruitment requirements)
-adversarial_review: pending
+adversarial_review: codex
 ---
 
 # Lane G — Why now? Why did SLHS demand appear in June 2026, after zero signal since 2022?
+
+## Adversarial review — Codex GPT-5.6 `sol` (effort high), 2026-07-29
+
+> ⛔ **VERDETTO: DO-NOT-SHIP come guida corrente.** Generatore = Claude (lane Sonnet); grader = Codex, famiglia diversa. Le obiezioni sotto sono quelle SOPRAVVISSUTE: ognuna è stata riletta contro il file e, dove tocca un numero, ri-verificata a mano sul dataset canonico.
+>
+> Questo file è archiviato come **nota di lavoro superata**, non come fonte. Serve la tracciabilità di come ci siamo arrivati; le sue conclusioni non si citano. L'autorità sul regime vigente è `2026-07-29-slhs-lane-h-amendments.md`, l'arbitro sui codici è `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (campo `kode_kbli_2025`).
+>
+> Difetti concreti trovati dal reviewer (seat di famiglia diversa dall'autore):
+>
+> 1. La tabella "required for 8 KBLI codes" è sbagliata: il regime vigente ne elenca sette; aggiunge 56109, 56302, 56702 e omette 11052 e 68120, presentando codici di vintage incompatibile come "KBLI 2025".
+> 2. Ripete **IDR 9.000.000** come prezzo utilizzabile: non esiste in `bali_zero_official_prices_2026.json` né in PricingTool — è esattamente il difetto P1 che il charter registra come da correggere sul sito.
+> 3. "Badung: 4.928 unità restaurant/warung" trasforma un totale turistico multisettore (hotel, ville, tour) in un conteggio F&B.
+> 4. Le fonti confliggono su 833 vs 883 SPPG chiusi e il file sceglie 833 senza riconciliare.
+> 5. Cita "Kompas 10 maggio, 445 incidenti / 37.673 vittime" ma il frontmatter contiene solo un Kompas del 12 maggio.
+> 6. Il "56,72% con SLHS valido" e la correlazione con gli avvelenamenti non hanno fonte né tabella indicata.
+> 7. Le conclusioni causali ("qualcosa è cambiato nel mondo", "il contenuto precede il picco quindi non può essere la scintilla") non sono sostenute: mancano controlli su mix inbound/outbound e dati GA4, che il file stesso ammette di non avere.
+> 8. Errore aritmetico: "dal 2022, che ha visto cinque stagioni secche precedenti" — dal 2022 al 2025 sono quattro.
+
 
 ## The fact under investigation
 

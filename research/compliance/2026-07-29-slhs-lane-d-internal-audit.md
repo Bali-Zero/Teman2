@@ -23,9 +23,23 @@ sources:
   - apps/backend-rag/backend/services/intake/
   - research/agent-craft/proposed-agents/compliance-deadline-sentinel.md
   - postgres-nuzantara (read-only MCP) — companies, clients, client_company_links, practices, practice_types
+adversarial_review: codex
 ---
 
 # SLHS — Lane D: Internal Asset Audit
+
+## Adversarial review — Codex GPT-5.6 `sol` (effort high), 2026-07-29
+
+> ⛔ **VERDETTO: DO-NOT-SHIP come guida corrente.** Generatore = Claude (lane Sonnet); grader = Codex, famiglia diversa. Le obiezioni sotto sono quelle SOPRAVVISSUTE: ognuna è stata riletta contro il file e, dove tocca un numero, ri-verificata a mano sul dataset canonico.
+>
+> Questo file è archiviato come **nota di lavoro superata**, non come fonte. Serve la tracciabilità di come ci siamo arrivati; le sue conclusioni non si citano. L'autorità sul regime vigente è `2026-07-29-slhs-lane-h-amendments.md`, l'arbitro sui codici è `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (campo `kode_kbli_2025`).
+>
+> Difetti concreti trovati dal reviewer (seat di famiglia diversa dall'autore):
+>
+> 1. Omette del tutto la norma che governa oggi (Permenkes 11/2025).
+> 2. Scambia una coorte ampia di contenuti legacy per eleggibilità giuridica — cioè conta come "in scope" clienti che la norma non nomina.
+> 3. Presenta aggregati CRM come fatti verificati senza query riproducibile allegata.
+
 
 Auditor stance: every number below was produced by a command executed in this turn.
 Where a probe returned zero, a sibling positive-control probe on the same apparatus is

@@ -15,9 +15,25 @@ sources:
   - https://www.hukumonline.com/berita/a/uu-kesehatan-resmi-terbit--11-uu-ini-dinyatakan-tak-berlaku-lt64d31b2e3e3eb/ (secondary legal news, search-summarized 2026-07-29, NOT primary-text verified)
   - apps/backend-rag/backend/kb/ and apps/backend-rag/data/curated_qa/ (internal KB, grepped 2026-07-29 — zero hits on "higiene|SLHS|sanitasi|laik sehat|jasaboga|tempat pengelolaan pangan")
   - data/source_documents/KBLI_2025_FINAL_CLEAN.json (Bali Zero authoritative KBLI dataset, 1559 codes, field kode_kbli_2025 + bps_2020_ancestors; queried directly with python3/json 2026-07-29 — see §4)
+adversarial_review: codex
 ---
 
 # SLHS (Sertifikat Laik Higiene Sanitasi) — Anatomia regolamentare, Indonesia 2026
+
+## Adversarial review — Codex GPT-5.6 `sol` (effort high), 2026-07-29
+
+> ⛔ **VERDETTO: DO-NOT-SHIP come guida corrente.** Generatore = Claude (lane Sonnet); grader = Codex, famiglia diversa. Le obiezioni sotto sono quelle SOPRAVVISSUTE: ognuna è stata riletta contro il file e, dove tocca un numero, ri-verificata a mano sul dataset canonico.
+>
+> Questo file è archiviato come **nota di lavoro superata**, non come fonte. Serve la tracciabilità di come ci siamo arrivati; le sue conclusioni non si citano. L'autorità sul regime vigente è `2026-07-29-slhs-lane-h-amendments.md`, l'arbitro sui codici è `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (campo `kode_kbli_2025`).
+>
+> Difetti concreti trovati dal reviewer (seat di famiglia diversa dall'autore):
+>
+> 1. Marca Permenkes 14/2021 e 17/2024 come **VIGENTE** — entrambe sono superate per SLHS/PB-UMKU kesehatan da 11/2025, e questo contraddice il banner in testa a questo stesso file.
+> 2. Dichiara "la mappatura KBLI 2025 → obbligo SLHS resta NON verificata" e cerca la risposta nel Lampiran di 14/2021: la fonte vigente (11/2025) la fornisce già, sette codici.
+> 3. Il conflitto di codici che segnala è 56103 **e 56104**; quello materiale sotto la norma vigente è 56103 **e 68120** (56104 non è nella lista dei sette).
+> 4. Dice "verificati su disco 28 codici" mentre la tabella §4.1 ne elenca 29 righe distinte — tutte esistenti: il difetto è il conteggio.
+> 5. La lista delle 17 norme abrogate da Permenkes 2/2023 è dichiarata verificata su testo primario, ma il file stesso ammette più sotto che 4 voci poggiano solo su Kompasiana e su riassunti di ricerca.
+
 
 > ⛔ **CORREZIONE APPOSTA DOPO LA STESURA (2026-07-29) — NON CITARE I CODICI KBLI DI QUESTO FILE.**
 > Questo dossier è affidabile sulla STRUTTURA (catena normativa, i tre livelli di certificato,
