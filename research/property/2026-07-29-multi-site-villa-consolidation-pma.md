@@ -14,10 +14,22 @@ sources:
   - Golaw.id, "LKPM untuk Perusahaan dengan Lebih dari Satu Proyek" (https://golaw.id/blog/lkpm-untuk-perusahaan-dengan-lebih-dari-satu-proyek-apakah-harus-dibuat-terpisah/)
   - Permenpar 10/2018 on electronically-integrated tourism licensing (via jogloabang.com summary of the TDUP one-location/one-management clause)
   - research/property/2026-07-21-kbli-villa-pma-eligibility-verification.md (sibling capture; this document CORRECTS two of its statements)
-adversarial_review: codex gpt-5.6-terra (Q3 lane, citations independently re-verified against primary PDF); kimi-k3 seat UNAVAILABLE (HTTP 403 quota)
+adversarial_review: codex
 ---
 
 # Consolidating 5 scattered Bali villas into one PMA-compliant structure
+
+> ⚠️ **A pillar of this capture rests on REVOKED law — read §Adversarial review first.**
+> Every inference drawn here from **Permenparekraf 4/2021** (Standar Usaha
+> Hotel / Vila / Apartemen Hotel — multi-building wording, villa scale,
+> room/area thresholds) is stale: that regulation was **revoked on
+> 2025-10-10 by Permenpar 6/2025**. Verified in this turn against two
+> independent registries, not taken from the refuter's word:
+> [BPK](https://peraturan.bpk.go.id/Details/331639/permenpar-no-6-tahun-2025)
+> and [JDIH Kemenpar](https://jdih.kemenpar.go.id/peraturan/1422), which
+> records Permenpar 4/2021 as *"Dicabut dengan Peraturan Menteri Nomor 6
+> Tahun 2025"*. Nothing below has been re-derived against the replacement
+> text. Treat every 4/2021 passage as a hypothesis about the OLD regime.
 
 ## Question
 
@@ -435,3 +447,79 @@ assets do not reach it.
       document to the curated FAQ sink until it is closed.
 - [ ] Do NOT promote any of this to `apps/backend-rag/data/curated_qa/`.
       Research stays ad-hoc and auditable per CLAUDE.md §15.
+
+---
+
+## Adversarial review
+
+**Seat**: `codex` (`gpt-5.6-terra`, reasoning effort high, read-only sandbox),
+run 2026-07-29 on the finished draft with an explicit refute-don't-praise brief:
+attack the capital thresholds, the KBLI ownership claims, the one-TDUP-per-location
+inference, the corrections this capture makes to its sibling, and any number or
+article reference not traceable to a listed source. Generator ≠ grader: the
+capture was written by a Claude seat, the refuter is a different family.
+A `kimi-k3` second seat was attempted and was **not** available (HTTP 403 quota),
+so this is a one-seat review — treat the objections as a floor, not a ceiling
+(W100: same-family agreement is not verification, and one seat is not agreement
+at all).
+
+**Nine objections survived. None were dismissed.** They are recorded here
+verbatim in substance, because the R1 contract asks for what the refuter still
+believes after the argument, not for a summary of the argument.
+
+1. **Permenparekraf 4/2021 is REVOKED law.** It was repealed effective
+   **2025-10-10 by Permenpar 6/2025** (Standar Kegiatan Usaha ... Sektor
+   Pariwisata), so every operative inference this capture draws from its
+   multi-building wording, villa scale and room/area thresholds is stale.
+   **Independently verified in this turn** (not taken on the refuter's word —
+   W65): [BPK](https://peraturan.bpk.go.id/Details/331639/permenpar-no-6-tahun-2025),
+   [JDIH Kemenpar](https://jdih.kemenpar.go.id/peraturan/1422) ("Dicabut dengan
+   Peraturan Menteri Nomor 6 Tahun 2025"), and Hukumonline. This is the finding
+   that most changes the document: the §Q3 "silence is the finding" verdict was
+   read out of a text that is no longer in force.
+2. **"One PT PMA, five registered lokasi usaha under 55204" as the base case.**
+   55204 is a real code, but its official OSS description is short-term
+   accommodation operating apartments as a hotel (apartel/condotel), not detached
+   villas. The capture concedes the mismatch and then still calls the structure a
+   coherent base case; it may only be described as an unverified OSS/Dinas
+   classification hypothesis.
+3. **Five villas ⇒ five IDR 10bn investment lines.** Pasal 26(2) says *per lokasi
+   proyek* and does not define that unit. The capture acknowledges the competing
+   kabupaten/kota reading and then performs the five-times arithmetic anyway. No
+   multiplication is supportable until OSS or BKPM fixes the grouping.
+4. **"For accommodation and property, land and buildings are not excluded"** —
+   the correction this capture makes to its sibling **over-corrects**. Its own
+   Pasal 26(6)(b) quotation expressly excludes land and buildings for certain
+   non-integrated property units. The correction holds only for accommodation
+   under Pasal 26(5)(b), and only under the classification actually accepted.
+5. **"Each villa has its own project, risk grade, sertifikat standar and
+   investment line."** Pasal 35(1) supports spatial data per KBLI and location —
+   not a separate certificate or a separate threshold per building. Required
+   per-location data entry ≠ one-certificate-per-villa.
+6. **LKPM granularity (address-level, or one per kabupaten/kota).** Neither
+   proposition is carried by a cited current primary rule; the capture leans on a
+   Golaw article and an asserted "Perka BKPM 5/2021 lineage" from a superseded
+   regime. LKPM granularity must be reported as unverified, and must not be used
+   to infer the capital-location rule.
+7. **"One TDUP per location / one management."** Sourced from a jogloabang
+   summary, not from primary text, and TDUP is not shown to govern the current
+   OSS certificate structure. Needs Pasal 11 of Permenpar 10/2018 verbatim, and
+   even then states only a historical TDUP rule.
+8. **Five villas ⇒ five KKPR.** Pasal 61(3) requires separate applications for
+   coordinates not in one *hamparan*; it does not equate villa count with
+   hamparan count. Addresses and parcel geometry are expressly unknown here, so
+   the KKPR count follows the verified hamparan grouping, not the villa count.
+9. **"Five SPVs ⇒ IDR 12.5bn cash locked."** IDR 2.5bn per PT is the paid-up
+   rule, but the capture quotes neither Pasal 26(10) nor Pasal 27(1) verbatim and
+   converts a 12-month non-transfer restriction into "locked cash". The exact
+   statutory restriction and its permitted-use exceptions must be stated before
+   the funds are described that way.
+
+**Disposition.** This capture lands as what it says it is in its own frontmatter
+— `status: draft`, `partial: true` — with the objections attached rather than
+resolved. It is deliberately NOT promoted to `apps/backend-rag/data/curated_qa/`
+or to any client-facing surface, and objection 1 must be discharged (re-derive
+every Permenparekraf 4/2021 passage against Permenpar 6/2025) before any part of
+this reaches a client. Landing it beats leaving it on a branch: an unmerged
+capture is a suspended one, and this one now carries a fact the rest of the
+organism needs — that a regulation we cite is revoked.
