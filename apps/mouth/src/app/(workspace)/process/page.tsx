@@ -1429,7 +1429,7 @@ export default function PratichePage() {
                                   >
                                     {statusColumn === "unknown"
                                       ? `Needs review · ${rawStatusLabel}`
-                                      : `Status · ${rawStatusLabel}`}
+                                      : rawStatusLabel}
                                   </p>
                                 )}
 
