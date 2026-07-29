@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -192,13 +193,20 @@ def test_added_and_removed_rows_both_count_as_drift(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# The earned-flip exemption (2026-07-29).
+# The earned-flip exemption (2026-07-29, rebuilt after a cross-family red-team).
 #
-# Rows here carry the REAL column layout of docs/DOCS_INVENTORY.md, because the
-# exemption is positional:
-#   File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on |
-#   refs_in | broken | drift | cluster | action
+# Rows carry the REAL column layout and header row of docs/DOCS_INVENTORY.md,
+# because the exemption reads its cells BY HEADER NAME via
+# docs_audit._parse_inventory_table — a fixture with a different header row is
+# not merely unrealistic here, it parses to nothing and would make every
+# assertion below vacuously true.
+#
+# CEILING is fixed rather than "today": the upper bound on a claimed flip date
+# is an input to the rule, so the corpus must be able to assert BOTH sides of
+# it (a claim inside it, a claim beyond it) without waiting for the calendar.
 # ---------------------------------------------------------------------------
+
+CEILING = date(2026, 7, 29)
 
 _LIVE = "LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | —"
 _ARCHIVED = (
@@ -208,18 +216,32 @@ _ARCHIVED = (
 
 
 def _full_table(rows: dict[str, str]) -> str:
+    """An inventory-shaped table whose counters are DERIVED from its rows.
+
+    `render_inventory` computes every aggregate from the rows it renders, so a
+    fixture that hardcodes a count is a table the generator could never emit —
+    and a corpus built on impossible inputs proves nothing about the real one.
+    """
+    live = sum(1 for c in rows.values() if c.startswith("LIVE"))
+    archived = sum(1 for c in rows.values() if c.startswith("ARCHIVED"))
     body = "\n".join(f"| {p} | {cells} |" for p, cells in rows.items())
     return (
         "# Documentation Inventory\n\n"
         "| Status   | Count | % |\n"
         "| -------- | ----: | -: |\n"
-        "| LIVE     |   620 | 66% |\n\n"
+        f"| LIVE     |   {live} | 66% |\n"
+        f"| ARCHIVED |   {archived} | 33% |\n\n"
         "| File | Status | last_touched_date | orphan_eligible_on | "
         "orphan_flipped_on | refs_in | broken | drift | cluster | action |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
         + body
         + "\n"
     )
+
+
+def _drift(committed: str, generated: str, **kw) -> set[str]:
+    kw.setdefault("ceiling", CEILING)
+    return blame.drifting_keys(committed, generated, **kw)
 
 
 def test_innocence_an_earned_orphan_flip_is_not_drift() -> None:
@@ -233,7 +255,7 @@ def test_innocence_an_earned_orphan_flip_is_not_drift() -> None:
     """
     committed = _full_table({"docs/audits/x.md": _ARCHIVED})
     generated = _full_table({"docs/audits/x.md": _LIVE})
-    assert blame.drifting_keys(committed, generated) == set()
+    assert _drift(committed, generated) == set()
 
 
 def test_guilt_a_flip_dated_before_its_eligibility_is_still_drift() -> None:
@@ -245,14 +267,14 @@ def test_guilt_a_flip_dated_before_its_eligibility_is_still_drift() -> None:
     early = _ARCHIVED.replace("2026-07-29", "2026-07-01", 1)
     committed = _full_table({"docs/audits/x.md": early})
     generated = _full_table({"docs/audits/x.md": _LIVE})
-    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
 
 
 def test_guilt_a_backwards_flip_is_still_drift() -> None:
     """ARCHIVED -> LIVE is not a flip this organ advances; it is a regression."""
     committed = _full_table({"docs/audits/x.md": _LIVE})
     generated = _full_table({"docs/audits/x.md": _ARCHIVED})
-    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
 
 
 def test_guilt_a_flip_that_also_edits_another_cell_is_still_drift() -> None:
@@ -265,7 +287,7 @@ def test_guilt_a_flip_that_also_edits_another_cell_is_still_drift() -> None:
     forged = _ARCHIVED.replace("| 2026-07-28 |", "| 2026-01-01 |", 1)
     committed = _full_table({"docs/audits/x.md": forged})
     generated = _full_table({"docs/audits/x.md": _LIVE})
-    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
 
 
 def test_guilt_a_docs_edit_without_a_regen_is_untouched_by_the_exemption() -> None:
@@ -277,12 +299,159 @@ def test_guilt_a_docs_edit_without_a_regen_is_untouched_by_the_exemption() -> No
     stale = _LIVE.replace("| 0 | 0 | no |", "| 4 | 0 | no |", 1)
     committed = _full_table({"docs/audits/x.md": stale})
     generated = _full_table({"docs/audits/x.md": _LIVE})
-    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
 
 
 def test_a_malformed_or_short_row_is_never_waved_through() -> None:
     """Fail closed: a row this parser cannot read is drift, not an exemption."""
     committed = _full_table({"docs/audits/x.md": "ARCHIVED | 2026-04-29"})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
+
+
+# --- what the first version of the exemption let through -------------------
+# Every case below was found by a cross-family refuter (Codex GPT-5.6, 2026-07-29)
+# against the first build, which decided legitimacy on its own instead of asking
+# docs_audit. Each one PASSED that version.
+
+
+def test_guilt_a_live_doc_with_inbound_refs_cannot_be_hand_archived() -> None:
+    """BLOCKER-1 as reported: the exemption ignored `refs_in` entirely.
+
+    `classify()` only ever archives a doc that is structurally orphan-eligible —
+    `refs_in == 0`. The first version checked neither side's ref count, so a
+    real, referenced, whitelisted document (the refuter used docs/API_REFERENCE.md,
+    four inbound refs) could be hand-marked ARCHIVED in the committed table and
+    the gate would wave it through.
+    """
+    live4 = "LIVE | 2026-04-29 | 2026-07-28 | — | 4 | 0 | no | — | —"
+    arch4 = (
+        "ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 4 | 0 | no | — | "
+        "archive: orphan, last_touched=2026-04-29, refs=0"
+    )
+    committed = _full_table({"docs/API_REFERENCE.md": arch4})
+    generated = _full_table({"docs/API_REFERENCE.md": live4})
+    assert _drift(committed, generated) == {"docs/API_REFERENCE.md"}
+
+
+def test_guilt_a_whitelisted_doc_is_never_an_earned_flip() -> None:
+    """Structural eligibility is `refs_in == 0` AND not whitelisted.
+
+    The shared predicate cannot see the whitelist — it has no repo access. A
+    RENDERED row can: `classify()` writes `action = "whitelist"` for a
+    whitelisted doc, never the em-dash. So the generated side's action carries
+    the fact, and pinning it closes the half the predicate must leave open.
+    """
+    wl = "LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | whitelist"
+    committed = _full_table({"docs/README.md": _ARCHIVED})
+    generated = _full_table({"docs/README.md": wl})
+    assert _drift(committed, generated) == {"docs/README.md"}
+
+
+def test_guilt_a_future_dated_flip_is_drift() -> None:
+    """BLOCKER-2 as reported: the first version bounded the date only BELOW.
+
+    `2099-12-31 >= eligible` was true, so it passed — the same forgery the
+    --check path had already been hardened against on 2026-07-25, where a
+    claim of 2099 kept a live doc pinned ARCHIVED for 73 years and would have
+    had the organ physically `git mv` it into docs/archive/.
+    """
+    future = _ARCHIVED.replace("2026-07-29", "2099-12-31", 1)
+    committed = _full_table({"docs/audits/x.md": future})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_date_shaped_string_that_is_not_a_date_is_drift() -> None:
+    """`\\d{4}-\\d{2}-\\d{2}` accepts 2099-99-99; `date.fromisoformat` does not.
+
+    The first version validated the SHAPE of the two dates with a regex and then
+    compared them as strings — so a non-date that looks like one sorted its way
+    past the lower bound. The rule now parses.
+    """
+    bogus = _ARCHIVED.replace("2026-07-29", "2099-99-99", 1)
+    committed = _full_table({"docs/audits/x.md": bogus})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_the_action_cell_is_not_free_text() -> None:
+    """`action` is exempt from the identity check, so it must be pinned instead.
+
+    An archived orphan's action is a pure function of its own `last_touched_date`
+    (`docs_audit.archive_orphan_action`) — a cell that IS compared verbatim. So
+    the exemption cannot be used as a hole to write arbitrary text into a row.
+    """
+    lying = _ARCHIVED.replace(
+        "archive: orphan, last_touched=2026-04-29, refs=0", "anything at all", 1
+    )
+    committed = _full_table({"docs/audits/x.md": lying})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_path_already_flipped_on_the_base_is_never_re_exempted() -> None:
+    """Anti-resurrection: the tolerance is only for a flip not yet on the base.
+
+    If the base's committed table already records a flip for this path, any
+    mismatch is a potential resurrection/hiding attempt and is never tolerated —
+    condition 1 of the 2026-07-18 round, inherited here through the same
+    predicate.
+    """
+    committed = _full_table({"docs/audits/x.md": _ARCHIVED})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    prior = {"docs/audits/x.md": "2026-07-20"}
+    assert _drift(committed, generated, prior_flips=prior) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_duplicated_path_is_drift_not_a_silent_last_wins() -> None:
+    """A dict keeps the LAST row, so a corrupt row can hide BEHIND a clean one.
+
+    Order is the whole point of this case, and getting it wrong is how the
+    first version of the test proved nothing: with the corrupt row LAST it is
+    the corrupt row that survives the dict, the comparison sees it, and the row
+    is charged for ordinary reasons — the duplicate logic is never consulted.
+    The attack is the other way round. The corrupt row goes FIRST and the
+    exemptable row LAST, so `row_map` keeps the clean one, the exemption fires,
+    and a row asserting nine broken links vanishes from the gate's view
+    entirely. Mutation-checked: with `_duplicate_keys` disabled this assertion
+    fails, and with the two rows swapped it does not.
+    """
+    header, _, rows = _full_table({"docs/audits/x.md": _ARCHIVED}).rpartition("| --- |\n")
+    corrupt = "| docs/audits/x.md | ARCHIVED | 1999-01-01 | — | — | 9 | 9 | yes | — | ? |\n"
+    committed = header + "| --- |\n" + corrupt + rows
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_generated_row_that_is_live_yet_already_flipped_is_impossible() -> None:
+    """A defence against a state the generator cannot produce — asserted anyway.
+
+    `classify()` sets `status = "ARCHIVED"` the moment `orphan_flipped_on` is
+    non-empty, so a LIVE row carrying a flip date cannot come out of a real
+    regeneration. The exemption checks for it regardless, because "the generator
+    would never" is an argument about today's generator, and this table is also
+    read from files a human can edit.
+
+    Without this case the check is unpinned: the mutation sweep found it GREEN
+    when disabled, precisely because every other test feeds it states the
+    generator really does produce.
+    """
+    impossible = _LIVE.replace("| — | 0 | 0 |", "| 2026-07-20 | 0 | 0 |", 1)
+    assert impossible != _LIVE, "the fixture edit did not apply"
+    committed = _full_table({"docs/audits/x.md": _ARCHIVED})
+    generated = _full_table({"docs/audits/x.md": impossible})
+    assert _drift(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_without_a_trustworthy_ceiling_nothing_is_ever_exempt() -> None:
+    """Fail closed. A caller that has established no upper bound gets no tolerance.
+
+    This is the same `if trusted_ref_ceiling_date is None: return` the --check
+    path has, and it is why the exemption cannot be activated by simply calling
+    the function without arguments.
+    """
+    committed = _full_table({"docs/audits/x.md": _ARCHIVED})
     generated = _full_table({"docs/audits/x.md": _LIVE})
     assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
 
@@ -307,4 +476,4 @@ def test_scar_pin_the_eight_rows_of_pr_3463() -> None:
     committed = _full_table({p: _ARCHIVED for p in paths})
     generated = _full_table({p: _LIVE for p in paths})
     assert len(blame.row_map(committed)) == 8, "the fixture itself stopped parsing"
-    assert blame.drifting_keys(committed, generated) == set()
+    assert _drift(committed, generated) == set()

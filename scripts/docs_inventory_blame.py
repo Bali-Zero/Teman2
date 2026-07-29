@@ -54,7 +54,21 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# The orphan-flip rule is NOT re-derived here — it is imported. See
+# `orphan_flip_claim_is_legitimate`'s docstring for what happened the one time
+# this file wrote its own copy.
+from docs_audit import (  # noqa: E402
+    _parse_inventory_table,
+    _trusted_ref_tip_date,
+    archive_orphan_action,
+    orphan_flip_claim_is_legitimate,
+    parse_prev_flipped,
+)
 
 # A table row: `| docs/FOO.md | LIVE | 12 | 2026-07-01 | ... |`
 # The key is the first cell. Rows whose first cell is a header/among the status
@@ -91,22 +105,46 @@ def row_map(content: str) -> dict[str, str]:
     return out
 
 
-# Column order of the inventory table, from its header row:
-#   File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on |
-#   refs_in | broken | drift | cluster | action
-_COL_STATUS = 1
-_COL_ELIGIBLE_ON = 3
-_COL_FLIPPED_ON = 4
-_COL_ACTION = 9
-_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# The three cells an orphan flip legitimately moves, BY HEADER NAME — never by
+# positional index. `_parse_inventory_table` matches on the header row, so a
+# future column reorder cannot silently make this exempt the wrong cell.
+_FLIP_MOVES = frozenset({"Status", "orphan_flipped_on", "action"})
+
+# What the generated (pre-flip) side of a legitimate flip must say. Measured on
+# the live table 2026-07-29: all 118 flip-eligible rows (LIVE, refs_in == 0)
+# carry exactly this pair. Pinning `action` here is what closes the whitelist
+# gap the shared predicate cannot see: a whitelisted doc renders
+# `action = "whitelist"` (docs_audit.classify), never the em-dash.
+_UNFLIPPED = ("", "—")
 
 
-def _cells(row: str) -> list[str]:
-    """The row's cells, without the leading/trailing pipe."""
-    return [c.strip() for c in row.strip().strip("|").split("|")]
+def _duplicate_keys(content: str) -> set[str]:
+    """Paths that appear on more than one row of the same table.
+
+    `row_map` is a dict, so a duplicated path silently keeps the LAST row and
+    the earlier one vanishes — a PR could hide a corrupt row behind a clean
+    one and the comparison would never see it. A duplicate is not something to
+    resolve; it is drift by itself.
+    """
+    seen: dict[str, int] = {}
+    for line in content.splitlines():
+        m = _ROW_RE.match(line)
+        if not m:
+            continue
+        key = m.group("key").strip().strip("`[]")
+        key = re.sub(r"^\[(.*?)\]\(.*\)$", r"\1", key).strip("`")
+        if _is_doc_key(key):
+            seen[key] = seen.get(key, 0) + 1
+    return {k for k, n in seen.items() if n > 1}
 
 
-def _is_earned_flip(committed_row: str, generated_row: str) -> bool:
+def _is_earned_flip(
+    committed_cells: dict[str, str],
+    generated_cells: dict[str, str],
+    *,
+    prior_flips: dict[str, str],
+    ceiling,
+) -> bool:
     """True when the only difference is an orphan flip the row itself justifies.
 
     THE DEFECT THIS EXISTS FOR (measured 2026-07-29). P3-prime deliberately moved
@@ -122,50 +160,102 @@ def _is_earned_flip(committed_row: str, generated_row: str) -> bool:
     (#3405 with 65, #3456 and #3463 with 9). The organ could only ever deliver
     the half of its job that did not matter.
 
-    The test is the ENTITY, not the author: a flip is legitimate because the
-    row's own deterministic facts justify it, never because a bot wrote it. So:
-    forward flip only (LIVE -> ARCHIVED), every other cell identical, and the
-    flip date not EARLIER than the eligibility date.
+    WHY THE LEGITIMACY TEST IS IMPORTED, NOT WRITTEN HERE. The first version of
+    this function (same day, before a cross-family red-team) decided legitimacy
+    on its own: it ignored `refs_in`, so ANY live doc — including a whitelisted
+    one with four inbound references — could be hand-marked ARCHIVED and walk
+    through; and it bounded the flip date only from BELOW, so `2099-12-31`
+    passed. Both holes were already closed, and argued at length, in
+    `docs_audit.orphan_flip_claim_is_legitimate` — hardened by the 2026-07-25
+    round against a live `GIT_COMMITTER_DATE` forgery. Writing a second, weaker
+    copy of a guard does not double the protection: it publishes the weaker one
+    as the way in.
 
-    It stays clock-free on purpose — the two dates being compared are both cells
-    of the row, so no "today" enters the gate (`docs_audit.py`'s eligibility
-    facts are pure functions of git history, and
-    test_docs_inventory_render_is_clock_free.py pins that property). And the
-    justification cannot be forged: `orphan_eligible_on` is itself compared
-    verbatim against the generated row, so a PR that back-dates it to license a
-    flip changes a cell outside the exempt three and is charged in full.
+    What this function still owns is what only a RENDERED pair can check, and
+    it is deliberately the strict half:
+
+      * every non-flip cell identical, matched BY HEADER NAME;
+      * the generated side genuinely un-flipped (`orphan_flipped_on` and
+        `action` both em-dash) — which is also what excludes a whitelisted doc,
+        since whitelisting renders `action = "whitelist"`;
+      * the committed `action` equal to `archive_orphan_action(last_touched)`,
+        i.e. a pure function of a cell that is itself compared verbatim — so
+        the exemption cannot be used to smuggle arbitrary text into a row.
+
+    Not clock-free, and the earlier claim that it was is withdrawn: the ceiling
+    that blocks future-dating is `max(origin/main tip, now)`, exactly as
+    `docs_audit --check` computes it. The core decision stays clock-free (both
+    dates are cells); the ceiling is a sanity bound that can only ever turn a
+    REJECTED claim into a tolerated one as real time passes, never the reverse.
     """
-    a, b = _cells(committed_row), _cells(generated_row)
-    if len(a) != len(b) or len(a) <= _COL_ACTION:
+    if not committed_cells or not generated_cells:
         return False
-    exempt = {_COL_STATUS, _COL_FLIPPED_ON, _COL_ACTION}
-    if any(a[i] != b[i] for i in range(len(a)) if i not in exempt):
+    if committed_cells.keys() != generated_cells.keys():
         return False
-    if a[_COL_STATUS] != "ARCHIVED" or b[_COL_STATUS] != "LIVE":
+    if any(
+        committed_cells[h] != generated_cells[h]
+        for h in committed_cells
+        if h not in _FLIP_MOVES
+    ):
         return False
-    flipped, eligible = a[_COL_FLIPPED_ON], a[_COL_ELIGIBLE_ON]
-    if not _DATE_RE.match(flipped) or not _DATE_RE.match(eligible):
+    if committed_cells.get("Status") != "ARCHIVED":
         return False
-    # ISO dates compare correctly as strings; no parsing, no timezone, no clock.
-    return flipped >= eligible
+    if generated_cells.get("Status") != "LIVE":
+        return False
+    if generated_cells.get("orphan_flipped_on", "").strip() not in _UNFLIPPED:
+        return False
+    if generated_cells.get("action", "").strip() not in _UNFLIPPED:
+        return False
+    if committed_cells.get("action") != archive_orphan_action(
+        committed_cells.get("last_touched_date", "")
+    ):
+        return False
+    return orphan_flip_claim_is_legitimate(
+        trusted_ref_has_prior_flip=committed_cells.get("File", "") in prior_flips,
+        generated_refs_in=generated_cells.get("refs_in", ""),
+        generated_eligible_on=generated_cells.get("orphan_eligible_on", ""),
+        committed_flipped_on=committed_cells.get("orphan_flipped_on", ""),
+        committed_refs_in=committed_cells.get("refs_in", ""),
+        trusted_ref_ceiling_date=ceiling,
+    )
 
 
-def drifting_keys(committed: str, generated: str) -> set[str]:
+def drifting_keys(
+    committed: str,
+    generated: str,
+    *,
+    prior_flips: dict[str, str] | None = None,
+    ceiling=None,
+) -> set[str]:
     """Keys whose row differs between the committed and generated tables.
 
     Includes rows added or removed, not only rows whose cells changed — a doc
-    that appears in one table and not the other is drift of the loudest kind.
+    that appears in one table and not the other is drift of the loudest kind —
+    and any path duplicated within one table, which a dict comparison would
+    otherwise swallow.
 
     An EARNED orphan flip is not drift — see `_is_earned_flip`. Every other
-    difference, including an unearned or backwards flip, still counts.
+    difference, including an unearned, forged or backwards flip, still counts.
+    With no `ceiling` the exemption cannot fire at all: the shared predicate
+    fails closed, which is the right default for any caller that has not
+    established a trustworthy upper bound on a claimed date.
     """
     a, b = row_map(committed), row_map(generated)
+    ca, cb = _parse_inventory_table(committed), _parse_inventory_table(generated)
+    prior_flips = prior_flips or {}
+    dupes = _duplicate_keys(committed) | _duplicate_keys(generated)
     changed = {
         k
         for k in a.keys() & b.keys()
-        if a[k] != b[k] and not _is_earned_flip(a[k], b[k])
+        if a[k] != b[k]
+        and (
+            k in dupes
+            or not _is_earned_flip(
+                ca.get(k, {}), cb.get(k, {}), prior_flips=prior_flips, ceiling=ceiling
+            )
+        )
     }
-    return changed | (a.keys() ^ b.keys())
+    return changed | (a.keys() ^ b.keys()) | (dupes & (a.keys() | b.keys()))
 
 
 def _read(p: Path) -> str:
@@ -187,10 +277,50 @@ def main(argv: list[str] | None = None) -> int:
         default=40,
         help="cap on keys PRINTED per bucket; counts are always reported in full",
     )
+    ap.add_argument("--repo", type=Path, default=Path("."))
+    ap.add_argument("--trusted-ref", default="origin/main")
     args = ap.parse_args(argv)
 
-    base = drifting_keys(_read(args.committed_base), _read(args.generated_base))
-    head = drifting_keys(_read(args.committed_head), _read(args.generated_head))
+    committed_base = _read(args.committed_base)
+
+    # The upper bound on a claimed flip date, computed exactly as
+    # `docs_audit --check` computes it: the LATER of the trusted ref's own tip
+    # commit date and real "now", neither of which the PR branch controls.
+    # Never a commit date read from the PR's own branch — that is forgeable via
+    # GIT_COMMITTER_DATE, demonstrated live against the first version of the
+    # --check fix (2026-07-25).
+    tip = _trusted_ref_tip_date(args.repo.resolve(), args.trusted_ref)
+    now_date = datetime.now(tz=timezone.utc).date()
+    ceiling = max(tip, now_date) if tip else now_date
+    # Say which source was accepted. A guard that silently degrades to its
+    # fallback is a guard nobody can tell is degraded (W106).
+    print(
+        f"docs_inventory_blame: flip-date ceiling {ceiling.isoformat()} "
+        + (
+            f"(later of {args.trusted_ref} tip {tip.isoformat()} and now)"
+            if tip
+            else f"(now only — {args.trusted_ref} did not resolve)"
+        )
+    )
+
+    # Prior flip provenance comes from the BASE's committed table, which is the
+    # tip this PR is measured against — the same trust boundary
+    # `read_trusted_prev_flipped()` established. A path already flipped there
+    # can never be exempted again (anti-resurrection).
+    prior_flips = parse_prev_flipped(committed_base)
+
+    base = drifting_keys(
+        committed_base,
+        _read(args.generated_base),
+        prior_flips=prior_flips,
+        ceiling=ceiling,
+    )
+    head = drifting_keys(
+        _read(args.committed_head),
+        _read(args.generated_head),
+        prior_flips=prior_flips,
+        ceiling=ceiling,
+    )
 
     introduced = sorted(head - base)
     inherited = sorted(head & base)
