@@ -1,24 +1,30 @@
 // PMABadge had no test of any kind, which is exactly how it survived #3436.
 //
 // That PR unified the ownership-cap wording behind `pmaCapShape` and fixed the
-// five surfaces its corpus reached: the <title> suffix, the meta description,
-// the FAQ answer (visible AND FAQPage JSON-LD), the two LicensingSection
-// badges, the detail-page badge and KBLIStructuredData. PMABadge is a SIXTH
+// five surfaces its corpus reached: `kbli-meta.ts`, `kbli-faq.ts` (visible AND
+// FAQPage JSON-LD), the two `LicensingSection` badges, the foreign-ownership
+// fact on the detail page, and `KBLIStructuredData`. PMABadge is a SIXTH
 // presenter with its own private copy of the rule, referenced by no test — so
 // after #3436 shipped and the domain was promoted, /kbli/47111 still published
 // `⚠️ Restricted · Max 0%` in the visible pill (measured live 2026-07-29, 2
 // occurrences: the HTML and the RSC payload of the same one call-site).
 //
-// Its private copy (`numeric !== null && numeric < 100`) never considered 0 at
-// all, and was "right" at the other two ends only by falling silent: the `<
-// 100` bound dropped the 100 case, the `!== null` guard dropped a non-numeric
-// cap, and neither printed a qualifier the reader could recover. "Max 0%" is
-// not a ceiling anyone can invest under — it is the closed case wearing a
-// percentage — and a bare "Restricted" is the same failure with the evidence
-// removed.
+// (That "detail-page badge" #3436 did cure is a plain <span> elsewhere in
+// page.tsx, NOT this component. Adversarial review caught me repeating the
+// conflation — and it is precisely that conflation which let a sixth presenter
+// look already-covered.)
+//
+// Its private copy, `numeric !== null && numeric < 100`, failed at the two ends
+// in OPPOSITE ways: cap 0 PASSED the bound, reached the formula and printed
+// `Max 0%`; cap 100 and a non-numeric cap were EXCLUDED and printed nothing at
+// all. "Max 0%" is not a ceiling anyone can invest under — it is the closed
+// case wearing a percentage — and a bare "Restricted" is the same failure with
+// the evidence removed. Both are guilty below.
 
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
+import fs from "fs";
+import path from "path";
 import { PMABadge } from "./PMABadge";
 
 describe("PMABadge — the cap extremes", () => {
@@ -72,6 +78,48 @@ describe("PMABadge — the cap extremes", () => {
   it("INNOCENCE: the special-distribution regime keeps its own wording", () => {
     render(<PMABadge status="restricted" maxForeign="special" capSpecial />);
     expect(screen.getByText("· special conditions")).toBeDefined();
+  });
+
+  it("GUILT: no production call site may drop the provenance props", () => {
+    // Every case above hands `capSpecial`/`capVerified` in by hand, so they
+    // exercise a call shape the app did not actually use: KBLICard rendered
+    // <PMABadge> without either, silently taking the defaults (false/true) and
+    // ASSERTING a cap it was never told was verified. Adversarial review found
+    // it; a fixture-driven card test would only have pinned the one call site
+    // that existed today, so pin the PROPERTY instead — no call site, present
+    // or future, gets to drop provenance.
+    const root = path.resolve(__dirname, "..", "..");
+    const sources: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (p.endsWith(".tsx") && !p.includes(".test.")) sources.push(p);
+      }
+    };
+    walk(root);
+
+    const callSites: { file: string; text: string }[] = [];
+    for (const file of sources) {
+      const src = fs.readFileSync(file, "utf-8");
+      let i = src.indexOf("<PMABadge");
+      while (i !== -1) {
+        const end = src.indexOf("/>", i);
+        callSites.push({
+          file,
+          text: src.slice(i, end === -1 ? i + 400 : end),
+        });
+        i = src.indexOf("<PMABadge", i + 1);
+      }
+    }
+
+    // A zero-length list would pass every assertion below and prove nothing —
+    // the empty set disguises itself as both ALL and NOTHING.
+    expect(callSites.length).toBeGreaterThanOrEqual(2);
+    for (const { file, text } of callSites) {
+      expect(text, `${file} omits capSpecial`).toContain("capSpecial");
+      expect(text, `${file} omits capVerified`).toContain("capVerified");
+    }
   });
 
   it("INNOCENCE: the open-status suffixes are untouched", () => {
