@@ -187,13 +187,19 @@ async function seedSyntheticReviewData(page: Page): Promise<void> {
         },
       };
     } else if (pathname === "/api/portal/dashboard/summary") {
-      body = { activePractices: 2, pendingDocuments: 2, unreadMessages: 3 };
+      body = {
+        open_actions: [],
+        upcoming_deadlines: [],
+        unread_messages: 3,
+      };
     } else if (pathname === "/api/portal/timeline") {
       body = { data: { entries: [], total: 0 } };
     } else if (pathname === "/api/portal/messages") {
       body = { data: { messages: [], total: 0, unreadCount: 0 } };
     } else if (pathname === "/api/portal/documents") {
       body = { data: [] };
+    } else if (pathname === "/api/portal/notifications") {
+      body = { data: { notifications: [], unread_count: 0 } };
     } else if (pathname.includes("/api/blog")) {
       body = pathname.includes("homepage-hero")
         ? { articles: [] }

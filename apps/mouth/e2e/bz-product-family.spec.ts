@@ -87,6 +87,24 @@ async function seedSyntheticPortalSession(page: Page): Promise<void> {
       return;
     }
 
+    if (pathname === "/api/portal/notifications") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: { notifications: [], unread_count: 0 },
+        }),
+      });
+      return;
+    }
+
+    if (pathname === "/api/team/members") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+      return;
+    }
+
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ success: true, data: {} }),
