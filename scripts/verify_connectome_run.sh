@@ -50,7 +50,14 @@ fi
 # above). So the count is measured against the last-known origin/main in the
 # local object store, which is itself a lower bound — say so rather than imply
 # precision the measurement does not have.
+#
+# FRESHNESS_NOTE carries the same caveat to the ALERT. Writing it only to stderr
+# put it in a log nobody reads, while the Telegram message — the one surface a
+# human actually sees — stayed identical whether the census was today's or 258
+# commits old: a confident P0 judged on an old map, with nothing saying so. The
+# caveat has to travel with the verdict, not sit next to it.
 BEHIND=""
+FRESHNESS_NOTE=""
 if [[ "$BRANCH" == "main" || "$BRANCH" == "deploy/main" ]]; then
     BEHIND="$(git -C "$REPO_ROOT" rev-list --count HEAD..origin/main 2>/dev/null || echo "")"
 fi
@@ -58,8 +65,12 @@ if [[ -z "$BEHIND" ]]; then
     # No origin/main ref locally, or git failed. CANNOT-VERIFY is not CLEAN:
     # never let "I could not check" read as "nothing to report" (W106b).
     echo "$LOG_PREFIX WARN: could not measure checkout distance from origin/main — verdicts below are of UNKNOWN freshness" >&2
+    FRESHNESS_NOTE="⚠️ checkout freshness UNKNOWN (could not compare to origin/main) — these verdicts may be stale
+"
 elif (( BEHIND > 0 )); then
     echo "$LOG_PREFIX WARN: $REPO_ROOT is >= $BEHIND commits behind origin/main — every verdict below is judged against THAT vintage of the census, not today's. Do NOT pull here (sibling-race): refresh the checkout from an interactive session on this machine." >&2
+    FRESHNESS_NOTE="⚠️ judged on a census >= $BEHIND commits behind origin/main — a cured edge can still show here
+"
 fi
 
 # ── python: backend venv first (PyYAML guaranteed), else system if yaml works ─
@@ -84,26 +95,55 @@ if [[ $RC -eq 2 ]]; then
     exit 2
 fi
 
-# ── Telegram alert on REGRESSED (deadman convention — never hardcode token) ──
+# ── alert on REGRESSED — through the ONE gateway, never a bare curl ──────────
+#
+# What the bare curl got wrong, beyond duplicating the token chain:
+#   * it judged DELIVERY BY EXIT CODE. `curl -sS` (no --fail) exits 0 whenever
+#     the server answers at all — including HTTP 200 carrying
+#     {"ok":false,"description":"chat not found"} and 401 after a token
+#     rotation. A REFUSED alert read as a delivered one; the alarm was, by
+#     construction, unable to report its own silence (W104).
+#   * a weekly guardian that stays red re-sends the identical message every
+#     Monday until nobody reads any of them. tg_notify dedups by key.
+# The gateway judges the reply body, spools an unsendable P0 as `p0_unsent` for
+# the next digest, and is contracted never to fail its caller.
 if [[ $RC -eq 1 ]]; then
-    if [[ -f "$HOME/.nuzantara-secrets.env" ]]; then
-        # shellcheck disable=SC1091
-        source "$HOME/.nuzantara-secrets.env"
+    # `head` is a DISPLAY cap. Printing 10 of 23 with nothing saying so is how a
+    # truncated list gets read as a complete one (W97) — so count first, cap
+    # second, and declare the gap when there is one.
+    REGRESSED_ALL="$(printf '%s\n' "$OUT" | grep -a 'REGRESSED ')"
+    N_REGRESSED="$(printf '%s\n' "$REGRESSED_ALL" | grep -ac . || true)"
+    SHOWN=10
+    REGRESSED_LINES="$(printf '%s\n' "$REGRESSED_ALL" | head -"$SHOWN")"
+    TRUNC_NOTE=""
+    if (( N_REGRESSED > SHOWN )); then
+        TRUNC_NOTE=" (showing $SHOWN of $N_REGRESSED)"
     fi
-    TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-${BALIZEROBOT_TOKEN:-}}"
-    TELEGRAM_CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-1125336968}}}"
-    REGRESSED_LINES="$(printf '%s\n' "$OUT" | grep -a 'REGRESSED ' | head -10)"
-    if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
-        MSG="connectome REGRESSED on $(hostname -s) $(date '+%Y-%m-%d %H:%M')
-${REGRESSED_LINES}
+
+    MSG="connectome REGRESSED on $(hostname -s) $(date '+%Y-%m-%d %H:%M')${TRUNC_NOTE}
+${FRESHNESS_NOTE}${REGRESSED_LINES}
 state: ~/.agent/decisions/state/verify_connectome.json"
-        curl -sS -m 15 -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${MSG}" >/dev/null \
-            || echo "$LOG_PREFIX WARN: telegram send failed" >&2
+
+    # The alarm must not run on the interpreter whose breakage it may have to
+    # report: PYBIN above can BE the venv under test, and resolving `python3`
+    # from PATH after touching it is how an alarm inherits the failure mode of
+    # the thing it reports (W108). Absolute, system-first, stdlib is all the
+    # gateway needs.
+    NOTIFY_PY=""
+    for _cand in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        if [[ -x "$_cand" ]]; then NOTIFY_PY="$_cand"; break; fi
+    done
+    NOTIFY="$REPO_ROOT/scripts/tg_notify.py"
+
+    if [[ -z "$NOTIFY_PY" || ! -f "$NOTIFY" ]]; then
+        # Armed to nothing is worse than unarmed if it is silent about it (W81):
+        # say WHICH half is missing, and put the alert in the log at least.
+        echo "$LOG_PREFIX WARN: REGRESSED but the alert gateway is unusable (python3=${NOTIFY_PY:-NOT-FOUND} gateway=$NOTIFY) — log-only below" >&2
+        printf '%s\n' "$MSG" >&2
     else
-        echo "$LOG_PREFIX WARN: REGRESSED but no TELEGRAM_BOT_TOKEN — log-only" >&2
+        "$NOTIFY_PY" "$NOTIFY" --tier p0 --source verify-connectome \
+            --dedup-key "connectome-regressed-$(hostname -s)" "$MSG" \
+            || echo "$LOG_PREFIX WARN: tg_notify exited non-zero, which its contract forbids — treat the alert as possibly lost" >&2
     fi
 fi
 
