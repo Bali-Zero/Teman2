@@ -101,9 +101,11 @@ describe("SystemPulse", () => {
     expect(container.querySelector(".sr-only")).toBeNull();
   });
 
-  it("renders a defined empty root when services is empty", () => {
-    const { container } = render(<SystemPulse services={[]} />);
+  it("renders an explicit empty state when services is empty", () => {
+    const { container, getByText } = render(<SystemPulse services={[]} />);
     expect(container.querySelector("[data-role='system-pulse']")).toBeTruthy();
+    expect(getByText("No health signal available.")).toBeTruthy();
+    expect(getByText("Waiting for the next probe.")).toBeTruthy();
     expect(
       container.querySelectorAll("[data-role='service-row']"),
     ).toHaveLength(0);

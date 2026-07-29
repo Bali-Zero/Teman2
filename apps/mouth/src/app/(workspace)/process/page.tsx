@@ -1113,8 +1113,12 @@ export default function PratichePage() {
         <div
           role="region"
           aria-label="Process board"
-          className="grid grid-flow-col auto-cols-[minmax(280px,1fr)] gap-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-2 xl:grid-flow-row xl:auto-cols-auto xl:grid-cols-5 xl:overflow-visible"
+          className="relative grid grid-flow-col auto-cols-[85vw] gap-4 overflow-x-auto overscroll-x-contain scroll-px-1 snap-x snap-mandatory pb-2 pt-6 sm:auto-cols-[minmax(280px,1fr)] xl:grid-flow-row xl:auto-cols-auto xl:grid-cols-5 xl:overflow-visible xl:pt-0"
         >
+          <p className="absolute right-1 top-0 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-text-2)] xl:hidden">
+            Swipe to explore stages
+            <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </p>
           {COLUMN_ORDER.map((statusKey) => {
             const colors = COLUMN_COLORS[statusKey];
             const columnPractices = practicesByStatus[statusKey] || [];
@@ -1968,8 +1972,13 @@ export default function PratichePage() {
       {/* Info Footer */}
       <div className="text-center py-8">
         <p className="text-xs text-[var(--bz-text-2)]">
-          Pro Tip: Right-click or use the menu on cards to quickly change
-          process status.
+          <span className="sm:hidden">
+            Tap a card to open it. Swipe horizontally to review every stage.
+          </span>
+          <span className="hidden sm:inline">
+            Pro Tip: Right-click or use the menu on cards to quickly change
+            process status.
+          </span>
         </p>
       </div>
 

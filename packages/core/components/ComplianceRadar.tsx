@@ -116,6 +116,20 @@ const TIME_CRITICAL_STYLE: CSSProperties = {
   color: "var(--state-danger)",
 };
 
+const EMPTY_STYLE: CSSProperties = {
+  margin: "18px 0 12px",
+  padding: "12px 14px",
+  borderRadius: 10,
+  border:
+    "1px solid color-mix(in srgb, var(--state-success) 28%, var(--border-default))",
+  background:
+    "color-mix(in srgb, var(--state-success) 8%, var(--surface-raised))",
+  color: "var(--state-success)",
+  fontSize: 12,
+  fontWeight: 600,
+  textAlign: "center",
+};
+
 /**
  * ComplianceRadar — severity-ranked alert rows for the kita workspace
  * (GARUDA OS concept "Compliance Radar" panel). Funnel-agnostic: reads only
@@ -146,6 +160,15 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
       }
       style={ROOT_STYLE}
     >
+      {ordered.length === 0 && (
+        <div
+          role="status"
+          data-role="compliance-radar-empty"
+          style={EMPTY_STYLE}
+        >
+          No active compliance alerts.
+        </div>
+      )}
       {ordered.map((alert, i) => {
         const critical = alert.severity === "critical";
         return (

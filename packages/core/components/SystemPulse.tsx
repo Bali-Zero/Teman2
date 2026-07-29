@@ -101,6 +101,14 @@ const BAR_FILL_BASE_STYLE: CSSProperties = {
   borderRadius: 2,
 };
 
+const EMPTY_STYLE: CSSProperties = {
+  padding: "26px 0 18px",
+  textAlign: "center",
+  color: "var(--text-secondary)",
+  fontSize: 12,
+  lineHeight: 1.5,
+};
+
 /**
  * SystemPulse — live-stack service rows for the kita workspace (GARUDA OS
  * concept "System Pulse" panel). Funnel-agnostic: reads only semantic state /
@@ -117,6 +125,14 @@ export const SystemPulse: FC<SystemPulseProps> = ({ services, className }) => {
       className={className ? `system-pulse ${className}` : "system-pulse"}
       style={ROOT_STYLE}
     >
+      {services.length === 0 && (
+        <div role="status" data-role="system-pulse-empty" style={EMPTY_STYLE}>
+          No health signal available.
+          <span style={{ display: "block", fontSize: 10 }}>
+            Waiting for the next probe.
+          </span>
+        </div>
+      )}
       {services.map((svc, i) => {
         const color = STATUS_COLOR[svc.status];
         const pct =

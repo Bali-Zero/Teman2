@@ -86,6 +86,9 @@ describe("MessagesPage – /portal/messages alias", () => {
     expect(h1).not.toBeNull();
     expect(h1!.textContent).toBe("Messages");
     expect(h1!.style.fontFamily).toBe("var(--font-serif)");
+    expect((h1!.closest("section") as HTMLElement).style.background).toBe(
+      "var(--bz-base)",
+    );
     // Initial fetch fired → the alias is wired to the real page, not a stub
     expect(mockGetMessages).toHaveBeenCalledTimes(1);
   });
