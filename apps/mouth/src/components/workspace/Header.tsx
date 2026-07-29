@@ -18,9 +18,9 @@ interface HeaderProps {
 
 const SEVERITY_DOT: Record<string, string> = {
   critical: "var(--bz-red, #e45c5c)",
-  high: "var(--bz-accent, #d4845a)",
-  medium: "#e8b84a",
-  low: "var(--bz-blue, #4a8ec4)",
+  high: "var(--bz-copper-text)",
+  medium: "var(--state-warning)",
+  low: "var(--state-info)",
 };
 
 export function Header({
@@ -88,7 +88,7 @@ export function Header({
       className="sticky top-0 z-30 w-full border-b transition-all duration-300"
       style={{
         height: "var(--bz-header-height, 48px)",
-        background: "rgba(19, 19, 21, 0.65)",
+        background: "var(--nav-bg)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
         borderColor: "var(--bz-border)",
@@ -99,7 +99,7 @@ export function Header({
         <button
           ref={mobileMenuToggleRef}
           onClick={onMobileMenuToggle}
-          className="md:hidden p-1.5 rounded-lg transition-colors"
+          className="md:hidden p-1.5 rounded-lg transition-colors hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
           style={{ color: "var(--bz-text-1)" }}
           aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           aria-expanded={isMobileMenuOpen}
@@ -140,7 +140,7 @@ export function Header({
         {/* WhatsApp badge */}
         {whatsappUnread > 0 && (
           <button
-            className="relative p-1.5 rounded-lg transition-colors hidden md:flex"
+            className="relative p-1.5 rounded-lg transition-colors hidden md:flex hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
             style={{ color: "var(--bz-text-2)" }}
             aria-label={`${whatsappUnread} unread WhatsApp`}
           >
@@ -158,7 +158,7 @@ export function Header({
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-1.5 rounded-lg transition-colors"
+            className="relative p-1.5 rounded-lg transition-colors hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
             style={{ color: "var(--bz-text-2)" }}
             aria-label="Notifications"
           >
@@ -181,7 +181,7 @@ export function Header({
               <div
                 className="absolute right-0 top-full mt-3 w-80 z-50 rounded-xl shadow-2xl border max-h-[420px] flex flex-col overflow-hidden transition-all duration-300"
                 style={{
-                  background: "rgba(32, 32, 36, 0.75)",
+                  background: "var(--surface-overlay)",
                   backdropFilter: "blur(24px)",
                   WebkitBackdropFilter: "blur(24px)",
                   borderColor: "var(--bz-border)",
@@ -218,7 +218,7 @@ export function Header({
                         <div
                           key={i}
                           className="h-12 rounded-lg animate-pulse"
-                          style={{ background: "rgba(255,255,255,0.04)" }}
+                          style={{ background: "var(--surface-raised)" }}
                         />
                       ))}
                     </div>
@@ -237,7 +237,7 @@ export function Header({
                           onClick={() =>
                             handleNotificationClick(n.actionUrl, n.id)
                           }
-                          className="w-full text-left p-2.5 rounded-lg transition-colors flex gap-2.5 items-start hover:bg-white/[0.04]"
+                          className="w-full text-left p-2.5 rounded-lg transition-colors flex gap-2.5 items-start hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                         >
                           {/* Severity dot */}
                           <span
@@ -278,7 +278,7 @@ export function Header({
                         setShowNotifications(false);
                         router.push("/notifications");
                       }}
-                      className="w-full text-center text-[10px] py-1.5 rounded-md transition-colors hover:bg-white/[0.04]"
+                      className="w-full text-center text-[10px] py-1.5 rounded-md transition-colors hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
                       style={{ color: "var(--bz-accent)" }}
                     >
                       View all notifications
