@@ -5,6 +5,13 @@ const KITA_ORIGIN = `http://kita.localhost:${E2E_PORT}`;
 const MY_ORIGIN = `http://my.localhost:${E2E_PORT}`;
 
 async function seedTheme(page: Page, theme?: string): Promise<void> {
+  await page.route("**/api/**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ data: {}, articles: [] }),
+    });
+  });
+
   await page.addInitScript((storedTheme) => {
     localStorage.removeItem("bz-theme");
     localStorage.removeItem("theme");
