@@ -22,6 +22,13 @@
 #     which is the thing that matters. Removing both does fail, above.
 #   * grep exiting >=2                       -> 0 fail. Genuinely UNCOVERED: this corpus has no
 #     way to make grep itself error. The branch is written fail-open and reviewed, not proven.
+#   * pointer reverted to a bare invocation  -> 4 fail, every one as `rc=127 (DEPLOYMENT ERROR)`.
+#     That IS the 2026-07-29 incident, reproduced. See scripts/ci/vercel_ignore_build_step.sh.
+#   * `git init` dropped from the pointer sandbox -> 4 fail as "sandbox leaked". Worth stating
+#     why that check exists at all: setting TMPDIR inside the repo does NOT trip it, because each
+#     sandbox runs its own `git init` and therefore is its own toplevel. So the corpus cannot
+#     produce a positive by placement alone, and the guard is proven only by this mutation — it
+#     defends against a future refactor dropping the init, not against a hostile TMPDIR.
 
 set -uo pipefail
 
@@ -128,6 +135,83 @@ PREV=$(git -C "$WORK" rev-parse HEAD)
 commit "apps/mouth/app/late.tsx" "frontend arrives later in the branch"
 VERCEL_GIT_COMMIT_REF=docs/ledger VERCEL_GIT_PREVIOUS_SHA="$PREV" \
   run BUILD "second deploy, frontend delta"
+
+echo
+echo "=== THE EXIT CONTRACT: nothing may leave this script with a status other than 0 or 1"
+# Vercel reads exit 0 as skip and exit 1 as build. Every OTHER status fails the deployment
+# outright — which is what happened on 2026-07-29, 9 deployments in ERROR, because a missing
+# file exited 127 and 127 was assumed to mean "build". A later edit adding `exit 2` for some
+# third outcome would look entirely reasonable and would break production deploys, so the
+# statuses are pinned statically rather than left to review.
+BAD=$(grep -oE '(^|[;{[:space:]])exit [0-9]+' "$SCRIPT" | grep -oE '[0-9]+$' | grep -vE '^[01]$' | sort -u)
+if [ -z "$BAD" ]; then
+  PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "guard exits only 0 or 1" "clean"
+else
+  FAIL=$((FAIL+1)); printf '  FAIL  %-58s found: %s\n' "guard exits only 0 or 1" "$(echo "$BAD" | tr '\n' ' ')"
+fi
+
+echo
+echo "=== THE POINTER: the command pasted into Vercel must normalise every other status to 1"
+# scripts/ci/vercel_ignore_build_step.sh holds the literal value of the project's
+# commandForIgnoringBuildStep. Testing the guard alone would have caught none of the incident:
+# the guard was innocent, the pointer was the defect, and the pointer was dashboard state that
+# no file described. It is executed here against exactly the cases that broke production.
+POINTER_FILE="$(dirname "$SCRIPT")/vercel_ignore_build_step.sh"
+[ -f "$POINTER_FILE" ] || { echo "FATAL: pointer file not found at $POINTER_FILE"; exit 2; }
+POINTER=$(grep -vE '^\s*(#|$)' "$POINTER_FILE")
+POINTER_LINES=$(printf '%s\n' "$POINTER" | grep -c .)
+
+if [ "$POINTER_LINES" -eq 1 ]; then
+  PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "pointer file holds exactly one command" "1 line"
+else
+  FAIL=$((FAIL+1)); printf '  FAIL  %-58s got %s lines\n' "pointer file holds exactly one command" "$POINTER_LINES"
+fi
+
+# The API rejects >256 chars with invalid_command_for_ignoring_build_step, and rejects the
+# WHOLE PATCH body with it — a second setting sent alongside is silently lost too.
+PLEN=${#POINTER}
+if [ "$PLEN" -le 256 ]; then
+  PASS=$((PASS+1)); printf '  ok    %-58s %s chars\n' "pointer fits the 256-char API limit" "$PLEN"
+else
+  FAIL=$((FAIL+1)); printf '  FAIL  %-58s %s chars (API rejects >256)\n' "pointer fits the 256-char API limit" "$PLEN"
+fi
+
+run_pointer() { # run_pointer <expected: BUILD|SKIP> <label> <script-body|MISSING>
+  local want="$1" label="$2" body="$3" dir got rc
+  dir=$(mktemp -d "$ROOT/ptr.XXXXXX")
+  git init -q -b main "$dir"
+  mkdir -p "$dir/scripts/ci"
+  if [ "$body" != "MISSING" ]; then
+    printf '%s\n' "$body" > "$dir/scripts/ci/vercel_should_build.sh"
+  fi
+  # The pointer resolves its target through `git rev-parse --show-toplevel`. If this temp repo
+  # were nested inside the real checkout — a CI runner whose TMPDIR lives under the workspace
+  # would do it — that call would resolve to the REAL repo, the "script absent" case would
+  # silently execute the REAL guard, and all six cases would pass while testing nothing.
+  # Assert the sandbox is the sandbox instead of assuming it.
+  local top
+  top=$( cd "$dir" && git rev-parse --show-toplevel 2>/dev/null )
+  if [ "$(cd "$dir" && pwd -P)" != "$(cd "$top" 2>/dev/null && pwd -P)" ]; then
+    FAIL=$((FAIL+1)); printf '  FAIL  %-58s sandbox leaked: toplevel=%s\n' "$label" "$top"
+    return
+  fi
+  ( cd "$dir" && eval "$POINTER" >/dev/null 2>&1 ); rc=$?
+  case $rc in 1) got=BUILD ;; 0) got=SKIP ;; *) got="rc=$rc (DEPLOYMENT ERROR)" ;; esac
+  if [ "$got" = "$want" ]; then
+    PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "$label" "$got"
+  else
+    FAIL=$((FAIL+1)); printf '  FAIL  %-58s want %s, got %s\n' "$label" "$want" "$got"
+  fi
+}
+
+# The incident, reproduced. Before the wrapper this was rc=127 and every deployment failed.
+run_pointer BUILD "script absent (the 2026-07-29 incident)"            MISSING
+run_pointer BUILD "script with a syntax error (bash exits 2)"          'if then fi'
+run_pointer BUILD "script exiting 127 for any other reason"            'exit 127'
+run_pointer BUILD "script killed by a signal"                          'kill -TERM $$'
+# And the two legitimate verdicts must still pass through untouched.
+run_pointer BUILD "script says build"                                  'exit 1'
+run_pointer SKIP  "script says skip"                                   'exit 0'
 
 echo
 echo "-------------------------------------------------------------"

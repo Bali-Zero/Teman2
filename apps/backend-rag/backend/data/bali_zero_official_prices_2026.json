@@ -75,14 +75,14 @@
         "icon_id": "visa-art"
       },
       "C8A,B": {
-        "name": "C8A,B",
+        "name": "C8A,B Sports Events",
         "price": "4.000.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Single-entry visa for journalism and media activities (categories C8A, C8B), valid for short-term assignments in Indonesia.",
-        "icon_id": "visa-business"
+        "description_en": "Single-entry visa for international sports events in Indonesia: C8A covers athletes and team members competing in government-invited or international championship events, C8B covers sports officials, referees and judges.",
+        "icon_id": "visa-sports"
       },
       "C10 Speaker Visa": {
         "name": "C10 Speaker Visa",

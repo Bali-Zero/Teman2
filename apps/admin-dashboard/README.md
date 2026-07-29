@@ -1,16 +1,42 @@
-# Admin Dashboard — Bali Zero Kita
+# Nuzantara Admin Dashboard
 
-Local-only ops dashboard. Runs on port 3002 via `start_dashboard.sh`.
+Local-only Next.js dashboard to inspect and control Nuzantara data. Runs on port 3002 via `start_dashboard.sh`.
 
-## Environment Variables
+## Features
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `BACKEND_URL` | ✅ | Backend API URL. Defaults to `https://nuzantara-rag.fly.dev` if unset. |
+- **PostgreSQL**: Browse tables, row counts, and paginated data.
+- **Qdrant**: Browse collections, vector counts, and payload inspection.
 
-## Running
+## Configuration
+
+The application is auto-configured to use:
+
+- **PostgreSQL**: `localhost:15432` (Requires Fly Proxy)
+- **Qdrant**: `https://nuzantara-qdrant.fly.dev` (Production)
+
+## ⚠️ Important: Connecting to Database
+
+Since the PostgreSQL database is hosted on Fly.io, you **MUST** open a tunnel before running the dashboard:
 
 ```bash
-./start_dashboard.sh   # starts on port 3002 via fly proxy
+# In a separate terminal run:
+fly proxy 15432:5432 -a nuzantara-postgres
 ```
+
+Once the proxy is running, the dashboard can connect to your live data.
+
+## Getting Started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Build the project:
+   ```bash
+   npm run build
+   ```
+3. Start the server:
+   ```bash
+   npm run dev
+   ```
+4. Access at `http://localhost:3000`
