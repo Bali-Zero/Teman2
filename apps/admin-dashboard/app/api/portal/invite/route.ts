@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
+const BACKEND_URL = process.env.BACKEND_URL ?? "https://nuzantara-rag.fly.dev";
 
 export async function POST(request: Request) {
   try {
@@ -35,9 +35,13 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const clientId = searchParams.get("clientId");
-    if (!clientId) {
-      return NextResponse.json({ error: "clientId required" }, { status: 400 });
+    const clientIdRaw = searchParams.get("clientId");
+    const clientId = clientIdRaw ? parseInt(clientIdRaw, 10) : NaN;
+    if (!clientIdRaw || !Number.isInteger(clientId) || clientId <= 0) {
+      return NextResponse.json(
+        { error: "clientId must be a positive integer" },
+        { status: 400 },
+      );
     }
 
     const authHeader = request.headers.get("authorization") ?? "";
