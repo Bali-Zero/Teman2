@@ -117,6 +117,44 @@ def test_frontmatter_without_the_key_gets_the_key_inside_the_existing_block(tmp_
     assert _r1_verdict(report).returncode == 0
 
 
+def test_a_research_deliverable_is_REFUSED_not_stamped_as_a_machine_artifact(tmp_path):
+    """The exemption CLAIMS "generated artifact, not a research deliverable". On a
+    document that cites sources that claim is false, and the R1 gate would then
+    pass it on a false basis.
+
+    Shape taken from the real one: research/nb-health/2026-05-28-nb3-kbli-corrections.md
+    is a human correction report verified against a 623-page primary source, sitting
+    in the curator's own OUTPUT directory with frontmatter but no R1 key — exactly
+    the shape --fix rewrites. Judged by location it is a machine artifact; judged by
+    what it IS, it is not.
+    """
+    report = _report(tmp_path, "r.md")
+    original = (
+        "---\ndate: 2026-05-28\ndomain: nb-health\ntype: correction-report\n"
+        "discovered_by: deep-researcher\nsources:\n  - PRIMARY: Peraturan BPS 7/2025\n"
+        f"---\n\n{BODY}"
+    )
+    report.write_text(original, encoding="utf-8")
+
+    proc = _run_gate(report, "--fix")
+    assert proc.returncode == REFUSED
+    assert "REFUSING TO EXEMPT" in proc.stderr
+    assert "sources" in proc.stderr and "discovered_by" in proc.stderr
+    assert report.read_text(encoding="utf-8") == original, "a deliverable must not be stamped"
+
+
+def test_a_plain_health_snapshot_is_still_repaired(tmp_path):
+    """Innocence for the refusal above: the discriminator must not swallow the
+    ordinary case the gate exists for — frontmatter, no R1 key, no deliverable
+    markers — or the refusal has quietly disarmed the whole organ."""
+    report = _report(tmp_path, "r.md")
+    report.write_text(f"---\ndate: 2026-07-27\ndomain: nb-health\n---\n\n{BODY}", encoding="utf-8")
+
+    assert _run_gate(report, "--fix").returncode == 0
+    assert "adversarial_review: exempt-machine-report" in report.read_text(encoding="utf-8")
+    assert _r1_verdict(report).returncode == 0
+
+
 def test_a_declaration_the_gate_rejects_is_REFUSED_not_laundered(tmp_path):
     """`adversarial_review: glm` is an attestation that a seat reviewed this file
     (2026-07-25 and 07-26 carry exactly that). Overwriting a broken one with a

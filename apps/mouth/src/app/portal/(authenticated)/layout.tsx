@@ -36,6 +36,17 @@ export default function PortalLayout({
     avatar: undefined as string | undefined,
   });
 
+  // Arm operative-light theme: sets data-theme on <html> so the
+  // [data-theme="operative-light"] block in globals.css activates.
+  // Without this, :root dark values apply (--tx-pure: #ffffff → invisible
+  // on cream background, WCAG contrast 1.05:1).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", "operative-light");
+    return () => {
+      document.documentElement.removeAttribute("data-theme");
+    };
+  }, []);
+
   // Load user profile
   // Uses portal-scoped endpoint (/api/portal/profile) because /api/auth/profile
   // 500s for role=client — see commit history. Falls back to storedProfile name
