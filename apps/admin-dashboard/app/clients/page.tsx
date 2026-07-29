@@ -32,7 +32,7 @@ export default function ClientsPage() {
   const fetchClients = async (p = 1) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/postgres/query?table=clients&page=${p}`);
+      const res = await fetch(`/api/clients?page=${p}`);
       const data = await res.json();
       setClients(data.rows ?? []);
     } catch (e) {
