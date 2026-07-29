@@ -160,6 +160,53 @@ async function seedSyntheticReviewData(page: Page): Promise<void> {
         passportExpiringSoon: 2,
         silent30d: 4,
       };
+    } else if (pathname === "/api/admin/system-health") {
+      body = {
+        overall_status: "healthy",
+        timestamp: "2026-07-29T08:00:00Z",
+        checks: {
+          Database: {
+            name: "Database",
+            status: "ok",
+            message: "Connected",
+            latency_ms: 18,
+          },
+          Qdrant: {
+            name: "Qdrant",
+            status: "ok",
+            message: "Index ready",
+            latency_ms: 24,
+          },
+          Redis: {
+            name: "Redis",
+            status: "ok",
+            message: "Cache ready",
+            latency_ms: 11,
+          },
+          API: {
+            name: "API",
+            status: "ok",
+            message: "Serving requests",
+            latency_ms: 32,
+          },
+          "CRM Models": {
+            name: "CRM Models",
+            status: "ok",
+            message: "Models loaded",
+            latency_ms: null,
+          },
+          "Collection Manager": {
+            name: "Collection Manager",
+            status: "warning",
+            message: "Sync queued",
+            latency_ms: null,
+          },
+        },
+        system_metrics: {},
+        service_registry: [],
+      };
+    } else if (pathname === "/api/compliance/alerts") {
+      body = { items: [], limit: 6, offset: 0 };
     } else if (pathname.includes("assignee") || pathname.includes("team")) {
       body = [];
     } else if (pathname === "/api/portal/dashboard") {
@@ -197,18 +244,13 @@ async function seedSyntheticReviewData(page: Page): Promise<void> {
     } else if (pathname === "/api/portal/messages") {
       body = { data: { messages: [], total: 0, unreadCount: 0 } };
     } else if (pathname === "/api/portal/documents") {
-      body = { data: [] };
+      body = { success: true, data: [] };
     } else if (pathname === "/api/portal/notifications") {
       body = { data: { notifications: [], unread_count: 0 } };
     } else if (pathname.includes("/api/blog")) {
       body = pathname.includes("homepage-hero")
         ? { articles: [] }
         : { articles: [] };
-    } else if (
-      pathname.includes("system-health") ||
-      pathname.includes("compliance")
-    ) {
-      body = [];
     }
 
     await route.fulfill({
