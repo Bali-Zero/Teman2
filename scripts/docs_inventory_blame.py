@@ -91,14 +91,80 @@ def row_map(content: str) -> dict[str, str]:
     return out
 
 
+# Column order of the inventory table, from its header row:
+#   File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on |
+#   refs_in | broken | drift | cluster | action
+_COL_STATUS = 1
+_COL_ELIGIBLE_ON = 3
+_COL_FLIPPED_ON = 4
+_COL_ACTION = 9
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _cells(row: str) -> list[str]:
+    """The row's cells, without the leading/trailing pipe."""
+    return [c.strip() for c in row.strip().strip("|").split("|")]
+
+
+def _is_earned_flip(committed_row: str, generated_row: str) -> bool:
+    """True when the only difference is an orphan flip the row itself justifies.
+
+    THE DEFECT THIS EXISTS FOR (measured 2026-07-29). P3-prime deliberately moved
+    the wall-clock decision "has this doc's orphan_eligible_on passed?" INTO the
+    scheduled refresh organ: `docs_inventory_regen.sh --organ` advances flips,
+    and the bare/default invocation the GATE uses is `--gate-consistent`, which
+    never invents one. But the comparison below was on the whole row, so the
+    three cells a flip moves — Status, orphan_flipped_on, action — read as drift.
+    Every flip the organ exists to advance was charged to the organ's own PR.
+
+    Not theoretical. Of the six refresh PRs the organ has opened, the two that
+    merged (#3411, #3425) carried ZERO flips; every one that carried a flip died
+    (#3405 with 65, #3456 and #3463 with 9). The organ could only ever deliver
+    the half of its job that did not matter.
+
+    The test is the ENTITY, not the author: a flip is legitimate because the
+    row's own deterministic facts justify it, never because a bot wrote it. So:
+    forward flip only (LIVE -> ARCHIVED), every other cell identical, and the
+    flip date not EARLIER than the eligibility date.
+
+    It stays clock-free on purpose — the two dates being compared are both cells
+    of the row, so no "today" enters the gate (`docs_audit.py`'s eligibility
+    facts are pure functions of git history, and
+    test_docs_inventory_render_is_clock_free.py pins that property). And the
+    justification cannot be forged: `orphan_eligible_on` is itself compared
+    verbatim against the generated row, so a PR that back-dates it to license a
+    flip changes a cell outside the exempt three and is charged in full.
+    """
+    a, b = _cells(committed_row), _cells(generated_row)
+    if len(a) != len(b) or len(a) <= _COL_ACTION:
+        return False
+    exempt = {_COL_STATUS, _COL_FLIPPED_ON, _COL_ACTION}
+    if any(a[i] != b[i] for i in range(len(a)) if i not in exempt):
+        return False
+    if a[_COL_STATUS] != "ARCHIVED" or b[_COL_STATUS] != "LIVE":
+        return False
+    flipped, eligible = a[_COL_FLIPPED_ON], a[_COL_ELIGIBLE_ON]
+    if not _DATE_RE.match(flipped) or not _DATE_RE.match(eligible):
+        return False
+    # ISO dates compare correctly as strings; no parsing, no timezone, no clock.
+    return flipped >= eligible
+
+
 def drifting_keys(committed: str, generated: str) -> set[str]:
     """Keys whose row differs between the committed and generated tables.
 
     Includes rows added or removed, not only rows whose cells changed — a doc
     that appears in one table and not the other is drift of the loudest kind.
+
+    An EARNED orphan flip is not drift — see `_is_earned_flip`. Every other
+    difference, including an unearned or backwards flip, still counts.
     """
     a, b = row_map(committed), row_map(generated)
-    changed = {k for k in a.keys() & b.keys() if a[k] != b[k]}
+    changed = {
+        k
+        for k in a.keys() & b.keys()
+        if a[k] != b[k] and not _is_earned_flip(a[k], b[k])
+    }
     return changed | (a.keys() ^ b.keys())
 
 

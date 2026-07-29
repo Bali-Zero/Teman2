@@ -189,3 +189,122 @@ def test_added_and_removed_rows_both_count_as_drift(tmp_path):
     b = _table({k: v for k, v in BASE_ROWS.items() if k != "docs/C.md"})
     assert blame.drifting_keys(a, b) == {"docs/C.md"}
     assert blame.drifting_keys(b, a) == {"docs/C.md"}
+
+
+# ---------------------------------------------------------------------------
+# The earned-flip exemption (2026-07-29).
+#
+# Rows here carry the REAL column layout of docs/DOCS_INVENTORY.md, because the
+# exemption is positional:
+#   File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on |
+#   refs_in | broken | drift | cluster | action
+# ---------------------------------------------------------------------------
+
+_LIVE = "LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | —"
+_ARCHIVED = (
+    "ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | "
+    "archive: orphan, last_touched=2026-04-29, refs=0"
+)
+
+
+def _full_table(rows: dict[str, str]) -> str:
+    body = "\n".join(f"| {p} | {cells} |" for p, cells in rows.items())
+    return (
+        "# Documentation Inventory\n\n"
+        "| Status   | Count | % |\n"
+        "| -------- | ----: | -: |\n"
+        "| LIVE     |   620 | 66% |\n\n"
+        "| File | Status | last_touched_date | orphan_eligible_on | "
+        "orphan_flipped_on | refs_in | broken | drift | cluster | action |\n"
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
+        + body
+        + "\n"
+    )
+
+
+def test_innocence_an_earned_orphan_flip_is_not_drift() -> None:
+    """The exact shape of PR #3463, which this exemption exists for.
+
+    The organ regenerates with `--organ` (advances flips); the gate regenerates
+    gate-consistent (never invents one). Comparing whole rows charged the organ
+    for the one decision P3-prime deliberately moved into it — measured across
+    all six refresh PRs: the two that merged carried zero flips, every one that
+    carried a flip died.
+    """
+    committed = _full_table({"docs/audits/x.md": _ARCHIVED})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert blame.drifting_keys(committed, generated) == set()
+
+
+def test_guilt_a_flip_dated_before_its_eligibility_is_still_drift() -> None:
+    """The exemption is earned by the row's own facts, not by its shape.
+
+    A flip stamped EARLIER than `orphan_eligible_on` is the organ (or a PR)
+    archiving a doc before it was eligible — the deterministic fact says no.
+    """
+    early = _ARCHIVED.replace("2026-07-29", "2026-07-01", 1)
+    committed = _full_table({"docs/audits/x.md": early})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_backwards_flip_is_still_drift() -> None:
+    """ARCHIVED -> LIVE is not a flip this organ advances; it is a regression."""
+    committed = _full_table({"docs/audits/x.md": _LIVE})
+    generated = _full_table({"docs/audits/x.md": _ARCHIVED})
+    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_flip_that_also_edits_another_cell_is_still_drift() -> None:
+    """Only Status, orphan_flipped_on and action are exempt.
+
+    This is what makes the justification unforgeable: a PR that back-dates
+    `orphan_eligible_on` to license its own flip changes a cell outside the
+    exempt three, so the row is charged in full rather than waved through.
+    """
+    forged = _ARCHIVED.replace("| 2026-07-28 |", "| 2026-01-01 |", 1)
+    committed = _full_table({"docs/audits/x.md": forged})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_guilt_a_docs_edit_without_a_regen_is_untouched_by_the_exemption() -> None:
+    """The gate's whole reason to exist must survive the new exemption.
+
+    A row whose ref count moved (a PR added a link and did not regenerate) has
+    nothing to do with flips and must stay charged.
+    """
+    stale = _LIVE.replace("| 0 | 0 | no |", "| 4 | 0 | no |", 1)
+    committed = _full_table({"docs/audits/x.md": stale})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_a_malformed_or_short_row_is_never_waved_through() -> None:
+    """Fail closed: a row this parser cannot read is drift, not an exemption."""
+    committed = _full_table({"docs/audits/x.md": "ARCHIVED | 2026-04-29"})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+
+
+def test_scar_pin_the_eight_rows_of_pr_3463() -> None:
+    """The measured incident, kept as data.
+
+    These are the eight documents `inventory-check` charged to #3463 on
+    2026-07-29 — the run said "inventory rows this PR makes STALE: 8" and named
+    them. With the exemption they are not drift; without it they all are.
+    """
+    paths = [
+        "docs/audits/2026-04-29-zero-crash-audit/11_brainstorms/00_INDEX.md",
+        "docs/audits/2026-04-29-zero-crash-audit/_codex_iteration_1_section.md",
+        "docs/audits/2026-04-29-zero-crash-audit/_codex_iteration_2.md",
+        "docs/audits/2026-04-29-zero-crash-audit/_codex_iteration_3_final.md",
+        "docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S4-final.md",
+        "docs/innervation-2026-04-29/99c_w0a_bis_kickoff.md",
+        "docs/ops/2026-04-30-followup-cell-cron-sensor.md",
+        "docs/ops/2026-04-30-followup-heartbeat-telegram-html.md",
+    ]
+    committed = _full_table({p: _ARCHIVED for p in paths})
+    generated = _full_table({p: _LIVE for p in paths})
+    assert len(blame.row_map(committed)) == 8, "the fixture itself stopped parsing"
+    assert blame.drifting_keys(committed, generated) == set()
