@@ -55,14 +55,37 @@
 #                                         Test-only override in practice.
 #   NUZ_PREPUSH_SUITE_LOCK_POLL=<s>      poll interval in seconds (default 2).
 #                                         Test-only override.
+#   NUZ_PREPUSH_SUITE_LOCK_HEARTBEAT=<s> seconds between "still waiting"
+#                                         heartbeats (default 30). Test-only
+#                                         override — the corpus needs a
+#                                         heartbeat inside a 3s window.
 #
 # Exit code: on success, propagates <command>'s own exit code UNCHANGED
 # (including a 128+N signal-death code, so an outer `TEST_RC -ge 128`
-# classification still works). On a timed-out lock acquisition, exits 1
-# itself with an actionable message — the wrapped command never even starts;
-# this NEVER silently skips the lock and runs anyway (cicatrix-superscar.md
-# family #2, "esiste != armato" — a guard that can silently disarm itself
-# is not a guard).
+# classification still works). On a timed-out lock acquisition, exits
+# LOCK_TIMEOUT_RC (75) itself with an actionable message — the wrapped command
+# never even starts; this NEVER silently skips the lock and runs anyway
+# (cicatrix-superscar.md family #2, "esiste != armato" — a guard that can
+# silently disarm itself is not a guard).
+#
+# Why 75 and not 1 (2026-07-29, measured): it used to exit 1, which is also
+# pytest's "tests failed". The caller could not tell the two apart, so a
+# saturation timeout — with the suite NEVER STARTED — printed
+# "❌ Python tests FAILED — push blocked" plus a pytest reproduce command.
+# Observed live twice the same evening on a 9-waiter M5. Anyone reading that
+# line had grounds to hunt a regression that does not exist, and the reproduce
+# command then passes, which reads as flakiness. Exactly the defect #45 fixed
+# for signal-death (128+N) one class over: the exit code is the reply, and
+# collapsing two replies into one value throws away the bit that tells the
+# truth. 75 is EX_TEMPFAIL from sysexits.h — "temporary failure, the user is
+# invited to retry" — which is precisely this condition.
+#
+# LIMITATION, stated rather than hidden: this steals one value out of the
+# wrapped command's own exit space. A <command> that itself exits 75 will be
+# misread by a caller as a lock timeout. Safe for the only caller in the tree
+# (.husky/pre-push wraps pytest, whose codes are 0-5 and are pinned as
+# pass-through by scripts/tests/test_prepush_suite_lock.sh); re-check this
+# line before wrapping anything else.
 
 set -u
 
@@ -82,7 +105,11 @@ fi
 
 TIMEOUT="${NUZ_PREPUSH_SUITE_LOCK_TIMEOUT:-4500}"
 POLL_INTERVAL="${NUZ_PREPUSH_SUITE_LOCK_POLL:-2}"
-HEARTBEAT_EVERY=30
+HEARTBEAT_EVERY="${NUZ_PREPUSH_SUITE_LOCK_HEARTBEAT:-30}"
+# EX_TEMPFAIL. Distinct from anything pytest returns (0-5) so the caller can
+# tell "never acquired the lock" from "the suite ran and failed". See the
+# Exit code block in the header.
+LOCK_TIMEOUT_RC=75
 
 START_TS=$(date +%s)
 LAST_HEARTBEAT=$START_TS
@@ -108,13 +135,25 @@ while :; do
 
     if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
         TIMEOUT_MIN=$((TIMEOUT / 60))
-        echo "❌ machine saturated — suite lock not acquired in ${TIMEOUT_MIN}m. Do NOT use --no-verify. Either retry later, or land this branch from an idle fleet machine (git bundle + push from pro/mini)." >&2
-        exit 1
+        echo "❌ machine saturated — suite lock not acquired in ${TIMEOUT_MIN}m. The suite NEVER RAN: this is not a verdict on your diff." >&2
+        echo "   Do NOT use --no-verify, and do NOT set NUZ_PREPUSH_SUITE_LOCK=0 — the wait is the queue working, not a fault." >&2
+        echo "   Retry later, or land from an idle fleet machine — but ONLY into a worktree made by scripts/agent_start.py." >&2
+        echo "   A worktree from a bare 'git worktree add' has no .husky/_ (it is gitignored and install-generated)," >&2
+        echo "   so its push runs NO pre-push hook at all: 2 seconds, exit 0, no output. Landing there is the --no-verify" >&2
+        echo "   this message just forbade, with extra steps. Measured 2026-07-29; see agent_start.py's SYMLINK_TARGETS." >&2
+        exit "$LOCK_TIMEOUT_RC"
     fi
 
     if [ $((NOW - LAST_HEARTBEAT)) -ge "$HEARTBEAT_EVERY" ]; then
-        HELD_MIN=$((ELAPSED / 60))
-        echo "⏳ waiting for this machine's backend-suite lock (held by PID ${HOLDER_PID:-unknown} for ${HELD_MIN}m)"
+        # Two DIFFERENT quantities, so say which is which. The old line read
+        # "held by PID X for Nm" while N was ELAPSED — the WAITER's own wait.
+        # Measured 2026-07-29: one waiter said "held ... for 38m" and another,
+        # same holder same minute, said "for 1m", while `ps` put the holder at
+        # 20m. A healthy sibling suite reads as hung, and "that lock is stale,
+        # kill it" is the action that reading invites — onto live work.
+        WAITED_MIN=$((ELAPSED / 60))
+        HOLDER_AGE="$(ps -o etime= -p "${HOLDER_PID:-0}" 2>/dev/null | tr -d ' ')"
+        echo "⏳ waited ${WAITED_MIN}m for this machine's backend-suite lock (holder PID ${HOLDER_PID:-unknown}, alive ${HOLDER_AGE:-unknown})"
         LAST_HEARTBEAT=$NOW
     fi
 

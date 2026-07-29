@@ -13,10 +13,17 @@
 # a lock must never outlive its holder, or a killed suite wedges the machine
 # forever instead of just failing that one push.
 #
-# Five cases, mirroring the brief's guilt/innocence/stale/timeout/kill-switch
-# split and this repo's own test_prepush_failclosed.sh style (real kills and
-# real dead PIDs over synthetic conditions wherever the property under test
-# is about a REAL process's fate, not just arithmetic).
+# Cases mirror the brief's guilt/innocence/stale/timeout/kill-switch split and
+# this repo's own test_prepush_failclosed.sh style (real kills and real dead
+# PIDs over synthetic conditions wherever the property under test is about a
+# REAL process's fate, not just arithmetic).
+#
+# 2026-07-29 added the exit-code and heartbeat honesty cases. Both pin the same
+# property from opposite sides: a message must not name a quantity it did not
+# measure. The timeout used to exit 1 (pytest's "tests failed") so saturation
+# printed "❌ Python tests FAILED" for a suite that never started, and the
+# heartbeat printed the WAITER's elapsed time as the HOLDER's hold. Each cure
+# is mutation-verified — revert it and a named case goes red.
 #
 # Run:  sh scripts/tests/test_prepush_suite_lock.sh
 # Exit: 0 all pass, 1 any failure.
@@ -153,13 +160,24 @@ OUT4="$(NUZ_PREPUSH_SUITE_LOCK_TIMEOUT=1 NUZ_PREPUSH_SUITE_LOCK_POLL=0.3 "$SCRIP
 RC4=$?
 kill "$LIVE_PID" 2>/dev/null
 
-if [ "$RC4" -ne 0 ] \
+# rc is asserted as exactly 75 (EX_TEMPFAIL), not merely non-zero: the whole
+# point of 2026-07-29's change is that "never acquired the lock" stopped
+# sharing a value with pytest's "tests failed" (1). `-ne 0` would pass again
+# the day someone reverts it to 1.
+#
+# The guidance is asserted by INTENT, not by the old literal 'pro/mini'. That
+# advice is now qualified — landing from another machine is only safe into a
+# worktree the broker made, since a bare `git worktree add` has no .husky/_
+# and pushes with no gate at all — so pinning the bare string would have
+# locked in the version of the sentence that was dangerous.
+if [ "$RC4" -eq 75 ] \
    && ! printf '%s' "$OUT4" | grep -q 'SHOULD_NOT_RUN' \
    && printf '%s' "$OUT4" | grep -q -- '--no-verify' \
-   && printf '%s' "$OUT4" | grep -q 'pro/mini'; then
-    note_pass "timeout — held lock + capped wait produced non-zero exit (rc=$RC4) with fleet-machine guidance, wrapped command never ran"
+   && printf '%s' "$OUT4" | grep -q 'NEVER RAN' \
+   && printf '%s' "$OUT4" | grep -q 'agent_start.py'; then
+    note_pass "timeout — held lock + capped wait exited 75 with never-ran + broker-qualified guidance, wrapped command never ran"
 else
-    note_fail "timeout — expected non-zero exit + guidance message + command never running, got rc=$RC4 out='$OUT4'"
+    note_fail "timeout — expected rc=75 + 'NEVER RAN' + agent_start.py guidance + command never running, got rc=$RC4 out='$OUT4'"
 fi
 
 # ---------------------------------------------------------------------------
@@ -210,6 +228,76 @@ else
     else
         note_fail "tripwire — .husky/pre-push does not reference the lock wrapper as expected"
     fi
+fi
+
+# ---------------------------------------------------------------------------
+# Case 8 (innocence): the 75 must mean ONLY "never acquired the lock". Every
+# code pytest can actually return has to survive the wrapper untouched —
+# otherwise fixing the false FAILED just invents the mirror-image lie.
+# ---------------------------------------------------------------------------
+INNOCENT_OK=1
+for code in 0 1 2 3 4 5; do
+    LOCK8="$WORKDIR/passthru-$code.lock"
+    "$SCRIPT" "$LOCK8" sh -c "exit $code" >/dev/null 2>&1 && GOT=0 || GOT=$?
+    if [ "$GOT" -ne "$code" ]; then
+        note_fail "innocence — wrapped command exiting $code was reported as $GOT"
+        INNOCENT_OK=0
+    fi
+    rm -rf "$LOCK8"
+done
+if [ "$INNOCENT_OK" -eq 1 ]; then
+    note_pass "innocence — pytest's whole exit range (0-5) passes through unchanged; 1 is still 'tests failed'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 9 (innocence): signal death must still surface as 128+N, so the
+# caller's existing `-ge 128` NO-VERDICT branch keeps working alongside 75.
+# ---------------------------------------------------------------------------
+LOCK9="$WORKDIR/signal.lock"
+"$SCRIPT" "$LOCK9" sh -c 'kill -TERM $$' >/dev/null 2>&1 && RC9=0 || RC9=$?
+if [ "$RC9" -ge 128 ]; then
+    note_pass "innocence — signal death still propagates as 128+N (rc=$RC9), not flattened into 75"
+else
+    note_fail "innocence — expected 128+N from a signal-killed command, got rc=$RC9"
+fi
+rm -rf "$LOCK9"
+
+# ---------------------------------------------------------------------------
+# Case 10 (guilt): the heartbeat must not report the waiter's own wait as the
+# holder's. Measured 2026-07-29: two waiters on ONE holder printed "for 38m"
+# and "for 1m" while ps put the holder at 20m — and "that lock is stale, kill
+# it" is the action a 38m reading invites, onto a live sibling's suite.
+# ---------------------------------------------------------------------------
+LOCK10="$WORKDIR/heartbeat.lock"
+( "$SCRIPT" "$LOCK10" sh -c 'sleep 6' >/dev/null 2>&1 ) &
+HOLDER_JOB=$!
+sleep 2
+OUT10="$(NUZ_PREPUSH_SUITE_LOCK_TIMEOUT=3 NUZ_PREPUSH_SUITE_LOCK_POLL=1 \
+         NUZ_PREPUSH_SUITE_LOCK_HEARTBEAT=1 \
+         "$SCRIPT" "$LOCK10" sh -c 'echo late' 2>&1)" || true
+wait "$HOLDER_JOB" 2>/dev/null || true
+if echo "$OUT10" | grep -q "waited"; then
+    note_pass "guilt — heartbeat labels the number as the WAITER's wait"
+else
+    note_fail "guilt — heartbeat does not say 'waited'; the old wording blamed the holder: '$OUT10'"
+fi
+if echo "$OUT10" | grep -qE "held by PID [0-9]+ for"; then
+    note_fail "guilt — heartbeat still claims the holder HELD it for the waiter's elapsed time"
+else
+    note_pass "guilt — heartbeat no longer attributes the waiter's elapsed time to the holder"
+fi
+rm -rf "$LOCK10"
+
+# ---------------------------------------------------------------------------
+# Case 11 (tripwire): the caller must classify 75 separately. A distinct exit
+# code that nobody branches on is a rename, not a fix (family #2).
+# ---------------------------------------------------------------------------
+if [ ! -f "$HOOK_FILE" ]; then
+    note_fail "tripwire — $HOOK_FILE not found (cannot verify the 75 branch)"
+elif grep -q 'TEST_RC" -eq 75' "$HOOK_FILE" && grep -q 'NEVER RAN' "$HOOK_FILE"; then
+    note_pass "tripwire — .husky/pre-push branches on 75 and reports NO VERDICT"
+else
+    note_fail "tripwire — .husky/pre-push does not classify rc=75; saturation still reads as 'tests FAILED'"
 fi
 
 echo "---"
