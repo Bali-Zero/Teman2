@@ -120,13 +120,13 @@ const EMPTY_STYLE: CSSProperties = {
 export const SystemPulse: FC<SystemPulseProps> = ({ services, className }) => {
   return (
     <div
-      role="list"
+      role={services.length === 0 ? "status" : "list"}
       data-role="system-pulse"
       className={className ? `system-pulse ${className}` : "system-pulse"}
       style={ROOT_STYLE}
     >
       {services.length === 0 && (
-        <div role="status" data-role="system-pulse-empty" style={EMPTY_STYLE}>
+        <div data-role="system-pulse-empty" style={EMPTY_STYLE}>
           No health signal available.
           <span style={{ display: "block", fontSize: 10 }}>
             Waiting for the next probe.

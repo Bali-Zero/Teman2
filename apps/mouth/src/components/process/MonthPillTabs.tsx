@@ -96,7 +96,7 @@ export function MonthPillTabs({
             disabled={future}
             className={`rounded-lg px-3 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] ${
               isSelected
-                ? "bg-[var(--bz-accent)] text-white shadow-sm"
+                ? "bg-[var(--bz-accent)] text-[var(--accent-foreground)] shadow-sm"
                 : future
                   ? "cursor-not-allowed text-[var(--bz-text-2)] opacity-40"
                   : "text-[var(--bz-text-2)] hover:bg-[var(--bz-surface)] hover:text-[var(--bz-text-1)]"

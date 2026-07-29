@@ -103,11 +103,19 @@ describe("SystemPulse", () => {
 
   it("renders an explicit empty state when services is empty", () => {
     const { container, getByText } = render(<SystemPulse services={[]} />);
-    expect(container.querySelector("[data-role='system-pulse']")).toBeTruthy();
+    const pulse = container.querySelector("[data-role='system-pulse']");
+    expect(pulse).toHaveAttribute("role", "status");
     expect(getByText("No health signal available.")).toBeTruthy();
     expect(getByText("Waiting for the next probe.")).toBeTruthy();
     expect(
       container.querySelectorAll("[data-role='service-row']"),
     ).toHaveLength(0);
+  });
+
+  it("uses list semantics only when service rows exist", () => {
+    const { container } = render(<SystemPulse services={SERVICES} />);
+    expect(
+      container.querySelector("[data-role='system-pulse']"),
+    ).toHaveAttribute("role", "list");
   });
 });

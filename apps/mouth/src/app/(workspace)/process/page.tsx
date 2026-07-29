@@ -770,7 +770,7 @@ export default function PratichePage() {
         subtitle="Manage KITAS, Visa, PT PMA, Tax and other processes"
         actions={
           <Button
-            className="gap-2 bg-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/90 text-white"
+            className="gap-2 bg-[var(--bz-accent)] text-[var(--accent-foreground)] hover:bg-[var(--bz-accent)]/90"
             onClick={handleNewCase}
           >
             <Plus className="w-4 h-4" />
@@ -906,7 +906,7 @@ export default function PratichePage() {
               <Filter className="w-4 h-4" />
               Filters
               {activeFiltersCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[var(--bz-accent)] text-white">
+                <span className="ml-1 rounded-full bg-[var(--bz-accent)] px-1.5 py-0.5 text-xs text-[var(--accent-foreground)]">
                   {activeFiltersCount}
                 </span>
               )}
@@ -1299,7 +1299,7 @@ export default function PratichePage() {
                           return (
                             <div
                               key={practice.id}
-                              className={`relative group cursor-pointer rounded-[var(--bz-product-radius)] border transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)] ${
+                              className={`relative group cursor-pointer rounded-[var(--bz-product-radius)] border transition-all hover:-translate-y-0.5 ${
                                 updatingId === practice.id
                                   ? "opacity-70 pointer-events-none"
                                   : ""
@@ -1323,20 +1323,7 @@ export default function PratichePage() {
                               onClick={() =>
                                 router.push(`/process/${practice.id}`)
                               }
-                              onKeyDown={(event) => {
-                                if (event.target !== event.currentTarget)
-                                  return;
-                                if (
-                                  event.key === "Enter" ||
-                                  event.key === " "
-                                ) {
-                                  event.preventDefault();
-                                  router.push(`/process/${practice.id}`);
-                                }
-                              }}
-                              role="button"
-                              tabIndex={0}
-                              aria-label={`Open process ${practice.id}: ${serviceLabel}`}
+                              data-testid={`process-card-${practice.id}`}
                             >
                               {updatingId === practice.id && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-2xl z-10">
@@ -1403,7 +1390,21 @@ export default function PratichePage() {
                                   )}
 
                                   <button
-                                    className="absolute top-3 right-3 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-card-hover)] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    type="button"
+                                    className="absolute right-10 top-3 rounded-md p-1 text-[var(--bz-text-2)] opacity-100 transition-opacity hover:bg-[var(--bz-card-hover)] hover:text-[var(--bz-text-1)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)] sm:opacity-0 sm:group-hover:opacity-100"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      router.push(`/process/${practice.id}`);
+                                    }}
+                                    title="Open process"
+                                    aria-label={`Open process ${practice.id}: ${serviceLabel}`}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="absolute right-3 top-3 rounded-md p-1 text-[var(--bz-text-2)] opacity-100 transition-opacity hover:bg-[var(--bz-card-hover)] hover:text-[var(--bz-text-1)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)] sm:opacity-0 sm:group-hover:opacity-100"
                                     onClick={(e) =>
                                       handleMenuClick(e, practice)
                                     }
@@ -1939,7 +1940,7 @@ export default function PratichePage() {
                               onClick={() => setListPageNumber(pageNum)}
                               className={`px-2 py-1 rounded-lg transition-colors ${
                                 listPageNumber === pageNum
-                                  ? "bg-[var(--bz-accent)] text-white"
+                                  ? "bg-[var(--bz-accent)] text-[var(--accent-foreground)]"
                                   : "bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)]"
                               }`}
                             >

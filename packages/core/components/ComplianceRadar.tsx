@@ -153,7 +153,7 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
   );
   return (
     <div
-      role="list"
+      role={ordered.length === 0 ? "status" : "list"}
       data-role="compliance-radar"
       className={
         className ? `compliance-radar ${className}` : "compliance-radar"
@@ -161,11 +161,7 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
       style={ROOT_STYLE}
     >
       {ordered.length === 0 && (
-        <div
-          role="status"
-          data-role="compliance-radar-empty"
-          style={EMPTY_STYLE}
-        >
+        <div data-role="compliance-radar-empty" style={EMPTY_STYLE}>
           No active compliance alerts.
         </div>
       )}

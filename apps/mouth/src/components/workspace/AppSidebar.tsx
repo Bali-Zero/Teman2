@@ -268,7 +268,6 @@ export function AppSidebar({
             <span
               className="text-[8px] font-medium"
               style={{
-                opacity: 0.5,
                 color: isZantaraOpen ? "#fff" : "var(--bz-text-3)",
               }}
             >
