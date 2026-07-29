@@ -63,7 +63,7 @@ const cardStyle: React.CSSProperties = {
 const inputClass =
   "w-full rounded-xl border px-3 py-2.5 text-[13px] outline-none transition-all";
 const inputBaseStyle: React.CSSProperties = {
-  background: "rgba(35,35,40,0.6)",
+  background: "var(--surface-raised)",
   borderColor: "var(--bz-border)",
   color: "var(--bz-text-1)",
 };
@@ -1200,7 +1200,7 @@ export default function ArticleComposerPage() {
                           <SelectTrigger
                             className="h-8 text-[12px] rounded-xl"
                             style={{
-                              background: "rgba(35,35,40,0.6)",
+                              background: "var(--surface-raised)",
                               borderColor: "var(--bz-border)",
                               color: "var(--bz-text-2)",
                             }}

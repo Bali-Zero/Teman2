@@ -94,6 +94,8 @@ describe("analytics suite drain guard (WS2 slice 6)", () => {
     const src = readFileSync(PAGES.hub, "utf8");
     expect(src).toContain("var(--bz-card)");
     expect(src).toContain("var(--bz-border)");
+    expect(src).not.toContain("rgba(35,35,40,0.6)"); // token-lint-ok: regression guard string, not a color use
+    expect(src).not.toContain("rgba(25,25,30,0.3)"); // token-lint-ok: regression guard string, not a color use
     expect(src).not.toContain("rgba(255, 255, 255, 0.05)"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(src).not.toContain("rgba(32,32,36"); // token-lint-ok: drain-guard assertion string, not a color use
   });

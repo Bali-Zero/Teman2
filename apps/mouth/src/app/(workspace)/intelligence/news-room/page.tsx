@@ -360,7 +360,7 @@ export default function NewsRoomPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"
             style={{
-              background: "rgba(35,35,40,0.6)",
+              background: "var(--surface-raised)",
               border: "1px solid var(--bz-border)",
               color: "var(--bz-text-1)",
             }}
@@ -375,7 +375,7 @@ export default function NewsRoomPage() {
           <SelectTrigger
             className="w-[130px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(35,35,40,0.6)",
+              background: "var(--surface-raised)",
               borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
@@ -402,7 +402,7 @@ export default function NewsRoomPage() {
           <SelectTrigger
             className="w-[140px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(35,35,40,0.6)",
+              background: "var(--surface-raised)",
               borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
@@ -928,7 +928,7 @@ export default function NewsRoomPage() {
               <SelectTrigger
                 className="w-[160px] rounded-xl"
                 style={{
-                  background: "rgba(35,35,40,0.6)",
+                  background: "var(--surface-raised)",
                   borderColor: "var(--bz-border)",
                   color: "var(--bz-text-2)",
                 }}
