@@ -8,7 +8,7 @@ const syntheticPortalProfile = {
   id: "ui-test-client",
   email: "client@example.test",
   name: "Portal Test",
-  role: "client",
+  role: "admin",
 };
 
 async function seedSyntheticPortalSession(page: Page): Promise<void> {
@@ -19,6 +19,61 @@ async function seedSyntheticPortalSession(page: Page): Promise<void> {
 
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
+
+    if (pathname === "/api/dashboard/summary") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          user: { email: syntheticPortalProfile.email, role: "admin" },
+          stats: {},
+          data: { practices: [], interactions: [] },
+          system_status: "healthy",
+          total_clients: 0,
+          total_practices: 0,
+        }),
+      });
+      return;
+    }
+
+    if (pathname === "/api/portal/dashboard") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          visa: {
+            status: "active",
+            type: "Sample KITAS",
+            expiryDate: "2027-04-18",
+            daysRemaining: 263,
+          },
+          company: {
+            status: "active",
+            primaryCompanyName: "Sample Indonesia PT",
+            totalCompanies: 1,
+          },
+          taxes: {
+            status: "compliant",
+            nextDeadline: "2026-09-30",
+            daysToDeadline: 63,
+          },
+          documents: { total: 3, pending: 0 },
+          messages: { unread: 0 },
+          actions: [],
+        }),
+      });
+      return;
+    }
+
+    if (pathname === "/api/portal/dashboard/summary") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          activePractices: 1,
+          pendingDocuments: 0,
+          unreadMessages: 0,
+        }),
+      });
+      return;
+    }
 
     if (pathname === "/api/portal/messages") {
       await route.fulfill({
