@@ -162,6 +162,14 @@ const statusDotStyle = (column: CaseStatus): React.CSSProperties => ({
   backgroundColor: COLUMN_COLORS[column].textColor,
 });
 
+function formatStatusLabel(status?: string | null): string {
+  if (!status) return "Unknown status";
+
+  return status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 /** WhatsApp + Email quick actions — identical on kanban cards and table rows. */
 function ContactQuickActions({ practice }: { practice: Practice }) {
   return (
@@ -176,7 +184,7 @@ function ContactQuickActions({ practice }: { practice: Practice }) {
               "_blank",
             );
           }}
-          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_20%,transparent)] text-[var(--accent-whatsapp)] transition-colors"
+          className="p-1.5 rounded touch-manipulation hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_20%,transparent)] text-[var(--accent-whatsapp)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-whatsapp)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
           title="WhatsApp"
           aria-label="Contact via WhatsApp"
         >
@@ -189,7 +197,7 @@ function ContactQuickActions({ practice }: { practice: Practice }) {
             e.stopPropagation();
             window.open(`mailto:${practice.client_email}`, "_blank");
           }}
-          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)] transition-colors"
+          className="p-1.5 rounded touch-manipulation hover:bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--state-info)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
           title="Email"
           aria-label="Send email"
         >
@@ -670,9 +678,10 @@ export default function PratichePage() {
   // Simplified 5-step workflow: inquiry → waiting_documents → sending_invoice → on_process → completed
   const practicesByStatus = useMemo(
     () => ({
-      inquiry: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "inquiry",
-      ),
+      inquiry: filteredPractices.filter((p) => {
+        const statusColumn = getStatusColumn(p.status);
+        return statusColumn === "inquiry" || statusColumn === "unknown";
+      }),
       waiting_documents: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "waiting_documents",
       ),
@@ -1101,7 +1110,11 @@ export default function PratichePage() {
 
       {/* Kanban Board View - Simplified 5-Step Workflow */}
       {viewMode === "kanban" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 overflow-x-auto">
+        <div
+          role="region"
+          aria-label="Process board"
+          className="grid grid-flow-col auto-cols-[minmax(280px,1fr)] gap-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-2 xl:grid-flow-row xl:auto-cols-auto xl:grid-cols-5 xl:overflow-visible"
+        >
           {COLUMN_ORDER.map((statusKey) => {
             const colors = COLUMN_COLORS[statusKey];
             const columnPractices = practicesByStatus[statusKey] || [];
@@ -1114,7 +1127,7 @@ export default function PratichePage() {
             return (
               <div
                 key={statusKey}
-                className="rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden shadow-xl backdrop-blur-md"
+                className="snap-start rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden shadow-xl backdrop-blur-md xl:min-w-0"
                 style={{
                   background: colors.tintBg,
                   border: `1px solid var(--bz-border)`,
@@ -1129,56 +1142,70 @@ export default function PratichePage() {
                 />
 
                 <div className="p-4 flex flex-col flex-1">
-                  <div
-                    className={`flex items-center justify-between mb-3 ${
-                      isCompleted ? "cursor-pointer select-none" : ""
-                    }`}
-                    onClick={
-                      isCompleted
-                        ? () => setCompletedCollapsed((v) => !v)
-                        : undefined
-                    }
-                    role={isCompleted ? "button" : undefined}
-                    aria-expanded={
-                      isCompleted ? !completedCollapsed : undefined
-                    }
-                    aria-label={
-                      isCompleted
-                        ? completedCollapsed
+                  {isCompleted ? (
+                    <button
+                      type="button"
+                      onClick={() => setCompletedCollapsed((value) => !value)}
+                      className="flex w-full items-center justify-between mb-3 rounded-md text-left touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--state-success)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
+                      aria-expanded={!completedCollapsed}
+                      aria-controls={`process-column-${statusKey}-content`}
+                      aria-label={
+                        completedCollapsed
                           ? "Expand completed"
                           : "Collapse completed"
-                        : undefined
-                    }
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${colors.dotColor}`}
-                      />
-                      <h3
-                        className="font-semibold text-sm uppercase tracking-wider"
-                        style={{ color: colors.textColor }}
-                      >
-                        {colors.label}
-                      </h3>
-                      {isCompleted && (
+                      }
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${colors.dotColor}`}
+                        />
+                        <h3
+                          className="font-semibold text-sm uppercase tracking-wider"
+                          style={{ color: colors.textColor }}
+                        >
+                          {colors.label}
+                        </h3>
                         <ChevronDown
                           className={`w-3.5 h-3.5 transition-transform ${
                             completedCollapsed ? "-rotate-90" : ""
                           }`}
                           style={{ color: colors.textColor }}
                         />
-                      )}
+                      </div>
+                      <span
+                        className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{
+                          background: colors.badgeBg,
+                          color: colors.textColor,
+                        }}
+                      >
+                        {columnPractices.length}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${colors.dotColor}`}
+                        />
+                        <h3
+                          className="font-semibold text-sm uppercase tracking-wider"
+                          style={{ color: colors.textColor }}
+                        >
+                          {colors.label}
+                        </h3>
+                      </div>
+                      <span
+                        className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{
+                          background: colors.badgeBg,
+                          color: colors.textColor,
+                        }}
+                      >
+                        {columnPractices.length}
+                      </span>
                     </div>
-                    <span
-                      className="text-xs px-2 py-1 rounded-full font-medium"
-                      style={{
-                        background: colors.badgeBg,
-                        color: colors.textColor,
-                      }}
-                    >
-                      {columnPractices.length}
-                    </span>
-                  </div>
+                  )}
                   {columnPractices.length > 0 &&
                     (() => {
                       // NOTE: BE serializes numeric(15,2) as string via asyncpg+Decimal,
@@ -1201,7 +1228,10 @@ export default function PratichePage() {
                       );
                     })()}
 
-                  <div className="flex-1 space-y-3">
+                  <div
+                    id={`process-column-${statusKey}-content`}
+                    className="flex-1 space-y-3"
+                  >
                     {isLoading ? (
                       <div data-testid="loading-skeleton">
                         <SkeletonCard />
@@ -1238,6 +1268,13 @@ export default function PratichePage() {
                         {columnPractices.map((practice) => {
                           const cardIsCompleted =
                             getStatusColumn(practice.status) === "completed";
+                          const statusColumn = getStatusColumn(practice.status);
+                          const rawStatusLabel = formatStatusLabel(
+                            practice.status,
+                          );
+                          const hasSubStatus =
+                            statusColumn === "unknown" ||
+                            rawStatusLabel !== colors.label;
 
                           const serviceLabel =
                             practice.practice_type_name ||
@@ -1258,7 +1295,7 @@ export default function PratichePage() {
                           return (
                             <div
                               key={practice.id}
-                              className={`relative group cursor-pointer rounded-[var(--bz-product-radius)] border transition-all hover:-translate-y-0.5 ${
+                              className={`relative group cursor-pointer rounded-[var(--bz-product-radius)] border transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)] ${
                                 updatingId === practice.id
                                   ? "opacity-70 pointer-events-none"
                                   : ""
@@ -1282,6 +1319,20 @@ export default function PratichePage() {
                               onClick={() =>
                                 router.push(`/process/${practice.id}`)
                               }
+                              onKeyDown={(event) => {
+                                if (event.target !== event.currentTarget)
+                                  return;
+                                if (
+                                  event.key === "Enter" ||
+                                  event.key === " "
+                                ) {
+                                  event.preventDefault();
+                                  router.push(`/process/${practice.id}`);
+                                }
+                              }}
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Open process ${practice.id}: ${serviceLabel}`}
                             >
                               {updatingId === practice.id && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-2xl z-10">
@@ -1366,6 +1417,21 @@ export default function PratichePage() {
                                 >
                                   {serviceLabel}
                                 </p>
+
+                                {hasSubStatus && (
+                                  <p
+                                    className={`mb-2 text-[10px] font-medium ${
+                                      statusColumn === "unknown"
+                                        ? "text-[var(--state-danger)]"
+                                        : "text-[var(--bz-text-2)]"
+                                    }`}
+                                    title={`Backend status: ${rawStatusLabel}`}
+                                  >
+                                    {statusColumn === "unknown"
+                                      ? `Needs review · ${rawStatusLabel}`
+                                      : `Status · ${rawStatusLabel}`}
+                                  </p>
+                                )}
 
                                 {/* Family-member tag */}
                                 {practice.family_member_name && (
@@ -1473,7 +1539,7 @@ export default function PratichePage() {
                                 )}
 
                                 {/* Quick actions — hidden until hover */}
-                                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)] opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                                   <ContactQuickActions practice={practice} />
                                   <button
                                     onClick={(e) => {
@@ -1482,7 +1548,7 @@ export default function PratichePage() {
                                         `/clients/${practice.client_id}?tab=documents`,
                                       );
                                     }}
-                                    className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] transition-colors ml-auto"
+                                    className="p-1.5 rounded touch-manipulation hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] transition-colors ml-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--state-warning)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
                                     title="View Documents"
                                     aria-label="View documents"
                                   >
