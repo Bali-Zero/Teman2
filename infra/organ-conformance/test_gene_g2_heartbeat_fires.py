@@ -359,6 +359,101 @@ def test_a_hostile_note_is_escaped_into_valid_json(
     assert hb.get("note") == 'a"b\\c\td', f"{shell}: note mangled: {hb!r}"
 
 
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_long_hostile_note_still_leaves_PARSEABLE_json(
+    tmp_path: Path, shell: str
+) -> None:
+    """The 500-char boundary, which the short hostile-note case cannot reach.
+
+    The library escaped first and truncated second, so a note of 499 'a' plus a
+    quote escaped to 501 chars and the cut landed BETWEEN the backslash and its
+    quote. The orphaned trailing backslash then escaped the JSON's own closing
+    quote and the whole sidecar stopped parsing — the reader gets nothing at
+    all, which is strictly worse than a truncated note. Adversarial review
+    (Codex, generator≠grader) found this; reproduced before the fix.
+    """
+    hostile = "a" * 499 + '"'
+    rc, out, hb = _source_and_call(
+        tmp_path, shell, PROBE_ID, "ok", hostile, tag=f"long-{shell}"
+    )
+    assert rc == 0, out
+    # _source_and_call json.loads()es the file; an unparseable sidecar arrives
+    # here as {} rather than raising, so assert on the content, not the parse.
+    assert hb.get("status") == "ok", f"{shell}: sidecar did not parse: {hb!r}"
+    assert hb.get("note", "").startswith("aaa")
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_warn_is_normalised_not_swallowed_into_ok(
+    tmp_path: Path, shell: str
+) -> None:
+    """`warn` used to fall through the whitelist and be rewritten to `ok`.
+
+    That is not cosmetic. `sentinel-aggregate.py` maps ok/success/healthy/
+    starting -> ok and degraded/warning -> warning, so the rewrite turned
+    agent_worktree_cleanup_cron's "WIP worktree skipped, reaper blocked" into a
+    green organ. It must arrive as the reader's own word for it.
+    """
+    rc, out, hb = _source_and_call(
+        tmp_path, shell, PROBE_ID, "warn", "wip skipped", tag=f"warn-{shell}"
+    )
+    assert rc == 0, out
+    assert hb.get("status") == "warning", f"{shell}: expected warning, got {hb!r}"
+
+
+def test_sourcing_does_not_change_the_callers_shell_state(tmp_path: Path) -> None:
+    """A library that is DESIGNED to be sourced must not mutate its caller.
+
+    Two leaks, both from file scope or the regex: `set -o pipefail` was set on
+    whoever sourced this (changing their error semantics), and zsh's MATCH /
+    MBEGIN / MEND were clobbered by the organ-id `[[ =~ ]]`.
+    """
+    seen = tmp_path / "last_seen-state"
+    script = tmp_path / "state.zsh"
+    script.write_text(
+        "MATCH=sentinel; MBEGIN=99; MEND=99\n"
+        f"source {shlex.quote(str(HB_LIB))}\n"
+        f"organism_heartbeat {PROBE_ID} ok n\n"
+        'print -r -- "pipefail=${options[pipefail]} MATCH=$MATCH '
+        'MBEGIN=$MBEGIN MEND=$MEND"\n',
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        ["zsh", str(script)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    out = proc.stdout.strip()
+    assert "pipefail=off" in out, f"sourcing changed the caller's options: {out}"
+    assert "MATCH=sentinel" in out, f"sourcing clobbered MATCH: {out}"
+    assert "MBEGIN=99" in out and "MEND=99" in out, f"clobbered MBEGIN/MEND: {out}"
+    # and it still did its job
+    assert (seen / f"{PROBE_ID}.json").exists()
+
+
+def test_the_workflow_arms_this_corpus_on_push_too(tmp_path: Path) -> None:
+    """The gate that runs these cases must WAKE UP for the file they guard.
+
+    `on.pull_request` here has no top-level paths, so PRs always trigger — but
+    `on.push.paths` is a filter, and a path present only in the job's internal
+    `git diff` pathspec is armed for PRs and silently skipped on merge to main.
+    Superscar #2: a corpus that does not run is not a gate.
+    """
+    wf = (REPO / ".github/workflows/organ-conformance.yml").read_text(
+        encoding="utf-8"
+    )
+    head, _, tail = wf.partition("jobs:")
+    assert "scripts/lib/heartbeat.sh" in head, (
+        "heartbeat.sh missing from on.push.paths — the post-merge run would skip"
+    )
+    assert "scripts/lib/heartbeat.sh" in tail, (
+        "heartbeat.sh missing from the job's changed-paths pathspec"
+    )
+
+
 def test_sourcing_alone_does_not_fire_the_cli_path(tmp_path: Path) -> None:
     """Innocence for the last line of the library.
 

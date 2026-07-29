@@ -34,6 +34,12 @@ on:
       # that proves it — armed for the wrong trigger is the under-match half of
       # cicatrix family #3.
       - "scripts/nb-curator-daily.sh"
+      # The G2 gene's implementation. Must be in BOTH filters: this one decides
+      # whether the workflow RUNS on a push to main at all, the `git diff`
+      # pathspec inside the job only decides whether its steps do any work. A
+      # path listed in the second but not the first is armed for pull_request
+      # (which has no top-level paths) and silently skipped post-merge.
+      - "scripts/lib/heartbeat.sh"
       - ".github/workflows/organ-conformance.yml"
 
 concurrency:
