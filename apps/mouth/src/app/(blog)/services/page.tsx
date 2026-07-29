@@ -14,7 +14,7 @@ import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
-  title: "Services · Bali Zero",
+  title: "Services",
   description:
     "Visa, PT PMA, tax, property — handled in Bali by a licensed Indonesian team since 2006.",
 };

@@ -6,7 +6,7 @@ import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
-  title: "Tax Compliance Calendar · Bali Zero",
+  title: "Tax Compliance Calendar",
   description: "Deadlines, reminders and compliance for businesses in Bali.",
 };
 
