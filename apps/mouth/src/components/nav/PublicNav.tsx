@@ -5,19 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Menu, ChevronDown, X, Globe } from "lucide-react";
 import { useTranslation } from "@/i18n";
-import type { Locale } from "@/i18n/types";
+import { LOCALE_FLAGS, LOCALE_NAMES, OFFERED_LOCALES } from "@/i18n/types";
 
-const LANGUAGES = [
-  { code: "en", name: "English", flag: "\u{1F1EC}\u{1F1E7}" },
-  { code: "id", name: "Bahasa Indonesia", flag: "\u{1F1EE}\u{1F1E9}" },
-  { code: "it", name: "Italiano", flag: "\u{1F1EE}\u{1F1F9}" },
-  {
-    code: "ru",
-    name: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439",
-    flag: "\u{1F1F7}\u{1F1FA}",
-  },
-  { code: "fr", name: "Fran\u00E7ais", flag: "\u{1F1EB}\u{1F1F7}" },
-] as const;
+// Derived, never a private copy: OFFERED_LOCALES is the single rule for which
+// languages a picker shows (i18n/types.ts). Names/flags stay keyed by locale
+// so a visitor already on a supported-but-unoffered language is labelled
+// honestly rather than falling back to English.
+const LANGUAGES = OFFERED_LOCALES.map((code) => ({
+  code,
+  name: LOCALE_NAMES[code],
+  flag: LOCALE_FLAGS[code],
+}));
 
 export const INSIGHT_CATEGORIES = [
   { name: "Visas", slug: "visas" },
@@ -69,7 +67,10 @@ export function PublicNav({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const currentLang = LANGUAGES.find((l) => l.code === locale) || LANGUAGES[0];
+  // Keyed by the ACTIVE locale, not by the offered list: a saved `ru`/`fr`
+  // preference is still served, so the badge must say RU/FR rather than lie
+  // "EN" while the page renders in another language.
+  const currentLangCode = locale;
 
   if (variant === "minimal") {
     return (
@@ -212,7 +213,7 @@ export function PublicNav({
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                 >
                   <Globe className="w-4 h-4" />
-                  <span>{currentLang.code.toUpperCase()}</span>
+                  <span>{currentLangCode.toUpperCase()}</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform ${langMenuOpen ? "rotate-180" : ""}`}
                   />
@@ -224,7 +225,7 @@ export function PublicNav({
                       <button
                         key={lang.code}
                         onClick={() => {
-                          setLocale(lang.code as Locale);
+                          setLocale(lang.code);
                           setLangMenuOpen(false);
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
@@ -336,7 +337,7 @@ export function PublicNav({
                     <button
                       key={lang.code}
                       onClick={() => {
-                        setLocale(lang.code as Locale);
+                        setLocale(lang.code);
                         setMobileMenuOpen(false);
                       }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
