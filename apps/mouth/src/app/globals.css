@@ -318,6 +318,11 @@
   --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
   /* Header surface — dark default; overridden under operative-light */
   --portal-header-bg: rgba(29, 39, 59, 0.7);
+  --bz-shell-header-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+  --bz-bottom-nav-bg: rgba(19, 19, 21, 0.82);
+  --bz-bottom-nav-border: rgba(255, 255, 255, 0.06);
+  --bz-bottom-nav-shadow: 0 -12px 32px rgba(0, 0, 0, 0.2);
+  --bz-bottom-nav-active: rgba(212, 132, 90, 0.12);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -435,6 +440,111 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+}
+
+/* ── Bali Zero product family ──
+   Theme answers light/dark. Product answers density, shape and atmosphere.
+   Keeping those axes separate lets Kita and My share one accessible system
+   without pretending they serve the same job. */
+[data-product="kita"] {
+  --bz-product-radius: 12px;
+  --bz-product-page-gap: 20px;
+  --bz-product-row-height: 52px;
+  --bz-product-heading-font: "Inter", system-ui, sans-serif;
+}
+
+[data-product="my"] {
+  --bz-product-radius: 18px;
+  --bz-product-page-gap: 28px;
+  --bz-product-row-height: 60px;
+  --bz-product-heading-font: var(--font-serif), Georgia, serif;
+}
+
+/* Kita: cool mineral daylight, compact and operational. */
+[data-theme="operative-light"][data-product="kita"] {
+  --surface-base: #f5f6f8;
+  --surface-matter: #ffffff;
+  --surface-overlay: rgba(255, 255, 255, 0.84);
+  --nav-bg: rgba(255, 255, 255, 0.9);
+
+  --bz-base: #f5f6f8;
+  --bz-elevated: #ffffff;
+  --bz-surface: #ffffff;
+  --bz-card: #ffffff;
+  --bz-card-hover: #f8f9fb;
+  --bz-text-1: #172033;
+  --bz-text-2: #4d5870;
+  --bz-text-3: #6f788b;
+  --bz-border: rgba(23, 32, 51, 0.09);
+  --bz-border-hover: rgba(23, 32, 51, 0.16);
+
+  --background: #f5f6f8;
+  --background-secondary: #ffffff;
+  --background-elevated: #ffffff;
+  --background-hover: #f8f9fb;
+  --foreground: #172033;
+  --foreground-secondary: #4d5870;
+  --foreground-muted: #6f788b;
+  --border: rgba(23, 32, 51, 0.09);
+  --border-hover: rgba(23, 32, 51, 0.16);
+
+  --kbli-bg-base: #f5f6f8;
+  --kbli-bg-primary: #f5f6f8;
+  --kbli-bg-secondary: #ffffff;
+  --kbli-bg-elevated: #ffffff;
+  --kbli-bg-surface: #ffffff;
+  --kbli-bg-surface-hover: #f8f9fb;
+  --kbli-bg-card: #ffffff;
+  --kbli-bg-card-hover: #f8f9fb;
+  --kbli-bg-input: #ffffff;
+  --kbli-text-primary: #172033;
+  --kbli-text-secondary: #4d5870;
+  --kbli-text-muted: #6f788b;
+  --kbli-border: rgba(23, 32, 51, 0.09);
+  --kbli-border-hover: rgba(23, 32, 51, 0.16);
+
+  --portal-header-bg: rgba(245, 246, 248, 0.84);
+  --bz-shell-header-shadow: 0 8px 30px rgba(23, 32, 51, 0.05);
+}
+
+/* My: warm paper, softer depth and more breathing room. */
+[data-theme="operative-light"][data-product="my"] {
+  --bz-shell-header-shadow: 0 10px 34px rgba(22, 33, 58, 0.06);
+  --bz-bottom-nav-bg: rgba(255, 255, 255, 0.9);
+  --bz-bottom-nav-border: rgba(22, 33, 58, 0.09);
+  --bz-bottom-nav-shadow: 0 -12px 32px rgba(22, 33, 58, 0.08);
+  --bz-bottom-nav-active: rgba(181, 99, 58, 0.1);
+}
+
+[data-theme="operative-light"] .glass-panel-deep {
+  box-shadow: 4px 0 24px rgba(22, 33, 58, 0.06);
+}
+
+/* Shared product surfaces. These are intentionally color-agnostic: theme
+   tokens supply the palette while the product persona supplies the radius. */
+.bz-product-panel {
+  background: var(--bz-card);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-product-radius, 12px);
+  box-shadow: var(--bz-shadow-card);
+}
+
+.bz-product-panel--interactive {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.bz-product-panel--interactive:hover {
+  background: var(--bz-card-hover);
+  border-color: var(--bz-border-hover);
+  box-shadow: var(--bz-shadow-card-hover);
+}
+
+.bz-product-divider {
+  border-color: var(--bz-border);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

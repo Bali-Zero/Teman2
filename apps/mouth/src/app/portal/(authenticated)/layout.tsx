@@ -36,15 +36,18 @@ export default function PortalLayout({
     avatar: undefined as string | undefined,
   });
 
-  // Arm operative-light theme: sets data-theme on <html> so the
-  // [data-theme="operative-light"] block in globals.css activates.
-  // Without this, :root dark values apply (--tx-pure: #ffffff → invisible
-  // on cream background, WCAG contrast 1.05:1).
+  // The root pre-paint script owns the user's light/dark choice. This layout
+  // only declares the product persona and supplies a light fallback for local
+  // development, where no my.balizero.com hostname is available.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", "operative-light");
-    return () => {
-      document.documentElement.removeAttribute("data-theme");
-    };
+    const root = document.documentElement;
+    root.dataset.product = "my";
+    if (
+      root.dataset.theme !== "operative-light" &&
+      root.dataset.theme !== "operative-dark"
+    ) {
+      root.dataset.theme = "operative-light";
+    }
   }, []);
 
   // Load user profile
@@ -175,7 +178,7 @@ export default function PortalLayout({
   if (isLoading) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="bz-product-my min-h-screen flex items-center justify-center"
         style={{ background: "var(--bz-base)" }}
       >
         <div className="flex flex-col items-center gap-4">
@@ -197,7 +200,13 @@ export default function PortalLayout({
   return (
     <AdminImpersonationProvider>
       <ToastProvider>
-        <div className="min-h-screen" style={{ background: "var(--bz-base)" }}>
+        <a href="#portal-main-content" className="bz-skip-link">
+          Skip to main content
+        </a>
+        <div
+          className="bz-product-my min-h-screen"
+          style={{ background: "var(--bz-base)" }}
+        >
           {/* Desktop Sidebar */}
           <div className="hidden md:block">
             <AppSidebar
@@ -237,7 +246,7 @@ export default function PortalLayout({
           )}
 
           {/* Main Content */}
-          <div className="md:ml-60 min-h-screen flex flex-col">
+          <div className="md:ml-[216px] min-h-screen flex flex-col">
             {/* Header */}
             <PortalHeader
               userName={user.name}
@@ -246,7 +255,11 @@ export default function PortalLayout({
             />
 
             {/* Page Content */}
-            <main className="flex-1 p-4 pb-28 md:p-6 lg:p-8">
+            <main
+              id="portal-main-content"
+              tabIndex={-1}
+              className="flex-1 p-4 pb-28 md:p-6 lg:p-8"
+            >
               <PortalErrorBoundary section="Portal">
                 {children}
               </PortalErrorBoundary>

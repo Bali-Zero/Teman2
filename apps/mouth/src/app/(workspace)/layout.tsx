@@ -60,6 +60,20 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const [gateChecked, setGateChecked] = useState(false);
   const [gateBypassed, setGateBypassed] = useState(false);
 
+  // Product persona is independent from theme. On the production hostname it
+  // is set before paint; this fallback keeps direct/local workspace routes in
+  // the same day-first contract without overriding a stored dark preference.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.product = "kita";
+    if (
+      root.dataset.theme !== "operative-light" &&
+      root.dataset.theme !== "operative-dark"
+    ) {
+      root.dataset.theme = "operative-light";
+    }
+  }, []);
+
   // Clock-in is now automatic on login (PANOPTICON Phase 0)
 
   // Cmd+J shortcut to toggle Zantara
@@ -310,7 +324,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         id="main-content"
         aria-busy="true"
         aria-live="polite"
-        className="min-h-screen flex items-center justify-center"
+        className="bz-product-kita min-h-screen flex items-center justify-center"
         style={{ background: "var(--bz-base, #0f1419)" }}
       >
         <div className="flex flex-col items-center gap-4">
@@ -362,7 +376,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           Skip to main content
         </a>
         <div
-          className="min-h-screen"
+          className="bz-product-kita min-h-screen"
           style={{ background: "var(--bz-base, #0f1419)" }}
         >
           {/* Desktop Sidebar — labelled landmark so AT can list it */}
@@ -427,7 +441,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               </h1>
               <ErrorBoundary
                 fallback={
-                  <div className="p-8 text-center text-white">
+                  <div className="p-8 text-center text-[var(--bz-text-1)]">
                     Something went wrong. Please refresh the page.
                   </div>
                 }
