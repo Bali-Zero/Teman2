@@ -24,9 +24,9 @@ import {
 } from "@/lib/hr/bonus-aggregation";
 import { Money } from "@balizero/core";
 
-/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+/** Dashboard panel recipe — mirrors the day/dark-aware Kita surfaces. */
 const PANEL: React.CSSProperties = {
-  background: "rgba(35,35,40,0.65)",
+  background: "var(--bz-card)",
   borderColor: "var(--bz-border)",
 };
 

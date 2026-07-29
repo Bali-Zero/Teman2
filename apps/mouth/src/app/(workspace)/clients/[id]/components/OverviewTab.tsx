@@ -686,7 +686,7 @@ export function OverviewTab({
                                   background:
                                     ageDays === 0
                                       ? "rgba(34,197,94,0.12)"
-                                      : "rgba(255,255,255,0.04)",
+                                      : "var(--surface-raised)",
                                   color:
                                     ageDays === 0
                                       ? "#4ade80"

@@ -34,9 +34,9 @@ import type {
 } from "@/lib/api/partners/partners";
 import { Money } from "@balizero/core";
 
-/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+/** Dashboard panel recipe — mirrors the day/dark-aware Kita surfaces. */
 const PANEL: React.CSSProperties = {
-  background: "rgba(35,35,40,0.65)",
+  background: "var(--bz-card)",
   borderColor: "var(--bz-border)",
 };
 
@@ -64,12 +64,7 @@ const NEUTRAL_CHIP: React.CSSProperties = {
 };
 
 type TabId =
-  | "profile"
-  | "fiscal"
-  | "payment"
-  | "referrals"
-  | "commissions"
-  | "audit";
+  "profile" | "fiscal" | "payment" | "referrals" | "commissions" | "audit";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <User size={14} /> },

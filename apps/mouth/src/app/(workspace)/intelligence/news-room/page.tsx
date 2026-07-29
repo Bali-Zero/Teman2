@@ -341,7 +341,7 @@ export default function NewsRoomPage() {
       <div
         className="flex flex-col sm:flex-row gap-3 px-4 py-3 rounded-2xl border mb-6"
         style={{
-          background: "rgba(35,35,40,0.65)",
+          background: "var(--bz-card)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           borderColor: "var(--bz-border)",
@@ -451,7 +451,7 @@ export default function NewsRoomPage() {
           className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
           style={{
             borderColor: "var(--bz-border)",
-            background: "rgba(255,255,255,0.01)",
+            background: "var(--surface-raised)",
           }}
         >
           <div
@@ -670,7 +670,7 @@ export default function NewsRoomPage() {
                     <span
                       className="text-[7px] font-bold uppercase tracking-widest px-1 py-[1px] rounded"
                       style={{
-                        background: "rgba(255,255,255,0.06)",
+                        background: "var(--surface-raised)",
                         color: "var(--bz-text-3)",
                         border: "1px solid var(--bz-border)",
                       }}
@@ -686,7 +686,7 @@ export default function NewsRoomPage() {
                     onClick={() => handlePreview(item)}
                     className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
-                      background: "rgba(255,255,255,0.08)",
+                      background: "var(--surface-raised)",
                       border: "1px solid var(--bz-border)",
                     }}
                   >
@@ -696,7 +696,7 @@ export default function NewsRoomPage() {
                     onClick={() => setEditingItem(item)}
                     className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
-                      background: "rgba(255,255,255,0.08)",
+                      background: "var(--surface-raised)",
                       border: "1px solid var(--bz-border)",
                     }}
                   >
@@ -706,7 +706,7 @@ export default function NewsRoomPage() {
                     onClick={() => setCoverUploadItem(item)}
                     className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
-                      background: "rgba(255,255,255,0.08)",
+                      background: "var(--surface-raised)",
                       border: "1px solid var(--bz-border)",
                     }}
                   >
@@ -743,7 +743,7 @@ export default function NewsRoomPage() {
                         <SelectTrigger
                           className="h-7 text-[10px] rounded-lg font-medium"
                           style={{
-                            background: "rgba(35,35,40,0.65)",
+                            background: "var(--bz-card)",
                             borderColor: "var(--bz-border)",
                             color: "var(--bz-text-1)",
                           }}
@@ -809,7 +809,7 @@ export default function NewsRoomPage() {
         <div
           className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-5 py-3 rounded-2xl z-50 animate-in slide-in-from-bottom-4 duration-300"
           style={{
-            background: "rgba(35,35,40,0.65)",
+            background: "var(--bz-card)",
             backdropFilter: "blur(32px) saturate(1.5)",
             WebkitBackdropFilter: "blur(32px) saturate(1.5)",
             border: "1px solid var(--bz-border)",
@@ -831,7 +831,7 @@ export default function NewsRoomPage() {
           </span>
           <div
             className="w-px h-4"
-            style={{ background: "rgba(255,255,255,0.08)" }}
+            style={{ background: "var(--surface-raised)" }}
           />
           <button
             onClick={handleBulkPublish}
