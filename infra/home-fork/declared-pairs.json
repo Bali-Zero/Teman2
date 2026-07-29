@@ -395,6 +395,11 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/Library/LaunchAgents/com.balizero.nb-curator.daily.plist",
+      "repo": "infra/launchagents/com.balizero.nb-curator.daily.plist",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/cron-agent-python/run.sh",
       "repo": "scripts/cron-agent-python/run.sh",
       "_note": "W104 promotion (2026-07-25). THE entry point of the cron-agent-python organism: 16 crontab lines exec it (`run.sh <job>`), and --discover flagged it UNDECLARED once per line. Carries the REDISCLI_AUTH export that re-armed redis auth for every job in the tree.",

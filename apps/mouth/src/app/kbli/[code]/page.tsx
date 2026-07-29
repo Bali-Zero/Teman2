@@ -15,6 +15,8 @@ import {
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { baliBlockClause } from "@/lib/kbli-bali-block";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
+import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
@@ -70,20 +72,16 @@ export async function generateMetadata({
   const kbli = getCode(codeParam);
   if (!kbli) return { title: "KBLI Code Not Found" };
 
-  const pmaLabel =
-    kbli.pma.status === "open"
-      ? "100% Foreign Ownership"
-      : kbli.pma.status === "restricted"
-        ? kbli.pma.capSpecial
-          ? "Restricted (special distribution conditions)"
-          : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
-        : "Closed to Foreign Investment";
-
-  // Metadata surface uses titleEnMeta (frozen to the curated-legacy EN map —
-  // SEO firebreak PR #1967); the page body below uses the full-coverage titleEn.
+  // Metadata surface uses titleEnMeta (full-coverage EN map since the
+  // NEXT_PUBLIC_KBLI_META_EN flip, 2026-07-13); the page body below uses
+  // titleEn. Batch 3 (v3) replaces the fixed "Indonesia Business Guide 2025"
+  // suffix — identical on all 1,559 pages — with the datum the long-tail query
+  // is asking for. Composition + its provenance gate live in @/lib/kbli-meta so
+  // they are unit-testable: a <title> is a regulatory assertion Google indexes,
+  // and unlike the body it cannot carry a "verification pending" qualifier.
   const metaTitleEn = kbli.titleEnMeta ?? kbli.titleEn;
-  const title = `KBLI ${kbli.code}: ${metaTitleEn} — Indonesia Business Guide 2025`;
-  const description = `${metaTitleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+  const title = kbliMetaTitle(kbli, metaTitleEn);
+  const description = kbliMetaDescription(kbli, metaTitleEn);
 
   // Never repeat the Indonesian title twice when no distinct English title exists.
   const keywordTitles =
@@ -858,9 +856,7 @@ export default async function KBLICodePage({
                               : kbli.pma.status === "open"
                                 ? `${kbli.pma.maxForeign}% Open`
                                 : kbli.pma.status === "restricted"
-                                  ? kbli.pma.capVerified
-                                    ? `Max ${kbli.pma.maxForeign}%`
-                                    : `≈${kbli.pma.maxForeign}% (unverified)`
+                                  ? restrictedCapBadge(kbli.pma)
                                   : "Closed"}
                           </span>
                         </div>
