@@ -473,7 +473,7 @@ export function CompanyTab({
             disabled={isSyncingDrive}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
             style={{
-              background: "rgba(255,255,255,0.04)",
+              background: "var(--bz-surface)",
               border: "1px solid var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
@@ -490,7 +490,7 @@ export function CompanyTab({
           onClick={() => setIsAddingCompany(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
           style={{
-            background: "rgba(255,255,255,0.04)",
+            background: "var(--bz-surface)",
             border: "1px solid var(--bz-border)",
             color: "var(--bz-text-2)",
           }}

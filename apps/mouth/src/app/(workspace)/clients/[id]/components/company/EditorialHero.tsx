@@ -104,7 +104,7 @@ export function EditorialHero({
         {companyId && (
           <button
             onClick={onEdit}
-            className="ml-auto p-1.5 rounded-lg hover:bg-white/10 text-[var(--kbli-text-muted)] transition-colors"
+            className="ml-auto p-1.5 rounded-lg hover:bg-[var(--kbli-bg-card-hover)] text-[var(--kbli-text-muted)] transition-colors"
             title="Edit company"
             aria-label="Edit company"
           >

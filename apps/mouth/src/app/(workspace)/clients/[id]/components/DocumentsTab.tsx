@@ -66,19 +66,22 @@ export function DocumentsTab({
     if (daysLeft < 0)
       return {
         label: `Expired ${Math.abs(daysLeft)}d ago`,
-        cls: "bg-red-500/20 text-red-400",
+        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
       };
     if (daysLeft === 0)
-      return { label: "Expires today", cls: "bg-red-500/20 text-red-400" };
+      return {
+        label: "Expires today",
+        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+      };
     if (daysLeft <= 30)
       return {
         label: `⏰ ${daysLeft}d left`,
-        cls: "bg-red-500/15 text-red-400",
+        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
       };
     if (daysLeft <= 90)
       return {
         label: `⏰ ${daysLeft}d left`,
-        cls: "bg-yellow-500/15 text-yellow-400",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft <= 365)
       return {
@@ -119,7 +122,7 @@ export function DocumentsTab({
     return (
       <div className="space-y-4">
         <AiSummaryCard clientId={clientId} section="documents" />
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-12 text-center shadow-[var(--bz-shadow-card)]">
           <FileText className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
           <p className="text-[var(--bz-text-2)]">No documents yet</p>
           <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
@@ -146,7 +149,7 @@ export function DocumentsTab({
           <p className="text-sm text-[var(--bz-text-2)]">
             {documents.length} docs · {sortedCategories.length} categories
             {totalUrgent > 0 && (
-              <span className="ml-2 inline-flex items-center gap-1 text-orange-400 font-medium">
+              <span className="ml-2 inline-flex items-center gap-1 text-[var(--state-warning)] font-medium">
                 <AlertTriangle className="w-3 h-3" />
                 {totalUrgent} expiring soon
               </span>
@@ -199,7 +202,7 @@ export function DocumentsTab({
                 {catDocs.length}
               </span>
               {urgentCount > 0 && (
-                <span className="text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <span className="text-xs bg-[var(--state-warning)]/10 text-[var(--state-warning)] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <AlertTriangle className="w-2.5 h-2.5" />
                   {urgentCount}
                 </span>
@@ -226,7 +229,7 @@ export function DocumentsTab({
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <FileText
-                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-red-400" : "text-[var(--bz-text-2)]"}`}
+                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-danger)]" : "text-[var(--bz-text-2)]"}`}
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
