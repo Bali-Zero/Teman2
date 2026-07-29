@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
 const KITA_ORIGIN = `http://kita.localhost:${E2E_PORT}`;
@@ -122,6 +123,29 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     .toBe(true);
 }
 
+async function expectNoBlockingA11y(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  const blocking = results.violations.filter(
+    (violation) =>
+      violation.impact === "serious" || violation.impact === "critical",
+  );
+
+  expect(
+    blocking.map(({ id, impact, help, nodes }) => ({
+      id,
+      impact,
+      help,
+      nodes: nodes.map(({ target, html, failureSummary }) => ({
+        target,
+        html,
+        failureSummary,
+      })),
+    })),
+  ).toEqual([]);
+}
+
 const syntheticPractice = {
   id: 707,
   client_id: 17,
@@ -164,6 +188,7 @@ test.describe("Bali Zero product-family shells", () => {
     });
 
     await expectNoHorizontalOverflow(page);
+    await expectNoBlockingA11y(page);
   });
 
   test("Kita desktop shell shows the canonical Bali Zero logo", async ({
@@ -180,6 +205,7 @@ test.describe("Bali Zero product-family shells", () => {
 
     await expect(logo).toBeVisible({ timeout: 30000 });
     await expect(logo).toHaveAttribute("src", /balizero-logo-clean\.png/);
+    await expectNoBlockingA11y(page);
   });
 
   test("Process keeps a horizontally scannable board and keyboard-accessible cards on mobile", async ({
@@ -196,18 +222,18 @@ test.describe("Bali Zero product-family shells", () => {
     const card = page.getByRole("button", {
       name: "Open process 707: Visa Extension",
     });
+    const cardSurface = page.getByTestId("process-card-707");
 
     await expect(board).toBeVisible({ timeout: 30000 });
     await expect(card).toBeVisible();
     await card.focus();
     await expect(card).toBeFocused();
     await expectNoHorizontalOverflow(page);
-    await expect(card).toContainText("Waiting Payment");
-    await expect(
-      page.getByRole("button", {
-        name: "Open process 708: Visa Extension",
-      }),
-    ).toContainText("Needs review · Legacy Manual Review");
+    await expect(cardSurface).toContainText("Waiting Payment");
+    await expect(page.getByTestId("process-card-708")).toContainText(
+      "Needs review · Legacy Manual Review",
+    );
+    await expectNoBlockingA11y(page);
   });
 
   test("My mobile shell stays within the viewport and labels Messages canonically", async ({
@@ -224,5 +250,6 @@ test.describe("Bali Zero product-family shells", () => {
     await expect(messages).toBeVisible({ timeout: 30000 });
     await expect(messages).toHaveAttribute("href", "/portal/messages");
     await expectNoHorizontalOverflow(page);
+    await expectNoBlockingA11y(page);
   });
 });
