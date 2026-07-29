@@ -87,9 +87,18 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
             size="sm"
           />
         )}
+        {/* capSpecial/capVerified are forwarded, not left to the component's
+            defaults (false/true). Without them the card silently ASSERTS a cap
+            it was never told is verified, and loses the special-distribution
+            regime entirely — the detail page passes both, so the same code read
+            two different things depending on which surface you were looking at.
+            Found by adversarial review: the badge's own tests pass these props
+            by hand, so they exercised a call shape no page actually used. */}
         <PMABadge
           status={code.pma.status}
           maxForeign={code.pma.maxForeign}
+          capSpecial={code.pma.capSpecial}
+          capVerified={code.pma.capVerified}
           baliBlocked={!!code.baliL4?.blocked}
           size="sm"
         />
