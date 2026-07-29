@@ -62,7 +62,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "C1 - Tourism Visit",
         description: "Tourism, family visits, social activities",
-        price: "Check live pricing",
+        price: "2.300.000",
         features: [
           "60 days (extendable 4x to 180 days)",
           "7-10 days processing",
@@ -73,7 +73,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "C2 - Business Visit",
         description: "Business meetings, negotiations, conferences",
-        price: "Check live pricing",
+        price: "3.600.000",
         features: [
           "60 days (extendable to 180 days)",
           "7-10 days processing",
@@ -128,7 +128,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "C7/C7AB - Professional Events",
         description: "Chefs, artists, musicians, performers",
-        price: "Check live pricing",
+        price: "4.500.000",
         features: [
           "30 days validity",
           "Event-based permit",
@@ -138,8 +138,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       },
       {
         name: "C8 - Sports Events",
-        description: "Athletes, coaches, sports competitions",
-        price: "Contact",
+        description: "Athletes, coaches, sports officials & referees",
+        price: "4.000.000",
         features: [
           "Event duration validity",
           "Federation invitation required",
@@ -150,7 +150,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "C18 - Work Trial",
         description: "Job trials and skill assessments",
-        price: "Check live pricing",
+        price: "5.500.000",
         features: [
           "90 days validity",
           "Company sponsorship required",
@@ -161,9 +161,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "C22A - Academic Internship",
         description: "University internship programs",
-        price: "Check live pricing",
+        price: "4.800.000",
         features: [
-          "60 days (or 5.8M for 180 days)",
+          "60 days (or 5.800.000 IDR for 180 days)",
           "Academic institution required",
           "Student documentation",
         ],
@@ -172,9 +172,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "C22B - Skills Development",
         description: "Company training programs",
-        price: "Check live pricing",
+        price: "4.800.000",
         features: [
-          "60 days (or 5.8M for 180 days)",
+          "60 days (or 5.800.000 IDR for 180 days)",
           "Company-sponsored training",
           "Professional development",
         ],
@@ -186,9 +186,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "D1 - Multiple Entry Tourism",
         description: "Frequent visitors for tourism",
-        price: "Contact",
+        price: "6.000.000",
         features: [
-          "1 or 2 years validity",
+          "1, 2 or 5 years validity (8.000.000 / 12.900.000 IDR)",
           "Multiple entries allowed",
           "60 days per stay",
         ],
@@ -197,9 +197,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "D2 - Multiple Entry Business",
         description: "Frequent business travelers",
-        price: "Contact",
+        price: "6.500.000",
         features: [
-          "1 or 2 years validity",
+          "1 or 2 years validity (9.000.000 IDR)",
           "Multiple entries allowed",
           "Business activities & meetings",
         ],
@@ -208,9 +208,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "D12 - Business Investigation",
         description: "Pre-investment research visits",
-        price: "Check live pricing",
+        price: "7.500.000",
         features: [
-          "1 year (or 10M for 2 years)",
+          "1 year (or 10.000.000 IDR for 2 years)",
           "7-10 days processing",
           "Path to Investor KITAS",
         ],
@@ -222,7 +222,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E23 - Working KITAS (Offshore)",
         description: "Employment with Indonesian company",
-        price: "Check live pricing",
+        price: "34.500.000",
         features: [
           "1 year validity (renewable)",
           "4-6 weeks (RPTKA + IMTA)",
@@ -233,7 +233,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E23 - Working KITAS (Onshore)",
         description: "Convert from within Indonesia",
-        price: "Check live pricing",
+        price: "36.000.000",
         features: [
           "1 year validity (renewable)",
           "4-6 weeks (RPTKA + IMTA)",
@@ -244,7 +244,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E23 - Freelance KITAS (Offshore)",
         description: "Self-employed professionals",
-        price: "Check live pricing",
+        price: "25.800.000",
         features: [
           "6 months validity",
           "4-6 weeks (RPTKA + IMTA)",
@@ -255,7 +255,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E23 - Freelance KITAS (Onshore)",
         description: "Convert from within Indonesia",
-        price: "Check live pricing",
+        price: "27.500.000",
         features: [
           "6 months validity",
           "4-6 weeks (RPTKA + IMTA)",
@@ -269,7 +269,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E28A - Investor KITAS (Offshore)",
         description: "PT PMA directors & shareholders",
-        price: "Check live pricing",
+        price: "17.000.000",
         features: [
           "2 years validity",
           "7-10 days processing",
@@ -280,7 +280,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E28A - Investor KITAS (Onshore)",
         description: "Convert from within Indonesia",
-        price: "Check live pricing",
+        price: "19.000.000",
         features: [
           "2 years validity",
           "7-10 days processing",
@@ -305,7 +305,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E31A - Spouse KITAS 1 Year (Offshore)",
         description: "Married to Indonesian citizen",
-        price: "Check live pricing",
+        price: "11.000.000",
         features: [
           "1 year validity",
           "7-10 days processing",
@@ -316,7 +316,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E31A - Spouse KITAS 2 Years (Offshore)",
         description: "Married to Indonesian citizen",
-        price: "Check live pricing",
+        price: "15.000.000",
         features: [
           "2 years validity",
           "7-10 days processing",
@@ -327,7 +327,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E31B/F - Dependent KITAS 1 Year",
         description: "Family of KITAS holders",
-        price: "Check live pricing",
+        price: "11.000.000",
         features: [
           "1 year validity",
           "7-10 days processing",
@@ -338,7 +338,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E31B/F - Dependent KITAS 2 Years",
         description: "Family of KITAS holders",
-        price: "Check live pricing",
+        price: "15.000.000",
         features: [
           "2 years validity",
           "7-10 days processing",
@@ -352,7 +352,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E33G - Digital Nomad KITAS (Offshore)",
         description: "Remote workers with foreign income",
-        price: "Check live pricing",
+        price: "13.000.000",
         features: [
           "1 year validity",
           "7-10 days processing",
@@ -363,7 +363,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E33G - Digital Nomad KITAS (Onshore)",
         description: "Convert from within Indonesia",
-        price: "Check live pricing",
+        price: "14.000.000",
         features: [
           "1 year validity",
           "7-10 days processing",
@@ -374,7 +374,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E33E/F - Retirement KITAS (Offshore)",
         description: "Retirees aged 55+",
-        price: "Check live pricing",
+        price: "14.000.000",
         features: [
           "1-5 years validity",
           "7-10 days processing",
@@ -385,7 +385,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E33E/F - Retirement KITAS (Onshore)",
         description: "Convert from within Indonesia",
-        price: "Check live pricing",
+        price: "16.000.000",
         features: [
           "1-5 years validity",
           "7-10 days processing",
@@ -447,7 +447,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Investor KITAP + MERP",
         description: "Permanent residence for investors",
-        price: "Check live pricing",
+        price: "55.000.000",
         features: [
           "Permanent residence",
           "Multiple re-entry permit included",
@@ -458,7 +458,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Dependent KITAP + MERP",
         description: "Family of Indonesian citizens",
-        price: "Check live pricing",
+        price: "33.000.000",
         features: [
           "Permanent residence",
           "Multiple re-entry permit included",
@@ -469,7 +469,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Retirement KITAP + MERP",
         description: "Permanent residence for retirees",
-        price: "Check live pricing",
+        price: "45.000.000",
         features: [
           "Permanent residence",
           "Multiple re-entry permit included",
@@ -491,7 +491,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "MERP Only (1 Year)",
         description: "Multiple Exit Re-entry Permit",
-        price: "Check live pricing",
+        price: "Contact",
         features: [
           "1 year validity",
           "Unlimited exits/entries",
@@ -502,7 +502,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "MERP Only (2 Years)",
         description: "Multiple Exit Re-entry Permit",
-        price: "Check live pricing",
+        price: "Contact",
         features: [
           "2 years validity",
           "Unlimited exits/entries",
@@ -516,7 +516,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "EPO (Exit Permit Only)",
         description: "One-way exit from Indonesia",
-        price: "Check live pricing",
+        price: "700.000",
         features: [
           "Exit without re-entry",
           "1-3 days processing",
@@ -527,7 +527,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "ERP (Exit Re-entry Permit)",
         description: "Travel abroad and return",
-        price: "Check live pricing",
+        price: "800.000",
         features: [
           "Preserves KITAS validity",
           "1-3 days processing",
@@ -538,7 +538,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Mutation Passport",
         description: "Update KITAS with new passport",
-        price: "Check live pricing",
+        price: "500.000",
         features: [
           "Required when passport renewed",
           "5-7 days processing",
@@ -549,7 +549,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Mutation Address",
         description: "Update registered address",
-        price: "Check live pricing",
+        price: "500.000",
         features: [
           "Immigration records update",
           "5-7 days processing",
@@ -560,7 +560,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Cancel RPTKA + IMTA + Wajib Lapor",
         description: "Full work permit cancellation",
-        price: "Check live pricing",
+        price: "Contact",
         features: [
           "Complete cancellation package",
           "Required when leaving employment",
@@ -571,7 +571,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Reset Molina",
         description: "Immigration online account reset",
-        price: "Check live pricing",
+        price: "1.000.000",
         features: [
           "Fix login/account issues",
           "1-3 days processing",
@@ -582,7 +582,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "SKTT Registration",
         description: "Temporary residence certificate",
-        price: "Check live pricing",
+        price: "1.500.000",
         features: [
           "Required for all KITAS holders",
           "7-10 days processing",
@@ -593,7 +593,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "SKCK (Police Clearance)",
         description: "Indonesian police clearance",
-        price: "Check live pricing",
+        price: "2.000.000",
         features: [
           "Clean record certificate",
           "5-7 days processing",
@@ -604,7 +604,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Domicile Letter",
         description: "Residence confirmation letter",
-        price: "Check live pricing",
+        price: "1.500.000",
         features: [
           "Official domicile confirmation",
           "3-5 days processing",
@@ -615,7 +615,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Domicile + SKTT Package",
         description: "Combined residence documents",
-        price: "Check live pricing",
+        price: "Contact",
         features: [
           "Both documents together",
           "Save 700k IDR",
@@ -626,9 +626,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Born Report (Lapor Lahir)",
         description: "Birth registration for foreigner child",
-        price: "Check live pricing",
+        price: "2.000.000",
         features: [
-          "Required within 30 days of birth",
+          "Required within 30 days of birth (4.000.000 IDR if late)",
           "Full documentation support",
           "Immigration registration",
         ],
@@ -640,7 +640,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Indonesian Passport 5 Years",
         description: "Standard passport renewal",
-        price: "Check live pricing",
+        price: "1.300.000",
         features: [
           "5 years validity",
           "7-14 days processing",
@@ -651,7 +651,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "Indonesian Passport 10 Years",
         description: "Long-term passport",
-        price: "Check live pricing",
+        price: "2.200.000",
         features: [
           "10 years validity",
           "7-14 days processing",
@@ -662,7 +662,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E-Passport 5 Years",
         description: "Biometric electronic passport",
-        price: "Check live pricing",
+        price: "2.200.000",
         features: [
           "Biometric chip included",
           "5 years validity",
@@ -673,7 +673,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E-Passport 10 Years",
         description: "Premium biometric passport",
-        price: "Check live pricing",
+        price: "2.700.000",
         features: [
           "Biometric chip included",
           "10 years validity",
