@@ -38,13 +38,13 @@ function formatRelativeTime(iso?: string | null): string {
 function statusClass(status: string): string {
   switch (status) {
     case "blocked":
-      return "border-red-500/40 bg-red-500/10 text-red-300";
+      return "border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 text-[var(--state-danger)]";
     case "waiting":
-      return "border-yellow-500/40 bg-yellow-500/10 text-yellow-300";
+      return "border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 text-[var(--state-warning)]";
     case "done":
-      return "border-green-500/40 bg-green-500/10 text-green-300";
+      return "border-[var(--state-success)]/40 bg-[var(--state-success)]/10 text-[var(--state-success)]";
     default:
-      return "border-blue-500/40 bg-blue-500/10 text-blue-300";
+      return "border-[var(--state-info)]/40 bg-[var(--state-info)]/10 text-[var(--state-info)]";
   }
 }
 
@@ -79,7 +79,7 @@ function CaseRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+        className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--bz-card-hover)]"
       >
         <Icon className="mt-1 h-4 w-4 shrink-0 text-[var(--bz-text-2)]" />
         <div className="min-w-0 flex-1">
@@ -124,7 +124,7 @@ function CaseRow({
               {flags.map((flag, index) => (
                 <span
                   key={`${flag.id || flag.label}-${index}`}
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200"
+                  className="inline-flex items-center gap-1 rounded-full border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 px-2 py-1 text-[11px] text-[var(--state-warning)]"
                 >
                   <AlertTriangle className="h-3 w-3" />
                   {flag.label}
@@ -179,8 +179,8 @@ export function WaCaseIntelligencePanel({
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-gray-700/50 bg-gray-900/40 p-4">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
+      <div className="bz-product-panel p-4">
+        <div className="flex items-center gap-2 text-sm text-[var(--bz-text-2)]">
           <Sparkles className="h-4 w-4 animate-pulse" />
           <span>Loading WhatsApp intelligence...</span>
         </div>
@@ -191,13 +191,15 @@ export function WaCaseIntelligencePanel({
   if (error) {
     return (
       <div className="rounded-lg border border-red-700/40 bg-red-950/20 p-4">
-        <div className="flex items-start gap-2 text-sm text-red-400">
+        <div className="flex items-start gap-2 text-sm text-[var(--state-danger)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <div className="font-medium">
               Failed to load WhatsApp intelligence
             </div>
-            <div className="mt-1 text-xs text-red-300/70">{error}</div>
+            <div className="mt-1 text-xs text-[var(--state-danger)]/70">
+              {error}
+            </div>
           </div>
         </div>
       </div>
@@ -207,21 +209,27 @@ export function WaCaseIntelligencePanel({
   if (!response || response.status === "not_generated") return null;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-emerald-500/30 bg-gray-900/40">
+    <section
+      className="bz-product-panel overflow-hidden"
+      style={{
+        borderColor:
+          "color-mix(in srgb, var(--state-success) 30%, transparent)",
+      }}
+    >
       <div className="flex items-start justify-between gap-3 border-b border-[var(--bz-border)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-emerald-300" />
+          <MessageCircle className="h-4 w-4 text-[var(--state-success)]" />
           <h3 className="text-sm font-semibold text-[var(--bz-text-1)]">
             WhatsApp Case Intelligence
           </h3>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+          <span className="rounded-full border border-[var(--state-success)]/30 bg-[var(--state-success)]/10 px-2 py-0.5 text-[10px] text-[var(--state-success)]">
             {response.case_count}
           </span>
         </div>
         <button
           type="button"
           onClick={fetchCases}
-          className="rounded p-1 text-[var(--bz-text-2)] transition-colors hover:bg-white/[0.06] hover:text-[var(--bz-text-1)]"
+          className="rounded p-1 text-[var(--bz-text-2)] transition-colors hover:bg-[var(--bz-card-hover)] hover:text-[var(--bz-text-1)]"
           title="Refresh WhatsApp intelligence"
           aria-label="Refresh WhatsApp intelligence"
         >

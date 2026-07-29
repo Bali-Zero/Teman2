@@ -122,10 +122,7 @@ export function ImmigrationTab({
   );
 
   const renderDocCard = (doc: ClientDocument) => (
-    <div
-      key={doc.id}
-      className="rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.6)] backdrop-blur-md shadow-2xl overflow-hidden group"
-    >
+    <div key={doc.id} className="bz-product-panel overflow-hidden group">
       {doc.google_drive_file_url && (
         <div className="relative">
           <div
@@ -288,7 +285,7 @@ export function ImmigrationTab({
     {
       title: "Previous Visas",
       docs: previousVisas,
-      color: "bg-gray-500/20 text-gray-400",
+      color: "bg-[var(--bz-surface)] text-[var(--bz-text-2)]",
     },
     {
       title: "Working Permit",
@@ -317,7 +314,7 @@ export function ImmigrationTab({
       </div>
 
       {immigrationDocs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-12 text-center shadow-[var(--bz-shadow-card)]">
           <Globe className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
           <p className="text-[var(--bz-text-2)]">
             No immigration documents yet

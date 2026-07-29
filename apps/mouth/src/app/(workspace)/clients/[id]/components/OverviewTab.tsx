@@ -45,9 +45,9 @@ const INTERACTION_ICONS: Record<string, typeof MessageCircle> = {
 };
 
 const SENTIMENT_COLORS: Record<string, string> = {
-  positive: "text-green-400",
-  neutral: "text-gray-400",
-  negative: "text-red-400",
+  positive: "text-[var(--state-success)]",
+  neutral: "text-[var(--bz-text-2)]",
+  negative: "text-[var(--state-danger)]",
 };
 
 export function OverviewTab({
@@ -106,23 +106,20 @@ export function OverviewTab({
         <div className="flex flex-col h-full">
           {/* Client Info Card */}
           <div
-            className="rounded-xl border shadow-xl backdrop-blur-xl transition-all duration-300 overflow-hidden flex-1 flex flex-col h-full hover:shadow-2xl hover:-translate-y-1"
+            className="bz-product-panel bz-product-panel--interactive transition-all duration-300 overflow-hidden flex-1 flex flex-col h-full hover:-translate-y-1"
             style={{
-              border: isClientBirthday
-                ? "1px solid rgba(251,191,36,0.4)"
-                : "1px solid rgba(255, 255, 255, 0.05)",
+              borderColor: isClientBirthday
+                ? "color-mix(in srgb, var(--state-warning) 40%, transparent)"
+                : undefined,
               background: isClientBirthday
-                ? "rgba(45,38,20,0.8)"
-                : "rgba(32, 32, 36, 0.65)",
+                ? "color-mix(in srgb, var(--state-warning) 10%, var(--bz-card))"
+                : undefined,
               boxShadow: isClientBirthday
-                ? "0 0 24px rgba(251,191,36,0.15), 0 10px 20px -10px rgba(0,0,0,0.5)"
+                ? "0 0 24px color-mix(in srgb, var(--state-warning) 15%, transparent), var(--bz-shadow-card)"
                 : undefined,
             }}
           >
-            <div
-              className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}
-            >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 Client Info
                 {isClientBirthday && (
@@ -328,7 +325,7 @@ export function OverviewTab({
                         </p>
                         <p className="text-sm font-medium flex items-center gap-2">
                           {formatDate(client.date_of_birth)}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bz-surface)] text-[var(--bz-text-2)]">
                             {Math.floor(
                               (Date.now() -
                                 new Date(client.date_of_birth).getTime()) /
@@ -499,13 +496,7 @@ export function OverviewTab({
               .reduce((sum, p) => sum + amountOf(p), 0);
             return (
               <div className="grid grid-cols-2 gap-3 mt-4">
-                <div
-                  className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                  style={{
-                    border: "1px solid rgba(255, 255, 255, 0.05)",
-                    background: "rgba(35, 35, 40, 0.45)",
-                  }}
-                >
+                <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
                   <div className="flex items-center gap-1.5 mb-1">
                     <Users className="w-3.5 h-3.5 text-blue-500" />
                     <span className="text-[10px] text-[var(--bz-text-2)]">
@@ -514,13 +505,7 @@ export function OverviewTab({
                   </div>
                   <p className="text-lg font-bold">{stats.family_count}</p>
                 </div>
-                <div
-                  className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                  style={{
-                    border: "1px solid rgba(255, 255, 255, 0.05)",
-                    background: "rgba(35, 35, 40, 0.45)",
-                  }}
-                >
+                <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
                   <div className="flex items-center gap-1.5 mb-1">
                     <FileText className="w-3.5 h-3.5 text-purple-500" />
                     <span className="text-[10px] text-[var(--bz-text-2)]">
@@ -530,30 +515,24 @@ export function OverviewTab({
                   <p className="text-lg font-bold">{stats.documents_count}</p>
                 </div>
                 {pipelineValue > 0 && (
-                  <div
-                    className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                    style={{
-                      border: "1px solid rgba(255, 255, 255, 0.05)",
-                      background: "rgba(35, 35, 40, 0.45)",
-                    }}
-                  >
+                  <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center gap-1.5 mb-1">
                       <Activity className="w-3.5 h-3.5 text-yellow-500" />
                       <span className="text-[10px] text-[var(--bz-text-2)]">
                         Pipeline
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-yellow-400 truncate">
+                    <p className="text-sm font-bold text-[var(--state-warning)] truncate">
                       {formatCurrency(pipelineValue)}
                     </p>
                   </div>
                 )}
                 {unpaidValue > 0 && (
                   <div
-                    className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                    className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1"
                     style={{
-                      border: "1px solid rgba(255, 100, 80, 0.12)",
-                      background: "rgba(35, 35, 40, 0.45)",
+                      borderColor:
+                        "color-mix(in srgb, var(--state-danger) 22%, transparent)",
                     }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
@@ -562,7 +541,7 @@ export function OverviewTab({
                         Unpaid
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-red-400 truncate">
+                    <p className="text-sm font-bold text-[var(--state-danger)] truncate">
                       {formatCurrency(unpaidValue)}
                     </p>
                   </div>
@@ -600,17 +579,8 @@ export function OverviewTab({
       {/* Bottom Section: Activity Timeline + Quick Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Activity Timeline — spans 2 columns */}
-        <div
-          className="lg:col-span-2 rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
-          style={{
-            border: "1px solid rgba(255, 255, 255, 0.05)",
-            background: "rgba(32, 32, 36, 0.65)",
-          }}
-        >
-          <div
-            className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: "rgba(255,255,255,0.05)" }}
-          >
+        <div className="bz-product-panel lg:col-span-2 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
             <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
               <Activity className="w-4 h-4 text-[var(--bz-accent)]" />
               Activity Timeline
@@ -630,13 +600,14 @@ export function OverviewTab({
                     INTERACTION_ICONS[interaction.interaction_type] ||
                     MessageCircle;
                   const sentimentClass = interaction.sentiment
-                    ? SENTIMENT_COLORS[interaction.sentiment] || "text-gray-400"
+                    ? SENTIMENT_COLORS[interaction.sentiment] ||
+                      "text-[var(--bz-text-2)]"
                     : "";
 
                   return (
                     <div
                       key={interaction.id}
-                      className="group flex gap-3 py-2.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                      className="group flex gap-3 py-2.5 px-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors"
                     >
                       {/* Timeline line + icon */}
                       <div className="flex flex-col items-center">
@@ -774,17 +745,8 @@ export function OverviewTab({
         {/* Right column: Practices Summary */}
         <div className="space-y-4">
           {/* Active Practices */}
-          <div
-            className="rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
-            style={{
-              border: "1px solid rgba(255, 255, 255, 0.05)",
-              background: "rgba(32, 32, 36, 0.65)",
-            }}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}
-            >
+          <div className="bz-product-panel overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-yellow-500" />
                 Active
@@ -810,7 +772,7 @@ export function OverviewTab({
                 activePractices.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer group/p"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors cursor-pointer group/p"
                     onClick={() => router.push(`/process/${p.id}`)}
                   >
                     <div className="min-w-0 flex-1">
@@ -864,17 +826,8 @@ export function OverviewTab({
           </div>
 
           {/* Completed Practices */}
-          <div
-            className="rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
-            style={{
-              border: "1px solid rgba(255, 255, 255, 0.05)",
-              background: "rgba(32, 32, 36, 0.65)",
-            }}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}
-            >
+          <div className="bz-product-panel overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                 Completed
@@ -888,7 +841,7 @@ export function OverviewTab({
                 completedPractices.slice(0, 5).map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer group/p"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors cursor-pointer group/p"
                     onClick={() => router.push(`/process/${p.id}`)}
                   >
                     <div className="min-w-0 flex-1">
@@ -917,7 +870,7 @@ export function OverviewTab({
                               <span
                                 className="text-[9px] px-1 py-0.5 rounded tabular-nums"
                                 style={{
-                                  background: "rgba(255,255,255,0.04)",
+                                  background: "var(--bz-surface)",
                                   color: "var(--bz-text-3)",
                                 }}
                               >
@@ -973,10 +926,7 @@ export function OverviewTab({
                 .reduce((sum, p) => sum + (p.actual_price || 0), 0);
               if (totalRevenue === 0) return null;
               return (
-                <div
-                  className="px-3 py-2 border-t flex items-center justify-between"
-                  style={{ borderColor: "rgba(255,255,255,0.05)" }}
-                >
+                <div className="px-3 py-2 border-t border-[var(--bz-border)] flex items-center justify-between">
                   <span className="text-[10px] text-[var(--bz-text-2)] uppercase tracking-wider">
                     Revenue
                   </span>

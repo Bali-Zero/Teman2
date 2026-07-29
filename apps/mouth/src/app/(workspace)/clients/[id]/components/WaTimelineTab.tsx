@@ -23,19 +23,19 @@ const PRIORITY_STYLES: Record<
   { bg: string; text: string; border: string }
 > = {
   HIGH: {
-    bg: "bg-red-500/15",
-    text: "text-red-300",
-    border: "border-red-500/60",
+    bg: "bg-[var(--state-danger)]/10",
+    text: "text-[var(--state-danger)]",
+    border: "border-[var(--state-danger)]/60",
   },
   MEDIUM: {
-    bg: "bg-yellow-500/10",
-    text: "text-yellow-300",
-    border: "border-yellow-500/40",
+    bg: "bg-[var(--state-warning)]/10",
+    text: "text-[var(--state-warning)]",
+    border: "border-[var(--state-warning)]/40",
   },
   LOW: {
-    bg: "bg-gray-500/10",
-    text: "text-gray-400",
-    border: "border-gray-500/30",
+    bg: "bg-[var(--bz-surface)]",
+    text: "text-[var(--bz-text-2)]",
+    border: "border-[var(--bz-border)]",
   },
 };
 
@@ -139,7 +139,7 @@ export function WaTimelineTab({
 
   if (loading && messages.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-400">
+      <div className="flex items-center justify-center py-12 text-[var(--bz-text-2)]">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         Loading WhatsApp timeline…
       </div>
@@ -148,7 +148,7 @@ export function WaTimelineTab({
 
   if (error && messages.length === 0) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+      <div className="rounded-lg border border-[var(--state-danger)]/30 bg-[var(--state-danger)]/10 p-4 text-sm text-[var(--state-danger)]">
         <div className="flex items-center gap-2 font-medium">
           <AlertTriangle className="w-4 h-4" /> Failed to load wa-mirror
           messages
@@ -160,7 +160,7 @@ export function WaTimelineTab({
 
   if (messages.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-8 text-center text-sm text-gray-400">
+      <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] p-8 text-center text-sm text-[var(--bz-text-2)] shadow-[var(--bz-shadow-card)]">
         <MessageCircle className="w-6 h-6 mx-auto mb-2 opacity-50" />
         No WhatsApp mirror conversation linked to this{" "}
         {practiceId ? "practice" : "client"} yet.
@@ -170,16 +170,18 @@ export function WaTimelineTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+      <div className="flex flex-wrap gap-3 text-xs text-[var(--bz-text-2)]">
         <span>
-          <strong className="text-gray-200">{stats.total}</strong> messages
+          <strong className="text-[var(--bz-text-1)]">{stats.total}</strong>{" "}
+          messages
         </span>
         <span>
-          <span className="text-green-300">{stats.inbound}</span> in /{" "}
-          <span className="text-sky-300">{stats.outbound}</span> out
+          <span className="text-[var(--state-success)]">{stats.inbound}</span>{" "}
+          in /{" "}
+          <span className="text-[var(--state-info)]">{stats.outbound}</span> out
         </span>
         {stats.high > 0 && (
-          <span className="text-red-300">
+          <span className="text-[var(--state-danger)]">
             <AlertTriangle className="inline w-3 h-3 mr-1" />
             {stats.high} HIGH unresolved
           </span>
@@ -199,21 +201,21 @@ export function WaTimelineTab({
               <div
                 className={`max-w-[78%] rounded-lg border p-3 text-sm ${
                   isIn
-                    ? "bg-gray-800/60 border-gray-700"
-                    : "bg-emerald-900/30 border-emerald-700/40"
+                    ? "bg-[var(--bz-surface)] border-[var(--bz-border)]"
+                    : "bg-[var(--state-success)]/10 border-[var(--state-success)]/30"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-1 text-[10px] text-gray-400">
+                <div className="flex items-center gap-2 mb-1 text-[10px] text-[var(--bz-text-2)]">
                   <span className="font-mono">
                     {formatDateTime(m.message_date)}
                   </span>
                   {!isIn && m.team_member_phone && (
-                    <span className="text-sky-300">
+                    <span className="text-[var(--state-info)]">
                       ← {m.team_member_phone}
                     </span>
                   )}
                   {isIn && m.counterpart_phone && (
-                    <span className="text-green-300">
+                    <span className="text-[var(--state-success)]">
                       {m.counterpart_phone} →
                     </span>
                   )}
@@ -233,20 +235,24 @@ export function WaTimelineTab({
                 </div>
 
                 {m.has_media && (
-                  <div className="flex items-center gap-1 text-[10px] text-yellow-300 mb-1">
+                  <div className="flex items-center gap-1 text-[10px] text-[var(--state-warning)] mb-1">
                     <MediaIcon type={m.media_type} />
                     <span className="font-mono">{m.media_type}</span>
                     {m.has_ocr && (
-                      <span className="text-emerald-300 ml-1">[OCR]</span>
+                      <span className="text-[var(--state-success)] ml-1">
+                        [OCR]
+                      </span>
                     )}
                   </div>
                 )}
 
                 {m.body && (
-                  <div className="whitespace-pre-wrap break-words text-gray-100">
+                  <div className="whitespace-pre-wrap break-words text-[var(--bz-text-1)]">
                     {m.body}
                     {m.body_truncated && (
-                      <span className="text-gray-500 ml-1">…(truncated)</span>
+                      <span className="text-[var(--bz-text-3)] ml-1">
+                        …(truncated)
+                      </span>
                     )}
                   </div>
                 )}
@@ -261,7 +267,7 @@ export function WaTimelineTab({
                         .map((r) => (
                           <span
                             key={r}
-                            className="px-1.5 py-0.5 rounded bg-black/30 text-[9px] font-mono text-gray-300 border border-gray-700"
+                            className="px-1.5 py-0.5 rounded bg-[var(--bz-base)] text-[9px] font-mono text-[var(--bz-text-2)] border border-[var(--bz-border)]"
                           >
                             {r}
                           </span>
@@ -279,7 +285,7 @@ export function WaTimelineTab({
           <button
             onClick={loadMore}
             disabled={loading}
-            className="px-4 py-1.5 text-xs rounded border border-gray-700 bg-gray-800/50 hover:bg-gray-800 text-gray-300 disabled:opacity-50"
+            className="px-4 py-1.5 text-xs rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] hover:bg-[var(--bz-card-hover)] text-[var(--bz-text-2)] disabled:opacity-50"
           >
             {loading ? (
               <>

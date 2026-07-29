@@ -319,7 +319,7 @@ const TaxCard = memo(function TaxCard({
                   ? "bg-red-500/15 text-red-400"
                   : isUrgent
                     ? "bg-yellow-500/15 text-yellow-400"
-                    : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)]"
+                    : "bg-[var(--bz-surface)] text-[var(--bz-text-2)]"
               }`}
             >
               {isOverdue

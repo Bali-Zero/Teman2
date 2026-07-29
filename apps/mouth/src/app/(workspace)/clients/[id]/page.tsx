@@ -771,7 +771,7 @@ export default function ClientDetailPage() {
                 onClick={() => setLogType(key)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   logType === key
-                    ? "bg-[var(--bz-accent)] text-white border-[var(--bz-accent)]"
+                    ? "bg-[var(--bz-sidebar-active-fill)] text-white border-[var(--bz-sidebar-active-fill)]"
                     : "bg-[var(--bz-base)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--bz-accent)]/50"
                 }`}
               >

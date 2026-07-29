@@ -101,7 +101,7 @@ export function EditCompanyModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-[var(--kbli-text-secondary)] transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[var(--kbli-bg-card-hover)] text-[var(--kbli-text-secondary)] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -343,7 +343,7 @@ export function EditCompanyModal({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 text-sm rounded-lg bg-[var(--kbli-accent)] text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-2 transition-opacity"
+            className="px-4 py-2 text-sm rounded-lg bg-[var(--bz-sidebar-active-fill)] text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-2 transition-opacity"
           >
             {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             Save Changes

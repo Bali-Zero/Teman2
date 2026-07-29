@@ -19,21 +19,41 @@ const CHANNEL_STYLES: Record<
 > = {
   whatsapp: {
     icon: MessageCircle,
-    bg: "bg-green-500/20",
-    text: "text-green-400",
+    bg: "bg-[var(--state-success)]/10",
+    text: "text-[var(--state-success)]",
   },
-  email: { icon: Mail, bg: "bg-blue-500/20", text: "text-blue-400" },
-  call: { icon: Phone, bg: "bg-purple-500/20", text: "text-purple-400" },
-  telegram: { icon: Send, bg: "bg-sky-500/20", text: "text-sky-400" },
-  meeting: { icon: Calendar, bg: "bg-orange-500/20", text: "text-orange-400" },
-  note: { icon: FileText, bg: "bg-yellow-500/20", text: "text-yellow-400" },
+  email: {
+    icon: Mail,
+    bg: "bg-[var(--state-info)]/10",
+    text: "text-[var(--state-info)]",
+  },
+  call: {
+    icon: Phone,
+    bg: "bg-[var(--bz-neon-purple)]/10",
+    text: "text-[var(--bz-neon-purple)]",
+  },
+  telegram: {
+    icon: Send,
+    bg: "bg-[var(--state-info)]/10",
+    text: "text-[var(--state-info)]",
+  },
+  meeting: {
+    icon: Calendar,
+    bg: "bg-[var(--state-warning)]/10",
+    text: "text-[var(--state-warning)]",
+  },
+  note: {
+    icon: FileText,
+    bg: "bg-[var(--state-warning)]/10",
+    text: "text-[var(--state-warning)]",
+  },
 };
 
 const SENTIMENT_STYLES: Record<string, string> = {
-  positive: "bg-green-500/20 text-green-400",
-  neutral: "bg-gray-500/20 text-gray-400",
-  negative: "bg-red-500/20 text-red-400",
-  mixed: "bg-yellow-500/20 text-yellow-400",
+  positive: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
+  neutral: "bg-[var(--bz-surface)] text-[var(--bz-text-2)]",
+  negative: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+  mixed: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
 };
 
 export function TimelineTab({
@@ -93,7 +113,7 @@ export function TimelineTab({
     return (
       <div className="space-y-4">
         <AiSummaryCard clientId={clientId} section="timeline" />
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-10 text-center shadow-xl space-y-3">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-10 text-center shadow-[var(--bz-shadow-card)] space-y-3">
           <Clock className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-2 opacity-40" />
           <p className="text-sm font-medium text-[var(--bz-text-1)]">
             No interactions recorded yet
@@ -143,12 +163,12 @@ export function TimelineTab({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {sentimentCount.positive > 0 && (
-            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+            <span className="text-xs bg-[var(--state-success)]/10 text-[var(--state-success)] px-2 py-1 rounded-full">
               {sentimentCount.positive} positive
             </span>
           )}
           {sentimentCount.negative > 0 && (
-            <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">
+            <span className="text-xs bg-[var(--state-danger)]/10 text-[var(--state-danger)] px-2 py-1 rounded-full">
               {sentimentCount.negative} negative
             </span>
           )}
@@ -164,7 +184,7 @@ export function TimelineTab({
               onClick={() => setFilterType(t)}
               className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
                 filterType === t
-                  ? "bg-[var(--bz-accent)] text-white"
+                  ? "bg-[var(--bz-sidebar-active-fill)] text-white"
                   : "bg-[var(--bz-surface)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
               }`}
             >
@@ -214,8 +234,8 @@ export function TimelineTab({
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                             interaction.direction === "inbound"
-                              ? "bg-blue-500/15 text-blue-400"
-                              : "bg-green-500/15 text-green-400"
+                              ? "bg-[var(--state-info)]/10 text-[var(--state-info)]"
+                              : "bg-[var(--state-success)]/10 text-[var(--state-success)]"
                           }`}
                         >
                           {interaction.direction === "inbound"
@@ -225,7 +245,7 @@ export function TimelineTab({
                       )}
                       {interaction.sentiment && (
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${SENTIMENT_STYLES[interaction.sentiment] || "bg-gray-500/20 text-gray-400"}`}
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${SENTIMENT_STYLES[interaction.sentiment] || "bg-[var(--bz-surface)] text-[var(--bz-text-2)]"}`}
                         >
                           {interaction.sentiment}
                         </span>
@@ -254,12 +274,12 @@ export function TimelineTab({
                             style={{
                               background:
                                 ageDays === 0
-                                  ? "rgba(34,197,94,0.12)"
-                                  : ageDays <= 7
-                                    ? "rgba(255,255,255,0.05)"
-                                    : "rgba(255,255,255,0.04)",
+                                  ? "color-mix(in srgb, var(--state-success) 12%, transparent)"
+                                  : "var(--bz-surface)",
                               color:
-                                ageDays === 0 ? "#4ade80" : "var(--bz-text-2)",
+                                ageDays === 0
+                                  ? "var(--state-success)"
+                                  : "var(--bz-text-2)",
                             }}
                           >
                             {label}

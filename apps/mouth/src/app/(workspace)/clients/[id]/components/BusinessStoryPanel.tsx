@@ -210,13 +210,7 @@ function getReadiness(map: TaxCompanyPilotMap): TaxCompanyPilotReadiness {
 function EmptyBusinessStory({ companyNames }: { companyNames: string[] }) {
   const hasCompanyLinks = companyNames.length > 0;
   return (
-    <section
-      className="rounded-xl border p-4"
-      style={{
-        borderColor: "rgba(255,255,255,0.08)",
-        background: "rgba(32,32,36,0.65)",
-      }}
-    >
+    <section className="bz-product-panel p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-300">
           <AlertTriangle className="h-4 w-4" />
@@ -245,13 +239,7 @@ export function BusinessStoryPanel({
 }: BusinessStoryPanelProps) {
   if (isLoading) {
     return (
-      <section
-        className="rounded-xl border p-4"
-        style={{
-          borderColor: "rgba(255,255,255,0.08)",
-          background: "rgba(32,32,36,0.65)",
-        }}
-      >
+      <section className="bz-product-panel p-4">
         <div className="flex items-center gap-3 text-sm text-[var(--bz-text-2)]">
           <Loader2 className="h-4 w-4 animate-spin text-[var(--bz-accent)]" />
           Loading business story
@@ -263,10 +251,10 @@ export function BusinessStoryPanel({
   if (error) {
     return (
       <section
-        className="rounded-xl border p-4"
+        className="bz-product-panel p-4"
         style={{
-          borderColor: "rgba(239,68,68,0.25)",
-          background: "rgba(32,32,36,0.65)",
+          borderColor:
+            "color-mix(in srgb, var(--state-danger) 25%, transparent)",
         }}
       >
         <div className="flex items-start gap-3">
@@ -294,17 +282,8 @@ export function BusinessStoryPanel({
   }
 
   return (
-    <section
-      className="overflow-hidden rounded-xl border shadow-xl backdrop-blur-xl"
-      style={{
-        borderColor: "rgba(255,255,255,0.08)",
-        background: "rgba(32,32,36,0.65)",
-      }}
-    >
-      <header
-        className="flex flex-col gap-2 border-b px-4 py-3 md:flex-row md:items-center md:justify-between"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
-      >
+    <section className="bz-product-panel overflow-hidden">
+      <header className="flex flex-col gap-2 border-b border-[var(--bz-border)] px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-1)]">
             <Sparkles className="h-4 w-4 text-[var(--bz-accent)]" />
@@ -451,7 +430,7 @@ export function BusinessStoryPanel({
                         target="_blank"
                         rel="noreferrer"
                         aria-label={`Open ${item.source_label} evidence`}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--bz-text-1)] hover:bg-white/[0.08]"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--bz-text-1)] hover:bg-[var(--bz-card-hover)]"
                       >
                         <FolderOpen className="h-3.5 w-3.5 text-[var(--bz-accent)]" />
                         {item.source_label}

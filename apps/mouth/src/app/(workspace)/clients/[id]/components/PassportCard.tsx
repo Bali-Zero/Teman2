@@ -291,13 +291,7 @@ export function PassportCard({
   };
 
   return (
-    <div
-      className="rounded-xl border shadow-xl backdrop-blur-xl transition-all duration-300 overflow-hidden flex flex-col h-full hover:shadow-2xl hover:-translate-y-1"
-      style={{
-        border: "1px solid rgba(255, 255, 255, 0.05)",
-        background: "rgba(32, 32, 36, 0.65)",
-      }}
-    >
+    <div className="bz-product-panel bz-product-panel--interactive transition-all duration-300 overflow-hidden flex flex-col h-full hover:-translate-y-1">
       {/* OCR Processing Indicator */}
       {ocrPolling && (
         <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-400 text-xs">
@@ -306,10 +300,7 @@ export function PassportCard({
         </div>
       )}
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.05)" }}
-      >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
         <h3 className="text-base font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
           <CreditCard className="w-5 h-5" />
           Passport

@@ -228,7 +228,7 @@ export function FamilyTab({
       </div>
 
       {familyMembers.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-12 text-center shadow-[var(--bz-shadow-card)]">
           <Users className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
           <p className="text-[var(--bz-text-2)]">No family members added yet</p>
           <p className="text-sm text-[var(--bz-text-2)] mt-1">
@@ -251,10 +251,10 @@ export function FamilyTab({
             return (
               <div
                 key={member.id}
-                className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.6)] backdrop-blur-md shadow-2xl overflow-hidden group"
+                className="bz-product-panel overflow-hidden group"
               >
                 {/* Header with relationship badge */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.8)] backdrop-blur-lg">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--bz-border)] bg-[var(--bz-surface)]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center">
                       <User className="w-5 h-5 text-[var(--bz-accent)]" />
@@ -263,7 +263,7 @@ export function FamilyTab({
                       <h4 className="font-semibold text-[var(--bz-text-1)]">
                         {member.full_name}
                       </h4>
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs capitalize">
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--state-info)]/10 text-[var(--state-info)] text-xs capitalize">
                         {member.relationship}
                       </span>
                     </div>
@@ -280,7 +280,7 @@ export function FamilyTab({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                      className="h-8 w-8 text-[var(--state-danger)] hover:text-[var(--state-danger)] hover:bg-[var(--state-danger)]/10"
                       onClick={() => handleDelete(member.id, member.full_name)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -313,7 +313,7 @@ export function FamilyTab({
                           </p>
                           <p className="text-sm font-medium flex items-center gap-2">
                             {formatDate(member.date_of_birth)}
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bz-surface)] text-[var(--bz-text-2)]">
                               {Math.floor(
                                 (Date.now() -
                                   new Date(member.date_of_birth).getTime()) /
@@ -413,7 +413,7 @@ export function FamilyTab({
                           </div>
                         )}
                         {!member.passport_number && memberPassportDoc && (
-                          <p className="text-xs text-yellow-400 flex items-center gap-1">
+                          <p className="text-xs text-[var(--state-warning)] flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
                             Document on file — upload to extract data via OCR
                           </p>
@@ -570,7 +570,7 @@ export function FamilyTab({
                           </div>
                         )}
                         {!member.current_visa_type && memberVisaDoc && (
-                          <p className="text-xs text-yellow-400 flex items-center gap-1">
+                          <p className="text-xs text-[var(--state-warning)] flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
                             Document on file — upload to extract data via OCR
                           </p>
