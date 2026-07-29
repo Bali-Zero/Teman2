@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 // Phase 1 reference homepage — "safe" palette variant (#0B0B10 night).
 // Compare with /v2-aubergine which uses the contrarian #1A1520.
 export const metadata: Metadata = {
-  title: "Bali Zero v2 · Design System Preview",
+  title: { absolute: "Bali Zero v2 · Design System Preview" },
   robots: { index: false, follow: false },
 };
 

@@ -5,7 +5,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
-  title: "Contact · Bali Zero",
+  title: "Contact",
   description:
     "Talk to the Bali Zero team in Kerobokan. WhatsApp, email, office — every channel staffed by licensed Indonesian consultants.",
 };

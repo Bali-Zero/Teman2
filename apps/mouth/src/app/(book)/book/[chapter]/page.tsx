@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CHAPTERS } from "@/components/book/book-data";
+import { chapterTitleMetadata } from "@/components/book/book-title";
 import { BookPage } from "../BookPage";
 
 interface Props {
@@ -17,7 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!chapter) return {};
 
   return {
-    title: chapter.title,
+    // The (book) layout appends ` — Bali Zero` to every chapter title, and the
+    // cover chapter is literally titled "Bali Zero" — the append produced
+    // `Bali Zero — Bali Zero`, measured live 2026-07-29. The rule lives in
+    // book-title.ts so book-title.test.ts can compose it against the REAL
+    // chapter data instead of asserting about this line.
+    title: chapterTitleMetadata(chapter.title),
     description: chapter.subtitle,
     openGraph: {
       title: `${chapter.title} — Bali Zero`,

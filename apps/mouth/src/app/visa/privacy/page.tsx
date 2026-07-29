@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Bali Zero — Visa",
+  title: { absolute: "Privacy Policy — Bali Zero — Visa" },
   description:
     "How Bali Zero — Visa handles your data and protects your privacy.",
   robots: { index: false, follow: false },

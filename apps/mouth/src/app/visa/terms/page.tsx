@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Bali Zero — Visa",
+  title: { absolute: "Terms of Service — Bali Zero — Visa" },
   description:
     "Terms and conditions for using Bali Zero — Visa, an AI-powered Indonesian visa guidance tool.",
   robots: { index: false, follow: false },

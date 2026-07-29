@@ -7,7 +7,7 @@ import { Footer } from "../../_components/Footer";
 import { rosterBySlug } from "@/data/team-roster";
 
 export const metadata: Metadata = {
-  title: "About Bali Zero",
+  title: { absolute: "About Bali Zero" },
   robots: { index: false, follow: false },
 };
 
