@@ -40,6 +40,12 @@ on:
       # path listed in the second but not the first is armed for pull_request
       # (which has no top-level paths) and silently skipped post-merge.
       - "scripts/lib/heartbeat.sh"
+      # The library's OTHER reader. `test_the_writers_vocabulary_matches_its_readers`
+      # reads this file's classifier branches directly, so a PR that changes only
+      # the classifier — the exact edit that could stop recognising a word the
+      # writer still emits — triggered the workflow (no top-level PR paths) and
+      # then skipped pytest, and after merge did not trigger it at all. Round 7.
+      - "scripts/sentinel-aggregate.py"
       - ".github/workflows/organ-conformance.yml"
 
 concurrency:
@@ -103,7 +109,7 @@ jobs:
             'apps/organism/organism/organs_registry.yaml' \
             'scripts/organ_birth.py' 'scripts/lint_plist_keepalive.py' \
             'scripts/healer_receptor_registry.py' 'scripts/nb-curator-daily.sh' \
-            'scripts/lib/heartbeat.sh' \
+            'scripts/lib/heartbeat.sh' 'scripts/sentinel-aggregate.py' \
             '.github/workflows/organ-conformance.yml' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')

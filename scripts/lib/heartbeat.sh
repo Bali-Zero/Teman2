@@ -78,6 +78,34 @@ _organism_heartbeat_write() {
     local _organism_hb_status="${2:-ok}"
     local _organism_hb_note="${3:-}"
     local _organism_hb_dir="${ORGANISM_LAST_SEEN_DIR:-${HOME}/.organism/last_seen}"
+    # PROVE THE BINDINGS TOOK — round 7, and the defect it closes is the one the
+    # prefix convention above was believed to have solved.
+    #
+    # In bash, `local X` on a name the CALLER declared `readonly` prints an
+    # error, returns non-zero, and leaves the CALLER'S value visible under that
+    # name. The `( … ) || :` wrapper keeps the caller alive — that is its whole
+    # job — so execution simply carries on with someone else's data. Measured:
+    # `readonly _organism_hb_id=x` before a call for `probe.real` published
+    # `x.json`. That is a heartbeat under the WRONG ORGAN'S NAME — organ `x`
+    # reported alive on the strength of organ `probe.real` having run, which is
+    # precisely the fabricated liveness the rest of this file exists to prevent,
+    # and the same shadow on `_organism_hb_status` would publish `ok` for a
+    # caller reporting `error`. zsh binds correctly here (measured, both), so in
+    # practice this fires only on bash.
+    #
+    # The `_organism_hb_` prefix makes the collision unlikely. Unlikely is not a
+    # verdict: the earlier corpus asserted only that the caller SURVIVED such a
+    # call and deliberately discarded the sidecar, so the misdirection had a
+    # test walking straight past it. Silence is the right answer here — the
+    # writer cannot know which value was meant.
+    if [ "$_organism_hb_id" != "${1:-}" ] ||
+        [ "$_organism_hb_status" != "${2:-ok}" ] ||
+        [ "$_organism_hb_note" != "${3:-}" ] ||
+        [ "$_organism_hb_dir" != "${ORGANISM_LAST_SEEN_DIR:-${HOME}/.organism/last_seen}" ]; then
+        printf 'organism_heartbeat: a caller-readonly name shadowed this writer%s\n' \
+            "'s own variables — nothing written" >&2
+        return 0
+    fi
 
     # Strict whitelist on organ_id to prevent path traversal / shell metachars.
     # Registry id convention: [a-z][a-z0-9_]+(\.[a-z0-9_]+)*  (e.g. pro.cpu_monitor)
@@ -170,6 +198,16 @@ _organism_heartbeat_write() {
     # became `ok`. Measured in both shells. A DEATH published as healthy, by the
     # code whose whole job was to stop deaths being published as healthy. Bracket
     # patterns do the same matching with nothing that can fail.
+    # Separators are not part of the word. Round 7: the list matched `timeout`
+    # but not `timed_out`, which is a failure conclusion this repository already
+    # writes (`scripts/ci/queue_rearm_classify.sh`), so the same verdict softened
+    # to `warning` purely on how the caller spelled it. Case was already handled;
+    # SHAPE was not, and it is the same axis. Whole-string `case` patterns, so
+    # stripping `_` and `-` can only ever make a word match one of the listed
+    # ones — never widen a pattern to catch something else. Done before the
+    # match, in place, because every arm below assigns a canonical value anyway.
+    _organism_hb_status="${_organism_hb_status//_/}"
+    _organism_hb_status="${_organism_hb_status//-/}"
     case "$_organism_hb_status" in
         [Oo][Kk]) _organism_hb_status="ok" ;;
         [Ee][Rr][Rr][Oo][Rr]) _organism_hb_status="error" ;;
@@ -182,6 +220,7 @@ _organism_heartbeat_write() {
         [Ff][Aa][Ii][Ll] | [Ff][Aa][Ii][Ll][Ee][Dd] | [Ff][Aa][Ii][Ll][Uu][Rr][Ee] \
         | [Ff][Aa][Tt][Aa][Ll] | [Cc][Rr][Aa][Ss][Hh] | [Cc][Rr][Aa][Ss][Hh][Ee][Dd] \
         | [Dd][Ee][Aa][Dd] | [Tt][Ii][Mm][Ee][Oo][Uu][Tt] \
+        | [Tt][Ii][Mm][Ee][Dd][Oo][Uu][Tt] \
         | [Dd][Oo][Ww][Nn] | [Pp][Aa][Nn][Ii][Cc] | [Kk][Ii][Ll][Ll][Ee][Dd] \
         | [Aa][Bb][Oo][Rr][Tt][Ee][Dd] | [Ee][Xx][Cc][Ee][Pp][Tt][Ii][Oo][Nn] \
         | [Uu][Nn][Hh][Ee][Aa][Ll][Tt][Hh][Yy]) _organism_hb_status="error" ;;
@@ -216,6 +255,36 @@ _organism_heartbeat_write() {
     # not own. The `_organism_hb_` prefix on ALL of them subsumes both.
     local _organism_hb_path="${_organism_hb_dir}/${_organism_hb_id}.json"
     local _organism_hb_tmp="${_organism_hb_path}.tmp.$$"
+    # The SAME binding proof as the one on the argument locals above, because
+    # the earlier one could not reach here — and that gap was not theoretical,
+    # it was measured in this repository's own working tree. This corpus
+    # parametrises `readonly` over every name the function declares, including
+    # these two; with `_organism_hb_path` shadowed the write went to a
+    # CALLER-CHOSEN relative path, so `pytest` had been quietly depositing a
+    # `caller-sentinel/` directory of orphaned `.tmp.<pid>` files into the
+    # checkout for weeks. Nobody noticed, because the test asserts only that the
+    # caller SURVIVED. Two consequences, and the second is the serious one: the
+    # real organ's sidecar is never written, so a live organ ages into `dead`.
+    #
+    # Refusing to write is the only honest answer — the writer cannot know which
+    # value was meant, and guessing is what publishes fiction.
+    if [ "$_organism_hb_path" != "${_organism_hb_dir}/${_organism_hb_id}.json" ] ||
+        [ "$_organism_hb_tmp" != "${_organism_hb_path}.tmp.$$" ]; then
+        printf 'organism_heartbeat: %s: a caller-readonly name shadowed the sidecar path — nothing written\n' \
+            "$_organism_hb_id" >&2
+        return 0
+    fi
+    # A DIRECTORY where the sidecar belongs makes `mv` a SUCCESS with the wrong
+    # meaning: it moves the file INSIDE and exits 0, so the cleanup below finds
+    # nothing at the old name, every reader still sees no sidecar, and the organ
+    # ages into dead on a write that reported success. Observed for real — the
+    # `caller-sentinel/` residue above is exactly this, a directory left by one
+    # parametrisation swallowing the tmp file of the next.
+    if [ -d "$_organism_hb_path" ]; then
+        printf 'organism_heartbeat: %s: %s is a directory, not a sidecar — nothing written\n' \
+            "$_organism_hb_id" "$_organism_hb_path" >&2
+        return 0
+    fi
     # A bare `ts="$(date …)"` makes the ASSIGNMENT carry date's exit status, so
     # under a caller's `set -e` a failing date killed the caller — measured, rc=42
     # in both shells, with the line after the call never reached. That is not
@@ -257,9 +326,20 @@ _organism_heartbeat_write() {
     # diagnostic below prints what `date` actually said, and a validator that
     # erases its own evidence leaves the operator with "clock unavailable
     # (date gave nothing)" for a clock that answered something very specific.
+    # ROUND 7 tightened three residual holes, and the rule that closed them is
+    # the only one that ever mattered here: THE WRITER MAY NOT EMIT WHAT ITS
+    # READERS CANNOT READ. Both readers parse with `datetime.fromisoformat`
+    # (`healer_receptor_registry`, `sentinel-aggregate`), so anything it rejects
+    # is a heartbeat that reads as malformed and lands the organ in `dead` —
+    # the fabricated death this whole check exists to prevent. Round 6 checked
+    # each field's range in isolation, which still let through a date no
+    # calendar has.
     local _organism_hb_tsok=no
     case "$_organism_hb_ts" in
-        [0-9][0-9][0-9][0-9]-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-6][0-9]Z)
+        # Year floor 1000, not 0000: `fromisoformat` accepts year 1 but a
+        # four-digit-with-leading-zero year is a broken clock, never a real one,
+        # and the floor also keeps the leap arithmetic below out of shell octal.
+        [1-9][0-9][0-9][0-9]-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-6][0-9]Z)
             _organism_hb_tsok=yes
             case "${_organism_hb_ts#????-}" in
                 0[1-9]-* | 1[0-2]-*) ;;
@@ -273,11 +353,34 @@ _organism_heartbeat_write() {
                 [01][0-9]:* | 2[0-3]:*) ;;
                 *) _organism_hb_tsok=no ;;
             esac
-            # Seconds allow 60: a real leap second is a valid UTC timestamp and
-            # `date` can emit one. 61 was accepted by the shape check above.
+            # Seconds no longer allow 60. Round 6 allowed it reasoning that a
+            # leap second is a valid UTC timestamp — true, and irrelevant:
+            # `fromisoformat` refuses `:60`, so publishing one hands both
+            # readers an unparseable heartbeat. A leap second is refused (and
+            # said out loud below) rather than written unreadable.
             case "${_organism_hb_ts#????-??-??T??:??:}" in
-                [0-5][0-9]Z | 60Z) ;;
+                [0-5][0-9]Z) ;;
                 *) _organism_hb_tsok=no ;;
+            esac
+            # The day-of-month range is not the day-of-month VALIDITY: 31 is in
+            # range for every month, so `2026-02-31` and `2025-02-29` passed
+            # field-by-field while no calendar contains them. Checked against
+            # the month, with the leap rule spelled out — `[ ]` and `$(( ))` are
+            # builtins in both shells, so the verdict path still contains
+            # nothing that can fail (round 3's constraint).
+            local _organism_hb_yy _organism_hb_md
+            _organism_hb_yy="${_organism_hb_ts%%-*}"
+            _organism_hb_md="${_organism_hb_ts%T*}"
+            _organism_hb_md="${_organism_hb_md#*-}"
+            case "$_organism_hb_md" in
+                02-3[01] | 0[469]-31 | 11-31) _organism_hb_tsok=no ;;
+                02-29)
+                    if [ "$((_organism_hb_yy % 4))" -ne 0 ] ||
+                        { [ "$((_organism_hb_yy % 100))" -eq 0 ] &&
+                            [ "$((_organism_hb_yy % 400))" -ne 0 ]; }; then
+                        _organism_hb_tsok=no
+                    fi
+                    ;;
             esac
             ;;
     esac
@@ -349,6 +452,19 @@ _organism_heartbeat_write() {
     #     `s/X$/Y/` sanitiser, which passes the length test and would publish
     #     the corrupted sentinel verbatim.
     # Both were demonstrated on this code, one round apart.
+    #
+    # DECLARED LIMIT (round 7, and deliberately not "fixed"). Neither proof sees
+    # INTERIOR corruption: a caller-defined `tr` that SUBSTITUTES rather than
+    # drops — `tr(){ sed 's/A/Z/'; }` — turns `ABX` into `ZBX`, which has the
+    # right length and the right last byte, and `ZB` is published. That is the
+    # note's declared contract, not a hole to plug: the note is best-effort by
+    # design (the two paragraphs above say so, and it is why `tr` lives here and
+    # not in the status path), while a caller who can shadow `tr` can equally
+    # shadow `date`, `mkdir` and `mv`. The obvious guard — a `case` allow-listing
+    # the byte range — would decide with a bracket RANGE whose membership is the
+    # caller's collation, i.e. the exact class of defect (#3) this library keeps
+    # re-learning, traded for a field the readers never act on. Refused, written
+    # down, and ledgered instead.
     case "$_organism_hb_note" in
         *X) ;;
         *) _organism_hb_note="(note dropped: could not sanitise)X" ;;

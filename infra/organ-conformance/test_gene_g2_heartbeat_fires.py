@@ -26,12 +26,14 @@ from __future__ import annotations
 
 import json
 import ast
+from datetime import datetime
 import os
 import re
 import shlex
 import shutil
 import string
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -539,10 +541,23 @@ def test_the_workflow_arms_this_corpus_on_push_too(tmp_path: Path) -> None:
     # problem"), so both spellings have to be tried or this reads as unarmed.
     triggers = doc.get("on", doc.get(True)) or {}
     push_paths = (triggers.get("push") or {}).get("paths") or []
-    assert "scripts/lib/heartbeat.sh" in push_paths, (
-        "scripts/lib/heartbeat.sh is not an element of on.push.paths "
-        f"({push_paths!r}) — the post-merge run would skip this corpus"
+    # ROUND 7 made this a CLASS check instead of one pinned path. It asserted
+    # only `scripts/lib/heartbeat.sh` while the corpus reads three repo files —
+    # and the one it did not name, `scripts/sentinel-aggregate.py`, was in
+    # neither filter. A PR touching only that classifier (the exact edit that
+    # could stop recognising a word the writer still emits) triggered the
+    # workflow and then skipped pytest, and after merge did not trigger it at
+    # all. The subjects are derived from this module's OWN constants, so the
+    # next file the corpus starts reading arms itself or fails here.
+    subjects = sorted(
+        {str(pth.relative_to(REPO)) for pth in (HB_LIB, WRAPPER, _HEALER, _SENTINEL)}
     )
+    assert len(subjects) >= 4, f"the corpus's subject list collapsed: {subjects}"
+    for subject in subjects:
+        assert subject in push_paths, (
+            f"{subject} is read by this corpus but is not an element of "
+            f"on.push.paths ({push_paths!r}) — the post-merge run would skip it"
+        )
 
     # The job's own changed-file enumeration: find the step whose script runs the
     # diff, and require the path inside THAT script rather than anywhere in the
@@ -584,12 +599,13 @@ def test_the_workflow_arms_this_corpus_on_push_too(tmp_path: Path) -> None:
     assert any("diff" in " ".join(args) for args in steps), (
         "tokenising the git-diff step produced no recognisable command"
     )
-    assert any("scripts/lib/heartbeat.sh" in args for args in steps), (
-        "scripts/lib/heartbeat.sh is not an ARGUMENT of any `git diff` — the job "
-        "would wake up and then decide it has nothing to check. (A mention in a "
-        "comment does not count; that is what the two earlier versions of this "
-        "assertion accepted.)"
-    )
+    for subject in subjects:
+        assert any(subject in args for args in steps), (
+            f"{subject} is read by this corpus but is not an ARGUMENT of any "
+            "`git diff` — the job would wake up and then decide it has nothing "
+            "to check. (A mention in a comment does not count; that is what the "
+            "two earlier versions of this assertion accepted.)"
+        )
 
 
 def test_sourcing_alone_does_not_fire_the_cli_path(tmp_path: Path) -> None:
@@ -886,7 +902,17 @@ def test_a_failing_date_does_not_kill_an_errexit_caller(
       heartbeat and moved the organ out of the honest bucket.
 
     The fault was the clock; the receipt accused the organ. So: write nothing,
-    keep the last true beat, and let a genuinely dead organ go stale on its own.
+    keep the last true beat, and let staleness be decided by the readers.
+
+    SAID PLAINLY (round 7 corrected the sentence that used to stand here, "let a
+    genuinely dead organ go stale on its own" — it claimed more than the code
+    does). A clock that stays broken DOES eventually strand a healthy organ:
+    the preserved beat ages past `DEAD_MULTIPLIER` and both readers call it
+    dead. That is not a hole this test is hiding; on a machine with no usable
+    clock there is no source of truth for "now", so the choice is between a
+    beat that ages honestly and a fabricated timestamp that lies immediately —
+    and an operator reading the stderr line this path prints has the real
+    cause. What is bought is TIME and a true diagnostic, not immunity.
     """
     rc, out, sidecar = _script(
         tmp_path,
@@ -1442,6 +1468,10 @@ _SENTINEL = HB_LIB.parent.parent / "sentinel-aggregate.py"
 
 # The one word this writer emits that MUST read as a death on every surface.
 _DEATH_WORDS = frozenset({"error"})
+# The sentinel outcomes that mean "this organ is gone". A branch whose EVERY
+# outcome is one of these kills the organ, however politely its condition names
+# the word — which is the hole round 6's presence-only check left open.
+_DEATH_OUTCOMES = frozenset({"dead"})
 
 # MEASURED DIVERGENCE BETWEEN THE TWO READERS, pinned rather than papered over
 # (2026-07-29). `sentinel-aggregate` classifies degraded/warning as `warning` —
@@ -1489,26 +1519,70 @@ def _healer_sets() -> tuple[set[str], set[str]]:
     return found["HEALTHY_STATUSES"], found["EXEMPT_STATUSES"]
 
 
-def _sentinel_classified() -> set[str]:
-    """The words `sentinel-aggregate`'s heartbeat classifier explicitly handles.
+def _hb_status_words(test: ast.expr) -> set[str]:
+    """The literals a single `hb_status ==`/`in` comparison tests against."""
+    if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+        return set()
+    if not (isinstance(test.left, ast.Name) and test.left.id == "hb_status"):
+        return set()
+    right = test.comparators[0]
+    if isinstance(test.ops[0], ast.Eq) and isinstance(right, ast.Constant):
+        return {right.value} if isinstance(right.value, str) else set()
+    if isinstance(test.ops[0], ast.In) and isinstance(right, (ast.Tuple, ast.List, ast.Set)):
+        return {
+            e.value for e in right.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)
+        }
+    return set()
 
-    Read from the classifier's own branches, not from the file at large. The
-    first build of this test asserted the status appeared ANYWHERE in the
-    source, which `disabled` already did — in an output-section list — so the
-    assertion held with the classifier arm deleted. A word in a rendering list
-    is not a word the classifier recognises, and only the second decides
-    whether an organ is called dead.
+
+def _sentinel_classified() -> dict[str, set[str]]:
+    """{word the classifier tests: the `status` values that branch can produce}.
+
+    TWO builds of this helper were weaker than the invariant they served, and
+    each hole is worth keeping written down.
+
+    The FIRST asserted the status appeared ANYWHERE in the source, which
+    `disabled` already did — in an output-section list — so the assertion held
+    with the classifier arm deleted. A word in a rendering list is not a word
+    the classifier recognises.
+
+    The SECOND (round 6) read the branch CONDITIONS by regex and stopped there,
+    so it proved only that the word is mentioned in a test, never what the
+    branch does with it: an arm reading `elif hb_status == "disabled": status =
+    "dead"` satisfied it completely while publishing exactly the fabricated
+    death this whole test exists to prevent. Round 7 reads the OUTCOMES too —
+    the `status = "..."` literals assigned inside that branch (nested `if
+    dead_age/stale_age` included, since those are outcomes of the same arm; the
+    `elif` siblings are not, they live in `orelse`).
     """
-    src = _SENTINEL.read_text(encoding="utf-8")
-    words: set[str] = set()
-    for tup in re.findall(r"hb_status in \(([^)]*)\)", src):
-        words |= set(re.findall(r'"([a-z_]+)"', tup))
-    words |= set(re.findall(r'hb_status == "([a-z_]+)"', src))
-    assert words, (
+    tree = ast.parse(_SENTINEL.read_text(encoding="utf-8"))
+    out: dict[str, set[str]] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        words = _hb_status_words(node.test)
+        if not words:
+            continue
+        outcomes = {
+            stmt.value.value
+            for branch in node.body
+            for stmt in ast.walk(branch)
+            if isinstance(stmt, ast.Assign)
+            and isinstance(stmt.value, ast.Constant)
+            and isinstance(stmt.value.value, str)
+            and any(isinstance(t, ast.Name) and t.id == "status" for t in stmt.targets)
+        }
+        for w in words:
+            out.setdefault(w, set()).update(outcomes)
+    assert out, (
         f"could not read the classifier's vocabulary from {_SENTINEL.name} — it "
         "was restructured, and this test would otherwise pass by finding nothing"
     )
-    return words
+    assert all(out.values()), (
+        f"a classifier branch in {_SENTINEL.name} tests hb_status and assigns no "
+        f"status literal — the outcome check below would be vacuous for {out}"
+    )
+    return out
 
 
 def test_the_writers_vocabulary_matches_its_readers() -> None:
@@ -1556,6 +1630,12 @@ def test_the_writers_vocabulary_matches_its_readers() -> None:
             f"not branch on it (it knows {sorted(sentinel)}) — every word it does "
             "not recognise falls through to `dead`"
         )
+        assert sentinel[status] - _DEATH_OUTCOMES, (
+            f"{_SENTINEL.name} branches on {status!r} and every outcome of that "
+            f"branch is a death {sorted(sentinel[status])} — recognising a word is "
+            "not the same as not killing the organ for it, and the presence-only "
+            "version of this check could not tell the two apart"
+        )
         if status in _HEALER_CALLS_DEAD_BUT_SENTINEL_DOES_NOT:
             assert status not in healthy and status not in exempt, (
                 f"{status!r} is recorded as a word the healer treats as dead. It no "
@@ -1570,6 +1650,142 @@ def test_the_writers_vocabulary_matches_its_readers() -> None:
         )
 
 
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_directory_where_the_sidecar_belongs_is_refused(tmp_path: Path, shell: str) -> None:
+    """`mv file dir/` is a SUCCESS with the wrong meaning.
+
+    With a directory sitting at the sidecar's path, `mv` moves the tmp file
+    INSIDE it and exits 0. The cleanup then finds nothing at the old name, every
+    reader still sees no sidecar, and the organ ages into `dead` on a write that
+    reported success — the exact shape that left `caller-sentinel/` in this
+    checkout. Refuse and say so instead.
+    """
+    seen = tmp_path / "seen"
+    seen.mkdir()
+    (seen / f"{PROBE_ID}.json").mkdir()  # the sidecar path, as a directory
+    proc = subprocess.run(
+        [shell, "-c", f'. "$1"; organism_heartbeat {PROBE_ID} ok n; echo "rc=$?"',
+         "_", str(HB_LIB)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True, text=True, timeout=60,
+    )
+    assert "rc=0" in proc.stdout, f"the caller was broken: {proc.stdout!r} {proc.stderr!r}"
+    swallowed = sorted(p.name for p in (seen / f"{PROBE_ID}.json").iterdir())
+    assert swallowed == [], f"the write was swallowed by the directory: {swallowed}"
+    assert "is a directory" in proc.stderr, (
+        f"nothing said the destination was unusable: {proc.stderr!r}"
+    )
+    assert not list(seen.glob("*.tmp.*")), "a tmp file was left behind"
+
+
+def test_the_corpus_does_not_write_into_the_checkout(tmp_path: Path) -> None:
+    """Found as residue, not by reasoning — and it was a real defect underneath.
+
+    `test_an_internal_local_name_cannot_kill_the_caller` parametrises `readonly`
+    over every name the function declares. With `_organism_hb_path` shadowed the
+    library wrote to a caller-chosen RELATIVE path, so every run of this corpus
+    deposited `caller-sentinel/` and a `.tmp.<pid>` file into the repository
+    working tree. The test passed throughout: it asserts only that the caller
+    survived, so the misdirected write had a test walking straight past it.
+
+    Two defects, one residue. The write went somewhere nobody looks (so the real
+    organ's sidecar never appeared and a live organ ages into `dead`), and the
+    leftover DIRECTORY then made `mv` succeed by moving the next run's tmp file
+    inside it — a success with the wrong meaning.
+
+    W96 is the family this belongs to: a test that writes production-shaped
+    state outside its tmp_path. The guard is the run, not the reading.
+    """
+    run_cwd = tmp_path / "cwd"
+    run_cwd.mkdir()
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", str(Path(__file__).resolve()),
+         "-q", "-k", "internal_local_name", "-p", "no:cacheprovider"],
+        cwd=run_cwd, capture_output=True, text=True, timeout=600,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+    )
+    assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-2000:]
+    leaked = sorted(p.name for p in run_cwd.iterdir())
+    assert leaked == [], (
+        f"running this corpus wrote {leaked} into its working directory — on a "
+        "developer machine that directory is the checkout"
+    )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_caller_readonly_name_cannot_redirect_the_heartbeat(shell: str) -> None:
+    """Surviving the call is not the same as writing the right thing.
+
+    In bash, `local X` on a name the caller declared `readonly` fails AND leaves
+    the caller's value visible; the `( … ) || :` wrapper then keeps the caller
+    alive, so the writer carries on with someone else's data. Measured before
+    the fix: `readonly _organism_hb_id=x` before a call for `probe.real` wrote
+    `x.json` — organ `x` reported alive because organ `probe.real` ran. The
+    older readonly test asserted only SURVIVED and discarded the sidecar, so it
+    walked past this every run.
+
+    Both spellings of the damage are covered: a redirected IDENTITY and a
+    redirected VERDICT (`readonly _organism_hb_status=ok` under a call reporting
+    `error` would publish the healthy word for a failure).
+    """
+    for reserved, value in (("_organism_hb_id", "x"), ("_organism_hb_status", "ok")):
+        seen = Path(tempfile.mkdtemp()) / "seen"
+        proc = subprocess.run(
+            [shell, "-c",
+             f'. "$1"; readonly {reserved}={value}; '
+             'organism_heartbeat probe.real error n; echo "SURVIVED rc=$?"',
+             "_", str(HB_LIB)],
+            env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+            capture_output=True, text=True, timeout=60,
+        )
+        assert "SURVIVED rc=0" in proc.stdout, (
+            f"the caller did not survive a readonly {reserved}: {proc.stdout!r} {proc.stderr!r}"
+        )
+        written = sorted(p.name for p in seen.glob("*.json")) if seen.exists() else []
+        # Either nothing (the binding check refused) or the RIGHT organ with the
+        # RIGHT verdict (zsh binds correctly and has nothing to refuse). What is
+        # forbidden is a third file, or the caller's value, or a softened status.
+        assert written in ([], ["probe.real.json"]), (
+            f"{shell}: readonly {reserved} redirected the heartbeat to {written}"
+        )
+        if written:
+            assert json.loads((seen / written[0]).read_text())["status"] == "error"
+
+
+def test_a_failure_word_is_not_softened_by_how_it_is_spelled() -> None:
+    """Case was handled; SHAPE was not, and it is the same axis.
+
+    The list matched `timeout` and not `timed_out` — a failure conclusion this
+    repository already writes (`scripts/ci/queue_rearm_classify.sh`) — so the
+    same verdict published as a mere `warning` purely on the caller's spelling.
+    The healer counts `warning` among its dead words and the sentinel does not,
+    which is the disagreement that makes a softened failure worth catching.
+
+    Innocence rides along: a word that only CONTAINS a separator must not become
+    a failure by accident, and `ok` must survive the normalisation untouched.
+    """
+    for spelling, want in (
+        ("timed_out", "error"),
+        ("timed-out", "error"),
+        ("TIMED_OUT", "error"),
+        ("time_out", "error"),
+        ("de_graded", "degraded"),
+        ("ok", "ok"),
+        ("dis-abled", "disabled"),
+        ("not_a_word", "warning"),  # innocence: unknown stays a warning, not a death
+    ):
+        seen = Path(tempfile.mkdtemp()) / "seen"
+        proc = subprocess.run(
+            ["bash", "-c", f'. "$1"; organism_heartbeat probe.spell "{spelling}" n',
+             "_", str(HB_LIB)],
+            env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+            capture_output=True, text=True, timeout=60,
+        )
+        assert proc.returncode == 0, proc.stderr
+        got = json.loads((seen / "probe.spell.json").read_text())["status"]
+        assert got == want, f"{spelling!r} published as {got!r}, expected {want!r}"
+
+
 def test_a_wall_clock_that_is_well_formed_but_impossible_is_refused() -> None:
     """Shape is not validity, and an unparseable ts fabricates a DEAD.
 
@@ -1578,7 +1794,26 @@ def test_a_wall_clock_that_is_well_formed_but_impossible_is_refused() -> None:
     healer skips the organ and it ages into dead — so a healthy organ was
     published as one nothing could read.
     """
-    for bad in ("9999-99-99T99:99:99Z", "2026-13-01T00:00:00Z", "2026-07-29T24:00:00Z"):
+    # Round 7 added the last four. The rule that produced them is one line: the
+    # writer may not emit what its readers cannot read, and BOTH readers parse
+    # with `datetime.fromisoformat`. Round 6 checked each field's range in
+    # isolation, so `31` — in range for every month — walked a February date no
+    # calendar has straight through; `0000` and a leap second did the same.
+    for bad in (
+        "9999-99-99T99:99:99Z",
+        "2026-13-01T00:00:00Z",
+        "2026-07-29T24:00:00Z",
+        "2026-02-31T00:00:00Z",  # in range for the field, absent from the calendar
+        "2025-02-29T00:00:00Z",  # 2025 is not a leap year
+        "0000-01-01T00:00:00Z",  # four digits, not a year any clock means
+        "2026-06-30T23:59:60Z",  # a leap second: valid UTC, refused by both readers
+    ):
+        # The premise, measured rather than asserted in a comment: each of these
+        # is a string BOTH readers refuse. If a future Python starts accepting
+        # one, this line says so instead of leaving the loop below defending a
+        # rule that no longer has a reason.
+        with pytest.raises(ValueError):
+            datetime.fromisoformat(bad.replace("Z", "+00:00"))
         seen = Path(tempfile.mkdtemp()) / "seen"
         proc = subprocess.run(
             ["bash", "-c", f'. "$1"; date() {{ printf "%s" "{bad}"; }}; '
@@ -1593,3 +1828,56 @@ def test_a_wall_clock_that_is_well_formed_but_impossible_is_refused() -> None:
         assert bad in proc.stderr, (
             f"the diagnostic lost the value the clock actually gave: {proc.stderr!r}"
         )
+
+
+def test_a_real_calendar_date_is_still_written() -> None:
+    """The innocence half, and the reason it is not optional.
+
+    The day-of-month check added in round 7 is the kind that is trivially made
+    too strict: reject `02-29` outright and every organ on the fleet drops its
+    heartbeat for a whole day, once every four years, with the diagnostic
+    blaming a clock that was right. So the leap rule is asserted from both ends
+    — an ordinary year, a leap year, and the century leap year that the naive
+    "divisible by four" version gets wrong in the other direction.
+    """
+    for good in (
+        "2026-02-28T00:00:00Z",
+        "2028-02-29T12:00:00Z",  # leap year
+        "2000-02-29T00:00:00Z",  # divisible by 400 — a leap year despite the century
+        "2026-12-31T23:59:59Z",
+        "1000-01-01T00:00:00Z",  # the year floor itself
+    ):
+        # Same premise check, other sign: these are strings both readers DO parse.
+        datetime.fromisoformat(good.replace("Z", "+00:00"))
+        seen = Path(tempfile.mkdtemp()) / "seen"
+        proc = subprocess.run(
+            ["bash", "-c", f'. "$1"; date() {{ printf "%s" "{good}"; }}; '
+             'organism_heartbeat probe.clock ok n', "_", str(HB_LIB)],
+            env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+            capture_output=True, text=True, timeout=60,
+        )
+        assert proc.returncode == 0, proc.stderr
+        written = list(seen.glob("*.json")) if seen.exists() else []
+        assert written, (
+            f"{good!r} is a date both readers parse and it was REFUSED: {proc.stderr!r}"
+        )
+        assert json.loads(written[0].read_text())["ts"] == good
+
+
+def test_a_leap_year_that_is_not_one_is_still_refused() -> None:
+    """1900 is divisible by 4 and by 100 and NOT by 400 — not a leap year.
+
+    Pins the third clause of the rule specifically: a leap check written as
+    `% 4 == 0` alone passes this date, and a check written as
+    `% 4 == 0 and % 100 != 0` fails 2000 above. Both halves need a witness or
+    the rule can be half-deleted in silence.
+    """
+    seen = Path(tempfile.mkdtemp()) / "seen"
+    proc = subprocess.run(
+        ["bash", "-c", '. "$1"; date() { printf "%s" "1900-02-29T00:00:00Z"; }; '
+         'organism_heartbeat probe.clock ok n', "_", str(HB_LIB)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True, text=True, timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert not (seen.exists() and list(seen.glob("*"))), "1900-02-29 was written"
