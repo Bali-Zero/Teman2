@@ -153,6 +153,29 @@ def table_header(content: str) -> str:
     return ""
 
 
+def table_alignment(content: str) -> str:
+    """The row immediately under the header — the Markdown alignment row.
+
+    It exists in the comparison model for one reason: nothing else looks at it.
+    `_parse_inventory_table` skips it by INDEX (`header_idx + 2`, blindly), and
+    `_scan_rows` drops it because its first cell is not a `.md` path. So a PR
+    could replace `| --- | --- | … |` with any text at all, break the table's
+    rendering, and every parser here would report an identical inventory —
+    `docs_audit --check` goes red on the content diff, this tool answers "no
+    key drifted, not the PR's doing", and the PR is exonerated for damage it
+    just did. Round 3, cross-family refuter; the row carries no inventory fact,
+    which is exactly why it was the blind spot.
+
+    Empty string when there is no header at all — `table_header` already charges
+    that case, and two keys for one fault would only double-report it.
+    """
+    lines = content.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("| File "):
+            return lines[i + 1].strip() if i + 1 < len(lines) else "<missing>"
+    return ""
+
+
 # The three cells an orphan flip legitimately moves, BY HEADER NAME — never by
 # positional index. `_parse_inventory_table` matches on the header row, so a
 # future column reorder cannot silently make this exempt the wrong cell.
@@ -166,18 +189,25 @@ _FLIP_MOVES = frozenset({"Status", "orphan_flipped_on", "action"})
 _UNFLIPPED = ("", "—")
 
 
-def _duplicate_keys(content: str) -> set[str]:
-    """Paths that appear on more than one row of the same table.
+def _duplicate_rows(content: str) -> dict[str, tuple[str, ...]]:
+    """{path: every row line naming it}, for paths appearing more than once.
 
     `row_map` is a dict, so a duplicated path silently keeps the LAST row and
     the earlier one vanishes — a PR could hide a corrupt row behind a clean
     one and the comparison would never see it. A duplicate is not something to
     resolve; it is drift by itself.
+
+    Returns the LINES, not just the keys, and that is round 3's correction: the
+    caller used to stamp a duplicated path with the constant string
+    `"duplicated row"`, so a base that already had a duplicate could have one of
+    its two rows rewritten at head and the signature never moved — the change
+    read as pre-existing drift and was waved through. A signature that does not
+    change when the thing it signs changes is not a signature.
     """
-    seen: dict[str, int] = {}
-    for key, _line in _scan_rows(content):
-        seen[key] = seen.get(key, 0) + 1
-    return {k for k, n in seen.items() if n > 1}
+    seen: dict[str, list[str]] = {}
+    for key, line in _scan_rows(content):
+        seen.setdefault(key, []).append(line)
+    return {k: tuple(v) for k, v in seen.items() if len(v) > 1}
 
 
 def _is_earned_flip(
@@ -253,7 +283,18 @@ def _is_earned_flip(
     ):
         return False
     return orphan_flip_claim_is_legitimate(
-        trusted_ref_has_prior_flip=committed_cells.get("File", "") in prior_flips,
+        # `_row_key`, not the raw cell — round 3, and it is this PR's own lesson
+        # arriving one level down. `prior_flips` is keyed by the RAW `File` cell
+        # (`docs_audit.parse_prev_flipped`), while every identity in this module
+        # is the undecorated path. A base row written `` `docs/x.md` `` and a
+        # head row written `docs/x.md` are ONE document to the drift comparison
+        # and TWO to this lookup, so the anti-resurrection check reads "never
+        # flipped before" and re-exempts a flip the base already spent. Both
+        # sides are normalised here rather than in `parse_prev_flipped`, whose
+        # other caller (`docs_audit.classify`) matches raw cells against raw
+        # cells and is correct as it stands.
+        trusted_ref_has_prior_flip=_row_key(committed_cells.get("File", ""))
+        in {_row_key(p) for p in prior_flips},
         generated_refs_in=generated_cells.get("refs_in", ""),
         generated_eligible_on=generated_cells.get("orphan_eligible_on", ""),
         committed_flipped_on=committed_cells.get("orphan_flipped_on", ""),
@@ -265,6 +306,7 @@ def _is_earned_flip(
 # Not a document path, so it can never collide with one (`_is_doc_key` requires
 # a `.md` suffix). Names the table itself as the thing that drifted.
 TABLE_KEY = "<inventory table header>"
+ALIGN_KEY = "<inventory table alignment row>"
 
 
 def drifting_keys(
@@ -304,7 +346,7 @@ def drifting_keys(
     a, b = row_map(committed), row_map(generated)
     ca, cb = _parse_inventory_table(committed), _parse_inventory_table(generated)
     prior_flips = prior_flips or {}
-    dupes = _duplicate_keys(committed) | _duplicate_keys(generated)
+    dupes_c, dupes_g = _duplicate_rows(committed), _duplicate_rows(generated)
     # A path one parser sees and the other does not: the cells the exemption
     # would reason about are missing or belong to a different row.
     unreconciled = (a.keys() ^ ca.keys()) | (b.keys() ^ cb.keys())
@@ -312,6 +354,10 @@ def drifting_keys(
     out: dict[str, str] = {}
     if table_header(committed) != table_header(generated):
         out[TABLE_KEY] = f"header {table_header(committed)!r} != {table_header(generated)!r}"
+    if table_alignment(committed) != table_alignment(generated):
+        out[ALIGN_KEY] = (
+            f"alignment {table_alignment(committed)!r} != {table_alignment(generated)!r}"
+        )
     for k in a.keys() | b.keys():
         # ORDER MATTERS, and getting it wrong is how the first build of this
         # loop hid the very drift it was meant to expose: the reconciliation
@@ -319,10 +365,18 @@ def drifting_keys(
         # signature — identical at base and at head — and a genuine row
         # difference underneath it read as "inherited". A marker must never
         # replace a real difference; it only speaks when there is none.
-        if k in dupes:
-            out[k] = "duplicated row"
+        # Round 3: the first two arms used to stamp a CONSTANT string, so a base
+        # that already carried that category of drift could have its rows
+        # rewritten at head under an unchanged signature and read as inherited.
+        # Every signature now carries the rows it signs.
+        if k in dupes_c or k in dupes_g:
+            out[k] = (
+                f"duplicated row: committed={list(dupes_c.get(k, ()))} "
+                f"generated={list(dupes_g.get(k, ()))}"
+            )
         elif k not in a or k not in b:
-            out[k] = f"present only in {'committed' if k in a else 'generated'}"
+            side, row = ("committed", a[k]) if k in a else ("generated", b[k])
+            out[k] = f"present only in {side}: {row!r}"
         elif a[k] != b[k] and not _is_earned_flip(
             ca.get(k, {}), cb.get(k, {}), prior_flips=prior_flips, ceiling=ceiling
         ):

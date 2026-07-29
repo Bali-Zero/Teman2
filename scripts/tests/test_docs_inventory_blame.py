@@ -576,3 +576,88 @@ def test_scar_pin_the_eight_rows_of_pr_3463() -> None:
     generated = _full_table({p: _LIVE for p in paths})
     assert len(blame.row_map(committed)) == 8, "the fixture itself stopped parsing"
     assert _drift(committed, generated) == set()
+
+
+# ---------------------------------------------------------------------------
+# Round 3 (cross-family refuter, 2026-07-30). Three ways a REAL change could
+# leave the signature it is compared by unmoved — and one of them is this PR's
+# own lesson (one identity, two spellings) arriving a level down.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_rewriting_the_alignment_row_is_drift() -> None:
+    """Nothing else in this module looks at the Markdown alignment row.
+
+    `_parse_inventory_table` skips it by index and `_scan_rows` drops it (its
+    first cell is not a `.md` path), so a PR could replace it with anything,
+    break the table's rendering, and every parser here would report an
+    identical inventory: `--check` red, blame "no key drifted", PR exonerated.
+    """
+    good = _full_table({"docs/audits/x.md": _LIVE})
+    bad = good.replace(
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| whatever goes here | x | x | x | x | x | x | x | x | x |",
+        1,
+    )
+    assert bad != good, "the fixture no longer contains the alignment row"
+    assert blame.ALIGN_KEY in _drift(bad, good)
+    assert blame.ALIGN_KEY in _drift(good, bad)
+
+
+def test_innocence_an_intact_alignment_row_is_not_drift() -> None:
+    """The new key must fire on a rewrite, never on a table that is fine."""
+    t = _full_table({"docs/audits/x.md": _LIVE})
+    assert blame.ALIGN_KEY not in _drift(t, t)
+    assert blame.ALIGN_KEY not in _drift(_table(BASE_ROWS), _table(BASE_ROWS))
+
+
+def test_guilt_a_duplicate_row_signature_moves_when_the_duplicate_changes() -> None:
+    """A category label is not a signature.
+
+    `"duplicated row"` was a CONSTANT: a base that already carried a duplicate
+    could have one of its two rows rewritten at head and `main()` — which calls
+    a key inherited when `base[k] == head[k]` — read the rewrite as
+    pre-existing. The signature now carries the rows it signs.
+    """
+    dup = "# Docs Inventory\n\n"
+    header = (
+        "| File | Status | refs_in | last_touched_date |\n| --- | --- | --- | --- |\n"
+    )
+    before = dup + header + "| docs/A.md | LIVE | 3 | 2026-07-01 |\n| docs/A.md | LIVE | 3 | 2026-07-02 |\n"
+    after = dup + header + "| docs/A.md | LIVE | 3 | 2026-07-01 |\n| docs/A.md | ARCHIVED | 0 | 2026-07-02 |\n"
+    clean = _table({"docs/A.md": "LIVE | 3 | 2026-07-01"})
+    sig_before = blame.drifting_keys(before, clean, ceiling=CEILING)["docs/A.md"]
+    sig_after = blame.drifting_keys(after, clean, ceiling=CEILING)["docs/A.md"]
+    assert sig_before != sig_after, "the duplicate changed and its signature did not"
+
+
+def test_guilt_a_one_sided_row_signature_moves_when_that_row_changes() -> None:
+    """Same defect, other arm: `"present only in generated"` was constant too."""
+    committed = _table({"docs/A.md": "LIVE | 3 | 2026-07-01"})
+    gen_v1 = _table(
+        {"docs/A.md": "LIVE | 3 | 2026-07-01", "docs/B.md": "LIVE | 9 | 2026-07-02"}
+    )
+    gen_v2 = _table(
+        {"docs/A.md": "LIVE | 3 | 2026-07-01", "docs/B.md": "STALE | 0 | 2026-01-01"}
+    )
+    s1 = blame.drifting_keys(committed, gen_v1, ceiling=CEILING)["docs/B.md"]
+    s2 = blame.drifting_keys(committed, gen_v2, ceiling=CEILING)["docs/B.md"]
+    assert s1 != s2, "the only-on-one-side row changed and its signature did not"
+
+
+def test_guilt_a_prior_flip_written_with_a_decorated_path_still_blocks_re_exemption() -> None:
+    """One document, two spellings — the lesson this PR was built on, one level down.
+
+    `prior_flips` is keyed by the RAW `File` cell (`docs_audit.parse_prev_flipped`)
+    while every identity in this module is the undecorated path. A base row
+    written `` `docs/x.md` `` and a head row written `docs/x.md` are ONE document
+    to the drift comparison and TWO to the anti-resurrection lookup, so a flip
+    the base had already spent could be stamped again and exempted.
+    """
+    committed = _full_table({"docs/audits/x.md": _ARCHIVED})
+    generated = _full_table({"docs/audits/x.md": _LIVE})
+    assert _drift(committed, generated) == set(), "the innocence baseline moved"
+    charged = _drift(
+        committed, generated, prior_flips={"`docs/audits/x.md`": "2026-07-20"}
+    )
+    assert charged == {"docs/audits/x.md"}
