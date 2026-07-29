@@ -90,19 +90,67 @@ def _is_doc_key(key: str) -> bool:
     return key.endswith(".md")
 
 
-def row_map(content: str) -> dict[str, str]:
-    """Map doc path -> full row line, for every table row naming a document."""
-    out: dict[str, str] = {}
+_LINK_RE = re.compile(r"^\[(?P<text>.+?)\]\(.*\)$")
+
+
+def _row_key(cell: str) -> str:
+    """The document path a first cell names, undecorated.
+
+    ONE definition, called by every scanner below. It used to be inlined twice —
+    identically, which is exactly how the bug survived: `.strip("`[]")` ran
+    BEFORE the link regex, so it ate the leading `[` and `[docs/x.md](docs/x.md)`
+    became `docs/x.md](docs/x.md)`, which fails `_is_doc_key` and made the whole
+    row INVISIBLE to the comparison while `_parse_inventory_table` still saw it.
+    The link normalisation this file advertised had never once fired. Measured
+    2026-07-29, found by a cross-family refuter.
+    """
+    cell = cell.strip()
+    m = _LINK_RE.match(cell)
+    if m:
+        cell = m.group("text")
+    return cell.strip("`").strip()
+
+
+def _scan_rows(content: str) -> list[tuple[str, str]]:
+    """(path, raw line) for every table row naming a document, in file order."""
+    out: list[tuple[str, str]] = []
     for line in content.splitlines():
         m = _ROW_RE.match(line)
         if not m:
             continue
-        key = m.group("key").strip().strip("`[]")
-        # `[`docs/x.md`](docs/x.md)` style cells: take the link text.
-        key = re.sub(r"^\[(.*?)\]\(.*\)$", r"\1", key).strip("`")
+        key = _row_key(m.group("key"))
         if _is_doc_key(key):
-            out[key] = line.strip()
+            out.append((key, line.strip()))
     return out
+
+
+def row_map(content: str) -> dict[str, str]:
+    """Map doc path -> full row line, for every table row naming a document.
+
+    Last row wins on a duplicated path — deliberately NOT resolved here, because
+    a duplicate is not a thing to resolve. `_duplicate_keys` reports it and
+    `drifting_keys` charges it.
+    """
+    return dict(_scan_rows(content))
+
+
+def table_header(content: str) -> str:
+    """The inventory table's header line, or '' if there isn't one.
+
+    Compared between the two tables because everything else in this file reads
+    ROWS, and a PR that renames `| File |` to `| Files |` leaves every row
+    untouched: `_parse_inventory_table` then returns {} while `row_map` still
+    finds all the rows, no row differs, and the gate passes on a table whose
+    schema has been broken. Measured — the probe returned `set()`.
+
+    Anchored on the SAME prefix `_parse_inventory_table` looks for, deliberately.
+    Two functions that must agree on "where the table starts" cannot be allowed
+    two answers, or this one reports a header the other never read.
+    """
+    for line in content.splitlines():
+        if line.startswith("| File "):
+            return line.strip()
+    return ""
 
 
 # The three cells an orphan flip legitimately moves, BY HEADER NAME — never by
@@ -127,14 +175,8 @@ def _duplicate_keys(content: str) -> set[str]:
     resolve; it is drift by itself.
     """
     seen: dict[str, int] = {}
-    for line in content.splitlines():
-        m = _ROW_RE.match(line)
-        if not m:
-            continue
-        key = m.group("key").strip().strip("`[]")
-        key = re.sub(r"^\[(.*?)\]\(.*\)$", r"\1", key).strip("`")
-        if _is_doc_key(key):
-            seen[key] = seen.get(key, 0) + 1
+    for key, _line in _scan_rows(content):
+        seen[key] = seen.get(key, 0) + 1
     return {k for k, n in seen.items() if n > 1}
 
 
@@ -220,42 +262,74 @@ def _is_earned_flip(
     )
 
 
+# Not a document path, so it can never collide with one (`_is_doc_key` requires
+# a `.md` suffix). Names the table itself as the thing that drifted.
+TABLE_KEY = "<inventory table header>"
+
+
 def drifting_keys(
     committed: str,
     generated: str,
     *,
     prior_flips: dict[str, str] | None = None,
     ceiling=None,
-) -> set[str]:
-    """Keys whose row differs between the committed and generated tables.
+) -> dict[str, str]:
+    """Drifting key -> a SIGNATURE of how it drifts.
 
-    Includes rows added or removed, not only rows whose cells changed — a doc
-    that appears in one table and not the other is drift of the loudest kind —
-    and any path duplicated within one table, which a dict comparison would
-    otherwise swallow.
+    Returns a mapping, not a set, and that is the point. The gate passes when
+    head introduces no drift the base did not already have, and comparing only
+    the KEYS made "already drifting" a licence: a doc drifting LIVE->STALE on
+    the base could be worsened to LIVE->ARCHIVED, or have unrelated cells
+    corrupted, and the key stayed in both sets so `head - base` was empty and
+    the PR passed. The signature makes "the same drift" mean the same drift.
 
-    An EARNED orphan flip is not drift — see `_is_earned_flip`. Every other
-    difference, including an unearned, forged or backwards flip, still counts.
+    A key is drifting when any of these hold:
+
+      * its row differs between the two tables and the difference is not an
+        earned orphan flip (see `_is_earned_flip`);
+      * it appears in one table and not the other — drift of the loudest kind;
+      * it is duplicated within a table, which a dict comparison would swallow;
+      * the two parsers in this file disagree about whether the row exists.
+        `row_map` scans raw lines while `_parse_inventory_table` matches the
+        header row and drops any line whose cell count is wrong, so a row that
+        only one of them sees is a row the exemption cannot be trusted about.
+
+    `TABLE_KEY` is reported when the header lines themselves differ. Everything
+    else here reads rows, and a renamed header leaves every row untouched.
+
     With no `ceiling` the exemption cannot fire at all: the shared predicate
-    fails closed, which is the right default for any caller that has not
-    established a trustworthy upper bound on a claimed date.
+    fails closed, which is the right default for a caller that has established
+    no trustworthy upper bound on a claimed date.
     """
     a, b = row_map(committed), row_map(generated)
     ca, cb = _parse_inventory_table(committed), _parse_inventory_table(generated)
     prior_flips = prior_flips or {}
     dupes = _duplicate_keys(committed) | _duplicate_keys(generated)
-    changed = {
-        k
-        for k in a.keys() & b.keys()
-        if a[k] != b[k]
-        and (
-            k in dupes
-            or not _is_earned_flip(
-                ca.get(k, {}), cb.get(k, {}), prior_flips=prior_flips, ceiling=ceiling
-            )
-        )
-    }
-    return changed | (a.keys() ^ b.keys()) | (dupes & (a.keys() | b.keys()))
+    # A path one parser sees and the other does not: the cells the exemption
+    # would reason about are missing or belong to a different row.
+    unreconciled = (a.keys() ^ ca.keys()) | (b.keys() ^ cb.keys())
+
+    out: dict[str, str] = {}
+    if table_header(committed) != table_header(generated):
+        out[TABLE_KEY] = f"header {table_header(committed)!r} != {table_header(generated)!r}"
+    for k in a.keys() | b.keys():
+        # ORDER MATTERS, and getting it wrong is how the first build of this
+        # loop hid the very drift it was meant to expose: the reconciliation
+        # marker was tested FIRST, so an unparseable row got a CONSTANT
+        # signature — identical at base and at head — and a genuine row
+        # difference underneath it read as "inherited". A marker must never
+        # replace a real difference; it only speaks when there is none.
+        if k in dupes:
+            out[k] = "duplicated row"
+        elif k not in a or k not in b:
+            out[k] = f"present only in {'committed' if k in a else 'generated'}"
+        elif a[k] != b[k] and not _is_earned_flip(
+            ca.get(k, {}), cb.get(k, {}), prior_flips=prior_flips, ceiling=ceiling
+        ):
+            out[k] = f"{a[k]} != {b[k]}"
+        elif k in unreconciled:
+            out[k] = "row visible to only one parser"
+    return out
 
 
 def _read(p: Path) -> str:
@@ -322,9 +396,12 @@ def main(argv: list[str] | None = None) -> int:
         ceiling=ceiling,
     )
 
-    introduced = sorted(head - base)
-    inherited = sorted(head & base)
-    repaired = sorted(base - head)
+    # Compared by SIGNATURE, not by key. A key drifting at both ends is only
+    # "inherited" when it drifts the SAME WAY; drift the PR changed on a
+    # already-broken row is drift the PR introduced.
+    introduced = sorted(k for k, sig in head.items() if base.get(k) != sig)
+    inherited = sorted(k for k, sig in head.items() if base.get(k) == sig)
+    repaired = sorted(k for k in base if k not in head)
 
     def show(label: str, keys: list[str]) -> None:
         # Never print a truncated list as if it were whole (W97): the count is

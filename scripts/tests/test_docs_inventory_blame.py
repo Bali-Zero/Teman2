@@ -25,10 +25,19 @@ SCRIPT = REPO_ROOT / "scripts" / "docs_inventory_blame.py"
 
 sys.path.insert(0, str(SCRIPT.parent))
 import docs_inventory_blame as blame  # noqa: E402
+from docs_audit import _parse_inventory_table as _parse_table  # noqa: E402
 
 
 def _table(rows: dict[str, str], *, orphans: int = 10) -> str:
-    """Build an inventory-shaped table: summary block + one row per doc."""
+    """Build an inventory-shaped table: summary block + one row per doc.
+
+    The header must have as many columns as the rows do. Its first build
+    declared two (`| Doc | Status |`) while every row carried four, so
+    `_parse_inventory_table` — which matches by header and drops any row whose
+    cell count disagrees — silently returned NOTHING for these fixtures. That is
+    a table no generator can emit, and it made five tests measure a parser
+    failure instead of the drift they were written for.
+    """
     body = "\n".join(f"| {p} | {cells} |" for p, cells in rows.items())
     return (
         "# Docs Inventory\n\n"
@@ -38,7 +47,8 @@ def _table(rows: dict[str, str], *, orphans: int = 10) -> str:
         "| STALE    |     6 | 1% |\n"
         "| ARCHIVED |   307 | 33% |\n\n"
         f"**Drift:** 0 · **Broken links:** 2 · **Orphans:** {orphans}\n\n"
-        "| Doc | Status |\n| --- | --- |\n" + body + "\n"
+        "| File | Status | refs_in | last_touched_date |\n"
+        "| --- | --- | --- | --- |\n" + body + "\n"
     )
 
 
@@ -188,8 +198,8 @@ def test_added_and_removed_rows_both_count_as_drift(tmp_path):
     both drift. Testing one direction would leave deletions invisible."""
     a = _table(BASE_ROWS)
     b = _table({k: v for k, v in BASE_ROWS.items() if k != "docs/C.md"})
-    assert blame.drifting_keys(a, b) == {"docs/C.md"}
-    assert blame.drifting_keys(b, a) == {"docs/C.md"}
+    assert set(blame.drifting_keys(a, b)) == {"docs/C.md"}
+    assert set(blame.drifting_keys(b, a)) == {"docs/C.md"}
 
 
 # ---------------------------------------------------------------------------
@@ -224,13 +234,14 @@ def _full_table(rows: dict[str, str]) -> str:
     """
     live = sum(1 for c in rows.values() if c.startswith("LIVE"))
     archived = sum(1 for c in rows.values() if c.startswith("ARCHIVED"))
+    total = max(len(rows), 1)
     body = "\n".join(f"| {p} | {cells} |" for p, cells in rows.items())
     return (
         "# Documentation Inventory\n\n"
         "| Status   | Count | % |\n"
         "| -------- | ----: | -: |\n"
-        f"| LIVE     |   {live} | 66% |\n"
-        f"| ARCHIVED |   {archived} | 33% |\n\n"
+        f"| LIVE     |   {live} | {round(100 * live / total)}% |\n"
+        f"| ARCHIVED |   {archived} | {round(100 * archived / total)}% |\n\n"
         "| File | Status | last_touched_date | orphan_eligible_on | "
         "orphan_flipped_on | refs_in | broken | drift | cluster | action |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
@@ -241,7 +252,7 @@ def _full_table(rows: dict[str, str]) -> str:
 
 def _drift(committed: str, generated: str, **kw) -> set[str]:
     kw.setdefault("ceiling", CEILING)
-    return blame.drifting_keys(committed, generated, **kw)
+    return set(blame.drifting_keys(committed, generated, **kw))
 
 
 def test_innocence_an_earned_orphan_flip_is_not_drift() -> None:
@@ -453,7 +464,95 @@ def test_without_a_trustworthy_ceiling_nothing_is_ever_exempt() -> None:
     """
     committed = _full_table({"docs/audits/x.md": _ARCHIVED})
     generated = _full_table({"docs/audits/x.md": _LIVE})
-    assert blame.drifting_keys(committed, generated) == {"docs/audits/x.md"}
+    assert set(blame.drifting_keys(committed, generated)) == {"docs/audits/x.md"}
+
+
+# --- round 2: what the FIRST cure still let through -------------------------
+
+
+def test_guilt_renaming_the_table_header_is_drift() -> None:
+    """Every other check in this file reads ROWS, so a broken schema was free.
+
+    `| File |` -> `| Files |` leaves every document row byte-identical.
+    `_parse_inventory_table` then returns {} — it matches on the header — while
+    `row_map` still finds all the rows, so nothing differed and the gate passed
+    on a table whose schema had been broken. Measured: the probe returned
+    `set()`.
+    """
+    good = _full_table({"docs/a.md": _LIVE})
+    bad = good.replace("| File |", "| Files |", 1)
+    assert bad != good, "the fixture edit did not apply"
+    assert blame.TABLE_KEY in _drift(bad, good)
+
+
+def test_guilt_a_markdown_linked_row_cannot_hide_a_duplicate() -> None:
+    """The link normalisation this file advertised had never once fired.
+
+    `.strip("`[]")` ran BEFORE the link regex, eating the leading `[`, so
+    `[docs/x.md](docs/x.md)` became `docs/x.md](docs/x.md)` — rejected for not
+    ending in `.md`, and therefore INVISIBLE to both `row_map` and
+    `_duplicate_keys` while `_parse_inventory_table` still saw it. A corrupt row
+    wearing link syntax could sit beside a clean exemptable one and neither
+    scanner would count a duplicate.
+    """
+    assert blame._row_key("[docs/x.md](docs/x.md)") == "docs/x.md"
+    header, _, rows = _full_table({"docs/x.md": _ARCHIVED}).rpartition("| --- |\n")
+    linked = "| [docs/x.md](docs/x.md) | ARCHIVED | 1999-01-01 | — | — | 9 | 9 | yes | — | ? |\n"
+    committed = header + "| --- |\n" + linked + rows
+    generated = _full_table({"docs/x.md": _LIVE})
+    assert _drift(committed, generated) == {"docs/x.md"}
+
+
+def test_guilt_a_row_only_one_parser_can_read_is_drift_even_when_identical() -> None:
+    """The two parsers in this file must agree about which rows exist.
+
+    `row_map` scans raw lines; `_parse_inventory_table` matches the header and
+    DROPS any row whose cell count disagrees with it. A row only one of them
+    sees is a row the exemption cannot be trusted about — and if it is identical
+    on both sides, the ordinary difference test says nothing at all, so without
+    the reconciliation check it passes in silence.
+    """
+    short = "| docs/broken.md | LIVE | 2026-04-29 |"
+    header, _, rows = _full_table({"docs/a.md": _LIVE}).rpartition("| --- |\n")
+    both = header + "| --- |\n" + short + "\n" + rows
+    assert blame.row_map(both).keys() == {"docs/broken.md", "docs/a.md"}
+    assert "docs/broken.md" not in _parse_table(both), "fixture no longer malformed"
+    assert _drift(both, both) == {"docs/broken.md"}
+
+
+def test_an_unreadable_row_reports_its_difference_not_just_its_unreadability() -> None:
+    """A marker must never REPLACE a real difference — order of the checks.
+
+    The first build tested "only one parser can read this" FIRST, so an
+    unparseable row got a CONSTANT signature. Identical at base and at head, it
+    made a genuine row difference underneath read as inherited drift, and the
+    gate passed on it. The signature must carry the rows themselves.
+    """
+    header, _, rows = _full_table({"docs/a.md": _LIVE}).rpartition("| --- |\n")
+    a = header + "| --- |\n" + "| docs/broken.md | LIVE | 2026-04-29 |\n" + rows
+    b = header + "| --- |\n" + "| docs/broken.md | STALE | 1999-01-01 |\n" + rows
+    sig = blame.drifting_keys(a, b, ceiling=CEILING)["docs/broken.md"]
+    assert "only one parser" not in sig, f"the marker masked the difference: {sig!r}"
+    assert "LIVE" in sig and "STALE" in sig
+
+
+def test_guilt_worsening_an_already_drifting_row_is_not_inherited(tmp_path) -> None:
+    """"Already drifting" was a licence, because only KEYS were compared.
+
+    `introduced = head - base` over sets of paths: a row drifting on the base
+    could be worsened at head — different status, corrupted cells, anything —
+    and the key stayed in both sets, so the difference vanished and the PR
+    passed. Drift is now compared by SIGNATURE, so the same key drifting a
+    DIFFERENT way is drift this PR introduced.
+    """
+    committed = _table(BASE_ROWS)
+    generated_base = _table({**BASE_ROWS, "docs/A.md": "STALE | 91 | 2026-07-01"})
+    # same key, worse drift: STALE -> ARCHIVED with a different date
+    generated_head = _table({**BASE_ROWS, "docs/A.md": "ARCHIVED | 91 | 1999-01-01"})
+    r = _run(tmp_path, committed, generated_base, committed, generated_head)
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "docs/A.md" in r.stdout
+    assert "makes STALE" in r.stdout
 
 
 def test_scar_pin_the_eight_rows_of_pr_3463() -> None:

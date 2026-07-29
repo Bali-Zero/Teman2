@@ -560,7 +560,15 @@ def orphan_flip_claim_is_legitimate(
     `_tolerated_orphan_flip_paths`'s docstring for why each exists and which
     forgery direction it closes. Arguments are plain cells/flags so a caller
     holding only rendered markdown can ask the same question as a caller
-    holding parsed `DocRow`s.
+    holding parsed `DocRow`s. Behaviour is preserved AT THE `--check` CALL SITE,
+    which is what was verified (55/55): the helper's own contract is
+    deliberately broader, because it stringifies and strips every value so a
+    caller holding rendered cells can use it. Old code rejected a STRING
+    `generated_refs_in="0"` and an INT `committed_refs_in=0`; this accepts both.
+    Neither is reachable from `--check`, which passes an int and a stripped
+    string respectively — but "behaviour-preserving" is a claim about the call
+    site, not about the function, and the difference is written down rather than
+    left for the next reader to discover.
 
     DECLARED LIMITS (true of this predicate at both call sites, recorded rather
     than silently inherited):
@@ -574,6 +582,18 @@ def orphan_flip_claim_is_legitimate(
         `refs_in == 0 AND not whitelisted`; only the first half is checkable
         from a rendered row. Measured on the live table 2026-07-29: zero
         whitelisted docs have `refs_in == 0`, so the gap is latent, not open.
+      * THE LOWER BOUND IS TREE-DERIVED, AND THE TREE IS THE PR'S. The 2026-07-25
+        round hardened the UPPER bound against `GIT_COMMITTER_DATE` forgery, and
+        left the floor where it was: `orphan_eligible_on` is
+        `last_touched + orphan_days`, and `last_touched` comes from
+        `git log --format=%ct` on the branch under test. So an author who
+        backdates the commit that adds an unreferenced doc can make it eligible
+        immediately and claim a flip today; the claim is then genuinely below
+        the trusted ceiling and every other cell agrees, so it is tolerated.
+        Reachable from BOTH call sites, and pre-dating the extraction — closing
+        it means giving eligibility a trusted source, which changes `classify()`
+        itself. Recorded here, not fixed under a different mandate. Blast radius
+        is bounded by `refs_in == 0`: the doc must be one nothing links to.
     """
     if trusted_ref_ceiling_date is None:
         return False  # no trustworthy ceiling — fail closed
