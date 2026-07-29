@@ -194,6 +194,7 @@ test.describe("Bali Zero product-family shells", () => {
   test("Kita desktop shell shows the canonical Bali Zero logo", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 1440, height: 960 });
     await seedSyntheticPortalSession(page);
 
     await page.goto(`${KITA_ORIGIN}/dashboard`, {
