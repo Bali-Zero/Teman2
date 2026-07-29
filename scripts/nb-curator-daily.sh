@@ -38,6 +38,23 @@ TG_NOTIFY="$SCRIPT_DIR/tg_notify.py"
 # 04:00 cron on Pro (W96: tests must never touch production state).
 LOCK_FILE="${NB_CURATOR_LOCK_FILE:-/tmp/nb-curator.lock}"
 LOG="$HOME/logs/nb-curator.log"
+# G2_heartbeat — proof of life at ~/.organism/last_seen/<id>.json, which is what
+# organs_registry.yaml (bridge_source.path) and the stale-detector actually read.
+# The library is INVOKED under `bash`, never sourced: this wrapper is zsh, and
+# heartbeat.sh declares `local status=…` — `status` is a read-only special
+# parameter in zsh, so sourcing it dies with "read-only variable: status" and
+# writes nothing (measured 2026-07-29). Every other zsh wrapper on the fleet
+# already invokes it the same way; the lib's own docstring only advertises the
+# bash source-pattern. Resolution prefers THIS checkout's copy over ~/scripts/
+# for the same reason as ARTIFACT_GATE above (superscar #1).
+ORGAN_ID="pro.nb_curator_daily"
+if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
+    HEARTBEAT_LIB="$ORGANISM_HEARTBEAT_LIB"
+elif [ -r "$SCRIPT_DIR/lib/heartbeat.sh" ]; then
+    HEARTBEAT_LIB="$SCRIPT_DIR/lib/heartbeat.sh"
+else
+    HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
+fi
 OUTPUT_DIR="$HOME/nuzantara/research/nb-health"
 DEDUP_SCRIPT="$HOME/nuzantara/apps/bali-intel-scraper/scripts/nb_dedup_exact_url.py"
 DATE_STR=$(TZ=Asia/Makassar date +%Y-%m-%d)
@@ -48,6 +65,30 @@ DAY=$(TZ=Asia/Makassar date +%-d)  # day-of-month
 # left behind here would read like a knob and change nothing when turned.)
 
 mkdir -p "$HOME/logs" "$OUTPUT_DIR"
+
+# The sidecar must carry the REAL outcome and must be written on EVERY exit
+# path. One unconditional write at the end would say "alive" for a run that
+# reported ALL TIERS FAILED — the same cron-theater the exit codes below were
+# added to kill. The EXIT trap covers the paths nobody wrote on purpose (an
+# unset variable under `set -u`, an `exit` added later): without it those runs
+# leave NO sidecar, which reads as "never scheduled" rather than "died", and the
+# two want different cures. Measured, so nobody trusts it further than it goes:
+# zsh runs this trap on `exit`, on a `set -u` abort and on a `set -e` abort, but
+# NOT on a fatal signal — a SIGTERM'd run (rc=143) still leaves no sidecar.
+HB_EMITTED=0
+heartbeat() {  # heartbeat <status> [note]
+    HB_EMITTED=1
+    [ -f "$HEARTBEAT_LIB" ] || return 0
+    bash "$HEARTBEAT_LIB" "$ORGAN_ID" "$1" "${2:-}" || true
+}
+_hb_on_exit() {
+    local rc=$?
+    if [ "$HB_EMITTED" -eq 0 ]; then
+        heartbeat error "aborted before verdict (rc=$rc)"
+    fi
+    return 0
+}
+trap _hb_on_exit EXIT
 
 # ── flock — prevent overlapping runs ──────────────────────────────────────────
 # `flock` is NOT a macOS builtin — it arrives via homebrew util-linux and is
@@ -62,6 +103,10 @@ exec 9>"$LOCK_FILE"
 if command -v flock >/dev/null 2>&1; then
     flock -n 9 || {
         echo "$(TZ=Asia/Makassar date '+%Y-%m-%dT%H:%M:%S WITA'): nb-curator already running, skipping" >> "$LOG"
+        # `warning`, not `ok`: the organ is alive but did NO work. A lock held by
+        # a run that hung would otherwise paint a green heartbeat every day for
+        # a curator that has not curated anything since.
+        heartbeat warning "skipped: another run holds $LOCK_FILE"
         exit 0
     }
 else
@@ -283,8 +328,12 @@ fi
 # thing a downstream watcher reads (W107: five wrapper families write receipts,
 # and a job that never fails is a job nobody ever looks at).
 if [ "$EXIT" -ne 0 ]; then
+    heartbeat error "all brain tiers failed (exit=$EXIT)"
     exit 1
 elif [ "$GATE_RC" -ne 0 ]; then
+    # degraded, not error: the brain ran, the ARTIFACT is what failed.
+    heartbeat degraded "artifact gate rc=$GATE_RC on ${REPORT_PATH##*/}"
     exit 2
 fi
+heartbeat ok "dedup=$DEDUP_DELETED challenge=$CHALLENGE_DELETED broken=$BROKEN proposals=$PROPOSALS brain=$BRAIN_USED"
 exit 0

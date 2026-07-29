@@ -2,7 +2,7 @@
 
 import { Phone } from "lucide-react";
 import { useTranslation } from "@/i18n";
-import type { Locale } from "@/i18n/types";
+import { OFFERED_LOCALES } from "@/i18n/types";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
@@ -34,7 +34,6 @@ const E33_FALLBACK_PRICE = "IDR 39,000,000";
  */
 
 const PAGE_PATH = "/visa/second-home";
-const SWITCHER_LOCALES: Locale[] = ["en", "id", "it"];
 
 const sectionStyle: React.CSSProperties = {
   display: "grid",
@@ -68,7 +67,7 @@ function LanguageSwitcher() {
       aria-label="Language"
       style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}
     >
-      {SWITCHER_LOCALES.map((l) => (
+      {OFFERED_LOCALES.map((l) => (
         <button
           key={l}
           type="button"

@@ -38,6 +38,30 @@ if [[ "$BRANCH" != "main" && "$BRANCH" != "deploy/main" ]]; then
     echo "$LOG_PREFIX WARN: $REPO_ROOT on branch '$BRANCH' (not main) — verifier may be stale" >&2
 fi
 
+# Being ON main says nothing about being CURRENT with it, and that gap is not
+# hypothetical: on 2026-07-29 the M5 checkout sat 248 commits behind while the
+# census fix that cleared 5 false REGRESSED was already merged — so this cron
+# would have kept reporting cured edges as regressions, with no line anywhere
+# saying the map was old. The branch check above could never catch it: the
+# branch was main the whole time. Read the DISTANCE, not the name.
+#
+# Report-only by construction. It never fetches (a cron that reaches the network
+# to decide its own freshness is a new failure mode) and never pulls (the scar
+# above). So the count is measured against the last-known origin/main in the
+# local object store, which is itself a lower bound — say so rather than imply
+# precision the measurement does not have.
+BEHIND=""
+if [[ "$BRANCH" == "main" || "$BRANCH" == "deploy/main" ]]; then
+    BEHIND="$(git -C "$REPO_ROOT" rev-list --count HEAD..origin/main 2>/dev/null || echo "")"
+fi
+if [[ -z "$BEHIND" ]]; then
+    # No origin/main ref locally, or git failed. CANNOT-VERIFY is not CLEAN:
+    # never let "I could not check" read as "nothing to report" (W106b).
+    echo "$LOG_PREFIX WARN: could not measure checkout distance from origin/main — verdicts below are of UNKNOWN freshness" >&2
+elif (( BEHIND > 0 )); then
+    echo "$LOG_PREFIX WARN: $REPO_ROOT is >= $BEHIND commits behind origin/main — every verdict below is judged against THAT vintage of the census, not today's. Do NOT pull here (sibling-race): refresh the checkout from an interactive session on this machine." >&2
+fi
+
 # ── python: backend venv first (PyYAML guaranteed), else system if yaml works ─
 PYBIN="$REPO_ROOT/apps/backend-rag/.venv/bin/python3"
 if [[ ! -x "$PYBIN" ]]; then

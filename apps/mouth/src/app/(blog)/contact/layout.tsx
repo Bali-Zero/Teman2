@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
 
 export const metadata: Metadata = {
-  title: "Contact Bali Zero | Free Visa & Business Consultation",
+  title: "Contact — Free Visa & Business Consultation",
   description:
     "Contact Bali Zero for a free consultation on Indonesia visas, company setup, tax compliance, and property investment. WhatsApp, email, or visit our Bali office.",
   openGraph: {

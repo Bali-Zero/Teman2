@@ -3,7 +3,21 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "https://nuzantara-rag.fly.dev";
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
+
+/**
+ * The backend keys client invitations on an integer primary key
+ * (`portal_invite.py::get_client_invitations(client_id: int)`), so anything that is
+ * not a plain positive integer is not a client id — it is a path segment trying to
+ * escape the endpoint it was interpolated into.
+ *
+ * Without this, `?clientId=../../../../<path>` is normalised away by `fetch` and the
+ * proxy calls an arbitrary backend route while forwarding the caller's authorization
+ * and cookie headers (CodeQL js/request-forgery, alert #8318).
+ */
+export function isValidClientId(raw: string | null): raw is string {
+  return raw !== null && /^[1-9][0-9]{0,17}$/.test(raw);
+}
 
 export async function POST(request: Request) {
   try {
@@ -35,9 +49,8 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const clientIdRaw = searchParams.get("clientId");
-    const clientId = clientIdRaw ? parseInt(clientIdRaw, 10) : NaN;
-    if (!clientIdRaw || !Number.isInteger(clientId) || clientId <= 0) {
+    const clientId = searchParams.get("clientId");
+    if (!isValidClientId(clientId)) {
       return NextResponse.json(
         { error: "clientId must be a positive integer" },
         { status: 400 },

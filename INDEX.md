@@ -103,7 +103,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 
 | App | Ruolo |
 | --- | ----- |
-| `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
+| `admin-dashboard` | Local-only ops dashboard. Runs on port 3002 via `start_dashboard.sh`. |
 | `admin-dashboard-local` | Pro-only LLM cost dashboard. **Not deployed anywhere.** |
 | `autonomous-lab` |  |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
@@ -169,7 +169,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`128 plist tracked in infra/launchagents/ · 101 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (79% coverage)`
+`129 plist tracked in infra/launchagents/ · 102 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (79% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

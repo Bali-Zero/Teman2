@@ -8,7 +8,7 @@ import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 import { rosterBySlug, initialsOf } from "@/data/team-roster";
 
 export const metadata: Metadata = {
-  title: "Team · Bali Zero",
+  title: "Team",
   description:
     "The Bali Zero team — licensed founders, consultants, tax specialists, notaries and marketing. Real people handling real cases in Bali since 2006.",
 };

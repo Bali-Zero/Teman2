@@ -29,6 +29,11 @@ on:
       - "scripts/organ_birth.py"
       - "scripts/lint_plist_keepalive.py"
       - "scripts/healer_receptor_registry.py"
+      # The subject of test_gene_g2_heartbeat_fires.py. Without it a
+      # wrapper-only edit could break the heartbeat and never run the corpus
+      # that proves it — armed for the wrong trigger is the under-match half of
+      # cicatrix family #3.
+      - "scripts/nb-curator-daily.sh"
       - ".github/workflows/organ-conformance.yml"
 
 concurrency:
@@ -86,7 +91,7 @@ jobs:
             'infra/organ-conformance/' 'infra/home-fork/declared-pairs.json' \
             'apps/organism/organism/organs_registry.yaml' \
             'scripts/organ_birth.py' 'scripts/lint_plist_keepalive.py' \
-            'scripts/healer_receptor_registry.py' \
+            'scripts/healer_receptor_registry.py' 'scripts/nb-curator-daily.sh' \
             '.github/workflows/organ-conformance.yml' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')
@@ -120,6 +125,20 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           python3 infra/organ-conformance/check_baseline_ratchet.py --base origin/main
+
+      # test_gene_g2_heartbeat_fires.py runs a real `#!/bin/zsh` wrapper end to
+      # end — it proves the heartbeat gene FIRES and carries the run's real
+      # verdict, which the regex-based gate cannot see. zsh is not guaranteed on
+      # the runner image, and a missing interpreter must not turn that proof
+      # into a skip: install it explicitly, then assert it is there.
+      - name: Require zsh (the G2 corpus executes a real zsh wrapper)
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          if ! command -v zsh >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes zsh
+          fi
+          command -v zsh
 
       - name: Gate proves guilt AND innocence (own test suites)
         if: steps.relevant.outputs.hit == 'true'

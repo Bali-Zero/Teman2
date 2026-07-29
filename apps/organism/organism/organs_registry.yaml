@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 40aee294d407d7e8c7bcb9a0abe77eecae3b2bc6f7668beaf9e3205b25efee73
+checksum: d4b9a4e76fea35aed57a14f8062f825594f0a9b50272a4d4af4eb3647ce67512
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2139,5 +2139,27 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.fly_logs_accumulator.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.nb_curator_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/nb-curator-daily.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.nb-curator.daily
+  severity_on_silence: warning
+  notes: NotebookLM curator, 04:00 WITA on Pro — deterministic exact-URL dedup + challenge
+    sweep, Mode B health check, Mode C proposals, then a deterministic artifact gate
+    on the report it claims to have written. The heartbeat carries the real verdict
+    (ok / degraded = artifact gate failed / error = all brain tiers failed / warning
+    = lock held), never "reached the end".
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.nb_curator_daily.json
     timestamp_field: ts
     status_field: status

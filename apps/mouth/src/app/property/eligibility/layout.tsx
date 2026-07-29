@@ -6,7 +6,7 @@ import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
-  title: "Idoneità Immobile · Bali Zero",
+  title: "Idoneità Immobile",
   description:
     "Zoning, struttura legale, tassazione e punteggio di rischio per immobili a Bali.",
 };

@@ -20,8 +20,48 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-27 — keep current)
+## 1. LIVE STATE (last update 2026-07-29 — keep current)
 
+- **🧪 FIRST REAL TEAM BETA — 78 questions, 13 people, 2026-07-28. FOUR CURES OPEN.**
+  The bot is **not public yet, by design** (Zero) — the low inbound traffic was never a
+  distribution problem, so do not "fix" it. Answer sheet (Zero's Drive, 13 named grants):
+  `docs.google.com/spreadsheets/d/1p41FiRQDWwD72cUgYH0dCG7a5e5c2-wRZIuOGOTGnWQ`. **It is
+  NOT readable via MCP** (403 — the prod identity is outside the domain); re-read it with
+  Drive `files().export_media(mimeType=…xlsx)` + openpyxl. Result: 75 answered,
+  **50 OK · 4 SALAH · 5 RAGU · 19 unscored**; zero client PII pasted (verified by pattern
+  across every answer). Open cures, worst first:
+  1. **One missing capability, four behaviours, one of them a lie.** The bot has no CRM
+     access (deliberate, not yet granted). Across the 5 CRM questions it answered four
+     different ways: two honest refusals (Dea, Asya), one canned greeting (Krisna), one
+     silence (Surya), and to Adit **"semuanya sudah aman"** — an invented reassurance about
+     a colleague's real client deadlines, stated confidently. The defect is not the missing
+     tool, it is the absence of ONE honest way to say "I don't have access".
+  2. **Wrong land-tenure durations** (caught by Dea): Hak Pakai given as 25+20+20=65 years,
+     the truth is **30+20+30=80**; HGB given 70, truth 80. This lands in property advice.
+  3. **Language drift confirmed AND reproducible** (Dewa Ayu): two English questions
+     answered wholly **in Italian** — with correct content and citations. Note the
+     correction to prior doctrine: retrieval had SUCCEEDED here, so drift is **not always**
+     a symptom of empty retrieval; it is an independent language-selection defect.
+  4. **Off-target answer** (Asya): asked for the _chart of accounts_, answered about
+     mandatory financial reports.
+
+  **Do NOT "fix" Ari's row** (this is not a fifth cure — it is the opposite): asked about a
+  KITAS rejection, the bot said the rule is not in the verified database and it would check
+  with the team. That is the intended behaviour — the gap is in the KB, and Ari's and Subhi's
+  notes in the sheet are material to ingest. Detail: memory
+  `project_zantara_team_beta_test_2026_07_28`.
+
+- **🚨 GEMINI CREDIT SENTINEL ARMED + PROVEN LIVE (PR #3410, merged 2026-07-28 12:53Z).**
+  Third depletion in a week (26/7 17:10Z → 28/7 02:52Z, ~34h mute) — the agentic LLM is what
+  picks the collections, so a dead LLM means `collections_queried=[]` → 0 chunks → abstain on
+  everything → the outbox worker reads the abstention as a FAILURE, burns 5 retries, and the
+  user gets **silence**. Measured: 89 consecutive queries, 0 chunks, 0 responses; Qdrant was
+  green throughout. `LLMCreditSentinel` now probes with a 9-token call and alerts Surya on
+  WhatsApp + Zero on Telegram. **Real cadence is ~1 hour, not the requested 20 minutes**
+  (GitHub runs `schedule` best-effort; measured 54–211 min gaps) — say "within an hour",
+  never "within 20 minutes". Top-up stays `operator[business]`: project **`nuzantara`,
+  number 930328104463** (five other Google projects have confusable names).
+  Detail: memory `ops_gemini_credit_sentinel_armed_2026_07_29`.
 - **🔴 THREE FAST-PATHS RETURN BEFORE THE ABSTAIN GATE — AND BEFORE ANALYTICS (2026-07-27).**
   In `orchestrator_core.py::process_query_core`, three branches `return CoreResult(...)`
   early: Phase-6 multi-agent (`:1237`), SpecializedServiceRouter (`:1260`), KG fast-path

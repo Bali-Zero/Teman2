@@ -1,0 +1,379 @@
+// =============================================================================
+// kbli-meta — the indexed-metadata assertion gate
+//
+// Guilt + innocence corpus (cicatrix #3: a guard is never shipped without both).
+// GUILT   = an unverified fact is withheld from the <title>/description.
+// INNOCENCE = a verified fact still reaches them (a gate that hides everything
+//             is not a gate, it is a regression to v2's undifferentiated suffix).
+//
+// Plus a real-dataset invariant: the gate must actually bind on the canonical,
+// not just on fixtures. If a future dataset rebuild made every record verified,
+// these numbers move and the test says so instead of silently passing.
+// =============================================================================
+
+import { describe, it, expect } from "vitest";
+import {
+  kbliMetaDescription,
+  kbliMetaTitle,
+  kbliMetaTitleSuffix,
+  verifiedLicenseType,
+  verifiedRiskLabel,
+} from "./kbli-meta";
+import {
+  isBaliL4BlockVerifiedForBareClaim,
+  isLicensingVerifiedForBareClaim,
+} from "./kbli-provenance";
+import { getAllCodes } from "./kbli-data";
+import type {
+  KBLIBaliL4,
+  KBLICode,
+  KBLILicenseByScale,
+  KBLILicensingProvenanceStatus,
+  KBLIProvenance,
+} from "./kbli-types";
+
+// -----------------------------------------------------------------------------
+// Fixture factory
+// -----------------------------------------------------------------------------
+
+function makeLicensing(
+  riskCategory = "Tinggi",
+  licenseType = "NIB + Izin",
+): KBLILicenseByScale[] {
+  return [
+    {
+      scales: ["Kecil"],
+      riskCategory: riskCategory as KBLILicenseByScale["riskCategory"],
+      licenseType,
+      requirements: [],
+      timeframe: "3",
+      obligations: [],
+      authority: "OSS",
+      fictivePositive: false,
+    } as KBLILicenseByScale,
+  ];
+}
+
+function makeProvenance(
+  status: KBLILicensingProvenanceStatus = "oss_native",
+): KBLIProvenance {
+  return {
+    state: status === "oss_native" ? "verified" : "pending",
+    definition: { locator: "OSS_RBA_2025_id_version_test", assembly: null },
+    licensing: {
+      status,
+      locator: status === "oss_native" ? "OSS_RBA_resiko_2025" : null,
+      vintage: status === "oss_native" ? "2025" : "2020",
+      noOssScope: status === "pending_crosswalk",
+    },
+    pma: { source: null, vintage: "2020", status: "pending_crosswalk" },
+    dataNote: null,
+    disputed: null,
+  };
+}
+
+function makeCode(overrides: Partial<KBLICode> = {}): KBLICode {
+  return {
+    code: "56101",
+    titleId: "Restoran",
+    titleEn: "Restaurant",
+    titleEnMeta: "Restaurant",
+    description: "Test description",
+    section: "I",
+    sectionName: "Accommodation and Food Service",
+    pma: {
+      status: "open",
+      maxForeign: 100,
+      condition: null,
+      isPriority: false,
+      note: null,
+      source: "Perpres 10/2021",
+      capSpecial: false,
+      capVerified: true,
+      routeTo: null,
+    },
+    licensing: makeLicensing(),
+    transition: {
+      mappingStatus: "MATCH_LANGSUNG",
+      previousCodes: [],
+      kbli2020Source: null,
+      mappingNote: null,
+      aggregationNote: null,
+    },
+    tier: "silver",
+    keywords: [],
+    provenance: makeProvenance(),
+    ...overrides,
+  } as KBLICode;
+}
+
+function blockedBali(
+  confidence: KBLIBaliL4["confidence"],
+  needsReview = false,
+): KBLIBaliL4 {
+  return {
+    status: "CHIUSO_PMA_NO_BESAR",
+    reason: "Moratorium B.27.000/642",
+    confidence,
+    needsReview,
+    blocked: true,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// GUILT — an unverified fact never reaches an indexed surface
+// -----------------------------------------------------------------------------
+
+describe("GUILT: the gate withholds unverified facts from title/description", () => {
+  it("drops the risk tier when the licensing rows await crosswalk", () => {
+    const kbli = makeCode({ provenance: makeProvenance("pending_crosswalk") });
+
+    expect(isLicensingVerifiedForBareClaim(kbli)).toBe(false);
+    expect(verifiedRiskLabel(kbli)).toBeNull();
+    expect(kbliMetaTitleSuffix(kbli)).toBe("100% Foreign Ownership");
+    expect(kbliMetaDescription(kbli, "Restaurant")).not.toMatch(/risk/i);
+  });
+
+  it("drops the risk tier when `_l2_source` is present but unrecognized", () => {
+    const kbli = makeCode({ provenance: makeProvenance("unverified_source") });
+
+    expect(verifiedRiskLabel(kbli)).toBeNull();
+    expect(kbliMetaTitleSuffix(kbli)).toBe("100% Foreign Ownership");
+  });
+
+  it("fails CLOSED — not by throwing — on a malformed provenance block", () => {
+    // Adversarial review finding 2: `provenance?.licensing.status` guards a
+    // null provenance and then throws on a non-null one with no `licensing`
+    // key. A crash is not fail-closed, it is a 500 on an indexed page.
+    const kbli = makeCode({ provenance: {} as never });
+
+    expect(() => isLicensingVerifiedForBareClaim(kbli)).not.toThrow();
+    expect(isLicensingVerifiedForBareClaim(kbli)).toBe(false);
+    expect(kbliMetaTitle(kbli, kbli.titleEn)).not.toMatch(/Risk/);
+    expect(kbliMetaDescription(kbli, kbli.titleEn)).not.toMatch(/license:/);
+  });
+
+  it("fails CLOSED when the provenance block is missing entirely", () => {
+    // The whole point of the positive gate: absence of evidence is not evidence
+    // of verification. A negative gate (`!isLicensingVerificationPending`) would
+    // return true here and publish the claim.
+    const kbli = makeCode({ provenance: undefined });
+
+    expect(isLicensingVerifiedForBareClaim(kbli)).toBe(false);
+    expect(verifiedRiskLabel(kbli)).toBeNull();
+    expect(verifiedLicenseType(kbli)).toBeNull();
+    // …and through the COMPOSERS, not only the helpers. Adversarial review
+    // finding 3: asserting on the helpers alone lets a leak introduced in
+    // kbliMetaTitle/kbliMetaDescription pass a test named "fails CLOSED".
+    expect(kbliMetaTitle(kbli, kbli.titleEn)).not.toMatch(/Risk/);
+    expect(kbliMetaDescription(kbli, kbli.titleEn)).not.toMatch(/license:/);
+  });
+
+  it("drops the license type whenever the risk tier is dropped", () => {
+    const kbli = makeCode({ provenance: makeProvenance("pending_crosswalk") });
+
+    expect(verifiedLicenseType(kbli)).toBeNull();
+    expect(kbliMetaDescription(kbli, "Restaurant")).not.toMatch(/license:/);
+  });
+
+  it("drops `blocked in Bali` at MEDIUM confidence", () => {
+    const kbli = makeCode({ baliL4: blockedBali("MEDIUM") });
+
+    expect(isBaliL4BlockVerifiedForBareClaim(kbli)).toBe(false);
+    expect(kbliMetaTitleSuffix(kbli)).not.toMatch(/Bali/);
+    expect(kbliMetaDescription(kbli, "Restaurant")).not.toMatch(/blocked/i);
+  });
+
+  it("drops `blocked in Bali` when the verdict is flagged for review", () => {
+    const kbli = makeCode({ baliL4: blockedBali("HIGH", true) });
+
+    expect(isBaliL4BlockVerifiedForBareClaim(kbli)).toBe(false);
+    expect(kbliMetaTitleSuffix(kbli)).not.toMatch(/Bali/);
+  });
+
+  it("keeps the pre-existing capVerified discipline on restricted codes", () => {
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: 67,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(kbli)).toBe("Foreign Ownership Restricted");
+    expect(kbliMetaTitleSuffix(kbli)).not.toMatch(/67/);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// INNOCENCE — a verified fact still differentiates the title
+// -----------------------------------------------------------------------------
+
+describe("INNOCENCE: verified facts still reach title/description", () => {
+  it("states the risk tier on an OSS-native record", () => {
+    const kbli = makeCode();
+
+    expect(isLicensingVerifiedForBareClaim(kbli)).toBe(true);
+    expect(kbliMetaTitleSuffix(kbli)).toBe("100% Foreign Ownership, High Risk");
+    expect(kbliMetaTitle(kbli, "Restaurant")).toBe(
+      "KBLI 56101: Restaurant — 100% Foreign Ownership, High Risk",
+    );
+    expect(kbliMetaDescription(kbli, "Restaurant")).toBe(
+      "Restaurant (KBLI 56101): 100% Foreign Ownership. High risk, license: NIB + Izin. KBLI 2025 rules + Bali notes by Bali Zero.",
+    );
+  });
+
+  it("states `blocked in Bali` at HIGH confidence without a review flag", () => {
+    const kbli = makeCode({ baliL4: blockedBali("HIGH") });
+
+    expect(isBaliL4BlockVerifiedForBareClaim(kbli)).toBe(true);
+    expect(kbliMetaTitleSuffix(kbli)).toBe("Blocked for PT PMA in Bali (2026)");
+    expect(kbliMetaDescription(kbli, "Restaurant")).toMatch(
+      /blocked for a PT PMA in Bali \(2026\)/,
+    );
+  });
+
+  it("states the verified cap % on a restricted code", () => {
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: 67,
+        capVerified: true,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(kbli)).toBe("Max 67% Foreign Ownership");
+  });
+
+  it("keeps the special-distribution and closed variants intact", () => {
+    const special = makeCode({
+      pma: { ...makeCode().pma, status: "restricted", capSpecial: true },
+    });
+    const closed = makeCode({ pma: { ...makeCode().pma, status: "closed" } });
+
+    expect(kbliMetaTitleSuffix(special)).toBe(
+      "Foreign Ownership With Conditions",
+    );
+    expect(kbliMetaTitleSuffix(closed)).toBe("Closed to Foreign Investment");
+  });
+
+  it("maps every risk tier the dataset uses", () => {
+    const tiers: [string, string][] = [
+      ["Tinggi", "High Risk"],
+      ["Rendah", "Low Risk"],
+      ["Menengah Tinggi", "Medium-High Risk"],
+      ["Menengah Rendah", "Medium-Low Risk"],
+    ];
+    for (const [raw, expected] of tiers) {
+      const kbli = makeCode({ licensing: makeLicensing(raw) });
+      expect(kbliMetaTitleSuffix(kbli)).toBe(
+        `100% Foreign Ownership, ${expected}`,
+      );
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Real-dataset invariants — the gate must BIND on the canonical
+// -----------------------------------------------------------------------------
+
+describe("real dataset: the gate binds, and v3 actually differentiates", () => {
+  it("withholds the Bali block on the majority of blocked-and-open codes", () => {
+    const codes = getAllCodes();
+    const blockedOpen = codes.filter(
+      (c) => c.pma.status === "open" && c.baliL4?.blocked,
+    );
+    const stated = blockedOpen.filter((c) =>
+      kbliMetaTitleSuffix(c).includes("Bali"),
+    );
+
+    // Measured 2026-07-26: 455 blocked-and-open, 33 at HIGH confidence without
+    // a review flag. The gate keeps 422 unverified regulatory claims out of
+    // indexed titles — that is the reason this module exists.
+    expect(blockedOpen.length).toBeGreaterThan(100);
+    expect(stated.length).toBeLessThan(blockedOpen.length / 2);
+    for (const c of stated) {
+      expect(c.baliL4?.confidence).toBe("HIGH");
+      expect(c.baliL4?.needsReview).not.toBe(true);
+    }
+  });
+
+  it("never states a risk tier on a code whose licensing is unverified", () => {
+    const offenders = getAllCodes().filter(
+      (c) =>
+        !isLicensingVerifiedForBareClaim(c) &&
+        /\b(High|Low|Medium-High|Medium-Low) Risk\b/.test(
+          kbliMetaTitleSuffix(c),
+        ),
+    );
+
+    expect(offenders.map((c) => c.code)).toEqual([]);
+  });
+
+  // Was: "produces more than one distinct suffix". Struck by adversarial review
+  // as vacuous — v2's four suffixes survive complete removal of the gate, so the
+  // assertion passed either way and read like coverage. Replaced with the claim
+  // that actually depends on the gate existing: on the real dataset the neutral
+  // degradations must be REACHED, i.e. some records really do fail verification.
+  it("actually degrades on the real dataset (the gate is not a no-op here)", () => {
+    const suffixes = getAllCodes().map(kbliMetaTitleSuffix);
+    const openUnverified = suffixes.filter(
+      (s) => s === "100% Foreign Ownership",
+    ).length;
+    const restrictedUnverified = suffixes.filter(
+      (s) => s === "Foreign Ownership Restricted",
+    ).length;
+
+    // 422 open codes carry an unverified Bali block today (measured). If this
+    // ever hits zero the gate has stopped selecting and the test is lying.
+    expect(openUnverified).toBeGreaterThan(0);
+    expect(openUnverified + restrictedUnverified).toBeGreaterThan(0);
+  });
+
+  it("degrades the cap in the DESCRIPTION when capVerified is false", () => {
+    // The dataset-wide check below cannot see this today (measured: zero live
+    // records are restricted + !capVerified + !capSpecial), so the synthetic
+    // record is the ONLY thing constraining this branch. Without it the leak
+    // Codex found would have been "fixed" with a test that passes either way.
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: 67,
+        capVerified: false,
+      },
+    });
+
+    const description = kbliMetaDescription(kbli, kbli.titleEn);
+    expect(description).not.toMatch(/67/);
+    expect(description).toMatch(/Restricted for foreign ownership/);
+  });
+
+  it("keeps the cap in the DESCRIPTION when capVerified is true", () => {
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: 67,
+        capVerified: true,
+      },
+    });
+
+    expect(kbliMetaDescription(kbli, kbli.titleEn)).toMatch(/max 67% foreign/);
+  });
+
+  it("never prints an unverified cap percentage in the DESCRIPTION either", () => {
+    // Finding 1 of the adversarial pass: the title gated `maxForeign` on
+    // capVerified and the description did not, so the same page refused the
+    // number in one surface and printed it in the other.
+    const offenders = getAllCodes().filter((c) => {
+      if (c.pma.status !== "restricted" || c.pma.capVerified) return false;
+      if (c.pma.capSpecial) return false;
+      return /max \d+% foreign/.test(kbliMetaDescription(c, c.titleEn));
+    });
+
+    expect(offenders.map((c) => c.code)).toEqual([]);
+  });
+});
