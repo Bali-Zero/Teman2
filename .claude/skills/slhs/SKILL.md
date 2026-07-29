@@ -55,6 +55,13 @@ Three consequences that shape everything:
 
 ## 2. Verified facts (method stated; do not regress)
 
+> ⚠️ **OPEN RISK on facts 1 and 4 — read before quoting either.** Both were extracted verbatim from
+> the **base text** of Permenkes 14/2021. That regulation has been **amended twice** — Permenkes
+> 8/2022 and Permenkes 17/2024 ("Perubahan Kedua") — and **the amendments have not been read**. So
+> "3 years" and "six KBLI codes" are verified _as of the base text_, not verified _as current_.
+> Until an amendment check lands, quote neither to a client without saying so. This is the W90
+> pattern (ground truth ages) applied to a primary source rather than to a NotebookLM verdict.
+
 | #   | Fact                                                                                                                                                                                                    | How it was verified                                                                                                                               |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Validity = 3 (tiga) tahun** from issue date                                                                                                                                                           | Verbatim from the certificate-template Lampiran: _"Sertifikat Laik Higiene Sanitasi ... berlaku selama 3 (tiga) tahun sejak tanggal diterbitkan"_ |
