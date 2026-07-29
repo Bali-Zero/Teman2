@@ -103,7 +103,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 
 | App | Ruolo |
 | --- | ----- |
-| `admin-dashboard` | Local-only ops dashboard. Runs on port 3002 via `start_dashboard.sh`. |
+| `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
 | `admin-dashboard-local` | Pro-only LLM cost dashboard. **Not deployed anywhere.** |
 | `autonomous-lab` |  |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
@@ -162,6 +162,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `.claude/skills/reuse-first/` | Use BEFORE implementing/building/writing-from-scratch any non-trivial component (queue, OCR, adapter, entity-resolution, review-UI, scraper, parser, etc.). C... |
 | `.claude/skills/secondhome/` | "E33 Second Home Visa corner — the live shared context for ALL work on the E33 vertical (base E33 deposit/property route, E33E/E33F senior). Load BEFORE touc... |
 | `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
+| `.claude/skills/slhs/` | SLHS corner — the live shared context for the Sertifikat Laik Higiene Sanitasi vertical (food-hygiene certification as a Bali Zero product, owner Krisna). Lo... |
 | `.claude/skills/sota-architecture-loop/` | Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → coun... |
 | `.claude/skills/workflow/` | Strategic multi-agent orchestration playbook — the Workflow tool wired to the full cross-family arsenal (Sonnet 5 implementers, Codex red-team, Gemini agy wi... |
 <!-- DOCSYNC:SKILLS_INDEX_END -->
