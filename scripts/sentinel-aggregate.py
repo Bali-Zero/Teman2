@@ -343,6 +343,18 @@ def _classify(
                     status = "stale"
                 else:
                     status = "warning"
+            elif hb_status == "disabled":
+                # An organ an operator deliberately stopped. It is NOT dead and
+                # must never page: `disabled` is already a status this file
+                # renders, and it is absent from _ESCALATE_STATUSES. Added
+                # 2026-07-29 with the writer arm that started emitting it —
+                # `healer_receptor_registry` has exempted this word since
+                # 2026-07-06, and until this branch existed the writer could not
+                # send it here without the `else` below calling it dead.
+                # Freshness is deliberately NOT applied: a stale `disabled` is
+                # still disabled, and ageing it into `dead` would page for
+                # exactly the organ the word exists to keep quiet.
+                status = "disabled"
             else:
                 # fail / error / unknown / anything else: always dead.
                 status = "dead"

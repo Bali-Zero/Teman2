@@ -34,6 +34,18 @@ on:
       # that proves it — armed for the wrong trigger is the under-match half of
       # cicatrix family #3.
       - "scripts/nb-curator-daily.sh"
+      # The G2 gene's implementation. Must be in BOTH filters: this one decides
+      # whether the workflow RUNS on a push to main at all, the `git diff`
+      # pathspec inside the job only decides whether its steps do any work. A
+      # path listed in the second but not the first is armed for pull_request
+      # (which has no top-level paths) and silently skipped post-merge.
+      - "scripts/lib/heartbeat.sh"
+      # The library's OTHER reader. `test_the_writers_vocabulary_matches_its_readers`
+      # reads this file's classifier branches directly, so a PR that changes only
+      # the classifier — the exact edit that could stop recognising a word the
+      # writer still emits — triggered the workflow (no top-level PR paths) and
+      # then skipped pytest, and after merge did not trigger it at all. Round 7.
+      - "scripts/sentinel-aggregate.py"
       - ".github/workflows/organ-conformance.yml"
 
 concurrency:
@@ -87,11 +99,17 @@ jobs:
             echo "::error::pull_request event with empty BASE/HEAD sha — cannot compute diff, failing closed"
             exit 1
           fi
+          # `scripts/lib/heartbeat.sh` is in this list because it IS the G2 gene's
+          # implementation: test_gene_g2_heartbeat_fires.py exercises it directly
+          # (and only this job installs the zsh those cases need). Without the
+          # entry, a PR touching only the library ran none of its own corpus —
+          # which is how a zsh-fatal `local status=` sat in it undetected.
           CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- \
             'infra/organ-conformance/' 'infra/home-fork/declared-pairs.json' \
             'apps/organism/organism/organs_registry.yaml' \
             'scripts/organ_birth.py' 'scripts/lint_plist_keepalive.py' \
             'scripts/healer_receptor_registry.py' 'scripts/nb-curator-daily.sh' \
+            'scripts/lib/heartbeat.sh' 'scripts/sentinel-aggregate.py' \
             '.github/workflows/organ-conformance.yml' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')
@@ -139,6 +157,23 @@ jobs:
             sudo apt-get install --yes zsh
           fi
           command -v zsh
+
+      # test_the_id_whitelist_is_ascii_not_collation needs a locale that actually
+      # COLLATES: `LC_ALL=it_IT.UTF-8` does not create it, and where it is absent
+      # bash warns, falls back to C, and the test passes with the defect restored.
+      # The test now runs a control experiment and fails closed — this step is what
+      # keeps that control satisfiable on a runner image we do not control.
+      - name: Generate the UTF-8 locale the collation test measures under
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          set -euo pipefail
+          if ! locale -a | grep -qi '^it_IT.utf-\?8$'; then
+            sudo apt-get update
+            sudo apt-get install --yes locales
+            sudo locale-gen it_IT.UTF-8
+            sudo update-locale
+          fi
+          locale -a | grep -i '^it_IT.utf-\?8$'
 
       - name: Gate proves guilt AND innocence (own test suites)
         if: steps.relevant.outputs.hit == 'true'

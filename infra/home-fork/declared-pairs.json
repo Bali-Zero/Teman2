@@ -292,6 +292,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/lib/heartbeat.sh",
+      "repo": "scripts/lib/heartbeat.sh",
+      "_note": "Undeclared until 2026-07-29, and named only in passing — the trampoline entry below says it lives at ~/scripts/lib 'same reasoning as heartbeat.sh', so the fork was known and never censused: no lint could have seen it drift. Measured the day it was declared: Pro's live copy sha256-identical to origin/main; M5 and Mini have no copy at all (hence pro-only, not 'all' — an 'all' here makes --check chase a nonexistent pair and report false drift, the mistake the regulatory-watcher entry above records).",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/lib/trampoline.sh",
       "repo": "infra/launchagents/wrappers/lib/trampoline.sh",
       "_note": "W84 trampoline sweep (2026-07-14): shared fail-fast/ssh-localhost-reexec lib, extracted from regulatory-watcher-run.sh so it can be sourced by multiple wrappers. Lives at ~/scripts/lib (outside TCC-protected ~/Desktop) same reasoning as heartbeat.sh.",
