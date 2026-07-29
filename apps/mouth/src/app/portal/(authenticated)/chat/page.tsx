@@ -345,7 +345,10 @@ export default function ChatPage() {
       {/* Header */}
       <section
         className="flex-shrink-0 pb-4 border-b sticky top-0 z-10"
-        style={{ borderColor: "var(--bz-border)", background: "var(--bz-bg)" }}
+        style={{
+          borderColor: "var(--bz-border)",
+          background: "var(--bz-base)",
+        }}
       >
         <div className="flex items-center justify-between">
           <div>

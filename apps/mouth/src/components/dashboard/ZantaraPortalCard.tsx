@@ -44,7 +44,7 @@ export function ZantaraPortalCard() {
               border: "1px solid var(--bz-border)",
             }}
           >
-            <BZLogo variant="mark" size={36} />
+            <BZLogo variant="full" size={38} className="rounded-full" />
           </div>
           {/* Lotus — overlaid bottom-right with glow pulse */}
           <div

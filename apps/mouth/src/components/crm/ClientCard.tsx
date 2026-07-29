@@ -36,6 +36,15 @@ const SENTIMENT_BG = {
   none: "bg-[rgba(255,255,255,0.05)] text-[var(--tx-tertiary)]",
 };
 
+const CLIENT_STATUS_TONE: Record<string, string> = {
+  lead: "var(--state-info)",
+  prospect: "var(--state-info)",
+  active: "var(--state-success)",
+  completed: "var(--bz-copper-text)",
+  inactive: "var(--bz-text-2)",
+  lost: "var(--state-danger)",
+};
+
 import { getCountryFlag } from "@/lib/utils/nationality-flags";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
@@ -84,6 +93,11 @@ export const ClientCard = React.memo(
             ? "soon"
             : null
         : null;
+    const passportTone =
+      passportAlert === "expired"
+        ? "var(--state-danger)"
+        : "var(--state-warning)";
+    const statusTone = CLIENT_STATUS_TONE[client.status] ?? "var(--bz-text-2)";
 
     // Silence streak (days since last contact)
     const silenceDays =
@@ -205,7 +219,12 @@ export const ClientCard = React.memo(
               {/* Passport alert */}
               {passportAlert && (
                 <div
-                  className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${passportAlert === "expired" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{
+                    background: `color-mix(in srgb, ${passportTone} 10%, var(--bz-card))`,
+                    borderColor: `color-mix(in srgb, ${passportTone} 32%, var(--bz-border))`,
+                    color: passportTone,
+                  }}
                   title={
                     client.passport_expiry
                       ? new Date(client.passport_expiry).toLocaleDateString(
@@ -219,14 +238,22 @@ export const ClientCard = React.memo(
                   {passportDaysLeft !== null && passportDaysLeft < 0
                     ? `Passport exp ${Math.abs(passportDaysLeft)}d ago`
                     : passportDaysLeft !== null
-                      ? `⏰ Passport ${passportDaysLeft}d left`
+                      ? `Passport ${passportDaysLeft}d left`
                       : "Passport expiring"}
                 </div>
               )}
               {/* Silence badge — only shown client-side after isMounted */}
               {silenceDays !== null && silenceDays > 14 && (
                 <div
-                  className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${silenceDays > 30 ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{
+                    background: `color-mix(in srgb, ${silenceDays > 30 ? "var(--state-danger)" : "var(--state-warning)"} 10%, var(--bz-card))`,
+                    borderColor: `color-mix(in srgb, ${silenceDays > 30 ? "var(--state-danger)" : "var(--state-warning)"} 32%, var(--bz-border))`,
+                    color:
+                      silenceDays > 30
+                        ? "var(--state-danger)"
+                        : "var(--state-warning)",
+                  }}
                 >
                   <BellOff className="w-2.5 h-2.5" />
                   Silent {silenceDays}d
@@ -386,24 +413,11 @@ export const ClientCard = React.memo(
 
               {/* Status label */}
               <span
-                className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
+                className="rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
                 style={{
-                  background:
-                    {
-                      lead: "rgba(59,130,246,0.15)",
-                      active: "rgba(16,185,129,0.15)",
-                      completed: "rgba(139,92,246,0.15)",
-                      inactive: "rgba(107,114,128,0.15)",
-                      lost: "rgba(239,68,68,0.15)",
-                    }[client.status] || "rgba(107,114,128,0.15)",
-                  color:
-                    {
-                      lead: "#60a5fa",
-                      active: "#34d399",
-                      completed: "#a78bfa",
-                      inactive: "#9ca3af",
-                      lost: "#f87171",
-                    }[client.status] || "#9ca3af",
+                  background: `color-mix(in srgb, ${statusTone} 10%, var(--bz-card))`,
+                  borderColor: `color-mix(in srgb, ${statusTone} 32%, var(--bz-border))`,
+                  color: statusTone,
                 }}
               >
                 {client.status}
@@ -412,10 +426,13 @@ export const ClientCard = React.memo(
               {/* Active practices count */}
               {(client.active_practices ?? 0) > 0 && (
                 <span
-                  className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold"
+                  className="rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
                   style={{
-                    background: "rgba(99,102,241,0.15)",
-                    color: "#818cf8",
+                    background:
+                      "color-mix(in srgb, var(--state-info) 10%, var(--bz-card))",
+                    borderColor:
+                      "color-mix(in srgb, var(--state-info) 32%, var(--bz-border))",
+                    color: "var(--state-info)",
                   }}
                   title={`${client.active_practices ?? 0} active process${(client.active_practices ?? 0) > 1 ? "es" : ""}`}
                 >

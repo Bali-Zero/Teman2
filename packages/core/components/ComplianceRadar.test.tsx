@@ -128,11 +128,12 @@ describe("ComplianceRadar", () => {
     expect(container.querySelector("[data-role='alert-row']")).toBeTruthy();
   });
 
-  it("renders a defined empty root when alerts is empty", () => {
-    const { container } = render(<ComplianceRadar alerts={[]} />);
+  it("renders a positive empty state when alerts is empty", () => {
+    const { container, getByText } = render(<ComplianceRadar alerts={[]} />);
     expect(
       container.querySelector("[data-role='compliance-radar']"),
     ).toBeTruthy();
+    expect(getByText("No active compliance alerts.")).toBeTruthy();
     expect(container.querySelectorAll("[data-role='alert-row']")).toHaveLength(
       0,
     );
