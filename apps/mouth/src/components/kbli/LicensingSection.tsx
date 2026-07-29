@@ -11,6 +11,7 @@ import type {
 } from "@/lib/kbli-types";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
 import {
   baliBlockClause,
   shouldShowReason,
@@ -224,7 +225,7 @@ function KeyFacts({
               ? "100% nat'l · blocked in Bali"
               : "100% Open"
             : pma.status === "restricted"
-              ? `Max ${pma.maxForeign}%`
+              ? restrictedCapBadge(pma)
               : "Closed (0%)",
         accent:
           pma.status === "open" && !baliBlocked
@@ -292,7 +293,7 @@ function KeyFacts({
             ? "100% nat'l · blocked in Bali"
             : "100% Open"
           : pma.status === "restricted"
-            ? `Max ${pma.maxForeign}%`
+            ? restrictedCapBadge(pma)
             : "Closed (0%)",
       accent:
         pma.status === "open" && !baliBlocked

@@ -1,6 +1,29 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { buildKbliFaq } from "@/lib/kbli-faq";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import { pmaCapShape } from "@/lib/kbli-pma-shape";
+
+/**
+ * The TERBATAS ownership clause for structured data.
+ *
+ * This surface interpolated `max ${maxForeign}%` unconditionally and — unlike
+ * the visible answer and the FAQ builder — never checked `capSpecial`, so
+ * /kbli/47221 published the literal string "Restricted to max special% foreign
+ * ownership (TERBATAS)" in both JSON-LD blocks (measured live 2026-07-29). That
+ * is the same visible-vs-JSON-LD drift the header of `kbli-faq.ts` already
+ * records having happened once; one shared classifier is what stops a third.
+ */
+function restrictedPmaStructuredLabel(code: KBLICode): string {
+  switch (pmaCapShape(code.pma)) {
+    case "none":
+      return "Closed to foreign ownership in practice — 0% ceiling (TERBATAS)";
+    case "full":
+    case "conditional":
+      return "Restricted by conditions rather than an ownership ceiling (TERBATAS)";
+    default:
+      return `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`;
+  }
+}
 
 export function KBLICodeJsonLd({
   code,
@@ -46,7 +69,7 @@ export function KBLICodeJsonLd({
     code.pma.status === "open"
       ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
       : code.pma.status === "restricted"
-        ? `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`
+        ? restrictedPmaStructuredLabel(code)
         : "Closed to foreign investment (TERTUTUP)"
   }${pmaAttribution}`;
 

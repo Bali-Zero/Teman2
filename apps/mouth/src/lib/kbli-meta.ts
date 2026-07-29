@@ -27,6 +27,7 @@
 // =============================================================================
 
 import { riskLabelEn } from "./kbli-derive";
+import { pmaCapShape } from "./kbli-pma-shape";
 import {
   isBaliL4BlockVerifiedForBareClaim,
   isLicensingVerifiedForBareClaim,
@@ -62,9 +63,16 @@ export function kbliPmaLabel(kbli: KBLICode): string {
   if (kbli.pma.status !== "restricted") return "Closed to Foreign Investment";
   if (kbli.pma.capSpecial)
     return "Restricted (special distribution conditions)";
-  return kbli.pma.capVerified
-    ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
-    : "Restricted for foreign ownership";
+  if (!kbli.pma.capVerified) return "Restricted for foreign ownership";
+  switch (pmaCapShape(kbli.pma)) {
+    case "none":
+      return "Closed to Foreign Investment";
+    case "full":
+    case "conditional":
+      return "Restricted (conditions apply, no ownership cap)";
+    default:
+      return `Restricted (max ${kbli.pma.maxForeign}% foreign)`;
+  }
 }
 
 /**
@@ -85,10 +93,24 @@ export function kbliMetaTitleSuffix(kbli: KBLICode): string {
       : "100% Foreign Ownership";
   }
   if (kbli.pma.status === "restricted") {
+    // Order is load-bearing and unchanged: a special-distribution regime has no
+    // percentage at all, so the percentage's provenance flag cannot speak to it.
     if (kbli.pma.capSpecial) return "Foreign Ownership With Conditions";
-    return kbli.pma.capVerified
-      ? `Max ${kbli.pma.maxForeign}% Foreign Ownership`
-      : "Foreign Ownership Restricted";
+    if (!kbli.pma.capVerified) return "Foreign Ownership Restricted";
+    switch (pmaCapShape(kbli.pma)) {
+      // A 0% ceiling is not a share on offer. Outcome-identical to the 61
+      // TERTUTUP codes, which already say exactly this — 47111 missed the
+      // wording only because it is classified TERBATAS.
+      case "none":
+        return "Closed to Foreign Investment";
+      // "Max 100%" restricts nothing. Whatever binds here is a condition, so
+      // it borrows the phrasing capSpecial already uses.
+      case "full":
+      case "conditional":
+        return "Foreign Ownership With Conditions";
+      default:
+        return `Max ${kbli.pma.maxForeign}% Foreign Ownership`;
+    }
   }
   return "Closed to Foreign Investment";
 }

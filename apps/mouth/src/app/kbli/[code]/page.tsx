@@ -16,6 +16,7 @@ import { formatTimeframe } from "@/lib/kbli-derive";
 import { baliBlockClause } from "@/lib/kbli-bali-block";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
+import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
@@ -855,9 +856,7 @@ export default async function KBLICodePage({
                               : kbli.pma.status === "open"
                                 ? `${kbli.pma.maxForeign}% Open`
                                 : kbli.pma.status === "restricted"
-                                  ? kbli.pma.capVerified
-                                    ? `Max ${kbli.pma.maxForeign}%`
-                                    : `≈${kbli.pma.maxForeign}% (unverified)`
+                                  ? restrictedCapBadge(kbli.pma)
                                   : "Closed"}
                           </span>
                         </div>
