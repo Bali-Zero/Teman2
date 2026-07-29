@@ -1,8 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build -w apps/mouth",
-  "outputDirectory": "apps/mouth/.next",
-  "framework": "nextjs",
-  "installCommand": "npm install",
-  "ignoreCommand": "if [ -z \"$VERCEL_GIT_PREVIOUS_SHA\" ]; then exit 1; fi; git diff --quiet $VERCEL_GIT_PREVIOUS_SHA HEAD -- apps/mouth && git diff --quiet $VERCEL_GIT_PREVIOUS_SHA HEAD -- packages && git diff --quiet $VERCEL_GIT_PREVIOUS_SHA HEAD -- package.json && git diff --quiet $VERCEL_GIT_PREVIOUS_SHA HEAD -- package-lock.json && git diff --quiet $VERCEL_GIT_PREVIOUS_SHA HEAD -- vercel.json"
-}

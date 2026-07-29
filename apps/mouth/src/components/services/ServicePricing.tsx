@@ -215,15 +215,19 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
           onClick={() => setSelectedPackage(null)}
         >
           <div
-            className="rp-dark-island relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
+            {/* Close Button — kept off the light-retint pass (it sits on an
+                `.absolute` ancestor, which the Rumah Putih CSS scope
+                deliberately excludes elsewhere on the site) so its colors
+                are set explicitly here to stay legible on the now-light
+                modal body. */}
             <button
               onClick={() => setSelectedPackage(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/5 hover:bg-black/10 transition-colors"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-5 h-5 text-[#1e3863]" />
             </button>
 
             {/* Modal Content */}
