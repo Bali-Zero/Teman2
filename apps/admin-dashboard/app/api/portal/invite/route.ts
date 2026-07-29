@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
+const BACKEND_URL = process.env.BACKEND_URL ?? "https://nuzantara-rag.fly.dev";
 
 export async function POST(request: Request) {
   try {
