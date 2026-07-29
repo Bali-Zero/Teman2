@@ -736,3 +736,186 @@ def test_bash_rematch_survives_the_call() -> None:
             f"the library clobbered the caller's BASH_REMATCH: {proc.stdout}"
         )
         assert (seen / f"{PROBE_ID}.json").exists(), "and it still must do its job"
+
+
+# ---------------------------------------------------------------------------
+# Round-3 adversarial findings. Round 2's fixes introduced three new ways to
+# break the contract they were fixing — the sharpest being that the cure for
+# "an unrecognised status must not read healthy" put an external command in the
+# VERDICT path, so a failing `tr` downgraded `error` to `warning` and a `tr`
+# that printed nothing turned it into `ok`. Measured, both shells.
+# ---------------------------------------------------------------------------
+
+
+def _script(tmp_path: Path, shell: str, tag: str, body: str) -> tuple[int, str, Path]:
+    seen = tmp_path / f"seen-{tag}"
+    script = tmp_path / f"{tag}.{shell}"
+    script.write_text(body, encoding="utf-8")
+    proc = subprocess.run(
+        [shell, str(script), str(HB_LIB)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    return proc.returncode, (proc.stdout + proc.stderr), seen / f"{PROBE_ID}.json"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_broken_sanitiser_can_never_soften_the_verdict(
+    tmp_path: Path, shell: str
+) -> None:
+    """The cure that caught the disease it was curing.
+
+    Round 2 normalised the status with `printf | tr 'A-Z' 'a-z'`. Round 3 showed
+    what that costs: with `tr` returning non-zero the `||` fallback rewrote the
+    status to `warning`, and with a `tr` that exits 0 printing NOTHING the empty
+    arm rewrote it to `ok`. Either way an `error` — which the reader turns into
+    `dead` — was published as something softer, by the very code written to stop
+    statuses being published softer than they are.
+
+    So the verdict path now runs no external command at all, and this pins it
+    from the outside: sabotage `tr` in the caller's shell and the status must be
+    untouched.
+    """
+    for sabotage, label in (("tr(){ return 23; }", "fails"), ("tr(){ :; }", "empty")):
+        rc, out, sidecar = _script(
+            tmp_path,
+            shell,
+            f"trsab-{shell}-{label}",
+            f'source "$1"\n{sabotage}\norganism_heartbeat {PROBE_ID} error n\n',
+        )
+        assert rc == 0, out
+        assert sidecar.exists(), f"{shell}/{label}: no sidecar: {out}"
+        payload = json.loads(sidecar.read_text())
+        assert payload["status"] == "error", (
+            f"{shell}: a {label} `tr` softened the verdict to "
+            f"{payload['status']!r} — the note may be lost, the verdict may not"
+        )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_failing_date_does_not_kill_an_errexit_caller(
+    tmp_path: Path, shell: str
+) -> None:
+    """`ts="$(date …)"` makes the ASSIGNMENT carry date's exit status.
+
+    Under a caller's `set -e` that killed the caller — measured rc=42, with the
+    line after the call never reached. Not hypothetical: `scripts/outbox-prune.sh`
+    and `scripts/wr2-cron-wrapper.sh` both run `set -euo pipefail` and call this
+    without `|| true`.
+
+    The fallback timestamp must be the EPOCH, not "now-ish": a heartbeat is judged
+    by freshness, so a ts we could not obtain has to read STALE — the direction
+    that raises an alarm — never fresh.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"date-{shell}",
+        f'set -e -o pipefail\nsource "$1"\ndate(){{ return 42; }}\n'
+        f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
+    )
+    assert "SURVIVED" in out, f"{shell}: a failing date killed the caller (rc={rc})"
+    assert rc == 0, out
+    payload = json.loads(sidecar.read_text())
+    assert payload["ts"].startswith("1970-"), (
+        f"{shell}: an unobtainable timestamp must read stale, got {payload['ts']!r}"
+    )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_an_errexit_caller_survives_the_whole_call(tmp_path: Path, shell: str) -> None:
+    """Innocence for the happy path under the options real callers actually set.
+
+    The other cases in this file run without `set -e`, so none of them could have
+    caught the date defect above. Real wrappers run `set -euo pipefail`.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"errexit-{shell}",
+        f'set -euo pipefail\nsource "$1"\norganism_heartbeat {PROBE_ID} ok "rc=42 timeout"\n'
+        "echo SURVIVED\n",
+    )
+    assert "SURVIVED" in out, f"{shell}: rc={rc} {out}"
+    assert json.loads(sidecar.read_text())["status"] == "ok"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_an_internal_local_name_cannot_kill_the_caller(
+    tmp_path: Path, shell: str
+) -> None:
+    """`local _rest` aborts a bash caller that has `readonly _rest`.
+
+    Measured: `local: _rest: readonly variable`, rc=1, before the function did
+    anything. A library must not be able to kill its caller over the name of one
+    of its own temporaries — so the temporary is gone, not renamed.
+    """
+    rc, out, _ = _script(
+        tmp_path,
+        shell,
+        f"ro-{shell}",
+        f'set -e\nsource "$1"\nreadonly _rest=caller-sentinel\n'
+        f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
+    )
+    assert "SURVIVED" in out, f"{shell}: rc={rc} {out}"
+    assert rc == 0, out
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> None:
+    """`[a-zA-Z]` is a COLLATION range, and its meaning depends on the locale.
+
+    Measured: `LC_ALL=it_IT.UTF-8 bash -c 'id=éa; echo "${id//[a-zA-Z0-9_.]/}"'`
+    prints nothing — bash accepted an accented letter into a whitelist that
+    exists to keep shell metacharacters and traversal out of a filesystem path —
+    while zsh rejected it. A safety whitelist whose meaning depends on the
+    caller's locale is not a whitelist, so the set is enumerated now.
+    """
+    seen = tmp_path / f"seen-locale-{shell}"
+    script = tmp_path / f"locale-{shell}.sh"
+    script.write_text(
+        'source "$1"\norganism_heartbeat "$2" error n\n', encoding="utf-8"
+    )
+    for bad_id in ("éa", "aé", "pro.café"):
+        proc = subprocess.run(
+            [shell, str(script), str(HB_LIB), bad_id],
+            env={
+                **os.environ,
+                "ORGANISM_LAST_SEEN_DIR": str(seen),
+                "LC_ALL": "it_IT.UTF-8",
+            },
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        written = sorted(p.name for p in seen.glob("*")) if seen.exists() else []
+        assert written == [], (
+            f"{shell}: non-ASCII id {bad_id!r} passed the whitelist: {written}"
+        )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_trailing_newline_survives_and_stays_valid_json(
+    tmp_path: Path, shell: str
+) -> None:
+    """Command substitution eats ALL trailing newlines, so a note ending in one
+    lost it silently even though `\\n` is in the keep-set and the escape phase
+    handles it. A sentinel character carries it across.
+
+    Asserted on the PARSED value, not on the printed line: `echo` in zsh
+    interprets `\\n`, so eyeballing the file through it shows a line break where
+    the bytes are a backslash and an `n`. That display artefact cost a false
+    alarm during this very fix.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"nl-{shell}",
+        f'source "$1"\nn=$\'tail\\n\'\norganism_heartbeat {PROBE_ID} ok "$n"\n',
+    )
+    assert rc == 0, out
+    payload = json.loads(sidecar.read_text())  # raises if the escape regressed
+    assert payload["note"] == "tail\n", f"{shell}: note={payload['note']!r}"

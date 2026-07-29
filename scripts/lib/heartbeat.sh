@@ -59,12 +59,22 @@ organism_heartbeat() {
     # leaks on bash 3.2), so the previous version fixed one shell and left a
     # declared residue in the other. Substring deletion sets no globals in
     # either shell, so the asymmetry disappears instead of being documented.
-    local _rest="${id//[a-zA-Z0-9_.]/}"
+# The character set is ENUMERATED, not a range. `[a-zA-Z]` is collation-based,
+    # and bash 3.2 under a UTF-8 locale matches accented letters with it —
+    # measured: `LC_ALL=it_IT.UTF-8 bash -c 'id=éa; echo "${id//[a-zA-Z0-9_.]/}"'`
+    # prints nothing, i.e. `é` passed the whitelist, while zsh rejected it. A
+    # path-safety whitelist whose meaning depends on the caller's locale is not a
+    # whitelist. Enumerating costs a long line and buys locale-independence.
+    #
+    # No temporary local either: `local _rest` aborts a bash caller that happens
+    # to have `readonly _rest` (measured: rc=1, "readonly variable"), and a
+    # library must not be able to kill its caller over an internal name.
     case "$id" in
-        [a-zA-Z]*) ;;
-        *) return 0 ;;          # must start with a letter
+        [abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]*) ;;
+        *) return 0 ;;          # must start with an ASCII letter
     esac
-    [ -z "$_rest" ] || return 0 # no character outside the allowed set
+    [ -z "${id//[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.]/}" ] \
+        || return 0             # no character outside the allowed ASCII set
     [ "${#id}" -le 81 ] || return 0
     case "$id" in
         *..*) return 0 ;;       # no traversal
@@ -97,13 +107,27 @@ organism_heartbeat() {
     # directly above it already said "an unrecognised value is not a formatting
     # detail, it is a verdict". Unknown now degrades to `warning`: visible, and
     # not the `dead` a raw pass-through would page for.
-    hb_status="$(printf '%s' "$hb_status" | LC_ALL=C tr 'A-Z' 'a-z' 2>/dev/null)" \
-        || hb_status="warning"
+    #
+    # THE VERDICT PATH RUNS NO EXTERNAL COMMAND, and that is not style. The first
+    # version of this fix lowercased with `tr` — and adversarial round 3 showed the
+    # cure catching the disease it was written for: with `tr` failing, `error`
+    # became `warning`; with a `tr` that succeeded and printed nothing, `error`
+    # became `ok`. Measured in both shells. A DEATH published as healthy, by the
+    # code whose whole job was to stop deaths being published as healthy. Bracket
+    # patterns do the same matching with nothing that can fail.
     case "$hb_status" in
-        ok|error|warning|starting|degraded|success|healthy) ;;
-        warn) hb_status="warning" ;;
-        fail|failed|failure|fatal|crash|crashed|dead|timeout) hb_status="error" ;;
-        disabled) hb_status="ok" ;;   # deliberate — see the note above
+        [Oo][Kk]) hb_status="ok" ;;
+        [Ee][Rr][Rr][Oo][Rr]) hb_status="error" ;;
+        [Ww][Aa][Rr][Nn][Ii][Nn][Gg]) hb_status="warning" ;;
+        [Ss][Tt][Aa][Rr][Tt][Ii][Nn][Gg]) hb_status="starting" ;;
+        [Dd][Ee][Gg][Rr][Aa][Dd][Ee][Dd]) hb_status="degraded" ;;
+        [Ss][Uu][Cc][Cc][Ee][Ss][Ss]) hb_status="success" ;;
+        [Hh][Ee][Aa][Ll][Tt][Hh][Yy]) hb_status="healthy" ;;
+        [Ww][Aa][Rr][Nn]) hb_status="warning" ;;
+        [Ff][Aa][Ii][Ll] | [Ff][Aa][Ii][Ll][Ee][Dd] | [Ff][Aa][Ii][Ll][Uu][Rr][Ee] \
+        | [Ff][Aa][Tt][Aa][Ll] | [Cc][Rr][Aa][Ss][Hh] | [Cc][Rr][Aa][Ss][Hh][Ee][Dd] \
+        | [Dd][Ee][Aa][Dd] | [Tt][Ii][Mm][Ee][Oo][Uu][Tt]) hb_status="error" ;;
+        [Dd][Ii][Ss][Aa][Bb][Ll][Ee][Dd]) hb_status="ok" ;;  # deliberate, see above
         "") hb_status="ok" ;;         # caller passed nothing; the default is ok
         *) hb_status="warning" ;;
     esac
@@ -124,8 +148,18 @@ organism_heartbeat() {
     # their names.
     local hb_path="${_organism_hb_dir}/${id}.json"
     local tmp="${hb_path}.tmp.$$"
+    # A bare `ts="$(date …)"` makes the ASSIGNMENT carry date's exit status, so
+    # under a caller's `set -e` a failing date killed the caller — measured, rc=42
+    # in both shells, with the line after the call never reached. That is not
+    # hypothetical: `scripts/outbox-prune.sh` and `scripts/wr2-cron-wrapper.sh`
+    # both run `set -euo pipefail` and call this function without `|| true`.
+    #
+    # The fallback is deliberately the EPOCH, not "now-ish". A heartbeat is judged
+    # by freshness, so a timestamp we could not obtain must read as stale — the
+    # direction that raises an alarm — never as fresh.
     local ts
-    ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '')"
+    [ -n "$ts" ] || ts="1970-01-01T00:00:00Z"
 
     # Three passes, in this order: SANITISE -> TRUNCATE -> ESCAPE. Every ordering
     # here is load-bearing, and two of the three were wrong at some point.
@@ -147,8 +181,18 @@ organism_heartbeat() {
     #    not prose. If tr is unavailable we drop the note rather than emit a
     #    sidecar nobody can read: the note is the least valuable field here, and
     #    the ts/status the reader acts on are worth more than it.
-    note="$(printf '%s' "$note" | LC_ALL=C tr -c '\11\12\15\40-\176' ' ' 2>/dev/null)" \
-        || note="(note dropped: could not sanitise)"
+    #    The trailing `X` is a sentinel, stripped straight back off: command
+    #    substitution eats ALL trailing newlines, so a note ending in one lost it
+    #    silently even though `\12` is in the keep-set and the escape phase below
+    #    handles it. `X` is inside the keep-set, so `tr` passes it through.
+    #
+    #    Note that `tr` stays here, in the NOTE path, and is gone from the status
+    #    path above. That split is the point: the note is diagnostic and losing it
+    #    is survivable, while the status is a VERDICT and must not depend on
+    #    anything that can fail.
+    note="$(printf '%sX' "$note" | LC_ALL=C tr -c '\11\12\15\40-\176' ' ' 2>/dev/null)" \
+        || note="(note dropped: could not sanitise)X"
+    note="${note%X}"
 
     # 2. TRUNCATE the sanitised-but-unescaped note. Escaping FIRST cut escape
     #    sequences in half: 499 'a' followed by a quote escaped to 501 chars, the
