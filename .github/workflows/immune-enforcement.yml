@@ -84,6 +84,9 @@ jobs:
               scripts/prepush_classify.py|\
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
+              .husky/pre-commit|\
+              scripts/tests/test_husky_pii_pass_overmatch.py|\
+              scripts/tests/test_pii_gate_merge_scope.sh|\
               scripts/docs_audit.py|\
               scripts/docs_inventory_refresh_liveness.py|\
               scripts/docs_inventory_regen.sh|\
@@ -125,6 +128,7 @@ jobs:
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
             scripts/tests/test_prepush_classify.py \
+            scripts/tests/test_husky_pii_pass_overmatch.py \
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
@@ -138,6 +142,22 @@ jobs:
             fi
           done
           exit $fail
+
+      # Shell test, not pytest-shaped (no existing convention in this workflow
+      # runs .sh tests — several siblings under scripts/tests/*.sh currently run
+      # in NO workflow at all, a pre-existing #2-family gap tracked separately,
+      # not widened here). Wired directly rather than left to join that backlog:
+      # this file's whole purpose is proving the 2026-07-30 merge-scope fix
+      # (PR that added it) stays true, so an unexecuted copy of it would be the
+      # exact theater the fix itself was written to end.
+      - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          if [ -f scripts/tests/test_pii_gate_merge_scope.sh ]; then
+            bash scripts/tests/test_pii_gate_merge_scope.sh
+          else
+            echo "::notice::skip (absent) scripts/tests/test_pii_gate_merge_scope.sh — expected only in the window before its lane's PR merges"
+          fi
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'

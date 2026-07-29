@@ -42,10 +42,62 @@ fi
 if [ "${PII_GATE_ENFORCEMENT:-true}" != "false" ]; then
     PII_PATH_REGEX='(^|/)research/[^/]+/clients/|(^|/)[^/]*-case\.md$|(^|/)[^/]*-guidance\.(html|pdf)$|(^|/)DOSSIER_[^/]*\.md$|(^|/)OSINT-Nexus/'
     PII_NUM='\b(npwp|nik|ktp)\b[[:space:]:#=.]*[0-9][0-9.\-]{5,}'
-    PII_PASS='passport[[:space:]]*(no\.|no\b|number\b|#|:)[[:space:]:#=]*[A-Za-z0-9]{6,}'
-    PII_STAGED=$(git diff --cached --name-only --diff-filter=d | grep -EI "$PII_PATH_REGEX" || true)
+    # The tail must contain a DIGIT (2026-07-30). It used to be a bare
+    # `[A-Za-z0-9]{6,}`, which matched the ordinary English word that follows the
+    # keyword in prose: "passport number required", "passport no longer accepted",
+    # "send us your passport number please" all blocked a commit, while "the
+    # passport number field is mandatory" passed only because "field" is 5 letters
+    # — a length lottery, not a rule. Requiring a digit also CLOSES an under-match
+    # the old form had: a hyphenated "Passport No. C-1234567" was never caught.
+    # Over-match and under-match on one line, superscar #3.
+    PII_PASS='passport[[:space:]]*(no\.|no\b|number\b|#|:)[[:space:]:#=]*[A-Za-z]{0,3}[.\-]?[0-9][0-9A-Za-z.\-]{4,}'
+
+    # >>> PII_ENUMERATE_BEGIN (extracted verbatim by scripts/tests/test_pii_gate_merge_scope.sh)
+    # WHAT THIS COMMIT INTRODUCES — not whatever the index happens to differ from.
+    #
+    # `git diff --cached` compares the index against the FIRST parent. On a merge
+    # commit that means every file the OTHER side changed since the merge base
+    # reads as "staged", though this commit authored none of it — and each one is
+    # then read IN FULL by `git show ":$f"` below. Measured 2026-07-30 on a
+    # synthetic 12-file merge: this gate enumerated 12, the commit authored 0. On
+    # a real merge of a weeks-old main that is hundreds of files, and any one of
+    # them tripping the regex blocks the merge under a message that says "staged
+    # path/content" — naming work the committer never wrote and which, arriving
+    # from origin/main, is already public. Blocking it here protects nothing.
+    #
+    # So on a merge, judge the INTERSECTION: files differing from BOTH parents are
+    # the conflict resolution, i.e. what a human actually authored here. A file
+    # inherited unchanged from either side was gated when it was committed there.
+    #
+    # LIMITATION, stated rather than hidden: a clean merge of a branch whose own
+    # commits bypassed this hook is not caught here. That hole predates this
+    # change and is not widened by it — a fast-forward merge and `git pull` create
+    # no commit at all, so pre-commit never runs for them either.
+    PII_FILES=$(git diff --cached --name-only --diff-filter=d || true)
+    PII_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || true)
+    if [ -n "$PII_GIT_DIR" ] && [ -f "$PII_GIT_DIR/MERGE_HEAD" ]; then
+        # Narrowing must never happen BLIND: if the second-parent enumeration
+        # cannot be taken, keep the full set (over-inclusive is the safe
+        # direction) and say so out loud. A scan that cannot see is not clean.
+        # `VAR=$(cmd) || VAR=...` and not a bare assignment: under the `sh -e`
+        # husky runs this hook with, a bare `VAR=$(failing)` aborts the whole hook
+        # before any fallback can be read — that is W101, one file over.
+        PII_OTHER_LIST=$(mktemp 2>/dev/null) || PII_OTHER_LIST=""
+        if [ -n "$PII_OTHER_LIST" ] && git diff --cached --name-only --diff-filter=d MERGE_HEAD > "$PII_OTHER_LIST" 2>/dev/null; then
+            PII_FILES=$(printf '%s\n' "$PII_FILES" | grep -Fxf "$PII_OTHER_LIST" || true)
+        else
+            echo "⚠️  [Law-2 PII gate] merge detected but the second-parent file list could not be taken —"
+            echo "    scanning the FULL staged set instead (over-inclusive; a narrowed blind scan would be worse)."
+        fi
+        # `if`, not `[ ... ] && rm`: an && list that evaluates false as the last
+        # command of this block would take the same `sh -e` exit.
+        if [ -n "$PII_OTHER_LIST" ]; then rm -f "$PII_OTHER_LIST"; fi
+    fi
+    # <<< PII_ENUMERATE_END
+
+    PII_STAGED=$(printf '%s\n' "$PII_FILES" | grep -EI "$PII_PATH_REGEX" || true)
     PII_CONTENT=""
-    for f in $(git diff --cached --name-only --diff-filter=d | grep -Evi '\.(png|jpg|jpeg|pdf|gif|webp|zip|gz|bin)$' || true); do
+    for f in $(printf '%s\n' "$PII_FILES" | grep -Evi '\.(png|jpg|jpeg|pdf|gif|webp|zip|gz|bin)$' || true); do
         git show ":$f" 2>/dev/null | grep -Eiq "$PII_NUM|$PII_PASS" && PII_CONTENT="$PII_CONTENT $f"
     done
     if [ -n "$PII_STAGED" ] || [ -n "$PII_CONTENT" ]; then
