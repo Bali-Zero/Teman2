@@ -537,27 +537,48 @@ def test_the_workflow_arms_this_corpus_on_push_too(tmp_path: Path) -> None:
     # The job's own changed-file enumeration: find the step whose script runs the
     # diff, and require the path inside THAT script rather than anywhere in the
     # file. An empty candidate set would pass a bare `all()`, so it is asserted.
-    # Whole-line shell comments come out of the script body first. Deleting the
-    # real pathspec argument leaves behind the comment that EXPLAINS why it is
-    # there, and a raw substring check reads that comment as the configuration —
-    # measured, that mutation stayed green. Only whole-line comments are removed
-    # (a trailing `#` could live inside a quoted argument); the pathspec token
-    # this looks for never appears after code on the same line in this file.
-    def _code(script: str) -> str:
-        return "\n".join(
-            ln for ln in script.splitlines() if not ln.lstrip().startswith("#")
-        )
+    # The path must be an ARGUMENT of the git-diff command, not a substring of
+    # the step. Two weaker versions were defeated in turn: matching the raw step
+    # accepted the COMMENT that explains the pathspec, and stripping only
+    # whole-line comments still accepted an inline `# scripts/lib/heartbeat.sh`
+    # on a live line. Both left the real argument deletable with the test green.
+    # So the command is reassembled across its `\` continuations and tokenised
+    # the way a shell would — `shlex` drops comments and unquotes, so what is
+    # left is what `git diff` actually receives.
+    def _git_diff_args(script: str) -> list[str]:
+        flat = re.sub(r"\\\n\s*", " ", script)
+        args: list[str] = []
+        for line in flat.splitlines():
+            if "git diff" not in line:
+                continue
+            try:
+                tokens = shlex.split(line, comments=True)
+            except ValueError:  # unbalanced quotes — fail loud, never silently empty
+                raise AssertionError(f"cannot tokenise the diff command: {line!r}")
+            args.extend(tokens)
+        return args
 
     steps = [
-        _code(step["run"])
+        _git_diff_args(step["run"])
         for job in (doc.get("jobs") or {}).values()
         for step in (job.get("steps") or [])
         if "git diff" in (step.get("run") or "")
     ]
     assert steps, "no step runs `git diff` — this test's premise moved"
-    assert any("scripts/lib/heartbeat.sh" in script for script in steps), (
-        "scripts/lib/heartbeat.sh is in no `git diff` pathspec — the job would "
-        "wake up and then decide it has nothing to check"
+    # Guard against a silently empty tokenisation (an empty set satisfies the
+    # `any` below by vacuity in the wrong direction — it would just fail, but
+    # for the wrong reason and with a misleading message). Note the token is
+    # `CHANGED=$(git`, not `git`: the first draft of this guard looked for the
+    # bare word and failed on the UNMUTATED workflow — the safety check was
+    # stricter than the thing it was protecting.
+    assert any("diff" in " ".join(args) for args in steps), (
+        "tokenising the git-diff step produced no recognisable command"
+    )
+    assert any("scripts/lib/heartbeat.sh" in args for args in steps), (
+        "scripts/lib/heartbeat.sh is not an ARGUMENT of any `git diff` — the job "
+        "would wake up and then decide it has nothing to check. (A mention in a "
+        "comment does not count; that is what the two earlier versions of this "
+        "assertion accepted.)"
     )
 
 
@@ -924,7 +945,20 @@ def test_an_errexit_caller_survives_the_whole_call(tmp_path: Path, shell: str) -
 
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
 @pytest.mark.parametrize(
-    "reserved", ["_rest", "id", "hb_status", "note", "ts", "tmp", "hb_path"]
+    "reserved",
+    [
+        # the names the function used to declare — a revert of the namespacing
+        # is caught by whichever one it brings back
+        "_rest", "id", "hb_status", "note", "ts", "tmp", "hb_path",
+        # …and the ones it declares TODAY. Round 5 showed the namespace only
+        # lowered the odds: `readonly _organism_hb_id` killed the caller exactly
+        # as `readonly id` had. Any name can be made readonly by someone, so the
+        # guarantee cannot come from choosing better names — it comes from the
+        # wrapper that absorbs whatever the body does.
+        "_organism_hb_id", "_organism_hb_status", "_organism_hb_note",
+        "_organism_hb_ts", "_organism_hb_len", "_organism_hb_dir",
+        "_organism_hb_tmp", "_organism_hb_path",
+    ],
 )
 def test_an_internal_local_name_cannot_kill_the_caller(
     tmp_path: Path, shell: str, reserved: str
@@ -956,32 +990,78 @@ def test_an_internal_local_name_cannot_kill_the_caller(
 
 
 def test_every_local_the_function_declares_is_namespaced() -> None:
-    """Structural backstop: the next `local` added cannot reopen the class above.
+    """Structural backstop for the namespacing — hardened after round 5.
 
-    The parametrised test can only defend the names that exist TODAY. A future
-    edit that declares `local retries` reintroduces exactly the same defect and
-    no runtime test would know to look for it. So the rule is enforced on the
-    text: inside `organism_heartbeat`, every declared local starts with
-    `_organism_hb_` — a namespace the library owns, which neither a caller's
-    `readonly` nor a shell's special parameters (`status`, `path`) can occupy.
+    The first version regex-matched `local <name>` per line and stopped the scan
+    at the first `}` in column zero. All of these defeated it while staying legal
+    shell, and each would have reopened the collision class in silence:
+
+        local _organism_hb_ts retries=0      # second name on the same line
+        local _organism_hb_ts \
+              retries=0                      # continued onto the next line
+        typeset retries=0                    # a synonym of local
+        declare retries=0                    # another
+
+    The namespace is not what keeps the caller alive (the wrapper is — see
+    test_an_internal_local_name_cannot_kill_the_caller). It is what keeps this
+    library from stepping on a caller's variable, which is a separate promise
+    and still worth enforcing.
     """
-    src = HB_LIB.read_text().splitlines()
-    start = next(i for i, ln in enumerate(src) if ln.startswith("organism_heartbeat() {"))
-    end = next(i for i, ln in enumerate(src[start:], start) if ln == "}")
-    offenders = [
-        (i + 1, ln.strip())
-        for i, ln in enumerate(src[start:end], start)
-        if re.match(r"\s*local\s+", ln)
-        and not re.match(r"\s*local\s+_organism_hb_", ln)
-    ]
+    src = HB_LIB.read_text()
+    # Continuations first, so a declaration split across lines is one line here.
+    flat = re.sub(r"\\\n\s*", " ", src)
+    body_start = flat.index("_organism_heartbeat_write() {")
+    body = flat[body_start:]
+
+    declared: list[str] = []
+    offenders: list[str] = []
+    for line in body.splitlines():
+        code = line.split("#", 1)[0]
+        m = re.match(r"\s*(?:local|typeset|declare)\s+(.*)", code)
+        if not m:
+            continue
+        for word in m.group(1).split():
+            if word.startswith("-"):      # flags: `local -r`, `typeset -i`
+                continue
+            name = word.split("=", 1)[0]
+            if not name:
+                continue
+            declared.append(name)
+            if not name.startswith("_organism_hb_"):
+                offenders.append(name)
+
     assert not offenders, (
-        "every local in organism_heartbeat must be prefixed `_organism_hb_` "
-        f"(a caller's readonly of that name would kill it): {offenders}"
+        "every name declared inside the heartbeat writer must be prefixed "
+        f"`_organism_hb_` so it cannot shadow a caller's variable: {offenders}"
     )
     # An empty scan passes the loop above and proves nothing — the same
     # empty-set-as-clean-bill trap this file guards elsewhere.
-    declared = [ln for ln in src[start:end] if re.match(r"\s*local\s+", ln)]
-    assert len(declared) >= 6, f"only {len(declared)} locals found — scan is broken"
+    assert len(declared) >= 6, f"only {len(declared)} declarations found — scan is broken"
+
+
+def test_the_public_entry_point_is_a_wrapper_that_cannot_propagate_failure() -> None:
+    """The contract is structural, and this pins the structure.
+
+    Every round of review found another statement able to kill the caller before
+    `return 0`: `${1:?}`, a bare `ts="$(date …)"`, `local` on a name the caller
+    had made readonly, and the `&& mv` AND-list at the end. Enumerating them is
+    a losing game — the guarantee has to hold for statements nobody has thought
+    of yet. So `organism_heartbeat` is a thin wrapper that calls the writer and
+    swallows its status, and this test fails if that shape is edited away.
+    """
+    src = HB_LIB.read_text()
+    entry = src[src.index("organism_heartbeat() {") : src.index("_organism_heartbeat_write() {")]
+    assert "( _organism_heartbeat_write \"$@\" ) || :" in entry, (
+        "the entry point must run the writer in a SUBSHELL and absorb its status. "
+        "`|| :` alone is not enough: it absorbs an exit STATUS, and a caller who "
+        "has made one of our names readonly makes the writer hit a plain "
+        "ASSIGNMENT to that name, which is FATAL in a non-interactive shell — "
+        "there is no status left to absorb. Measured on 3 of the 8 names."
+    )
+    assert "2>/dev/null" not in entry, (
+        "stderr must NOT be swallowed here — a heartbeat that cannot be written "
+        "has to be able to say so, or the silence is itself a green that lies"
+    )
 
 
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
@@ -1173,3 +1253,103 @@ def test_a_trailing_newline_survives_and_stays_valid_json(
     assert rc == 0, out
     payload = json.loads(sidecar.read_text())  # raises if the escape regressed
     assert payload["note"] == "tail\n", f"{shell}: note={payload['note']!r}"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_clock_that_answers_with_garbage_is_not_believed(
+    tmp_path: Path, shell: str
+) -> None:
+    """`|| printf ''` does not unsay what a command already printed.
+
+    `date(){ printf BROKEN; return 42; }` left `BROKEN` inside the command
+    substitution, and the guard that followed only asked whether the result was
+    EMPTY — so `"ts":"BROKEN"` went into the sidecar, over the last good beat.
+    Emptiness was a proxy for "the clock answered"; the answer is the entity, so
+    its SHAPE is now checked.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"garbage-clock-{shell}",
+        f'set -e -o pipefail\nsource "$1"\n'
+        f'organism_heartbeat {PROBE_ID} ok "the last true beat"\n'
+        f'date(){{ printf BROKEN; return 42; }}\n'
+        f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
+    )
+    assert "SURVIVED" in out, f"{shell}: rc={rc} {out}"
+    payload = json.loads(sidecar.read_text())
+    assert payload["ts"] != "BROKEN", f"{shell}: a broken clock's stdout became the ts"
+    assert payload["note"] == "the last true beat", (
+        f"{shell}: the garbage timestamp overwrote a good heartbeat: {payload!r}"
+    )
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_clock_failure_is_reported_not_merely_survived(
+    tmp_path: Path, shell: str
+) -> None:
+    """Silence is the failure mode this whole organ exists to prevent.
+
+    The first cure for the EPOCH defect returned 0 and wrote nothing — correct
+    about the sidecar, and a green that lies to everyone above it: the caller,
+    launchd and the operator all saw an ordinary success while the organ drifted
+    toward stale for a fault that was never the organ's.
+    """
+    rc, out, _ = _script(
+        tmp_path,
+        shell,
+        f"clock-voice-{shell}",
+        f'source "$1"\ndate(){{ return 42; }}\n'
+        f"organism_heartbeat {PROBE_ID} ok n\n",
+    )
+    assert rc == 0, out
+    assert "clock unavailable" in out, (
+        f"{shell}: a heartbeat that could not be written said nothing: {out!r}"
+    )
+    assert PROBE_ID in out, f"{shell}: the warning does not name the organ: {out!r}"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_failed_rename_does_not_kill_an_errexit_caller(
+    tmp_path: Path, shell: str
+) -> None:
+    """`set -e` does not spare the LAST command of an `&&` list.
+
+    The write was `{ printf … } > tmp && mv tmp path`. A failing `mv` — full
+    disk, a directory in the way, a racing sweeper — made the whole list fail
+    one line before `return 0`, and took the caller with it.
+    """
+    rc, out, _ = _script(
+        tmp_path,
+        shell,
+        f"mv-fail-{shell}",
+        f'set -euo pipefail\nsource "$1"\nmv(){{ return 42; }}\n'
+        f"organism_heartbeat {PROBE_ID} ok n\necho SURVIVED\n",
+    )
+    assert "SURVIVED" in out, f"{shell}: a failed rename killed the caller (rc={rc})"
+    assert rc == 0, out
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_sanitiser_that_corrupts_the_sentinel_at_equal_length_is_caught(
+    tmp_path: Path, shell: str
+) -> None:
+    """The length invariant has a blind spot, and identity has the other one.
+
+    A `tr` that SUBSTITUTES the last byte instead of dropping it keeps the
+    length: `AB` -> `ABX` -> `ABY` passes the length test, `${note%X}` removes
+    nothing, and the corrupted sentinel is published as if it were the caller's
+    text. Length catches deletion; the suffix catches corruption; neither alone
+    covers both, and both were demonstrated on this code one round apart.
+    """
+    rc, out, sidecar = _script(
+        tmp_path,
+        shell,
+        f"corrupt-{shell}",
+        f'source "$1"\ntr(){{ sed "s/X$/Y/"; }}\n'
+        f'organism_heartbeat {PROBE_ID} ok "AB"\n',
+    )
+    assert rc == 0, out
+    note = json.loads(sidecar.read_text())["note"]
+    assert note != "ABY", f"{shell}: a corrupted sentinel was published verbatim"
+    assert "dropped" in note, f"{shell}: expected the explicit marker, got {note!r}"

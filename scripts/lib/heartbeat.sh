@@ -16,7 +16,7 @@
 # NOTE: no `set -o pipefail` at file scope. This file is DESIGNED to be sourced,
 # and a shell option set at file scope is set on the CALLER — a library must not
 # change the error semantics of a script that merely wanted a heartbeat writer.
-# (The function below contains no pipeline, so it never needed it.) CLI mode sets
+# (Its one pipeline, in the note sanitiser, is guarded on its own.) CLI mode sets
 # it for itself, at the bottom.
 
 # NOTE: nothing is assigned at file scope either. An earlier version set
@@ -29,6 +29,36 @@
 # - <status> is one of: ok | error | warning | starting | degraded
 # - [note] free-form short string, embedded as "note" key
 organism_heartbeat() {
+    # THE CONTRACT IS THIS WRAPPER, not the `return 0` at the bottom of the
+    # implementation. Four rounds of adversarial review each found another way
+    # for the body to kill its caller before reaching that line, and each fix
+    # cured the instance: `${1:?}` exited the shell; a bare `ts="$(date …)"`
+    # carried date's status into errexit; `local _rest` died on a caller's
+    # `readonly _rest` — and after every internal name was namespaced, round 5
+    # showed `readonly _organism_hb_id` doing it again, because ANY name can be
+    # made readonly by someone. A namespace lowers the odds; it cannot close the
+    # class. Neither can enumerating the statements: the `&& mv` at the end of
+    # the writer is an AND-list whose failure trips errexit too.
+    #
+    # So the guarantee stops depending on the body being careful. Whatever the
+    # implementation does — a readonly collision, a failed rename, a `local` on
+    # a name we have not thought of — it is absorbed here and the caller sees 0.
+    # stderr is deliberately NOT swallowed: a heartbeat that cannot be written
+    # must still be able to say so (that is finding 4 of the same round — a
+    # silent success is the exact "green that lies" this organ exists to fight).
+    # A SUBSHELL, not a plain call, and the difference is not stylistic. `|| :`
+    # absorbs an exit STATUS; it cannot absorb a shell that has exited. When a
+    # caller has made one of our names readonly, the failing `local` is only the
+    # first act: execution continues to a plain ASSIGNMENT to that same name,
+    # and a variable-assignment error in a non-interactive shell is FATAL — bash
+    # leaves the shell there and nothing downstream of the call ever runs.
+    # Measured on three of the eight names. Inside `( … )` that fatality is
+    # confined to the subshell and the caller comes back alive with 0.
+    ( _organism_heartbeat_write "$@" ) || :
+    return 0
+}
+
+_organism_heartbeat_write() {
     # NOT `${1:?...}`: in a non-interactive shell that construct EXITS the shell,
     # so a sourcing caller that mistyped the invocation was killed by its own
     # heartbeat writer — measured, bash returned 127 and zsh 1, and the line
@@ -154,9 +184,9 @@ organism_heartbeat() {
     # `path` is the ARRAY tied to $PATH, so declaring it local replaced PATH
     # with a one-element list holding this sidecar's filename — for the rest of
     # the function. `date` and `mv` then silently became "command not found"
-    # (mv's complaint swallowed by its own 2>/dev/null), so the _organism_hb_tmp file was
+    # (mv's complaint swallowed by its own 2>/dev/null), so the tmp file was
     # written and never renamed: a heartbeat directory accumulating
-    # `<organ>.json._organism_hb_tmp.<pid>` and never the file any reader looks for.
+    # `<organ>.json.tmp.<pid>` and never the file any reader looks for.
     # Measured, not reasoned: across every name this function declares, `zsh -c
     # 'echo ${(t)v}'` reports exactly two as special — `status`
     # (integer-readonly-special) and `path` (array-tied-special). That was the
@@ -165,7 +195,7 @@ organism_heartbeat() {
     # not own. The `_organism_hb_` prefix on ALL of them subsumes both.
     local _organism_hb_path="${_organism_hb_dir}/${_organism_hb_id}.json"
     local _organism_hb_tmp="${_organism_hb_path}.tmp.$$"
-    # A bare `_organism_hb_ts="$(date …)"` makes the ASSIGNMENT carry date's exit status, so
+    # A bare `ts="$(date …)"` makes the ASSIGNMENT carry date's exit status, so
     # under a caller's `set -e` a failing date killed the caller — measured, rc=42
     # in both shells, with the line after the call never reached. That is not
     # hypothetical: `scripts/outbox-prune.sh` and `scripts/wr2-cron-wrapper.sh`
@@ -184,9 +214,25 @@ organism_heartbeat() {
     # So the alarm named the wrong thing: the fault is the clock, and the receipt
     # accused the organ. Not writing keeps the last true beat, and a truly dead
     # organ still goes stale on its own — the alarm survives, the lie does not.
+    # `|| printf ''` does NOT clear what the command already wrote: a `date`
+    # that prints something and THEN fails leaves that something in the
+    # substitution, and the old emptiness test passed it straight through —
+    # measured, `date(){ printf BROKEN; return 42; }` published `"ts":"BROKEN"`
+    # over the last good heartbeat. Emptiness was a proxy for "the clock
+    # answered"; the answer itself is the entity. So the shape is checked.
     local _organism_hb_ts
-    _organism_hb_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '')"
-    [ -n "$_organism_hb_ts" ] || return 0
+    _organism_hb_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)" || _organism_hb_ts=""
+    case "$_organism_hb_ts" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+        *)
+            # Say it. The previous version returned 0 in silence, which left the
+            # caller, launchd and the operator with an ordinary success and the
+            # organ drifting stale for a fault that was never the organ's.
+            printf 'organism_heartbeat: %s: clock unavailable (date gave %s) — no heartbeat written, previous one kept\n' \
+                "$_organism_hb_id" "${_organism_hb_ts:-nothing}" >&2
+            return 0
+            ;;
+    esac
 
     # Three passes, in this order: SANITISE -> TRUNCATE -> ESCAPE. Every ordering
     # here is load-bearing, and two of the three were wrong at some point.
@@ -195,7 +241,7 @@ organism_heartbeat() {
     #    here, and both produced a sidecar no reader could parse AT ALL:
     #    - Raw C0 control bytes went straight through. The escape chain below
     #      covers \n \r \t but not \b, \f, \v, NUL or anything else in
-    #      U+0000-U+001F, and a _organism_hb_note built from a command's stderr carries them
+    #      U+0000-U+001F, and a note built from a command's stderr carries them
     #      routinely. A literal 0x08 inside a JSON string is not valid JSON.
     #    - The truncation below is BYTE-based under LC_ALL=C — the locale cron
     #      hands you — so a 500-byte cut could land inside a multibyte UTF-8
@@ -204,17 +250,17 @@ organism_heartbeat() {
     #    Restricting to single-byte printables makes the cut provably safe rather
     #    than argued-safe: after this pass one byte is one character, in every
     #    locale and both shells. The cost is declared, not hidden — an accented
-    #    character in a _organism_hb_note becomes a space. A heartbeat _organism_hb_note is "rc=42 timeout",
-    #    not prose. If tr is unavailable we drop the _organism_hb_note rather than emit a
-    #    sidecar nobody can read: the _organism_hb_note is the least valuable field here, and
-    #    the _organism_hb_ts/status the reader acts on are worth more than it.
+    #    character in a note becomes a space. A heartbeat note is "rc=42 timeout",
+    #    not prose. If tr is unavailable we drop the note rather than emit a
+    #    sidecar nobody can read: the note is the least valuable field here, and
+    #    the ts/status the reader acts on are worth more than it.
     #    The trailing `X` is a sentinel, stripped straight back off: command
-    #    substitution eats ALL trailing newlines, so a _organism_hb_note ending in one lost it
+    #    substitution eats ALL trailing newlines, so a note ending in one lost it
     #    silently even though `\12` is in the keep-set and the escape phase below
     #    handles it. `X` is inside the keep-set, so `tr` passes it through.
     #
     #    Note that `tr` stays here, in the NOTE path, and is gone from the status
-    #    path above. That split is the point: the _organism_hb_note is diagnostic and losing it
+    #    path above. That split is the point: the note is diagnostic and losing it
     #    is survivable, while the status is a VERDICT and must not depend on
     #    anything that can fail.
     local _organism_hb_len="${#_organism_hb_note}"
@@ -235,23 +281,36 @@ organism_heartbeat() {
     # character counts as ONE in `${#...}` while `tr` turns each of its bytes into
     # a space, so a legitimate run can only ever come out LONGER. Shorter is not
     # ambiguous; it means bytes went missing.
+    # TWO proofs, because each alone has a blind spot the other covers:
+    #   - length: a `tr` that DROPS bytes leaves the output shorter than
+    #     input+1. Catches `AX` -> `AXX` -> `AX`, which still ends in `X` and so
+    #     looks clean to a suffix test.
+    #   - identity: a `tr` that CORRUPTS the last byte at equal length leaves
+    #     something else there. Catches `AB` -> `ABX` -> `ABY` under a
+    #     `s/X$/Y/` sanitiser, which passes the length test and would publish
+    #     the corrupted sentinel verbatim.
+    # Both were demonstrated on this code, one round apart.
+    case "$_organism_hb_note" in
+        *X) ;;
+        *) _organism_hb_note="(note dropped: could not sanitise)X" ;;
+    esac
     if [ "${#_organism_hb_note}" -lt "$((_organism_hb_len + 1))" ]; then
         _organism_hb_note="(note dropped: could not sanitise)"
     else
         _organism_hb_note="${_organism_hb_note%X}"
     fi
 
-    # 2. TRUNCATE the sanitised-but-unescaped _organism_hb_note. Escaping FIRST cut escape
+    # 2. TRUNCATE the sanitised-but-unescaped note. Escaping FIRST cut escape
     #    sequences in half: 499 'a' followed by a quote escaped to 501 chars, the
     #    500-char cut landed between the backslash and its quote, and the trailing
     #    backslash then escaped the JSON's own closing quote — the whole sidecar
-    #    became unparseable, so the reader saw NOTHING rather than a long _organism_hb_note.
+    #    became unparseable, so the reader saw NOTHING rather than a long note.
     #    Measured before the fix (json.loads raised on exactly that input).
     #    Escaping after the cut can exceed 500 bytes; bounding the INFORMATION is
-    #    the point, and a _organism_hb_note that survives is worth more than a round number.
+    #    the point, and a note that survives is worth more than a round number.
     _organism_hb_note="${_organism_hb_note:0:500}"
 
-    # 3. Escape JSON-unsafe chars in _organism_hb_note: backslash, quote, newline, tab, CR.
+    # 3. Escape JSON-unsafe chars in note: backslash, quote, newline, tab, CR.
     # Backslash MUST stay first — it is the escape character for the rest.
     _organism_hb_note="${_organism_hb_note//\\/\\\\}"
     _organism_hb_note="${_organism_hb_note//\"/\\\"}"
@@ -261,7 +320,11 @@ organism_heartbeat() {
 
     {
         printf '{"ts":"%s","status":"%s","note":"%s"}\n' "$_organism_hb_ts" "$_organism_hb_status" "$_organism_hb_note"
-    } > "$_organism_hb_tmp" 2>/dev/null && mv "$_organism_hb_tmp" "$_organism_hb_path" 2>/dev/null
+    } > "$_organism_hb_tmp" 2>/dev/null && mv "$_organism_hb_tmp" "$_organism_hb_path" 2>/dev/null || :
+    # `|| :` is load-bearing, not decoration: `set -e` does not spare the LAST
+    # command of an `&&` list, so a failed `mv` (full disk, a directory in the
+    # way, a racing sweeper) killed the caller one line before `return 0`.
+    rm -f "$_organism_hb_tmp" 2>/dev/null || :   # never leave a `.tmp.<pid>` behind
 
     return 0  # heartbeat MUST never break the caller
 }
