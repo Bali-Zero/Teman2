@@ -1193,7 +1193,11 @@ def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> 
     """
     if shell == "bash":
         control = subprocess.run(
-            [shell, "-c", 'v=éa; printf "[%s]" "${v//[a-zA-Z0-9_.]/}"'],
+            [
+                shell,
+                "-c",
+                'shopt -u globasciiranges; v=éa; printf "[%s]" "${v//[a-zA-Z0-9_.]/}"',
+            ],
             env={**os.environ, "LC_ALL": LOCALE_UTF8},
             capture_output=True,
             text=True,
@@ -1209,8 +1213,10 @@ def test_the_id_whitelist_is_ascii_not_collation(tmp_path: Path, shell: str) -> 
 
     seen = tmp_path / f"seen-locale-{shell}"
     script = tmp_path / f"locale-{shell}.sh"
+    bash_collation = "shopt -u globasciiranges\n" if shell == "bash" else ""
     script.write_text(
-        'source "$1"\norganism_heartbeat "$2" error n\n', encoding="utf-8"
+        bash_collation + 'source "$1"\norganism_heartbeat "$2" error n\n',
+        encoding="utf-8",
     )
     for bad_id in ("éa", "aé", "pro.café"):
         proc = subprocess.run(
