@@ -123,7 +123,7 @@ export function AppSidebar({
           ? reviewCount
           : item.badge;
 
-    // GARUDA active: copper pill fill + white text, rounded-[12px]
+    // GARUDA active: AA-safe copper fill + white text, rounded-[12px]
     const sharedClassName = cn(
       "flex items-center gap-2.5 px-2.5 py-[7px] rounded-[12px] mb-[2px] text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]",
       active
@@ -131,7 +131,7 @@ export function AppSidebar({
         : "hover:bg-[var(--surface-raised)] hover:text-[var(--bz-text-1)]",
     );
     const sharedStyle = active
-      ? { background: "var(--bz-copper-text)", color: "#fff" }
+      ? { background: "var(--bz-sidebar-active-fill)", color: "#fff" }
       : { color: "var(--bz-text-2)" };
 
     const sharedContent = (
@@ -155,8 +155,10 @@ export function AppSidebar({
           <span
             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
             style={{
-              background: "rgba(212,132,90,0.18)",
-              color: "var(--bz-accent)",
+              background: active
+                ? "color-mix(in srgb, white 18%, transparent)"
+                : "color-mix(in srgb, var(--bz-copper-text) 14%, transparent)",
+              color: active ? "#fff" : "var(--bz-copper-text)",
             }}
           >
             {badge > 99 ? "99+" : badge}
@@ -249,7 +251,7 @@ export function AppSidebar({
             style={{
               color: isZantaraOpen ? "#fff" : "var(--bz-text-2)",
               background: isZantaraOpen
-                ? "var(--bz-copper-text)"
+                ? "var(--bz-sidebar-active-fill)"
                 : "transparent",
             }}
             aria-label="Toggle Zantara AI"
@@ -287,7 +289,7 @@ export function AppSidebar({
                 className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
                 style={{
                   background:
-                    "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)",
+                    "linear-gradient(135deg, var(--bz-accent-warm) 0%, var(--bz-sidebar-active-fill) 100%)",
                 }}
               >
                 {user.name?.[0]?.toUpperCase() || "U"}
@@ -315,7 +317,7 @@ export function AppSidebar({
                 ? "var(--bz-green)"
                 : "var(--bz-text-3)",
               boxShadow: user.isOnline
-                ? "0 0 6px rgba(62,207,142,0.45)"
+                ? "0 0 6px color-mix(in srgb, var(--bz-green) 45%, transparent)"
                 : "none",
             }}
           />
