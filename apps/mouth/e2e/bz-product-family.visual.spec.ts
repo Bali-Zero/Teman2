@@ -207,6 +207,44 @@ async function seedSyntheticReviewData(page: Page): Promise<void> {
       };
     } else if (pathname === "/api/compliance/alerts") {
       body = { items: [], limit: 6, offset: 0 };
+    } else if (pathname === "/api/admin/team-activity/team-stats") {
+      body = {
+        team_stats: [
+          {
+            email: "team.alpha@example.test",
+            name: "Team Alpha",
+            role: "Operations",
+            days_worked: 18,
+            crm_actions: 64,
+          },
+          {
+            email: "team.beta@example.test",
+            name: "Team Beta",
+            role: "Client Services",
+            days_worked: 16,
+            crm_actions: 48,
+          },
+        ],
+      };
+    } else if (pathname === "/api/admin/team-activity/overview") {
+      body = { active_today: 2 };
+    } else if (pathname === "/api/admin/team-activity/practice-stats") {
+      body = {
+        practice_stats: [
+          {
+            email: "team.alpha@example.test",
+            completed: 12,
+            active: 7,
+            revenue: 92000000,
+          },
+          {
+            email: "team.beta@example.test",
+            completed: 9,
+            active: 5,
+            revenue: 71000000,
+          },
+        ],
+      };
     } else if (pathname.includes("assignee") || pathname.includes("team")) {
       body = [];
     } else if (pathname === "/api/portal/dashboard") {
