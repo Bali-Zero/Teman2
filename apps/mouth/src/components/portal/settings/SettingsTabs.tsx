@@ -51,7 +51,7 @@ export function SettingsTabs() {
       <TabsList
         aria-label="Settings sections"
         role="tablist"
-        className="flex flex-wrap gap-1 border-b border-white/10 mb-6"
+        className="flex flex-wrap gap-1 border-b border-[var(--bz-border)] mb-6"
       >
         {TAB_IDS.map((t) => (
           <TabsTrigger
@@ -59,7 +59,7 @@ export function SettingsTabs() {
             value={t}
             role="tab"
             aria-selected={active === t}
-            className="px-4 py-2 text-sm text-[#c9a96e]/70 data-[state=active]:text-[#f0ece4] data-[state=active]:border-b-2 data-[state=active]:border-[#d4845a]"
+            className="px-4 py-2 text-sm text-[var(--bz-text-2)] data-[state=active]:text-[var(--bz-text-1)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--bz-copper-text)]"
           >
             {LABELS[t]}
           </TabsTrigger>

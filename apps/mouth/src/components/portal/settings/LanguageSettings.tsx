@@ -40,9 +40,11 @@ export function LanguageSettings() {
             value={lang}
             defaultChecked={current === lang}
             onChange={() => setLanguage(lang)}
-            className="accent-[#d4845a]"
+            className="accent-[var(--bz-copper-text)]"
           />
-          <span className="text-sm text-[#f0ece4]">{LABELS[lang]}</span>
+          <span className="text-sm text-[var(--bz-text-1)]">
+            {LABELS[lang]}
+          </span>
         </label>
       ))}
     </section>

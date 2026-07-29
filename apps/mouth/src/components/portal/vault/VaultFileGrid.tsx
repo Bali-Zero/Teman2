@@ -61,7 +61,7 @@ export function VaultFileGrid({
 
   if (files.length === 0 && Object.keys(undoable).length === 0) {
     return (
-      <p className="text-sm text-[#c9a96e]/60 py-8 text-center">
+      <p className="text-sm text-[var(--bz-text-2)] py-8 text-center">
         No files in this view.
       </p>
     );
@@ -89,7 +89,7 @@ export function VaultFileGrid({
           {Object.values(undoable).map((f) => (
             <li
               key={`undo-${f.id}`}
-              className="flex items-center justify-between gap-3 p-3 rounded-lg border border-[#d4845a]/30 bg-white/5 text-xs text-[#f0ece4]"
+              className="flex items-center justify-between gap-3 p-3 rounded-lg border border-[color-mix(in_srgb,var(--bz-copper-text)_30%,transparent)] bg-[var(--surface-raised)] text-xs text-[var(--bz-text-1)]"
             >
               <span className="truncate">
                 Removed <strong>{f.name}</strong>. Recoverable for 30 days.
@@ -98,7 +98,7 @@ export function VaultFileGrid({
                 <button
                   onClick={() => handleRestore(f)}
                   disabled={pendingId === f.id}
-                  className="shrink-0 text-[11px] uppercase tracking-[2px] text-[#d4845a] hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                  className="shrink-0 text-[11px] uppercase tracking-[2px] text-[var(--bz-copper-text)] hover:underline inline-flex items-center gap-1 disabled:opacity-50"
                 >
                   <Undo2 aria-hidden className="w-3 h-3" /> Undo
                 </button>
@@ -116,31 +116,34 @@ export function VaultFileGrid({
           return (
             <li
               key={f.id}
-              className="p-3 rounded-lg border border-white/10 hover:border-white/30 flex flex-col gap-2"
+              className="bz-product-panel bz-product-panel--interactive p-3 flex flex-col gap-2"
             >
               <div className="flex items-start gap-2">
                 <Icon
                   aria-hidden
-                  className="w-8 h-8 text-[#c9a96e]/70 shrink-0"
+                  className="w-8 h-8 text-[var(--bz-accent-warm)] shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[#f0ece4] truncate" title={f.name}>
+                  <p
+                    className="text-xs text-[var(--bz-text-1)] truncate"
+                    title={f.name}
+                  >
                     {f.name}
                   </p>
-                  <p className="text-[10px] uppercase tracking-[2px] text-[#c9a96e]/40 mt-1">
+                  <p className="text-[10px] uppercase tracking-[2px] text-[var(--bz-text-3)] mt-1">
                     {f.type}
                   </p>
                 </div>
               </div>
               {f.purpose && (
                 <p
-                  className="text-[11px] text-[#c9a96e]/70 italic line-clamp-2"
+                  className="text-[11px] text-[var(--bz-text-2)] italic line-clamp-2"
                   title={f.purpose}
                 >
                   “{f.purpose}”
                 </p>
               )}
-              <div className="flex items-center justify-between text-[10px] text-[#c9a96e]/40">
+              <div className="flex items-center justify-between text-[10px] text-[var(--bz-text-3)]">
                 <span>{formatDate(f.created_at)}</span>
                 {f.size_kb != null && <span>{f.size_kb} KB</span>}
               </div>
@@ -148,7 +151,7 @@ export function VaultFileGrid({
                 {f.downloadable && onDownload ? (
                   <button
                     onClick={() => onDownload(f)}
-                    className="text-[11px] uppercase tracking-[2px] text-[#d4845a] hover:underline inline-flex items-center gap-1"
+                    className="text-[11px] uppercase tracking-[2px] text-[var(--bz-copper-text)] hover:underline inline-flex items-center gap-1"
                   >
                     <Download aria-hidden className="w-3 h-3" /> Download
                   </button>
@@ -160,14 +163,14 @@ export function VaultFileGrid({
                     onClick={() => handleDelete(f)}
                     disabled={pendingId === f.id}
                     aria-label={`Remove ${f.name}`}
-                    className="text-[11px] uppercase tracking-[2px] text-[#c9a96e]/50 hover:text-[#c94a4a] inline-flex items-center gap-1 disabled:opacity-50"
+                    className="text-[11px] uppercase tracking-[2px] text-[var(--bz-text-2)] hover:text-[var(--state-danger)] inline-flex items-center gap-1 disabled:opacity-50"
                   >
                     <Trash2 aria-hidden className="w-3 h-3" /> Remove
                   </button>
                 )}
               </div>
               {f.status && (
-                <span className="text-[10px] uppercase tracking-[2px] text-[#c9a96e]/60">
+                <span className="text-[10px] uppercase tracking-[2px] text-[var(--bz-text-2)]">
                   {f.status}
                 </span>
               )}
