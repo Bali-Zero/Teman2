@@ -13,6 +13,7 @@ import { Menu, X, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { routeTitles } from "@/types/navigation";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 // Lazy: notifications + impersonation are not first-paint critical.
 // Reduces parallel chunks on /portal/* — ERR_INSUFFICIENT_RESOURCES mitigation.
@@ -38,6 +39,7 @@ interface PortalHeaderProps {
   showBackButton?: boolean;
   onBack?: () => void;
   customTitle?: string;
+  mobileMenuToggleRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export function PortalHeader({
@@ -47,6 +49,7 @@ export function PortalHeader({
   showBackButton = false,
   onBack,
   customTitle,
+  mobileMenuToggleRef,
 }: PortalHeaderProps) {
   const pathname = usePathname();
 
@@ -86,7 +89,7 @@ export function PortalHeader({
 
   return (
     <header className="sticky top-0 z-30 w-full bg-[var(--portal-header-bg)] backdrop-blur-[24px] border-b border-[var(--bz-border)] shadow-[var(--bz-shell-header-shadow)]">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+      <div className="flex items-center justify-between h-[var(--bz-header-height,64px)] px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-3">
           {/* Back Button */}
@@ -104,6 +107,7 @@ export function PortalHeader({
 
           {/* Mobile Menu Button */}
           <button
+            ref={mobileMenuToggleRef}
             type="button"
             onClick={onMobileMenuToggle}
             className={cn(
@@ -142,6 +146,7 @@ export function PortalHeader({
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {/* Superuser impersonation (renders null for non-superusers) */}
           <SuperuserImpersonationBar />
           {/* Notifications */}

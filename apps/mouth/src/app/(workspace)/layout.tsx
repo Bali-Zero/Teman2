@@ -66,6 +66,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.product = "kita";
+    if (root.dataset.theme === "light") root.dataset.theme = "operative-light";
+    if (root.dataset.theme === "dark") root.dataset.theme = "operative-dark";
     if (
       root.dataset.theme !== "operative-light" &&
       root.dataset.theme !== "operative-dark"
@@ -276,7 +278,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
-  }, []);
+  }, [pathname]);
 
   // Mobile sidebar dialog: Esc to close + focus trap + return focus to toggle
   useEffect(() => {
@@ -434,7 +436,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               id="main-content"
               aria-labelledby="bz-page-title"
               tabIndex={-1}
-              className="flex-1 p-4 md:p-6 lg:p-8"
+              className="flex-1 p-[var(--bz-product-page-gap)]"
             >
               <h1 id="bz-page-title" className="sr-only">
                 {pageTitle}

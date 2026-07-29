@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
@@ -28,6 +28,9 @@ export default function PortalLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
@@ -42,6 +45,8 @@ export default function PortalLayout({
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.product = "my";
+    if (root.dataset.theme === "light") root.dataset.theme = "operative-light";
+    if (root.dataset.theme === "dark") root.dataset.theme = "operative-dark";
     if (
       root.dataset.theme !== "operative-light" &&
       root.dataset.theme !== "operative-dark"
@@ -162,16 +167,44 @@ export default function PortalLayout({
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
-  }, []);
+  }, [pathname]);
 
-  // Close mobile menu on Escape
+  // Mobile sidebar dialog: Esc to close + focus trap + return focus to toggle.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
+
+    const root = mobileSidebarRef.current;
+    const focusables = root
+      ? Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled])',
+          ),
+        )
+      : [];
+    focusables[0]?.focus();
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsMobileMenuOpen(false);
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      mobileMenuToggleRef.current?.focus();
+    };
   }, [isMobileMenuOpen]);
 
   // Show loading state
@@ -228,8 +261,15 @@ export default function PortalLayout({
               <div
                 className="fixed inset-0 bg-black/50 z-40 md:hidden"
                 onClick={() => setIsMobileMenuOpen(false)}
+                aria-hidden="true"
               />
-              <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+              <div
+                ref={mobileSidebarRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Client portal navigation"
+                className="fixed inset-y-0 left-0 z-50 md:hidden"
+              >
                 <AppSidebar
                   user={{
                     ...user,
@@ -252,13 +292,14 @@ export default function PortalLayout({
               userName={user.name}
               onMobileMenuToggle={handleMobileMenuToggle}
               isMobileMenuOpen={isMobileMenuOpen}
+              mobileMenuToggleRef={mobileMenuToggleRef}
             />
 
             {/* Page Content */}
             <main
               id="portal-main-content"
               tabIndex={-1}
-              className="flex-1 p-4 pb-28 md:p-6 lg:p-8"
+              className="flex-1 p-[var(--bz-product-page-gap)] pb-28 md:pb-[var(--bz-product-page-gap)]"
             >
               <PortalErrorBoundary section="Portal">
                 {children}

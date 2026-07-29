@@ -301,6 +301,8 @@
   /* Filled controls need a darker, white-text-safe copper than the accent
      used for icons and large text. This stays AA in both theme modes. */
   --bz-sidebar-active-fill: #9d5230;
+  --bz-focus-ring: #d4845a;
+  --border-focus: var(--bz-focus-ring);
   --sidebar-active-border: transparent;
   --sidebar-pill-radius: 12px;
 
@@ -390,6 +392,8 @@
      step. */
   --bz-copper: #b5633a;
   --bz-copper-text: #9d5230;
+  --bz-focus-ring: #9d5230;
+  --border-focus: var(--bz-focus-ring);
 
   /* Daylight gold for warm accents / focus rings (was #c9a96e = 1.98:1 on
      paper, below even the 3:1 non-text floor). #8a6d3b = 4.30:1. */
@@ -435,7 +439,7 @@
   /* Focus indicator — universal keyboard navigation (WCAG 2.1.1 + 2.4.7)
      Scoped to operative-light only — cannot leak into kita/dark theme. */
   *:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--bz-focus-ring);
     outline-offset: 2px;
   }
 }
@@ -449,6 +453,7 @@
   --bz-product-page-gap: 20px;
   --bz-product-row-height: 52px;
   --bz-product-heading-font: "Inter", system-ui, sans-serif;
+  --bz-header-height: 48px;
 }
 
 [data-product="my"] {
@@ -456,6 +461,7 @@
   --bz-product-page-gap: 28px;
   --bz-product-row-height: 60px;
   --bz-product-heading-font: var(--font-serif), Georgia, serif;
+  --bz-header-height: 64px;
 }
 
 /* Kita: cool mineral daylight, compact and operational. */
@@ -472,7 +478,7 @@
   --bz-card-hover: #f8f9fb;
   --bz-text-1: #172033;
   --bz-text-2: #4d5870;
-  --bz-text-3: #6f788b;
+  --bz-text-3: #596275;
   --bz-border: rgba(23, 32, 51, 0.09);
   --bz-border-hover: rgba(23, 32, 51, 0.16);
 
@@ -482,7 +488,7 @@
   --background-hover: #f8f9fb;
   --foreground: #172033;
   --foreground-secondary: #4d5870;
-  --foreground-muted: #6f788b;
+  --foreground-muted: #596275;
   --border: rgba(23, 32, 51, 0.09);
   --border-hover: rgba(23, 32, 51, 0.16);
 
@@ -497,7 +503,7 @@
   --kbli-bg-input: #ffffff;
   --kbli-text-primary: #172033;
   --kbli-text-secondary: #4d5870;
-  --kbli-text-muted: #6f788b;
+  --kbli-text-muted: #596275;
   --kbli-border: rgba(23, 32, 51, 0.09);
   --kbli-border-hover: rgba(23, 32, 51, 0.16);
 

@@ -19,6 +19,7 @@ describe("ThemeProvider", () => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.removeAttribute("data-funnel");
+    document.documentElement.removeAttribute("data-product");
   });
 
   it("sets data-theme on <html> when wrapped", () => {
@@ -92,6 +93,20 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
+  it("normalizes legacy light/dark values for product surfaces", () => {
+    document.documentElement.dataset.product = "kita";
+    document.documentElement.dataset.theme = "operative-light";
+    localStorage.setItem("bz-theme", "dark");
+    const { getByTestId } = render(
+      <ThemeProvider defaultTheme="editorial">
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(document.documentElement.dataset.theme).toBe("operative-dark");
+    expect(localStorage.getItem("bz-theme")).toBe("operative-dark");
+    expect(getByTestId("theme").textContent).toBe("operative-dark");
+  });
+
   it("useTheme exposes funnel state and setter", () => {
     const { getByTestId } = render(
       <ThemeProvider defaultTheme="dark">
@@ -111,6 +126,7 @@ describe("ThemeProvider — legacy `theme` key migration (WS4)", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("data-product");
   });
 
   function mount(defaultTheme: "dark" | "editorial" = "editorial") {

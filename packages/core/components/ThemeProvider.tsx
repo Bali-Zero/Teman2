@@ -38,6 +38,16 @@ function isTheme(v: string | null | undefined): v is Theme {
   );
 }
 
+function normalizeThemeForProduct(
+  theme: Theme,
+  product: string | undefined,
+): Theme {
+  if (product !== "kita" && product !== "my") return theme;
+  if (theme === "light") return "operative-light";
+  if (theme === "dark") return "operative-dark";
+  return theme;
+}
+
 /**
  * One-time migration off the legacy `theme` key (WS4 theme-key reconciliation).
  *
@@ -91,8 +101,9 @@ export function ThemeProvider({
   // Precedence (matches the pre-paint themeInitScript in app/layout.tsx):
   //   1. localStorage('bz-theme') — explicit user choice, wins everywhere
   //   2. the data-theme the pre-paint script ALREADY set, persona-aware by
-  //      hostname (my./zantara. → operative-light, kita./prime. → operative-dark,
-  //      public → editorial). We must NOT clobber it with `defaultTheme`.
+  //      hostname (kita./my./zantara. → operative-light, prime. →
+  //      operative-dark, public → editorial). We must NOT clobber it with
+  //      `defaultTheme`.
   //   3. defaultTheme prop — only when neither of the above is present.
   //
   // The previous code wrote `defaultTheme` whenever localStorage was empty,
@@ -111,26 +122,39 @@ export function ThemeProvider({
         ? document.documentElement.dataset.theme
         : null;
 
-    const resolved: Theme = isTheme(stored)
+    const rawResolved: Theme = isTheme(stored)
       ? stored
       : isTheme(prePaint)
         ? prePaint
         : defaultTheme;
+    const resolved = normalizeThemeForProduct(
+      rawResolved,
+      document.documentElement.dataset.product,
+    );
 
     setThemeState(resolved);
     document.documentElement.dataset.theme = resolved;
+    if (isTheme(stored) && stored !== resolved) {
+      localStorage.setItem(THEME_STORAGE_KEY, resolved);
+    }
   }, [defaultTheme]);
 
   const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
+    const resolved = normalizeThemeForProduct(
+      next,
+      typeof document !== "undefined"
+        ? document.documentElement.dataset.product
+        : undefined,
+    );
+    setThemeState(resolved);
     if (typeof window !== "undefined") {
       // `bz-theme` is the ONLY theme key — same key the pre-paint script in
       // app/layout.tsx reads, so a reload repaints without FOUC. The legacy
       // `theme` mirror was dropped in WS4: it had no readers left, and while
       // it lived, a writer that touched only one of the two keys made the
       // applied theme depend on which writer ran last.
-      localStorage.setItem(THEME_STORAGE_KEY, next);
-      document.documentElement.dataset.theme = next;
+      localStorage.setItem(THEME_STORAGE_KEY, resolved);
+      document.documentElement.dataset.theme = resolved;
     }
   }, []);
 

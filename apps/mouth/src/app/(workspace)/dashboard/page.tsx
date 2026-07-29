@@ -46,15 +46,15 @@ import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  visas: "var(--bz-chart-1)",
-  business: "var(--bz-chart-2)",
-  taxes: "var(--bz-chart-3)",
-  property: "var(--bz-chart-4)",
-  living: "var(--bz-chart-5)",
-  emerging_trends: "var(--bz-chart-6)",
+  visas: "var(--state-info)",
+  business: "var(--state-success)",
+  taxes: "var(--state-warning)",
+  property: "var(--bz-copper-text)",
+  living: "var(--state-danger)",
+  emerging_trends: "var(--bz-text-2)",
 };
 function getCategoryColor(cat: string): string {
-  return CATEGORY_COLOR[cat] ?? "var(--bz-chart-4)";
+  return CATEGORY_COLOR[cat] ?? "var(--bz-text-2)";
 }
 
 interface IntelArticle {
@@ -231,11 +231,11 @@ function useTeamStats(identity: string, enabled: boolean) {
 
 // ── Status config for practices ───────────────────────────
 const STATUS_CONFIG = {
-  inquiry: { label: "Inquiry", dot: "var(--bz-chart-8)" },
-  quotation: { label: "Quotation", dot: "var(--bz-chart-3)" },
-  in_progress: { label: "In Progress", dot: "var(--bz-chart-1)" },
-  documents: { label: "Documents", dot: "var(--bz-chart-3)" },
-  completed: { label: "Completed", dot: "var(--bz-chart-2)" },
+  inquiry: { label: "Inquiry", dot: "var(--bz-text-2)" },
+  quotation: { label: "Quotation", dot: "var(--state-warning)" },
+  in_progress: { label: "In Progress", dot: "var(--state-info)" },
+  documents: { label: "Documents", dot: "var(--state-warning)" },
+  completed: { label: "Completed", dot: "var(--state-success)" },
 } as const;
 
 // ── Metric Bar item ────────────────────────────────────────

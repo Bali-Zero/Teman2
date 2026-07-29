@@ -44,12 +44,13 @@ const accentColors: { id: AccentColor; label: string; color: string }[] = [
 // save time — never persisted, because the pre-paint script writes whatever it
 // finds straight onto data-theme and `data-theme="system"` styles nothing.
 function resolveSelection(selection: Theme): CoreTheme {
-  if (selection !== "system") return selection;
+  if (selection === "light") return "operative-light";
+  if (selection === "dark") return "operative-dark";
   const prefersDark =
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;
-  return prefersDark ? "dark" : "light";
+  return prefersDark ? "operative-dark" : "operative-light";
 }
 
 function selectionFromTheme(theme: CoreTheme): Theme {
@@ -61,7 +62,7 @@ export default function AppearanceSettingsPage() {
   const { success } = useToast();
   const { theme, setTheme } = useTheme();
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<Theme>("dark");
+  const [selectedTheme, setSelectedTheme] = useState<Theme>("light");
   const [selectedAccent, setSelectedAccent] = useState<AccentColor>("cyan");
   const [compactMode, setCompactMode] = useState(false);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
