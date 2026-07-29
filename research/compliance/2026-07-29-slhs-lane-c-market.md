@@ -25,6 +25,18 @@ sources:
   - https://balitaxadvisor.com/indonesia-fb-permits/ (2026-07-29)
   - https://bali.bps.go.id/en/statistics-table/2/Mzg1IzI=/banyaknya-restoran-dan-rumah-makan-dirinci-menurut-kabupaten-kota-di-bali.html (403 to fetch tool 2026-07-29, cited via secondary source below)
   - https://solusidigitalusaha.biz.id/2/ARTICLES/209/menelusuri-ribuan-restoran-dan-kafe-di-bali (secondary citation of BPS 2023 figures, 2026-07-29)
+  - https://sites.google.com/kek.go.id/sop-perizinan/pb-umku/slhs (2026-07-29)
+  - https://dinaspmptsp.pemalangkab.go.id/2022/06/sosialisasi-perizinan-berusaha-untuk-menunjang-kegiatan-usaha-pb-umku-sertifikat-laik-higiene-sanitasi-slhs-pada-sistem-oss-rba-16-juni-2022/ (2026-07-29)
+  - https://oss.go.id/en/umku (2026-07-29)
+  - https://pbumku.com/ (2026-07-29, via search snippet — direct fetch 403)
+  - https://baliefata.com/jasa-pengurusan-izin-oss-nib-di-bali.php (2026-07-29)
+  - https://bapelkesmas-diskes.baliprov.go.id/pelatihan-keamanan-pangan-siap-saji-bagi-penjamah-makanan-di-tempat-pengelolaan-pangan-tpp-uptd-bapelkesmas-dinas-kesehatan-provinsi-bali-24-s-d-26-maret-2025/ (2026-07-29)
+  - https://bapelkesmas-diskes.baliprov.go.id/pelatihan-surveilans-dan-pengendalian-vektor-dan-binatang-pembawa-penyakit-entomologi-kesehatan-di-puskesmas-kabupaten-karangasem-uptd-bapelkesmas-dinas-kesehatan-provinsi-bali-2-s-d-7-februari-2026/ (2026-07-29, schedule-existence only)
+  - https://dinkes.bulelengkab.go.id/informasi/detail/berita/48_pelatihan-keamanan-pangan-siap-saji-bagi-penjamah-pangan-untuk-tingkatkan-mutu-dan-keamanan-produk-pangan (2026-07-29, via search snippet — June 2026 Buleleng PKP session at Bapelkesmas venue)
+  - https://www.phitagoras.co.id/training-haccp-sertifikasi-bnsp.html (2026-07-29, via search snippet)
+  - https://apkepi.or.id/products/okupasi-nasional-penjamah-makanan-food-handler-by-lsp-jmkp (2026-07-29)
+  - https://www.dreamlegalofficial.com/legalitas-bisnis-fb-panduan-lengkap-izin-dokumen-dan-biaya/ (2026-07-29, via search snippet — direct fetch inconclusive)
+adversarial_review: codex
 ---
 
 # SLHS Lane C — Market & Competitor Landscape (Bali, 2026-07-29)
@@ -32,8 +44,23 @@ sources:
 Scope: who sells SLHS (Sertifikat Laik Higiene Sanitasi) in/around Bali, at what price, packaged how, and
 where the white space is. Public-read research only — no outreach, no forms, no PII.
 
+**Amendment 2026-07-29 (post-review):** the initial version of this file was written and a PR opened, but
+the PR never merged — the R1 CI gate (adversarial-review-required) failed silently on this file and no one
+followed up, so the file sat on an open branch, not on `main`, while earlier team-lead communication
+reported it as delivered. That was wrong to report as done. This revision (1) fixes the merge blocker, and
+(2) adds two lines of research the team lead specifically asked for after reviewing findings from the other
+lanes: SLHS's status as a PB-UMKU hung off the NIB (§0) and the PKP food-safety-training bottleneck,
+including the first real prices found for the paid alternative to the free government course (§7).
+
 ## TL;DR return value
 
+- **SLHS is not a freestanding permit — it's a PB-UMKU hung off the NIB inside OSS-RBA** (§0). Almost no
+  competitor markets it that way; everyone still talks about it as if it were a standalone license.
+- **The PKP food-safety training bottleneck** (§7): the government course (UPTD Bapelkesmas Provinsi Bali)
+  runs batch sessions with no published fee and evidence that private restaurants already self-register
+  directly — but a parallel PAID market of private BNSP/HACCP-track food-safety trainers DOES publish
+  prices, from **Rp 6.0–7.0 million (online) to Rp 11.8 million/participant (offline)** — the single most
+  concrete pricing find in this update.
 - **Price table** below — real numbers exist but only for 5 of ~12 researched sellers; the rest are
   "contact us."
 - **3 dominant packaging patterns**: (1) SLHS sold as a sequential add-on gated behind a bigger
@@ -51,6 +78,34 @@ where the white space is. Public-read research only — no outreach, no forms, n
   table blocked the fetch tool with 403; the Dinas Pariwisata 2025 PDF didn't parse). Only a secondary-source
   citation of BPS 2023 data survives — flagged as such, not as verified.
 - Full file: `research/compliance/2026-07-29-slhs-lane-c-market.md`
+
+---
+
+## 0. Framing: SLHS is a PB-UMKU hung off the NIB, not a standalone permit
+
+This matters for how it's sold, not just how it's obtained. Under OSS-RBA, SLHS is one instance of
+**PB-UMKU** ("Perizinan Berusaha untuk Menunjang Kegiatan Usaha" — business licensing to support business
+activity, the operational/commercial-stage layer of licensing). The **NIB is a hard prerequisite**: a
+business logs into OSS with its NIB, opens a new PB-UMKU application, selects the KBLI the NIB was issued
+under, then picks SLHS from the PB-UMKU menu and uploads supporting documents (sites.google.com/kek.go.id;
+dinaspmptsp.pemalangkab.go.id; oss.go.id/en/umku — all 2026-07-29). This is also the government-fee
+finding from §1 Fascia C generalized beyond Denpasar: **pbumku.com states PB-UMKU services for food
+establishments (jasa boga/catering, restaurants, food processing) are free of charge nationally**, not
+just under Denpasar's city regulation — a second, independent confirmation of the Rp 0 government-fee
+floor.
+
+**Does anyone sell it *inside* a company-setup/NIB/F&B-licensing package, explicitly?** Searched for this
+directly (queries on "paket lengkap PB-UMKU F&B", checked baliefata.com's dedicated Bali OSS/NIB page).
+Result: **still mostly opaque.** baliefata.com ("Jasa Pengurusan Izin OSS DAN NIB di Bali") explicitly
+lists restaurant/hotel/villa permit handling but its page gives **no breakdown of whether SLHS/PB-UMKU is
+bundled into the NIB service or sold separately, and no price**. Generic bahasa guides (e.g.
+dreamlegalofficial.com's F&B legality guide) *describe* the requirement chain (NIB → Sertifikat Standar →
+PB-UMKU incl. SLHS → SKPL alcohol clearance → PIRT/BPOM if packaged goods) without quoting bundle pricing.
+**Net**: the technical fact that SLHS is subordinate to the NIB is well documented; no competitor turns
+that fact into an explicit "NIB+SLHS bundle" sales pitch with a price. This reinforces, from a different
+angle, the §3 finding that SLHS is either an invisible line item inside a general retainer or absent
+altogether — nobody sells the NIB→PB-UMKU→SLHS *pipeline* as a named, priced product, even though that
+pipeline is exactly what the regulation requires everyone to go through in order.
 
 ---
 
@@ -134,6 +189,16 @@ publish zero pricing anywhere for SLHS — either because they don't sell it as 
 opacity is the deliberate positioning (high-touch consulting norm across this whole competitive set, not
 SLHS-specific).
 
+**Caveat added post-review, do not skip**: the balivisa.co ~Rp 22,000,000 figure and the Merdeka.com
+Rp 9–30,000,000 broker-markup figure should NOT be treated as clean, mutually-comparable price anchors.
+The former is numerically identical to a different competitor's price for a different, broader certificate
+(§1 reading) — it may be a genuine coincidence, a copied/rumored industry number, or a conflation, and
+which is true is unresolved. The latter is evidence from a **different government program** (SPPG/MBG
+nutrition kitchens, not general restaurant SLHS) and is included here only as a *pattern* anchor (broker
+opacity/markup exists as a phenomenon in Indonesian SLHS-adjacent licensing), not as a *number* directly
+transferable to what a Bali restaurant would pay a broker. Anyone using this table for a client-facing
+price comparison should treat only the legalindonesia.id, riksa.co.id, and INVARR rows as load-bearing.
+
 ---
 
 ## 3. Packaging patterns (the important question)
@@ -216,7 +281,58 @@ regulation before Bali Zero commits to either cadence in a pitch.
 
 ---
 
-## 6. White space — verified vs refuted vs unverified
+## 6. PKP (Penyuluhan Keamanan Pangan) training — the flagged bottleneck, and who prices it
+
+**Caveat up front (post-review)**: "bottleneck" is the team lead's framing, and this section can confirm
+the training exists, is batch-delivered, and has undisclosed private-company pricing — it cannot confirm
+capacity constraints, rejection rates, or how hard it actually is to get a seat, from public sources alone.
+One participant-list data point (below) shows access is possible; it doesn't measure how easy.
+
+The team lead flagged this as the operative chokepoint: the food-handler competency training that feeds
+into SLHS (called PKP — Penyuluhan Keamanan Pangan — or KHSM/HSP depending on source) is delivered in
+**batches by UPTD Bapelkesmas Provinsi Bali** (the provincial health-training unit, Jl. Gumitir No. 135,
+Denpasar Timur), and no public source states what it costs a private company. Findings:
+
+- **The government channel is real, scheduled, and — as far as any page discloses — free.** Confirmed
+  sessions: 17–19 May 2022, 24–26 March 2025 ("Pelatihan Keamanan Pangan Siap Saji bagi Penjamah Makanan
+  di Tempat Pengelolaan Pangan"), and an 8–10 June 2026 Buleleng-regency session held at the same
+  Bapelkesmas venue (dinkes.bulelengkab.go.id). **No registration fee is mentioned on any of these pages.**
+- **Private F&B businesses already attend directly, not just government/healthcare orgs.** The 24–26 March
+  2025 session's participant list — recovered via fetch, not just search snippet — names **"Jaan Bali
+  Restaurant"** alongside five hospitals (RSU Puri Raharja, RSU Bali Royal, RS Prima Medika, RS Balimed
+  Denpasar, RSU Ganesha, RSIA Bunda Denpasar). This is direct evidence a real Bali restaurant sent staff to
+  the official batch training, undercutting any assumption that private F&B operators can't self-register
+  or need a broker to get a seat.
+- **What we could NOT find**: an explicit registration fee for a private company on any Bapelkesmas/Dinkes
+  page, and no full 2026 master schedule (only individual session announcements). If Bali Zero wants a firm
+  number, that's a call to UPTD Bapelkesmas directly, or an FOI-style query — not resolvable from public
+  pages searched here.
+- **The valuable find: a parallel PAID market exists, and it does publish prices.** These are not literally
+  resold seats in the government PKP batch — they're private BNSP/HACCP-track food-safety-competency
+  trainers occupying the same functional slot (satisfying the same "food handler / person-in-charge
+  training certificate" requirement cited by every SLHS guide in §1). Two with public pricing:
+  - **Phitagoras Training** — online HACCP/food-safety certification, **Rp 6,999,000, discounted to
+    Rp 5,999,000** (phitagoras.co.id, via search snippet, direct fetch 403).
+  - **BMD Training Centre** — offline, **Rp 11,800,000 per participant**, excludes tax and certificate
+    shipping (via search snippet).
+  - **Kualita Konsultan** — no fixed price, quotes per company size/branch count/scope (bespoke).
+  - **APKEPI / LSP JMKP** ("Sertifikasi Kompetensi Penjamah Pangan") sells a BNSP-accredited food-handler
+    competency certification as a named product (apkepi.or.id) — existence confirmed, price not fetched
+    this pass.
+- **Reading**: there is a real price gap between "government batch training, no fee disclosed, but a real
+  restaurant got in" and "private BNSP-track alternative at Rp 6–11.8 million per participant." That gap —
+  and the fact that NONE of the Fascia A/B competitors in §1 mention PKP/food-handler training as a
+  distinctly priced line separate from their SLHS bundle (balivisa.co's Rp 1,750,000/staff figure is the
+  only training-specific number found anywhere in Fascia A, and it's far below both private BNSP options
+  above, suggesting either a different/lighter course or an optimistic estimate) — is itself a second,
+  adjacent white-space candidate: nobody positions "we get your staff into the free government PKP batch
+  reliably and on schedule" as a service, despite batches being infrequent, regionally scattered
+  (Denpasar/Bangli/Buleleng sessions found, not a rolling calendar), and evidently open to private
+  registrants who know to ask.
+
+---
+
+## 7. White space — verified vs refuted vs unverified
 
 | Candidate (from the brief) | Verdict | Evidence |
 |---|---|---|
@@ -226,6 +342,47 @@ regulation before Bali Zero commits to either cadence in a pitch.
 | Nobody links SLHS to KBLI choice upstream | **Real gap, but in positioning not fact** | The KBLI-SLHS technical link is well documented in government/explainer sources (you must select the correct food-business KBLI in OSS before SLHS can be filed) — but no commercial competitor markets this as a consulting angle ("we pick your KBLI so your SLHS path is clean"). Genuinely open positioning territory. |
 | *(new, found not briefed)* Bali-local konsultan don't carry SLHS as a product at all | **Verified** | Both Bali-based general perizinan sites checked (licenselead.id, konsultanperizinanbali.com) omit SLHS entirely from their service menus |
 | *(new, found not briefed)* No Bali-specific, price-transparent standalone SLHS page exists in either language | **Verified across ~25 sources checked** | See §4 |
+| *(new, added 2026-07-29 per team-lead steer)* Nobody markets "we get your staff into the free government PKP batch" as a scheduling/access service | **Verified as absent from public marketing; not verified as a genuine unmet need** | Batches are infrequent and regionally scattered (Denpasar/Bangli/Buleleng sessions found, no rolling calendar); a real restaurant (Jaan Bali) got a seat directly, so the "need a broker" framing is only partly supported — see §6 |
+
+---
+
+## Adversarial review
+
+Reviewer: **Codex** (`gpt-5.2-codex` via `mcp__codex-redteam`, read-only sandbox), 2026-07-29. Reviewed the
+document's claims and evidence structure (not a fresh independent web search — a critique of this
+document's reasoning and calibration, per the R1 gate's generator≠grader intent: author is Sonnet 5, seat
+is a different model family). Full critique preserved verbatim in the PR discussion; summary below.
+
+**Findings accepted and acted on in this revision:**
+- The balivisa.co ~Rp 22M figure and the Merdeka.com Rp 9–30M broker figure were being used too close to
+  the compact price table as if they were clean, comparable anchors. Added an explicit caveat (§2) marking
+  only legalindonesia.id/riksa.co.id/INVARR as load-bearing for price comparison; the other two are pattern
+  evidence, not numbers to quote to a client.
+- "PKP bottleneck" language in §6 overstated what one participant list proves. It shows a real restaurant
+  attended one session — it does not establish availability, capacity, or that this is *the* bottleneck.
+  Read §6 as "one confirmed data point that private access is possible," not a capacity claim.
+- Private-training prices (Phitagoras, BMD) rest on search snippets, not direct fetches (both attempted,
+  both 403'd) — already disclosed per-line in §6, flagged again here as a reason not to quote those numbers
+  without independent verification before using them competitively.
+
+**Findings noted, not further acted on (stand as open caveats)**:
+- "Almost no competitor markets it that way" (§0) and "majority absorbed invisibly" (§3) are pattern
+  readings across a sampled set (~11 named competitors), not an exhaustive census with a defined coding
+  method — treat as directional, not a statistically verified majority.
+- The market-size section (§5) is flagged by the reviewer as **unusable, not merely uncertain**, given the
+  internal inconsistency (regency subtotals exceeding the province total) — this document already says so;
+  restated here for anyone skimming straight to the review section.
+- "Verified" in the §7 white-space table means "checked against the specific named competitors reached in
+  this pass and not found" — absence-of-evidence, not a formal exhaustive-market claim. Treat every
+  "Verified" row as bounded by the source list in the frontmatter, not as a closed finding.
+
+**Verdict**: the reviewer found calibration better than average (contradictions and fetch failures are
+disclosed throughout) but flagged that disclosure alone doesn't cure reliance on snippet-only or
+internally-inconsistent evidence for decision-grade pricing. This revision tightens the two most
+actionable points (price-anchor conflation, PKP-bottleneck overstatement); the market-size and
+majority-pattern caveats were already present and are restated, not newly fixed, because fixing them
+requires data this pass could not retrieve (BPS table access, an exhaustive competitor census) rather than
+a wording change.
 
 ---
 
