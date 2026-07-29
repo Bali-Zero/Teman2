@@ -60,6 +60,11 @@ set -u
 
 # Paths that can change the built app. `vercel.json` is included because build settings live
 # there; the previous command omitted it, so a change to how the app is built did not rebuild it.
+# The repo-root `vercel.json` is gone as of this change — the project's Root Directory is
+# `apps/mouth`, so Vercel read `apps/mouth/vercel.json` and the root file was inert. Proven from
+# a real build log, not from the setting: the build ran `next build --webpack` (the apps/mouth
+# value), never the root file's `npm run build -w apps/mouth`. It is still matched here on
+# purpose — if a root `vercel.json` ever comes back, rebuilding on it is the fail-open answer.
 FRONTEND_RE='^(apps/mouth/|packages/|package\.json|package-lock\.json|vercel\.json|apps/mouth/vercel\.json)'
 
 PROD_BRANCH="${VERCEL_GIT_PROD_BRANCH:-main}"

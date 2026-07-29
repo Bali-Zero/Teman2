@@ -22,6 +22,13 @@
 #     which is the thing that matters. Removing both does fail, above.
 #   * grep exiting >=2                       -> 0 fail. Genuinely UNCOVERED: this corpus has no
 #     way to make grep itself error. The branch is written fail-open and reviewed, not proven.
+#   * pointer reverted to a bare invocation  -> 4 fail, every one as `rc=127 (DEPLOYMENT ERROR)`.
+#     That IS the 2026-07-29 incident, reproduced. See scripts/ci/vercel_ignore_build_step.sh.
+#   * `git init` dropped from the pointer sandbox -> 4 fail as "sandbox leaked". Worth stating
+#     why that check exists at all: setting TMPDIR inside the repo does NOT trip it, because each
+#     sandbox runs its own `git init` and therefore is its own toplevel. So the corpus cannot
+#     produce a positive by placement alone, and the guard is proven only by this mutation — it
+#     defends against a future refactor dropping the init, not against a hostile TMPDIR.
 
 set -uo pipefail
 
@@ -176,6 +183,17 @@ run_pointer() { # run_pointer <expected: BUILD|SKIP> <label> <script-body|MISSIN
   mkdir -p "$dir/scripts/ci"
   if [ "$body" != "MISSING" ]; then
     printf '%s\n' "$body" > "$dir/scripts/ci/vercel_should_build.sh"
+  fi
+  # The pointer resolves its target through `git rev-parse --show-toplevel`. If this temp repo
+  # were nested inside the real checkout — a CI runner whose TMPDIR lives under the workspace
+  # would do it — that call would resolve to the REAL repo, the "script absent" case would
+  # silently execute the REAL guard, and all six cases would pass while testing nothing.
+  # Assert the sandbox is the sandbox instead of assuming it.
+  local top
+  top=$( cd "$dir" && git rev-parse --show-toplevel 2>/dev/null )
+  if [ "$(cd "$dir" && pwd -P)" != "$(cd "$top" 2>/dev/null && pwd -P)" ]; then
+    FAIL=$((FAIL+1)); printf '  FAIL  %-58s sandbox leaked: toplevel=%s\n' "$label" "$top"
+    return
   fi
   ( cd "$dir" && eval "$POINTER" >/dev/null 2>&1 ); rc=$?
   case $rc in 1) got=BUILD ;; 0) got=SKIP ;; *) got="rc=$rc (DEPLOYMENT ERROR)" ;; esac
