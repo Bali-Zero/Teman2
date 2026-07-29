@@ -74,19 +74,21 @@ describe("/api/clients — row scope", () => {
     expect(params[0]).toBe("ari@balizero.com");
   });
 
-  it("GUILT: no header at all is scoped, not escalated", async () => {
-    await GET(request({}));
-    const [sql, params] = query.mock.calls[0];
-    expect(sql).toContain("assigned_to = $1");
-    expect(params[0]).toBe("");
+  it("GUILT: no identity reaches the database at all", async () => {
+    // Not merely "scoped to ''" — that equality matches the 5 real clients whose
+    // assignee is empty (measured against prod), i.e. the unassigned book.
+    const res = await GET(request({}));
+    expect(query).not.toHaveBeenCalled();
+    expect(await res.json()).toMatchObject({ rows: [] });
   });
 
   it("GUILT: x-user-email is not an authentication header", async () => {
     // The header the route originally read. Nothing stamps it, so honouring it
-    // would mean trusting a value the caller types.
-    await GET(request({ "x-user-email": "zero@balizero.com" }));
-    const [sql] = query.mock.calls[0];
-    expect(sql).toContain("assigned_to = $1");
+    // would mean trusting a value the caller types — the request must land in
+    // the no-identity branch, exactly as if the header were absent.
+    const res = await GET(request({ "x-user-email": "zero@balizero.com" }));
+    expect(query).not.toHaveBeenCalled();
+    expect(await res.json()).toMatchObject({ rows: [] });
   });
 
   it("INNOCENCE: each of the three full-access users reads the whole book", async () => {

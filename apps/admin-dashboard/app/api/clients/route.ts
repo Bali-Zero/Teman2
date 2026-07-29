@@ -40,6 +40,15 @@ export async function GET(request: Request) {
   const authUser = request.headers.get("x-admin-email") ?? "";
   const hasFullAccess = FULL_ACCESS_USERS.includes(authUser);
 
+  // An absent identity must match NOTHING — not the rows whose assignee happens
+  // to be nothing. Measured against prod: `assigned_to = ''` is 5 real clients,
+  // so scoping an empty caller by equality showed exactly the unassigned book.
+  // Small (local dev is the only path that reaches here without an identity) but
+  // it is a disclosure nobody chose, and it made "scopes to nobody" false.
+  if (!hasFullAccess && authUser === "") {
+    return NextResponse.json({ rows: [], page, limit });
+  }
+
   try {
     const client = await pool.connect();
     try {
