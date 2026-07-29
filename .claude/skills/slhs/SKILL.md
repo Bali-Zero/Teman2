@@ -38,21 +38,29 @@ Three consequences that shape everything:
 ## 1. Where the truth lives (in order)
 
 1. **This file** — state, decisions, phase plan.
-2. **`research/compliance/2026-07-29-slhs-lane-f-primary-text.md`** — the ONLY source for regulation
-   numbers. Verbatim `pdftotext` extractions with page numbers and reproducible commands. **If a
-   number is not in Lane F, it is not verified.**
-3. `research/compliance/2026-07-29-slhs-lane-a-regulatory.md` (PR #3447) — regulatory chain, the
-   3-tier certificate finding. Good on structure; **its KBLI lists were wrong twice** — do not cite
-   its code numbers.
-4. `research/compliance/2026-07-29-slhs-lane-b-procedura.md` (PR #3443) — the operational flow,
-   costs, bottlenecks, and 11 declared field gaps.
-5. `research/compliance/2026-07-29-slhs-lane-c-market.md` (PR #3442) — competitors, prices, white
-   space. Codex-reviewed; read its own caveats, they are load-bearing.
-6. `research/compliance/2026-07-29-slhs-lane-d-internal-audit.md` (PR #3444) — what we own.
-7. `research/compliance/2026-07-29-slhs-lane-e-demand.md` (PR #3445) — the demand signal.
-8. `research/compliance/2026-07-29-slhs-lane-g-why-now.md` (PR #3448) — why the signal appeared.
-9. `data/source_documents/KBLI_2025_FINAL_CLEAN.json` — **the arbiter for every KBLI code.**
-   Field is `kode_kbli_2025` (not `kode_kbli`). 1,559 codes.
+2. **`research/compliance/2026-07-29-slhs-lane-h-amendments.md`** — **the authority on WHICH TEXT IS
+   IN FORCE.** Read it before any other lane. It establishes that Permenkes 14/2021 (and its two
+   amendments) are revoked for PB-UMKU kesehatan by Permenkes 11/2025, and carries the current
+   duration clause and the current seven-code list.
+3. **`research/compliance/2026-07-29-slhs-lane-f-primary-text.md`** — the source for verbatim
+   extractions and reproducible commands (`pdftotext` with page numbers). **⚠️ Correction to the
+   original hierarchy:** this file was written as "the ONLY source for regulation numbers", but it
+   extracted from **14/2021 — the revoked text**. Its method is sound and its quotes are faithful;
+   its subject is superseded. Rule now: **a number is verified only if Lane F extracted it AND Lane H
+   says that instrument still governs.** Rigorous extraction from the wrong document is still wrong.
+4. `research/compliance/2026-07-29-slhs-lane-a-regulatory.md` — regulatory chain, the 3-tier
+   certificate finding. Good on structure; **its KBLI lists were wrong twice** — do not cite its code
+   numbers. Carries an in-file correction banner.
+5. `research/compliance/2026-07-29-slhs-lane-b-procedura.md` — the operational flow, costs,
+   bottlenecks, and 11 declared field gaps.
+6. `research/compliance/2026-07-29-slhs-lane-c-market.md` — competitors, prices, white space.
+   Codex-reviewed; read its own caveats, they are load-bearing.
+7. `research/compliance/2026-07-29-slhs-lane-d-internal-audit.md` — what we own.
+8. `research/compliance/2026-07-29-slhs-lane-e-demand.md` — the demand signal. Carries an in-file
+   correction banner (its "the prod DB is frozen" line is true only of one table).
+9. `research/compliance/2026-07-29-slhs-lane-g-why-now.md` — why the signal appeared.
+10. `data/source_documents/KBLI_2025_FINAL_CLEAN.json` — **the arbiter for every KBLI code.**
+    Field is `kode_kbli_2025` (not `kode_kbli`). 1,559 codes.
 
 ---
 
