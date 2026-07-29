@@ -2,8 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
-const KITA_ORIGIN = "http://kita.localhost:3000";
-const MY_ORIGIN = "http://my.localhost:3000";
+const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
+const KITA_ORIGIN = `http://kita.localhost:${E2E_PORT}`;
+const MY_ORIGIN = `http://my.localhost:${E2E_PORT}`;
 const GALLERY_DIR = resolve(
   process.cwd(),
   "../..",

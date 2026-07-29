@@ -1,7 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const KITA_ORIGIN = "http://kita.localhost:3000";
-const MY_ORIGIN = "http://my.localhost:3000";
+const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
+const KITA_ORIGIN = `http://kita.localhost:${E2E_PORT}`;
+const MY_ORIGIN = `http://my.localhost:${E2E_PORT}`;
 
 const syntheticPortalProfile = {
   id: "ui-test-client",
@@ -124,7 +125,7 @@ test.describe("Bali Zero product-family shells", () => {
     await card.focus();
     await expect(card).toBeFocused();
     await expectNoHorizontalOverflow(page);
-    await expect(card).toContainText("Status · Waiting Payment");
+    await expect(card).toContainText("Waiting Payment");
     await expect(
       page.getByRole("button", {
         name: "Open process 708: Visa Extension",

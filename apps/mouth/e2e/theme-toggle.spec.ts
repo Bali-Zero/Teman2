@@ -1,7 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const KITA_ORIGIN = "http://kita.localhost:3000";
-const MY_ORIGIN = "http://my.localhost:3000";
+const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
+const KITA_ORIGIN = `http://kita.localhost:${E2E_PORT}`;
+const MY_ORIGIN = `http://my.localhost:${E2E_PORT}`;
 
 async function seedTheme(page: Page, theme?: string): Promise<void> {
   await page.addInitScript((storedTheme) => {
