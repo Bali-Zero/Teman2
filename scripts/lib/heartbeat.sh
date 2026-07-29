@@ -123,16 +123,36 @@ _organism_heartbeat_write() {
     # it (its own comment calls it "the heartbeat status=warn"), and the old
     # fallback rewrote it to "ok" — a WIP-skipped reaper reported as healthy.
     #
-    # DELIBERATE, and now an EXPLICIT arm rather than a fall-through:
-    # launchd-liveness-detector.sh passes "disabled" on its kill switch and we
-    # map it to "ok". That IS a false green — but the naive cure is worse than
-    # the disease:
-    # "disabled" is not in the reader's vocabulary, so passing it through makes
-    # the organ read DEAD, and the healer would then resurrect precisely the
-    # organ an operator intentionally stopped — the exact outcome that
-    # wrapper's comment says the disabled heartbeat exists to prevent. Teaching
-    # the READER a non-paging "disabled" state is the real fix and it is a
-    # fleet-alarm change, not a shell-quoting one.
+    # `disabled` IS PASSED THROUGH — corrected 2026-07-29, adversarial round 6.
+    #
+    # This arm used to rewrite it to "ok", justified by a comment claiming
+    # "disabled is not in the reader's vocabulary, so passing it through makes
+    # the organ read DEAD and the healer would resurrect what an operator
+    # intentionally stopped". I wrote that claim on 2026-07-29 WITHOUT READING
+    # EITHER READER. Measured:
+    #
+    #   healer_receptor_registry.py: EXEMPT_STATUSES = {"disabled"} — since
+    #     2026-07-06 (#2027), three weeks before the comment asserting it did
+    #     not exist. The reader had already learned the word.
+    #   sentinel-aggregate.py: `disabled` is a status it already renders, and
+    #     _ESCALATE_STATUSES is ("dead", "starved") — so it does not page.
+    #
+    # The old mapping's cost was a #2-family lie: an organ an operator had
+    # deliberately stopped was indistinguishable from a healthy one, on every
+    # surface, forever. The sentinel's CLASSIFIER needed one arm to complete the
+    # cure (a status it did not recognise fell to `else: dead`) — landed in the
+    # same commit, because a writer emitting a word no reader classifies is how
+    # this file got the false green in the first place.
+    #
+    # `running` maps to `ok` for the mirror reason: the healer counts `running`
+    # among HEALTHY_STATUSES while the sentinel does not, so passing it through
+    # would have one reader call the organ healthy and the other call it DEAD.
+    # `ok` is the only spelling both agree on, and it is not a lie — an organ
+    # reporting `running` is running.
+    #
+    # THE RULE THIS LEAVES: never map a status by what a reader is imagined to
+    # know. Read the reader in the same turn. Both vocabularies are pinned by
+    # test_the_writers_vocabulary_matches_its_readers, which imports them.
     #
     # THE FALLBACK USED TO BE `ok`, AND THAT WAS THE WHOLE BUG. Only the exact
     # lowercase spellings below were recognised, so `failed`, `ERROR`, `FAIL`,
@@ -165,7 +185,8 @@ _organism_heartbeat_write() {
         | [Dd][Oo][Ww][Nn] | [Pp][Aa][Nn][Ii][Cc] | [Kk][Ii][Ll][Ll][Ee][Dd] \
         | [Aa][Bb][Oo][Rr][Tt][Ee][Dd] | [Ee][Xx][Cc][Ee][Pp][Tt][Ii][Oo][Nn] \
         | [Uu][Nn][Hh][Ee][Aa][Ll][Tt][Hh][Yy]) _organism_hb_status="error" ;;
-        [Dd][Ii][Ss][Aa][Bb][Ll][Ee][Dd]) _organism_hb_status="ok" ;;  # deliberate, see above
+        [Dd][Ii][Ss][Aa][Bb][Ll][Ee][Dd]) _organism_hb_status="disabled" ;;
+        [Rr][Uu][Nn][Nn][Ii][Nn][Gg]) _organism_hb_status="ok" ;;
         # The six on the two lines above joined the list late, and the gap they
         # filled was arbitrary rather than principled: `fail`/`fatal`/`crash`/
         # `dead`/`timeout` mapped to error while `down`, `panic`, `killed`,
@@ -222,13 +243,51 @@ _organism_heartbeat_write() {
     # answered"; the answer itself is the entity. So the shape is checked.
     local _organism_hb_ts
     _organism_hb_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)" || _organism_hb_ts=""
+    #
+    # THE SHAPE IS NOT THE VALIDITY — round 6. The pattern below used to check
+    # only that the digits were digits, so `9999-99-99T99:99:99Z` passed. Both
+    # readers then fail to parse it: `sentinel-aggregate` scores the organ
+    # `unknown`, `healer_receptor_registry` skips it and it ages into dead. That
+    # is a DEAD fabricated on a healthy organ — the same lie as the corrupt `ts`
+    # this check was added to stop, wearing a well-formed mask. The field ranges
+    # are therefore checked too, still with bracket patterns and still without a
+    # single external command (round 3: the verdict path must contain nothing
+    # that can fail).
+    # The verdict goes in a SEPARATE flag rather than blanking `ts` in place: the
+    # diagnostic below prints what `date` actually said, and a validator that
+    # erases its own evidence leaves the operator with "clock unavailable
+    # (date gave nothing)" for a clock that answered something very specific.
+    local _organism_hb_tsok=no
     case "$_organism_hb_ts" in
-        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+        [0-9][0-9][0-9][0-9]-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-6][0-9]Z)
+            _organism_hb_tsok=yes
+            case "${_organism_hb_ts#????-}" in
+                0[1-9]-* | 1[0-2]-*) ;;
+                *) _organism_hb_tsok=no ;;
+            esac
+            case "${_organism_hb_ts#????-??-}" in
+                0[1-9]T* | [12][0-9]T* | 3[01]T*) ;;
+                *) _organism_hb_tsok=no ;;
+            esac
+            case "${_organism_hb_ts#????-??-??T}" in
+                [01][0-9]:* | 2[0-3]:*) ;;
+                *) _organism_hb_tsok=no ;;
+            esac
+            # Seconds allow 60: a real leap second is a valid UTC timestamp and
+            # `date` can emit one. 61 was accepted by the shape check above.
+            case "${_organism_hb_ts#????-??-??T??:??:}" in
+                [0-5][0-9]Z | 60Z) ;;
+                *) _organism_hb_tsok=no ;;
+            esac
+            ;;
+    esac
+    case "$_organism_hb_tsok" in
+        yes) ;;
         *)
             # Say it. The previous version returned 0 in silence, which left the
             # caller, launchd and the operator with an ordinary success and the
             # organ drifting stale for a fault that was never the organ's.
-            printf 'organism_heartbeat: %s: clock unavailable (date gave %s) — no heartbeat written, previous one kept\n' \
+            printf 'organism_heartbeat: %s: clock unusable (date gave %s) — no heartbeat written, previous one kept\n' \
                 "$_organism_hb_id" "${_organism_hb_ts:-nothing}" >&2
             return 0
             ;;

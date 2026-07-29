@@ -25,12 +25,14 @@ heartbeat library resolved the way the wrapper resolves it.
 from __future__ import annotations
 
 import json
+import ast
 import os
 import re
 import shlex
 import shutil
 import string
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -383,10 +385,15 @@ def test_innocence_the_healthy_vocabulary_still_reads_healthy(
     """The other half of the whitelist change.
 
     A fallback that degrades everything unknown is only safe if the words that
-    SHOULD be green still are -- including `disabled`, whose mapping to `ok` is a
-    deliberate exception documented in the library (passing it through would make
-    the reader call the organ dead and the healer would resurrect exactly the
-    organ an operator switched off).
+    SHOULD be green still are.
+
+    `disabled` PASSES THROUGH as of round 6. This test used to crystallise its
+    mapping to `ok`, citing a claim about the reader that was false when it was
+    written: `healer_receptor_registry` has exempted `disabled` since
+    2026-07-06. A corpus that pins a false green is worse than no corpus,
+    because it makes the lie look load-bearing.
+
+    `running` maps to `ok` — the only spelling both readers call healthy.
     """
     for good, expected in (
         ("ok", "ok"),
@@ -394,7 +401,9 @@ def test_innocence_the_healthy_vocabulary_still_reads_healthy(
         ("success", "success"),
         ("healthy", "healthy"),
         ("starting", "starting"),
-        ("disabled", "ok"),
+        ("disabled", "disabled"),
+        ("running", "ok"),
+        ("RUNNING", "ok"),
     ):
         rc, out, hb = _source_and_call(
             tmp_path, shell, PROBE_ID, good, "n", tag=f"ok-{shell}-{good}"
@@ -1372,7 +1381,7 @@ def test_a_clock_failure_is_reported_not_merely_survived(
         f"organism_heartbeat {PROBE_ID} ok n\n",
     )
     assert rc == 0, out
-    assert "clock unavailable" in out, (
+    assert "clock unusable" in out, (
         f"{shell}: a heartbeat that could not be written said nothing: {out!r}"
     )
     assert PROBE_ID in out, f"{shell}: the warning does not name the organ: {out!r}"
@@ -1422,3 +1431,165 @@ def test_a_sanitiser_that_corrupts_the_sentinel_at_equal_length_is_caught(
     note = json.loads(sidecar.read_text())["note"]
     assert note != "ABY", f"{shell}: a corrupted sentinel was published verbatim"
     assert "dropped" in note, f"{shell}: expected the explicit marker, got {note!r}"
+
+
+# ---------------------------------------------------------------------------
+# The writer's vocabulary belongs to its READERS (adversarial round 6).
+# ---------------------------------------------------------------------------
+
+_HEALER = HB_LIB.parent.parent / "healer_receptor_registry.py"
+_SENTINEL = HB_LIB.parent.parent / "sentinel-aggregate.py"
+
+# The one word this writer emits that MUST read as a death on every surface.
+_DEATH_WORDS = frozenset({"error"})
+
+# MEASURED DIVERGENCE BETWEEN THE TWO READERS, pinned rather than papered over
+# (2026-07-29). `sentinel-aggregate` classifies degraded/warning as `warning` —
+# alive, not paging. `healer_receptor_registry` has no third category: anything
+# outside HEALTHY_STATUSES ∪ EXEMPT_STATUSES is dead, so it would RESTART an
+# organ that is running and saying so.
+#
+# That is the healer's defect, not the writer's, and curing it there changes
+# what the fleet heals — a blast radius that does not belong inside a shell
+# library's PR. So it is recorded here as the state of the world, and this test
+# fails loudly if that state changes in either direction: a healer that learns
+# these words, or a writer that starts emitting a fourth one, both have to come
+# back and look at this list.
+_HEALER_CALLS_DEAD_BUT_SENTINEL_DOES_NOT = frozenset({"warning", "degraded"})
+
+
+def _emitted_statuses() -> set[str]:
+    """Every literal this library can assign to the status field."""
+    text = HB_LIB.read_text(encoding="utf-8")
+    return set(re.findall(r'_organism_hb_status="([a-z]+)"', text))
+
+
+def _healer_sets() -> tuple[set[str], set[str]]:
+    """HEALTHY_STATUSES and EXEMPT_STATUSES, read from the reader's source.
+
+    Parsed rather than imported: importing runs a module whose job is to touch
+    the live fleet, and a test must not.
+    """
+    tree = ast.parse(_HEALER.read_text(encoding="utf-8"))
+    found: dict[str, set[str]] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Set):
+            for t in node.targets:
+                if isinstance(t, ast.Name) and t.id in (
+                    "HEALTHY_STATUSES",
+                    "EXEMPT_STATUSES",
+                ):
+                    found[t.id] = {
+                        e.value for e in node.value.elts if isinstance(e, ast.Constant)
+                    }
+    assert "HEALTHY_STATUSES" in found and "EXEMPT_STATUSES" in found, (
+        f"could not read the healer's vocabulary from {_HEALER} — it was renamed "
+        "or restructured, and this test would otherwise pass by finding nothing"
+    )
+    return found["HEALTHY_STATUSES"], found["EXEMPT_STATUSES"]
+
+
+def _sentinel_classified() -> set[str]:
+    """The words `sentinel-aggregate`'s heartbeat classifier explicitly handles.
+
+    Read from the classifier's own branches, not from the file at large. The
+    first build of this test asserted the status appeared ANYWHERE in the
+    source, which `disabled` already did — in an output-section list — so the
+    assertion held with the classifier arm deleted. A word in a rendering list
+    is not a word the classifier recognises, and only the second decides
+    whether an organ is called dead.
+    """
+    src = _SENTINEL.read_text(encoding="utf-8")
+    words: set[str] = set()
+    for tup in re.findall(r"hb_status in \(([^)]*)\)", src):
+        words |= set(re.findall(r'"([a-z_]+)"', tup))
+    words |= set(re.findall(r'hb_status == "([a-z_]+)"', src))
+    assert words, (
+        f"could not read the classifier's vocabulary from {_SENTINEL.name} — it "
+        "was restructured, and this test would otherwise pass by finding nothing"
+    )
+    return words
+
+
+def test_the_writers_vocabulary_matches_its_readers() -> None:
+    """Every status this library emits must be a word BOTH readers recognise.
+
+    THE DEFECT THIS EXISTS FOR (2026-07-29, round 6). This file mapped
+    `disabled` to `ok`, justified by a comment asserting "disabled is not in the
+    reader's vocabulary". The assertion was never true: the healer has exempted
+    that exact word since 2026-07-06 (#2027), three weeks before the comment
+    claiming otherwise was written — by me, without reading the reader. The cost
+    was a #2-family lie: an organ an operator had deliberately stopped was
+    indistinguishable from a healthy one on every surface.
+
+    `running` was the mirror. It was absent from the whitelist, so it fell to
+    `warning`; the healer counts `running` as healthy and `warning` as DEAD, so
+    the normalisation FABRICATED a death. It maps to `ok` now — the only
+    spelling both readers agree on.
+
+    A comment cannot hold this invariant, because a comment is a claim about
+    another file at the moment someone wrote it. This test reads the other
+    files. A reader that renames its constants fails here loudly rather than
+    letting the writer keep emitting a word nothing classifies.
+    """
+    healthy, exempt = _healer_sets()
+    sentinel = _sentinel_classified()
+    emitted = _emitted_statuses()
+    assert emitted, "found no status literal in the library — has the field moved?"
+
+    for status in sorted(emitted):
+        if status in _DEATH_WORDS:
+            # Deliberately NOT required to have a classifier branch: the
+            # sentinel's `else: dead` IS the branch for a death word, and
+            # asserting otherwise (as the first build did) fails on correct code.
+            assert status not in sentinel, (
+                f"{status!r} now has its own branch in {_SENTINEL.name} — check "
+                "that it still ends in a death before removing it from this list"
+            )
+            assert status not in healthy and status not in exempt, (
+                f"{status!r} is meant to read as a death, but the healer counts it "
+                "among its healthy/exempt words"
+            )
+            continue
+        assert status in sentinel, (
+            f"the writer emits {status!r} but {_SENTINEL.name}'s classifier does "
+            f"not branch on it (it knows {sorted(sentinel)}) — every word it does "
+            "not recognise falls through to `dead`"
+        )
+        if status in _HEALER_CALLS_DEAD_BUT_SENTINEL_DOES_NOT:
+            assert status not in healthy and status not in exempt, (
+                f"{status!r} is recorded as a word the healer treats as dead. It no "
+                "longer does — that is good news, and this list must shrink to say so"
+            )
+            continue
+        assert status in healthy or status in exempt, (
+            f"the writer emits {status!r} but the healer classifies neither as "
+            f"healthy {sorted(healthy)} nor exempt {sorted(exempt)} — everything "
+            "it does not recognise ages into dead, so this word fabricates a "
+            "death on a healthy organ"
+        )
+
+
+def test_a_wall_clock_that_is_well_formed_but_impossible_is_refused() -> None:
+    """Shape is not validity, and an unparseable ts fabricates a DEAD.
+
+    `9999-99-99T99:99:99Z` satisfied the digit pattern this check used to be.
+    Both readers then fail to parse it — the sentinel scores `unknown`, the
+    healer skips the organ and it ages into dead — so a healthy organ was
+    published as one nothing could read.
+    """
+    for bad in ("9999-99-99T99:99:99Z", "2026-13-01T00:00:00Z", "2026-07-29T24:00:00Z"):
+        seen = Path(tempfile.mkdtemp()) / "seen"
+        proc = subprocess.run(
+            ["bash", "-c", f'. "$1"; date() {{ printf "%s" "{bad}"; }}; '
+             'organism_heartbeat probe.clock ok n', "_", str(HB_LIB)],
+            env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+            capture_output=True, text=True, timeout=60,
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert not (seen.exists() and list(seen.glob("*"))), (
+            f"{bad!r} was written as a timestamp"
+        )
+        assert bad in proc.stderr, (
+            f"the diagnostic lost the value the clock actually gave: {proc.stderr!r}"
+        )
