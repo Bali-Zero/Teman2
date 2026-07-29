@@ -53,6 +53,19 @@ test.describe("Bali Zero product-family theme contract", () => {
     );
   });
 
+  test("a legacy Appearance dark preference remains honoured", async ({
+    page,
+  }) => {
+    await seedTheme(page, "dark");
+
+    await page.goto(`${KITA_ORIGIN}/`);
+
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      "operative-dark",
+    );
+  });
+
   test("theme selection uses the data-theme contract instead of a dark class", async ({
     page,
   }) => {

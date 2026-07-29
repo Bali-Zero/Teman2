@@ -3,7 +3,10 @@ export type CaseStatus =
   | "waiting_documents"
   | "sending_invoice"
   | "on_process"
-  | "completed";
+  | "completed"
+  | "unknown";
+
+export type WorkflowStatus = Exclude<CaseStatus, "unknown">;
 
 export interface ColumnColorConfig {
   label: string;
@@ -70,9 +73,21 @@ export const COLUMN_COLORS: Record<CaseStatus, ColumnColorConfig> = {
     textColor: "var(--state-success)",
     dotColor: "bg-[var(--state-success)]",
   },
+  unknown: {
+    // Preserve unexpected backend states visibly instead of silently treating
+    // them as intake. They are shown in the board with their raw sub-status.
+    label: "Needs Review",
+    gradientStart: "var(--state-danger)",
+    gradientEnd: "var(--state-warning)",
+    tintBg: "color-mix(in srgb, var(--state-danger) 5%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--state-danger) 22%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+    textColor: "var(--state-danger)",
+    dotColor: "bg-[var(--state-danger)]",
+  },
 };
 
-export const COLUMN_ORDER: CaseStatus[] = [
+export const COLUMN_ORDER: WorkflowStatus[] = [
   "inquiry",
   "waiting_documents",
   "sending_invoice",
@@ -100,5 +115,5 @@ export function getStatusColumn(status: string): CaseStatus {
     status === "quotation"
   )
     return "sending_invoice";
-  return "inquiry";
+  return "unknown";
 }
