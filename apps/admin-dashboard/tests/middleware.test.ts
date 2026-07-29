@@ -213,6 +213,37 @@ describe("admin-dashboard middleware — x-admin-email is stamped, never accepte
     expect(forwarded(res)).toBe("zero@balizero.com");
   });
 
+  it("GUILT: the unauthenticated local-dev path also refuses a supplied header", async () => {
+    expect(process.env.NODE_ENV).not.toBe("production");
+    delete process.env.DEV_ADMIN_EMAIL;
+    const headers = new Headers();
+    headers.set("x-admin-email", "zero@balizero.com");
+    const req = new NextRequest(new URL("http://localhost:3002/api/clients"), {
+      headers,
+    });
+    const res = await middleware(req);
+    expect(res!.status).toBe(200);
+    expect(forwarded(res)).toBeNull();
+  });
+
+  it("INNOCENCE: local dev stamps DEV_ADMIN_EMAIL when the operator sets one", async () => {
+    process.env.DEV_ADMIN_EMAIL = "ari@balizero.com";
+    try {
+      const headers = new Headers();
+      headers.set("x-admin-email", "zero@balizero.com");
+      const req = new NextRequest(
+        new URL("http://localhost:3002/api/clients"),
+        {
+          headers,
+        },
+      );
+      const res = await middleware(req);
+      expect(forwarded(res)).toBe("ari@balizero.com");
+    } finally {
+      delete process.env.DEV_ADMIN_EMAIL;
+    }
+  });
+
   it("a rejected request forwards no email at all", async () => {
     const req = buildRequestWithHeaders("/api/clients", "not-a-jwt", {
       "x-admin-email": "zero@balizero.com",

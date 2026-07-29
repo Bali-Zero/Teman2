@@ -84,7 +84,22 @@ export async function middleware(
   }
 
   if (isLocalDevRequest(request)) {
-    return NextResponse.next();
+    // Local dev skips authentication, so there is no verified email to stamp —
+    // but the header still has to be stripped. Otherwise the one path that
+    // never authenticates is also the one where `/api/clients` would believe
+    // whatever `x-admin-email` the caller typed, and "this header is never
+    // caller-controlled" would be true everywhere except here.
+    //
+    // Set DEV_ADMIN_EMAIL to pick which identity the local dashboard reads as;
+    // unset, the clients table scopes to nobody and comes back empty, which is
+    // the honest default for a request that proved nothing.
+    const devHeaders = new Headers(request.headers);
+    devHeaders.delete("x-admin-email");
+    const devEmail = process.env.DEV_ADMIN_EMAIL;
+    if (devEmail) {
+      devHeaders.set("x-admin-email", devEmail);
+    }
+    return NextResponse.next({ request: { headers: devHeaders } });
   }
 
   const token = request.cookies.get("nz_access_token")?.value;
