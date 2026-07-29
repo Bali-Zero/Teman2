@@ -298,6 +298,9 @@
 
   /* Sidebar — GARUDA pill active */
   --sidebar-active-bg: #d4845a;
+  /* Filled controls need a darker, white-text-safe copper than the accent
+     used for icons and large text. This stays AA in both theme modes. */
+  --bz-sidebar-active-fill: #9d5230;
   --sidebar-active-border: transparent;
   --sidebar-pill-radius: 12px;
 
@@ -328,17 +331,12 @@
 /* ───────────────────────────────────────────────────────────────────────────
    PORTAL LIGHT SURFACE — "Rumah Putih / Lounge" (2026-06-21)
 
-   The pre-paint themeInitScript in layout.tsx already routes `my.` (and
-   `zantara.`) → data-theme="operative-light", while `kita.`/`prime.` →
-   operative-dark. BUT the operative-light shell variables were never defined
-   (superscar #2 "Esiste ≠ Armato": routing wired, theme unarmed) — so the
-   client portal received the dark `:root` values. This block ARMS the light
-   surface by overriding the GARUDA shell tokens under [data-theme="operative-light"].
-
-   Scoped to data-theme on <html>, set per-DOMAIN — so it CANNOT leak into kita
-   (operative-dark) or the editorial site. The client gets a calm warm-paper
-   lounge; the team backoffice stays dark. Accent copper is kept for brand
-   continuity; only base/text/border/elevated invert. WCAG AA verified:
+   The pre-paint themeInitScript in layout.tsx routes `kita.`, `my.` and
+   `zantara.` to data-theme="operative-light" by default; `prime.` retains the
+   immersive operative-dark persona. This block arms the common daylight
+   surface, then product-scoped tokens below differentiate the team workspace
+   from the client portal. Accent copper is kept for brand continuity while
+   base/text/border/elevated invert. WCAG AA verified:
    ink #16213a on paper #f4f1ea ≈ 12.8:1; soft-ink #475372 ≈ 6.4:1.
    ─────────────────────────────────────────────────────────────────────────── */
 [data-theme="operative-light"] {

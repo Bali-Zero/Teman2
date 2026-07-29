@@ -208,7 +208,7 @@ export function HeroLiveWindow() {
           background: "rgba(10,10,12,0.72)",
           backdropFilter: "blur(12px)",
           border: "1px solid rgba(255,255,255,0.08)",
-          color: "var(--bz-text-2)",
+          color: "rgba(255,255,255,0.78)",
         }}
       >
         <span
@@ -226,7 +226,7 @@ export function HeroLiveWindow() {
           background: "rgba(10,10,12,0.72)",
           backdropFilter: "blur(12px)",
           border: "1px solid rgba(255,255,255,0.08)",
-          color: "var(--bz-text-2)",
+          color: "rgba(255,255,255,0.78)",
         }}
       >
         ✎ Edit homepage layout
