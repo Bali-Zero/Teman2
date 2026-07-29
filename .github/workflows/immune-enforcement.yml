@@ -121,6 +121,9 @@ jobs:
               scripts/verify_connectome_run.sh|\
               scripts/tests/test_connectome_alert_honesty.sh|\
               scripts/ci/prepush_tip_drift.sh|\
+              .husky/pre-commit|\
+              scripts/tests/test_husky_pii_pass_overmatch.py|\
+              scripts/tests/test_pii_gate_merge_scope.sh|\
               scripts/docs_audit.py|\
               scripts/docs_inventory_refresh_liveness.py|\
               scripts/docs_inventory_regen.sh|\
@@ -200,6 +203,7 @@ jobs:
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
             scripts/tests/test_prepush_classify.py \
+            scripts/tests/test_husky_pii_pass_overmatch.py \
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
@@ -221,6 +225,18 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Named here at birth, same reason as the shell corpora below: the
+          # 2026-07-30 merge-scope fix exists to end exactly the kind of theater
+          # an unexecuted copy of its own proof would be.
+          # No `if [ -f ]` skip, per the convention the fly-credential step below
+          # argues: this file lands on main with the PR that adds this step, so
+          # from then on "absent" means DELETED, and a deleted corpus must go red
+          # rather than quietly pass.
+          bash scripts/tests/test_pii_gate_merge_scope.sh
 
       - name: No run-block decapitates its own failure branch (W101, 4th instance)
         if: steps.paths.outputs.relevant == 'true'

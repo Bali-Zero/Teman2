@@ -30,6 +30,70 @@ if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" != "false" ]; then
     fi
 fi
 
+# >>> PII_ENUMERATE_BEGIN (extracted verbatim by scripts/tests/test_pii_gate_merge_scope.sh)
+# ── WHAT THIS COMMIT INTRODUCES (shared by the gates below) ──────────────────
+# `git diff --cached` compares the index against the FIRST parent. On a merge
+# commit that means every file the OTHER side changed since the merge base
+# reads as "staged", though this commit authored none of it.
+#
+# Measured 2026-07-30, twice. Synthetic: a 12-file merge — gate enumerated 12,
+# commit authored 0. Real, on the very branch that carries this fix: merging a
+# lagging main gave 2166 first-parent files against 3 actually authored. Each
+# consumer below then multiplied that number, in three escalating ways, all
+# observed on that one merge:
+#   - PII gate      — reads every file IN FULL via `git show ":$f"`. Slow, and
+#                     it false-blocks on main's already-public content.
+#   - lease-check   — spawns a python subprocess per hot-zone file, each waiting
+#                     out a Redis timeout. At 2166 files it does not slow down,
+#                     it HANGS: killed at 2 minutes.
+#   - prettier/lint — CHECKS main's files and fails on them. Caught red-handed:
+#                     4 unformatted files, all inherited from main, none written
+#                     by this commit, blocking the merge.
+#
+# So on a merge, judge the INTERSECTION: files differing from BOTH parents are
+# the conflict resolution, i.e. what a human actually authored here. A file
+# inherited unchanged from either side was gated when it was committed there.
+#
+# For a NON-merge commit this list is byte-identical to what each call-site
+# computed before — literally the same git invocation — so the ordinary path is
+# unchanged and only merges behave differently.
+#
+# LIMITATIONS, stated rather than hidden:
+# (a) A clean merge of a branch whose own commits bypassed this hook is not
+#     caught here. That hole predates this change and is not widened by it: a
+#     fast-forward merge and `git pull` create no commit at all, so pre-commit
+#     never runs for them either.
+# (b) FOUR call-sites deliberately still run their own `git diff --cached`,
+#     because they need a DIFFERENT file set, not because they were missed:
+#     the off-limits gate and the console.log/backend-changed scans omit
+#     `--diff-filter=d` and therefore see DELETIONS — feeding them this list
+#     would blind the off-limits gate to `git rm fly.toml`, which is narrowing
+#     a security gate, the one direction that is never the safe default. The
+#     cicatrix auto-archive uses `--diff-filter=ACMR` for a single-file
+#     membership test. They stay over-inclusive on merges; that is the tolerable
+#     side.
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d || true)
+STAGED_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || true)
+if [ -n "$STAGED_GIT_DIR" ] && [ -f "$STAGED_GIT_DIR/MERGE_HEAD" ]; then
+    # Narrowing must never happen BLIND: if the second-parent enumeration cannot
+    # be taken, keep the full set (over-inclusive is the safe direction) and say
+    # so out loud. A scan that cannot see is not clean.
+    # `VAR=$(cmd) || VAR=...` and not a bare assignment: under the `sh -e` husky
+    # runs this hook with, a bare `VAR=$(failing)` aborts the whole hook before
+    # any fallback can be read — that is W101, one file over.
+    STAGED_OTHER_LIST=$(mktemp 2>/dev/null) || STAGED_OTHER_LIST=""
+    if [ -n "$STAGED_OTHER_LIST" ] && git diff --cached --name-only --diff-filter=d MERGE_HEAD > "$STAGED_OTHER_LIST" 2>/dev/null; then
+        STAGED_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -Fxf "$STAGED_OTHER_LIST" || true)
+    else
+        echo "⚠️  merge detected but the second-parent file list could not be taken —"
+        echo "    gating the FULL staged set instead (over-inclusive; a narrowed blind scan would be worse)."
+    fi
+    # `if`, not `[ ... ] && rm`: an && list that evaluates false as the last
+    # command of this block would take the same `sh -e` exit.
+    if [ -n "$STAGED_OTHER_LIST" ]; then rm -f "$STAGED_OTHER_LIST"; fi
+fi
+# <<< PII_ENUMERATE_END
+
 # ── OSINT / CLIENT-PII SOVEREIGNTY GATE (Symbiosis Law 2) ────────────────────
 # Added 2026-06-05 (cc-setup self-audit → research/operations/2026-06-05-claude-code-setup-self-audit.md).
 # HARD-BLOCKS committing named-client PII / OSINT research artifacts that
@@ -42,10 +106,27 @@ fi
 if [ "${PII_GATE_ENFORCEMENT:-true}" != "false" ]; then
     PII_PATH_REGEX='(^|/)research/[^/]+/clients/|(^|/)[^/]*-case\.md$|(^|/)[^/]*-guidance\.(html|pdf)$|(^|/)DOSSIER_[^/]*\.md$|(^|/)OSINT-Nexus/'
     PII_NUM='\b(npwp|nik|ktp)\b[[:space:]:#=.]*[0-9][0-9.\-]{5,}'
-    PII_PASS='passport[[:space:]]*(no\.|no\b|number\b|#|:)[[:space:]:#=]*[A-Za-z0-9]{6,}'
-    PII_STAGED=$(git diff --cached --name-only --diff-filter=d | grep -EI "$PII_PATH_REGEX" || true)
+    # The tail must contain a DIGIT (2026-07-30). It used to be a bare
+    # `[A-Za-z0-9]{6,}`, which matched the ordinary English word that follows the
+    # keyword in prose: "passport number required", "passport no longer accepted",
+    # "send us your passport number please" all blocked a commit, while "the
+    # passport number field is mandatory" passed only because "field" is 5 letters
+    # — a length lottery, not a rule. Requiring a digit also CLOSES an under-match
+    # the old form had: a HYPHENATED number, `No. <letter>-<7 digits>`, was never
+    # caught. Over-match and under-match on one line, superscar #3.
+    #
+    # The shape is described rather than written out on purpose: a literal
+    # example here would match this very pattern, so every future edit to this
+    # file would need PII_GATE_ENFORCEMENT=false — and a gate you must routinely
+    # disable to touch is a gate being trained out of existence. The literals
+    # live where they are load-bearing instead: the guilt corpus in
+    # scripts/tests/test_husky_pii_pass_overmatch.py, whose fixtures must be
+    # passport-shaped by definition and which does need the override to edit.
+    PII_PASS='passport[[:space:]]*(no\.|no\b|number\b|#|:)[[:space:]:#=]*[A-Za-z]{0,3}[.\-]?[0-9][0-9A-Za-z.\-]{4,}'
+
+    PII_STAGED=$(printf '%s\n' "$STAGED_FILES" | grep -EI "$PII_PATH_REGEX" || true)
     PII_CONTENT=""
-    for f in $(git diff --cached --name-only --diff-filter=d | grep -Evi '\.(png|jpg|jpeg|pdf|gif|webp|zip|gz|bin)$' || true); do
+    for f in $(printf '%s\n' "$STAGED_FILES" | grep -Evi '\.(png|jpg|jpeg|pdf|gif|webp|zip|gz|bin)$' || true); do
         git show ":$f" 2>/dev/null | grep -Eiq "$PII_NUM|$PII_PASS" && PII_CONTENT="$PII_CONTENT $f"
     done
     if [ -n "$PII_STAGED" ] || [ -n "$PII_CONTENT" ]; then
@@ -78,7 +159,13 @@ fi
 
 if [ "${AGENT_LEASE_ENFORCEMENT:-true}" != "false" ]; then
     HOT_ZONE_REGEX='^(infra/launchagents/.*\.sh|apps/backend-rag/backend/db/migrations_v2/.*\.sql|shared/escalations.*\.jsonl|scripts/(nuzantara-sentinel|dlq_autopilot|pg-to-organism-bridge)\.py|\.github/workflows/.*|apps/backend-rag/backend/services/(auth|billing|pricing)/.*)$'
-    HOT_STAGED=$(git diff --cached --name-only --diff-filter=d | grep -E "$HOT_ZONE_REGEX" || true)
+    # $STAGED_FILES, not a fresh `git diff --cached`: this loop spawns a python
+    # subprocess per matched file, each of which tries Redis and waits out a
+    # timeout when it is down. On a merge the first-parent list is the whole
+    # incoming side — 2164 files on the merge that exposed this — so the raw
+    # enumeration turned a lease check into a hang (observed 2026-07-30, killed
+    # at 2 minutes). See the PII_ENUMERATE block at the top of this file.
+    HOT_STAGED=$(printf '%s\n' "$STAGED_FILES" | grep -E "$HOT_ZONE_REGEX" || true)
     if [ -n "$HOT_STAGED" ]; then
         echo "🔒 [lease-check] hot-zone files staged — checking Redis lease registry..."
         LEASE_BLOCK=0
@@ -107,7 +194,7 @@ fi
 # workflow lint-migration-numbers.yml only fires on pull_request, so L2
 # autonomous-ops direct-push to main would skip it. This catches dup
 # prefixes BEFORE the commit lands, before push, before deploy.
-MIG_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '^apps/backend-rag/backend/db/migrations_v2/.*\.sql$' || true)
+MIG_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '^apps/backend-rag/backend/db/migrations_v2/.*\.sql$' || true)
 if [ -n "$MIG_FILES" ]; then
     echo "🔢 [W41] Migration number uniqueness lint..."
     if ! python3 scripts/lint_migration_numbers.py; then
@@ -144,7 +231,7 @@ fi
 
 # Check for print statements in Python files
 echo "🐍 Checking for print() statements in Python files..."
-PY_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.py$' || true)
+PY_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '\.py$' || true)
 if [ -n "$PY_FILES" ]; then
     # Exclude scripts/ and tests/ from this check (they can use print)
     BACKEND_PY_FILES=$(echo "$PY_FILES" | grep -E '^apps/backend-rag/backend/(app|services|core|middleware)/' || true)
@@ -191,7 +278,7 @@ fi
 
 # Run linting — only on staged TS/JS/JSON/MD/YAML files (not entire repo)
 echo "🔧 Running linting..."
-LINT_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml)$' || true)
+LINT_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml)$' || true)
 if [ -n "$LINT_FILES" ]; then
     echo "$LINT_FILES" | xargs npx prettier --check 2>/dev/null || {
         echo "❌ Linting failed on staged files. Run: npx prettier --write <file>"
@@ -203,7 +290,7 @@ fi
 # A full `tsc --noEmit` over apps/mouth takes minutes; running it on EVERY commit
 # (even a pure-Python backend change) blocked all backend commits for minutes.
 # Gate it on staged frontend files, exactly like the lint stage above does.
-TS_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '^apps/mouth/.*\.(ts|tsx)$' || true)
+TS_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '^apps/mouth/.*\.(ts|tsx)$' || true)
 if [ -n "$TS_FILES" ]; then
     echo "📝 Running type checking (apps/mouth TS/TSX staged)..."
     if grep -q "ignoreBuildErrors.*true" apps/mouth/next.config.ts 2>/dev/null; then
@@ -221,7 +308,7 @@ fi
 
 # Run Python linting
 echo "🐍 Running Python linting..."
-PY_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '^apps/backend-rag/.*\.py$' || true)
+PY_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '^apps/backend-rag/.*\.py$' || true)
 if [ -n "$PY_FILES" ]; then
     # Make paths relative to apps/backend-rag
     RELATIVE_FILES=$(echo "$PY_FILES" | sed 's|^apps/backend-rag/||')
