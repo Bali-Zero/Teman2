@@ -26,7 +26,7 @@ import "./globals.css";
 //   my., zantara.                 → operative-light (client self-service)
 //   balizero, visa., tax., /kbli  → editorial (public funnel)
 // Must be inline; next/script strategy="beforeInteractive" is insufficient in App Router.
-const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-theme');var host=location.hostname;var isKita=host.indexOf('kita.')===0;var isPrime=host.indexOf('prime.')===0;var isMy=host.indexOf('my.')===0||host.indexOf('zantara.')===0;var product=(isKita||isPrime)?'kita':isMy?'my':'editorial';var t=stored;if(!t){if(isKita||isMy)t='operative-light';else if(isPrime)t='operative-dark';else t='editorial';}document.documentElement.dataset.product=product;document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.product='editorial';document.documentElement.dataset.theme='editorial';}})();`;
+const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-theme');var host=location.hostname;var isKita=host.indexOf('kita.')===0;var isPrime=host.indexOf('prime.')===0;var isMy=host.indexOf('my.')===0||host.indexOf('zantara.')===0;var product=(isKita||isPrime)?'kita':isMy?'my':'editorial';var t=stored;if(product!=='editorial'){if(t==='light')t='operative-light';if(t==='dark')t='operative-dark';}if(!t){if(isKita||isMy)t='operative-light';else if(isPrime)t='operative-dark';else t='editorial';}document.documentElement.dataset.product=product;document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.product='editorial';document.documentElement.dataset.theme='editorial';}})();`;
 
 export const viewport: Viewport = {
   width: "device-width",

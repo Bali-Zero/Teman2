@@ -221,15 +221,18 @@ export function AppSidebar({
     >
       {/* Logo Header */}
       <div
-        className="border-b flex items-center justify-center py-4 px-3"
-        style={{ borderColor: "var(--bz-border)" }}
+        className="border-b flex items-center justify-center px-3"
+        style={{
+          height: "var(--bz-header-height, 48px)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <Link
           href={isPortal ? "/portal" : "/dashboard"}
           aria-label="Bali Zero — workspace home"
           className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
         >
-          <BZLogo variant="full" size={52} className="rounded-full" priority />
+          <BZLogo variant="full" size={36} className="rounded-full" priority />
         </Link>
       </div>
 

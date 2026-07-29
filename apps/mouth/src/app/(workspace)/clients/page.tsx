@@ -1137,8 +1137,18 @@ function ClientsListContent() {
                       <tr
                         key={client.id}
                         onClick={() => router.push(`/clients/${client.id}`)}
-                        className="cursor-pointer transition-colors"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            router.push(`/clients/${client.id}`);
+                          }
+                        }}
+                        role="link"
+                        tabIndex={0}
+                        aria-label={`Open client ${client.full_name || client.email}`}
+                        className="cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--bz-focus-ring)]"
                         style={{
+                          height: "var(--bz-product-row-height)",
                           background:
                             idx % 2 === 0 ? "transparent" : "var(--bz-surface)",
                           borderBottom: "1px solid var(--bz-border)",
