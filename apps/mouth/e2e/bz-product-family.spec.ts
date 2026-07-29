@@ -39,25 +39,27 @@ async function seedSyntheticPortalSession(page: Page): Promise<void> {
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
-          visa: {
-            status: "active",
-            type: "Sample KITAS",
-            expiryDate: "2027-04-18",
-            daysRemaining: 263,
+          data: {
+            visa: {
+              status: "active",
+              type: "Sample KITAS",
+              expiryDate: "2027-04-18",
+              daysRemaining: 263,
+            },
+            company: {
+              status: "active",
+              primaryCompanyName: "Sample Indonesia PT",
+              totalCompanies: 1,
+            },
+            taxes: {
+              status: "compliant",
+              nextDeadline: "2026-09-30",
+              daysToDeadline: 63,
+            },
+            documents: { total: 3, pending: 0 },
+            messages: { unread: 0 },
+            actions: [],
           },
-          company: {
-            status: "active",
-            primaryCompanyName: "Sample Indonesia PT",
-            totalCompanies: 1,
-          },
-          taxes: {
-            status: "compliant",
-            nextDeadline: "2026-09-30",
-            daysToDeadline: 63,
-          },
-          documents: { total: 3, pending: 0 },
-          messages: { unread: 0 },
-          actions: [],
         }),
       });
       return;
@@ -78,7 +80,9 @@ async function seedSyntheticPortalSession(page: Page): Promise<void> {
     if (pathname === "/api/portal/messages") {
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ messages: [], total: 0, unreadCount: 0 }),
+        body: JSON.stringify({
+          data: { messages: [], total: 0, unreadCount: 0 },
+        }),
       });
       return;
     }
