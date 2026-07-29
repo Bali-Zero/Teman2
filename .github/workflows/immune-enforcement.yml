@@ -118,6 +118,8 @@ jobs:
               .husky/pre-push|\
               scripts/tests/test_prepush_failclosed.sh|\
               scripts/tests/test_prepush_tip_drift.sh|\
+              scripts/verify_connectome_run.sh|\
+              scripts/tests/test_connectome_alert_honesty.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               scripts/docs_audit.py|\
               scripts/docs_inventory_refresh_liveness.py|\
@@ -289,6 +291,28 @@ jobs:
           # anywhere. All three exits are asserted — a fix that covers only the path
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
+
+      - name: Connectome alert honesty corpus (freshness + truncation + delivery)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # verify-connectome is the guardian of the guardians, and until now NO
+          # workflow named it at all — its wrapper had zero CI coverage while
+          # carrying a P0 Telegram path. Three ways its alert could mislead the
+          # only person who reads it, each pinned with guilt AND innocence here:
+          #   freshness  — M5's checkout is stale BY DESIGN (258 commits behind on
+          #                2026-07-29, pulling races ~45 live worktrees), so the
+          #                weekly run judges against an old census. The warning
+          #                added earlier that day went to stderr only; the alert
+          #                itself read identically at 0 and at 258 behind.
+          #   truncation — `head -10` on 23 regressions renders as a complete list
+          #                unless it declares "showing 10 of 23" (W97).
+          #   delivery   — a bare `curl -sS` exits 0 for HTTP 200 {"ok":false} and
+          #                for 401 after a rotation, so the alarm could not report
+          #                its own silence (W104). The send now goes through
+          #                scripts/tg_notify.py; a fake curl on PATH proves the
+          #                bare path is unreachable, not merely unused.
+          # Mutation-verified: reverting each cure turns the matching case red.
+          bash scripts/tests/test_connectome_alert_honesty.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
