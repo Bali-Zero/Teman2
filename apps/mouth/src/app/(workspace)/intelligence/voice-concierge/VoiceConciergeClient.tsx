@@ -21,21 +21,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 type ConciergeIntent =
-  | "visa"
-  | "company"
-  | "tax"
-  | "property"
-  | "operations"
-  | "unknown";
+  "visa" | "company" | "tax" | "property" | "operations" | "unknown";
 
 type ConciergeRisk = "low" | "medium" | "high";
 type SupportedLocale = "en" | "it" | "id" | "fr" | "ru";
 
 type ConciergeNextAction =
-  | "answer_only"
-  | "collect_non_pii_context"
-  | "handoff_team"
-  | "open_booking";
+  "answer_only" | "collect_non_pii_context" | "handoff_team" | "open_booking";
 
 interface ConciergeMessage {
   id: string;
@@ -532,8 +524,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
       try {
         const response = await fetch("/api/lab/voice-concierge/status");
         const payload = (await response.json()) as
-          | VoiceConciergeLabStatus
-          | ConciergeErrorResponse;
+          VoiceConciergeLabStatus | ConciergeErrorResponse;
         if (!cancelled && "local_audio" in payload) {
           setLabStatus(payload);
         }
@@ -631,8 +622,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
         });
 
         const payload = (await response.json()) as
-          | ConciergeResponse
-          | ConciergeErrorResponse;
+          ConciergeResponse | ConciergeErrorResponse;
 
         if (!response.ok || !isConciergeResponse(payload)) {
           const errorPayload = payload as ConciergeErrorResponse;
@@ -867,7 +857,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
               style={{
                 borderColor: "var(--bz-border)",
                 color: "var(--bz-text-2)",
-                background: "rgba(255,255,255,0.03)",
+                background: "var(--surface-raised)",
               }}
             >
               <ShieldCheck size={14} />
@@ -886,7 +876,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             style={{
               borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
-              background: "rgba(255,255,255,0.03)",
+              background: "var(--surface-raised)",
             }}
           >
             <span
@@ -915,7 +905,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             className="overflow-hidden"
             style={{
               borderColor: "var(--bz-border)",
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
             }}
           >
             <CardHeader>
@@ -930,7 +920,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                 className="flex min-h-[300px] flex-1 flex-col gap-3 overflow-y-auto rounded-md border p-3"
                 style={{
                   borderColor: "var(--bz-border)",
-                  background: "rgba(255,255,255,0.02)",
+                  background: "var(--surface-raised)",
                 }}
               >
                 {messages.length === 0 ? (
@@ -951,7 +941,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                         background:
                           message.role === "user"
                             ? "color-mix(in srgb, var(--bz-accent) 18%, transparent)"
-                            : "rgba(255,255,255,0.06)",
+                            : "var(--surface-raised)",
                         color: "var(--bz-text-1)",
                       }}
                     >
@@ -1045,7 +1035,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             <Card
               style={{
                 borderColor: "var(--bz-border)",
-                background: "rgba(35,35,40,0.65)",
+                background: "var(--bz-card)",
               }}
             >
               <CardHeader>
@@ -1073,7 +1063,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             <Card
               style={{
                 borderColor: "var(--bz-border)",
-                background: "rgba(35,35,40,0.65)",
+                background: "var(--bz-card)",
               }}
             >
               <CardHeader>
@@ -1092,7 +1082,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                     className="grid grid-cols-[44px_1fr_auto] items-center gap-2 rounded-md border px-3 py-2"
                     style={{
                       borderColor: "var(--bz-border)",
-                      background: "rgba(255,255,255,0.03)",
+                      background: "var(--surface-raised)",
                     }}
                   >
                     <span style={{ color: "var(--bz-text-3)" }}>{label}</span>
@@ -1123,7 +1113,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                   style={{
                     borderColor: "var(--bz-border)",
                     color: "var(--bz-text-2)",
-                    background: "rgba(255,255,255,0.03)",
+                    background: "var(--surface-raised)",
                   }}
                 >
                   <div className="grid grid-cols-[86px_1fr] gap-2">
@@ -1156,7 +1146,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                   style={{
                     borderColor: "var(--bz-border)",
                     color: "var(--bz-text-2)",
-                    background: "rgba(255,255,255,0.03)",
+                    background: "var(--surface-raised)",
                   }}
                 >
                   Text:{" "}
@@ -1170,7 +1160,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             <Card
               style={{
                 borderColor: "var(--bz-border)",
-                background: "rgba(35,35,40,0.65)",
+                background: "var(--bz-card)",
               }}
             >
               <CardHeader>
@@ -1200,7 +1190,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             <Card
               style={{
                 borderColor: "var(--bz-border)",
-                background: "rgba(35,35,40,0.65)",
+                background: "var(--bz-card)",
               }}
             >
               <CardHeader>

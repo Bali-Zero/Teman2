@@ -1031,7 +1031,7 @@ export default function CaseDetailPage() {
                         background:
                           isDone || isCurrent
                             ? step.color
-                            : "rgba(255,255,255,0.06)",
+                            : "var(--surface-raised)",
                         ...(isDone || isCurrent
                           ? { color: "var(--bz-base)" }
                           : {}),
@@ -1080,7 +1080,7 @@ export default function CaseDetailPage() {
                         background:
                           idx < currentIdx
                             ? step.color
-                            : "rgba(255,255,255,0.08)",
+                            : "var(--surface-raised)",
                       }}
                     />
                   )}
@@ -1099,7 +1099,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
             }}
           >
             <h2
@@ -1260,7 +1260,7 @@ export default function CaseDetailPage() {
                           alt={assignedName}
                           className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--glass-highlight)]"
                           fallback={
-                            <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[var(--glass-highlight)] flex items-center justify-center">
+                            <div className="w-7 h-7 rounded-full bg-[var(--surface-raised)] ring-1 ring-[var(--glass-highlight)] flex items-center justify-center">
                               <span className="text-[9px] font-bold uppercase text-[var(--bz-text-2)]">
                                 {initialsOf(assignedName)}
                               </span>
@@ -1285,7 +1285,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
             }}
           >
             <h2
@@ -1673,7 +1673,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
             }}
           >
             <div className="flex items-center justify-between mb-4">
@@ -1776,7 +1776,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
             }}
           >
             <h3
@@ -1858,7 +1858,7 @@ export default function CaseDetailPage() {
                 className="rounded-xl p-6"
                 style={{
                   border: "1px solid var(--bz-border)",
-                  background: "rgba(35,35,40,0.65)",
+                  background: "var(--bz-card)",
                 }}
               >
                 <h3

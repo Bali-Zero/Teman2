@@ -425,7 +425,7 @@ export function ProcessTab({
                           background:
                             ageDays > 14
                               ? "rgba(239,68,68,0.10)"
-                              : "rgba(255,255,255,0.04)",
+                              : "var(--surface-raised)",
                           color: ageDays > 14 ? "#f87171" : "var(--bz-text-2)",
                         }}
                         title={`Last updated ${ageDays} days ago`}

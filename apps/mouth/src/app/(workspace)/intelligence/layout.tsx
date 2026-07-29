@@ -40,10 +40,10 @@ export default function IntelligenceLayout({
         <div
           className="flex items-center justify-between px-4 py-3 mb-6 rounded-2xl border"
           style={{
-            background: "rgba(255,255,255,0.03)",
+            background: "var(--surface-raised)",
             backdropFilter: "blur(24px)",
             WebkitBackdropFilter: "blur(24px)",
-            borderColor: "rgba(255,255,255,0.07)",
+            borderColor: "var(--bz-border)",
           }}
         >
           {/* Back to Intelligence Center link */}
@@ -66,8 +66,8 @@ export default function IntelligenceLayout({
           <div
             className="flex items-center gap-1 p-1 rounded-xl"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "var(--surface-raised)",
+              border: "1px solid var(--bz-border)",
             }}
           >
             <SubNav

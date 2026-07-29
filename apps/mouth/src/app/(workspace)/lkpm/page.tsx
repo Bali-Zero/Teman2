@@ -237,7 +237,7 @@ export default function LKPMBatchPage() {
             onChange={(e) => setQuarter(e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
               borderColor: "var(--bz-border)",
             }}
           >
@@ -252,7 +252,7 @@ export default function LKPMBatchPage() {
             onChange={(e) => setYear(Number(e.target.value))}
             className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
               borderColor: "var(--bz-border)",
             }}
           >
@@ -397,7 +397,7 @@ export default function LKPMBatchPage() {
                       boxShadow: "0 4px 15px var(--bz-accent-glow)",
                     }
                   : {
-                      background: "rgba(35,35,40,0.65)",
+                      background: "var(--bz-card)",
                       backdropFilter: "blur(12px)",
                       color: "var(--bz-text-2)",
                       border: "1px solid var(--bz-border)",
@@ -414,7 +414,7 @@ export default function LKPMBatchPage() {
       <section
         className="rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden"
         style={{
-          background: "rgba(35,35,40,0.65)",
+          background: "var(--bz-card)",
           borderColor: "var(--bz-border)",
         }}
       >
@@ -470,7 +470,7 @@ export default function LKPMBatchPage() {
                           disabled={assigningId === item.id}
                           className="rounded border px-2 py-1 text-xs backdrop-blur-md"
                           style={{
-                            background: "rgba(35,35,40,0.65)",
+                            background: "var(--bz-card)",
                             borderColor: "var(--bz-border)",
                             color: item.lkpm_assigned_to
                               ? "var(--bz-text-1)"
@@ -714,7 +714,7 @@ function KPICard({
     <div
       className="rounded-xl border p-4 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
       style={{
-        background: "rgba(35,35,40,0.65)",
+        background: "var(--bz-card)",
         borderColor: "var(--bz-border)",
       }}
     >
