@@ -521,6 +521,104 @@ def compute_drift(doc: Path, expected_keys: Dict[str, str]) -> bool:
     return False
 
 
+def archive_orphan_action(last_touched_date: str) -> str:
+    """The `action` cell an orphan-archived row carries.
+
+    Extracted so the string has exactly ONE author. `docs_inventory_blame.py`
+    needs to recognise this cell to tell a real orphan flip from a hand-written
+    one, and a second copy of the format there would be a second definition of
+    the same fact — the divergence would be silent, because nothing compares
+    the two spellings (scar #9: two writers of one field ⇒ the rule lives in
+    one module).
+    """
+    return f"archive: orphan, last_touched={last_touched_date}, refs=0"
+
+
+def orphan_flip_claim_is_legitimate(
+    *,
+    trusted_ref_has_prior_flip: bool,
+    generated_refs_in: object,
+    generated_eligible_on: str,
+    committed_flipped_on: str,
+    committed_refs_in: object,
+    trusted_ref_ceiling_date: "date | None",
+) -> bool:
+    """Is a committed `orphan_flipped_on` claim one an honest run could produce?
+
+    THE ONE definition of that question, called by both gates that ask it:
+    `_tolerated_orphan_flip_paths()` below (the `--check` byte-diff path) and
+    `docs_inventory_blame.py::_is_earned_flip` (the `inventory-check` blame
+    path). It was extracted, not copied: the blame path's first version
+    (2026-07-29) re-derived the rule from scratch and a cross-family red-team
+    took it apart — it ignored `refs_in`, so ANY doc could be hand-marked
+    ARCHIVED, and it had no upper bound, so `2099-12-31` passed. Everything it
+    was missing was already solved here, hardened by the 2026-07-25 round. A
+    weaker second copy of a guard is worse than no second guard, because the
+    weaker one is the one an attacker uses.
+
+    The four conditions are unchanged from that round — see
+    `_tolerated_orphan_flip_paths`'s docstring for why each exists and which
+    forgery direction it closes. Arguments are plain cells/flags so a caller
+    holding only rendered markdown can ask the same question as a caller
+    holding parsed `DocRow`s. Behaviour is preserved AT THE `--check` CALL SITE,
+    which is what was verified (55/55): the helper's own contract is
+    deliberately broader, because it stringifies and strips every value so a
+    caller holding rendered cells can use it. Old code rejected a STRING
+    `generated_refs_in="0"` and an INT `committed_refs_in=0`; this accepts both.
+    Neither is reachable from `--check`, which passes an int and a stripped
+    string respectively — but "behaviour-preserving" is a claim about the call
+    site, not about the function, and the difference is written down rather than
+    left for the next reader to discover.
+
+    DECLARED LIMITS (true of this predicate at both call sites, recorded rather
+    than silently inherited):
+
+      * `eligible_on <= claimed` ALLOWS a flip dated exactly on the eligibility
+        date, while `classify()` only flips when `as_of > eligible_on`
+        (strict, deliberately — see its comment). So a claim one day early is
+        tolerated. Tightening it is a semantic change to the 2026-07-25 round
+        and is tracked separately; it is NOT silently altered here.
+      * Whitelisting is not consulted. `classify()`'s structural eligibility is
+        `refs_in == 0 AND not whitelisted`; only the first half is checkable
+        from a rendered row. Measured on the live table 2026-07-29: zero
+        whitelisted docs have `refs_in == 0`, so the gap is latent, not open.
+      * THE LOWER BOUND IS TREE-DERIVED, AND THE TREE IS THE PR'S. The 2026-07-25
+        round hardened the UPPER bound against `GIT_COMMITTER_DATE` forgery, and
+        left the floor where it was: `orphan_eligible_on` is
+        `last_touched + orphan_days`, and `last_touched` comes from
+        `git log --format=%ct` on the branch under test. So an author who
+        backdates the commit that adds an unreferenced doc can make it eligible
+        immediately and claim a flip today; the claim is then genuinely below
+        the trusted ceiling and every other cell agrees, so it is tolerated.
+        Reachable from BOTH call sites, and pre-dating the extraction — closing
+        it means giving eligibility a trusted source, which changes `classify()`
+        itself. Recorded here, not fixed under a different mandate. Blast radius
+        is bounded by `refs_in == 0`: the doc must be one nothing links to.
+    """
+    if trusted_ref_ceiling_date is None:
+        return False  # no trustworthy ceiling — fail closed
+    if trusted_ref_has_prior_flip:
+        return False  # trusted-ref already records a flip here (direction b)
+    if str(generated_refs_in).strip() != "0" or not str(generated_eligible_on).strip():
+        return False  # not structurally orphan-eligible
+    try:
+        eligible_on = date.fromisoformat(str(generated_eligible_on).strip())
+    except ValueError:
+        return False
+    claimed_raw = str(committed_flipped_on or "").strip()
+    if claimed_raw in ("", "—"):
+        return False  # nothing claimed — ordinary strict comparison applies
+    try:
+        claimed_date = date.fromisoformat(claimed_raw)
+    except ValueError:
+        return False  # unparseable claim — fail closed
+    if not (eligible_on <= claimed_date <= trusted_ref_ceiling_date):
+        return False  # premature or future-dated (direction a)
+    if str(committed_refs_in).strip() != "0":
+        return False  # committed side disagrees on the structural fact itself
+    return True
+
+
 def _parse_inventory_table(content: str) -> Dict[str, Dict[str, str]]:
     """Parse the '## Files' markdown table into {path: {header_name: cell_value}}.
 
@@ -821,7 +919,7 @@ def classify(
             # into the tracked inventory, and "94d" becomes "95d" tomorrow with
             # no documentation having changed. See render_inventory()'s header
             # comment for the churn this caused.
-            row.action = f"archive: orphan, last_touched={row.last_touched_date}, refs=0"
+            row.action = archive_orphan_action(row.last_touched_date)
             return row
     # else: not (yet) archived via the orphan rule. Any `orphan_flipped_on`
     # from an earlier run is correctly NOT carried here (row keeps the
@@ -1239,29 +1337,20 @@ def _tolerated_orphan_flip_paths(
     if trusted_ref_ceiling_date is None:
         return tolerated
     for r in rows:
-        if r.path in prev_flipped:
-            continue  # trusted-ref already has this path — never tolerate (direction b)
-        if r.refs_in != 0 or not r.orphan_eligible_on:
-            continue  # not structurally orphan-eligible (refinement 2)
-        try:
-            eligible_on = date.fromisoformat(r.orphan_eligible_on)
-        except ValueError:
-            continue
         claim = committed_claims.get(r.path)
         if claim is None:
             continue  # no row on the committed side — never tolerate (refinement 3)
-        claimed_raw = claim.get("orphan_flipped_on", "")
-        if claimed_raw in ("", "—"):
-            continue  # nothing claimed — ordinary strict comparison applies
-        try:
-            claimed_date = date.fromisoformat(claimed_raw)
-        except ValueError:
-            continue  # unparseable claim — not tolerated, fail closed
-        if not (eligible_on <= claimed_date <= trusted_ref_ceiling_date):
-            continue  # premature or future-dated (refinement 1)
-        if claim.get("refs_in") != "0":
-            continue  # committed side disagrees on the structural fact itself
-        tolerated.add(r.path)
+        # The four refinements themselves now live in one place, shared with
+        # the `inventory-check` blame path — see orphan_flip_claim_is_legitimate.
+        if orphan_flip_claim_is_legitimate(
+            trusted_ref_has_prior_flip=r.path in prev_flipped,
+            generated_refs_in=r.refs_in,
+            generated_eligible_on=r.orphan_eligible_on or "",
+            committed_flipped_on=claim.get("orphan_flipped_on", ""),
+            committed_refs_in=claim.get("refs_in", ""),
+            trusted_ref_ceiling_date=trusted_ref_ceiling_date,
+        ):
+            tolerated.add(r.path)
     return tolerated
 
 
