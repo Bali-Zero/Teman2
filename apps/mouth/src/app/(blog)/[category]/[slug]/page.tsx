@@ -4,8 +4,11 @@ import { notFound, permanentRedirect } from "next/navigation";
 import {
   getArticleBySlug,
   getArticleByLocale,
+  getAvailableLocales,
   resolveCategoryAlias,
 } from "@/lib/blog/articles";
+import { resolveContentLocale } from "@/i18n/content-locale";
+import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { renderMDXBody } from "@/components/blog/MDXContentRSC";
 import {
@@ -242,8 +245,21 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
     }
   }
 
+  // The language this page's BODY is actually in. `?lang=xx` is a request,
+  // not an outcome: getArticleByLocale falls back to English when no
+  // `{slug}.{locale}.mdx` exists, so asking the same question it asks —
+  // getAvailableLocales — is what keeps the declaration true.
+  const contentLocale = resolveContentLocale(
+    lang,
+    getAvailableLocales(category, slug),
+  );
+
   return (
     <>
+      {/* Declares the language this page's BODY was served in, and holds
+          `<html lang>` against the I18nProvider, whose locale is the UI
+          chrome's and can legitimately differ. See i18n/content-locale.ts. */}
+      <ContentLangSync locale={contentLocale} />
       <BreadcrumbJsonLd items={breadcrumbItems} />
       {articleProps && article?.faq?.length ? (
         <ArticleWithFAQJsonLd {...articleProps} faq={article.faq} />
