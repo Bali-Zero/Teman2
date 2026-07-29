@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { pmaCapShape } from "@/lib/kbli-pma-shape";
 
 interface PMABadgeProps {
   status: "open" | "restricted" | "closed" | "unknown";
@@ -67,8 +68,27 @@ export function PMABadge({
     suffix = "· 100% nat'l · blocked in Bali";
   } else if (status === "open" && numeric === 100) {
     suffix = "· 100% Foreign";
-  } else if (status === "restricted" && numeric !== null && numeric < 100) {
-    suffix = capVerified ? `· Max ${numeric}%` : `· ≈${numeric}% unverified`;
+  } else if (status === "restricted") {
+    // The SHAPE comes from the shared classifier; only the wording is this
+    // badge's own. This branch used to carry a private copy of the rule
+    // (`numeric !== null && numeric < 100`) which got 100 right by accident of
+    // the bound, and never considered 0 at all — so /kbli/47111 published
+    // "⚠️ Restricted · Max 0%" in the visible pill even after #3186 and #3436
+    // unified every other surface. A ceiling of 0 is not a ceiling anyone can
+    // invest under, and a ceiling of 100 restricts nothing.
+    switch (pmaCapShape({ maxForeign, capSpecial, capVerified })) {
+      case "none":
+        suffix = "· closed (0%)";
+        break;
+      case "full":
+      case "conditional":
+        suffix = "· conditions apply";
+        break;
+      default:
+        suffix = capVerified
+          ? `· Max ${numeric}%`
+          : `· ≈${numeric}% unverified`;
+    }
   }
 
   return (
