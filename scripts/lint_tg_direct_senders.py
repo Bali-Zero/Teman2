@@ -30,7 +30,25 @@ import sys
 from pathlib import Path
 
 PATTERN = "api.telegram.org"
-SCAN_SUFFIXES = {".sh", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".plist", ".rb", ".pl", ".zsh", ".bash"}
+# 2026-07-28: `.yml`/`.yaml` ADDED. The census that founded this lint could not
+# see GitHub Actions at all — the surface where the alarms actually live — so
+# "the family can only shrink" was true of a family with 20 uncounted members
+# (18 workflows sending directly, 28 call sites). A guard whose scope
+# structurally skips a surface reports clean about a place it never looked
+# (superscar #3, UNDER-match). Widening the scope is only half the cure: see
+# LEGACY_SCAN_SUFFIXES and check_monotone for how the register is allowed to
+# enroll a newly-visible surface WITHOUT reopening the door to new senders.
+SCAN_SUFFIXES = {
+    ".sh", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
+    ".plist", ".rb", ".pl", ".zsh", ".bash", ".yml", ".yaml",
+}
+# The surface the 2026-07-06 census could actually see. A register frozen
+# before the scope widened does not declare its own scope, so this constant is
+# what it MEANT. It is a historical fact, not a setting — never edit it.
+LEGACY_SCAN_SUFFIXES = {
+    ".sh", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
+    ".plist", ".rb", ".pl", ".zsh", ".bash",
+}
 # NOTE (deliberate over-match, superscar #3 traded consciously): the scan is
 # textual, so a MENTION in a comment/docstring counts as a hit. That is the
 # safe direction — keep the URL string out of non-gateway files entirely.
@@ -39,6 +57,15 @@ GATEWAY_ALLOWLIST = {
     "scripts/tg_digest_flush.py",  # its flusher
     "scripts/lint_tg_direct_senders.py",  # this lint (pattern is its constant)
     "scripts/tests/test_tg_gateway.py",   # the gateway's own test fixtures
+    "scripts/tests/test_agent_job_telegram_gateway.py",  # asserts the string's ABSENCE
+    ".github/workflows/tg-gateway.yml",   # the gateway's own CI job (names it in a comment)
+    # The CI arm of the same family. It is NOT a second gateway: tg_notify.py
+    # answers to a machine with a spool that a flusher drains later, so its
+    # contract is "NEVER fail the caller" (main() returns 0 even when the send
+    # failed and was spooled). On an ephemeral runner that spool dies with the
+    # container, so on CI that same contract IS the W104 silence. The CI arm
+    # inverts it: read the reply, fail the step loudly, no spool.
+    "scripts/ci/telegram_notify.sh",
 }
 
 
@@ -100,11 +127,20 @@ def freeze(root: Path) -> int:
             "New files must use the gateway — the lint fails CI otherwise."
         ),
         "frozen_at": "2026-07-06",
+        # The scope this register actually covered when it was written. Without
+        # it, a later reader cannot tell "no senders in .yml" from "nobody ever
+        # looked at .yml" — and those two read identically in a green check.
+        "scan_suffixes": sorted(SCAN_SUFFIXES),
         "files": sorted(senders - GATEWAY_ALLOWLIST),
     }
     gp = _grandfather_path(root)
     gp.parent.mkdir(parents=True, exist_ok=True)
-    gp.write_text(json.dumps(payload, indent=1) + "\n")
+    # indent=2 is not cosmetic: the repo's pre-commit runs prettier on staged
+    # files, and prettier rewrites this JSON at 2. Writing 1 here (as this did
+    # until 2026-07-28, when prettier first saw the file) makes `--freeze`
+    # produce output its own commit hook rejects — a tool that cannot commit
+    # what it generates gets run once and then avoided.
+    gp.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"lint_tg: froze {len(payload['files'])} grandfathered direct senders")
     return 0
 
@@ -122,8 +158,18 @@ def _guard_new_direct_sender(senders: set, grandfathered: set) -> set:
 def check_monotone(root: Path) -> tuple[bool, set]:
     """Anti-bypass (Codex finding 2026-07-06): a PR could add a sender AND
     grandfather it in the same diff. The list may only SHRINK vs origin/main.
-    Returns (ok, added). Skips gracefully when origin/main has no list yet
-    (gateway-birth PR) or git is unavailable (selftest override: TG_LINT_BASE_JSON).
+    Returns (ok, illegally_added). Skips gracefully when origin/main has no list
+    yet (gateway-birth PR) or git is unavailable (selftest: TG_LINT_BASE_JSON).
+
+    ONE exemption, added 2026-07-28 with the `.yml` widening. Growth is legal
+    only for a file whose SUFFIX the base register could not see — enrolling a
+    surface that was invisible is not the same act as adding a new sender to a
+    surface already being watched. Without it, a blind surface can never be
+    enrolled and therefore stays blind forever, which is how `.yml` went 22 days
+    uncounted. The exemption cannot launder a new `.py` sender: its suffix was
+    always visible, so it still FAILS. The base register declares the scope it
+    froze (`scan_suffixes`); a register written before that key existed means
+    LEGACY_SCAN_SUFFIXES, which is why that constant is a fact and not a knob.
     """
     base_override = os.environ.get("TG_LINT_BASE_JSON", "")
     try:
@@ -134,12 +180,23 @@ def check_monotone(root: Path) -> tuple[bool, set]:
                 ["git", "-C", str(root), "show", "origin/main:infra/tg-gateway/grandfathered.json"],
                 capture_output=True, text=True, check=True,
             ).stdout
-        old = set(json.loads(old_raw).get("files", []))
+        old_doc = json.loads(old_raw)
+        old = set(old_doc.get("files", []))
     except Exception:
         print("lint_tg: monotone check skipped (no grandfathered.json on origin/main yet)")
         return True, set()
+
+    base_suffixes = set(old_doc.get("scan_suffixes", sorted(LEGACY_SCAN_SUFFIXES)))
+    newly_visible = SCAN_SUFFIXES - base_suffixes
+
     added = load_grandfathered(root) - old
-    return (not added), added
+    enrolled = {f for f in added if Path(f).suffix in newly_visible}
+    if enrolled:
+        print(f"lint_tg: {len(enrolled)} entr(y/ies) enrolled from a surface the base "
+              f"register could not see ({', '.join(sorted(newly_visible))}) — allowed once, "
+              f"in the same diff that makes the surface visible")
+    illegal = added - enrolled
+    return (not illegal), illegal
 
 
 def lint(root: Path, prune: bool = False) -> int:
@@ -236,6 +293,57 @@ def selftest() -> int:
         check("grandfather growth → FAIL", lint(root) == 1)
         base.write_text(json.dumps({"files": ["scripts/old_sender.sh"]}))  # base == current
         check("grandfather stable → pass", lint(root) == 0)
+        os.environ.pop("TG_LINT_BASE_JSON", None)
+
+        # ---- the .yml surface, widened 2026-07-28 -----------------------
+        # These four cases exist because the widening added an EXEMPTION to the
+        # monotone rule, and an exemption is a guard at inverted sign (W91): it
+        # needs its own guilt and its own innocence, or it becomes the bypass
+        # the monotone rule was written to close.
+        wf = root / ".github" / "workflows"
+        wf.mkdir(parents=True)
+        (wf / "alarm.yml").write_text(
+            '        run: curl -sS "https://api.telegram.org/bot$T/sendMessage" -d text=hi\n'
+        )
+        (wf / "clean.yml").write_text(
+            '        run: bash scripts/ci/telegram_notify.sh --text "hi"\n'
+        )
+        gp = root / "infra" / "tg-gateway" / "grandfathered.json"
+
+        # GUILT: the new surface is actually armed, not merely declared.
+        gp.write_text(json.dumps({"files": ["scripts/old_sender.sh"]}))
+        os.environ["TG_LINT_FILES"] = "scripts/old_sender.sh:.github/workflows/alarm.yml"
+        check("NEW .yml direct sender FAILS", lint(root) == 1)
+
+        # INNOCENCE: a workflow that routes through the CI arm holds no URL.
+        os.environ["TG_LINT_FILES"] = "scripts/old_sender.sh:.github/workflows/clean.yml"
+        check(".yml routed through the CI arm passes", lint(root) == 0)
+
+        # ENROLLMENT: a newly-visible suffix may join the register once, in the
+        # same diff that makes it visible (base declares no scan_suffixes).
+        base.write_text(json.dumps({"files": ["scripts/old_sender.sh"]}))
+        os.environ["TG_LINT_BASE_JSON"] = str(base)
+        gp.write_text(json.dumps({"files": ["scripts/old_sender.sh", ".github/workflows/alarm.yml"]}))
+        os.environ["TG_LINT_FILES"] = "scripts/old_sender.sh:.github/workflows/alarm.yml"
+        check("newly-visible .yml may enroll", lint(root) == 0)
+
+        # ...but an always-visible suffix may NOT ride along on that exemption.
+        (root / "scripts" / "sneaky.py").write_text("post('https://api.telegram.org/bot')\n")
+        gp.write_text(json.dumps({"files": [
+            "scripts/old_sender.sh", ".github/workflows/alarm.yml", "scripts/sneaky.py",
+        ]}))
+        os.environ["TG_LINT_FILES"] = (
+            "scripts/old_sender.sh:.github/workflows/alarm.yml:scripts/sneaky.py"
+        )
+        check("a .py can NOT ride the surface exemption", lint(root) == 1)
+
+        # ...and once the base register declares .yml, the door shuts again.
+        base.write_text(json.dumps({
+            "files": ["scripts/old_sender.sh"], "scan_suffixes": sorted(SCAN_SUFFIXES),
+        }))
+        gp.write_text(json.dumps({"files": ["scripts/old_sender.sh", ".github/workflows/alarm.yml"]}))
+        os.environ["TG_LINT_FILES"] = "scripts/old_sender.sh:.github/workflows/alarm.yml"
+        check("with .yml declared, enrolling another .yml FAILS", lint(root) == 1)
         os.environ.pop("TG_LINT_BASE_JSON", None)
 
         os.environ.pop("TG_LINT_FILES", None)

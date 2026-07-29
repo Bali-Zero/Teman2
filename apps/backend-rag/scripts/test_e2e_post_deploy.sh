@@ -5,8 +5,12 @@
 set -e
 
 RAG_BACKEND_URL="${RAG_BACKEND_URL:-https://nuzantara-rag.fly.dev}"
-TEST_EMAIL="${TEST_EMAIL:-zero@balizero.com}"
-TEST_PIN="${TEST_PIN:-010719}"
+
+# Credentials come from the environment — no defaults, by design. This script
+# signs in to PRODUCTION, so a default here is a published working credential,
+# not a convenience (this repository is public).
+: "${TEST_EMAIL:?set TEST_EMAIL — the account this run signs in as (never commit it)}"
+: "${TEST_PIN:?set TEST_PIN — the account login secret (never commit it)}"
 
 echo "🧪 E2E Post-Deploy Tests - Communication Features"
 echo "=================================================="

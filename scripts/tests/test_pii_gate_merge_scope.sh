@@ -47,10 +47,12 @@ esac
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# Run the extracted enumeration in $1 and echo the resulting PII_FILES.
+# Run the extracted enumeration in $1 and echo the resulting STAGED_FILES.
+# (Hoisted 2026-07-30 out of the PII gate: the lease-check consumes it too —
+#  it was the consumer that actually HUNG on a 2164-file merge.)
 enumerate() {
     ( cd "$1" && sh -e -c "$BLOCK
-printf '%s\n' \"\$PII_FILES\"" 2>&1 )
+printf '%s\n' \"\$STAGED_FILES\"" 2>&1 )
 }
 
 new_repo() {

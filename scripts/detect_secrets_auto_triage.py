@@ -8,6 +8,16 @@ definitionally non-sensitive (example env files, test fixtures, planning
 documents, etc.). Everything else is left `unaudited` so a human can
 inspect the residue.
 
+A second, narrower rule class (CONTENT_KEYED_RULES) exists for files that are
+NOT definitionally non-sensitive as a whole — e.g. a script that legitimately
+holds executable code-signing identity pins (sha256/cdhash) alongside other
+code. A plain path-based rule on such a file would blanket-approve ANY future
+finding in it, including a real secret added on an unrelated line later
+(cicatrix-superscar #3, guard-over-match: match entity/intent, never bare
+path/substring). CONTENT_KEYED_RULES require the exact source line at the
+finding's line_number to also match a narrow content pattern (the assignment
+target's name), so only the specific pinned-identity lines are approved.
+
 Usage:
     python3 scripts/detect_secrets_auto_triage.py             # dry-run
     python3 scripts/detect_secrets_auto_triage.py --apply     # write back
@@ -30,6 +40,126 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASELINE = REPO_ROOT / ".secrets.baseline"
+
+# Each rule is (path_pattern, content_pattern, reason). The path_pattern
+# scopes the rule to specific known files; the content_pattern must ALSO
+# match the actual source line at the finding's line_number (read live off
+# disk — these files are always present in the checkout when this script
+# runs, per .github/workflows/security.yml's checkout-then-scan-then-triage
+# order). Approval requires BOTH to match, so an unrelated secret added
+# later to one of these files (on a line whose assignment target isn't in
+# the content_pattern) is still left unaudited for human review.
+CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
+    # worker-plane review panel: executable code-signing identity pins
+    # (sha256/cdhash of production CLI binaries — Claude Code, Gemini/agy,
+    # Codex, Kimi, sandbox-exec) used to VERIFY supply-chain integrity
+    # before spawning a reviewer process, plus a PRODUCTION_ARTIFACT_SHA256
+    # dict of wrapper/package content hashes for the same purpose. These are
+    # public integrity anchors — anyone can recompute them from the signed
+    # binary — never credentials; removing them would weaken the check they
+    # implement, not improve security.
+    #
+    # Content-keyed on assignment target NAME *and* VALUE SHAPE, with the
+    # match anchored to end-of-line (optional trailing comma): the whole
+    # line must be exactly `<key><:|=> "<hex>"[,]`. This closes two holes a
+    # target-name-only version had (found in review, 2026-07-26):
+    #   1. `sha256="ghp_<realtoken>"` — a real credential assigned to a pin
+    #      name would have been approved on name alone; the value must now
+    #      be exactly 64 (sha256/codex_wrapper/codex_package) or 40 (cdhash)
+    #      lowercase hex characters.
+    #   2. `sha256="<hash>"; api_key="<realsecret>"` — Python allows
+    #      `;`-separated statements on one line, so a second assignment
+    #      after a legitimate pin used to ride along under the same
+    #      line_number/key-name match. The end-anchor breaks this: anything
+    #      after the pin's closing quote+comma fails the match.
+    #
+    # HONEST LIMIT (not closed by this rule, not closeable by any regex):
+    # a live 64-hex or 40-hex credential pasted directly into a pin's value
+    # slot is byte-indistinguishable from a real digest — no shape check can
+    # tell them apart. This rule narrows the approved surface from "any
+    # secret on a pin-named line" to "only a value that is exactly the
+    # digest length/alphabet", it does not make forgery structurally
+    # impossible.
+    (
+        re.compile(
+            r"^scripts/(check_worker_plane_review|launch_worker_plane_review_panel)\.py$"
+        ),
+        re.compile(
+            r'^\s*"?(?:sha256|codex_wrapper|codex_package)"?\s*[:=]\s*"[0-9a-f]{64}"\s*,?\s*$'
+            r'|^\s*"?cdhash"?\s*[:=]\s*"[0-9a-f]{40}"\s*,?\s*$'
+        ),
+        "worker-plane review panel: sha256/cdhash code-signing identity pins "
+        "and PRODUCTION_ARTIFACT_SHA256 content hashes for production CLI "
+        "binaries — public integrity anchors, not credentials (value must be "
+        "exactly the digest's hex shape, end-anchored to the line)",
+    ),
+    # apps/mouth/data/kbli-gold-all.json: every gold-set record carries a
+    # `sentence_sha256` — a 16-hex-char truncated digest of the record's
+    # editorial prose, written by the L3 prose-gap-disclosure cure
+    # (scripts/kbli_filiera/cure_l3_prose_gap_disclosure.py) as an idempotency
+    # marker (re-running the cure is a no-op if the sentence's hash already
+    # matches). Found live 2026-07-26: 39 occurrences in the file, 3 flagged
+    # as Hex High Entropy Strings by detect-secrets.
+    #
+    # This file is deliberately NOT covered by the tree-wide/path-only KBLI
+    # rules above: unlike data/kbli-filiera/ (data-plane-guarded, #2550) and
+    # the canonical dataset + its sync'd copies (written only by
+    # sync_kbli_dataset.sh), kbli-gold-all.json has an OPEN writer set —
+    # scripts/kbli_audit_patcher.py, kbli_enrich_write.py, and
+    # kbli_enrich_pipeline.py all write it directly, and cure specs patch it
+    # value-in-place. A path-only rule here would be the first KBLI rule in
+    # this file without the closed-writer-set argument that makes the others
+    # safe — a weaker bar wearing the same shape. Content-keyed instead,
+    # narrowing approval to lines that are structurally this exact marker:
+    # only a value that is 16 lowercase hex characters, on a line whose key
+    # is exactly `sentence_sha256`, end-anchored (optional trailing comma) so
+    # a second assignment riding along on the same line still fails. A real
+    # secret elsewhere in this file — including on an adjacent line, or a
+    # 16-hex-shaped credential pasted directly into this field's value slot —
+    # is not something a regex can distinguish (same HONEST LIMIT as the
+    # worker-plane rule above); this rule narrows what "any secret in this
+    # file" means, it does not certify the whole file secret-free.
+    (
+        re.compile(r"(^|/)apps/mouth/data/kbli-gold-all\.json$"),
+        re.compile(r'^\s*"sentence_sha256"\s*:\s*"[0-9a-f]{16}"\s*,?\s*$'),
+        "KBLI gold-set editorial-prose idempotency marker (L3 prose-gap-"
+        "disclosure cure): a 16-hex sha256 truncation of the record's prose, "
+        "never a credential (open writer set, so content-keyed rather than "
+        "path-only — see the KBLI canonical-dataset rule above for the "
+        "closed-writer-set contrast)",
+    ),
+    # Translated articles carry `source_sha256` in their frontmatter: the
+    # sha256 of the English source BODY they were translated from, written by
+    # scripts/translate-articles.py. It is the freshness marker that lets the
+    # hourly translator skip on FRESHNESS instead of on the target file's mere
+    # existence — before it, every translation froze at birth and an English
+    # correction never reached its locales (measured: 1275 of 2664
+    # translations behind their source). Anyone can recompute the value from
+    # the public article; it is an integrity anchor, never a credential.
+    #
+    # Content-keyed, not path-only, for the same reason as the rule above: the
+    # writer set for article .mdx files is wide open (the translator, the
+    # editorial pipeline, and humans editing prose by hand), so a path rule
+    # would blanket-approve any future finding anywhere in 2500+ content
+    # files. Narrowed to a line that is exactly `source_sha256: "<64 hex>"`,
+    # end-anchored, in a translation file only (`.<locale>.mdx` — English
+    # sources never carry the field).
+    #
+    # HONEST LIMIT, same as its two siblings: a live 64-hex credential pasted
+    # into this field's value slot is byte-indistinguishable from a real
+    # digest. This narrows the approved surface to that exact shape on that
+    # exact key; it does not certify article files secret-free.
+    (
+        re.compile(
+            r"(^|/)apps/mouth/src/content/articles/.+\.(id|it|ru|fr)\.mdx$"
+        ),
+        re.compile(r'^source_sha256:\s*"[0-9a-f]{64}"\s*$'),
+        "article translation freshness stamp (scripts/translate-articles.py): "
+        "sha256 of the English source body the translation was made from — a "
+        "recomputable integrity anchor, never a credential (open writer set, "
+        "so content-keyed and restricted to translation files)",
+    ),
+]
 
 # Each rule is (pattern, reason). The pattern matches the file path
 # relative to the repo root. A finding is auto-approved if ANY rule matches.
@@ -324,10 +454,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     # writer-set safety as the data/kbli-filiera rule above: the canonical
     # (data/source_documents/KBLI_2025_FINAL_CLEAN.json) is data-plane-guarded
     # (#2550, scripts/kbli_filiera/*.py compilers only); the consumer copies are
-    # byte-identical propagations by sync_kbli_dataset.sh, enforced equal to the
-    # canonical by the check-kbli-dataset-sync CI gate — so a credential can't
-    # enter a copy without also failing that gate. These files emit sha256
-    # digests, public KBLI codes, and PP28/OSS citations only, never credentials.
+    # byte-identical propagations by sync_kbli_dataset.sh. CORRECTED 2026-07-26
+    # (verified against branches/main/protection by exact match): the
+    # check-kbli-dataset-sync CI gate is NOT a required context — it OBSERVES
+    # copy/canonical equality, it does not BLOCK on drift (non-required by
+    # design, see the workflow's own header). It cannot "enforce" anything.
+    # The rule is still safe without it: these files are written ONLY by
+    # sync_kbli_dataset.sh (a closed writer set on its own terms), so a
+    # credential still cannot enter a copy through this rule's approved
+    # surface — the safety argument just doesn't need the gate's help, and
+    # claiming it does overstates a control that has no teeth. These files
+    # emit sha256 digests, public KBLI codes, and PP28/OSS citations only,
+    # never credentials.
     (
         re.compile(
             r"(^|/)(data/source_documents/KBLI_2025_FINAL_CLEAN\.json"
@@ -702,11 +840,29 @@ HARD_BLOCK_RULES: list[tuple[re.Pattern[str], str]] = [
 ]
 
 
-def classify(file_path: str) -> tuple[bool, str]:
+def _line_text(file_path: str, line_number: int) -> str | None:
+    """Best-effort read of one 1-indexed source line from a repo file."""
+    try:
+        full = REPO_ROOT / file_path
+        with full.open("r", encoding="utf-8", errors="replace") as f:
+            for i, line in enumerate(f, start=1):
+                if i == line_number:
+                    return line
+    except OSError:
+        return None
+    return None
+
+
+def classify(file_path: str, line_number: int | None = None) -> tuple[bool, str]:
     """Return (auto_approve, reason)."""
     for pat, reason in HARD_BLOCK_RULES:
         if pat.search(file_path):
             return False, f"HARD BLOCK: {reason}"
+    for path_pat, content_pat, reason in CONTENT_KEYED_RULES:
+        if path_pat.search(file_path) and line_number:
+            text = _line_text(file_path, line_number)
+            if text is not None and content_pat.search(text):
+                return True, reason
     for pat, reason in AUTO_APPROVE_RULES:
         if pat.search(file_path):
             return True, reason
@@ -731,7 +887,7 @@ def triage(
     for file_path, hits in results.items():
         for hit in hits:
             stats["total"] += 1
-            auto, reason = classify(file_path)
+            auto, reason = classify(file_path, hit.get("line_number"))
             if auto:
                 stats["auto_approved"] += 1
                 if apply:

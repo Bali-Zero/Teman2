@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { MessageCircle, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { MessageCircle, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function WhatsAppError({
   error,
@@ -13,7 +13,7 @@ export default function WhatsAppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('WhatsApp Error', {}, error);
+    logger.error("WhatsApp Error", {}, error);
   }, [error]);
 
   return (
@@ -27,8 +27,8 @@ export default function WhatsAppError({
           Couldn&apos;t Load WhatsApp Inbox
         </h2>
         <p className="text-muted-foreground">
-          There was an error loading your WhatsApp conversations. Please try again or contact
-          support if the problem persists.
+          There was an error loading your WhatsApp conversations. Please try
+          again or contact support if the problem persists.
         </p>
       </div>
 

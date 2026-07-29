@@ -34,9 +34,59 @@ facts already persisted under the shared id; it only stops them being
 read back, and stops new ones being written. The real fix — resolving
 each WhatsApp sender to a stable per-phone pseudonymous subject — is a
 later, separate W-1 item.
+
+THE W-1 ITEM, 2026-07-27 (``derive_wa_memory_subject`` below)
+-------------------------------------------------------------
+Containment left every WhatsApp client with no memory at all, which is the
+safe state but not the right one. This function mints the per-sender
+pseudonymous subject the note above promised, under four rules — each one
+closing a hole that the P0s of the preceding week actually opened:
+
+1. **Trust comes from the dedicated bot key, never from the request body.**
+   The subject is derived only when the caller proved it is
+   ``wa_inbox_bot`` (``X-WA-Bot-Profile-Key``). Deriving it from a
+   body-supplied ``user_id`` alone would rebuild P0-ID as a memory bug:
+   any holder of the widely-shared ``X-Internal-Key`` could send
+   ``user_id="whatsapp_<someone else's number>"`` and READ that person's
+   memory. Same shape, worse blast radius.
+
+2. **HMAC, not a bare hash.** A phone number has almost no entropy — the
+   Indonesian mobile space is enumerable in minutes, so ``sha256(phone)``
+   is reversible by brute force and is therefore not a pseudonym, just the
+   phone number wearing a hat. Keying the digest with a server-side secret
+   makes the mapping computable only by us. UU PDP Art. 67-68.
+
+3. **Fail-closed on every input.** No salt, no bot key, no phone → ``None``
+   → the caller keeps today's containment behaviour. The feature cannot
+   arm itself by accident; provisioning the secret is the deliberate act
+   that turns it on.
+
+4. **Rotating the salt is a memory wipe, not a key rotation.** Every subject
+   changes, so every client silently starts from zero. That is a product
+   decision, not an ops chore — which is why this secret is its own, and
+   not borrowed from ``wa_inbox_bot_profile_key`` (whose rotation must stay
+   a routine, consequence-free act).
 """
 
 from __future__ import annotations
+
+import hmac
+import re
+from hashlib import sha256
+
+#: Everything that is not a digit is noise in a phone number: "+62 821-3465-159",
+#: "62821-3465159" and "+628213465159" must map to ONE subject, or the same
+#: client gets a fresh memory every time the formatting shifts upstream.
+_NON_DIGITS = re.compile(r"\D+")
+
+#: Namespace prefix. Keeps a WA subject from ever colliding with the other
+#: things that anchor memory here (emails, UUIDs) and makes the origin of a
+#: row in the memory store readable at a glance.
+WA_MEMORY_SUBJECT_PREFIX = "wa:"
+
+#: Hex chars kept from the digest. 32 hex = 128 bits: collision-free for any
+#: plausible client book, and short enough to stay legible in logs.
+_SUBJECT_HEX_LEN = 32
 
 # Identities that must NEVER anchor long-term (cross-session) memory —
 # they represent either "no authenticated subject" (anonymous) or a
@@ -81,3 +131,41 @@ def is_non_personal_memory_identity(user_id: str | None) -> bool:
     if not normalized:
         return True
     return normalized in NON_PERSONAL_MEMORY_IDS
+
+
+def derive_wa_memory_subject(
+    *,
+    is_trusted_wa_bot: bool,
+    phone: str | None,
+    salt: str | None,
+) -> str | None:
+    """Stable per-sender pseudonymous memory subject for a WhatsApp client.
+
+    See the module docstring for the four rules this obeys and why each
+    exists. All three arguments are keyword-only and each is a gate: the
+    function returns ``None`` — meaning "keep the P0-MEM containment
+    behaviour, no long-term memory" — unless every one of them is satisfied.
+
+    Args:
+        is_trusted_wa_bot: The request carried ``wa_inbox_bot``'s OWN
+            dedicated secret (``_verify_wa_inbox_bot_profile_key``). A
+            generic internal-key holder must NOT reach a subject, or reading
+            someone else's memory becomes a matter of typing their number.
+        phone: The sender's number, already extracted from the WA-shaped
+            ``user_id`` by the caller that owns that regex. Any formatting
+            accepted; normalised to digits here.
+        salt: Server-side secret (``settings.wa_memory_subject_salt``).
+            Absent → the feature is off.
+
+    Returns:
+        ``"wa:<32 hex>"``, or ``None`` if any gate fails.
+    """
+    if not is_trusted_wa_bot or not phone or not salt:
+        return None
+
+    digits = _NON_DIGITS.sub("", phone)
+    if not digits:
+        return None
+
+    digest = hmac.new(salt.encode("utf-8"), digits.encode("utf-8"), sha256).hexdigest()
+    return f"{WA_MEMORY_SUBJECT_PREFIX}{digest[:_SUBJECT_HEX_LEN]}"

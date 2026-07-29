@@ -257,6 +257,7 @@
 
   --accent: var(--kbli-accent);
   --accent-hover: var(--kbli-accent-hover);
+  --accent-foreground: #16213a;
 
   /* GARUDA — Proposal 3 (2026-05-18) */
   --bz-base: #0f1419;
@@ -301,7 +302,7 @@
   --sidebar-pill-radius: 12px;
 
   --bz-text-1: #edeae4;
-  --bz-text-2: #8a8f9a;
+  --bz-text-2: var(--tx-secondary);
   --bz-text-3: #545c6a;
   --bz-border: rgba(255, 255, 255, 0.05);
   --bz-border-hover: rgba(255, 255, 255, 0.1);
@@ -352,20 +353,21 @@
   --background-hover: #faf8f3;
   --foreground: #16213a;
   --foreground-secondary: #475372;
-  --foreground-muted: #7a8aa6;
+  --foreground-muted: var(--tx-secondary);
   --border: rgba(9, 9, 11, 0.08);
   --border-hover: rgba(9, 9, 11, 0.14);
   --accent: #d4845a;
   --accent-hover: #bf7350;
+  --accent-foreground: var(--tx-pure);
 
   /* Typography on light */
   --tx-pure: #16213a;
   --tx-primary: #16213a;
   --tx-secondary: #475372;
-  --tx-tertiary: #7a8aa6;
+  --tx-tertiary: var(--tx-secondary);
   --bz-text-1: #16213a;
   --bz-text-2: #475372;
-  --bz-text-3: #7a8aa6;
+  --bz-text-3: var(--tx-secondary);
 
   /* Borders / glass on light (dark hairlines, not white) */
   --bz-border: rgba(9, 9, 11, 0.08);
@@ -426,6 +428,13 @@
   --kbli-text-muted: #7a8aa6;
   --kbli-border: rgba(9, 9, 11, 0.08);
   --kbli-border-hover: rgba(9, 9, 11, 0.14);
+
+  /* Focus indicator — universal keyboard navigation (WCAG 2.1.1 + 2.4.7)
+     Scoped to operative-light only — cannot leak into kita/dark theme. */
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

@@ -4,6 +4,15 @@
 # Machine:  Pro (nuzantara@Nuzantara)
 # Log:      ~/.openclaw/logs/nlm_nb3_pipeline.log
 # Brief:    ~/.agent/decisions/nlm_briefs/daily_intelligence_brief_nb3.json
+# Shared alarm gateway — see _alert.sh for what the old inline curl hid.
+. "$(cd "$(dirname "$0")" && pwd)/_alert.sh" 2>/dev/null || true
+# A missing helper must not turn "no alarm" into "the wrapper dies while
+# handling a failure": fall back to a LOUD no-op, never a silent one.
+command -v alert >/dev/null 2>&1 || alert() {
+    echo "ALERT NOT SENT — _alert.sh missing [$1]: ${*:2}" >&2
+    return 1
+}
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -40,10 +49,12 @@ cd "$PROJECT_ROOT"
 echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [START] NB-3 Company Setup pipeline (PID $$)" >>"$LOG_FILE"
 
 # Run pipeline
+set +e  # errexit would abort ON the pipeline, before the capture below
 PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.nb3_pipeline "$@" \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [DONE] NB-3 pipeline completed successfully" >>"$LOG_FILE"
@@ -53,13 +64,8 @@ if [ $EXIT_CODE -eq 0 ]; then
         --record "nb3_pipeline" 2>/dev/null || true
 else
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [FAIL] NB-3 pipeline failed (exit $EXIT_CODE)" >>"$LOG_FILE"
-    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
-        MSG="⚠️ NB-3 Company Setup pipeline FAILED (exit $EXIT_CODE) — check ~/.openclaw/logs/nlm_nb3_pipeline.log"
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
-            -d "text=${MSG}" \
-            >/dev/null 2>&1 || true
-    fi
+    MSG="⚠️ NB-3 Company Setup pipeline FAILED (exit $EXIT_CODE) — check ~/.openclaw/logs/nlm_nb3_pipeline.log"
+    alert p0 "${MSG}"
 fi
 
 exit $EXIT_CODE

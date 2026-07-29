@@ -226,9 +226,16 @@ async def login(
         brute_force = None
         try:
             from backend.core.redis_manager import RedisManager
-            from backend.services.security.brute_force import BruteForceDetector
+            from backend.services.security.brute_force import (
+                BruteForceDetector,
+                report_armed_state,
+            )
 
             redis_client = RedisManager.get_instance().get_async_client()
+            # get_async_client() RETURNS None when Redis is unavailable, it does
+            # not raise — so without this the detector below no-ops on every
+            # call and the endpoint loses its rate limiting in total silence.
+            report_armed_state(redis_client is not None)
             brute_force = BruteForceDetector(redis_client=redis_client)
 
             if await brute_force.is_blocked(client_ip or "", request.email):
@@ -242,7 +249,17 @@ async def login(
         except HTTPException:
             raise
         except Exception as e:
-            logger.debug("S03: Brute force check skipped: %s", e)
+            # Was logger.debug — invisible in prod (fly.toml pins LOG_LEVEL=INFO).
+            # Landing here means brute_force stayed None, so every `if brute_force:`
+            # below is skipped and this login is unrate-limited. Logged inline
+            # rather than via report_armed_state() because the import above is
+            # itself inside the try and may be what failed.
+            logger.error(
+                "S03: login rate limiter NOT ARMED — brute-force detection could "
+                "not be initialised, so this login has only the generic 120/min "
+                "per-IP bucket: %s",
+                e,
+            )
 
         async with db_pool.acquire() as conn:
             # Real database authentication using team_members

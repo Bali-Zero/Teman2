@@ -1,5 +1,7 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import { baliBlockClause, shouldShowReason } from "@/lib/kbli-bali-block";
+import { pmaCapShape } from "@/lib/kbli-pma-shape";
 
 export interface KbliFaqEntry {
   question: string;
@@ -12,22 +14,46 @@ const KBLI_2025_POST_DEADLINE_NOTE =
 const KBLI_2025_MIGRATION_OVERDUE_NOTE =
   "The June 2026 KBLI 2025 transition window has closed. If an NIB still relies on legacy KBLI 2020 mappings, treat the migration as overdue and verify/remediate the OSS record before new license applications, amendments, LKPM, import approvals, or investor/worker sponsorship.";
 
+/** Condition prose, spliced as its own sentence. */
+function conditionClause(code: KBLICode): string {
+  const c = code.pma.condition;
+  if (!c) return "";
+  // The splice used to run straight into the next sentence — live on /kbli/47111
+  // as "Condition: UMKM only An Indonesian partner holds…". The dataset's
+  // condition strings carry no terminal punctuation, so it is added here.
+  return ` Condition: ${/[.!?]$/.test(c.trim()) ? c.trim() : `${c.trim()}.`}`;
+}
+
 /**
- * Single source of truth for the per-code FAQ.
+ * The TERBATAS answer, split out of the nested ternary it used to live in so the
+ * extremes can be handled and tested.
  *
- * Feeds BOTH the FAQPage JSON-LD (KBLIFaqJsonLd) and the visible
- * "Common Questions" section (KBLICommonQuestions). Google requires
- * FAQPage markup content to be visible on the page — before this module
- * the JSON-LD was emitted on every page while the visible Q&A only
- * existed on non-Gold layouts, and the two texts had drifted apart
- * (the JSON-LD carried the Bali-block qualification, the visible answer
- * did not; the visible answer handled capSpecial, the JSON-LD did not).
- * One builder = the markup is honest by construction.
- *
- * Every fact below comes from dataset fields already rendered elsewhere
- * on the same page (PMA verdict banner, licensing table, transition
- * note) — no new regulatory claims.
+ * The old single string said "foreign ownership is capped at {cap}% … An
+ * Indonesian partner holds the remaining shares" for EVERY restricted code. On
+ * the two extremes that trailing clause is not merely clumsy: at 100% there are
+ * no remaining shares, so the sentence was false — in the visible answer AND in
+ * the FAQPage JSON-LD, which is the copy Google ingests (measured live on
+ * /kbli/79110, 2026-07-29).
  */
+function restrictedPmaAnswer(code: KBLICode): string {
+  const head = `KBLI ${code.code} (${code.titleId})`;
+  const cond = conditionClause(code);
+
+  if (code.pma.capSpecial) {
+    return `Conditionally. ${head} is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${cond}`;
+  }
+
+  switch (pmaCapShape(code.pma)) {
+    case "none":
+      return `No. ${head} is TERBATAS, but the ceiling for foreign capital is 0% — in practice the activity is not available to a PT PMA and is held by an Indonesian-owned company.${cond}`;
+    case "full":
+    case "conditional":
+      return `Yes, with conditions. ${head} is TERBATAS, but the restriction is not an ownership ceiling — foreign ownership may reach 100%. Verify the applicable conditions in OSS.${cond}`;
+    default:
+      return `Partially. ${head} is TERBATAS — foreign ownership is ${code.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${code.pma.maxForeign}%.${cond} An Indonesian partner holds the remaining shares.`;
+  }
+}
+
 export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const baliBlocked = !!code.baliL4?.blocked;
   // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): the risk tier the earlier
@@ -39,14 +65,25 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const pmaAnswer =
     code.pma.status === "open"
       ? baliBlocked
-        ? `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but a PT PMA currently cannot register it in Bali (reserved for UMKM / 2026 moratorium). ${code.baliL4?.reason ?? "See the Bali status above."} Outside Bali it is open to a PT PMA with no local partner required.`
+        ? // The cause is DERIVED, and the record's own reason is gated by the same
+          // rule the licensing frame uses. Both were hardcoded here: the clause
+          // named UMKM and the 2026 moratorium together for EVERY blocking status
+          // (the literal is asserted absent by test, so it is not repeated here),
+          // and the reason was spliced unconditionally. Measured on the canonical of
+          // 2026-07-27: 455 pages reach this branch, 416 of them carry a status the
+          // hardcoded clause misnames, and `69104` served Italian ("Notaio/PPAT è
+          // ufficio personale e statale, solo WNI…") — in the visible answer AND in
+          // the FAQPage JSON-LD, which is the copy Google ingests.
+          `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+            shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
+              ? ` ${code.baliL4?.reason}`
+              : ""
+          } Outside Bali it is open to a PT PMA with no local partner required.`
         : baliNonClassifiable
           ? `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
           : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
       : code.pma.status === "restricted"
-        ? code.pma.capSpecial
-          ? `Conditionally. KBLI ${code.code} (${code.titleId}) is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""}`
-          : `Partially. KBLI ${code.code} (${code.titleId}) is TERBATAS — foreign ownership is ${code.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${code.pma.maxForeign}%.${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""} An Indonesian partner holds the remaining shares.`
+        ? restrictedPmaAnswer(code)
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
 
   // PMA source attribution with vintage (FATAL-2 axis): the investment-list

@@ -4,6 +4,16 @@
 # Cron: 0 18 * * 2,4  (02:00 WITA Tue/Thu = 18:00 UTC Mon/Wed)
 # Runs on Pro via OpenClaw — before NB-5 NLM pipeline at 02:25 WITA
 
+# Shared alarm gateway — see _alert.sh.
+. "$(cd "$(dirname "$0")" && pwd)/_alert.sh" 2>/dev/null || true
+command -v alert >/dev/null 2>&1 || alert() {
+    echo "ALERT NOT SENT — _alert.sh missing [$1]: ${*:2}" >&2
+    return 1
+}
+# Preserve the source name the previous inline call used, so anything reading
+# the gateway's records keeps seeing the same producer.
+export ALERT_SOURCE="nb5-t4-monitor"
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -36,22 +46,33 @@ echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] NB-5 T4 monitor starting..." >> "$LOG_FIL
 
 # Run T4 monitor for NB-5 Property & Real Estate
 # notebook-id = d9438180-5e63-4e2a-a473-6061101f6a8d (from t4_nb5_config.json)
+set +e  # errexit would abort ON the pipeline, before the capture below
 python -m apps.evaluator.nlm_deep_research.t4_monitor \
     --notebook-id "d9438180-5e63-4e2a-a473-6061101f6a8d" \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
-# Alert on failure — routed through the Telegram gateway (cohort pattern, see
-# scripts/disk_watchdog.sh), replacing the previous direct HTTP call. The
-# gateway owns token resolution + dedup; this script keeps its own exit-code
-# gate. --tier p0: a failed T4 monitor run is actionable now (silent-broken
-# ingestion into NB-5), not a cron-green digest item.
+# Alert on failure. This wrapper was already ON the gateway — it is the one of
+# twenty that never held a raw curl — and it still could not report a failure,
+# for two reasons the inline call carried and `alert` does not:
+#
+#   1. it invoked the alarm through PATH-resolved `python3`, AFTER sourcing the
+#      venv above. So the alarm ran on the very interpreter whose breakage is a
+#      leading cause of the job failing: a corrupted venv takes down the report
+#      together with the thing being reported. `_alert.sh` uses /usr/bin/python3
+#      by absolute path for exactly this reason. Caught by the CI runner, not by
+#      this Mac, where /opt/homebrew/bin/python3 happened to shadow the venv and
+#      the alarm worked by accident of PATH order.
+#   2. `>/dev/null 2>&1 || true` — the same idiom this PR removed from the other
+#      nineteen. A failed send left no trace at all; `alert` logs `tg[p0] rc=N`.
+#
+# --tier p0: a failed T4 monitor run is actionable now (silent-broken ingestion
+# into NB-5), not a cron-green digest item. tg_notify derives a dedup key from
+# source+text when none is passed, so dropping the explicit one changes nothing.
 if [ "$EXIT_CODE" -ne 0 ]; then
-    python3 "$PROJECT_ROOT/scripts/tg_notify.py" --tier p0 --source nb5-t4-monitor \
-        --dedup-key "nb5-t4-monitor-fail" \
-        -- "NB-5 T4 monitor failed (exit $EXIT_CODE). Check nb5_t4_monitor.log" \
-        >/dev/null 2>&1 || true
+    alert p0 "NB-5 T4 monitor failed (exit $EXIT_CODE). Check nb5_t4_monitor.log" || true
 fi
 
 exit "$EXIT_CODE"

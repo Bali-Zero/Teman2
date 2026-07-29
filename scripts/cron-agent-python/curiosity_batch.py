@@ -14,18 +14,16 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import asyncpg
-import httpx
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = "1125336968"  # Zero @zero0101010101010
 
 # DB: DATABASE_URL from env (sourced from ~/.nuzantara-secrets.env by the wrapper).
 # DB connection — env-only. The plaintext fallback that used to live
@@ -34,6 +32,10 @@ TELEGRAM_CHAT_ID = "1125336968"  # Zero @zero0101010101010
 DATABASE_URL = os.environ["DATABASE_URL"]
 
 TOP_N = 10
+
+# Same contract as agent_job.py's _TG_STATUS_RE / _TG_ACCEPTED: the gateway
+# exits 0 unconditionally, so the real outcome lives on its stderr status line.
+_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
 
 
 # ---------------------------------------------------------------------------
@@ -84,20 +86,14 @@ def _source_emoji(source: str) -> str:
     return "🔍"
 
 
-def _html_escape(text: str) -> str:
-    """Escape HTML special chars for Telegram HTML parse_mode."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-
-
 async def send_telegram_batch(
     findings: list[asyncpg.Record], stats: dict
 ) -> None:
-    """Invia batch Telegram usando HTML parse_mode (piu robusto di MarkdownV2)."""
+    """Route via the gateway (scripts/tg_notify.py) — never call the raw
+    Telegram HTTP API directly (anti-regrowth lint, cicatrix-superscar #3). tier=digest: this
+    file's own docstring already names it — "il batch e solo informativo" — a
+    scheduled weekly informational report, never actionable-now.
+    """
     if not findings:
         print("No findings to send", flush=True)
         return
@@ -109,44 +105,57 @@ async def send_telegram_batch(
     last_str = last_at.strftime("%Y-%m-%d") if last_at else "?"
 
     lines: list[str] = [
-        "<b>Curiosita Pilastro 6 — Weekly Digest</b>",
-        f"<i>{today}</i> | totale: {total} findings | actionable: {actionable} | ultimo: {last_str}",
-        f"\n<b>Top {len(findings)} per information_gain:</b>",
+        "Curiosita Pilastro 6 — Weekly Digest",
+        f"{today} | totale: {total} findings | actionable: {actionable} | ultimo: {last_str}",
+        f"\nTop {len(findings)} per information_gain:",
     ]
 
     for i, f in enumerate(findings, 1):
         emoji = _source_emoji(f["source"])
         gain = f["information_gain"] or 0.0
         actionable_flag = "✅" if f["actionable"] else "—"
-        question = _html_escape((f["question"] or "N/A")[:100])
-        finding_preview = _html_escape(
-            (f["finding"] or "")[:150].replace("\n", " ")
-        )
+        question = (f["question"] or "N/A")[:100]
+        finding_preview = (f["finding"] or "")[:150].replace("\n", " ")
 
         lines.append(
-            f"\n{i}. {emoji} <b>{question}</b>\n"
+            f"\n{i}. {emoji} {question}\n"
             f"   gain={gain:.2f} {actionable_flag} | src={f['source']}\n"
-            f"   <i>{finding_preview}</i>"
+            f"   {finding_preview}"
         )
 
     text = "\n".join(lines)
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": text,
-                "parse_mode": "HTML",
-            },
+    gateway = Path(__file__).resolve().parent.parent / "tg_notify.py"
+    if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
+        gateway = Path.home() / "nuzantara" / "scripts" / "tg_notify.py"
+    argv = [sys.executable, str(gateway), "--tier", "digest", "--source", "curiosity-batch"]
+    try:
+        # Message on stdin, not argv (mirrors agent_job.py's send_telegram):
+        # no argv length limit, no leading-dash ambiguity. subprocess.run
+        # inside an `async def` blocks the event loop for up to `timeout`
+        # (this file's own async-regression scar — cron-agent-python's other
+        # jobs already carry it via AgentJob.send_telegram).
+        proc = await asyncio.create_subprocess_exec(
+            *argv,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if resp.status_code != 200:
-            print(
-                f"Telegram error {resp.status_code}: {resp.text[:200]}", flush=True
-            )
-            resp.raise_for_status()
-
-    print(f"Telegram batch sent: {len(findings)} findings", flush=True)
+        _, err = await asyncio.wait_for(proc.communicate(text.encode()), timeout=30)
+    except Exception as e:
+        print(f"tg_notify gateway error (subprocess): {e}", flush=True)
+        return
+    # The gateway always exits 0 by contract; the real outcome is on its
+    # "tg_notify: <outcome>" STDERR line (mirrors scripts/sentinel_lib/
+    # alerter.py's own parsing — returncode alone can't tell sent from
+    # silently-swallowed).
+    found = _TG_STATUS_RE.search((err or b"").decode(errors="replace"))
+    outcome = found.group(1) if found else ""
+    if outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
+        print(f"Telegram batch queued via gateway ({outcome}): {len(findings)} findings", flush=True)
+    else:
+        print(f"tg_notify gateway error (outcome={outcome or 'unparseable'}): "
+              f"{(err or b'').decode(errors='replace')[:200]}", flush=True)
 
 
 # ---------------------------------------------------------------------------

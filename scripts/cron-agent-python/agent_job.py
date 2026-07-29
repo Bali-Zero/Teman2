@@ -134,7 +134,11 @@ def _tg_gateway() -> Path | None:
     candidates += [
         Path(__file__).resolve().parent.parent / "tg_notify.py",  # repo checkout
         HOME / "nuzantara" / "scripts" / "tg_notify.py",
-        HOME / "Desktop" / "nuzantara" / "scripts" / "tg_notify.py",
+        # No old TCC-protected-home fallback here (dropped 2026-07-27, #3259
+        # antidotes): the repo moved out of the user's home Desktop folder on
+        # 2026-07-16 for TCC immunity (W84 — launchd can silently lose that
+        # grant); a candidate list is not an exemption from that move, it is
+        # the same hazard one entry deeper.
     ]
     for path in candidates:
         if path.is_file():
@@ -767,7 +771,11 @@ async def run_job(job: AgentJob, send_alerts: bool = True) -> int:
             # p0: a job that stopped working is actionable. Keyed on the job name
             # so a job that fails every 5 minutes costs ONE alert plus a counter.
             await job.send_telegram(
-                f"❌ <b>{job.name}</b> {result.status} ({result.duration_s:.1f}s)\n"
+                # Gateway sends plain text (no parse_mode) — HTML here would
+                # render literally, the same live defect this branch strips
+                # from log_anomaly_detector.py / intel_radar_daily_digest.py,
+                # except this path fires on ANY job's failure fleet-wide.
+                f"❌ {job.name} {result.status} ({result.duration_s:.1f}s)\n"
                 f"{result.error or 'no error details'}",
                 tier="p0",
                 dedup_key=f"cron-job-failed:{job.name}",

@@ -1,23 +1,26 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { ThreadList } from '@/components/omnichannel/ThreadList';
-import { ThreadView } from '@/components/omnichannel/ThreadView';
-import { CRMPanel } from '@/components/omnichannel/CRMPanel';
+import { useCallback, useEffect, useState } from "react";
+import { ThreadList } from "@/components/omnichannel/ThreadList";
+import { ThreadView } from "@/components/omnichannel/ThreadView";
+import { CRMPanel } from "@/components/omnichannel/CRMPanel";
 import type {
   CRMContext,
   Thread,
   ThreadFilter,
   ThreadMessage,
-} from '@/lib/api/omnichannel/omnichannel.types';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+} from "@/lib/api/omnichannel/omnichannel.types";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 export default function OmnichannelPage() {
   // Thread list state
   const [threads, setThreads] = useState<Thread[]>([]);
   const [totalThreads, setTotalThreads] = useState(0);
-  const [filters, setFilters] = useState<ThreadFilter>({ limit: 50, offset: 0 });
+  const [filters, setFilters] = useState<ThreadFilter>({
+    limit: 50,
+    offset: 0,
+  });
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
 
   // Selected thread state
@@ -35,7 +38,7 @@ export default function OmnichannelPage() {
 
   // Current user
   const userProfile = api.getUserProfile();
-  const currentUserEmail = userProfile?.email || '';
+  const currentUserEmail = userProfile?.email || "";
 
   // Fetch threads
   const fetchThreads = useCallback(async () => {
@@ -48,7 +51,7 @@ export default function OmnichannelPage() {
       setThreads(data.threads);
       setTotalThreads(data.total);
     } catch (err) {
-      logger.error('Failed to fetch threads', {}, err as Error);
+      logger.error("Failed to fetch threads", {}, err as Error);
     } finally {
       setIsLoadingThreads(false);
     }
@@ -65,7 +68,7 @@ export default function OmnichannelPage() {
       setSelectedThread(data.thread);
       setMessages(data.messages);
     } catch (err) {
-      logger.error('Failed to fetch thread', {}, err as Error);
+      logger.error("Failed to fetch thread", {}, err as Error);
     } finally {
       setIsLoadingMessages(false);
     }
@@ -75,10 +78,12 @@ export default function OmnichannelPage() {
   const fetchContext = useCallback(async (threadId: string) => {
     setIsLoadingContext(true);
     try {
-      const data = await api.request<CRMContext>(`/api/omnichannel/threads/${threadId}/context`);
+      const data = await api.request<CRMContext>(
+        `/api/omnichannel/threads/${threadId}/context`,
+      );
       setCrmContext(data);
     } catch (err) {
-      logger.error('Failed to fetch context', {}, err as Error);
+      logger.error("Failed to fetch context", {}, err as Error);
     } finally {
       setIsLoadingContext(false);
     }
@@ -107,7 +112,7 @@ export default function OmnichannelPage() {
       if (!selectedId) return;
       try {
         await api.request(`/api/omnichannel/threads/${selectedId}/messages`, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({
             content,
             channel: opts.channel,
@@ -119,10 +124,10 @@ export default function OmnichannelPage() {
         // Refresh thread list (preview/activity changed)
         await fetchThreads();
       } catch (err) {
-        logger.error('Failed to send message', {}, err as Error);
+        logger.error("Failed to send message", {}, err as Error);
       }
     },
-    [selectedId, fetchThread, fetchThreads]
+    [selectedId, fetchThread, fetchThreads],
   );
 
   const handleUpdateThread = useCallback(
@@ -130,16 +135,16 @@ export default function OmnichannelPage() {
       if (!selectedId) return;
       try {
         await api.request(`/api/omnichannel/threads/${selectedId}`, {
-          method: 'PATCH',
+          method: "PATCH",
           body: JSON.stringify(update),
         });
         await fetchThread(selectedId);
         await fetchThreads();
       } catch (err) {
-        logger.error('Failed to update thread', {}, err as Error);
+        logger.error("Failed to update thread", {}, err as Error);
       }
     },
-    [selectedId, fetchThread, fetchThreads]
+    [selectedId, fetchThread, fetchThreads],
   );
 
   const handleAssign = useCallback(
@@ -147,16 +152,16 @@ export default function OmnichannelPage() {
       if (!selectedId) return;
       try {
         await api.request(`/api/omnichannel/threads/${selectedId}/assign`, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({ assignee: email }),
         });
         await fetchThread(selectedId);
         await fetchThreads();
       } catch (err) {
-        logger.error('Failed to assign thread', {}, err as Error);
+        logger.error("Failed to assign thread", {}, err as Error);
       }
     },
-    [selectedId, fetchThread, fetchThreads]
+    [selectedId, fetchThread, fetchThreads],
   );
 
   return (
@@ -228,12 +233,12 @@ export default function OmnichannelPage() {
 
 function buildQueryString(filters: ThreadFilter): string {
   const params = new URLSearchParams();
-  if (filters.status) params.set('status', filters.status);
-  if (filters.priority) params.set('priority', filters.priority);
-  if (filters.assigned_to) params.set('assigned_to', filters.assigned_to);
-  if (filters.channel) params.set('channel', filters.channel);
-  if (filters.search) params.set('search', filters.search);
-  params.set('limit', String(filters.limit ?? 50));
-  params.set('offset', String(filters.offset ?? 0));
+  if (filters.status) params.set("status", filters.status);
+  if (filters.priority) params.set("priority", filters.priority);
+  if (filters.assigned_to) params.set("assigned_to", filters.assigned_to);
+  if (filters.channel) params.set("channel", filters.channel);
+  if (filters.search) params.set("search", filters.search);
+  params.set("limit", String(filters.limit ?? 50));
+  params.set("offset", String(filters.offset ?? 0));
   return params.toString();
 }

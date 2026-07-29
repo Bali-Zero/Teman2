@@ -51,12 +51,33 @@ gate — a green gate certifies the engine as it was measured, not future edits.
   recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
   engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
 
-**GATE STATUS: 🔴 RED (2026-07-21 — STEP-6c code is merged, but production collection is still dark).**
-Fly has the trust-store secret but neither `VISA_ENGINE_MATCH_MODE` nor
-`VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`; the Match path therefore defaults OFF and fails closed before
-writing evidence. G-a/G-c are red/unmeasured, G-b has a green local canonical-suite preflight but no accepted
-independent replay artifact, and G-d is unmeasured. Current collection design/receipt:
-`research/visa/2026-07-21-shadow-evidence-collection.md`. The session updates this line as criteria go green,
+**GATE STATUS: 🔴 RED (2026-07-28 — collection is LIVE and MEASURED; NEITHER of the two counted lanes can
+currently mature G-a, for two different reasons).** Receipt: `research/visa/2026-07-28-shadow-gate-measurement.md`
+(re-runnable SQL inline). Measured on prod `visa_decisions`: **1,483 rows / 14 distinct fingerprints /
+4 days / 3 categories / 0 distinct visa codes**, every row `HUMAN_REVIEW_REQUIRED` with an EMPTY
+`candidate_summary` — G-a red on every component.
+**The finding is a LANE ASYMMETRY, not a dead end.** On **RECOMMEND** (the `noindex` `/visa-oracle`, source
+of all 1,483 rows) `fact-mapper.ts:360` sends `person.nationalities: NOT_ASKED`, and the pack's GLOBAL rule
+`review.calling-visa` carries `on_unknown: HUMAN_REVIEW` (`rulepack-prod-001.source.json:1826-1845`) — a
+correct fail-safe meeting an interview that never asks. So that lane abstains by construction and its rows
+are worthless as breadth evidence. On **MATCH** (STEP-6c, the `/visa` funnel that HAS organic traffic) all
+three blockers are absent: it sets nationality from the 4-field submission (`shadow.py:242-268`), its
+fingerprint is `SHA-256` of a per-submission RANDOM token (`shadow.py:399`, `repository.py:115` — so its
+1,000-distinct threshold is traffic-bounded, NOT interview-bounded), and the collector counts it
+(`EVIDENCE_ENGINE_SURFACES={"MATCH","RECOMMEND"}`). It has ZERO rows because it is off: `fly secrets list`
+(run 07-28) shows TRUST_STORE / DRIVER_TOKEN / EVALUATE_MODE / FINGERPRINT_KEYS deployed and **no
+`VISA_ENGINE_MATCH_MODE`**, which defaults OFF (`shadow.py:207`). **⇒ BUT DO NOT JUST ARM IT — see the
+07-28 correction below: the MATCH writer does not label its rows, so they would land `traffic_source
+IS NULL` = legacy = counted toward NEITHER G-a gate. Arming alone is a **G-a** no-op (those rows DO
+still feed G-c, which is deliberately not split by provenance).** Also: 1,464 rows are THREE byte-identical payloads at 3-4s cadence, all labelled
+`traffic_source='real'` (the 07-27 contamination defect, 3 orders of magnitude larger) — G-a-vol is not
+measuring adoption until that label is split. **On ENFORCE, correcting a wrong first reading:** the
+authoritative render IS unbuilt (`resolve_response_mode()` returns literal `CURATED`,
+`evaluate_path.py:197`) and that is an unnamed prerequisite of the flip — but the **kill-switch is NOT
+inert** (OFF short-circuits before engine/pack/DB, `evaluate_path.py:554-556`; ENFORCE evaluates and
+persists), so **G-d is drillable TODAY**. G-b's replay still targets the gold FIXTURE pack
+(`gold_replay.py:160-170`), not the ACTIVE `446ee4ee`. The session updates
+this line as criteria go green,
 with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill capture) for each.
 Evidence is collected from the SHADOW audit substrate; nothing here is self-attested — each green needs a
 re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
@@ -318,7 +339,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
@@ -389,6 +410,94 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   extension (after window data); Track C wiring 4a/4b (Pro, briefed); Track B FASE 2
   (Mini, briefed); G-d drill + flip only at all-green. Seat status: codex CLI dead on M5,
   GLM Keychain-only, Opus caps ~4-5h — graders fall back to Opus/Fable per Zero.
+- 2026-07-27 (M5): **TRACK C claimed by M5/2026-07-27 — SHADOW WIRING BUILT AND LIVE-PROVEN.**
+  Track C was free (no branch/PR/worktree; Pro was briefed 07-25 but never started). Per spec §B.1
+  the SHADOW era changes the UI by NOTHING: the only new runtime behaviour is an invisible
+  fire-and-forget POST. NEW `_lib/fact-mapper.ts` (pure, all 40 wire keys) + NEW `_lib/shadow-client.ts`
+  (the route's only network code, `keepalive`, errors swallowed, never awaited) + MOD `OracleShell.tsx`
+  (dedupe effect) + MOD `flow.ts` (`FlowState.attempt`). 147 tests / 9 files green, `tsc --noEmit`
+  clean — both re-run by the orchestrator, not taken on report.
+  **TWO SPEC-vs-REALITY CORRECTIONS (the spec is 2026-07-19 and predates its own dependencies):**
+  (1) it says "35-key wire shape" — the live `ApplicantFactsData` has **40** required dotted-alias
+  fields, `extra="forbid"`, so a 35-key mapper 422s on every call; the delta is the 5 `secondhome.*`
+  fields the E33 vertical added on 07-23 (#3044). `FactPath` = 43 members (40 applicant + 3 `derived.*`,
+  correctly absent from the wire). (2) it targets `POST /api/v1/visa-oracle/recommend`; the endpoint that
+  actually shipped is **`POST /api/visa-oracle/evaluate`** (#3061, 07-24). Do not build from the spec's
+  §B.2 table without re-grounding both.
+  **LIVE PROOF (end-to-end, first time ever performed):** the mapper's real payload POSTed to prod
+  returned **HTTP 200** with a genuine engine verdict (`HUMAN_REVIEW_REQUIRED` / `CALLING_VISA_REVIEW`
+  — the calling-visa overlay firing because nationality is UNKNOWN), `mode:CURATED`, `rule_pack sequence 1`,
+  `decision_id` present; row landed in `visa_decisions` at `2026-07-26T18:12:26Z` — `engine_mode SHADOW`,
+  `request_category long_tourism` **derived server-side from the facts** (not the caller's hint), 32-byte
+  HMAC fingerprint, `ruleset_activation_id` set.
+  **THREE DEFECT ROUNDS, all found by DRIVING the component, none by reading it** — record this, it is the
+  method: (R1) the one-shot ref latched at first verdict arrival, so `REVIEW_ANSWERS`/`SELECT_CATEGORY`
+  sent the user's PRE-EDIT answers — a wrong audit row is worse than a missing one; (R2) the cure enumerated
+  those two paths and missed **`RESTART`** (two honest interviews, one row) while keying on RAW UI facts
+  instead of the wire payload (editing `remote_income`, which has no FactPath, produced a byte-identical
+  duplicate row). Root cause of both: one key wrong in BOTH dimensions — content and lifetime.
+  **CURE (final):** `flow.ts` gains `FlowState.attempt`, bumped ONLY by a new `resetFlow()` (the reducer's
+  single reset primitive); `OracleShell` holds `{attempt, keys:Set<string>}` keyed on
+  `stableFactsKey(mapOracleFactsToApplicantFacts(...).facts)` — the SAME transform the POST applies.
+  Contract: exactly one POST per **(interview attempt × distinct wire payload)**. Any future action that
+  returns to the verdict by TRUNCATING history is covered by construction — there is no path list to keep
+  in sync. **Do not "simplify" this back to a boolean ref: that shape has now failed twice.**
+  **W100 CONFIRMED AGAIN:** the external GLM seat reviewed R1's diff statically and returned **SHIP** while
+  the defect was live; the house lane refused the verdict, drove the component, and falsified it. Static
+  review is not acceptable evidence on this surface — a reviewer must RUN the tree.
+  **NEW GATE FINDING (owner-relevant, unresolved):** our own verification POSTs persist with
+  `traffic_source='real'` (3 such rows on 07-26). The probe/smoke label is NOT separated from organic
+  traffic, so **G-a-vol currently counts our own tests as real end-user requests**. This must be fixed
+  before the collection window means anything — it is the same defect class as the 11 bootstrap rows.
+  **Infra facts established (re-usable):** endpoint is fully anonymous (exact-match in `public_endpoints.py`);
+  CORS already allows `https://balizero.com`; `next.config.ts` CSP `connect-src` already allowlists
+  `nuzantara-rag.fly.dev` (no CSP change needed); rate limit 30 req/60s per IP; `VISA_ENGINE_DRIVER_TOKEN`
+  gates ONLY the synthetic traffic classes (header `X-Visa-Driver-Token`), never normal calls; an
+  all-UNKNOWN payload is contract-VALID ("thin facts are NEVER rejected"). GATE STATUS unchanged: 🔴 RED.
+- 2026-07-28 (M5): **FIRST MEASUREMENT OF THE LIVE SHADOW SUBSTRATE — we are collecting on the one lane
+  that cannot pass.** Collection has been writing since 07-25 (the 07-21 "still dark" line was stale), so
+  this is the first read of what it wrote rather than of the ledger's narration of it. Receipt with
+  re-runnable SQL + Fly evidence: `research/visa/2026-07-28-shadow-gate-measurement.md`. Numbers in GATE
+  STATUS above. The shape of the finding is a **lane asymmetry**: RECOMMEND abstains by construction
+  (interview never asks nationality × pack's correct `on_unknown: HUMAN_REVIEW`), while MATCH — which sets
+  nationality, mints per-request random fingerprints, is counted by the collector, and sits on the funnel
+  that actually has users — is simply OFF (`VISA_ENGINE_MATCH_MODE` absent from `fly secrets list`).
+  **Next step is therefore arming MATCH, not fixing the RECOMMEND interview first.**
+  **METHOD NOTE — record this, it cost three refutations.** The first draft of this entry claimed (a) G-a
+  volume is interview-bounded and (b) G-d is unfalsifiable because ENFORCE is unbuilt. **Both were WRONG**,
+  killed by the Codex `sol` xhigh adversarial pass and then re-verified on disk by the author: the
+  fingerprint semantics differ PER LANE (HMAC-over-facts on RECOMMEND, random-token on MATCH), and OFF
+  genuinely short-circuits before the engine, so the kill-switch is real and G-d is drillable today — what
+  is unbuilt is only the authoritative ENGINE render. The generalisable trap: **a property measured on one
+  surface was carried to a gate that aggregates two surfaces.** Before saying "the gate cannot be reached",
+  enumerate every surface the collector counts and check the property on each. W65 also held — the refuter
+  itself was checked, and its `MATCH_MODE never set` objection was right on method (inference from a zero
+  count) even though the conclusion survived once real Fly evidence replaced the inference.
+  GATE STATUS updated above: 🔴 RED, now with numbers and with the right reason.
+- 2026-07-28 (M5, same session, hours later): **CORRECTION TO THE ENTRY ABOVE — "arm MATCH" was wrong, and
+  the 07-24 runbook was right.** Caught while executing it, before the `fly secrets set`. Two facts, both
+  verified: (1) `shadow.py`'s MATCH writer does NOT include `traffic_source` in its INSERT column list
+  (`shadow.py:538-547`) and the column has **no default and is nullable** (checked on the live prod schema,
+  not just the migration) — so every MATCH row would land NULL = **legacy = counted toward NEITHER G-a
+  gate** (`shadow_evidence.py:296-303`, fail-closed). Arming MATCH without first teaching the writer to
+  label its rows is a **G-a no-op** — precisely: those rows cannot advance G-a-vol or G-a-breadth, but they
+  DO flow into G-c, which is deliberately not split by provenance (`shadow_evidence.py:28-29`), so they can
+  still move a criterion. **Why no test caught it:** the MATCH writer's fixtures layer only migrations
+  252+255 (`test_shadow_match.py:505-518`) — 256 is never applied, so `traffic_source` is not even a column
+  in the schema those tests assert against. (2) `research/visa/2026-07-24-shadow-arming-runbook.md:40`
+  had already recorded "leave `VISA_ENGINE_MATCH_MODE` OFF" as a deliberate **plan decision** — the window's
+  evidence is to be **full-fact only**, since MATCH carries 3 of 40 facts. That decision is not mine to flip
+  unilaterally: a 3-fact corpus certifies a thinner engine than the one ENFORCE would arm. **So the fork is
+  an owner call**: (A) keep MATCH dark and fix the RECOMMEND interview → slower, full-fact evidence, matches
+  the plan; (B) label MATCH rows `real` + arm → faster volume, thin-fact evidence. Do NOT execute (B)
+  without a ruling.
+  **METHOD NOTE — the lesson that keeps costing:** I read the COLLECTOR's surface allow-list
+  (`EVIDENCE_ENGINE_SURFACES={"MATCH","RECOMMEND"}`) and concluded MATCH rows would count. But **a row is
+  counted only if the WRITER labels it** — reader-accepts-the-surface ≠ writer-emits-the-label. Check the
+  INSERT column list and the column default on the LIVE schema, not the migration file, before calling any
+  lane "evidence". Same shape as the earlier two refutations this session: a property verified at one end of
+  a pipe, asserted about the whole pipe. And: **before executing a step, grep the runbooks for a recorded
+  decision about it** — the 07-24 rationale was one file away.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

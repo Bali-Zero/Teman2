@@ -6,11 +6,34 @@ import { Send, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import * as hrApi from "@/lib/api/hr/hr";
 import type { LeaveTypeOption } from "@/lib/api/hr/hr";
 
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** Form controls on the panel surface. */
+const INPUT_STYLE: React.CSSProperties = {
+  background: "var(--bz-surface)",
+  borderColor: "var(--bz-border)",
+  color: "var(--bz-text-1)",
+};
+
 // ─── Mini Calendar Component ───────────────────────────────────────────────
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 function MiniCalendar({
@@ -90,23 +113,23 @@ function MiniCalendar({
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 w-[280px] shadow-xl">
+    <div className="border rounded-lg p-3 w-[280px] shadow-xl" style={PANEL}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <button
           type="button"
           onClick={prevMonth}
-          className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="p-1 rounded hover:bg-[var(--bz-glass-rim)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-medium text-zinc-200">
+        <span className="text-sm font-medium text-[var(--bz-text-1)]">
           {MONTHS[viewMonth]} {viewYear}
         </span>
         <button
           type="button"
           onClick={nextMonth}
-          className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="p-1 rounded hover:bg-[var(--bz-glass-rim)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors"
         >
           <ChevronRight size={16} />
         </button>
@@ -117,7 +140,7 @@ function MiniCalendar({
         {DAYS.map((d) => (
           <div
             key={d}
-            className="text-[10px] text-zinc-500 text-center font-medium py-1"
+            className="text-[10px] text-[var(--bz-text-3)] text-center font-medium py-1"
           >
             {d}
           </div>
@@ -141,12 +164,12 @@ function MiniCalendar({
               onClick={() => handleClick(day)}
               className={`h-8 w-8 mx-auto rounded-full text-xs font-medium transition-colors ${
                 sel
-                  ? "bg-[var(--bz-accent)] text-zinc-950"
+                  ? "bg-[var(--bz-accent)] text-[var(--bz-on-warm)]"
                   : tod
-                    ? "bg-zinc-800 text-[var(--bz-accent)]"
+                    ? "bg-[var(--bz-glass-rim)] text-[var(--bz-accent)]"
                     : disabled
-                      ? "text-zinc-700 cursor-not-allowed"
-                      : "text-zinc-300 hover:bg-zinc-800"
+                      ? "text-[var(--bz-text-3)] cursor-not-allowed"
+                      : "text-[var(--bz-text-1)] hover:bg-[var(--bz-glass-rim)]"
               }`}
             >
               {day}
@@ -196,16 +219,23 @@ function DateInput({
 
   return (
     <div ref={ref} className="relative">
-      <label className="block text-sm text-zinc-400 mb-1">{label}</label>
+      <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+        {label}
+      </label>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-left text-zinc-200 flex items-center justify-between hover:border-zinc-500 transition-colors"
+        className="w-full border rounded-lg px-3 py-2 text-left text-[var(--bz-text-1)] flex items-center justify-between hover:border-[var(--bz-border-hover)] transition-colors"
+        style={INPUT_STYLE}
       >
-        <span className={value ? "text-zinc-200" : "text-zinc-500"}>
+        <span
+          className={
+            value ? "text-[var(--bz-text-1)]" : "text-[var(--bz-text-3)]"
+          }
+        >
           {value ? formatDisplay(value) : "Select date"}
         </span>
-        <Calendar size={16} className="text-zinc-500" />
+        <Calendar size={16} className="text-[var(--bz-text-3)]" />
       </button>
       {open && (
         <div className="absolute z-50 mt-1 left-0">
@@ -292,7 +322,8 @@ export default function LeaveRequestPage() {
   }, []);
 
   const setStartDate = (date: string) => {
-    const endDate = form.end_date && form.end_date < date ? date : form.end_date;
+    const endDate =
+      form.end_date && form.end_date < date ? date : form.end_date;
     setForm((prev) => ({
       ...prev,
       start_date: date,
@@ -311,11 +342,15 @@ export default function LeaveRequestPage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-zinc-100 mb-6">Request Leave</h1>
+      <h1 className="text-2xl font-bold text-[var(--bz-text-1)] mb-6">
+        Request Leave
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Leave Type</label>
+          <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+            Leave Type
+          </label>
           <select
             value={form.leave_type_id}
             onChange={(e) =>
@@ -325,7 +360,8 @@ export default function LeaveRequestPage() {
               }))
             }
             disabled={loadingTypes || leaveTypes.length === 0}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-200 disabled:opacity-50"
+            className="w-full border rounded-lg px-3 py-2 disabled:opacity-50"
+            style={INPUT_STYLE}
           >
             {loadingTypes ? (
               <option value={0}>Loading...</option>
@@ -357,14 +393,16 @@ export default function LeaveRequestPage() {
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">
+          <label className="block text-sm text-[var(--bz-text-2)] mb-1">
             Total Days:{" "}
-            <span className="text-zinc-200 font-medium">{form.total_days}</span>
+            <span className="text-[var(--bz-text-1)] font-medium">
+              {form.total_days}
+            </span>
           </label>
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">
+          <label className="block text-sm text-[var(--bz-text-2)] mb-1">
             Reason (optional)
           </label>
           <textarea
@@ -373,13 +411,14 @@ export default function LeaveRequestPage() {
               setForm((prev) => ({ ...prev, reason: e.target.value }))
             }
             rows={3}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-200"
+            className="w-full border rounded-lg px-3 py-2"
+            style={INPUT_STYLE}
             placeholder="Why do you need this leave?"
           />
         </div>
 
         {error && (
-          <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
+          <div className="bg-[var(--state-danger)]/10 border border-[var(--state-danger)]/30 rounded-lg p-3 text-sm text-[var(--state-danger)]">
             {error}
           </div>
         )}
@@ -387,7 +426,7 @@ export default function LeaveRequestPage() {
         <button
           type="submit"
           disabled={submitting || leaveTypes.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-zinc-950 hover:opacity-90 text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-[var(--bz-on-warm)] hover:opacity-90 text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send size={16} />
           {submitting ? "Submitting..." : "Submit Request"}

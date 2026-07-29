@@ -18,6 +18,7 @@ name: Guard conformance (superscar #3 enforcement)
 
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group:
   push:
     branches: [main]
     paths:
@@ -37,7 +38,7 @@ on:
 
 concurrency:
   group: guard-conformance-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   conformance:
@@ -48,6 +49,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the path-diff sees the PR base
+          # blob:none — partial clone: every commit and tree, no file contents (fetched on
+          # demand). `fetch-depth: 0` is KEPT, so this gate's `git diff --name-only` resolves
+          # exactly as before; only blob DELIVERY becomes lazy. Measured on this repository:
+          # a full clone moves 2,289 MB, blob:none moves 23.3 MB in 21s.
+          # Not a tidy-up: on 2026-07-27 this same checkout ate 297s of a 300s job budget in
+          # adversarial-review-gate and 597s of 600s in P6 and was KILLED, so those gates never
+          # ran. A timeout kill reports `cancelled`, and a cancelled REQUIRED check EJECTS the
+          # merge-queue entry, which then sits open with auto-merge off. See #3375 for the
+          # measurement and for why the flag's presence in the fetch log — not a green check —
+          # is the proof (an unsupported input is silently ignored by Actions).
+          filter: blob:none
 
       - name: Did guard surfaces change?
         id: relevant
@@ -60,7 +72,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|\.github/workflows/guard-conformance\.yml)'; then
+            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|scripts/ci/vercel_(should_build|ignore_build_step)\.sh|scripts/tests/test_vercel_should_build\.sh|\.github/workflows/guard-conformance\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -160,6 +172,24 @@ jobs:
         run: |
           set -euo pipefail
           python3 infra/claude-hooks/test_subagent_stop_verify.py
+
+      # Vercel's Ignored Build Step. A guard in the #3 sense — it decides, on a substring-ish
+      # signal (changed paths), whether the public site gets rebuilt — so it owes guilt AND
+      # innocence like any other. It lands here rather than in scripts-tests-sweep.yml because
+      # that workflow says of itself "this job never blocks a PR (not in required_status_checks)":
+      # a corpus nothing can fail on is the W81 theater this workflow exists to prevent. Hosting
+      # it in an ALREADY-required job also avoids minting a new required context, which would
+      # freeze every branch created before it.
+      # What is actually being protected: the pointer, not the guard. On 2026-07-29 the project's
+      # commandForIgnoringBuildStep invoked the guard directly before it existed on main; bash
+      # exited 127; Vercel treats every status except 0 and 1 as a FAILED DEPLOYMENT, and nine
+      # deployments errored. The corpus executes the literal pointer string against script-absent,
+      # syntax-error, 127 and signal-kill.
+      - name: Vercel ignore-step guard + pointer (guilt, innocence, exit contract)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          bash scripts/tests/test_vercel_should_build.sh
 
       - name: Sentinel success (no guard surfaces changed)
         if: steps.relevant.outputs.run != 'true'

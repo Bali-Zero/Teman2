@@ -31,7 +31,7 @@ test.describe("persona doors homepage page Page", () => {
 
     await expect(visa).toHaveAttribute("href", "/visa");
     await expect(company).toHaveAttribute("href", "/kbli");
-    await expect(tax).toHaveAttribute("href", "https://tax.balizero.com/");
+    await expect(tax).toHaveAttribute("href", "/taxes/gap");
     await expect(property).toHaveAttribute("href", "/property");
 
     await expect(doors.getByText("I'm moving to Bali")).toBeVisible();

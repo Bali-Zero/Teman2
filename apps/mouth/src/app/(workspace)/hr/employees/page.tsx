@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import type { HREmployee, EmployeeCreatePayload, PTKPStatus } from "@/types/hr";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
 const PTKP_OPTIONS: PTKPStatus[] = [
   "TK/0",
@@ -18,6 +18,25 @@ const PTKP_OPTIONS: PTKPStatus[] = [
   "K/2",
   "K/3",
 ];
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** Inline danger strip (load error, form error). */
+const DANGER_STRIP: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+  borderColor: "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+  color: "var(--state-danger)",
+};
+
+const INPUT_STYLE: React.CSSProperties = {
+  background: "var(--bz-surface)",
+  borderColor: "var(--bz-border)",
+  color: "var(--bz-text-1)",
+};
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("id-ID", {
@@ -118,10 +137,15 @@ export default function EmployeesPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-zinc-100">Employees</h1>
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--bz-text-1)" }}
+        >
+          Employees
+        </h1>
         <div className="animate-pulse space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-zinc-900 rounded-lg" />
+            <div key={i} className="h-16 rounded-lg" style={PANEL} />
           ))}
         </div>
       </div>
@@ -131,8 +155,13 @@ export default function EmployeesPage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-zinc-100">Employees</h1>
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-red-400">
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--bz-text-1)" }}
+        >
+          Employees
+        </h1>
+        <div className="border rounded-xl p-6" style={DANGER_STRIP}>
           {error}
         </div>
       </div>
@@ -142,9 +171,17 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-100">Employees</h1>
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--bz-text-1)" }}
+        >
+          Employees
+        </h1>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <div
+            className="flex items-center gap-2 text-sm"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <Users size={16} />
             {employees.length} total
           </div>
@@ -161,21 +198,31 @@ export default function EmployeesPage() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="bg-zinc-900 border border-[var(--bz-accent)]/30 rounded-xl p-5 space-y-4"
+          className="border rounded-xl p-5 space-y-4"
+          style={{ ...PANEL, borderColor: "var(--bz-border-accent)" }}
         >
-          <h2 className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+          <h2
+            className="text-sm font-semibold uppercase tracking-wider"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             New Employee
           </h2>
 
           {formError && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400">
+            <div
+              className="border rounded-lg px-4 py-2 text-sm"
+              style={DANGER_STRIP}
+            >
               {formError}
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Team Member *
               </label>
               <div className="relative">
@@ -185,7 +232,8 @@ export default function EmployeesPage() {
                     handleFieldChange("team_member_id", e.target.value)
                   }
                   disabled={loadingTeam}
-                  className="w-full appearance-none bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                  className="w-full appearance-none border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--bz-border-accent)]"
+                  style={INPUT_STYLE}
                   required
                 >
                   <option value="">
@@ -199,24 +247,32 @@ export default function EmployeesPage() {
                 </select>
                 <ChevronDown
                   size={14}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "var(--bz-text-2)" }}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Hire Date *
               </label>
               <input
                 type="date"
                 value={form.hire_date}
                 onChange={(e) => handleFieldChange("hire_date", e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
                 required
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Base Salary (IDR) *
               </label>
               <input
@@ -226,7 +282,8 @@ export default function EmployeesPage() {
                   handleFieldChange("base_salary_idr", Number(e.target.value))
                 }
                 placeholder="5000000"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
                 min={0}
                 required
               />
@@ -235,7 +292,10 @@ export default function EmployeesPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Bank Name
               </label>
               <input
@@ -243,11 +303,15 @@ export default function EmployeesPage() {
                 value={form.bank_name || ""}
                 onChange={(e) => handleFieldChange("bank_name", e.target.value)}
                 placeholder="e.g. BCA, Mandiri"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Bank Account
               </label>
               <input
@@ -257,11 +321,15 @@ export default function EmployeesPage() {
                   handleFieldChange("bank_account", e.target.value)
                 }
                 placeholder="Account number"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Account Holder
               </label>
               <input
@@ -271,24 +339,34 @@ export default function EmployeesPage() {
                   handleFieldChange("bank_account_holder", e.target.value)
                 }
                 placeholder="Name on account"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">NPWP</label>
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                NPWP
+              </label>
               <input
                 type="text"
                 value={form.npwp || ""}
                 onChange={(e) => handleFieldChange("npwp", e.target.value)}
                 placeholder="Tax ID number"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 PTKP Status
               </label>
               <div className="relative">
@@ -297,7 +375,8 @@ export default function EmployeesPage() {
                   onChange={(e) =>
                     handleFieldChange("ptkp_status", e.target.value)
                   }
-                  className="w-full appearance-none bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                  className="w-full appearance-none border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--bz-border-accent)]"
+                  style={INPUT_STYLE}
                 >
                   {PTKP_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -307,12 +386,16 @@ export default function EmployeesPage() {
                 </select>
                 <ChevronDown
                   size={14}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "var(--bz-text-2)" }}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 BPJS Kesehatan
               </label>
               <input
@@ -322,14 +405,18 @@ export default function EmployeesPage() {
                   handleFieldChange("bpjs_kesehatan_number", e.target.value)
                 }
                 placeholder="BPJS health number"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 BPJS Ketenagakerjaan
               </label>
               <input
@@ -342,17 +429,24 @@ export default function EmployeesPage() {
                   )
                 }
                 placeholder="BPJS employment number"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs text-zinc-400 mb-1">Notes</label>
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                Notes
+              </label>
               <input
                 type="text"
                 value={form.notes || ""}
                 onChange={(e) => handleFieldChange("notes", e.target.value)}
                 placeholder="Optional notes"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                className="w-full border rounded-lg px-3 py-2 text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-border-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
           </div>
@@ -361,7 +455,7 @@ export default function EmployeesPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-zinc-950 text-sm font-medium hover:bg-[var(--bz-accent)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-[var(--bz-navy-900)] text-sm font-medium hover:bg-[var(--bz-accent)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? "Saving..." : "Save Employee"}
             </button>
@@ -370,15 +464,24 @@ export default function EmployeesPage() {
       )}
 
       {employees.length === 0 ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-500">
+        <div
+          className="border rounded-xl p-8 text-center"
+          style={{ ...PANEL, color: "var(--bz-text-2)" }}
+        >
           No employees registered yet. Click &quot;Add Employee&quot; to get
           started.
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border rounded-xl" style={PANEL}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
+              <tr
+                className="text-xs uppercase tracking-wider border-b"
+                style={{
+                  color: "var(--bz-text-2)",
+                  borderColor: "var(--bz-border)",
+                }}
+              >
                 <th className="text-left px-4 py-3">Name</th>
                 <th className="text-left px-4 py-3">Email</th>
                 <th className="text-left px-4 py-3">Role</th>
@@ -396,19 +499,40 @@ export default function EmployeesPage() {
                 return (
                   <tr
                     key={emp.id}
-                    className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
+                    className="border-b last:border-0 hover:bg-[var(--surface-raised)] transition-colors"
+                    style={{
+                      borderColor:
+                        "color-mix(in srgb, var(--bz-border) 50%, transparent)",
+                    }}
                   >
-                    <td className="px-4 py-3 text-zinc-200 font-medium">
+                    <td
+                      className="px-4 py-3 font-medium"
+                      style={{ color: "var(--bz-text-1)" }}
+                    >
                       {emp.full_name}
                     </td>
-                    <td className="px-4 py-3 text-zinc-400">{emp.email}</td>
-                    <td className="px-4 py-3 text-zinc-400 capitalize">
+                    <td
+                      className="px-4 py-3"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
+                      {emp.email}
+                    </td>
+                    <td
+                      className="px-4 py-3 capitalize"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
                       {emp.role}
                     </td>
-                    <td className="px-4 py-3 text-right text-[var(--bz-accent)] font-medium tabular-nums">
-                      {formatIDR(emp.base_salary_idr)}
+                    <td className="px-4 py-3 text-right font-medium">
+                      <Money
+                        value={emp.base_salary_idr}
+                        style={{ color: "var(--bz-accent)" }}
+                      />
                     </td>
-                    <td className="px-4 py-3 text-zinc-400 tabular-nums">
+                    <td
+                      className="px-4 py-3 tabular-nums"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
                       {formatDate(emp.hire_date)}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -417,19 +541,37 @@ export default function EmployeesPage() {
                         title={hasBpjs ? "BPJS complete" : "BPJS missing"}
                       >
                         {hasBpjs ? (
-                          <Shield size={16} className="text-emerald-400" />
+                          <Shield
+                            size={16}
+                            style={{ color: "var(--state-success)" }}
+                          />
                         ) : (
-                          <ShieldAlert size={16} className="text-red-400" />
+                          <ShieldAlert
+                            size={16}
+                            style={{ color: "var(--state-danger)" }}
+                          />
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span
-                        className={`inline-block text-xs px-2 py-0.5 rounded-full border ${
+                        className="inline-block text-xs px-2 py-0.5 rounded-full border"
+                        style={
                           emp.is_active
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/30"
-                        }`}
+                            ? {
+                                background:
+                                  "color-mix(in srgb, var(--state-success) 12%, transparent)",
+                                color: "var(--state-success)",
+                                borderColor:
+                                  "color-mix(in srgb, var(--state-success) 30%, transparent)",
+                              }
+                            : {
+                                background:
+                                  "color-mix(in srgb, var(--bz-text-pure) 6%, transparent)",
+                                color: "var(--bz-text-2)",
+                                borderColor: "var(--bz-border)",
+                              }
+                        }
                       >
                         {emp.is_active ? "Active" : "Inactive"}
                       </span>

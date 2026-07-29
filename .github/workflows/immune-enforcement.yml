@@ -18,10 +18,11 @@ name: Immune enforcement (superscar antidotes)
 on:
   workflow_dispatch:
   pull_request:
+  merge_group:
 
 concurrency:
   group: immune-enforcement-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   antidotes:
@@ -31,6 +32,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # blob:none — partial clone: every commit and tree, no file contents (fetched on
+          # demand). `fetch-depth: 0` is KEPT, so this gate's `git diff --name-only` resolves
+          # exactly as before; only blob DELIVERY becomes lazy. Measured on this repository:
+          # a full clone moves 2,289 MB, blob:none moves 23.3 MB in 21s.
+          # Not a tidy-up: on 2026-07-27 this same checkout ate 297s of a 300s job budget in
+          # adversarial-review-gate and 597s of 600s in P6 and was KILLED, so those gates never
+          # ran. A timeout kill reports `cancelled`, and a cancelled REQUIRED check EJECTS the
+          # merge-queue entry, which then sits open with auto-merge off. See #3375 for the
+          # measurement and for why the flag's presence in the fetch log — not a green check —
+          # is the proof (an unsupported input is silently ignored by Actions).
+          filter: blob:none
 
       - name: Detect immune-relevant changes (sentinel path check)
         id: paths
@@ -47,19 +59,31 @@ jobs:
           MB=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
           CHANGED=$(git diff --name-only "$MB" "$HEAD_SHA")
           RELEVANT=false
+          # NOTE on the `.github/workflows/*` entries at the end of this list:
+          # test_ci_service_images_use_mirror.py scans EVERY workflow file, so its
+          # SUBJECTS have to trigger this job too. Listing only immune-enforcement.yml
+          # left that guard armed against the one file nobody would ever un-mirror —
+          # a test in the run-loop whose subject never wakes the job is armed to
+          # nothing. The glob supersedes the old literal entry, which shellcheck
+          # correctly flagged as dead (SC2222); it was removed, not kept as decor.
           while IFS= read -r f; do
             case "$f" in
               scripts/lint_home_fork.py|\
+              scripts/proprioception.py|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
               scripts/lint_plist_keepalive.py|\
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
+              scripts/nb_curator_artifact_gate.py|\
+              scripts/tests/test_nb_curator_artifact_gate.py|\
               scripts/jules_dispatch.py|\
               scripts/lint_test_reward_hacking.py|\
               scripts/test_lint_test_reward_hacking.py|\
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
+              scripts/tests/test_home_fork_stale_side_attribution.py|\
+              scripts/tests/test_proprioception_home_fork_merge.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
@@ -67,8 +91,16 @@ jobs:
               scripts/tests/test_adversarial_review_gate.py|\
               scripts/tests/test_jules_dispatch.py|\
               scripts/tests/test_codex_autofix_selector.py|\
+              scripts/codex_tri_llm_review.py|\
+              scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
               scripts/tests/test_lint_doc_executable_refs.py|\
+              scripts/lint_worktree_husky_symlink.py|\
+              scripts/tests/test_lint_worktree_husky_symlink.py|\
+              scripts/tests/test_root_manifest_does_not_contradict_itself.py|\
+              package.json|\
+              apps/*/package.json|\
+              packages/*/package.json|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
@@ -84,6 +116,9 @@ jobs:
               scripts/prepush_classify.py|\
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
+              scripts/tests/test_prepush_failclosed.sh|\
+              scripts/tests/test_prepush_tip_drift.sh|\
+              scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
               scripts/tests/test_pii_gate_merge_scope.sh|\
@@ -93,8 +128,40 @@ jobs:
               scripts/tests/test_docs_audit.py|\
               scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
+              scripts/tests/test_docs_inventory_render_is_clock_free.py|\
+              scripts/lib/fly_credential.sh|\
+              scripts/test_fly_credential.sh|\
+              scripts/lib/offsite_verify.sh|\
+              scripts/test_offsite_verify.sh|\
+              scripts/fly-pg-backup.sh|\
+              scripts/wr2-cron-wrapper.sh|\
+              scripts/cron-wrapper.sh|\
+              scripts/cron-state.sh|\
+              scripts/test_cron_state_alert.sh|\
+              scripts/cron-runner.sh|\
+              scripts/test_cron_runner_alert.sh|\
+              infra/scripts/fly-backup.sh|\
+              scripts/test_fly_backup_phases.sh|\
+              scripts/ci/queue_rearm.sh|\
+              scripts/ci/queue_rearm_classify.sh|\
+              scripts/ci/queue_rearm_population.sh|\
+              scripts/ci/test_queue_rearm_classify.sh|\
+              scripts/ci/test_queue_rearm_population.sh|\
+              scripts/ci/telegram_verdict.sh|\
+              scripts/ci/telegram_notify.sh|\
+              scripts/ci/test_telegram_verdict.sh|\
+              scripts/tests/test_fly_backup_timeouts.py|\
+              scripts/tests/test_no_import_time_chdir_in_tests.py|\
+              scripts/tests/test_husky_prepush_venv_guard.py|\
+              scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
+              scripts/tests/test_ci_service_images_use_mirror.py|\
+              scripts/tests/test_lint_workflow_errexit_decap.py|\
+              scripts/lint_workflow_errexit_decap.py|\
+              scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
+              apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
-              .github/workflows/immune-enforcement.yml)
+              .github/workflows/*.yml|\
+              .github/workflows/*.yaml)
                 RELEVANT=true
                 break
                 ;;
@@ -114,14 +181,20 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_lint_home_fork.py \
+            scripts/tests/test_home_fork_stale_side_attribution.py \
+            scripts/tests/test_proprioception_home_fork_merge.py \
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
+            scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
+            scripts/tests/test_lint_worktree_husky_symlink.py \
+            scripts/tests/test_root_manifest_does_not_contradict_itself.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
@@ -132,6 +205,14 @@ jobs:
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
+            scripts/tests/test_docs_inventory_render_is_clock_free.py \
+            scripts/tests/test_fly_backup_timeouts.py \
+            scripts/tests/test_no_import_time_chdir_in_tests.py \
+            scripts/tests/test_ci_service_images_use_mirror.py \
+            scripts/tests/test_lint_workflow_errexit_decap.py \
+            scripts/tests/test_intake_dsn_guard_covers_every_var.py \
+            scripts/tests/test_husky_prepush_venv_guard.py \
+            scripts/tests/test_immune_enforcement_trigger_symmetry.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
@@ -143,21 +224,137 @@ jobs:
           done
           exit $fail
 
-      # Shell test, not pytest-shaped (no existing convention in this workflow
-      # runs .sh tests — several siblings under scripts/tests/*.sh currently run
-      # in NO workflow at all, a pre-existing #2-family gap tracked separately,
-      # not widened here). Wired directly rather than left to join that backlog:
-      # this file's whole purpose is proving the 2026-07-30 merge-scope fix
-      # (PR that added it) stays true, so an unexecuted copy of it would be the
-      # exact theater the fix itself was written to end.
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'
         run: |
-          if [ -f scripts/tests/test_pii_gate_merge_scope.sh ]; then
-            bash scripts/tests/test_pii_gate_merge_scope.sh
-          else
-            echo "::notice::skip (absent) scripts/tests/test_pii_gate_merge_scope.sh — expected only in the window before its lane's PR merges"
-          fi
+          # Named here at birth, same reason as the shell corpora below: the
+          # 2026-07-30 merge-scope fix exists to end exactly the kind of theater
+          # an unexecuted copy of its own proof would be.
+          # No `if [ -f ]` skip, per the convention the fly-credential step below
+          # argues: this file lands on main with the PR that adds this step, so
+          # from then on "absent" means DELETED, and a deleted corpus must go red
+          # rather than quietly pass.
+          bash scripts/tests/test_pii_gate_merge_scope.sh
+
+      - name: No run-block decapitates its own failure branch (W101, 4th instance)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Running the CORPUS is not running the LINT. The corpus proves the
+          # detector still bites; only this step proves the repo is clean. On
+          # 2026-07-28 the same omission is what let three live decapitations
+          # sit on main — including the one that had silently killed every
+          # scheduled run of the merge-queue re-armer since it was armed.
+          python3 scripts/lint_workflow_errexit_decap.py
+
+      - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # W106: shipped with #3176 and named by NO workflow until now, so its 24 checks
+          # ran nowhere — a test no workflow names is not coverage, it only looks like it.
+          # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
+          # deleted corpus must go red rather than quietly pass.
+          bash scripts/test_fly_credential.sh
+
+      - name: Off-site artifact gate corpus (guilt + innocence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The gate that makes fly-pg-backup.sh judge the ARTIFACT instead of its own
+          # last line. Named here at birth, for the same reason as the corpus above.
+          bash scripts/test_offsite_verify.sh
+
+      - name: Pre-push fail-closed corpus (W101 shell-semantics + task #60 stranded-clone-DB)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/tests/test_prepush_failclosed.sh was on main, named by NO
+          # workflow (task #92 arm condition: same disease as the two corpora
+          # above — a test with no executor is not coverage). This is a POSIX
+          # sh script, not pytest — appending it to the `python -m pytest ...`
+          # loop above would collect nothing and pass silently, the identical
+          # bug one level down inside the fix for it. It needs its own step
+          # with the exit code read directly, same as test_fly_credential.sh
+          # and test_offsite_verify.sh just above. No `if [ -f ]` skip: this
+          # file is on main, so absent means deleted, and a deleted corpus
+          # must go red rather than quietly pass.
+          bash scripts/tests/test_prepush_failclosed.sh
+
+      - name: tip-drift corpus — the branch cannot move under the gate (guilt + innocence + W84)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Same POSIX-sh reasoning as the step above: its own step, exit code
+          # read directly, no `if [ -f ]` skip. `prepush-guards.yml` runs this
+          # corpus too and is the REQUIRED context; this second executor is
+          # deliberate — the guard it covers is what makes that context mean
+          # anything, and a single executor is a single point of silence.
+          bash scripts/tests/test_prepush_tip_drift.sh
+
+      - name: cron-state failure alert corpus (guilt + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # cron-state.sh wrote a receipt and never spoke. The 03:00 Postgres backup runs
+          # under it, so its failure was silent while the 03:20 twin alerted. Named here at
+          # birth: an alarm nobody exercises is the thing it was built to prevent.
+          bash scripts/test_cron_state_alert.sh
+
+      - name: cron-runner failure alert corpus (3 exits + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The sibling of the step above, and the reason it exists: curing cron-state
+          # and stopping there left the BIGGER of five producers mute (cron-runner: 36
+          # receipts, 30 invocations, vs cron-state's 28/27). Measured the next morning,
+          # two cron-runner jobs had failed within 24h of that fix with zero cron-fail:
+          # anywhere. All three exits are asserted — a fix that covers only the path
+          # that bit you is half a fix.
+          bash scripts/test_cron_runner_alert.sh
+
+      - name: Backup phase composition corpus (one dead phase must not kill the other)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # `set -e` + a bare pipeline decapitated the PG_EXIT capture, so a failing
+          # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
+          # bucket: the qdrant nightly is missing for exactly the night PG failed.
+          bash scripts/test_fly_backup_phases.sh
+
+      - name: Merge-queue re-arm corpora (classifier + population, guilt + innocence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Both corpora shipped complete and NEITHER was named by any workflow —
+          # `test_queue_rearm_classify.sh` had been on main since #3342, executed by
+          # nothing. A guilt+innocence corpus that never runs is the exact shape it
+          # was written to prevent (superscar #2), one level down: the guard of the
+          # guard, unarmed.
+          #
+          # What they pin: the classifier must never retry a CODE red and must never
+          # read an unfinished check as "no failure"; the population reader must count
+          # a pull request whose mergeability GitHub has not finished computing as
+          # UNDECIDABLE rather than dropping it into the clean bucket. That third
+          # `mergeable` value is why this step exists — measured 2026-07-28, the tool
+          # reported "0 orphaned" seconds after a merge to main and 13 minutes later,
+          # same code, same world.
+          bash scripts/ci/test_queue_rearm_classify.sh
+          bash scripts/ci/test_queue_rearm_population.sh
+
+      - name: Telegram delivery verdict corpus (guilt + innocence + fail-closed)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # W104 on the CI surface: 25 of the 28 `curl .../sendMessage` calls in this
+          # repo's workflows judged their own delivery by curl's EXIT CODE, which is 0
+          # whenever the server answers — including HTTP 401 with a well-formed
+          # {"ok":false,"description":"Unauthorized"} after a token rotation. Every one
+          # of those alarms was, by construction, unable to report its own silence.
+          #
+          # (An earlier draft of this comment said "12 of 14". That was my own
+          # undercount from a line-anchored grep, blind to the prevailing shape in this
+          # repo — `curl -sS -X POST \` with the URL on the NEXT line. The real figures
+          # come from joining continuations before scanning: 28 sites, 18 files. Left
+          # recorded rather than quietly overwritten, because a wrong census is exactly
+          # what the widened `lint_tg_direct_senders.py` scan exists to prevent.)
+          #
+          # What this pins: 401/403/400/429 are refusals, `"ok":false` under an HTTP 200
+          # is a refusal (the status line is not the authority, the body is), the word
+          # "true" appearing anywhere else in the payload is NOT a delivery, and an
+          # absent status is CANNOT-VERIFY rather than success — a blind check is not a
+          # clean check.
+          bash scripts/ci/test_telegram_verdict.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { pmaCapShape } from "@/lib/kbli-pma-shape";
 
 interface PMABadgeProps {
   status: "open" | "restricted" | "closed" | "unknown";
@@ -67,8 +68,41 @@ export function PMABadge({
     suffix = "· 100% nat'l · blocked in Bali";
   } else if (status === "open" && numeric === 100) {
     suffix = "· 100% Foreign";
-  } else if (status === "restricted" && numeric !== null && numeric < 100) {
-    suffix = capVerified ? `· Max ${numeric}%` : `· ≈${numeric}% unverified`;
+  } else if (status === "restricted") {
+    // The SHAPE comes from the shared classifier; only the wording is this
+    // badge's own. This branch used to carry a private copy of the rule,
+    // `numeric !== null && numeric < 100`, which failed at both ends in
+    // OPPOSITE ways:
+    //   - cap 0 passed the bound (0 < 100), reached the formula and published
+    //     "⚠️ Restricted · Max 0%" on /kbli/47111 — still live after #3186 and
+    //     #3436 unified every other surface;
+    //   - cap 100 was EXCLUDED by the bound, so the badge printed no suffix at
+    //     all, leaving a bare "Restricted" whose qualifier the reader cannot
+    //     recover. Not "right by accident" — silently unhelpful, which is why
+    //     the corpus below calls it guilty too.
+    // A ceiling of 0 is not a ceiling anyone can invest under; a ceiling of
+    // 100 restricts nothing.
+    //
+    // KNOWN GAP, shared with `restrictedCapBadge` and NOT introduced here: the
+    // `none` / `full` / `conditional` arms answer before `capVerified` is
+    // consulted, so an UNVERIFIED cap at an extreme would be stated as fact.
+    // Measured on all 1,559 rows: the only two `capVerified: false` records are
+    // TERBUKA/100 and never reach this branch, and the single restricted cap-0
+    // row is verified — so the cell is unreachable today. Curing it belongs in
+    // the shared module, where all six presenters inherit it at once.
+    switch (pmaCapShape({ maxForeign, capSpecial, capVerified })) {
+      case "none":
+        suffix = "· closed (0%)";
+        break;
+      case "full":
+      case "conditional":
+        suffix = "· conditions apply";
+        break;
+      default:
+        suffix = capVerified
+          ? `· Max ${numeric}%`
+          : `· ≈${numeric}% unverified`;
+    }
   }
 
   return (

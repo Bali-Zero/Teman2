@@ -1,0 +1,487 @@
+name: Main-push Failure Watch
+
+# Task #23 (superscar #2, "Esiste ≠ Armato" — cicatrix-superscar.md #2). One
+# generic watcher for every workflow's completion, replacing the pattern this
+# repo independently reinvented three times: fly-deploy.yml's own dedicated
+# alert job, and two narrowly-scoped scripts
+# (scripts/docs_inventory_refresh_liveness.py, scripts/merge_train.py) each
+# hardcoded to one or two workflow names. GitHub aggregates the whole job
+# graph into `workflow_run.conclusion`, correctly folding in a skip-cascade
+# from an upstream job failure — the exact `needs:`-completeness trap that
+# bit fly-deploy.yml's own alert job (`deploy-failure-alert` watches only 2
+# of up to 6 fail-prone jobs; task #19). One artifact instead of N hand-rolled
+# ones means it cannot be individually forgotten on a new workflow — enforced
+# by watcher-conformance.yml, which fails CI if this file's `workflows:` list
+# drifts from the live workflow census.
+#
+# SCOPE: alerts for a push-triggered OR schedule-triggered run on `main` —
+# not for pull_request runs (already visible on the PR itself) and not for
+# workflow_dispatch runs (operator-initiated; the operator is already
+# watching). The `workflows:` list below is DELIBERATELY over-inclusive
+# (every workflow in the repo, this file's own name excluded) so listing it
+# never requires a push:main/schedule:main judgment call — real filtering
+# happens in the job `if:` below, on the actual event + branch of the run
+# that just completed.
+#
+# Widened to `schedule` 2026-07-26 (task #37): task #37 added the first
+# schedule-triggered workflow that targets main (`Tests & Coverage`'s
+# hourly run, decoupled from push cadence precisely because push-triggered
+# runs on main were measured spending most of their life queued-then-
+# cancelled — see tests.yml's `on.schedule` comment). Excluding `schedule`
+# here would have meant building a health check whose own failures nobody
+# gets told about — the exact "esiste ≠ armato" disease this watcher exists
+# to cure, just at one more remove. `schedule` always fires against the
+# default branch only, so `head_branch == 'main'` is not a new constraint
+# for it, only `event` needed widening.
+#
+# GOTCHAS (verified 2026-07-26 against GitHub's docs + this repo's live API,
+# not assumed):
+#  - `workflow_run` only activates once this file is ON THE DEFAULT BRANCH —
+#    it cannot be exercised from a branch or PR. First-fire proof has to
+#    happen post-merge: re-run (or wait for) a real failure on a workflow in
+#    the list, or use workflow_dispatch on a target workflow to force one.
+#  - `workflow_run` chaining is capped at 3 levels by GitHub — this file
+#    deliberately does NOT include its own `name:` (above) in `workflows:`
+#    below, so it can never watch its own completion (self-trigger loop).
+#    Confirmed empirically: `workflows:` matches by a workflow's `name:`
+#    field, not its filename (this repo has exactly 1 name per file, 82/82,
+#    zero collisions — re-verified against the live file set before writing
+#    this list, including this file and watcher-coverage.yml itself).
+#  - `cancelled` is deliberately excluded from the alert condition below: THIS
+#    job's own concurrency group cancels its own earlier in-flight instance on
+#    every new event in a burst (see below), and a normal supersede-cancel of
+#    a WATCHED workflow (a newer push lands mid-run) is routine, not a silent
+#    failure — alerting on it would itself be the noise this design exists to
+#    avoid.
+
+on:
+  workflow_run:
+    # 2 entries below ("Guard conformance (superscar", "Golden Rule") look
+    # truncated — they are not a transcription error here. Their SOURCE
+    # files have an unquoted `#` in `name:`, which YAML (and GitHub's own
+    # registration, confirmed live via `gh api .../actions/workflows`)
+    # reads as a comment start. This list intentionally matches what
+    # GitHub actually registered, not what the source file's author meant
+    # — see scripts/check_watcher_coverage.py's docstring for the full
+    # note and why fixing the two source name: lines is a separate PR.
+    workflows:
+      - actionlint
+      - adversarial-review-gate
+      - AI PR review (advisory)
+      - asyncpg-lint
+      - Auto-merge whitelist
+      - Agent worktree broker hygiene
+      - catA-channel-count-pin
+      - "catB: LaunchAgent daemon|cron XOR + W67 crash-loop guard"
+      - catC — canary tautology lint (non-required, observability)
+      - catD-backend-data-invariants
+      - catE-sovereignty-lint
+      - "catF: WA bridge guard-chain + HOME-fork notice"
+      - check-kbli-dataset-sync
+      - cron - codex autofix reaper (autonomous reap every 48h)
+      - Contract Tests (Schemathesis)
+      - cron - cert monitor (daily 07:00 WITA)
+      - cron - drive poll monitor
+      - cron - fly cost alert (weekly Mon 09:00 WITA)
+      - cron - fly restart loop detector (every 15 min)
+      - cron - fly watcher (every 15 min)
+      - Cron — KG staging promotion
+      - cron - LLM credit sentinel (every 20 min)
+      - cron - notifiers all (daily 00:00 WITA)
+      - cron - notifiers birthday (DISARMED 2026-07-12 — manual only)
+      - cron - notifiers compliance-forecast (daily 06:30 WITA)
+      - cron - notifiers e33-guarantee-scan (daily 07:10 WITA)
+      - cron - notifiers email-health (every 30 min)
+      - cron - notifiers lkpm-deadlines (daily 23:00 WITA)
+      - cron - notifiers welcome-pending (every 15 min)
+      - cron - practice auto-create (daily 07:30 WITA)
+      - cron - sentry quota check (daily 09:00 WITA)
+      - Doc Freshness Report
+      - Docs Guardian
+      - cron - docs-inventory-refresh liveness (every 6h)
+      - Docs Inventory Refresh
+      - Docs Sync Check
+      - manual - fly api diagnostics
+      - Deploy Backend to Fly.io
+      - Fly.io Secrets Health Check
+      - Frontend Live Sentinel
+      - Guard conformance (superscar
+      - Hook innocence gate (vaccine)
+      - hot-zone-enforcement
+      - Immune enforcement (superscar antidotes)
+      - Insight cover cards — no article may wear another article's card
+      - Intel Router Tests
+      - kbli-68112-collision-regression
+      - kbli-filiera-vault-compilers
+      - Lighthouse CI (mouth)
+      - Content lint — reasoning-leak in published MDX
+      - Lint Cross-Import
+      - Golden Rule
+      - Lint i18n providers
+      - Migration number uniqueness lint
+      - Migration ROLLBACK marker lint
+      - Magazine auto-assets contract
+      - Migration Lint (Squawk)
+      - npm lock sync
+      # Registered with the workflow itself (2026-07-27). Inserted here rather
+      # than appended: PR #3295 is adding its own entry at the END of this list,
+      # and two PRs appending to the same line would conflict for no reason.
+      - prepush-guards
+      - Nuz Status Control
+      - Organ conformance (DNA genome — genes at birth)
+      - P1 STRATO-2 incremental mutation gate
+      - P3 Sandbox Gates
+      - P6 federation parallelize-hypothesis gate
+      - P7 LEARN Shadow Harvester Gate
+      - P8 Brand-API Gate
+      - P9 Cost Breaker (GOVERN)
+      - Monthly PG Restore Drill
+      - Root Guard
+      - SBOM (Software Bill of Materials)
+      - scripts/tests/ sweep (report-only)
+      - Security Scanning
+      - SAST — Bandit + ESLint Security
+      - SonarQube Analysis
+      - SYMBIOSIS Promise Lint
+      - telegram-secret-healthcheck
+      - Tests & Coverage
+      - tg-gateway
+      - token-lint
+      - Verify the Verifiers (meta-gate)
+      - Watcher coverage (main-push-failure-watch self-conformance)
+      - worker-plane review panel tests
+      - WR2 master template guard
+      - wr2-queue-tests
+      # Added with the workflow itself: scripts/check_watcher_coverage.py is
+      # the meta-guard that makes this list mandatory rather than aspirational,
+      # and it caught merge-queue-watch missing here on this very PR's first
+      # run ("1 violation(s)"). A watcher that is not itself watched is the
+      # exact shape of superscar #2 — the queue's own ejection detector going
+      # silently dead would be invisible.
+      - merge-queue-watch
+    types: [completed]
+  # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
+  # exists — a reactive workflow_run watcher structurally cannot see the
+  # absence of an event, only events themselves.
+  schedule:
+    - cron: "*/15 * * * *"
+  # Red-path proof for #37/#41 (2026-07-26): the arithmetic was already
+  # verified by re-executing the shipped bash against real API data across
+  # a real stale window (see PR body) — what that could NOT prove is the
+  # WIRING: does this job actually run under GitHub Actions, does the
+  # Telegram step actually execute, do the secrets actually resolve, does
+  # a message actually arrive. `force_test_alert` closes that gap without
+  # touching the production threshold: it does NOT lower THRESHOLD_MINUTES
+  # (a committed lowered constant would be a live footgun — see below), it
+  # overrides only the final should_alert decision, on real current data,
+  # so the arithmetic stays exactly what ships to schedule/push. Default
+  # `false` means an ordinary manual dispatch (or none at all) changes
+  # nothing; only an explicit `true` input sends anything, and every such
+  # send is prefixed `[TEST]` so it can never be mistaken for a real alert
+  # in the chat history.
+  workflow_dispatch:
+    inputs:
+      force_test_alert:
+        description: "Send a clearly-labeled [TEST] verdict-liveness alert regardless of actual staleness (wiring/delivery proof only — never changes the scheduled production threshold or decision)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  # One in-flight job per commit — the coalescing mechanism. When several
+  # watched workflows fail for the same push within the debounce window
+  # below, GitHub cancels every earlier queued/running instance of THIS job
+  # for that SHA and only the last one survives to send. It re-derives the
+  # failing set fresh from the API at send-time (next step), so correctness
+  # never depends on which specific triggering event happened to win.
+  #
+  # Task #41 addendum: `github.event.workflow_run.head_sha` doesn't exist
+  # under this workflow's own new `schedule` trigger (no workflow_run
+  # payload on that event at all — it resolves to an empty string, not an
+  # error), which would put every scheduled liveness check into the SAME
+  # degenerate group regardless of when it ran. Give schedule-triggered
+  # runs of THIS workflow their own group instead, independent of
+  # head_sha, so a `verdict-liveness` run in flight yields to a fresher
+  # one rather than colliding with — or hiding behind — the alert job's
+  # per-commit grouping. `workflow_dispatch` (the #37/#41 red-path proof,
+  # added below) has the identical missing-payload problem and shares the
+  # same group for the same reason.
+  group: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'main-push-failure-watch-verdict-liveness' || format('main-push-failure-watch-{0}', github.event.workflow_run.head_sha) }}
+  cancel-in-progress: true
+
+jobs:
+  alert:
+    # Scope to an actual push-to-main or schedule-on-main run, not a
+    # pull_request/workflow_dispatch run (those are either already visible
+    # on the PR, or operator-initiated — see header comment for the
+    # 2026-07-26/task #37 widening from push-only to push-or-schedule).
+    # `cancelled` is excluded deliberately — see header comment.
+    # `github.event_name == 'workflow_run'` is a defensive, explicit guard
+    # against this job's own workflow now also carrying a `schedule`
+    # trigger (task #41, added below) — the `github.event.workflow_run.*`
+    # comparisons already evaluate to false under a schedule event on
+    # their own (missing-object property access is null, not an error, in
+    # GitHub Actions expressions), but stating it plainly beats relying on
+    # that implicit behavior being remembered correctly by a future editor.
+    if: >-
+      github.event_name == 'workflow_run' &&
+      (github.event.workflow_run.event == 'push' ||
+       github.event.workflow_run.event == 'schedule') &&
+      github.event.workflow_run.head_branch == 'main' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+       github.event.workflow_run.conclusion == 'timed_out')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debounce — let concurrent failures on the same commit settle
+        # Heuristic, not a guarantee (cicatrix note: a fixed sleep is a
+        # ceiling here, never a performance assertion — see
+        # discovery_prepush_fixed_wallclock_budgets_fail_under_fleet_contention).
+        # If a burst spans longer than this, worst case is >1 aggregated
+        # message instead of exactly 1 — degraded, never silent.
+        run: sleep 90
+
+      - name: Aggregate every currently-failing push-or-schedule main run on this commit
+        id: agg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # No server-side `event=` filter here (task #37 widening): the API
+          # only accepts one `event=` value per call, and this now needs
+          # push OR schedule, so the OR moves into the jq select below
+          # instead of two round-trips. head_sha already scopes this to one
+          # commit, so the extra rows filtered out client-side are cheap.
+          gh api "repos/${REPO}/actions/runs?head_sha=${SHA}&status=completed" \
+            --paginate --jq '.workflow_runs[] | select((.event=="push" or .event=="schedule") and (.conclusion=="failure" or .conclusion=="timed_out")) | .name' \
+            | sort -u > /tmp/failing.txt
+          COUNT=$(wc -l < /tmp/failing.txt | tr -d ' ')
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+      - name: Telegram alert — one message per commit, not per workflow
+        if: steps.agg.outputs.count != '0'
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT}" ] || [ -z "${CHAT}" ]; then
+            echo "::warning::Telegram secrets missing — cannot alert"
+            exit 0
+          fi
+          SHORT_SHA="${SHA:0:7}"
+          LIST=$(paste -sd, /tmp/failing.txt)
+          TEXT="main push failing (${SHORT_SHA}): ${LIST} -- https://github.com/${REPO}/commits/${SHA}"
+          curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}"
+
+  verdict-liveness:
+    # Task #41 (2026-07-26). The `alert` job above is REACTIVE — it fires
+    # on a completed workflow_run event, and `cancelled` is deliberately
+    # excluded from its condition (see header comment): a normal
+    # supersede-cancel of ONE run is routine, not a silent failure, and
+    # alerting on every one would be the exact fatigue this watcher exists
+    # to avoid. But that exclusion has a blind spot measured live tonight:
+    # main's tests.yml went from a completed verdict every ~20-25 minutes
+    # to NONE for 75+ minutes, entirely via `cancelled` conclusions
+    # superseding queued runs (task #37's finding — `cancel-in-progress:
+    # false` only protects a run that already started), and `alert` never
+    # said a word — a reactive per-event watcher with `cancelled` excluded
+    # cannot distinguish "one routine supersede" from "main has stopped
+    # producing verdicts at all", because it only ever sees individual
+    # events, never the gap between them.
+    #
+    # This job asks a different question, every 15 minutes: is there a
+    # commit on `main` newer than the last REAL tests.yml conclusion
+    # (success, failure, or timed_out — not cancelled, on a push or
+    # schedule run), and if so, how long has it sat unjudged?
+    #
+    # Deliberately NOT "how long since the last verdict, period" — that
+    # was the first version of this job, caught before shipping: with
+    # tests.yml's schedule now every 2h (task #37), a quiet main with no
+    # pushes only ever gets a fresh verdict every ~2h, so a naive
+    # verdict-to-now clock would breach THRESHOLD_MINUTES=45 on EVERY
+    # ordinary quiet stretch and re-alert on every escalation boundary
+    # for hours — alarm fatigue built in on day one, exactly the failure
+    # mode this job exists to avoid from the opposite direction. A main
+    # that hasn't moved since its last verdict is fully verified no
+    # matter how much wall-clock time has passed; there is nothing to
+    # alarm about. So staleness is measured from the moment main's HEAD
+    # first diverged from the last-verified commit, not from the verdict
+    # timestamp itself — a fresh push gets a 45-minute grace period
+    # before this job says anything, and a quiet main never breaches at
+    # all, because `current head == last verified sha` short-circuits to
+    # zero staleness regardless of how old that verdict is.
+    #
+    # It alerts once the gap exceeds THRESHOLD_MINUTES, then again every
+    # ESCALATION_MINUTES while the gap keeps growing — "one alert per
+    # outage", not one per 15-minute check, computed purely from
+    # timestamp arithmetic so there is no external state to persist or to
+    # go stale itself.
+    #
+    # THRESHOLD_MINUTES=45 sits clear of the measured healthy gap (~20-25
+    # min) without living on the edge of normal. That number is a design
+    # choice grounded in one night's data, not a claim that a future
+    # outage will last exactly as long — see
+    # discovery_a_cure_pinned_to_todays_world_becomes_tomorrows_bug.
+    #
+    # Known residual gap: if this job's own `gh api` call fails (network
+    # blip, rate limit) the step errors under `set -euo pipefail` and the
+    # job shows red in the Actions UI — but nothing downstream watches
+    # THIS workflow's own runs (workflow_run chaining is deliberately not
+    # self-referential, see header comment), so a failure here is only
+    # visible to whoever looks. Same class of gap as the `alert` job
+    # itself; not solved here, named so it isn't mistaken for solved.
+    # Widened to `workflow_dispatch` (2026-07-26, #37/#41 red-path proof —
+    # see the `on.workflow_dispatch` comment above): a manual dispatch runs
+    # this exact job, on real current data, through the real Actions
+    # environment — the one thing a local re-execution against the API
+    # cannot prove. `force_test_alert` only changes the Telegram step's
+    # send decision (below); the arithmetic here is untouched either way.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: main-verdict-liveness
+      cancel-in-progress: true
+    steps:
+      - name: Check time since main's last completed tests.yml verdict
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          FORCE_TEST_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.force_test_alert == true }}
+        run: |
+          set -euo pipefail
+          THRESHOLD_MINUTES=45
+          CHECK_INTERVAL_MINUTES=15
+          ESCALATION_MINUTES=60
+
+          CURRENT_HEAD=$(gh api "repos/${REPO}/commits/main" --jq '.sha')
+
+          # Lookback of 30 completed runs comfortably covers even a long
+          # cancellation streak (tonight's worst was 15 of 20) while
+          # staying a single cheap API call.
+          LAST_RUN=$(gh api "repos/${REPO}/actions/workflows/tests.yml/runs?branch=main&status=completed&per_page=30" \
+            --jq '[.workflow_runs[] | select((.event=="push" or .event=="schedule") and (.conclusion=="success" or .conclusion=="failure" or .conclusion=="timed_out"))] | sort_by(.updated_at) | last')
+          LAST_VERIFIED_SHA=$(echo "${LAST_RUN}" | jq -r '.head_sha // empty')
+          LAST_VERIFIED_AT=$(echo "${LAST_RUN}" | jq -r '.updated_at // empty')
+
+          NOW_EPOCH=$(date -u +%s)
+          UNVERIFIED_SHA=""
+
+          if [ -z "${LAST_VERIFIED_SHA}" ]; then
+            # No qualifying run at all within the lookback window — we
+            # don't even know main's last verified state, so anything on
+            # main is by definition long-unverified. Maximally stale.
+            STALE_MINUTES=999999
+            UNVERIFIED_SHA="${CURRENT_HEAD}"
+          elif [ "${LAST_VERIFIED_SHA}" = "${CURRENT_HEAD}" ]; then
+            # main's current tip IS what was last verified — fully caught
+            # up, no matter how long ago that verdict ran. THE FIX: a
+            # 2-hour-old verdict on an unchanged main is not staleness,
+            # it's main correctly having nothing new to test. Without this
+            # branch, a quiet night with tests.yml's 2h schedule cadence
+            # would breach THRESHOLD_MINUTES on every ordinary gap between
+            # scheduled runs and re-alert on every escalation boundary —
+            # caught in review before shipping, not by a test.
+            STALE_MINUTES=0
+          else
+            # main has moved past what was last verified. Staleness is
+            # measured from when the FIRST unverified commit landed, not
+            # from the old verdict's own timestamp — a main that gained
+            # one commit five minutes ago gets its full grace period
+            # instead of inheriting whatever age the previous verdict
+            # happened to have. `compare` orders `commits[]` oldest-first
+            # (base-exclusive, head-inclusive, matches `git log
+            # base..head`); known residual gap, not solved here: it caps
+            # at 250 commits, irrelevant at this repo's push cadence but
+            # named so it isn't mistaken for unconditional.
+            FIRST_UNVERIFIED_AT=$(gh api "repos/${REPO}/compare/${LAST_VERIFIED_SHA}...${CURRENT_HEAD}" \
+              --jq '.commits[0].commit.committer.date // empty')
+            if [ -z "${FIRST_UNVERIFIED_AT}" ]; then
+              # SHAs differ but compare returned no commits — shouldn't
+              # happen; defensive fallback, not a silent pass.
+              STALE_MINUTES=999999
+            else
+              FIRST_UNVERIFIED_EPOCH=$(date -u -d "${FIRST_UNVERIFIED_AT}" +%s)
+              STALE_MINUTES=$(( (NOW_EPOCH - FIRST_UNVERIFIED_EPOCH) / 60 ))
+            fi
+            UNVERIFIED_SHA="${CURRENT_HEAD}"
+          fi
+
+          # STALE_MINUTES==999999 (no qualifying run found at all) is
+          # handled BEFORE the escalation-boundary math, not through it:
+          # "we don't even know when main last passed" is categorically
+          # worse than a known, bounded staleness, and the boundary
+          # heuristic below is tuned for a value that climbs by roughly
+          # CHECK_INTERVAL_MINUTES every check — a caught-by-its-own-test
+          # bug found the sentinel does NOT reliably land within a
+          # check-interval of an escalation boundary, so it could go
+          # silent on the one input most needing an alert.
+          if [ "${STALE_MINUTES}" -ge 999999 ]; then
+            SHOULD_ALERT=true
+          elif [ "${STALE_MINUTES}" -lt "${THRESHOLD_MINUTES}" ]; then
+            SHOULD_ALERT=false
+          else
+            OVERFLOW=$(( STALE_MINUTES - THRESHOLD_MINUTES ))
+            BOUNDARY=$(( OVERFLOW % ESCALATION_MINUTES ))
+            if [ "${OVERFLOW}" -lt "${CHECK_INTERVAL_MINUTES}" ] || [ "${BOUNDARY}" -lt "${CHECK_INTERVAL_MINUTES}" ]; then
+              SHOULD_ALERT=true
+            else
+              SHOULD_ALERT=false
+            fi
+          fi
+
+          # #37/#41 red-path proof override: a manual dispatch with
+          # force_test_alert=true sends regardless of the real arithmetic
+          # above (which is left untouched — STALE_MINUTES/OVERFLOW/BOUNDARY
+          # are computed on genuinely current data either way, and appear
+          # in the [TEST]-prefixed message unchanged). This is the ONLY
+          # place production behavior could leak in, and it requires an
+          # explicit non-default workflow_dispatch input to trigger.
+          TEST_MODE=false
+          if [ "${FORCE_TEST_ALERT}" = "true" ]; then
+            TEST_MODE=true
+            SHOULD_ALERT=true
+          fi
+
+          {
+            echo "stale_minutes=${STALE_MINUTES}"
+            echo "last_verified_sha=${LAST_VERIFIED_SHA}"
+            echo "last_verified_at=${LAST_VERIFIED_AT}"
+            echo "unverified_sha=${UNVERIFIED_SHA}"
+            echo "should_alert=${SHOULD_ALERT}"
+            echo "test_mode=${TEST_MODE}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Telegram alert — main has an unverified commit sitting too long
+        if: steps.check.outputs.should_alert == 'true'
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          STALE: ${{ steps.check.outputs.stale_minutes }}
+          LAST_SHA: ${{ steps.check.outputs.last_verified_sha }}
+          LAST_AT: ${{ steps.check.outputs.last_verified_at }}
+          UNVERIFIED_SHA: ${{ steps.check.outputs.unverified_sha }}
+          TEST_MODE: ${{ steps.check.outputs.test_mode }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT}" ] || [ -z "${CHAT}" ]; then
+            echo "::warning::Telegram secrets missing — cannot alert"
+            exit 0
+          fi
+          LAST_DISPLAY="${LAST_SHA:-unknown}"
+          [ -n "${LAST_AT}" ] && LAST_DISPLAY="${LAST_DISPLAY} (${LAST_AT})"
+          SHORT_UNVERIFIED="${UNVERIFIED_SHA:0:7}"
+          TEXT="main has an unverified commit (${SHORT_UNVERIFIED}) with no completed tests.yml verdict in ${STALE} min — last verified: ${LAST_DISPLAY}. Runs may be queued-then-cancelled under load (task #41) -- https://github.com/${REPO}/commits/main"
+          if [ "${TEST_MODE}" = "true" ]; then
+            TEXT="[TEST — manual workflow_dispatch red-path proof, NOT a real alert] ${TEXT}"
+          fi
+          curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}"

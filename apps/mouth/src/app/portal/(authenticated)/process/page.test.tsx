@@ -4,12 +4,17 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ClientRequiredDocument } from "@/lib/types/required-documents";
 
-const { mockGetProfile, mockGetMyRequiredDocuments, mockUploadClientDocument } =
-  vi.hoisted(() => ({
-    mockGetProfile: vi.fn(),
-    mockGetMyRequiredDocuments: vi.fn(),
-    mockUploadClientDocument: vi.fn(),
-  }));
+const {
+  mockGetProfile,
+  mockListMatters,
+  mockGetMyRequiredDocuments,
+  mockUploadClientDocument,
+} = vi.hoisted(() => ({
+  mockGetProfile: vi.fn(),
+  mockListMatters: vi.fn(),
+  mockGetMyRequiredDocuments: vi.fn(),
+  mockUploadClientDocument: vi.fn(),
+}));
 
 vi.mock("next/dynamic", () => ({
   default: (
@@ -96,6 +101,7 @@ vi.mock("@/lib/api", () => ({
   api: {
     portal: {
       getProfile: mockGetProfile,
+      listMatters: mockListMatters,
       getMyRequiredDocuments: mockGetMyRequiredDocuments,
     },
     crm: {
@@ -119,6 +125,14 @@ const pendingDocument: ClientRequiredDocument = {
   team_member_notes: null,
 };
 
+const secondPendingDocument: ClientRequiredDocument = {
+  ...pendingDocument,
+  id: 98,
+  document_type: "kaiser_live_browser_loop_photo",
+  document_label: "Kaiser Live QA Passport Photo",
+  description: "Recent passport photo",
+};
+
 class MockFileReader {
   result = "data:application/pdf;base64,a2Fpc2Vy";
   onloadend: (() => void) | null = null;
@@ -135,6 +149,7 @@ describe("PortalProcessPage", () => {
     vi.clearAllMocks();
     globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
     mockGetProfile.mockResolvedValue({ id: 11898, fullName: "Kaiser Test" });
+    mockListMatters.mockResolvedValue({ matters: [] });
     mockUploadClientDocument.mockResolvedValue({
       success: true,
       document_id: 19027,
@@ -144,6 +159,32 @@ describe("PortalProcessPage", () => {
 
   afterEach(() => {
     globalThis.FileReader = originalFileReader;
+  });
+
+  it("renders an active matter that has no required documents", async () => {
+    mockListMatters.mockResolvedValue({
+      matters: [
+        {
+          id: 603,
+          title: "Synthetic Investor KITAS",
+          status: "inquiry",
+          type: "visa",
+          progress: 10,
+          pending_docs: [],
+          next_deadline: null,
+          next_step: "inquiry",
+        },
+      ],
+    });
+    mockGetMyRequiredDocuments.mockResolvedValue([]);
+
+    const { default: PortalProcessPage } = await import("./page");
+    render(<PortalProcessPage />);
+
+    expect(
+      await screen.findByText("Synthetic Investor KITAS"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No documents required")).toBeInTheDocument();
   });
 
   it("shows uploaded status immediately after upload before the background refresh finishes", async () => {
@@ -191,6 +232,91 @@ describe("PortalProcessPage", () => {
         },
       ]);
     });
+  });
+
+  it("guides the client through every pending document in one upload flow", async () => {
+    const user = userEvent.setup();
+    mockGetMyRequiredDocuments.mockResolvedValue([
+      pendingDocument,
+      secondPendingDocument,
+    ]);
+
+    const { default: PortalProcessPage } = await import("./page");
+    render(<PortalProcessPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Upload documents" }),
+    );
+
+    let dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Document 1 of 2")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Kaiser Live QA Address Statement"),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: /select test file/i }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Upload & continue" }),
+    );
+
+    await waitFor(() => {
+      expect(mockUploadClientDocument).toHaveBeenCalledTimes(1);
+    });
+
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Document 2 of 2")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Kaiser Live QA Passport Photo"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Upload last document" }),
+    ).toBeDisabled();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: /select test file/i }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Upload last document" }),
+    );
+
+    await waitFor(() => {
+      expect(mockUploadClientDocument).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(mockUploadClientDocument).toHaveBeenNthCalledWith(2, 603, {
+      required_doc_id: 98,
+      file: "data:application/pdf;base64,a2Fpc2Vy",
+      file_name: "kaiser-address-statement.pdf",
+      notes: "",
+    });
+  });
+
+  it("clears the selected file when an upload is cancelled", async () => {
+    const user = userEvent.setup();
+    mockGetMyRequiredDocuments.mockResolvedValue([pendingDocument]);
+
+    const { default: PortalProcessPage } = await import("./page");
+    render(<PortalProcessPage />);
+
+    await user.click(await screen.findByRole("button", { name: /^upload$/i }));
+    let dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /select test file/i }),
+    );
+    expect(
+      within(dialog).getByRole("button", { name: /^upload$/i }),
+    ).toBeEnabled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^upload$/i }));
+    dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("button", { name: /^upload$/i }),
+    ).toBeDisabled();
   });
 
   it("drives practice/doc status styling from semantic --state-* tokens (WS3 day pass)", async () => {

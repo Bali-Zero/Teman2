@@ -33,11 +33,13 @@ from backend.core.observability import init_observability, start_traced_span
 from backend.core.observability import is_enabled as _lf_enabled
 from backend.db.repositories.conversation_repository import ConversationRepository
 from backend.services.agents.team_agent_config import (
+    ROLE_ADMIN,
     AgentRole,
     build_agent_context,
     get_agent_role,
 )
 from backend.services.rag.agentic import AgenticRAGOrchestrator
+from backend.services.rag.agentic._memory_identity import derive_wa_memory_subject
 from backend.services.rag.evaluation import ABTestManager, MetricsTracker
 from backend.services.whatsapp_identity import resolve_sender_identity
 
@@ -365,6 +367,89 @@ async def _resolve_trusted_wa_profile(
     return None  # client / unknown → no privileged override
 
 
+def _derive_wa_memory_subject_for_request(
+    is_wa_inbox_bot: bool,
+    user_id: str | None,
+) -> str | None:
+    """Per-sender pseudonymous memory subject for THIS request, or None.
+
+    W-1 follow-up to P0-MEM (#3036), 2026-07-27. Deliberately independent of
+    `_resolve_trusted_wa_profile` / `resolve_sender_identity`: that path
+    exists to grant the owner/team PERSONA override and returns None for
+    "client / unknown" on purpose — clients must never get that persona.
+    Memory is the opposite case. Containment (#3036) removed long-term
+    memory from every WhatsApp sender alike, clients included — they are
+    the ones this item restores it for — so this function does not gate on
+    role at all, only on the same trust check every WA-only override uses
+    (the caller holds `X-WA-Bot-Profile-Key`) plus the salt being
+    provisioned. No DB round-trip: unlike the persona override, a memory
+    subject needs nothing beyond the phone number and the server secret.
+    """
+    phone = _extract_whatsapp_phone(user_id)
+    return derive_wa_memory_subject(
+        is_trusted_wa_bot=is_wa_inbox_bot,
+        phone=phone,
+        salt=getattr(settings, "wa_memory_subject_salt", None),
+    )
+
+
+def _derive_wa_agent_role(trusted_profile: dict[str, Any] | None) -> AgentRole | None:
+    """Map the server-resolved WA profile onto a `team_agent_config.AgentRole`
+    (T4, spec `research/operations/2026-07-24-zantara-bot-consultant-assistant-spec.md`
+    §5 item T4 — "two parallel auth systems").
+
+    Read-only over `trusted_profile`. That dict is ITSELF only ever produced
+    by `_resolve_trusted_wa_profile`, which is gated on the dedicated
+    `X-WA-Bot-Profile-Key` secret and re-derives the sender server-side from
+    `whatsapp_identity.resolve_sender_identity` — never from any request-body
+    field (`profile`, `agent_role`, `agent_email`, or otherwise; see that
+    function's docstring / the P0-ID containment note on
+    `AgenticQueryRequest`). This function adds no new trust surface: it is a
+    pure mapping from an already-trusted identity to the existing VASSAL role
+    catalogue — the SAME `is_tool_allowed` gate the JWT-authenticated
+    workspace-stream endpoint already enforces via `ToolAuthorizer`.
+
+    Mapping:
+    - `role == "creator"` (the WA owner persona) → `ROLE_ADMIN`, the exact
+      admin principal `team_agent_config.TEAM_AGENTS["zero@balizero.com"]`
+      already uses for the JWT path. Owner is not a new privilege tier —
+      it reuses the existing admin config entry by reference.
+    - `role == "team"` AND an `email` is present (only the DB-resolved
+      branch of `resolve_sender_identity` carries one — see its docstring)
+      AND that email is registered in `TEAM_AGENTS` → that member's own
+      `AgentRole`, so a team sender gets their own real scope, never
+      admin-equivalent.
+    - Anything else — no `trusted_profile` (not a bot-key-verified WA
+      sender, or a client/unknown phone), an env-resolved team sender with
+      no email, or an email not registered in `TEAM_AGENTS` — returns
+      `None`. `None` is byte-identical to today's behavior (the authorizer's
+      legacy backward-compat passthrough). The two degrade branches are
+      logged distinguishably (role + boolean only — never a phone or
+      email, per UU PDP) so the roster gap stays measurable rather than
+      silently swallowed.
+    """
+    if not trusted_profile:
+        return None
+    role = trusted_profile.get("role")
+    if role == "creator":
+        return ROLE_ADMIN
+    if role == "team":
+        email = trusted_profile.get("email")
+        if not email:
+            logger.info(
+                "wa_agent_role degrade=no_email team_sender=True email_present=False",
+            )
+            return None
+        agent_role = get_agent_role(email)
+        if agent_role is None:
+            logger.info(
+                "wa_agent_role degrade=unregistered_email team_sender=True email_present=True",
+            )
+            return None
+        return agent_role
+    return None
+
+
 class WorkspaceQueryRequest(BaseModel):
     """
     Request schema for the authenticated workspace agent endpoint.
@@ -424,6 +509,22 @@ async def query_agentic_rag(
     trusted_profile = await _resolve_trusted_wa_profile(
         is_wa_inbox_bot, request.user_id, db_pool
     )
+
+    # W-1 follow-up to P0-MEM (#3036), 2026-07-27: per-sender pseudonymous
+    # memory subject for the trusted WA bot. Independent of `trusted_profile`
+    # above — see `_derive_wa_memory_subject_for_request` docstring for why
+    # this does not gate on role. None unless BOTH the caller holds the
+    # dedicated WA-bot secret AND `wa_memory_subject_salt` is provisioned —
+    # unset salt is a complete no-op (today's containment behaviour).
+    wa_memory_subject = _derive_wa_memory_subject_for_request(is_wa_inbox_bot, request.user_id)
+
+    # T4 unified principal (flag-gated, default OFF — see config.py
+    # `wa_bot_agent_role_enabled`). Byte-identical to today when the flag
+    # is off: `wa_agent_role` stays None, and `agent_role` is simply never
+    # added to `query_kwargs` below (same as before this change existed).
+    wa_agent_role: AgentRole | None = None
+    if settings.wa_bot_agent_role_enabled:
+        wa_agent_role = _derive_wa_agent_role(trusted_profile)
 
     # SECURITY: Use authenticated user if available, otherwise session-based
     if current_user:
@@ -510,8 +611,20 @@ async def query_agentic_rag(
             # WA team-assistant V1 — already gated above (`_resolve_trusted_wa_profile`
             # returns None for anyone but a request holding `X-WA-Bot-Profile-Key`).
             query_kwargs["profile"] = trusted_profile
+        if wa_agent_role is not None:
+            # T4 unified principal — same server-derived, flag-gated value
+            # computed above. Threaded through OrchestratorCore.process_query_core
+            # onto AgentState.agent_role, the exact field tool_authorizer.py
+            # already reads for the JWT workspace-stream path.
+            query_kwargs["agent_role"] = wa_agent_role
         if request.max_steps is not None:
             query_kwargs["max_steps"] = request.max_steps
+        if wa_memory_subject is not None:
+            # W-1 follow-up to P0-MEM (#3036) — server-derived, never a
+            # request field. Threaded through OrchestratorCore to key the
+            # FACTS read and the memory-save dispatch on the per-sender
+            # subject instead of the shared wa-mirror-internal identity.
+            query_kwargs["memory_subject"] = wa_memory_subject
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so

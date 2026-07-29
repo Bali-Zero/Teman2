@@ -22,6 +22,7 @@ name: P3 Sandbox Gates
 # "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group:
   workflow_dispatch:
 
 jobs:
@@ -33,6 +34,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the sentinel git diff sees PR changes
+          filter: blob:none
 
       # BUCO #1 sentinel (pattern: p1s2-mutation-incremental.yml). The regex is
       # the EXACT original pull_request `paths:` list, each anchored ^...$.
@@ -65,13 +67,21 @@ jobs:
       - name: P3 static gates
         if: steps.relevant.outputs.run == 'true'
         continue-on-error: false
+        env:
+          # merge_group readiness (2026-07-27): github.base_ref is a branch
+          # NAME, populated only for pull_request/pull_request_target — empty
+          # under merge_group, which made `git diff --quiet origin/ -- ...`
+          # ref-ambiguous and this step failed CLOSED for every queue entry
+          # (REF-BREAKAGE, the polar opposite of silent-green). SHA-fallback
+          # mirrors the pattern already proven in hot-zone-pr-gate.yml.
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           echo "== compose files parse =="
           python3 -c "import yaml; [yaml.safe_load(open(f)) for f in ['apps/backend-rag/docker-compose.test.yml','apps/backend-rag/docker-compose.sandbox.yml']]; print('parse OK')"
           echo "== base file UNTOUCHED (gate G2 by construction) =="
-          git fetch origin ${{ github.base_ref }} --depth=1
-          if ! git diff --quiet origin/${{ github.base_ref }} -- apps/backend-rag/docker-compose.test.yml; then
+          git fetch origin "$BASE_SHA" --depth=1
+          if ! git diff --quiet "$BASE_SHA" -- apps/backend-rag/docker-compose.test.yml; then
             echo "FAIL: docker-compose.test.yml was modified — breaks the integration suite (G2)."
             exit 1
           fi

@@ -3,6 +3,15 @@
 # Schedule: 30 4 * * *  (04:30 WITA daily, after pg backup)
 # Machine:  Air (antonellosiano@Nuzantara-9) or Pro (nuzantara@Nuzantara)
 # Log:      ~/.openclaw/logs/db_nlm_sync.log
+# Shared alarm gateway — see _alert.sh for what the old inline curl hid.
+. "$(cd "$(dirname "$0")" && pwd)/_alert.sh" 2>/dev/null || true
+# A missing helper must not turn "no alarm" into "the wrapper dies while
+# handling a failure": fall back to a LOUD no-op, never a silent one.
+command -v alert >/dev/null 2>&1 || alert() {
+    echo "ALERT NOT SENT — _alert.sh missing [$1]: ${*:2}" >&2
+    return 1
+}
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -69,12 +78,8 @@ if [ $EXIT_CODE -eq 0 ]; then
 else
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [FAIL] DB→NLM sync exited with code $EXIT_CODE" >> "$LOG_FILE"
     # Telegram alert on failure
-    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
-        MSG="⚠️ DB→NLM Sync FAILED (exit $EXIT_CODE) on $(hostname)"
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
-            -d "text=${MSG}" > /dev/null 2>&1 || true
-    fi
+    MSG="⚠️ DB→NLM Sync FAILED (exit $EXIT_CODE) on $(hostname)"
+    alert p0 "${MSG}"
 fi
 
 exit $EXIT_CODE

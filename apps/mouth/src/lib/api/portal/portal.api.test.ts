@@ -204,6 +204,7 @@ describe("PortalApi", () => {
       const mockMatter: PortalMatterDetail = {
         id: 9,
         title: "Company Setup",
+        status: "in_progress",
         type: "company",
         progress: 60,
         pending_docs: ["Company registry"],

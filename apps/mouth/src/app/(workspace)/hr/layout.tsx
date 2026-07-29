@@ -68,15 +68,15 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col md:flex-row h-full">
       {/* Desktop sidebar */}
-      <nav className="w-56 border-r border-zinc-800 bg-zinc-950/50 p-4 space-y-1 hidden md:block flex-shrink-0">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 px-3">
+      <nav className="w-56 border-r border-[var(--bz-border)] p-4 space-y-1 hidden md:block flex-shrink-0">
+        <h2 className="text-sm font-semibold text-[var(--bz-text-2)] uppercase tracking-wider mb-4 px-3">
           HR / Payroll
         </h2>
         <SubNav {...subNav} variant="sidebar" />
       </nav>
 
       {/* Mobile navigation */}
-      <nav className="md:hidden flex gap-1 overflow-x-auto px-4 py-2 border-b border-zinc-800 bg-zinc-950/50 flex-shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <nav className="md:hidden flex gap-1 overflow-x-auto px-4 py-2 border-b border-[var(--bz-border)] flex-shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <SubNav {...subNav} variant="chips" />
       </nav>
 

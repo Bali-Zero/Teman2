@@ -40,6 +40,7 @@ import {
 } from "@/components/process/kanban-colors";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { useInvalidateClient } from "@/hooks/useClientDetail";
 import { initialsOf } from "@/data/team-roster";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
@@ -94,6 +95,7 @@ export default function CaseDetailPage() {
 
   const { options: teamMemberOptions } = useTeamMemberOptions();
   const [practice, setPractice] = useState<Practice | null>(null);
+  const invalidateClient = useInvalidateClient(practice?.client_id);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -256,7 +258,7 @@ export default function CaseDetailPage() {
     loadPractice();
   }, [caseId]);
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return "Not set";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -265,13 +267,24 @@ export default function CaseDetailPage() {
     });
   };
 
+  const applyPracticeUpdate = (updatedPractice: Practice) => {
+    setPractice((currentPractice) =>
+      currentPractice
+        ? { ...currentPractice, ...updatedPractice }
+        : updatedPractice,
+    );
+  };
+
   const saveNotes = async () => {
     if (!practice || !caseId) return;
     setIsSavingNotes(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { notes: notesValue });
-      setPractice((prev) => (prev ? { ...prev, notes: notesValue } : prev));
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        notes: notesValue,
+      });
+      applyPracticeUpdate(updatedPractice);
+      await invalidateClient();
       toast.success("Notes saved");
       setIsEditingNotes(false);
     } catch (err) {
@@ -290,10 +303,11 @@ export default function CaseDetailPage() {
     setIsUpdatingPayment(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { payment_status: nextStatus });
-      setPractice((prev) =>
-        prev ? { ...prev, payment_status: nextStatus } : prev,
-      );
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        payment_status: nextStatus,
+      });
+      applyPracticeUpdate(updatedPractice);
+      await invalidateClient();
       toast.success("Payment status updated", `→ ${nextStatus}`);
     } catch (err) {
       toast.error("Failed to update payment status", (err as Error).message);
@@ -311,10 +325,11 @@ export default function CaseDetailPage() {
     setIsUpdatingPriority(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { priority: nextPriority });
-      setPractice((prev) =>
-        prev ? { ...prev, priority: nextPriority } : prev,
-      );
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        priority: nextPriority,
+      });
+      applyPracticeUpdate(updatedPractice);
+      await invalidateClient();
       toast.success("Priority updated", `→ ${nextPriority}`);
     } catch (err) {
       toast.error("Failed to update priority", (err as Error).message);
@@ -333,8 +348,11 @@ export default function CaseDetailPage() {
     setIsSavingPrice(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { [field]: num });
-      setPractice((prev) => (prev ? { ...prev, [field]: num } : prev));
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        [field]: num,
+      });
+      applyPracticeUpdate(updatedPractice);
+      await invalidateClient();
       toast.success("Price updated");
     } catch (err) {
       toast.error("Failed to update price", (err as Error).message);
@@ -357,8 +375,11 @@ export default function CaseDetailPage() {
     setIsJumpingStatus(newStatus);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { status: newStatus });
-      setPractice((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        status: newStatus,
+      });
+      applyPracticeUpdate(updatedPractice);
+      await invalidateClient();
       toast.success("Status updated", `→ ${newStatus.replace(/_/g, " ")}`);
     } catch (err) {
       toast.error("Failed to update status", (err as Error).message);
@@ -412,18 +433,7 @@ export default function CaseDetailPage() {
 
     try {
       const user = await api.getProfile();
-      const updates: Partial<
-        Pick<
-          Practice,
-          | "status"
-          | "priority"
-          | "payment_status"
-          | "quoted_price"
-          | "actual_price"
-          | "assigned_to"
-          | "start_date"
-        >
-      > = {};
+      const updates: Parameters<typeof api.crm.updatePractice>[1] = {};
 
       if (editForm.status && editForm.status !== practice.status)
         updates.status = editForm.status;
@@ -445,12 +455,12 @@ export default function CaseDetailPage() {
       )
         updates.actual_price = Number(editForm.actual_price);
       if (editForm.assigned_to !== (practice.assigned_to || ""))
-        updates.assigned_to = editForm.assigned_to || undefined;
+        updates.assigned_to = editForm.assigned_to || null;
       const currentStartDate = practice.start_date
         ? practice.start_date.split("T")[0]
         : "";
       if (editForm.start_date !== currentStartDate)
-        updates.start_date = editForm.start_date || undefined;
+        updates.start_date = editForm.start_date || null;
 
       if (Object.keys(updates).length === 0) {
         toast.error("No Changes", "No fields were modified.");
@@ -474,7 +484,7 @@ export default function CaseDetailPage() {
         user: user.email,
       });
 
-      await api.crm.updatePractice(caseId, updates);
+      const updatedPractice = await api.crm.updatePractice(caseId, updates);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         "/api/crm/practices/update",
@@ -485,9 +495,8 @@ export default function CaseDetailPage() {
         user.email,
       );
 
-      // Reload practice data with dedicated endpoint
-      const updatedPractice = await api.crm.getPractice(caseId);
-      setPractice(updatedPractice);
+      applyPracticeUpdate(updatedPractice);
+      await invalidateClient();
 
       // Track case update
       casesMetrics.trackCaseUpdate(
@@ -920,6 +929,7 @@ export default function CaseDetailPage() {
                       try {
                         const user = await api.getProfile();
                         await api.crm.deletePractice(caseId, user.email);
+                        await invalidateClient();
                         sonnerToast.success("Process deleted");
                         router.push("/process");
                       } catch (err) {
@@ -1169,11 +1179,13 @@ export default function CaseDetailPage() {
                         userEmail.current || undefined,
                       )
                     }
-                    className="transition-colors flex items-center gap-2"
+                    className="min-w-0 transition-colors flex items-start gap-2"
                     style={{ color: "var(--bz-text-1)" }}
                   >
-                    <Mail className="w-4 h-4" />
-                    {practice.client_email}
+                    <Mail className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="min-w-0 break-all">
+                      {practice.client_email}
+                    </span>
                   </a>
                 </div>
               )}

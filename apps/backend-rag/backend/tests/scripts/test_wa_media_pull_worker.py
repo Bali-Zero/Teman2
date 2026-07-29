@@ -26,7 +26,7 @@ _WORKER_PATH = _REPO_ROOT / "scripts" / "wa_media_pull_worker.py"
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 _CHANNEL = "whatsapp_media_pending"
 

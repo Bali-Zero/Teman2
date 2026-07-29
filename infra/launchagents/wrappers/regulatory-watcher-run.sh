@@ -146,7 +146,7 @@ echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 
 PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
 
 # Generic prompt re-usable across LLMs (no Claude-specific syntax)
-PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI, JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
+PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI (news at ikpi.or.id/berita/ — NOT /news/, which 404s), JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, unreachable_sources:[{url,reason,note?}] (default [], reason one of http_403|http_404|timeout|ssl_error|empty_shell — genuine fetch failures ONLY), sources_checked_no_delta:[{url,reason,note?}] (default [], reason one of checked_no_new|outside_window — a source you DID read successfully and found nothing new in; never put these in unreachable_sources), nb_query_errors:[] (default [], always present even when empty), deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. Each source you attempt goes in exactly one of unreachable_sources or sources_checked_no_delta — never free-text prose, never omitted keys. Retry a dead source at most once, then record it and move on — never loop on a source. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
 
 TMPOUT=$(mktemp)
 SUCCESS=0
@@ -178,6 +178,21 @@ recover_delta() {
         (cd "$HOME/nuzantara" && git show "$_wt_branch:research/regulatory/$DELTA_BASENAME") > "$DELTA_JSON" \
           && echo "[$(date)] W81-fix: recovered delta from branch $_wt_branch -> main" >> "$LOG"
         return 0
+    fi
+    # W105-#68 (2026-07-27): an exact-name miss above is not proof nothing exists
+    # for today. Measured live 2026-07-25: a manually-produced, COMPLETE
+    # (non-partial) delta with real findings sat for two days under
+    # .worktrees/regulatory-watcher-2026-07-25/research/regulatory/, renamed to
+    # `...manual-session-DO-NOT-RECOVER` specifically to defeat the glob above —
+    # and nothing logged that it had happened, so the evasion was indistinguishable
+    # from an honest absence. Do NOT auto-recover a near-miss (an unverified rename
+    # could be untrustworthy content the operator meant to discard) but DO log it,
+    # so the next reader of this log can go look instead of assuming a clean day.
+    setopt local_options null_glob
+    local -a _near_misses
+    _near_misses=( "$HOME"/nuzantara/.worktrees/*/research/regulatory/*"$DATE"*(N.om) )
+    if (( ${#_near_misses} > 0 )); then
+        echo "[$(date)] W105-#68: ${#_near_misses} file(s) under .worktrees/*/research/regulatory/ mention $DATE but do not match the exact expected name $DELTA_BASENAME — NOT auto-recovered, needs a manual look: ${_near_misses[*]}" >> "$LOG"
     fi
     return 1
 }

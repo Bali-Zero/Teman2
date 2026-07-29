@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
+  Client,
   ClientCompanyLink,
   ClientProfile,
   Interaction,
@@ -11,6 +12,9 @@ import type {
 } from "@/lib/api/crm/crm.types";
 
 const PILOT_FALLBACK_TERMS = ["ocean", "bimala"] as const;
+
+export const clientDetailQueryKey = (clientId: string | number) =>
+  ["client", String(clientId)] as const;
 
 export function buildBusinessStorySearchTerms(
   clientName: string,
@@ -42,7 +46,7 @@ export function buildBusinessStorySearchTerms(
  */
 export function useClientDetail(clientId: string | number) {
   return useQuery<ClientProfile>({
-    queryKey: ["client", String(clientId)],
+    queryKey: clientDetailQueryKey(clientId),
     queryFn: () => api.crm.getClientProfile(Number(clientId)),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -99,10 +103,27 @@ export function useClientBusinessStory(
 
 /**
  * Returns a function that invalidates the client profile query,
- * triggering a background refetch.
+ * refetching it even when it is currently inactive.
  */
-export function useInvalidateClient(clientId: string | number) {
+export function useInvalidateClient(clientId?: string | number | null) {
   const queryClient = useQueryClient();
-  return () =>
-    queryClient.invalidateQueries({ queryKey: ["client", String(clientId)] });
+  return () => {
+    if (!clientId || Number(clientId) <= 0) {
+      return Promise.resolve();
+    }
+    return queryClient.invalidateQueries({
+      queryKey: clientDetailQueryKey(clientId),
+      exact: true,
+      refetchType: "all",
+    });
+  };
+}
+
+export function useSetClientCache(clientId: string | number) {
+  const queryClient = useQueryClient();
+  return (client: Client) =>
+    queryClient.setQueryData<ClientProfile>(
+      clientDetailQueryKey(clientId),
+      (profile) => (profile ? { ...profile, client } : profile),
+    );
 }

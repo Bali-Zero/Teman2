@@ -146,8 +146,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/visa/match",
     "/visa/clock",
     "/visa/second-home",
+    // `/visa/voa` shipped 2026-07-27 and was live-but-unreachable for a day:
+    // no inbound link anywhere in the site AND absent here, so the only way
+    // in was typing the URL. Result pages `/visa/voa/<hash>` stay out — they
+    // are per-visitor and canonicalise to this entry (see voa/layout.tsx).
+    "/visa/voa",
   ];
   routes.push(...visaPaths.map((p) => ({ url: `${baseUrl}${p}` })));
+
+  routes.push({
+    url: `${baseUrl}/taxes/gap`,
+    lastModified: new Date(new Date().toISOString().split("T")[0]),
+  });
 
   // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
   try {

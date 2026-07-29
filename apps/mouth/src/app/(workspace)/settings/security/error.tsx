@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Shield } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, Shield } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function SecuritySettingsError({
   error,
@@ -13,7 +13,7 @@ export default function SecuritySettingsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Security Settings Error', {}, error);
+    logger.error("Security Settings Error", {}, error);
   }, [error]);
 
   return (
@@ -23,10 +23,12 @@ export default function SecuritySettingsError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Couldn&apos;t Load Security Settings</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Couldn&apos;t Load Security Settings
+        </h2>
         <p className="text-muted-foreground">
-          There was an error loading this page. Please try again or contact support if the
-          problem persists.
+          There was an error loading this page. Please try again or contact
+          support if the problem persists.
         </p>
       </div>
 

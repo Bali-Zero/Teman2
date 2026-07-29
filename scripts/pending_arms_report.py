@@ -44,6 +44,18 @@ that does not exist. It is the loudest bucket in the report, and both --strict a
 --strict-phantom fail on it REGARDLESS OF AGE — a phantom is wrong the moment it is
 written, not after 48h.
 
+MALFORMED rule (found live 2026-07-26: a stray/orphaned diff3 conflict marker,
+`||||||| ebfbd71019`, baked as main's own committed ledger line silently blanked
+the owner of the entry above it — `owner=?`, `cls=TECH-DEBT` — never tripping the
+pipe-count malformed check and never matching the phantom-operator substring, so a
+corrupted line sailed straight through both gates). An entry whose owner cannot be
+parsed at all is, if anything, MORE untrustworthy than a phantom one — the ledger
+cannot even say who is supposed to own it — so it is classified MALFORMED and both
+--strict and --strict-phantom fail on it too, same as PHANTOM-OPERATOR. A stray
+conflict-marker-shaped line is also refused as a continuation (CONFLICT_MARKER_RE)
+rather than silently absorbed into whatever entry is being built, and is surfaced as
+its own MALFORMED entry instead of vanishing without a trace.
+
 Usage:
     python3 scripts/pending_arms_report.py [--ledger PATH] [--now YYYY-MM-DD] [--json]
                                            [--strict] [--strict-phantom]
@@ -51,8 +63,9 @@ Usage:
 Exit codes:
     0   always, by default (pure signaler — a report is not a failure)
     1   with --strict, if >=1 overdue TECH-DEBT entry OR >=1 PHANTOM-OPERATOR entry
-        exists; with --strict-phantom, if >=1 PHANTOM-OPERATOR entry exists (the
-        narrow CI ledger gate — pre-existing overdue debt never blocks innocent PRs)
+        OR >=1 MALFORMED entry exists; with --strict-phantom, if >=1 PHANTOM-OPERATOR
+        entry OR >=1 MALFORMED entry exists (the narrow CI ledger gate — pre-existing
+        overdue debt never blocks innocent PRs)
     2   ledger file not found, or a CLI argument error (argparse's own exit code)
 """
 
@@ -61,6 +74,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -114,6 +128,29 @@ OPERATOR_TAG_RE = re.compile(r"\boperator\s*\[\s*([a-z0-9-]+)\s*\]", re.IGNORECA
 # branch for a week the day it went live). Word-anchored (#3: "impassivo" in prose
 # must not match; a bare `me` owner must stay TECH-DEBT).
 NATURAL_WAIT_RE = re.compile(r"\b(?:passiv[oa]|passive)\b", re.IGNORECASE)
+
+# A stray/orphaned diff3 conflict marker left in the ledger by a botched merge
+# resolution (found live 2026-07-26: `||||||| ebfbd71019` baked as main's own
+# committed line 519, no matching <<<<<<</=======/>>>>>>> anywhere in the file)
+# must never be silently absorbed as a continuation line — a `|||||||` marker
+# alone injects SEVEN pipe characters into whatever entry is being built,
+# which pipe-splits into a run of empty fields and shifts the back-anchored
+# owner extraction onto an empty string without ever tripping the pipe-count
+# malformed check (there are far more than 3 fields once the marker is
+# absorbed, just mostly empty ones).
+#
+# Deliberately excludes a bare `=======` run: `<<<<<<<`/`|||||||`/`>>>>>>>`
+# essentially never occur in legitimate prose, but 7 (or more) `=` characters
+# is also valid Markdown Setext-heading-underline / plain-text-divider syntax
+# — both live orphaned markers found in this ledger were `|||||||` shaped,
+# never `=======` alone, so excluding it trades a theoretical detection gap
+# (an orphaned `=======` with no `<<<<<<</>>>>>>>` siblings) for not punishing
+# a much more plausible legitimate line. Cross-family review (2026-07-26)
+# also found that this regex ALONE does not protect a marker-shaped example
+# deliberately quoted inside a fenced code block (```` ``` ````) — see the
+# fence-tracking in extract_open_entries, which is the actual defense for
+# that case; a bare line-anchor here cannot distinguish "fenced" from "not".
+CONFLICT_MARKER_RE = re.compile(r"^(?:<{7,}|\|{7,}|>{7,})")
 
 
 @dataclass
@@ -263,9 +300,14 @@ def extract_open_entries(ledger_text: str) -> List[str]:
     entry). '- closed ' lines (proof-of-armed history) never match that prefix, so
     they're excluded wherever they live — no section boundary needed to keep them
     out. Any line following an entry-start that is non-blank, doesn't start a new
-    '- ' list item, and isn't a heading/blockquote is treated as a wrapped
-    continuation and appended (space-joined) to the current entry. A blank line, a
-    new '- ' item, or a heading/blockquote line ends the current entry.
+    '- ' list item, isn't a heading/blockquote, and isn't a stray diff3 conflict
+    marker (CONFLICT_MARKER_RE) is treated as a wrapped continuation and appended
+    (space-joined) to the current entry. A blank line, a new '- ' item, a
+    heading/blockquote line, or a conflict-marker line ends the current entry.
+    A conflict-marker-shaped line between a ``` fence pair is exempt from ONLY
+    the marker check (still absorbed as literal continuation content) so a
+    marker deliberately quoted as an EXAMPLE inside a fenced code block is
+    never mistaken for the real thing.
 
     A positional cutoff was tried and dropped 2026-07-11: it silently discarded 14
     real open-debt lines that sessions had appended below the '## closed' heading
@@ -284,8 +326,49 @@ def extract_open_entries(ledger_text: str) -> List[str]:
             entries.append(current)
         current = None
 
+    in_fence = False
     for line in lines:
         stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            # Fall through (no `continue`): a fence delimiter line itself is
+            # inert under every OTHER check (not an entry-start, not a real
+            # list item, not blank, not a heading/blockquote, not a conflict
+            # marker), so the normal chain below absorbs it correctly either
+            # way — only the marker check needs the in_fence exemption.
+        if in_fence and CONFLICT_MARKER_RE.match(stripped):
+            # Exempt ONLY the marker check while fenced (found live by
+            # cross-family review, 2026-07-26: a `|||||||` example
+            # deliberately quoted inside a ``` fence to ILLUSTRATE a marker
+            # was itself mistaken for a real one, truncating the entry).
+            # Deliberately narrower than exempting ALL structure while
+            # in_fence (an earlier draft did that and was itself flagged,
+            # same review round, second pass): an unclosed/mismatched fence
+            # — e.g. a stray lone ``` line, or an odd total count anywhere
+            # below it in the file — would then silently swallow every
+            # subsequent line, including every future real entry, until EOF,
+            # with zero MALFORMED signal (--strict-phantom stays green while
+            # the rest of the ledger vanishes from the parse — the exact
+            # "stored green nobody re-derived" disease this whole gate exists
+            # to catch). This narrower exemption degrades safely instead: if
+            # a fence never closes, entry/list/blank/heading detection keeps
+            # working for the rest of the file regardless, and the only
+            # residual risk is a genuine orphaned marker after the accidental
+            # open going uncaught until EOF — the same class of accepted,
+            # documented trade-off as the dropped bare `=======` shape and
+            # the known 4-field-missing-owner gap above. Residual, NOT fixed
+            # here (all narrow, all degrade safely, none reproducible in the
+            # real corpus today — zero fences of ANY kind currently exist in
+            # this ledger): `~~~`-style fences are not recognized; a fence
+            # opened with N backticks is "closed" by ANY run of >=3 backticks
+            # regardless of exact length (a shorter nested example inside a
+            # longer outer fence would prematurely re-expose content); and a
+            # 4-space-indented code block (no backticks) is not recognized at
+            # all, since `strip()` removes the indentation before this check
+            # ever sees it.
+            if current is not None:
+                current = f"{current} {stripped}"
+            continue
         if ENTRY_START_RE.match(stripped):
             finalize()
             current = stripped
@@ -295,6 +378,25 @@ def extract_open_entries(ledger_text: str) -> List[str]:
             finalize()
         elif stripped == "":
             finalize()
+        elif CONFLICT_MARKER_RE.match(stripped):
+            # Checked BEFORE the blockquote branch below: a `>>>>>>>` marker
+            # also starts with '>' and would otherwise be silently dropped
+            # by that check first (found live by this fix's own test corpus
+            # — the other two marker shapes don't start with '>' or '#'
+            # so they never hit that branch, which is exactly the kind of
+            # asymmetric coverage a guard-conformance corpus exists to catch).
+            # See CONFLICT_MARKER_RE docstring-comment: never absorb a stray
+            # diff3 marker into the entry in progress — finalize() first, so
+            # whatever entry was being built is protected from corruption.
+            # The marker line itself is then collected as its OWN raw entry
+            # (rather than silently dropped): it has no 'opened YYYY-MM-DD'
+            # date, so parse_entry's existing malformed-reasons path surfaces
+            # it in the MALFORMED section instead of it vanishing without a
+            # trace. A stray marker in a committed ledger is a hygiene defect
+            # worth seeing even on a tick it doesn't happen to corrupt an
+            # owner field.
+            finalize()
+            entries.append(stripped)
         elif stripped.startswith("#") or stripped.startswith(">"):
             finalize()
         else:
@@ -319,6 +421,24 @@ def parse_entry(raw: str, now: date) -> Entry:
     all_parts = _strip_trailing_empty_fields(_split_pipe_fields(raw))
     if len(all_parts) < 3:
         reasons.append(f"only {len(all_parts)} pipe-segment(s) (need >= 3)")
+    # NOTE (considered and REJECTED, 2026-07-26): cross-family review flagged
+    # that a 4-field entry omitting the owner segment entirely (`| artifact |
+    # missing step | proof`, no separate owner field) back-anchors the
+    # missing_step TEXT into owner instead of being caught. Raising this
+    # floor to `< 5` (canonical field count) WOULD catch that shape — but
+    # measured against the real ledger, 45 of 225 open entries (20%) are a
+    # DIFFERENT, legitimate 4-field shape (artifact + owner + proof, no
+    # separate missing_step — mostly FIREBREAK-style entries where the
+    # artifact description already explains why nothing is "missing"), and
+    # every one of those has a correctly-extracted, real owner. A `< 5` floor
+    # would have flagged all 45 as MALFORMED, which is a far worse regression
+    # for a gate whose entire purpose is "pre-existing legitimate debt never
+    # blocks an innocent PR" than the narrower gap it would have closed. The
+    # remaining gap (an entry that omits ONLY the owner field while keeping
+    # a real missing_step) is real but unobserved in the actual corpus so
+    # far, and is left to the owner-emptiness backstop below, which does not
+    # share this false-positive problem because it only fires on a truly
+    # EMPTY owner string, never a wrongly-populated-but-nonempty one.
 
     parts, trailing_notes = _split_trailing_update_notes(all_parts)
 
@@ -327,6 +447,24 @@ def parse_entry(raw: str, now: date) -> Entry:
     owner = _safe_get(parts, -2)
     proof_core = _safe_get(parts, -1)
     proof = "|".join([proof_core, *trailing_notes]).strip() if trailing_notes else proof_core
+
+    if date_match and len(all_parts) >= 3 and not owner:
+        # An unparseable/blank owner is NOT a lesser problem than a phantom
+        # operator — it means the ledger cannot say who owns this debt at
+        # all, e.g. corruption from an absorbed stray line (a `|||||||`
+        # conflict marker injects 7 pipes, which back-anchoring reads as an
+        # empty owner without ever tripping the pipe-count check above,
+        # since the field COUNT is still >= 3, just mostly empty ones).
+        # Surface it as MALFORMED — "owner=?" must never quietly resolve to
+        # ordinary TECH-DEBT. Guarded on the two prior reasons already being
+        # absent so this doesn't relabel an already-malformed line's reason.
+        # Safe against false positives (unlike a blanket field-count floor,
+        # considered and rejected above): this only fires on a genuinely
+        # EMPTY owner string, never on a wrongly-populated-but-nonempty one,
+        # so it does not collide with the real ledger's legitimate 4-field
+        # shape (verified: 45/225 real entries, all with real, nonempty,
+        # correctly-extracted owners).
+        reasons.append("owner field is empty after parsing (unparseable/corrupted owner)")
 
     age_days: Optional[int] = None
     overdue = False
@@ -388,12 +526,31 @@ def compute_counts(entries: List[Entry]) -> Dict[str, int]:
     }
 
 
-def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
+def _freshness_line(freshness: Optional[Dict[str, Any]]) -> str:
+    """One line, always printed. Silence about freshness is what made this necessary."""
+    if not freshness:
+        return "- ledger-freshness: not checked"
+    state = freshness.get("state")
+    detail = freshness.get("detail", "")
+    if state == "stale":
+        return f"- ⚠️ ledger-freshness: **STALE** — {detail}"
+    if state == "current":
+        return f"- ledger-freshness: current ({detail})"
+    return f"- ledger-freshness: UNKNOWN — {detail} (could not check; this is not 'current')"
+
+
+def render_report(
+    ledger_path: Path,
+    now: date,
+    entries: List[Entry],
+    freshness: Optional[Dict[str, Any]] = None,
+) -> str:
     counts = compute_counts(entries)
     lines: List[str] = []
     lines.append("# PENDING-ARMS reconciliation report")
     lines.append("")
     lines.append(f"- ledger: `{ledger_path}`")
+    lines.append(_freshness_line(freshness))
     lines.append(
         f"- now: {now.isoformat()} (day-precision dates; overdue = age_days >= "
         f"{OVERDUE_AGE_DAYS}, the closest day-precision proxy for >48h)"
@@ -464,10 +621,16 @@ def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_json(ledger_path: Path, now: date, entries: List[Entry]) -> Dict[str, Any]:
+def build_json(
+    ledger_path: Path,
+    now: date,
+    entries: List[Entry],
+    freshness: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     return {
         "now": now.isoformat(),
         "ledger": str(ledger_path),
+        "freshness": freshness if freshness is not None else {"state": "unknown", "behind": None, "detail": "not checked"},
         "counts": compute_counts(entries),
         "entries": [
             {
@@ -488,6 +651,91 @@ def _default_ledger_path() -> Path:
     # scripts/pending_arms_report.py -> parent = scripts/, parent.parent = repo root.
     repo_root = Path(__file__).resolve().parent.parent
     return repo_root / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+
+
+# -----------------------------------------------------------------------------
+# Ledger freshness — the reporter must not present a stale open-set as current
+# -----------------------------------------------------------------------------
+#
+# WHY (2026-07-27, found by using this tool): a session ran this reporter inside
+# a main checkout 64 commits behind origin/main and read out ~68 "open"
+# operator-gated rows. Several had been CLOSED on main days earlier — the local
+# ledger was 492 lines against main's 532. The report was internally correct and
+# externally false: it answered honestly about a world that no longer existed.
+# Nothing in the output hinted at this, because the reporter had no notion of
+# git at all. Same shape as the seat-probe that answers for the invocation
+# rather than the system, and as a GO criterion naming a tool nobody has.
+#
+# WHAT THIS IS *NOT*. This does not ask "has this content already landed on
+# main" — that question demands a CONTENT check, never SHA reachability (W88,
+# and W88 again at the second degree with three-dot diffs). The question here is
+# strictly "does my checkout contain main's commits to this file", and for THAT
+# question commit reachability is the exact semantics, not a proxy for it. The
+# two questions look alike and have opposite correct answers; keep them apart.
+#
+# DIRECTION MATTERS. "Differs from origin/main" is the normal state of every PR
+# branch that adds a ledger line — accusing those would be an over-match (#3)
+# and would train readers to ignore the banner. Only a checkout MISSING main's
+# commits is stale. A branch ahead of main reports `current`.
+#
+# FAIL-VISIBLE. A shallow CI clone has no `origin/main` ref, and a tarball is
+# not a repo at all. Those report UNKNOWN with the reason, never `current`:
+# a scan that could not look is not a clean scan (W84).
+
+
+def _ledger_freshness(ledger_path: Path) -> Dict[str, Any]:
+    """How many commits to THIS file does origin/main have that we do not?
+
+    Returns {"state": current|stale|unknown, "behind": int|None, "detail": str}.
+    Never raises: the reporter degrades to UNKNOWN rather than dying, because a
+    freshness check that can take the report down is worse than no check.
+    """
+    unknown = lambda detail: {"state": "unknown", "behind": None, "detail": detail}
+    try:
+        proc = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(ledger_path.parent),
+                "rev-list",
+                "--count",
+                "HEAD..origin/main",
+                "--",
+                str(ledger_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except FileNotFoundError:
+        return unknown("git not on PATH")
+    except (subprocess.SubprocessError, OSError) as exc:  # timeout, spawn failure
+        return unknown(f"git invocation failed: {type(exc).__name__}")
+
+    # Judge the REPLY, not the exit code (W104) — but here a non-zero rc carries
+    # the only diagnosis we get (unknown revision, not a repository), so surface
+    # it verbatim rather than collapsing it to a bare "unknown".
+    if proc.returncode != 0:
+        reason = (proc.stderr or "").strip().splitlines()
+        return unknown(reason[-1] if reason else f"git exited {proc.returncode}")
+
+    raw = (proc.stdout or "").strip()
+    if not raw.isdigit():
+        # An empty or unparseable count is NOT zero. Zero is a claim.
+        return unknown(f"unparseable rev-list output {raw!r}")
+
+    behind = int(raw)
+    if behind == 0:
+        return {"state": "current", "behind": 0, "detail": "origin/main has no newer commit to this file"}
+    return {
+        "state": "stale",
+        "behind": behind,
+        "detail": (
+            f"origin/main has {behind} commit(s) to this ledger that this checkout lacks — "
+            "rows shown as open may already be closed on main; pull before trusting this report "
+            "(and note origin/main itself is only as fresh as your last fetch)"
+        ),
+    }
 
 
 def _parse_now(value: Optional[str]) -> date:
@@ -527,16 +775,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Exit 1 iff >=1 overdue TECH-DEBT entry OR >=1 PHANTOM-OPERATOR entry "
-            "exists (otherwise always exit 0)."
+            "OR >=1 MALFORMED entry exists (otherwise always exit 0)."
         ),
     )
     parser.add_argument(
         "--strict-phantom",
         action="store_true",
         help=(
-            "Exit 1 iff >=1 PHANTOM-OPERATOR entry exists — the narrow CI ledger "
-            "gate: blocks writing new phantom-operator lines without turning "
-            "pre-existing overdue tech-debt into a red check for innocent PRs."
+            "Exit 1 iff >=1 PHANTOM-OPERATOR entry OR >=1 MALFORMED entry exists "
+            "— the narrow CI ledger gate: blocks writing new phantom-operator "
+            "lines (or corrupting an existing entry's owner into something "
+            "unparseable, e.g. an absorbed stray conflict-marker line — an "
+            "unparseable owner is at least as untrustworthy as a phantom one) "
+            "without turning pre-existing overdue tech-debt into a red check "
+            "for innocent PRs."
         ),
     )
     return parser
@@ -565,19 +817,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
     entries = load_entries(ledger_path, now)
+    freshness = _ledger_freshness(ledger_path)
 
     if args.json:
-        print(json.dumps(build_json(ledger_path, now, entries), indent=2))
+        print(json.dumps(build_json(ledger_path, now, entries, freshness), indent=2))
     else:
-        print(render_report(ledger_path, now, entries), end="")
+        print(render_report(ledger_path, now, entries, freshness), end="")
 
     has_phantom = any(e.cls == CLASS_PHANTOM_OPERATOR for e in entries)
+    # --strict is the "I am about to rely on this verdict" mode, so a ledger that
+    # is provably missing main's closures makes the verdict meaningless and must
+    # fail. --strict-phantom is the CI ledger gate and is deliberately NOT wired
+    # to freshness: CI checks out a shallow merge ref with no `origin/main`, so
+    # every innocent PR would report UNKNOWN, and a gate that reddens on "could
+    # not check" teaches everyone to ignore it.
+    if args.strict and freshness.get("state") == "stale":
+        return 1
+    has_malformed = any(e.cls == CLASS_MALFORMED for e in entries)
     if args.strict and (
         has_phantom
+        or has_malformed
         or any(e.cls == CLASS_TECH_DEBT and e.overdue for e in entries)
     ):
         return 1
-    if args.strict_phantom and has_phantom:
+    if args.strict_phantom and (has_phantom or has_malformed):
         return 1
     return 0
 

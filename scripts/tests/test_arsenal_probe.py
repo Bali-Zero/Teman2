@@ -65,6 +65,61 @@ def test_refresh_token_reused_classifies_auth_dead():
     assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
 
 
+def test_recovered_codex_401_string_classifies_auth_dead():
+    # #29 (2026-07-26): the exact terminal error recovered from Codex's own
+    # rollout log for the real, transient AUTH_DEAD incident — a regression
+    # guard on the specific string, not just the general 401 shape.
+    ev = (
+        "unexpected status 401 Unauthorized: Missing bearer or basic authentication "
+        "in header, url: https://api.openai.com/v1/responses, cf-ray: "
+        "a20b72431db49185-DPS, request id: 0f06c28b-a836-478c-ac86-4259815da99b"
+    )
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
+
+
+def test_real_observed_oauth_token_silently_revoked_classifies_auth_dead():
+    # guilt, ROUND 2 (#34, 2026-07-26): the first version of this test used
+    # "oauth token expired"/"invalid"/"revoked" — authored to fit the regex,
+    # vacuous by construction (a strict-adjacent pattern trivially matches a
+    # string built to be strict-adjacent). This is the real exemplar that
+    # replaces it: Pro's logs/cron-agent/learning-pipeline.log:701, an actual
+    # observed incident ("Tier-3 OAuth token silently revoked mid-cron, caught
+    # post-facto"). It is an AI-summarized retrospective line, not a raw
+    # captured stderr string — no raw exemplar for this shape was found on any
+    # of the three machines — but it is a genuine description of a real event,
+    # not text written to satisfy this test. The interposed "silently" is
+    # exactly the failure-direction risk: under strict adjacency this seat
+    # would have read as alive through a real auth death.
+    ev = "Tier-3 OAuth token silently revoked mid-cron, caught post-facto"
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
+
+
+def test_oauth_token_interposed_verb_shapes_classify_auth_dead():
+    # guilt: bounded-proximity (not strict-adjacent) survives the verb a real
+    # failure message routinely interposes between "oauth token" and the
+    # failure word — "has expired", "is invalid", "was revoked". These three
+    # are representative phrasings, not captured exemplars (the one real
+    # exemplar we have is pinned separately above); kept as their own test so
+    # a future regression to strict adjacency fails on the general shape too,
+    # not only on the one sentence we happened to observe.
+    for phrase in ["oauth token has expired", "oauth token is invalid", "oauth token was revoked"]:
+        assert (
+            ap.classify_generic(phrase, live_signal=False, seat="codex", ssh_context=False)
+            == ap.AUTH_DEAD
+        ), f"failed on: {phrase}"
+
+
+def test_benign_oauth_token_mention_is_not_auth_dead():
+    # innocence (#34, scar #3 guard-over-match): a bare mention of "oauth
+    # token" with NO failure word present must not classify AUTH_DEAD — the
+    # pre-fix pattern matched this exact shape of benign, healthy-operation
+    # prose, which would have declared a live seat dead.
+    ev = "Checking oauth token cache for refresh eligibility (routine)."
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
+    assert status != ap.AUTH_DEAD
+    assert status == ap.UNKNOWN_ERR
+
+
 def test_glm_1211_classifies_model_err_never_shed():
     ev = 'HTTP 400 {"error": {"code": 1211, "message": "Unknown Model"}}'
     status = ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False)
@@ -106,6 +161,7 @@ def test_quota_strings_classify_quota_dead():
         "429 too many requests",
         "rate limit exceeded",
         "quota exhausted",
+        "You've hit your weekly limit · resets 9am (Asia/Makassar)",
     ]:
         assert (
             ap.classify_generic(ev, live_signal=False, seat="claude", ssh_context=False) == ap.QUOTA_DEAD
@@ -122,6 +178,13 @@ def test_quota_dead_never_matches_401_evidence():
 
 def test_unrecognized_evidence_classifies_unknown_err():
     ev = "connection reset by peer, no idea why"
+    assert ap.classify_generic(ev, live_signal=False, seat="claude", ssh_context=False) == ap.UNKNOWN_ERR
+
+
+def test_weekly_word_alone_does_not_classify_quota_dead():
+    # innocence: "weekly" in an unrelated sentence must not fall through to
+    # quota-dead — only the "weekly limit" phrase (the real claude CLI wording) does.
+    ev = "weekly digest job completed successfully"
     assert ap.classify_generic(ev, live_signal=False, seat="claude", ssh_context=False) == ap.UNKNOWN_ERR
 
 
@@ -231,6 +294,29 @@ def test_evidence_tail_truncates_and_scrubs():
     tail = ap.evidence_tail(text, limit=160)
     assert len(tail) <= 160
     assert long_secret not in tail
+
+
+def test_evidence_tail_keeps_the_tail_not_the_head():
+    # guilt (#34): the diagnostic part — the actual error — lives past the
+    # first 160 chars of a real Codex startup banner; a head-truncation
+    # (the pre-fix behavior) drops it entirely. This is the exact shape
+    # #29 needed a second data source to recover.
+    head = "Reading additional input from stdin... OpenAI Codex v0.145.0 -------- " * 3
+    error_tail = (
+        "unexpected status 401 Unauthorized: Missing bearer or basic "
+        "authentication in header, url: https://api.openai.com/v1/responses"
+    )
+    text = head + error_tail
+    result = ap.evidence_tail(text, limit=160)
+    assert error_tail[-100:] in result
+    assert len(result) <= 160
+
+
+def test_evidence_tail_short_text_returned_whole():
+    # innocence: text already within the cap is untouched either way — the
+    # fix changes which end survives truncation, not the untruncated case.
+    text = "PONG all good"
+    assert ap.evidence_tail(text, limit=160) == text
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { e2eEmail, e2ePin } from "../support/credentials";
 
 /**
  * ZANTARA AI Capabilities Test Suite
@@ -19,8 +20,16 @@ import { test, expect, Page } from "@playwright/test";
 
 // Test configuration
 const TEST_CONFIG = {
-  email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
-  pin: process.env.E2E_TEST_PIN || "010719",
+  // Lazy on purpose: Playwright IMPORTS every spec during collection, even the
+  // ones --grep will not run. Calling e2eEmail() here demanded the credential at
+  // import time and failed the whole job wherever the secret is absent. Getters
+  // keep every CONFIG.email call site unchanged and move the throw to first use.
+  get email() {
+    return e2eEmail();
+  },
+  get pin() {
+    return e2ePin();
+  },
   baseUrl: process.env.PLAYWRIGHT_BASE_URL || "https://kita.balizero.com",
   apiUrl: process.env.NUZANTARA_API_URL || "https://nuzantara-rag.fly.dev",
   responseTimeout: 60000, // 60s for AI responses (no timeout issues)

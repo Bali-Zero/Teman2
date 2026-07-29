@@ -4,6 +4,17 @@ Brute force detection for login endpoint (S03 Sprint 3).
 Uses IP+email pair to avoid NAT/coworking collateral blocking.
 5 failures in 5 minutes per IP+email → 429 for 5 minutes.
 Fail-open: Redis down = no blocking.
+
+Fail-open means the login endpoint keeps serving with NO rate limiting at all,
+so the one thing that must never be silent is the transition into that state.
+It used to be: `RedisManager.get_async_client()` RETURNS None when Redis is
+unavailable — it does not raise — so the detector constructed fine, every method
+returned early on `if not self._redis`, and nothing was logged at any level. The
+router's `except Exception: logger.debug(...)` never even ran, and prod sits at
+`LOG_LEVEL=INFO` where a debug line is discarded anyway. `report_armed_state()`
+below is the cure: it makes the disarmed state say so, out loud, exactly once
+per transition. Family #2 (esiste ≠ armato) and W104 (a None/refusal that is not
+an exception is still a refusal — judge the reply, not the absence of a raise).
 """
 
 import logging
@@ -16,6 +27,53 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_FAILURES = 5
 DEFAULT_WINDOW_SECONDS = 300
 DEFAULT_BLOCK_SECONDS = 300
+
+# Process-wide last-reported state. None = nothing reported yet, so the first
+# call always logs. Logging on TRANSITION (not per request) keeps an outage to
+# two lines instead of one per login — which matters precisely because an
+# unauthenticated endpoint is the one an attacker can drive at high volume.
+_armed_state_reported: bool | None = None
+
+
+def report_armed_state(armed: bool, *, reason: str = "") -> None:
+    """Announce whether login rate limiting is actually armed, on change only.
+
+    Call this at every login with the honest answer to "did I get a usable Redis
+    client?". Silence here is the bug this function exists to prevent.
+    """
+    global _armed_state_reported
+    first_report = _armed_state_reported is None
+    if _armed_state_reported is armed:
+        return
+    _armed_state_reported = armed
+    if armed:
+        # "again" is only true after an outage. On the first report of a process
+        # there was no outage to recover from, and a log line that misstates the
+        # history is worse than no line at all when someone reads it mid-incident.
+        logger.warning(
+            "S03: login rate limiter ARMED %s",
+            "at startup" if first_report else "again (Redis reachable)",
+        )
+    else:
+        # Deliberately NOT "unlimited": /api/auth/login is ALSO covered by
+        # RateLimitMiddleware's "/api/" prefix bucket at 120 req/min per client
+        # IP (verified live on prod via the x-ratelimit-limit response header),
+        # and that limiter keeps working through a Redis outage on its in-memory
+        # fallback. What is lost here is the tight per-(ip+email) failure budget,
+        # so state the real degradation — an incident-time line that overstates
+        # the damage sends whoever reads it after the wrong thing.
+        logger.error(
+            "S03: login rate limiter NOT ARMED — per-(ip+email) failure budget "
+            "is gone; /api/auth/login falls back to the generic 120/min per-IP "
+            "bucket until Redis returns (%s)",
+            reason or "no usable Redis client",
+        )
+
+
+def _reset_armed_state_for_tests() -> None:
+    """Clear the process-wide transition memory. Tests only."""
+    global _armed_state_reported
+    _armed_state_reported = None
 
 
 class BruteForceDetector:
