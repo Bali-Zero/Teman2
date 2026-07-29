@@ -87,11 +87,17 @@ jobs:
             echo "::error::pull_request event with empty BASE/HEAD sha — cannot compute diff, failing closed"
             exit 1
           fi
+          # `scripts/lib/heartbeat.sh` is in this list because it IS the G2 gene's
+          # implementation: test_gene_g2_heartbeat_fires.py exercises it directly
+          # (and only this job installs the zsh those cases need). Without the
+          # entry, a PR touching only the library ran none of its own corpus —
+          # which is how a zsh-fatal `local status=` sat in it undetected.
           CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- \
             'infra/organ-conformance/' 'infra/home-fork/declared-pairs.json' \
             'apps/organism/organism/organs_registry.yaml' \
             'scripts/organ_birth.py' 'scripts/lint_plist_keepalive.py' \
             'scripts/healer_receptor_registry.py' 'scripts/nb-curator-daily.sh' \
+            'scripts/lib/heartbeat.sh' \
             '.github/workflows/organ-conformance.yml' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')

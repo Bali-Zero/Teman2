@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import time
@@ -236,3 +237,147 @@ def test_the_heartbeat_is_fresh_enough_to_be_believed(tmp_path: Path) -> None:
     ts = hb["ts"]
     written = time.mktime(time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")) - time.timezone
     assert written >= before - 5, f"heartbeat ts {ts} predates the run"
+
+
+# ---------------------------------------------------------------------------
+# The library's OWN documented entry points.
+#
+# Everything above reaches the heartbeat through `nb-curator-daily.sh`, which is
+# `#!/bin/zsh` but calls the library as `bash "$HEARTBEAT_LIB" ...` — the CLI
+# form. That leaves the library's FIRST documented usage untested:
+#
+#     # Source pattern (bash):
+#     #   source ~/nuzantara/scripts/lib/heartbeat.sh
+#
+# and the file goes out of its way to support being sourced from zsh too: the
+# CLI-mode guard on its last line tests `ZSH_EVAL_CONTEXT` precisely so that a
+# `source` from zsh does not fire the CLI path. That intent was defeated one
+# line into the function by `local status=...`: in zsh `status` is a READ-ONLY
+# special parameter (the last command's exit code), so the assignment aborts
+# the function with `read-only variable: status` and NO sidecar is ever written.
+#
+# Measured before the fix: sourcing from zsh and calling the function returned
+# rc=1 with that message and left no file; the same source+call under bash wrote
+# a correct sidecar. No live caller was on the fatal path — all four sourcing
+# call-sites in the repo are `#!/bin/bash`, and the one `#!/bin/zsh` wrapper
+# invokes the CLI form — so this was a trap set for the next zsh caller, with the
+# library's own header inviting them onto it.
+# ---------------------------------------------------------------------------
+
+HB_LIB = REPO / "scripts" / "lib" / "heartbeat.sh"
+PROBE_ID = "pro.zsh_probe"
+
+
+def _source_and_call(
+    tmp_path: Path, shell: str, *args: str, tag: str = "probe"
+) -> tuple[int, str, dict]:
+    """SOURCE the library in `shell`, then call the function — the documented
+    pattern, not the CLI fallback the wrapper uses."""
+    seen = tmp_path / f"last_seen-{tag}"
+    script = tmp_path / f"caller-{tag}.{shell}"
+    # shlex.quote, not hand-rolled double quotes: the hostile-note case passes a
+    # literal `"` and a backslash, and a naive f'"{a}"' produced `unmatched "`
+    # in BOTH shells — the harness failing in a way that reads exactly like the
+    # library failing. The bash leg is what exposed it.
+    body = "\n".join(
+        [
+            f"source {shlex.quote(str(HB_LIB))}",
+            "organism_heartbeat " + " ".join(shlex.quote(a) for a in args),
+        ]
+    )
+    script.write_text(body + "\n", encoding="utf-8")
+    proc = subprocess.run(
+        [shell, str(script)],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    sidecar = seen / f"{args[0]}.json"
+    payload = json.loads(sidecar.read_text()) if sidecar.exists() else {}
+    return proc.returncode, (proc.stdout + proc.stderr), payload
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_sourcing_the_library_and_calling_it_writes_a_heartbeat(
+    tmp_path: Path, shell: str
+) -> None:
+    """Guilt (zsh) AND innocence (bash) on one assertion.
+
+    Parametrised deliberately: the bash leg is the behaviour that already worked
+    and must keep working, so a "fix" that repaired zsh by breaking the
+    documented bash pattern cannot pass here.
+    """
+    rc, out, hb = _source_and_call(
+        tmp_path, shell, PROBE_ID, "error", "rc=42 timeout", tag=shell
+    )
+    assert "read-only variable" not in out, (
+        f"{shell}: the library aborted on a read-only special parameter — "
+        f"a heartbeat that cannot be called is not a heartbeat.\n{out}"
+    )
+    assert rc == 0, f"{shell}: sourcing + calling must not fail the caller: {out}"
+    assert hb.get("status") == "error", f"{shell}: expected error, got {hb!r}"
+    assert hb.get("note") == "rc=42 timeout", f"{shell}: note lost: {hb!r}"
+    assert hb.get("ts", "").endswith("Z")
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_the_status_whitelist_still_degrades_an_unknown_value(
+    tmp_path: Path, shell: str
+) -> None:
+    """Innocence for the rename itself.
+
+    `status` is not just a variable here — it is whitelisted and rewritten to
+    "ok" when unrecognised. Renaming it means touching the `case`, the fallback
+    assignment and the `printf`; miss one and the sidecar silently reports the
+    wrong field or an empty one.
+    """
+    rc, out, hb = _source_and_call(
+        tmp_path, shell, PROBE_ID, "not-a-real-status", "n", tag=f"wl-{shell}"
+    )
+    assert rc == 0, out
+    assert hb.get("status") == "ok", f"{shell}: whitelist fallback lost: {hb!r}"
+
+
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_a_hostile_note_is_escaped_into_valid_json(
+    tmp_path: Path, shell: str
+) -> None:
+    """The note is interpolated into JSON by hand, with `${note//pat/repl}`
+    substitutions whose pattern semantics are NOT identical in bash and zsh.
+
+    This asserts the OUTCOME (the file parses, and the note survives verbatim)
+    rather than the mechanism, so it stays honest under either shell. Without
+    it, "sourcing from zsh works now" would be a claim about one happy string.
+    """
+    hostile = 'a"b\\c\td'
+    rc, out, hb = _source_and_call(
+        tmp_path, shell, PROBE_ID, "ok", hostile, tag=f"esc-{shell}"
+    )
+    assert rc == 0, out
+    # json.loads already ran in the helper — reaching here means it parsed.
+    assert hb.get("note") == 'a"b\\c\td', f"{shell}: note mangled: {hb!r}"
+
+
+def test_sourcing_alone_does_not_fire_the_cli_path(tmp_path: Path) -> None:
+    """Innocence for the last line of the library.
+
+    Its CLI-mode guard exists so that `source`-ing from zsh does not execute
+    `organism_heartbeat "$@"` with the CALLER's arguments. Load the library in a
+    zsh script that was itself given arguments: if the guard regresses, those
+    arguments are read as an organ id and a spurious heartbeat appears for an
+    organ that never ran.
+    """
+    seen = tmp_path / "last_seen-guard"
+    script = tmp_path / "sourcer.zsh"
+    script.write_text(f"source {HB_LIB}\nexit 0\n", encoding="utf-8")
+    proc = subprocess.run(
+        ["zsh", str(script), PROBE_ID, "ok", "should not be written"],
+        env={**os.environ, "ORGANISM_LAST_SEEN_DIR": str(seen)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    written = sorted(p.name for p in seen.glob("*.json")) if seen.exists() else []
+    assert written == [], f"sourcing alone wrote a heartbeat: {written}"
