@@ -270,8 +270,16 @@ export default function PortalLayout({
                 Privacy Policy
               </a>
               <span className="mx-2">·</span>
+              {/* `/terms` has no route of its own: the top-level blog catch-all
+                  `(blog)/[category]` swallows it and answers HTTP 200 with a category
+                  page titled "Terms Insights", so a status code cannot reveal the
+                  breakage — only the rendered content can. `/v2/terms` IS the real
+                  general Terms of Service (title "Terms of Service | Bali Zero",
+                  governing-law text, verified live). `/privacy` above needs no such
+                  target because `app/privacy/page.tsx` exists; `app/terms/page.tsx`
+                  was simply never created, and that asymmetry is the whole defect. */}
               <a
-                href="/terms"
+                href="/v2/terms"
                 className="hover:underline"
                 style={{ color: "var(--text-secondary)" }}
               >
