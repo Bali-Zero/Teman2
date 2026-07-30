@@ -39,10 +39,28 @@ Reads the Vercel CLI's OAuth token from its auth.json and never prints it. `expi
 that file is in SECONDS, not milliseconds — treating it as ms makes an expired token look
 valid until the year 58000. Refresh with `vercel whoami`, which renews silently.
 
+PROMOTE FIRST, BUILD ONLY IF YOU MUST (2026-07-30)
+--------------------------------------------------
+The premise at the top of this file has partly EXPIRED, and the correction matters more than
+the original. The Vercel GitHub App is installed again — measured 2026-07-30, 20 of the 20
+most recent GitHub Deployments were created by `vercel[bot]`, and a merge produces a
+`target=production` deployment within seconds that reaches READY after a real build.
+
+What does NOT happen is the promote. Every one of those deployments lands
+`readySubstate: STAGED`: built, never aliased. Six of six unpromoted ones were STAGED; the
+only two PROMOTED were promoted by hand. `autoAssignCustomDomains` is true and rolling
+releases are not configured (`vercel rolling-release fetch` → null), so neither explains it;
+the project setting that does is undocumented and is deliberately NOT guessed at here.
+
+So the usual gap is not "production has no build", it is "production has a build nobody
+pointed the domains at". This script now looks for that build first and promotes it (~3s)
+instead of creating a second deployment of the same tree (~6 min + build minutes). It falls
+back to building when there is genuinely nothing READY for the commit.
+
 Usage:
-    python3 scripts/vercel_prod_deploy.py            # deploy main HEAD if production is behind
-    python3 scripts/vercel_prod_deploy.py --force    # deploy even if production is current
-    python3 scripts/vercel_prod_deploy.py --dry-run  # report the gap, change nothing
+    python3 scripts/vercel_prod_deploy.py            # promote (or, failing that, deploy) main HEAD
+    python3 scripts/vercel_prod_deploy.py --force    # act even if production is already current
+    python3 scripts/vercel_prod_deploy.py --dry-run  # report the gap and the plan, change nothing
 """
 from __future__ import annotations
 
@@ -144,6 +162,51 @@ def _probe_until(sha: str, attempts: int) -> bool:
     return False
 
 
+def _ready_deployment_for(sha: str) -> tuple[str, str] | None:
+    """Is a production build for this commit ALREADY built and merely waiting to be promoted?
+
+    Measured 2026-07-30 on this project: every production deployment the Git integration
+    creates lands `READY` with `readySubstate: STAGED` — built, but the custom domains are
+    never repointed at it. Six of six unpromoted ones were STAGED; the only two PROMOTED were
+    promoted by hand. So the normal state after a merge is "the build you need already exists".
+
+    Promoting it takes ~3s and rebuilds nothing. Creating a second deployment for the same
+    commit takes ~6 minutes, burns build minutes, and produces a duplicate — for a tree that
+    is byte-identical to one already sitting READY.
+
+    Returns (deployment_id, substate) or None. Any failure returns None: not finding a
+    shortcut must never block the rebuild path, only skip the optimisation.
+    """
+    status, body = _api(
+        "GET", f"/v6/deployments?projectId={PROJECT_ID}&target=production&limit=20"
+    )
+    if status != 200:
+        print(f"  could not list deployments (HTTP {status}) — will build instead")
+        return None
+    for dep in body.get("deployments", []):
+        # `state` is the v6 spelling of readyState. CANCELED/ERROR builds are not promotable,
+        # and a CANCELED one is the NORMAL outcome for a commit the ignore-step skipped.
+        if dep.get("state") != "READY":
+            continue
+        if (dep.get("meta") or {}).get("githubCommitSha") != sha:
+            continue
+        uid = dep.get("uid")
+        if not uid:
+            continue
+        return str(uid), str(dep.get("readySubstate"))
+    return None
+
+
+def _promote(deployment_id: str, sha: str) -> bool:
+    status, body = _api("POST", f"/v10/projects/{PROJECT_ID}/promote/{deployment_id}", {})
+    print(f"promote HTTP {status}: {json.dumps(body)[:300]}")
+    if status not in (200, 201, 202):
+        return False
+    # The arbiter is the behavioural probe, never the HTTP code and never `aliasAssigned`
+    # (W88: verify by content). A 202 only says the request was accepted.
+    return _probe_until(sha, attempts=8)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--force", action="store_true", help="deploy even when production is already current")
@@ -159,9 +222,25 @@ def main() -> int:
     if live == sha and not args.force:
         print("production is already serving this commit — nothing to do")
         return 0
+    # Prefer promoting an existing READY build for this exact commit over rebuilding it.
+    existing = _ready_deployment_for(sha)
+    if existing:
+        dpl, substate = existing
+        print(f"already built     : {dpl} (readySubstate={substate}) — promote, do not rebuild")
     if args.dry_run:
-        print("dry-run: would deploy, but changing nothing")
+        if existing:
+            print("dry-run: would PROMOTE the build above, changing nothing")
+        else:
+            print("dry-run: no READY build for this commit — would deploy, changing nothing")
         return 0
+
+    if existing:
+        if _promote(existing[0], sha):
+            print(f"OK — balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+            return 0
+        # Fall through rather than fail: the build may be genuinely unusable (an alias
+        # conflict, a deployment deleted mid-flight). A rebuild is slower, never wrong.
+        print("promote did not move the domains — falling back to a rebuild")
 
     status, deployment = _api("POST", "/v13/deployments", {
         "name": "mouth",
@@ -187,11 +266,7 @@ def main() -> int:
     # READY but the domains never moved: the alias did not follow. This is the documented
     # fallback, not the normal path — and it is the observed path for a sha-ref deployment.
     print("production still on the old build at terminal READY → promote")
-    status, body = _api("POST", f"/v10/projects/{PROJECT_ID}/promote/{deployment_id}", {})
-    print(f"promote HTTP {status}: {json.dumps(body)[:300]}")
-    if status not in (200, 201, 202):
-        return 1
-    if _probe_until(sha, attempts=8):
+    if _promote(deployment_id, sha):
         print(f"OK after promote — balizero.com serves {sha[:9]}")
         return 0
 
