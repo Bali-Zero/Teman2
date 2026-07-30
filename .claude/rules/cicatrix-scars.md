@@ -5,6 +5,27 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🐛 W112 (P1 STRUCTURAL): il formattatore è uno scrittore che nessuno controlla, e giudica per FORMA
+
+_Discovered: 2026-07-30. Non cercato: il pre-commit ha rifiutato `cicatrix-superscar.md` mentre ci appendevo W110/W111, e `prettier --write` ha riformattato **due** righe — la mia e una che non avevo scritto._
+
+**Famiglia: superscar #3 (Guard-over-match), come W99 e W109 un'istanza FUORI dalle regex: qui chi giudica per forma non è una guardia ma il formattatore, e il suo verdetto non blocca — RISCRIVE.**
+
+**TRAUMA:** dentro i paragrafi lunghi del ponte, Prettier legge testo LETTERALE come delimitatori di enfasi markdown e li scambia. Su `origin/main`, nel record W104:
+
+- `` `bz:log-anomaly:*` `` → `` `bz:log-anomaly:_` `` — un glob di chiave Redis ridotto a un underscore.
+- `` `_line_is_fresh` `` → `` `*line_is_fresh` `` e `` `_publish_redis_event` `` → `` `*publish_redis_event` `` — due identificatori Python che perdono l'underscore iniziale.
+- 68 spazi cancellati accanto agli inline-code, su W104 / W101-recidiva-fly-backup / W107 / W108: `` `redis-cli`esce 0 e mette`NOAUTH`su STDOUT ``.
+
+Chi greppa quei nomi non trova niente, e il file è iniettato nel context di **ogni** sessione ed è la base lessicale di `scar query`. La metà peggiore non è il danno: è che era **ARMATO**. Scrivere la prosa CORRETTA fa fallire `prettier --check` con RC 1 su righe che prima accettava — inclusa la riga W108, che questo branch non ha autorato — e `--write` la ri-rompe. La prosa giusta non era committabile: il gate rendeva la corruzione obbligatoria.
+
+**ANTIBODY:** `.prettierignore` sui tre file cicatrix (`prettier --file-info` risponde ora `"ignored": true`, cioè il verdetto è "esente", non "pulito per caso") + restauro dei token dal corpo. Il principio: un formattatore normalizza lo STILE; su un artefatto dove i byte sono portanti non ha autorità sul CONTENUTO, e la riga di ignore porta scritto il perché, così nessuno la rimuove per pulizia.
+
+**GOTCHA:** (a) **Un record che esiste due volte è il proprio tripwire** — la prova che il colpevole è il formattatore e non un errore d'autore è che lo STESSO W104 vive anche in questo file, che è prettier-clean e porta i token intatti: solo la copia nel ponte è marcia, quindi il riferimento per il restauro esisteva già. (b) La mia stessa regex di rilevamento ha over-matchato `> _Nota cross-famiglia:_`, che è enfasi italica legittima: la sonda che misura una malattia può averla (W107), e per questo ogni candidato va letto IN CONTESTO prima di "restaurarlo" — un restauro cieco avrebbe corrotto una riga sana esattamente come il formattatore. (c) La prima ipotesi (parità di backtick) era falsa e misurata falsa: tutte le righe del paragrafo hanno conteggio PARI. Il meccanismo esatto è rimasto ignoto e non serviva: la decisione non dipendeva da esso, e cercarlo ancora sarebbe stato tempo speso a spiegare un difetto invece di disarmarlo.
+
+**Reference:** questo branch, commit `chore(lint)` + `docs(cicatrix)`; misure eseguite contro `origin/main`, non contro un checkout (W106b).
+
+---
 ### 🐛 W110 (P1 STRUCTURAL): un residuo non tracciato nel checkout era un organo che pubblicava il battito dell'ORGANO SBAGLIATO
 
 _Discovered: 2026-07-30, round 7 su `scripts/lib/heartbeat.sh`. Non cercato: trovato guardando `git status` prima di un commit e chiedendomi di chi fosse una directory `caller-sentinel/` non tracciata._
