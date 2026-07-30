@@ -251,6 +251,33 @@ export default function PortalLayout({
                 {children}
               </PortalErrorBoundary>
             </main>
+
+            {/* Portal Footer */}
+            <footer
+              className="md:ml-0 px-4 py-3 text-xs text-center border-t"
+              style={{
+                color: "var(--text-secondary)",
+                borderColor: "var(--border)",
+              }}
+            >
+              <span>© {new Date().getFullYear()} Bali Zero</span>
+              <span className="mx-2">·</span>
+              <a
+                href="/privacy"
+                className="hover:underline"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Privacy Policy
+              </a>
+              <span className="mx-2">·</span>
+              <a
+                href="/terms"
+                className="hover:underline"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Terms of Service
+              </a>
+            </footer>
           </div>
 
           {/* Mobile Bottom Nav */}
