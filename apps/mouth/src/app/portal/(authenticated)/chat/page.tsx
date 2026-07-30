@@ -82,20 +82,24 @@ export default function ChatPage() {
         setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
-          const status =
-            (err as { status?: number; response?: { status?: number } })
-              ?.status ??
-            (err as { response?: { status?: number } })?.response?.status;
-          const is403 = status === 403;
+          const is403 =
+            (err as Error).message === "Forbidden" ||
+            (err as Error).message.includes("HTTP 403");
           errorRef.current(
             "Failed to load messages",
             is403
               ? "Your account needs verification."
               : "Please try again later",
-            {
-              label: is403 ? "Contact your team" : "Chat with your team",
-              onClick: () => router.push("/portal/messages"),
-            },
+            is403
+              ? {
+                  label: "Contact your team",
+                  onClick: () =>
+                    window.open("https://wa.me/6282230102328", "_blank"),
+                }
+              : {
+                  label: "Chat with your team",
+                  onClick: () => router.push("/portal/messages"),
+                },
           );
         }
         logger.error("Failed to load portal messages", {}, err as Error);

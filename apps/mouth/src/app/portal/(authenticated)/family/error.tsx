@@ -19,7 +19,8 @@ export default function FamilyError({
 
   const is403 =
     (error as { status?: number })?.status === 403 ||
-    error?.message?.includes("403");
+    error?.message === "Forbidden" ||
+    error?.message?.includes("HTTP 403");
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-6 text-center">
@@ -47,12 +48,25 @@ export default function FamilyError({
           <RefreshCw className="mr-2 h-4 w-4" />
           Try Again
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/portal/messages">
-            <MessageSquare className="mr-2 h-4 w-4" />
-            {is403 ? "Contact your team" : "Chat with your team"}
-          </Link>
-        </Button>
+        {is403 ? (
+          <Button asChild variant="outline">
+            <a
+              href="https://wa.me/6282230102328"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Contact your team
+            </a>
+          </Button>
+        ) : (
+          <Button asChild variant="outline">
+            <Link href="/portal/messages">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Chat with your team
+            </Link>
+          </Button>
+        )}
       </div>
     </div>
   );
