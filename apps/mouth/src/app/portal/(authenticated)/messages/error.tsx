@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, MessageSquare } from "lucide-react";
 import { logger } from "@/lib/logger";
@@ -9,12 +10,16 @@ export default function MessagesError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
+  error: Error & { digest?: string; status?: number };
   reset: () => void;
 }) {
   useEffect(() => {
     logger.error("Messages Error", {}, error);
   }, [error]);
+
+  const is403 =
+    (error as { status?: number })?.status === 403 ||
+    error?.message?.includes("403");
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
@@ -35,17 +40,24 @@ export default function MessagesError({
           className="text-2xl font-semibold tracking-tight"
           style={{ color: "var(--tx-pure)" }}
         >
-          Couldn&apos;t Load Messages
+          {is403 ? "Access Denied" : "Couldn't Load Messages"}
         </h2>
         <p style={{ color: "var(--tx-secondary)" }}>
-          There was an error loading this page. Please try again or contact
-          support if the problem persists.
+          {is403
+            ? "Your account needs verification."
+            : "There was an error loading this page. Please try again or contact support if the problem persists."}
         </p>
       </div>
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Button onClick={() => reset()} variant="default">
           <RefreshCw className="mr-2 h-4 w-4" />
           Try Again
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/portal/messages">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            {is403 ? "Contact your team" : "Chat with your team"}
+          </Link>
         </Button>
       </div>
     </div>

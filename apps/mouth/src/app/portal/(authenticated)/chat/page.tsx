@@ -20,6 +20,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ const POLL_INTERVAL = 30000; // 30 seconds
 const PAGE_SIZE = 100;
 
 export default function ChatPage() {
+  const router = useRouter();
   const { error } = useToast();
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -80,7 +82,21 @@ export default function ChatPage() {
         setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
-          errorRef.current("Failed to load messages", "Please try again later");
+          const status =
+            (err as { status?: number; response?: { status?: number } })
+              ?.status ??
+            (err as { response?: { status?: number } })?.response?.status;
+          const is403 = status === 403;
+          errorRef.current(
+            "Failed to load messages",
+            is403
+              ? "Your account needs verification."
+              : "Please try again later",
+            {
+              label: is403 ? "Contact your team" : "Chat with your team",
+              onClick: () => router.push("/portal/messages"),
+            },
+          );
         }
         logger.error("Failed to load portal messages", {}, err as Error);
       } finally {
