@@ -8,6 +8,7 @@ import {
   dashboardApi,
   type DashboardData,
 } from "@/lib/api/dashboard/dashboard.api";
+import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
 
 const DASHBOARD_QUERY_ROOTS = new Set([
@@ -63,19 +64,24 @@ export function useDashboardData(identity: string) {
           err instanceof Error ? err : new Error(String(err)),
         );
 
-        // Check for specific error types
+        // Check for specific error types.
+        // Status comes from ApiError.statusCode; the message tests below stay only
+        // as a fallback for errors that never passed through the api client (raw
+        // fetch/network). They must not be the primary signal: "401"/"403" as a
+        // substring also matches ids and amounts inside an unrelated message.
         if (err instanceof Error) {
+          const status = err instanceof ApiError ? err.statusCode : undefined;
           if (
-            err.message.includes("401") ||
-            err.message.includes("Unauthorized")
+            status === 401 ||
+            (status === undefined && err.message.includes("Unauthorized"))
           ) {
             logger.warn("Authentication error - user may need to login again", {
               component: "useDashboardData",
               action: "getDashboardSummary",
             });
           } else if (
-            err.message.includes("403") ||
-            err.message.includes("Forbidden")
+            status === 403 ||
+            (status === undefined && err.message.includes("Forbidden"))
           ) {
             logger.warn("Authorization error - user may not have permission", {
               component: "useDashboardData",

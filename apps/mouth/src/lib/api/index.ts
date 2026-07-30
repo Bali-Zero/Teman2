@@ -39,12 +39,13 @@ import type {
   InteractionStats,
 } from "./crm/crm.types";
 
-// Re-export ApiError type
-export interface ApiError extends Error {
-  detail?: string;
-  code?: string;
-  message: string;
-}
+// ApiError — the CLASS from ./error-handler, which is what the client actually
+// throws. This used to be a separate structural interface declared right here
+// with `detail`/`code` and no status field, so `catch` blocks that imported it
+// could not branch on 401/403/404 and resorted to `error.message.includes("401")`
+// — a substring test that also fires on "Practice 4012 not found". Read
+// `statusCode` instead. Exported as a value too, so `instanceof ApiError` works.
+export { ApiError } from "./error-handler";
 
 // Export API client interface for type-safe dependency injection
 export type { IApiClient, ApiRequestOptions } from "./types/api-client.types";

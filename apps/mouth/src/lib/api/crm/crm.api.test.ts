@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { CrmApi } from "./crm.api";
 import { ApiClientBase } from "../client";
+import { ApiError } from "../error-handler";
 import type { Practice, Interaction, RenewalAlert } from "./crm.types";
 
 describe("CrmApi", () => {
@@ -443,8 +444,14 @@ describe("CrmApi", () => {
         expect(result).toEqual(mockClient);
       });
 
+      // These two now use ApiError with a real status, because that is what the
+      // only IApiClient implementation (ApiClientBase) throws. They previously
+      // used plain Errors whose MESSAGE contained "404"/"500", which is the
+      // substring contract this method no longer relies on.
       it("should return null when client not found", async () => {
-        const error = new Error("404 Not Found");
+        const error = new ApiError("Client not found", 404, {
+          detail: "Client not found",
+        });
         (crmApi as any).client.request.mockRejectedValue(error);
 
         const result = await crmApi.getClientByEmail("notfound@example.com");
@@ -452,13 +459,25 @@ describe("CrmApi", () => {
         expect(result).toBeNull();
       });
 
+      it("does NOT return null for a 5xx whose detail mentions 404", async () => {
+        // Innocence: the old `message.includes("404")` test read this as
+        // not-found and returned null, reporting "no such client" for a service
+        // failure. It must propagate.
+        const error = new ApiError("upstream returned 404 from OSS", 502, {});
+        (crmApi as any).client.request.mockRejectedValue(error);
+
+        await expect(
+          crmApi.getClientByEmail("someone@example.com"),
+        ).rejects.toThrow("upstream returned 404 from OSS");
+      });
+
       it("should throw error for non-404 errors", async () => {
-        const error = new Error("500 Server Error");
+        const error = new ApiError("Server Error", 500, {});
         (crmApi as any).client.request.mockRejectedValue(error);
 
         await expect(
           crmApi.getClientByEmail("error@example.com"),
-        ).rejects.toThrow("500 Server Error");
+        ).rejects.toThrow("Server Error");
       });
     });
   });
