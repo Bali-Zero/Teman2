@@ -195,6 +195,10 @@ describe("VisaPage (WS3 day pass)", () => {
     expect(mockToastError).toHaveBeenCalledWith(
       "Failed to load visa information",
       "Please try again later",
+      expect.objectContaining({
+        label: expect.any(String),
+        onClick: expect.any(Function),
+      }),
     );
   });
 });
