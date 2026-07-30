@@ -74,20 +74,67 @@ BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 log() { printf 'should-build: %s\n' "$1" >&2; }
 
 if [ -z "$BASE" ]; then
-  # No previous deployment on this ref.
+  # No previous deployment on this ref — this is the case that matters. Measured on the real
+  # billing data, first deployments are 89% of the waste: most PRs here are one or two commits
+  # on a fresh branch, so `VERCEL_GIT_PREVIOUS_SHA` is empty and there is nothing to diff against.
+  #
+  # The first version of this block went straight to `git fetch origin main` and, when that
+  # failed, built. Armed on 2026-07-29 it turned out to fail EVERY time in Vercel's build
+  # container — `should-build: cannot fetch main -> BUILD (fail-open)` — so the entire
+  # first-deployment optimisation never fired and the projected saving was not being collected.
+  # The guard was safe (it built too much, never too little) but effectively inert on its main case.
+  #
+  # Worse, the reason was unknowable: the fetch's stderr went to /dev/null, so the log said
+  # "cannot fetch" and nothing else. A fail-open branch that does not say WHY it opened cannot
+  # be repaired from its own evidence. So: cheapest-first resolution, each path announcing
+  # itself, and the fetch's actual error surfaced.
   if [ "$REF" = "$PROD_BRANCH" ]; then
     log "production branch with no previous deployment -> BUILD (never risk a stale production)"
     exit 1
   fi
-  if ! git fetch --no-tags --depth=200 origin "$PROD_BRANCH" >/dev/null 2>&1; then
-    log "cannot fetch $PROD_BRANCH -> BUILD (fail-open)"
-    exit 1
+
+  # (1) The merge queue puts the BASE COMMIT in the ref name:
+  #     gh-readonly-queue/<base-branch>/pr-<n>-<base-sha>
+  # That is exact, needs no network, and covers every queue deployment. Only trust it if the
+  # object is actually present in this clone.
+  case "$REF" in
+    gh-readonly-queue/*)
+      cand=${REF##*-}
+      if [ ${#cand} -eq 40 ] && git cat-file -e "${cand}^{commit}" 2>/dev/null; then
+        BASE=$cand
+        log "queue ref carries its base -> ${BASE:0:9} (no network)"
+      fi
+      ;;
+  esac
+
+  # (2) A remote-tracking main already in the clone.
+  if [ -z "$BASE" ] && git rev-parse --verify --quiet "refs/remotes/origin/$PROD_BRANCH" >/dev/null 2>&1; then
+    if BASE=$(git merge-base "origin/$PROD_BRANCH" HEAD 2>/dev/null) && [ -n "$BASE" ]; then
+      log "origin/$PROD_BRANCH present -> merge-base ${BASE:0:9} (no network)"
+    else
+      BASE=
+    fi
   fi
-  if ! BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null) || [ -z "$BASE" ]; then
-    log "no merge-base with $PROD_BRANCH (shallow clone?) -> BUILD (fail-open)"
-    exit 1
+
+  # (3) Only now pay for the network — and keep the error, which is the whole point.
+  if [ -z "$BASE" ]; then
+    if fetch_err=$(git fetch --no-tags --depth=200 origin "$PROD_BRANCH" 2>&1); then
+      if BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null) && [ -n "$BASE" ]; then
+        log "fetched $PROD_BRANCH -> merge-base ${BASE:0:9}"
+      else
+        BASE=
+        log "fetched $PROD_BRANCH but no merge-base (shallow clone?) -> BUILD (fail-open)"
+        exit 1
+      fi
+    else
+      # One line, truncated: enough to diagnose auth vs network vs missing remote, without
+      # dumping a wall of git output into every build log.
+      log "cannot fetch $PROD_BRANCH -> BUILD (fail-open). git said: $(printf '%s' "$fetch_err" | tr '\n' ' ' | cut -c1-200)"
+      exit 1
+    fi
   fi
-  log "first deployment of '$REF' -> comparing against merge-base ${BASE:0:9}"
+
+  log "first deployment of '$REF' -> base ${BASE:0:9}"
 fi
 
 HEAD_SHA=$(git rev-parse HEAD 2>/dev/null) || { log "cannot resolve HEAD -> BUILD"; exit 1; }
