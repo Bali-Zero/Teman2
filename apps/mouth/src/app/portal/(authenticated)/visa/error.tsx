@@ -5,21 +5,24 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plane, RefreshCw, MessageSquare } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { ApiError } from "@/lib/api/error-handler";
 
 export default function VisaError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string; status?: number };
+  error: Error & { digest?: string };
   reset: () => void;
 }) {
   useEffect(() => {
     logger.error("Portal visa page error", {}, error);
   }, [error]);
 
-  const is403 =
-    (error as { status?: number })?.status === 403 ||
-    error?.message?.includes("403");
+  // Branch on the real HTTP status, never on message text. This also read
+  // `error.message.includes("403")`, which is true of "Practice 4034 not
+  // found" — a 404 would have rendered "Access Denied". `error.status` was
+  // never set by anything, so only the substring arm could ever fire.
+  const is403 = error instanceof ApiError && error.statusCode === 403;
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-6 text-center">

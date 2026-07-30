@@ -22,6 +22,8 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+// From its own module, not the barrel: tests vi.mock "@/lib/api".
+import { ApiError } from "@/lib/api/error-handler";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -82,11 +84,10 @@ export default function ChatPage() {
         setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
-          const status =
-            (err as { status?: number; response?: { status?: number } })
-              ?.status ??
-            (err as { response?: { status?: number } })?.response?.status;
-          const is403 = status === 403;
+          // Branch on the real HTTP status. This read `err.status` and
+          // `err.response.status`, neither of which the api client ever set, so
+          // `is403` was permanently false and the 403 copy below was dead code.
+          const is403 = err instanceof ApiError && err.statusCode === 403;
           errorRef.current(
             "Failed to load messages",
             is403

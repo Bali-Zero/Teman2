@@ -22,6 +22,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
+import { ApiError } from "@/lib/api/error-handler";
 import VisaPage from "./page";
 
 function visaFixture(daysRemaining: number) {
@@ -199,6 +200,46 @@ describe("VisaPage (WS3 day pass)", () => {
         label: expect.any(String),
         onClick: expect.any(Function),
       }),
+    );
+  });
+
+  // The two tests below are the ones that were owed. The assertion above passes
+  // whether or not the 403 branch works at all — it only proves *a* button
+  // exists — so it stayed green for the whole time `is403` was permanently
+  // false. These assert the two OUTCOMES instead: a real 403 gets the 403
+  // copy, and a non-403 does not, even when its message contains "403".
+  //
+  // Both clear the toast spy first and assert on the LAST call: this suite has
+  // no clearMocks, so `toHaveBeenCalledWith` alone would be satisfied by an
+  // earlier test's generic toast and the innocence case would prove nothing.
+  it("guilt: a real 403 renders the 403 copy and the 403 action", async () => {
+    mockToastError.mockClear();
+    mockGetVisaStatus.mockRejectedValue(
+      new ApiError("Forbidden", 403, { detail: "Forbidden" }),
+    );
+    render(<VisaPage />);
+    await screen.findByRole("heading", { level: 1 });
+    expect(mockToastError).toHaveBeenLastCalledWith(
+      "Failed to load visa information",
+      "Your account needs verification.",
+      expect.objectContaining({ label: "Contact your team" }),
+    );
+  });
+
+  it("innocence: a 404 whose MESSAGE contains 403 keeps the generic copy", async () => {
+    mockToastError.mockClear();
+    // "Practice 4034 not found".includes("403") === true. Under the old
+    // message-substring detection this rendered "Access Denied" to a client
+    // whose record simply did not exist.
+    mockGetVisaStatus.mockRejectedValue(
+      new ApiError("Practice 4034 not found", 404, {}),
+    );
+    render(<VisaPage />);
+    await screen.findByRole("heading", { level: 1 });
+    expect(mockToastError).toHaveBeenLastCalledWith(
+      "Failed to load visa information",
+      "Please try again later",
+      expect.objectContaining({ label: "Chat with your team" }),
     );
   });
 });

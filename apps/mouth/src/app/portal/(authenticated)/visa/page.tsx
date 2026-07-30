@@ -17,6 +17,8 @@ import React, { useEffect, useState } from "react";
 import { Plane, Calendar, FileText, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+// From its own module, not the barrel: tests vi.mock "@/lib/api".
+import { ApiError } from "@/lib/api/error-handler";
 import { StatusBadge, PortalEmptyState } from "@/components/portal";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -117,10 +119,10 @@ export default function VisaPage() {
         setNeedsClientSelection(true);
         return;
       }
-      const status =
-        (err as { status?: number; response?: { status?: number } })?.status ??
-        (err as { response?: { status?: number } })?.response?.status;
-      const is403 = status === 403;
+      // Branch on the real HTTP status. This read `err.status` and
+      // `err.response.status`, neither of which the api client ever set, so
+      // `is403` was permanently false and the 403 copy below was dead code.
+      const is403 = err instanceof ApiError && err.statusCode === 403;
       error(
         "Failed to load visa information",
         is403 ? "Your account needs verification." : "Please try again later",
