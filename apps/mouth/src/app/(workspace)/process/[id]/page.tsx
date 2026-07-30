@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { toast as sonnerToast } from "sonner";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { Practice } from "@/lib/api/crm/crm.types";
 import {
   STATUS_LABELS as STATUS_DROPDOWN_LABELS,
@@ -553,10 +553,14 @@ export default function CaseDetailPage() {
 
       // Check for specific error types and provide user-friendly messages
       let errorMessage = "Failed to update process details.";
+      // Status comes from ApiError.statusCode. The message tests remain only as a
+      // fallback for errors that never went through the api client; a bare
+      // `message.includes("404")` would also fire on a process id containing 404.
       if (err instanceof Error) {
+        const status = err instanceof ApiError ? err.statusCode : undefined;
         if (
-          err.message.includes("401") ||
-          err.message.includes("Unauthorized")
+          status === 401 ||
+          (status === undefined && err.message.includes("Unauthorized"))
         ) {
           errorMessage = "Authentication failed. Please login again.";
           logger.error(
@@ -567,8 +571,8 @@ export default function CaseDetailPage() {
             },
           );
         } else if (
-          err.message.includes("403") ||
-          err.message.includes("Forbidden")
+          status === 403 ||
+          (status === undefined && err.message.includes("Forbidden"))
         ) {
           errorMessage = "You do not have permission to update this process.";
           logger.error("Authorization error - user may not have permission", {
@@ -576,8 +580,8 @@ export default function CaseDetailPage() {
             action: "updateCase",
           });
         } else if (
-          err.message.includes("404") ||
-          err.message.includes("Not Found")
+          status === 404 ||
+          (status === undefined && err.message.includes("Not Found"))
         ) {
           errorMessage = "Process not found. It may have been deleted.";
           logger.error("Case not found - may have been deleted", {

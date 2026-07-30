@@ -7,7 +7,7 @@ import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
 import { ToastProvider } from "@/components/ui/toast";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { portalNavigation } from "@/types/navigation";
 import { AdminImpersonationProvider } from "@/contexts/AdminImpersonationContext";
@@ -98,7 +98,10 @@ export default function PortalLayout({
         try {
           await loadUserProfile();
         } catch (error) {
-          if (error instanceof Error && error.message.includes("401")) {
+          // Branch on the HTTP status, never on the message text. This read
+          // `error.message.includes("401")`, which is also true of "Practice
+          // 4012 not found" — so a 404 could sign a client out of the portal.
+          if (error instanceof ApiError && error.statusCode === 401) {
             router.push("/portal/login");
             return;
           }

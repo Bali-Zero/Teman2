@@ -1,4 +1,5 @@
 import type { IApiClient } from "../types/api-client.types";
+import { ApiError } from "../error-handler";
 import type {
   Practice,
   Interaction,
@@ -497,8 +498,12 @@ export class CrmApi {
         `/api/crm/clients/by-email/${encodeURIComponent(email)}`,
       );
     } catch (error) {
-      // 404 means client not found - return null instead of throwing
-      if (error instanceof Error && error.message.includes("404")) {
+      // 404 means client not found - return null instead of throwing.
+      // Must be the STATUS, not the message: `message.includes("404")` also
+      // matches a 5xx whose detail happens to mention 404 (e.g. an upstream
+      // error), and returning null there reports "no such client" for what was
+      // actually a service failure.
+      if (error instanceof ApiError && error.statusCode === 404) {
         return null;
       }
       throw error;
