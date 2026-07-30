@@ -24,6 +24,12 @@
 #     way to make grep itself error. The branch is written fail-open and reviewed, not proven.
 #   * pointer reverted to a bare invocation  -> 4 fail, every one as `rc=127 (DEPLOYMENT ERROR)`.
 #     That IS the 2026-07-29 incident, reproduced. See scripts/ci/vercel_ignore_build_step.sh.
+#   * queue-ref base resolution removed     -> 1 fails.  Worth recording HOW: written naively these
+#     cases passed with that whole path deleted, because the origin/main path resolved them —
+#     three tests that proved nothing. They only bite now because the block deletes the tracking
+#     ref and breaks the remote first, so a SKIP can come from nowhere else. A new path needs its
+#     OTHER routes removed, or the corpus measures the fallback instead.
+#   * origin/main base resolution removed   -> 1 fails.
 #   * `git init` dropped from the pointer sandbox -> 4 fail as "sandbox leaked". Worth stating
 #     why that check exists at all: setting TMPDIR inside the repo does NOT trip it, because each
 #     sandbox runs its own `git init` and therefore is its own toplevel. So the corpus cannot
@@ -113,13 +119,58 @@ VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$MAIN_TIP" \
   run BUILD "main against its own tip (base == HEAD)"
 
 echo
-echo "=== FAIL-OPEN: anything unresolvable builds"
-git -C "$WORK" checkout -q -b weird/norem main
-commit "docs/x.md" "docs only, but the remote is unreachable"
+echo "=== OFFLINE BASE RESOLUTION (added 2026-07-30 after the armed guard proved inert)"
+# The first version fetched origin/main and, when the fetch failed, built. Armed in production it
+# failed EVERY time — `cannot fetch main -> BUILD (fail-open)` in every first deployment — so the
+# 89%-of-waste case never fired. These cases pin the two network-free paths that replaced it.
+
+# (1) The merge queue encodes the base commit in the ref: gh-readonly-queue/main/pr-<n>-<base-sha>.
+#
+# ISOLATED ON PURPOSE. Written naively these three cases passed with the queue path deleted —
+# path (2) resolved them and the mutation showed 0 failures, i.e. they tested nothing. So the
+# other two routes are removed for this block: no origin/main tracking ref, unreachable remote.
+# A SKIP here can only come from the ref name.
+git -C "$WORK" update-ref -d refs/remotes/origin/main
 git -C "$WORK" remote set-url origin "$ROOT/does-not-exist.git"
-VERCEL_GIT_COMMIT_REF=weird/norem VERCEL_GIT_PREVIOUS_SHA= \
-  run BUILD "unreachable origin (docs-only, yet still builds)"
+
+git -C "$WORK" checkout -q -b docs/queued main
+commit "docs/queued.md" "docs only, deployed through the merge queue"
+VERCEL_GIT_COMMIT_REF="gh-readonly-queue/main/pr-4242-$MAIN_TIP" VERCEL_GIT_PREVIOUS_SHA= \
+  run SKIP "queue ref carries its base sha — docs-only skips with NO network"
+
+git -C "$WORK" checkout -q -b feat/queued main
+commit "apps/mouth/app/queued.tsx" "frontend, through the merge queue"
+VERCEL_GIT_COMMIT_REF="gh-readonly-queue/main/pr-4243-$MAIN_TIP" VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "same path, frontend delta — still builds (guilt)"
+
+# A queue ref whose trailing sha is NOT in this clone must not be trusted into a skip.
+VERCEL_GIT_COMMIT_REF="gh-readonly-queue/main/pr-4244-deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" \
+VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "queue ref naming a sha this clone does not have -> falls through"
+
 git -C "$WORK" remote set-url origin "$UPSTREAM"
+git -C "$WORK" fetch -q origin main:refs/remotes/origin/main
+
+# (2) A remote-tracking origin/main already in the clone resolves offline. A STALE one is safe by
+# direction: being behind moves the merge-base EARLIER, which widens the diff and biases to BUILD.
+git -C "$WORK" checkout -q -b docs/offline main
+commit "docs/offline.md" "docs only, remote unreachable but origin/main is local"
+git -C "$WORK" remote set-url origin "$ROOT/does-not-exist.git"
+VERCEL_GIT_COMMIT_REF=docs/offline VERCEL_GIT_PREVIOUS_SHA= \
+  run SKIP "unreachable remote but origin/main present -> resolved offline"
+
+echo
+echo "=== FAIL-OPEN: genuinely unresolvable still builds"
+# The real unresolvable case, which the old "unreachable origin" test only appeared to cover: no
+# remote-tracking ref AND no reachable remote. Without this, dropping BOTH offline paths would
+# leave the suite green.
+git -C "$WORK" checkout -q -b weird/norem main
+commit "docs/x.md" "docs only, and nothing can establish a base"
+git -C "$WORK" update-ref -d refs/remotes/origin/main
+VERCEL_GIT_COMMIT_REF=weird/norem VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "no origin/main ref and unreachable remote (docs-only, yet builds)"
+git -C "$WORK" remote set-url origin "$UPSTREAM"
+git -C "$WORK" fetch -q origin main:refs/remotes/origin/main
 
 VERCEL_GIT_COMMIT_REF=docs/ledger VERCEL_GIT_PREVIOUS_SHA=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
   run BUILD "previous SHA that git does not know"
