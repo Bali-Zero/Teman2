@@ -23,7 +23,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { toast as sonnerToast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+// Imported from its own module, not the "@/lib/api" barrel: several suites
+// replace that barrel with a hand-written `vi.mock` factory listing only the
+// `api` methods they need, so pulling ApiError through it makes the class
+// `undefined` under test and `instanceof` throws inside the catch block.
+import { ApiError } from "@/lib/api/error-handler";
 import type { Practice } from "@/lib/api/crm/crm.types";
 import {
   STATUS_LABELS as STATUS_DROPDOWN_LABELS,

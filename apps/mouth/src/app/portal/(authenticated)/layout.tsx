@@ -7,7 +7,10 @@ import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
 import { ToastProvider } from "@/components/ui/toast";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+// From its own module, not the barrel: layout.test.tsx replaces "@/lib/api"
+// with a partial vi.mock, which would make ApiError undefined under test.
+import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
 import { portalNavigation } from "@/types/navigation";
 import { AdminImpersonationProvider } from "@/contexts/AdminImpersonationContext";
