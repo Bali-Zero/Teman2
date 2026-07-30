@@ -6,10 +6,10 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **8**
+- scars scanned: **11**
 - mechanical candidates (recurring ≥3): **7**
-- consultive (single-occurrence): **0**
-- rejected (no objective anchor, G1): **1**
+- consultive (single-occurrence): **1**
+- rejected (no objective anchor, G1): **3**
 
 ## Recurring patterns (the objective recurrence signal, G4)
 
@@ -35,8 +35,10 @@
 
 ## Consultive (→ judgment pipeline, NOT a hook)
 
-_(none)_
+- 🐛 W110 (P1 STRUCTURAL): un residuo non tracciato nel checkout era un organo che pubblicava il battito dell'ORGANO SBAGLIATO [UNKNOWN]
 
 ## Rejected — no objective anchor (gate G1)
 
+- 🐛 W111 (P2 STRUCTURAL): `gh run rerun` rigioca un merge-ref STANTIO — «ho rilanciato il check» non è «l'ho testato contro main di adesso» — no objective anchor (G1)
+- 🐛 W112 (P1 STRUCTURAL): il formattatore è uno scrittore che nessuno controlla, e giudica per FORMA — no objective anchor (G1)
 - 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03) — no objective anchor (G1)
