@@ -124,7 +124,7 @@ export function AppSidebar({
         : "hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--bz-text-1)]",
     );
     const sharedStyle = active
-      ? { background: "var(--bz-accent)", color: "#fff" }
+      ? { background: "var(--bz-copper-deep)", color: "#fff" }
       : { color: "var(--bz-text-2)" };
 
     const sharedContent = (
