@@ -5,6 +5,44 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🐛 W110 (P1 STRUCTURAL): un residuo non tracciato nel checkout era un organo che pubblicava il battito dell'ORGANO SBAGLIATO
+
+_Discovered: 2026-07-30, round 7 su `scripts/lib/heartbeat.sh`. Non cercato: trovato guardando `git status` prima di un commit e chiedendomi di chi fosse una directory `caller-sentinel/` non tracciata._
+
+**Famiglia: superscar #2 (Esiste ≠ Armato), con W96 («test-writes-prod») come parente diretto.**
+
+**TRAUMA:** nel worktree c'erano 34 file `caller-sentinel/caller-sentinel.tmp.<pid>` — battiti JSON validi, datati fra le 14:38 e le 16:34 dello stesso giorno. Non erano spazzatura di un mio comando: il corpus `test_gene_g2_heartbeat_fires.py` parametrizza `readonly` su OGNI nome che la funzione dichiara, e in **bash** `local X` su un nome che il CHIAMANTE ha dichiarato `readonly` fallisce, stampa un errore, ritorna non-zero **e lascia visibile il valore del chiamante**. Il wrapper `( … ) || :` — che esiste per non uccidere mai il chiamante — fa quindi proseguire l'esecuzione con dati di qualcun altro. Misurato in tre forme:
+
+- `readonly _organism_hb_id=x` prima di una chiamata per `probe.real` scrive **`x.json`**: l'organo `x` dichiarato vivo perché ne ha girato un ALTRO.
+- lo stesso su `_organism_hb_status` pubblicherebbe `ok` per un chiamante che riporta `error`.
+- `readonly _organism_hb_path=caller-sentinel` manda la scrittura su un path **relativo** scelto dal chiamante, che sotto pytest è il checkout. Da qui il residuo — e la metà grave non è la sporcizia: **il sidecar dell'organo vero non compare mai, quindi un organo VIVO invecchia in `dead`** per entrambi i lettori.
+
+E la directory rimasta chiude il cerchio: `mv file dir` sposta il file DENTRO ed esce **0**, quindi la pulizia non trova nulla al vecchio nome, ogni lettore continua a non vedere sidecar, e la scrittura ha riportato successo. Il test passava da settimane perché asserisce **solo che il chiamante è sopravvissuto** e scarta deliberatamente il sidecar: sopravvivere non è scrivere la cosa giusta.
+
+**ANTIBODY:** (1) PROVARE che il legame ha preso — `[ "$var" = "$arg" ]` su tutte le local derivate dagli argomenti E su quelle tardive (`_organism_hb_path`/`_organism_hb_tmp`), che la prima prova non raggiungeva; al primo disaccordo si rifiuta di scrivere e lo si dice su stderr, perché il writer non può sapere quale valore fosse quello inteso. (2) Rifiutare una destinazione che è una **directory** invece di lasciare mentire `mv`. (3) Un test che ESEGUE il corpus in un cwd temporaneo e pretende **zero** residui — il guardiano è l'esecuzione, non la lettura. Tutte e tre mutation-verified.
+
+**GOTCHA:** (a) `zsh` lega correttamente in tutti questi casi (misurato), quindi il difetto è bash-only e una prova fatta solo in zsh lo dichiarerebbe assente. (b) Nella stessa tornata due parenti della stessa classe: il validatore d'orologio controllava i CAMPI e non le DATE (`2026-02-31`, `2025-02-29`, anno `0000`, leap second `:60` passavano tutti — e `datetime.fromisoformat`, cioè ENTRAMBI i lettori, li rifiuta, quindi pubblicarli È la morte fabbricata che il controllo esiste per fermare), e il test di vocabolario del round 6 leggeva le CONDIZIONI del classificatore e non i suoi ESITI, così un ramo `elif hb_status == "disabled": status = "dead"` lo soddisfaceva pienamente. (c) Armamento: quel test legge `scripts/sentinel-aggregate.py`, che **non era in nessuno dei due filtri** del workflow — una PR sul solo classificatore accendeva il workflow e saltava pytest, e dopo il merge non lo accendeva affatto. L'arming è ora un check di CLASSE derivato dalle costanti del corpus, così il prossimo file che il corpus legge si arma da sé o fa fallire il gate.
+
+**Reference:** PR #3458 (merge `dbd928d4a0`); copia viva su Pro ricopiata e provata lo stesso giorno (`d210866c…`/2401 byte → `48161e963c…`/32179 byte, smoke test in bash e zsh, verdetti `disabled→disabled`, `running→ok`, `timed_out→error`, 140 sidecar vivi intatti).
+
+---
+
+### 🐛 W111 (P2 STRUCTURAL): `gh run rerun` rigioca un merge-ref STANTIO — «ho rilanciato il check» non è «l'ho testato contro main di adesso»
+
+_Discovered: 2026-07-30, mentre si sbloccava #3463 dopo il merge di #3465._
+
+**Famiglia: superscar #9 (il proxy mente), forma W88 un piano sopra — qui il proxy non è uno SHA, è il GESTO.**
+
+**TRAUMA:** #3463 era rossa su `inventory-check` per un difetto che #3465 aveva appena curato e mergiato su main. Rilanciato il job fallito con `gh run rerun --failed`, la sonda sul ref che quel run avrebbe usato — `git show refs/pull/3463/merge:scripts/docs_inventory_blame.py | grep -c ALIGN_KEY` — dava **0**: il re-run stava per fallire di nuovo per una ragione che non esisteva più, e quel rosso avrebbe letto come prova che la cura non funziona (o, peggio, come drift nuovo da inseguire). Ciò che ri-punta davvero il ref è un HEAD NUOVO: dopo `gh pr update-branch`, la stessa sonda dà **2** e il check passa.
+
+**ANTIBODY:** prima di leggere un verde o un rosso da un re-run, verificare per CONTENUTO che `refs/pull/N/merge` contenga il marcatore della cura; se non c'è, aggiornare il branch invece di rilanciare. La sonda onesta è il contenuto del ref, non il fatto di aver premuto rerun.
+
+**GOTCHA:** gemello della stessa tornata, sui segnali di armamento con la merge queue attiva. **Né `autoMergeRequest` né `isInMergeQueue` da soli** rispondono a «questa PR è armata»: #3465 e #3458 mostravano `autoMergeRequest: null` + `isInMergeQueue: true` (già IN coda, quindi nessuna richiesta pendente esiste), #3463 l'esatto inverso — `autoMergeRequest.enabledAt` valorizzato e `isInMergeQueue: false` (armata all'apertura, entrerà in coda a verde). Leggerne uno solo riporta uno dei due stati come DISARMATO e invita a un `gh pr merge --auto` di troppo, che è una MUTAZIONE e non una sonda. E `gh pr merge --auto --squash` viene ora **rifiutato in partenza** («The merge strategy for main is set by the merge queue»), quindi il flag abituale fa fallire la chiamata che doveva fare.
+
+**Reference:** #3463 head `d3c04ace1f` → `218b7cef6e`; merge-ref `12379ce8` (0 marcatori) → `7d3ee346` (2).
+
+---
+
 ### 🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)
 
 _Discovered: 2026-06-17, durante la riconciliazione 3-nodi — un subagent ha riportato che `git -C ... fetch ... stash list` veniva bloccato dal hook. Riprodotto verbatim QUESTO turno: `git stash list` e `git -C <main> stash list` → exit 2 (BLOCK) entrambi · Severity: **P3 STRUCTURAL** (over-match: blocca un'introspezione read-only dello stash, costringe a workaround `git rev-parse refs/stash`) · Status: **OPEN** (scar registrata; fix candidato da foldare nella stessa linea W84)_
