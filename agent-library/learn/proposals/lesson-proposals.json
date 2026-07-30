@@ -5,10 +5,10 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 8,
+    "scars_scanned": 11,
     "mechanical_candidates": 7,
-    "consultive": 0,
-    "rejected_no_anchor": 1
+    "consultive": 1,
+    "rejected_no_anchor": 3
   },
   "recurring_patterns": {
     "w_numbers": {
@@ -181,8 +181,31 @@
       "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     }
   ],
-  "consultive": [],
+  "consultive": [
+    {
+      "title": "🐛 W110 (P1 STRUCTURAL): un residuo non tracciato nel checkout era un organo che pubblicava il battito dell'ORGANO SBAGLIATO",
+      "severity": "UNKNOWN",
+      "w_numbers": [
+        "W110",
+        "W96"
+      ],
+      "recurring_via": {
+        "w": [],
+        "family": []
+      },
+      "pipeline": "consultive",
+      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+    }
+  ],
   "rejected_no_anchor": [
+    {
+      "title": "🐛 W111 (P2 STRUCTURAL): `gh run rerun` rigioca un merge-ref STANTIO — «ho rilanciato il check» non è «l'ho testato contro main di adesso»",
+      "reason": "no objective anchor (G1)"
+    },
+    {
+      "title": "🐛 W112 (P1 STRUCTURAL): il formattatore è uno scrittore che nessuno controlla, e giudica per FORMA",
+      "reason": "no objective anchor (G1)"
+    },
     {
       "title": "🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)",
       "reason": "no objective anchor (G1)"
