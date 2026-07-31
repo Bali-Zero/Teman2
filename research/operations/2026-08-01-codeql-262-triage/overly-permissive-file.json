@@ -1,0 +1,200 @@
+[
+ {
+  "n": 8192,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 606,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8191,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 603,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8190,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 602,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8189,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 586,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8188,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 585,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8187,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 582,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8186,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 580,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8185,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 579,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8184,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 574,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8183,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 573,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8182,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_worker_plane_review_packet.py",
+  "line": 570,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8181,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/launch_worker_plane_review_panel.py",
+  "line": 834,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8180,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/freeze_worker_plane_review.py",
+  "line": 919,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8179,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/freeze_worker_plane_review.py",
+  "line": 918,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7689,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "apps/mata-garuda/mata_garuda/workers/plist_watchdog.py",
+  "line": 177,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "other-app"
+ },
+ {
+  "n": 7368,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/intake_gate_count_pusher.py",
+  "line": 47,
+  "msg": "Overly permissive mask in open sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7352,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/wa_mirror_intake_sweeper.py",
+  "line": 128,
+  "msg": "Overly permissive mask in open sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7335,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/wa_media_pull_worker.py",
+  "line": 139,
+  "msg": "Overly permissive mask in open sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7259,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/tests/test_escalations_s3.py",
+  "line": 124,
+  "msg": "Overly permissive mask in open sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6300,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "apps/cell/scripts/skills_bridge_consumer.py",
+  "line": 92,
+  "msg": "Overly permissive mask in open sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4220,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/sentinel_lib/escalations.py",
+  "line": 66,
+  "msg": "Overly permissive mask in open sets file to world readable.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3665,
+  "rule": "py/overly-permissive-file",
+  "sev": "high",
+  "path": "scripts/system_doctor.py",
+  "line": 1307,
+  "msg": "Overly permissive mask in chmod sets file to world readable.",
+  "surface": "tooling"
+ }
+]

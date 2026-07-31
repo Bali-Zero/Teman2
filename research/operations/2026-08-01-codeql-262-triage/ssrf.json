@@ -1,0 +1,101 @@
+[
+ {
+  "n": 3623,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+  "line": 1000,
+  "msg": "Part of the URL of this request depends on a user-provided value.\nPart of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3622,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+  "line": 252,
+  "msg": "Part of the URL of this request depends on a user-provided value.\nPart of the URL of this request depends on a user-provided value.\nPart of the URL of this request depends on a user-provided value.\nPart of the URL of this request depends on a user-provided value.\nPart of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3621,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/services/integrations/google_drive_service.py",
+  "line": 443,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3620,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/services/integrations/google_drive_service.py",
+  "line": 407,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2869,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+  "line": 67,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2868,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+  "line": 57,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2149,
+  "rule": "js/request-forgery",
+  "sev": "critical",
+  "path": "apps/mouth/src/app/chat/actions.ts",
+  "line": 157,
+  "msg": "The URL of this request depends on a user-provided value.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 798,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/app/routers/system_observability.py",
+  "line": 208,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 797,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/app/utils/qdrant_debugger.py",
+  "line": 216,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 792,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+  "line": 144,
+  "msg": "Part of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 791,
+  "rule": "py/partial-ssrf",
+  "sev": "critical",
+  "path": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+  "line": 75,
+  "msg": "Part of the URL of this request depends on a user-provided value.\nPart of the URL of this request depends on a user-provided value.",
+  "surface": "backend-prod"
+ }
+]

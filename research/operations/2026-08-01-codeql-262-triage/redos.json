@@ -1,0 +1,209 @@
+[
+ {
+  "n": 7783,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+  "line": 371,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with 'bab i' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'bab i' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'bab i' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7782,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+  "line": 337,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7781,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+  "line": 281,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7780,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+  "line": 247,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with 'paragraf 0 ' and with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'paragraf 0 ' and with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'paragraf 0 ' and with many repetitions of '  '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7779,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+  "line": 211,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with 'bagian a ' and with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'bagian a ' and with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'bagian a ' and with many repetitions of '  '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7778,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+  "line": 170,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with 'bab i' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'bab i' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'bab i' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7777,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/quality_validators.py",
+  "line": 133,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '\\n'.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7776,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/metadata_extractor.py",
+  "line": 88,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with 'tentang ' and with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'tentang ' and with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'tentang ' and with many repetitions of '  '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7775,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/cleaner.py",
+  "line": 55,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with 'salinan sesuai dengan aslinya' and with many repetitions of 'salinan sesuai dengan aslinya'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'salinan sesuai dengan aslinya' and with many repetitions of 'salinan sesuai dengan aslinya'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with 'salinan sesuai dengan aslinya' and with many repetitions of 'salinan sesuai dengan aslinya'.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7774,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/chunker.py",
+  "line": 293,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '(0)' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '(0)' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '(0)' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7773,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/chunker.py",
+  "line": 261,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7772,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/chunker.py",
+  "line": 146,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7771,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/legal/chunker.py",
+  "line": 137,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\n' and with many repetitions of '\\n'.\nThis regular expression that depends on a user-provided value may run slow on strings starting with '\\npasal c' and with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7482,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/autonomous_lab/receipt_safety.py",
+  "line": 42,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7409,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/analytics.py",
+  "line": 151,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings with many repetitions of '%'.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6863,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+  "line": 482,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '## Potential Risks\\n' and with many repetitions of '\\n '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6862,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+  "line": 468,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '## Key Requirements\\n' and with many repetitions of '\\n '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6861,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+  "line": 459,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '## Investment Required\\n' and with many repetitions of '\\n '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6384,
+  "rule": "js/regex/missing-regexp-anchor",
+  "sev": "high",
+  "path": "apps/mouth/src/app/portal/(authenticated)/matters/[id]/page.test.tsx",
+  "line": 76,
+  "msg": "When this is used as a regular expression on a URL, it may match anywhere, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 6285,
+  "rule": "py/redos",
+  "sev": "high",
+  "path": "scripts/wr2_canva_pdf_render.py",
+  "line": 331,
+  "msg": "This part of the regular expression may cause exponential backtracking on strings containing many repetitions of ','.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4441,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/naga/orchestrator.py",
+  "line": 103,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings with many repetitions of '  '.\nThis regular expression that depends on a user-provided value may run slow on strings with many repetitions of ' '.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 257,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/memory/memory_fallback.py",
+  "line": 106,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings with many repetitions of '0'.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 253,
+  "rule": "py/polynomial-redos",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+  "line": 452,
+  "msg": "This regular expression that depends on a user-provided value may run slow on strings starting with '## Timeline\\n' and with many repetitions of '\\n '.",
+  "surface": "backend-prod"
+ }
+]

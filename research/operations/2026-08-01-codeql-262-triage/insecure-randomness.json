@@ -1,0 +1,119 @@
+[
+ {
+  "n": 7317,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/web/src/lib/api/client.ts",
+  "line": 81,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "other-app"
+ },
+ {
+  "n": 4505,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/lib/visa-oracle/storage.ts",
+  "line": 21,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2874,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/components/ZantaraWidget.tsx",
+  "line": 160,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.\nThis uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2873,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/components/ZantaraWidget.tsx",
+  "line": 159,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.\nThis uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2543,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/web/src/hooks/useChatPage.ts",
+  "line": 75,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "other-app"
+ },
+ {
+  "n": 2153,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/hooks/useOptimisticChat.ts",
+  "line": 70,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2151,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/lib/logging/cases-logger.ts",
+  "line": 85,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2150,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/hooks/useConversationPersistence.ts",
+  "line": 78,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 21,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/lib/analytics.ts",
+  "line": 27,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 20,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/hooks/useConversationPersistence.ts",
+  "line": 94,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 18,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/hooks/useConversationPersistence.ts",
+  "line": 63,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 17,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/src/hooks/useChat.ts",
+  "line": 44,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 16,
+  "rule": "js/insecure-randomness",
+  "sev": "high",
+  "path": "apps/mouth/e2e/zantara/memory-direct-test.spec.ts",
+  "line": 137,
+  "msg": "This uses a cryptographically insecure random number generated at Math.random() in a security context.",
+  "surface": "frontend-prod"
+ }
+]

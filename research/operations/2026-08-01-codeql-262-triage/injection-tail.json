@@ -1,0 +1,227 @@
+[
+ {
+  "n": 8025,
+  "rule": "js/insecure-temporary-file",
+  "sev": "high",
+  "path": "apps/wa-mirror/scripts/wa-tester.ts",
+  "line": 487,
+  "msg": "Insecure creation of file in the os temp dir.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7980,
+  "rule": "py/clear-text-storage-sensitive-data",
+  "sev": "high",
+  "path": "scripts/docs_audit.py",
+  "line": 1649,
+  "msg": "This expression stores sensitive data (secret) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7786,
+  "rule": "py/clear-text-storage-sensitive-data",
+  "sev": "high",
+  "path": "packages/cell-core/cell_core/identity.py",
+  "line": 87,
+  "msg": "This expression stores sensitive data (private) as clear text.",
+  "surface": "other-app"
+ },
+ {
+  "n": 7785,
+  "rule": "py/clear-text-storage-sensitive-data",
+  "sev": "high",
+  "path": "scripts/drive_token_watchdog.py",
+  "line": 197,
+  "msg": "This expression stores sensitive data (password) as clear text.\nThis expression stores sensitive data (password) as clear text.\nThis expression stores sensitive data (password) as clear text.\nThis expression stores sensitive data (password) as clear text.\nThis expression stores sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7585,
+  "rule": "py/command-line-injection",
+  "sev": "critical",
+  "path": "skills/bali-zero-brand/_damar-queue-server.py",
+  "line": 721,
+  "msg": "This command line depends on a user-provided value.\nThis command line depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 7406,
+  "rule": "js/incomplete-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/e2e/category-alias-redirect.spec.ts",
+  "line": 52,
+  "msg": "This does not escape backslash characters in the input.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 6272,
+  "rule": "py/bad-tag-filter",
+  "sev": "high",
+  "path": "infra/eventbus/regulatory_ingest_runner.py",
+  "line": 173,
+  "msg": "This regular expression does not match script end tags like </script >.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6122,
+  "rule": "py/bad-tag-filter",
+  "sev": "high",
+  "path": "apps/mata-garuda/mata_garuda/agents/intel_scraper_bridge.py",
+  "line": 52,
+  "msg": "This regular expression does not match script end tags like </script >.",
+  "surface": "other-app"
+ },
+ {
+  "n": 4703,
+  "rule": "py/reflective-xss",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/hr_late_reply.py",
+  "line": 202,
+  "msg": "Cross-site scripting vulnerability due to a user-provided value.\nCross-site scripting vulnerability due to a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3796,
+  "rule": "py/insecure-temporary-file",
+  "sev": "high",
+  "path": "scripts/coverage_trend.py",
+  "line": 143,
+  "msg": "Call to deprecated function tempfile.mktemp may be insecure.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3597,
+  "rule": "py/sql-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/system_observability.py",
+  "line": 116,
+  "msg": "This SQL query depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3479,
+  "rule": "js/xss",
+  "sev": "high",
+  "path": "apps/mouth/src/app/portal/login-upgraded/page.tsx",
+  "line": 134,
+  "msg": "Cross-site scripting vulnerability due to user-provided value.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 3396,
+  "rule": "py/insecure-temporary-file",
+  "sev": "high",
+  "path": "apps/evaluator/core_guardian/watchdog.py",
+  "line": 170,
+  "msg": "Call to deprecated function tempfile.mktemp may be insecure.",
+  "surface": "other-app"
+ },
+ {
+  "n": 3395,
+  "rule": "py/insecure-temporary-file",
+  "sev": "high",
+  "path": "apps/evaluator/core_guardian/surgeon.py",
+  "line": 395,
+  "msg": "Call to deprecated function tempfile.mktemp may be insecure.",
+  "surface": "other-app"
+ },
+ {
+  "n": 3334,
+  "rule": "js/file-system-race",
+  "sev": "high",
+  "path": "apps/mouth/scripts/generate-llms-full.ts",
+  "line": 177,
+  "msg": "The file may have changed since it was checked.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2960,
+  "rule": "js/xss",
+  "sev": "high",
+  "path": "apps/mouth/src/app/login/page.tsx",
+  "line": 105,
+  "msg": "Cross-site scripting vulnerability due to user-provided value.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2487,
+  "rule": "py/reflective-xss",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/admin_zoho_auth.py",
+  "line": 269,
+  "msg": "Cross-site scripting vulnerability due to a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2315,
+  "rule": "js/incomplete-multi-character-sanitization",
+  "sev": "high",
+  "path": "apps/admin-dashboard/lib/security/xss.ts",
+  "line": 29,
+  "msg": "This string may still contain <script, which may cause an HTML element injection vulnerability.",
+  "surface": "other-app"
+ },
+ {
+  "n": 2314,
+  "rule": "js/bad-tag-filter",
+  "sev": "high",
+  "path": "apps/admin-dashboard/lib/security/xss.ts",
+  "line": 31,
+  "msg": "This regular expression does not match script end tags like </script >.",
+  "surface": "other-app"
+ },
+ {
+  "n": 2313,
+  "rule": "js/command-line-injection",
+  "sev": "critical",
+  "path": "apps/admin-dashboard/app/api/calendar/events/route.ts",
+  "line": 126,
+  "msg": "This command line depends on a user-provided value.\nThis command line depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 2312,
+  "rule": "js/command-line-injection",
+  "sev": "critical",
+  "path": "apps/admin-dashboard/app/api/calendar/events/route.ts",
+  "line": 99,
+  "msg": "This command line depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 2311,
+  "rule": "js/command-line-injection",
+  "sev": "critical",
+  "path": "apps/admin-dashboard/app/api/calendar/events/route.ts",
+  "line": 19,
+  "msg": "This command line depends on a user-provided value.\nThis command line depends on a user-provided value.\nThis command line depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 2010,
+  "rule": "js/file-system-race",
+  "sev": "high",
+  "path": "apps/mouth/scripts/generate_kbli_data.js",
+  "line": 38,
+  "msg": "The file may have changed since it was checked.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 314,
+  "rule": "py/sql-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/system_observability.py",
+  "line": 120,
+  "msg": "This SQL query depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 10,
+  "rule": "js/sql-injection",
+  "sev": "high",
+  "path": "apps/admin-dashboard/app/api/postgres/query/route.ts",
+  "line": 38,
+  "msg": "This query string depends on a user-provided value.",
+  "surface": "other-app"
+ }
+]
