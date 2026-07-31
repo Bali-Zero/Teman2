@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 
@@ -34,36 +33,15 @@ export function ZantaraPortalCard() {
 
       {/* Content */}
       <div className="relative flex items-center gap-4 px-5 py-4">
-        {/* Logos cluster */}
-        <div className="relative flex-shrink-0 w-[52px] h-[52px]">
-          {/* BZ logo — background */}
-          <div
-            className="absolute inset-0 rounded-xl overflow-hidden flex items-center justify-center"
-            style={{
-              background: "var(--surface-raised)",
-              border: "1px solid var(--bz-border)",
-            }}
-          >
-            <BZLogo variant="full" size={38} className="rounded-full" />
-          </div>
-          {/* Lotus — overlaid bottom-right with glow pulse */}
-          <div
-            className="absolute -bottom-1.5 -right-1.5 w-[26px] h-[26px] rounded-full flex items-center justify-center"
-            style={{
-              background: "var(--bz-elevated)",
-              border:
-                "1px solid color-mix(in srgb, var(--state-info) 25%, transparent)",
-              animation: "lotusPulse 3s ease-in-out infinite",
-            }}
-          >
-            <Image
-              src="/static/zantara-lotus-v2.png"
-              alt="Zantara"
-              width={22}
-              height={22}
-              className="object-contain"
-            />
-          </div>
+        {/* Bali Zero brand mark */}
+        <div
+          className="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center overflow-hidden rounded-xl"
+          style={{
+            background: "var(--surface-raised)",
+            border: "1px solid var(--bz-border)",
+          }}
+        >
+          <BZLogo variant="full" size={38} className="rounded-full" />
         </div>
 
         {/* Text */}
