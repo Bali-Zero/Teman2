@@ -14,11 +14,11 @@ const kitaTheme = globalsCss.match(
 describe("Kita day-mode theme", () => {
   it("uses a warm-white canvas while keeping cards white", () => {
     expect(kitaTheme).toBeDefined();
-    expect(kitaTheme).toContain("--bz-base: #f8f6f2;");
-    expect(kitaTheme).toContain("--background: #f8f6f2;");
-    expect(kitaTheme).toContain("--kbli-bg-base: #f8f6f2;");
-    expect(kitaTheme).toContain("--bz-card: #ffffff;");
-    expect(kitaTheme).toContain("--bz-card-hover: #fbf8f3;");
-    expect(kitaTheme).toContain("--nav-bg: rgba(255, 253, 249, 0.92);");
+    expect(kitaTheme).toContain("--bz-base: var(--bz-kita-canvas);");
+    expect(kitaTheme).toContain("--background: var(--bz-kita-canvas);");
+    expect(kitaTheme).toContain("--kbli-bg-base: var(--bz-kita-canvas);");
+    expect(kitaTheme).toContain("--bz-card: var(--bz-kita-card);");
+    expect(kitaTheme).toContain("--bz-card-hover: var(--bz-kita-card-hover);");
+    expect(kitaTheme).toContain("--nav-bg: var(--bz-kita-nav);");
   });
 });

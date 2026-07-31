@@ -466,41 +466,47 @@
 
 /* Kita: warm ivory daylight, compact and operational. */
 [data-theme="operative-light"][data-product="kita"] {
-  --surface-base: #f8f6f2;
-  --surface-matter: #ffffff;
-  --surface-overlay: rgba(255, 253, 249, 0.86);
-  --nav-bg: rgba(255, 253, 249, 0.92);
+  --bz-kita-canvas: #f8f6f2;
+  --bz-kita-card: #ffffff;
+  --bz-kita-card-hover: #fbf8f3;
+  --bz-kita-overlay: rgba(255, 253, 249, 0.86);
+  --bz-kita-nav: rgba(255, 253, 249, 0.92);
 
-  --bz-base: #f8f6f2;
-  --bz-elevated: #ffffff;
-  --bz-surface: #ffffff;
-  --bz-card: #ffffff;
-  --bz-card-hover: #fbf8f3;
+  --surface-base: var(--bz-kita-canvas);
+  --surface-matter: var(--bz-kita-card);
+  --surface-overlay: var(--bz-kita-overlay);
+  --nav-bg: var(--bz-kita-nav);
+
+  --bz-base: var(--bz-kita-canvas);
+  --bz-elevated: var(--bz-kita-card);
+  --bz-surface: var(--bz-kita-card);
+  --bz-card: var(--bz-kita-card);
+  --bz-card-hover: var(--bz-kita-card-hover);
   --bz-text-1: #172033;
   --bz-text-2: #4d5870;
   --bz-text-3: #596275;
   --bz-border: rgba(55, 44, 32, 0.1);
   --bz-border-hover: rgba(55, 44, 32, 0.17);
 
-  --background: #f8f6f2;
-  --background-secondary: #ffffff;
-  --background-elevated: #ffffff;
-  --background-hover: #fbf8f3;
+  --background: var(--bz-kita-canvas);
+  --background-secondary: var(--bz-kita-card);
+  --background-elevated: var(--bz-kita-card);
+  --background-hover: var(--bz-kita-card-hover);
   --foreground: #172033;
   --foreground-secondary: #4d5870;
   --foreground-muted: #596275;
   --border: rgba(55, 44, 32, 0.1);
   --border-hover: rgba(55, 44, 32, 0.17);
 
-  --kbli-bg-base: #f8f6f2;
-  --kbli-bg-primary: #f8f6f2;
-  --kbli-bg-secondary: #ffffff;
-  --kbli-bg-elevated: #ffffff;
-  --kbli-bg-surface: #ffffff;
-  --kbli-bg-surface-hover: #fbf8f3;
-  --kbli-bg-card: #ffffff;
-  --kbli-bg-card-hover: #fbf8f3;
-  --kbli-bg-input: #ffffff;
+  --kbli-bg-base: var(--bz-kita-canvas);
+  --kbli-bg-primary: var(--bz-kita-canvas);
+  --kbli-bg-secondary: var(--bz-kita-card);
+  --kbli-bg-elevated: var(--bz-kita-card);
+  --kbli-bg-surface: var(--bz-kita-card);
+  --kbli-bg-surface-hover: var(--bz-kita-card-hover);
+  --kbli-bg-card: var(--bz-kita-card);
+  --kbli-bg-card-hover: var(--bz-kita-card-hover);
+  --kbli-bg-input: var(--bz-kita-card);
   --kbli-text-primary: #172033;
   --kbli-text-secondary: #4d5870;
   --kbli-text-muted: #596275;
