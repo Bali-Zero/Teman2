@@ -1,0 +1,128 @@
+[
+ {
+  "n": 8060,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "scripts/intake_identity_backfill.py",
+  "line": 720,
+  "msg": "Sensitive data (private) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (private) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (private) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (private) is used in a hashing algorithm (MD5) that is insecure.",
+  "surface": "tooling"
+ },
+ {
+  "n": 8047,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py",
+  "line": 88,
+  "msg": "Sensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7900,
+  "rule": "py/request-without-cert-validation",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/scripts/unified_scraper.py",
+  "line": 264,
+  "msg": "This request may run without certificate validation because it is disabled.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7899,
+  "rule": "py/request-without-cert-validation",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/scripts/unified_scraper.py",
+  "line": 202,
+  "msg": "This request may run without certificate validation because it is disabled.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7898,
+  "rule": "py/request-without-cert-validation",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/scripts/unified_scraper.py",
+  "line": 165,
+  "msg": "This request may run without certificate validation because it is disabled.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7483,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/autonomous_lab/receipt_safety.py",
+  "line": 31,
+  "msg": "Sensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4670,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+  "line": 318,
+  "msg": "Sensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4669,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+  "line": 270,
+  "msg": "Sensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4657,
+  "rule": "py/request-without-cert-validation",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/kg_subgraph_property.py",
+  "line": 122,
+  "msg": "This request may run without certificate validation because it is disabled.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4656,
+  "rule": "py/request-without-cert-validation",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/kg_subgraph_property.py",
+  "line": 86,
+  "msg": "This request may run without certificate validation because it is disabled.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3671,
+  "rule": "py/insecure-protocol",
+  "sev": "high",
+  "path": "scripts/system_doctor.py",
+  "line": 719,
+  "msg": "Insecure SSL/TLS protocol version TLSv1 allowed by call to ssl.create_default_context.\nInsecure SSL/TLS protocol version TLSv1_1 allowed by call to ssl.create_default_context.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3626,
+  "rule": "py/request-without-cert-validation",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/kg_subgraph_property.py",
+  "line": 180,
+  "msg": "This request may run without certificate validation because it is disabled.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2067,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/evaluation/ab_testing.py",
+  "line": 193,
+  "msg": "Sensitive data (id) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (id) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (id) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (id) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (id) is used in a hashing algorithm (MD5) that is insecure.\nSensitive data (id) is used in a hashing algorithm (MD5) that is insecure.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 359,
+  "rule": "py/weak-sensitive-data-hashing",
+  "sev": "high",
+  "path": "apps/backend-rag/tests/services/rag/agentic/test_llm_gateway_security.py",
+  "line": 81,
+  "msg": "Sensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.",
+  "surface": "tooling"
+ }
+]

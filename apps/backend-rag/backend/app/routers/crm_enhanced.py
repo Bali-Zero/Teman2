@@ -8,6 +8,7 @@ Provides endpoints for:
 - Auto OCR for passport documents
 """
 
+import asyncio
 import base64
 import logging
 import re as regex
@@ -42,13 +43,34 @@ async def _download_drive_file(file_id: str) -> tuple[bytes, str]:
     Download a file from Google Drive using Service Account credentials.
     Returns (file_content, mime_type).
     Raises RuntimeError on failure.
+
+    `file_id` reaches here from a REQUEST BODY (`DocumentCreate.file_id`, stored
+    verbatim by `crm_enhanced_documents.create_document`), and is interpolated
+    into the Drive API path below. A value carrying `/`, `?` or `..` does not
+    name a file — it rewrites the URL and reaches other Drive endpoints entirely
+    (CodeQL py/partial-ssrf, same class as `documents_proxy`). Anchor the shape
+    before the network call; see `documents_proxy._assert_file_id_shape`.
     """
     import google.auth.transport.requests as google_auth_requests
     import httpx
 
+    # The regex is the one in documents_proxy (single definition); the failure is
+    # raised as RuntimeError, not HTTPException, because this helper runs in
+    # background tasks and the Drive-poll cron, where callers handle RuntimeError.
+    from backend.app.routers.documents_proxy import _DRIVE_FILE_ID_RE
+
+    if not _DRIVE_FILE_ID_RE.match(file_id or ""):
+        raise RuntimeError("Malformed Drive file id")
+
     drive_service = ServiceAccountDriveService()
     if not drive_service.credentials.token:
-        drive_service.credentials.refresh(google_auth_requests.Request())
+        # google-auth's refresh() is synchronous: called bare inside an async
+        # function it blocks the event loop for the whole TLS handshake to
+        # oauth2.googleapis.com. `documents_proxy._get_drive_access_token`
+        # already offloads it; this twin did not.
+        await asyncio.to_thread(
+            drive_service.credentials.refresh, google_auth_requests.Request()
+        )
     access_token = drive_service.credentials.token
     if not access_token:
         raise RuntimeError("Drive not connected")

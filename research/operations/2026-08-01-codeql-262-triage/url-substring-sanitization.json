@@ -1,0 +1,344 @@
+[
+ {
+  "n": 6286,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/services/canva_renderer_v2/test_telegram.py",
+  "line": 15,
+  "msg": "The string api.telegram.org may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6278,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/src/proxy.ts",
+  "line": 219,
+  "msg": "'my.balizero.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 6277,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/src/proxy.ts",
+  "line": 219,
+  "msg": "'my.balizero.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 6276,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/src/proxy.ts",
+  "line": 214,
+  "msg": "'kita.balizero.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 6275,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/src/proxy.ts",
+  "line": 206,
+  "msg": "'balizero.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 6000,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/services/notifications/test_resend_http.py",
+  "line": 69,
+  "msg": "The string send.balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5797,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/e2e/visa-funnel-fusion.spec.ts",
+  "line": 82,
+  "msg": "'balizero.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 5691,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mata-garuda/tests/test_goid_harvesters.py",
+  "line": 43,
+  "msg": "The string evil.example.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "tooling"
+ },
+ {
+  "n": 5608,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/services/publisher/test_x_publisher.py",
+  "line": 83,
+  "msg": "The string balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5607,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/services/publisher/test_linkedin_publisher.py",
+  "line": 115,
+  "msg": "The string https://balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5491,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "packages/core/auth/session-bridge.ts",
+  "line": 40,
+  "msg": "'balizero.com' may be preceded by an arbitrary host name.",
+  "surface": "other-app"
+ },
+ {
+  "n": 5120,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mata-garuda/mata_garuda/workers/nlm_feeder.py",
+  "line": 463,
+  "msg": "The string http://arxiv.org may be at an arbitrary position in the sanitized URL.",
+  "surface": "other-app"
+ },
+ {
+  "n": 4983,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/services/crm/test_practice_status_listener.py",
+  "line": 55,
+  "msg": "The string my.balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4982,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/services/ingestion/test_legal_full_ingestion_worker.py",
+  "line": 279,
+  "msg": "The string drive.google.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4981,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/services/integrations/test_google_drive_service.py",
+  "line": 123,
+  "msg": "The string accounts.google.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4876,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mata-garuda/mata_garuda/tools/scraper_tools.py",
+  "line": 135,
+  "msg": "The string https://peraturan.go.id may be at an arbitrary position in the sanitized URL.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4480,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/channels/test_whatsapp_adapter.py",
+  "line": 332,
+  "msg": "The string graph.facebook.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4016,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "tests/nlm_deep_research/test_t4_monitor.py",
+  "line": 165,
+  "msg": "The string https://ditjenimigrasi.go.id may be at an arbitrary position in the sanitized URL.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3596,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/services/integrations/test_google_drive_service.py",
+  "line": 105,
+  "msg": "The string accounts.google.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2939,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 45,
+  "msg": "The string https://kita.balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2938,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 44,
+  "msg": "The string https://test.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2937,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 43,
+  "msg": "The string https://example.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2936,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 32,
+  "msg": "The string https://kita.balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2935,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+  "line": 64,
+  "msg": "The string https://kita.balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2934,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+  "line": 43,
+  "msg": "The string https://kita.balizero.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2933,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+  "line": 42,
+  "msg": "The string https://test.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2932,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config.py",
+  "line": 41,
+  "msg": "The string https://example.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2791,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/scripts/gemini_image_generator.py",
+  "line": 572,
+  "msg": "The string accounts.google.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "tooling"
+ },
+ {
+  "n": 2790,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/scripts/gemini_image_generator.py",
+  "line": 428,
+  "msg": "The string accounts.google.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "tooling"
+ },
+ {
+  "n": 2144,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/src/lib/security/xss.ts",
+  "line": 87,
+  "msg": "'balizero.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 2143,
+  "rule": "js/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/mouth/e2e/knowledge/downloads.spec.ts",
+  "line": 142,
+  "msg": "'drive.google.com' can be anywhere in the URL, and arbitrary hosts may come before or after it.",
+  "surface": "frontend-prod"
+ },
+ {
+  "n": 311,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/tests/integration/test_main_cloud_integration.py",
+  "line": 37,
+  "msg": "The string https://example.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "tooling"
+ },
+ {
+  "n": 310,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth.py",
+  "line": 72,
+  "msg": "The string http://dev.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 309,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth.py",
+  "line": 71,
+  "msg": "The string https://custom.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 307,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 80,
+  "msg": "The string https://test.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 306,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 79,
+  "msg": "The string https://example.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 305,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 67,
+  "msg": "The string https://test.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 304,
+  "rule": "py/incomplete-url-substring-sanitization",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/tests/unit/app/setup/test_cors_config_comprehensive.py",
+  "line": 66,
+  "msg": "The string https://example.com may be at an arbitrary position in the sanitized URL.",
+  "surface": "backend-prod"
+ }
+]

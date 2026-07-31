@@ -1,0 +1,416 @@
+[
+ {
+  "n": 7799,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/intel_scraper.py",
+  "line": 1202,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7798,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/intel_scraper.py",
+  "line": 1201,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7797,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 459,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7796,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 459,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7795,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 451,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7794,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 204,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7793,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 200,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7792,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 174,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7791,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 172,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7790,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 168,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7789,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_staging_service.py",
+  "line": 165,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7788,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_approval_service.py",
+  "line": 276,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7787,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/intel.py",
+  "line": 531,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7588,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "skills/bali-zero-brand/_damar-queue-server.py",
+  "line": 577,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 7587,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "skills/bali-zero-brand/_damar-queue-server.py",
+  "line": 576,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 7586,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "skills/bali-zero-brand/_damar-queue-server.py",
+  "line": 572,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 6860,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/telegram_webhook.py",
+  "line": 133,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6859,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/ingest.py",
+  "line": 166,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6858,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/ingest.py",
+  "line": 157,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6462,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+  "line": 222,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3679,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+  "line": 217,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3678,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+  "line": 215,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3677,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/intel/intel_cover_handler.py",
+  "line": 210,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3350,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/parsers.py",
+  "line": 213,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2837,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/telegram_webhook.py",
+  "line": 160,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2836,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/telegram_webhook.py",
+  "line": 141,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2761,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/preview.py",
+  "line": 80,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 382,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/parsers.py",
+  "line": 551,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 381,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/parsers.py",
+  "line": 519,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 380,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/core/parsers.py",
+  "line": 492,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 378,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 809,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 377,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 806,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 376,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 778,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 375,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 768,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 374,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 764,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 373,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 732,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 372,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 717,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 371,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 713,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 370,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 652,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 369,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 637,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 368,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/bali-intel-scraper/api/main.py",
+  "line": 632,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "other-app"
+ },
+ {
+  "n": 367,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py",
+  "line": 369,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 366,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+  "line": 103,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 365,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/ingestion/ingestion_logger.py",
+  "line": 147,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 364,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/ingestion/ingestion_logger.py",
+  "line": 146,
+  "msg": "This path depends on a user-provided value.\nThis path depends on a user-provided value.\nThis path depends on a user-provided value.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 361,
+  "rule": "py/path-injection",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/ingest.py",
+  "line": 118,
+  "msg": "This path depends on a user-provided value.",
+  "surface": "backend-prod"
+ }
+]

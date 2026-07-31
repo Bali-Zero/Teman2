@@ -1,0 +1,632 @@
+[
+ {
+  "n": 7981,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/docs_audit.py",
+  "line": 1641,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7784,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+  "line": 596,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 7449,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "infra/claude-hooks/host_boundary.py",
+  "line": 228,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 7375,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/cost_ledger_export.py",
+  "line": 266,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6855,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/services/hr/hr_service.py",
+  "line": 662,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6458,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/whatsapp_onboarding_detector.py",
+  "line": 206,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6456,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 380,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6455,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 361,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6454,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 514,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6453,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 477,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6452,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 138,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6451,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 118,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6450,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 261,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6449,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/cron_notifiers.py",
+  "line": 136,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 6375,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/profile-monitor/wrapper.py",
+  "line": 180,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6374,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/profile-monitor/wrapper.py",
+  "line": 175,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6373,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/profile-monitor/wrapper.py",
+  "line": 163,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6372,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/profile-monitor/wrapper.py",
+  "line": 134,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6371,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/profile-monitor/wrapper.py",
+  "line": 99,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 6370,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/profile-monitor/wrapper.py",
+  "line": 90,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 5982,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/cell/cell/sensors/oauth_health_sensor.py",
+  "line": 134,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "other-app"
+ },
+ {
+  "n": 5981,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "scripts/drive_token_watchdog.py",
+  "line": 227,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 5544,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/db/repositories/client_repository.py",
+  "line": 150,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5522,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 1481,
+  "msg": "This expression logs sensitive data (secret) as clear text.\nThis expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5521,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 1401,
+  "msg": "This expression logs sensitive data (secret) as clear text.\nThis expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5520,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 1458,
+  "msg": "This expression logs sensitive data (secret) as clear text.\nThis expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5519,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 1531,
+  "msg": "This expression logs sensitive data (secret) as clear text.\nThis expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5518,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 1388,
+  "msg": "This expression logs sensitive data (secret) as clear text.\nThis expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5517,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 834,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5516,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 777,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5515,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 753,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5514,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 684,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5513,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+  "line": 671,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5512,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/bridge/low_confidence_emitter.py",
+  "line": 87,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5511,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/rag/agentic/_reasoning_evidence.py",
+  "line": 159,
+  "msg": "This expression logs sensitive data (secret) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 5127,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/backfill_leave_2026.py",
+  "line": 129,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4795,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+  "line": 148,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4794,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+  "line": 108,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4793,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+  "line": 108,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4792,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+  "line": 103,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4791,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/import_historical_pdfs.py",
+  "line": 103,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 4676,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/utils/internal_api_auth.py",
+  "line": 36,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4673,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+  "line": 335,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4672,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/services/api_key_auth.py",
+  "line": 333,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4290,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/evaluator/nlm_deep_research/db_to_nlm_sync.py",
+  "line": 409,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "other-app"
+ },
+ {
+  "n": 4021,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 377,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4020,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/streaming.py",
+  "line": 135,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 4018,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+  "line": 366,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3767,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/crm/welcome/welcome_whatsapp_service.py",
+  "line": 145,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 3652,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/normalize_nationalities.py",
+  "line": 368,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3651,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/normalize_nationalities.py",
+  "line": 359,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3595,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/batch_passport_ocr.py",
+  "line": 411,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3449,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/verify_sendgrid.py",
+  "line": 41,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3436,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/populate_companies_from_ocr.py",
+  "line": 147,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3435,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/populate_companies_from_ocr.py",
+  "line": 144,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3434,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/populate_companies_from_ocr.py",
+  "line": 133,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3146,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/test_gemini_key_prefix.py",
+  "line": 19,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3145,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/test_gemini_key_new.py",
+  "line": 19,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3144,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/test_gemini_key_final.py",
+  "line": 19,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3142,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/test_gemini_key_15_final.py",
+  "line": 19,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 3141,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/test_gemini_key_15.py",
+  "line": 19,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 2833,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/modules/notifications/templates.py",
+  "line": 589,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2832,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/modules/notifications/templates.py",
+  "line": 584,
+  "msg": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 2363,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/test_gemini_key.py",
+  "line": 9,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 292,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/app/auth/validation.py",
+  "line": 46,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "backend-prod"
+ },
+ {
+  "n": 291,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/evaluator/test_embedding.py",
+  "line": 50,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 290,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/evaluator/test_embedding.py",
+  "line": 33,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 278,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/scripts/list_models.py",
+  "line": 10,
+  "msg": "This expression logs sensitive data (password) as clear text.",
+  "surface": "tooling"
+ },
+ {
+  "n": 277,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/evaluator/judgement_day.py",
+  "line": 248,
+  "msg": "This expression logs sensitive data (password) as clear text.\nThis expression logs sensitive data (password) as clear text.",
+  "surface": "other-app"
+ },
+ {
+  "n": 264,
+  "rule": "py/clear-text-logging-sensitive-data",
+  "sev": "high",
+  "path": "apps/backend-rag/backend/services/misc/autonomous_scheduler.py",
+  "line": 421,
+  "msg": "This expression logs sensitive data (private) as clear text.",
+  "surface": "backend-prod"
+ }
+]
