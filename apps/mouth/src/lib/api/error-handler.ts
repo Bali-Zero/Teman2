@@ -9,6 +9,20 @@ import { createLogger } from "../utils/console";
 const logger = createLogger("API");
 
 export class ApiError extends Error {
+  /**
+   * Backend-supplied `detail` (FastAPI convention) and machine-readable `code`,
+   * lifted out of the response body so callers do not have to re-parse `data`.
+   *
+   * These two fields exist because `lib/api/index.ts` used to declare a SECOND,
+   * competing `ApiError` — a structural interface carrying `detail`/`code` but no
+   * status — while this class carried `statusCode` and was never thrown by
+   * anything. Consumers imported the interface, found no status on it, and fell
+   * back to sniffing substrings out of `error.message`. The two types are now one,
+   * and this class is a superset of what that interface promised.
+   */
+  readonly detail?: string;
+  readonly code?: string;
+
   constructor(
     message: string,
     public statusCode: number,
@@ -16,6 +30,9 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = "ApiError";
+    const body = data as { detail?: unknown; code?: unknown } | undefined;
+    if (typeof body?.detail === "string") this.detail = body.detail;
+    if (typeof body?.code === "string") this.code = body.code;
   }
 }
 

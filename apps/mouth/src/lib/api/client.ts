@@ -3,6 +3,7 @@ import type { IApiClient, ApiRequestOptions } from "./types/api-client.types";
 import { safeStorage } from "@/lib/utils/storage";
 import { isTokenExpired } from "@/lib/utils/token";
 import { logger } from "@/lib/logger";
+import { ApiError } from "./error-handler";
 
 /** FastAPI validation error structure */
 interface FastAPIValidationError {
@@ -348,7 +349,14 @@ export class ApiClientBase implements IApiClient {
         const error = await response
           .json()
           .catch(() => ({ detail: "Authentication required" }));
-        throw new Error(error.detail || "Session expired. Please login again.");
+        // Messages below are unchanged on purpose: ApiError extends Error, so
+        // every existing `instanceof Error` / `.message` consumer keeps working.
+        // What is new is `statusCode` — the thing callers actually need.
+        throw new ApiError(
+          error.detail || "Session expired. Please login again.",
+          response.status,
+          error,
+        );
       }
 
       // Allow 204 as success even if ok is false (defensive)
@@ -365,15 +373,23 @@ export class ApiClientBase implements IApiClient {
               return `${field}: ${err.msg}`;
             })
             .join(", ");
-          throw new Error(`Validation error: ${validationErrors}`);
+          throw new ApiError(
+            `Validation error: ${validationErrors}`,
+            response.status,
+            error,
+          );
         }
 
         // Handle 405 Method Not Allowed - convert to INVALID_METHOD for consistency
         if (response.status === 405) {
-          throw new Error("INVALID_METHOD");
+          throw new ApiError("INVALID_METHOD", response.status, error);
         }
 
-        throw new Error(error.detail || `HTTP ${response.status}`);
+        throw new ApiError(
+          error.detail || `HTTP ${response.status}`,
+          response.status,
+          error,
+        );
       }
 
       // Handle empty responses (204 No Content, etc.)

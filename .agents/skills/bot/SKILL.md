@@ -20,8 +20,49 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-29 — keep current)
+## 1. LIVE STATE (last update 2026-07-30 — keep current)
 
+- **🇫🇷 THE FRENCH DRIFT IS NEITHER ENGLISH-ONLY NOR NO-COVERAGE-ONLY — both scopings falsified by
+  ONE live exchange (2026-07-30).** Read from the ledger, not from a probe: Ari (team sender) asked
+  in Indonesian `"Zantara jelaskan visa C7A"` (msg 598) and got **2,834 chars in French** (msg 599,
+  `delivered`) — with CORRECT, on-point C7A content (single-entry musician-performance visa,
+  including the paid-performance exception). The 2026-07-27 entry below scopes this drift as
+  "specific to English on this query" and reframes it as a NO-COVERAGE failure. Today: **Indonesian
+  in, French out, retrieval on-point.** Both of those scopings remain true _of that one KITAS
+  question_ and neither generalises — language selection is an independent defect that also fires
+  when the KB does cover the ask. Do not collapse the two into one cause without measuring again.
+- **🔁 A CORRECTION IS CONSUMED AS A NEW SEARCH QUERY — observed in prod, same exchange
+  (2026-07-30).** Ari answered the French reply with `"bahasa indonesia anjay"` (msg 600 — "in
+  Indonesian, damn"). The bot switched to Indonesian and answered about the **C9B
+  Indonesian-language-course visa** (msg 601): it searched the KB for the WORDS OF THE CORRECTION
+  instead of re-answering C7A.
+  - **The history is NOT the gap** — verified on disk, not assumed:
+    `wa_inbox_bot._load_thread_context` ships `_HISTORY_TURNS = 12` prior turns and
+    `agentic_rag.py:582` forwards them into `query_kwargs`, so the model saw the C7A turn.
+  - **The gap is that the retrieval key is the RAW latest message.** `process_query_core` threads
+    `query=query` into the FAQ cache, the semantic cache, `_inject_curated_qa_grounding`, entity
+    extraction and the KG fast-path, and `grep -riE 'rewrit|contextualiz|standalone|follow-?up|coref'`
+    over `services/rag/` finds **no query-contextualisation step anywhere**. Every pre-ReAct stage
+    keys on whatever the client last typed, whether or not it is a question.
+  - This is the **observed twin** of the coalescing residual logged below as "unobserved in prod":
+    there a real question is demoted to context; here a non-question is promoted to the query.
+  - **Design constraint for the cure, before anyone writes it:** a contextualised query CHANGES THE
+    FAQ/SEMANTIC CACHE KEY, and cache hits bypass the abstain gate (§2.4). Contextualise the
+    RETRIEVAL query only, or keep the cache keyed on the raw message — never silently both. Needs
+    the 4-LLM panel.
+- **⏱️ LATENCY BACK UP — 57s and 73s** on the two replies of 2026-07-30 (`sent_at − created_at`,
+  msgs 599/601), against the ~35s the 2026-07-18 campaign left behind. Two points, stated as such.
+- **📖 THE CORNER YOU WERE HANDED MAY BE FOUR DAYS OLD — check before you "discover" anything
+  (2026-07-30, cost most of a session).** The canonical file is **`.agents/skills/bot/SKILL.md`**
+  since #3019; `.claude/skills/bot` is a SYMLINK to it. The Skill tool loads from the **main
+  checkout**, and on M5 that checkout is **291 commits behind**, from before the move — so it
+  serves the real, tracked, pre-#3019 file: **795 lines dated 2026-07-29 in the worktree vs 386
+  lines dated 2026-07-25 on M5's main**. Working from the stale copy, this session "found" the
+  language drift as new and reported that the corner's retrieval-miss framing needed correcting —
+  the corner had already carried that correction for three days. Asking git for the old path does
+  NOT rescue you: `git show origin/main:.claude/skills/bot/SKILL.md` FAILS ("exists on disk but not
+  in origin/main") because the tracked object at that path is the symlink. **Re-read the corner from
+  `.agents/skills/bot/SKILL.md` in a fresh worktree before trusting what it says is not yet known.**
 - **🧪 FIRST REAL TEAM BETA — 78 questions, 13 people, 2026-07-28. FOUR CURES OPEN.**
   The bot is **not public yet, by design** (Zero) — the low inbound traffic was never a
   distribution problem, so do not "fix" it. Answer sheet (Zero's Drive, 13 named grants):
@@ -34,8 +75,12 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
      access (deliberate, not yet granted). Across the 5 CRM questions it answered four
      different ways: two honest refusals (Dea, Asya), one canned greeting (Krisna), one
      silence (Surya), and to Adit **"semuanya sudah aman"** — an invented reassurance about
-     a colleague's real client deadlines, stated confidently. The defect is not the missing
-     tool, it is the absence of ONE honest way to say "I don't have access".
+     a colleague's real client deadlines, stated confidently. _Ledger re-read 2026-07-30: the
+     canned greeting was not a one-off — Krisna asked the identical LKPM question **four times**
+     (msgs 580/582/584/588, 11:43→12:03) and got the identical `"Got it! 😊 …"` brush-off, in
+     English, all four times. The behaviour is stable and it reads as stonewalling._
+     The defect is not the missing tool, it is the absence of ONE honest way to say
+     "I don't have access".
   2. **Wrong land-tenure durations** (caught by Dea): Hak Pakai given as 25+20+20=65 years,
      the truth is **30+20+30=80**; HGB given 70, truth 80. This lands in property advice.
   3. **Language drift confirmed AND reproducible** (Dewa Ayu): two English questions

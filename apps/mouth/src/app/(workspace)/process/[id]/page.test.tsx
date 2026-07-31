@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Practice } from "@/lib/api/crm/crm.types";
+import { ApiError } from "@/lib/api/error-handler";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -565,6 +566,31 @@ describe("CaseDetailPage", () => {
     expect(
       screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
     ).toBeInTheDocument();
+  });
+
+  // Covers the STATUS path: the api client throws ApiError, so this is what the
+  // page actually receives in production. The test below it keeps a plain Error
+  // to cover the fallback for errors that never went through the client.
+  it("maps a 403 ApiError to a user-safe message by status", async () => {
+    mocks.updatePractice.mockRejectedValueOnce(
+      new ApiError("Operation not permitted for this role", 403, {}),
+    );
+    const user = await renderLoaded();
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const modal = screen.getByRole("heading", { name: "Edit Process #42" })
+      .parentElement?.parentElement as HTMLElement;
+    await user.click(within(modal).getByRole("button", { name: "↑ High" }));
+    await user.click(
+      within(modal).getByRole("button", { name: "Save Changes" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Error",
+        "You do not have permission to update this process.",
+      );
+    });
   });
 
   it("maps authorization errors from edit requests to a user-safe message", async () => {

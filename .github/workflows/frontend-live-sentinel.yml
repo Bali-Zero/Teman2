@@ -40,6 +40,27 @@ name: Frontend Live Sentinel
 # ONE ALERT PER STALE COMMIT. At */30 a permanent outage would send 48 Telegrams a day, and a
 # channel that always shouts is a channel nobody reads (the P0 budget is 12/day). The cache
 # key is the expected sha, so a NEW stale commit still speaks immediately.
+#
+# ---------------------------------------------------------------------------------------
+# 2026-07-30: THE PREMISE ABOVE HAS EXPIRED — the App is installed again, and the failure
+# mode changed underneath it. Measured today: vercel[bot] created 12 GitHub Deployments in a
+# single morning, so "no deployment is created at all" is no longer what bites. What bites now
+# is the other mode: a production deployment IS created (3s after the merge), reaches READY
+# after a real 6-minute build, and the custom domains keep serving the previous one. Vercel's
+# commit status on the merge commit sits at "Waiting for checks to complete" and never
+# resolves, while `autoAssignCustomDomains` is true — so the record says gated, not broken.
+#
+# This is why the failure text below now leads with the cure instead of with a cause, and why
+# it carries a one-line test to tell the two modes apart. A diagnosis is a measurement of the
+# world on the day it was written, and it expires exactly like the thing it describes: the
+# 07-28 text would have sent whoever read it this morning to re-install an App that was
+# already installed (W106 second degree — the cure and the message that explains it are born
+# of the same belief and go stale together).
+#
+# The alert also stopped saying "owner only". `scripts/vercel_prod_deploy.py` reads the Vercel
+# CLI's own OAuth token, and M5 has had one since 2026-07-30 13:00 WITA — a session can cure
+# this without waiting for anybody. Verified today: the script's --dry-run read the API and
+# correctly reported production already current.
 
 on:
   push:
@@ -181,14 +202,29 @@ jobs:
           done
           echo "::error::balizero.com does NOT include $SHA (last seen: ${seen:-no response})."
           echo "The public frontend is stale: balizero.com AND every subdomain share one Vercel project."
-          echo "Two known causes, likeliest first:"
-          echo "  1) The Vercel GitHub App is not installed/authorised on the repo, so no deployment"
-          echo "     is created at all. Fix (GUI, owner only): https://github.com/apps/vercel"
-          echo "     -> Configure -> grant access to this repository."
-          echo "  2) A deployment was created and went READY, but the custom domains were not"
-          echo "     repointed. Fix: POST /v10/projects/<projectId>/promote/<deploymentId>."
-          echo "Manual deploy meanwhile: scripts/vercel_prod_deploy.py (gitSource + promote) —"
-          echo "that path keeps working even when the project's git link is gone."
+          echo
+          echo "CURE FIRST — one command covers both failure modes below, and diagnoses as it goes:"
+          echo "    python3 scripts/vercel_prod_deploy.py             # deploy main HEAD, then promote"
+          echo "    python3 scripts/vercel_prod_deploy.py --dry-run   # report the gap, change nothing"
+          echo "It authenticates off the Vercel CLI's own OAuth token, so it needs a machine where"
+          echo "'vercel whoami' answers. M5 is one since 2026-07-30 13:00 WITA: this is NOT owner-only,"
+          echo "a session can cure it. If 'vercel whoami' is silent there, THAT is the operator ask."
+          echo
+          echo "WHICH MODE YOU ARE IN (they need different fixes, and the answer changes over time):"
+          echo "  A) A production deployment exists and reached READY, but the custom domains were"
+          echo "     never repointed to it. This is the mode measured live on 2026-07-30: build Ready,"
+          echo "     autoAssignCustomDomains true, Vercel's commit status stuck at 'Waiting for checks"
+          echo "     to complete'. Cure: the script above (or POST /v10/projects/<id>/promote/<dpl>)."
+          echo "  B) No deployment is created at all, because the Vercel GitHub App lost its"
+          echo "     installation — true 2026-07-26 through 07-28, NOT true on 07-30."
+          echo "     Fix (GUI, owner only): https://github.com/apps/vercel -> Configure -> grant"
+          echo "     access to this repository. The script above still works meanwhile: it deploys"
+          echo "     via gitSource, which does not need the project's git link."
+          echo
+          echo "TELL THEM APART IN ONE CALL — does the App still create deployments?"
+          echo "    gh api 'repos/$GITHUB_REPOSITORY/deployments?per_page=20' --jq '.[].creator.login' | sort | uniq -c"
+          echo "  vercel[bot] rows present  => mode A (it builds; the domains are the problem)."
+          echo "  no vercel[bot] rows       => mode B (nothing is being built at all)."
           exit 1
 
       # Dedup lives between the failure and the alert, never inside the alert: the cache is
@@ -215,7 +251,7 @@ jobs:
             echo "::warning::Telegram secrets absent - no alert sent"
             exit 0
           fi
-          MSG="[FRONTEND STALE] balizero.com does not include ${SHA:0:8} (${AGE_MIN} min old). Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. Fix: github.com/apps/vercel -> Configure -> grant repo access. Stopgap: python3 scripts/vercel_prod_deploy.py"
+          MSG="[FRONTEND STALE] balizero.com does not include ${SHA:0:8} (${AGE_MIN} min old). Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. CURE, not owner-only: run 'python3 scripts/vercel_prod_deploy.py' from a machine where 'vercel whoami' answers (M5 does since 2026-07-30). If it reports no deployment is ever created, the Vercel GitHub App lost its install: github.com/apps/vercel -> Configure -> grant repo access."
           # Judge the REPLY, not the exit code: curl exits 0 even when Telegram refuses.
           # Capture errexit-immune (W101) — under the default `bash -e` a bare assignment
           # would abort here on a network failure, and this alert exists precisely for the
