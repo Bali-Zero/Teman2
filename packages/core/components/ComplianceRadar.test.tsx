@@ -128,13 +128,20 @@ describe("ComplianceRadar", () => {
     expect(container.querySelector("[data-role='alert-row']")).toBeTruthy();
   });
 
-  it("renders a defined empty root when alerts is empty", () => {
-    const { container } = render(<ComplianceRadar alerts={[]} />);
-    expect(
-      container.querySelector("[data-role='compliance-radar']"),
-    ).toBeTruthy();
+  it("renders a positive empty state when alerts is empty", () => {
+    const { container, getByText } = render(<ComplianceRadar alerts={[]} />);
+    const radar = container.querySelector("[data-role='compliance-radar']");
+    expect(radar).toHaveAttribute("role", "status");
+    expect(getByText("No active compliance alerts.")).toBeTruthy();
     expect(container.querySelectorAll("[data-role='alert-row']")).toHaveLength(
       0,
     );
+  });
+
+  it("uses list semantics only when alert rows exist", () => {
+    const { container } = render(<ComplianceRadar alerts={ALERTS} />);
+    expect(
+      container.querySelector("[data-role='compliance-radar']"),
+    ).toHaveAttribute("role", "list");
   });
 });

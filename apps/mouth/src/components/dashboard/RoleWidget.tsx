@@ -21,24 +21,27 @@ export function RoleWidget({ role, userId }: RoleWidgetProps) {
     <div
       className="glass-base glass-violet p-3.5 flex flex-col gap-2"
       style={{
-        background:
-          "linear-gradient(145deg, rgba(110,85,210,0.10) 0%, rgba(60,35,150,0.06) 100%)",
+        background: "var(--bz-card)",
+        borderColor: "var(--bz-border)",
       }}
     >
       {isLoading && (
         <>
-          <div className="h-3 w-20 rounded bg-white/5 animate-pulse" />
-          <div className="h-6 w-16 rounded bg-white/5 animate-pulse" />
-          <div className="h-3 w-24 rounded bg-white/5 animate-pulse" />
-          <div className="h-px bg-white/5" />
+          <div className="h-3 w-20 rounded bg-[var(--surface-raised)] animate-pulse" />
+          <div className="h-6 w-16 rounded bg-[var(--surface-raised)] animate-pulse" />
+          <div className="h-3 w-24 rounded bg-[var(--surface-raised)] animate-pulse" />
+          <div className="h-px bg-[var(--bz-border)]" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-7 rounded bg-white/5 animate-pulse" />
+            <div
+              key={i}
+              className="h-7 rounded bg-[var(--surface-raised)] animate-pulse"
+            />
           ))}
         </>
       )}
 
       {isError && (
-        <p className="text-[10px] text-accent-pink-editorial">
+        <p className="text-[10px] text-[var(--state-danger)]">
           Errore nel caricamento dati.
         </p>
       )}

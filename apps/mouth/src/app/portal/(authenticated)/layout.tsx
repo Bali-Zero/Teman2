@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
@@ -31,6 +31,9 @@ export default function PortalLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
@@ -39,15 +42,20 @@ export default function PortalLayout({
     avatar: undefined as string | undefined,
   });
 
-  // Arm operative-light theme: sets data-theme on <html> so the
-  // [data-theme="operative-light"] block in globals.css activates.
-  // Without this, :root dark values apply (--tx-pure: #ffffff → invisible
-  // on cream background, WCAG contrast 1.05:1).
+  // The root pre-paint script owns the user's light/dark choice. This layout
+  // only declares the product persona and supplies a light fallback for local
+  // development, where no my.balizero.com hostname is available.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", "operative-light");
-    return () => {
-      document.documentElement.removeAttribute("data-theme");
-    };
+    const root = document.documentElement;
+    root.dataset.product = "my";
+    if (root.dataset.theme === "light") root.dataset.theme = "operative-light";
+    if (root.dataset.theme === "dark") root.dataset.theme = "operative-dark";
+    if (
+      root.dataset.theme !== "operative-light" &&
+      root.dataset.theme !== "operative-dark"
+    ) {
+      root.dataset.theme = "operative-light";
+    }
   }, []);
 
   // Load user profile
@@ -165,23 +173,51 @@ export default function PortalLayout({
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
-  }, []);
+  }, [pathname]);
 
-  // Close mobile menu on Escape
+  // Mobile sidebar dialog: Esc to close + focus trap + return focus to toggle.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
+
+    const root = mobileSidebarRef.current;
+    const focusables = root
+      ? Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled])',
+          ),
+        )
+      : [];
+    focusables[0]?.focus();
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsMobileMenuOpen(false);
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      mobileMenuToggleRef.current?.focus();
+    };
   }, [isMobileMenuOpen]);
 
   // Show loading state
   if (isLoading) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="bz-product-my min-h-screen flex items-center justify-center"
         style={{ background: "var(--bz-base)" }}
       >
         <div className="flex flex-col items-center gap-4">
@@ -203,7 +239,13 @@ export default function PortalLayout({
   return (
     <AdminImpersonationProvider>
       <ToastProvider>
-        <div className="min-h-screen" style={{ background: "var(--bz-base)" }}>
+        <a href="#portal-main-content" className="bz-skip-link">
+          Skip to main content
+        </a>
+        <div
+          className="bz-product-my min-h-screen"
+          style={{ background: "var(--bz-base)" }}
+        >
           {/* Desktop Sidebar */}
           <div className="hidden md:block">
             <AppSidebar
@@ -225,9 +267,17 @@ export default function PortalLayout({
               <div
                 className="fixed inset-0 bg-black/50 z-40 md:hidden"
                 onClick={() => setIsMobileMenuOpen(false)}
+                aria-hidden="true"
               />
-              <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+              <div
+                ref={mobileSidebarRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Client portal navigation"
+                className="fixed inset-y-0 left-0 z-50 md:hidden"
+              >
                 <AppSidebar
+                  id="workspace-mobile-nav"
                   user={{
                     ...user,
                     role: "client",
@@ -243,16 +293,21 @@ export default function PortalLayout({
           )}
 
           {/* Main Content */}
-          <div className="md:ml-60 min-h-screen flex flex-col">
+          <div className="md:ml-[216px] min-h-screen flex flex-col">
             {/* Header */}
             <PortalHeader
               userName={user.name}
               onMobileMenuToggle={handleMobileMenuToggle}
               isMobileMenuOpen={isMobileMenuOpen}
+              mobileMenuToggleRef={mobileMenuToggleRef}
             />
 
             {/* Page Content */}
-            <main className="flex-1 p-4 pb-28 md:p-6 lg:p-8">
+            <main
+              id="portal-main-content"
+              tabIndex={-1}
+              className="flex-1 p-[var(--bz-product-page-gap)] pb-28 md:pb-[var(--bz-product-page-gap)]"
+            >
               <PortalErrorBoundary section="Portal">
                 {children}
               </PortalErrorBoundary>

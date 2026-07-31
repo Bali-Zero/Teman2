@@ -942,7 +942,7 @@ export default function NewPracticePage() {
                   value: "normal" as const,
                   label: "Normal",
                   color: "text-[var(--bz-text-secondary)]",
-                  activeBg: "bg-[rgba(255,255,255,0.08)]",
+                  activeBg: "bg-[var(--surface-raised)]",
                   activeBorder: "border-[var(--bz-border-hover)]",
                 },
                 {

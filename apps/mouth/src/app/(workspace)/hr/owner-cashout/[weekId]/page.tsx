@@ -14,9 +14,9 @@ import { Money } from "@balizero/core";
 const SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1OZzgvDLgf3yd9eUh5CyADjHCHLoXmE5nIRoJlut_jBE/edit";
 
-/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+/** Dashboard panel recipe — mirrors the day/dark-aware Kita surfaces. */
 const PANEL: React.CSSProperties = {
-  background: "rgba(35,35,40,0.65)",
+  background: "var(--bz-card)",
   borderColor: "var(--bz-border)",
 };
 
@@ -208,7 +208,7 @@ export default function OwnerCashoutWeekDetailPage({
           href={SHEET_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-[rgba(35,35,40,0.65)] hover:bg-[var(--surface-raised)] text-[var(--bz-text-1)] rounded-lg border border-[var(--bz-border)] text-sm transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--bz-card)] hover:bg-[var(--surface-raised)] text-[var(--bz-text-1)] rounded-lg border border-[var(--bz-border)] text-sm transition-colors"
         >
           <ExternalLink size={14} /> Open in Sheets
         </a>

@@ -33,9 +33,9 @@ export function PortalBottomNav() {
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
-  // Refetch when navigating away from chat
+  // Refetch when navigating away from messages
   useEffect(() => {
-    if (pathname !== "/portal/chat") {
+    if (pathname !== "/portal/messages" && pathname !== "/portal/chat") {
       fetchUnreadCount();
     }
   }, [pathname, fetchUnreadCount]);
@@ -44,8 +44,8 @@ export function PortalBottomNav() {
     { name: "Home", href: "/portal", icon: Home },
     { name: "Vault", href: "/portal/vault", icon: FolderOpen },
     {
-      name: "Chat",
-      href: "/portal/chat",
+      name: "Messages",
+      href: "/portal/messages",
       icon: MessageCircle,
       badge: unreadCount,
     },
@@ -56,12 +56,14 @@ export function PortalBottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[rgba(19,19,21,0.65)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 border-t border-[var(--bz-bottom-nav-border)] bg-[var(--bz-bottom-nav-bg)] shadow-[var(--bz-bottom-nav-shadow)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom"
     >
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = pathname === tab.href;
+          const isActive =
+            pathname === tab.href ||
+            (tab.href !== "/portal" && pathname?.startsWith(tab.href));
           const showBadge = tab.badge && tab.badge > 0;
           return (
             <Link
@@ -70,16 +72,16 @@ export function PortalBottomNav() {
               aria-current={isActive ? "page" : undefined}
               aria-label={tab.name}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-full h-full transition-colors relative",
+                "flex flex-col items-center justify-center gap-1 w-full h-full min-h-11 transition-colors relative rounded-xl",
                 isActive
-                  ? "text-[var(--accent)] font-medium"
-                  : "text-muted-cool hover:text-[#E6E7EB]",
+                  ? "text-[var(--bz-copper-text)] bg-[var(--bz-bottom-nav-active,transparent)] font-semibold"
+                  : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]",
               )}
             >
               <div className="relative">
                 <Icon className="w-5 h-5" />
                 {showBadge && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-[var(--state-danger)] text-white text-[10px] font-bold">
                     {tab.badge > 99 ? "99+" : tab.badge}
                   </span>
                 )}

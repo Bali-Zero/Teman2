@@ -210,7 +210,7 @@ const StatCard = ({
             </>
           )}
         </div>
-        <div className="p-2 sm:p-3 rounded-lg bg-white/5 shrink-0 ml-2">
+        <div className="p-2 sm:p-3 rounded-lg bg-[var(--surface-raised)] shrink-0 ml-2">
           <Icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
         </div>
       </div>

@@ -60,6 +60,22 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const [gateChecked, setGateChecked] = useState(false);
   const [gateBypassed, setGateBypassed] = useState(false);
 
+  // Product persona is independent from theme. On the production hostname it
+  // is set before paint; this fallback keeps direct/local workspace routes in
+  // the same day-first contract without overriding a stored dark preference.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.product = "kita";
+    if (root.dataset.theme === "light") root.dataset.theme = "operative-light";
+    if (root.dataset.theme === "dark") root.dataset.theme = "operative-dark";
+    if (
+      root.dataset.theme !== "operative-light" &&
+      root.dataset.theme !== "operative-dark"
+    ) {
+      root.dataset.theme = "operative-light";
+    }
+  }, []);
+
   // Clock-in is now automatic on login (PANOPTICON Phase 0)
 
   // Cmd+J shortcut to toggle Zantara
@@ -262,7 +278,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
-  }, []);
+  }, [pathname]);
 
   // Mobile sidebar dialog: Esc to close + focus trap + return focus to toggle
   useEffect(() => {
@@ -310,7 +326,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         id="main-content"
         aria-busy="true"
         aria-live="polite"
-        className="min-h-screen flex items-center justify-center"
+        className="bz-product-kita min-h-screen flex items-center justify-center"
         style={{ background: "var(--bz-base, #0f1419)" }}
       >
         <div className="flex flex-col items-center gap-4">
@@ -362,7 +378,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           Skip to main content
         </a>
         <div
-          className="min-h-screen"
+          className="bz-product-kita min-h-screen"
           style={{ background: "var(--bz-base, #0f1419)" }}
         >
           {/* Desktop Sidebar — labelled landmark so AT can list it */}
@@ -394,6 +410,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                 className="fixed inset-y-0 left-0 z-50 md:hidden"
               >
                 <AppSidebar
+                  id="workspace-mobile-nav"
                   user={user}
                   unreadWhatsApp={0}
                   reviewCount={gateStatus?.sections?.documents?.count ?? 0}
@@ -420,14 +437,14 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               id="main-content"
               aria-labelledby="bz-page-title"
               tabIndex={-1}
-              className="flex-1 p-4 md:p-6 lg:p-8"
+              className="flex-1 p-[var(--bz-product-page-gap)]"
             >
               <h1 id="bz-page-title" className="sr-only">
                 {pageTitle}
               </h1>
               <ErrorBoundary
                 fallback={
-                  <div className="p-8 text-center text-white">
+                  <div className="p-8 text-center text-[var(--bz-text-1)]">
                     Something went wrong. Please refresh the page.
                   </div>
                 }
@@ -437,7 +454,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             </main>
           </div>
         </div>
-        {!isTerminalPage && <CellWidget />}
+        {!isTerminalPage &&
+          process.env.NEXT_PUBLIC_HIDE_CELL_WIDGET !== "1" && <CellWidget />}
         <ZantaraWidget
           open={isZantaraOpen}
           onClose={() => setIsZantaraOpen(false)}

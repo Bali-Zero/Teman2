@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
+  Archive,
+  Building2,
   Home,
   Inbox,
   MessageSquare,
@@ -29,7 +31,9 @@ import {
   Terminal,
   Handshake,
   BotMessageSquare,
+  Receipt,
 } from "lucide-react";
+import { BZLogo } from "@balizero/core/components/BZLogo";
 import {
   navigation,
   portalNavigation,
@@ -40,6 +44,8 @@ import { cn } from "@/lib/utils";
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
+  Archive,
+  Building2,
   Home,
   Inbox,
   MessageSquare,
@@ -62,9 +68,11 @@ const iconMap: Record<string, React.ElementType> = {
   Terminal,
   Handshake,
   BotMessageSquare,
+  Receipt,
 };
 
 interface AppSidebarProps {
+  id?: string;
   user: {
     name: string;
     email: string;
@@ -85,6 +93,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({
+  id,
   user,
   unreadWhatsApp = 0,
   reviewCount = 0,
@@ -116,15 +125,15 @@ export function AppSidebar({
           ? reviewCount
           : item.badge;
 
-    // GARUDA active: copper pill fill + white text, rounded-[12px]
+    // GARUDA active: AA-safe copper fill + white text, rounded-[12px]
     const sharedClassName = cn(
-      "flex items-center gap-2.5 px-2.5 py-[7px] rounded-[12px] mb-[2px] text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all group",
+      "flex items-center gap-2.5 px-2.5 py-[7px] rounded-[12px] mb-[2px] text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]",
       active
         ? "font-semibold"
-        : "hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--bz-text-1)]",
+        : "hover:bg-[var(--surface-raised)] hover:text-[var(--bz-text-1)]",
     );
     const sharedStyle = active
-      ? { background: "var(--bz-copper-deep)", color: "#fff" }
+      ? { background: "var(--bz-sidebar-active-fill)", color: "#fff" }
       : { color: "var(--bz-text-2)" };
 
     const sharedContent = (
@@ -148,8 +157,10 @@ export function AppSidebar({
           <span
             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
             style={{
-              background: "rgba(212,132,90,0.18)",
-              color: "var(--bz-accent)",
+              background: active
+                ? "color-mix(in srgb, white 18%, transparent)"
+                : "color-mix(in srgb, var(--bz-copper-text) 14%, transparent)",
+              color: active ? "#fff" : "var(--bz-copper-text)",
             }}
           >
             {badge > 99 ? "99+" : badge}
@@ -202,7 +213,7 @@ export function AppSidebar({
 
   return (
     <aside
-      id="workspace-mobile-nav"
+      id={id}
       aria-label={ariaLabel}
       className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300 glass-panel-deep"
       style={{
@@ -212,22 +223,18 @@ export function AppSidebar({
     >
       {/* Logo Header */}
       <div
-        className="border-b flex items-center justify-center py-4 px-3"
-        style={{ borderColor: "var(--bz-border)" }}
+        className="border-b flex items-center justify-center px-3"
+        style={{
+          height: "var(--bz-header-height, 48px)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <Link
           href={isPortal ? "/portal" : "/dashboard"}
           aria-label="Bali Zero — workspace home"
-          className="flex items-center justify-center transition-opacity hover:opacity-80"
+          className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
         >
-          <Image
-            src="/static/balizero-logo-clean.png"
-            alt=""
-            width={144}
-            height={144}
-            className="rounded-full"
-            priority
-          />
+          <BZLogo variant="full" size={36} className="rounded-full" priority />
         </Link>
       </div>
 
@@ -245,10 +252,12 @@ export function AppSidebar({
         {onZantaraToggle && (
           <button
             onClick={onZantaraToggle}
-            className="flex items-center gap-2.5 w-full px-2.5 py-[7px] rounded-[12px] mb-1.5 text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all"
+            className="flex items-center gap-2.5 w-full px-2.5 py-[7px] rounded-[12px] mb-1.5 text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
             style={{
               color: isZantaraOpen ? "#fff" : "var(--bz-text-2)",
-              background: isZantaraOpen ? "var(--bz-accent)" : "transparent",
+              background: isZantaraOpen
+                ? "var(--bz-sidebar-active-fill)"
+                : "transparent",
             }}
             aria-label="Toggle Zantara AI"
           >
@@ -261,7 +270,6 @@ export function AppSidebar({
             <span
               className="text-[8px] font-medium"
               style={{
-                opacity: 0.5,
                 color: isZantaraOpen ? "#fff" : "var(--bz-text-3)",
               }}
             >
@@ -270,7 +278,7 @@ export function AppSidebar({
           </button>
         )}
 
-        <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[rgba(255,255,255,0.04)] cursor-pointer transition-colors">
+        <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[var(--surface-raised)] cursor-pointer transition-colors">
           <div className="relative flex-shrink-0">
             {user.avatar ? (
               <Image
@@ -285,7 +293,7 @@ export function AppSidebar({
                 className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
                 style={{
                   background:
-                    "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)",
+                    "linear-gradient(135deg, var(--bz-accent-warm) 0%, var(--bz-sidebar-active-fill) 100%)",
                 }}
               >
                 {user.name?.[0]?.toUpperCase() || "U"}
@@ -313,14 +321,14 @@ export function AppSidebar({
                 ? "var(--bz-green)"
                 : "var(--bz-text-3)",
               boxShadow: user.isOnline
-                ? "0 0 6px rgba(62,207,142,0.45)"
+                ? "0 0 6px color-mix(in srgb, var(--bz-green) 45%, transparent)"
                 : "none",
             }}
           />
         </div>
         <button
           onClick={onLogout}
-          className="flex items-center gap-2 w-full mt-1 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.5px] rounded-lg transition-colors"
+          className="flex items-center gap-2 w-full mt-1 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.5px] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
           style={{ color: "var(--bz-text-2)" }}
           onMouseEnter={(e) =>
             (e.currentTarget.style.color = "var(--bz-text-1)")

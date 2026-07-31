@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
+
 /**
  * Playwright Configuration for Nuzantara Frontend E2E Tests
  *
@@ -33,7 +35,7 @@ export default defineConfig({
   // Shared settings per tutti i test
   use: {
     // Base URL dell'applicazione
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${E2E_PORT}`,
 
     // Screenshot su failure
     screenshot: "only-on-failure",
@@ -80,8 +82,14 @@ export default defineConfig({
     : {
         // Webpack is the deterministic CI path verified by the offline suite.
         // Local development keeps the project's default bundler.
-        command: process.env.CI ? "npm run dev -- --webpack" : "npm run dev",
-        url: "http://127.0.0.1:3000",
+        command: process.env.CI
+          ? `npm run dev -- --webpack --port ${E2E_PORT}`
+          : `npm run dev -- --port ${E2E_PORT}`,
+        url: `http://127.0.0.1:${E2E_PORT}`,
+        env: {
+          NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS: "1",
+          NEXT_PUBLIC_HIDE_CELL_WIDGET: "1",
+        },
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: "pipe",

@@ -122,13 +122,7 @@ function StatCard({
   prefix?: string;
   decimals?: number;
   accentColor?:
-    | "blue"
-    | "teal"
-    | "amber"
-    | "purple"
-    | "pink"
-    | "emerald"
-    | "cyan";
+    "blue" | "teal" | "amber" | "purple" | "pink" | "emerald" | "cyan";
 }) {
   const variants = {
     default: "text-[var(--bz-text-1)]",
@@ -158,8 +152,7 @@ function StatCard({
         accent?.border,
       )}
       style={{
-        background:
-          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+        background: "var(--bz-card)",
         border: "1px solid var(--bz-border)",
       }}
     >
@@ -260,8 +253,7 @@ function ExpandableSection({
         isExpanded && "lg:col-span-2 ring-2 ring-[var(--bz-accent)]",
       )}
       style={{
-        background:
-          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+        background: "var(--bz-card)",
         border: "1px solid var(--bz-border)",
       }}
     >

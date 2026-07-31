@@ -46,15 +46,15 @@ import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  visas: "var(--bz-chart-1)",
-  business: "var(--bz-chart-2)",
-  taxes: "var(--bz-chart-3)",
-  property: "var(--bz-chart-4)",
-  living: "var(--bz-chart-5)",
-  emerging_trends: "var(--bz-chart-6)",
+  visas: "var(--state-info)",
+  business: "var(--state-success)",
+  taxes: "var(--state-warning)",
+  property: "var(--bz-copper-text)",
+  living: "var(--state-danger)",
+  emerging_trends: "var(--bz-text-2)",
 };
 function getCategoryColor(cat: string): string {
-  return CATEGORY_COLOR[cat] ?? "var(--bz-chart-4)";
+  return CATEGORY_COLOR[cat] ?? "var(--bz-text-2)";
 }
 
 interface IntelArticle {
@@ -133,18 +133,17 @@ function IntakeReviewBanner({ identity }: { identity: string }) {
   return (
     <Link
       href="/review"
-      className="flex items-center gap-3 rounded-xl px-4 py-3 shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(45,40,35,0.85)]"
+      className="bz-product-panel bz-product-panel--interactive flex items-center gap-3 px-4 py-3"
       style={{
-        background: "rgba(45, 40, 35, 0.7)",
-        border: "1px solid rgba(212,132,90,0.25)",
+        borderColor: "color-mix(in srgb, var(--bz-chart-5) 35%, transparent)",
       }}
     >
       <FileText size={14} style={{ color: "var(--bz-chart-5)" }} />
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-white/80">
+        <p className="text-[11px] font-semibold text-[var(--bz-text-1)]">
           {count} document{count === 1 ? "" : "s"} waiting for your review
         </p>
-        <p className="text-[9px] text-white/35">
+        <p className="text-[9px] text-[var(--bz-text-2)]">
           Confirm where each document goes — client, practice or archive
         </p>
       </div>
@@ -157,7 +156,7 @@ function IntakeReviewBanner({ identity }: { identity: string }) {
       >
         {count}
       </span>
-      <ArrowUpRight size={11} className="text-white/30" />
+      <ArrowUpRight size={11} className="text-[var(--bz-text-3)]" />
     </Link>
   );
 }
@@ -232,11 +231,11 @@ function useTeamStats(identity: string, enabled: boolean) {
 
 // ── Status config for practices ───────────────────────────
 const STATUS_CONFIG = {
-  inquiry: { label: "Inquiry", dot: "var(--bz-chart-8)" },
-  quotation: { label: "Quotation", dot: "var(--bz-chart-3)" },
-  in_progress: { label: "In Progress", dot: "var(--bz-chart-1)" },
-  documents: { label: "Documents", dot: "var(--bz-chart-3)" },
-  completed: { label: "Completed", dot: "var(--bz-chart-2)" },
+  inquiry: { label: "Inquiry", dot: "var(--bz-text-2)" },
+  quotation: { label: "Quotation", dot: "var(--state-warning)" },
+  in_progress: { label: "In Progress", dot: "var(--state-info)" },
+  documents: { label: "Documents", dot: "var(--state-warning)" },
+  completed: { label: "Completed", dot: "var(--state-success)" },
 } as const;
 
 // ── Metric Bar item ────────────────────────────────────────
@@ -255,7 +254,7 @@ function MetricItem({
 }) {
   const inner = (
     <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-[9px] font-semibold text-white/30 tracking-[.10em] uppercase">
+      <span className="text-[9px] font-semibold text-[var(--bz-text-3)] tracking-[.10em] uppercase">
         {label}
       </span>
       <span
@@ -265,7 +264,9 @@ function MetricItem({
         {value}
       </span>
       {sub && (
-        <span className="text-[9px] text-white/35 font-medium">{sub}</span>
+        <span className="text-[9px] text-[var(--bz-text-2)] font-medium">
+          {sub}
+        </span>
       )}
     </div>
   );
@@ -293,15 +294,17 @@ function PipelineRow({ p }: { p: CasePreview }) {
   return (
     <Link
       href={`/process/${p.id}`}
-      className="group grid items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors"
+      className="group grid items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors"
       style={{ gridTemplateColumns: "1fr auto auto" }}
     >
       {/* Left: client + title */}
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold text-white/80 truncate group-hover:text-white transition-colors">
+        <p className="text-[11px] font-semibold text-[var(--bz-text-1)] truncate transition-colors">
           {p.client}
         </p>
-        <p className="text-[10px] text-white/35 truncate">{p.title}</p>
+        <p className="text-[10px] text-[var(--bz-text-2)] truncate">
+          {p.title}
+        </p>
       </div>
 
       {/* Status badge */}
@@ -324,7 +327,7 @@ function PipelineRow({ p }: { p: CasePreview }) {
             ? "var(--bz-chart-7)"
             : isUrgent
               ? "var(--bz-chart-3)"
-              : "rgba(255,255,255,0.25)",
+              : "var(--bz-text-3)",
         }}
       >
         {p.status === "completed" ? (
@@ -360,7 +363,7 @@ function IntelRow({ article }: { article: IntelArticle }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors"
+      className="group flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors"
     >
       {/* Color stripe */}
       <span
@@ -375,11 +378,11 @@ function IntelRow({ article }: { article: IntelArticle }) {
           >
             {catLabel}
           </span>
-          <span className="ml-auto text-[8px] text-white/25 flex-shrink-0">
+          <span className="ml-auto text-[8px] text-[var(--bz-text-3)] flex-shrink-0">
             {date}
           </span>
         </div>
-        <p className="text-[10px] text-white/60 leading-snug line-clamp-2 group-hover:text-white/80 transition-colors">
+        <p className="text-[10px] text-[var(--bz-text-2)] leading-snug line-clamp-2 group-hover:text-[var(--bz-text-1)] transition-colors">
           {article.title}
         </p>
       </div>
@@ -399,17 +402,17 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between px-3 pb-1">
-      <span className="text-[9px] font-bold text-white/25 tracking-[.12em] uppercase">
+      <span className="text-[9px] font-bold text-[var(--bz-text-3)] tracking-[.12em] uppercase">
         {label}
       </span>
       <div className="flex items-center gap-2">
         {count !== undefined && (
-          <span className="text-[9px] text-white/20">{count}</span>
+          <span className="text-[9px] text-[var(--bz-text-3)]">{count}</span>
         )}
         {href && (
           <Link
             href={href}
-            className="flex items-center gap-0.5 text-[9px] text-white/20 hover:text-white/50 transition-colors"
+            className="flex items-center gap-0.5 text-[9px] text-[var(--bz-text-3)] hover:text-[var(--bz-text-1)] transition-colors"
           >
             All <ArrowUpRight size={9} />
           </Link>
@@ -421,7 +424,7 @@ function SectionHeader({
 
 // ── Divider ────────────────────────────────────────────────
 function Divider() {
-  return <div className="h-px mx-3 bg-white/[0.05]" />;
+  return <div className="h-px mx-3 bg-[var(--bz-border)]" />;
 }
 
 // ── Main page ──────────────────────────────────────────────
@@ -492,54 +495,52 @@ export default function DashboardPage() {
 
   // Live events from practices
   const liveEvents: LiveActivityEvent[] = React.useMemo(() => {
-    return practices.slice(0, 8).map(
-      (p): LiveActivityEvent => ({
-        id: String(p.id),
-        type:
-          p.status === "completed"
-            ? "ok"
-            : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "critical"
-              : p.status === "documents"
-                ? "warning"
-                : "info",
-        icon:
-          p.status === "completed"
-            ? "✅"
-            : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "🚨"
-              : p.status === "documents"
-                ? "📄"
-                : "📁",
-        text: `${p.client} · ${p.title || p.status}`,
-        tag:
-          p.status === "completed"
-            ? "COMPLETED"
-            : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "URGENT"
-              : p.status === "documents"
-                ? "DOCUMENTS"
-                : undefined,
-        timestamp: new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        userId: user?.email,
+    return practices.slice(0, 8).map((p): LiveActivityEvent => ({
+      id: String(p.id),
+      type:
+        p.status === "completed"
+          ? "ok"
+          : p.daysRemaining !== undefined && p.daysRemaining < 7
+            ? "critical"
+            : p.status === "documents"
+              ? "warning"
+              : "info",
+      icon:
+        p.status === "completed"
+          ? "✅"
+          : p.daysRemaining !== undefined && p.daysRemaining < 7
+            ? "🚨"
+            : p.status === "documents"
+              ? "📄"
+              : "📁",
+      text: `${p.client} · ${p.title || p.status}`,
+      tag:
+        p.status === "completed"
+          ? "COMPLETED"
+          : p.daysRemaining !== undefined && p.daysRemaining < 7
+            ? "URGENT"
+            : p.status === "documents"
+              ? "DOCUMENTS"
+              : undefined,
+      timestamp: new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
       }),
-    );
+      userId: user?.email,
+    }));
   }, [practices, user?.email]);
 
   // Loading skeleton
   if (isLoading) {
     return (
       <div className="p-2.5 space-y-2">
-        <div className="h-12 rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="h-12 rounded-xl bg-[var(--bz-surface)] animate-pulse" />
         <div className="grid grid-cols-4 gap-2">
-          <div className="col-span-3 h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
-          <div className="h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
+          <div className="col-span-3 h-[220px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
+          <div className="h-[220px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
         </div>
-        <div className="h-[320px] rounded-xl bg-white/[0.025] animate-pulse" />
-        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="h-[320px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
+        <div className="h-[240px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
       </div>
     );
   }
@@ -655,13 +656,7 @@ export default function DashboardPage() {
           <IntakeReviewBanner identity={authIdentity} />
 
           {/* ROW 2: Metric bar */}
-          <div
-            className="rounded-xl px-6 py-4 flex items-stretch shadow-2xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
-            style={{
-              background: "rgba(35, 35, 40, 0.65)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
+          <div className="bz-product-panel flex items-stretch overflow-x-auto px-6 py-4">
             {statItems.map((s, i) => (
               <React.Fragment key={s.label}>
                 <div className="flex-1 min-w-0">
@@ -670,7 +665,7 @@ export default function DashboardPage() {
                 {i < statItems.length - 1 && (
                   <div
                     className="w-px flex-shrink-0 mx-6 self-stretch"
-                    style={{ background: "rgba(255,255,255,0.10)" }}
+                    style={{ background: "var(--bz-border)" }}
                   />
                 )}
               </React.Fragment>
@@ -701,28 +696,24 @@ export default function DashboardPage() {
           >
             {/* System Pulse panel */}
             {canViewSystemPulse && (
-              <div
-                className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
-                style={{
-                  background: "rgba(35, 35, 40, 0.65)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-              >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+              <div className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col">
+                <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
                   <div className="flex items-center gap-2">
-                    <Activity size={12} className="text-white/30" />
-                    <span className="text-[11px] font-semibold text-white/60">
+                    <Activity size={12} className="text-[var(--bz-text-3)]" />
+                    <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
                       System Pulse
                     </span>
                   </div>
-                  <span className="text-[9px] text-white/25">live stack</span>
+                  <span className="text-[9px] text-[var(--bz-text-3)]">
+                    live stack
+                  </span>
                 </div>
                 {pulseLoading ? (
                   <div className="flex flex-col gap-1 p-3">
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="h-8 rounded-lg bg-white/[0.03] animate-pulse"
+                        className="h-8 rounded-lg bg-[var(--bz-surface)] animate-pulse"
                       />
                     ))}
                   </div>
@@ -733,28 +724,24 @@ export default function DashboardPage() {
             )}
 
             {/* Compliance Radar panel */}
-            <div
-              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
-              style={{
-                background: "rgba(35, 35, 40, 0.65)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+            <div className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col">
+              <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">
+                  <ShieldCheck size={12} className="text-[var(--bz-text-3)]" />
+                  <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
                     Compliance Radar
                   </span>
                 </div>
-                <span className="text-[9px] text-white/25">auto-tracked</span>
+                <span className="text-[9px] text-[var(--bz-text-3)]">
+                  auto-tracked
+                </span>
               </div>
               {complianceLoading ? (
                 <div className="flex flex-col gap-1 p-3">
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="h-8 rounded-lg bg-white/[0.03] animate-pulse"
+                      className="h-8 rounded-lg bg-[var(--bz-surface)] animate-pulse"
                     />
                   ))}
                 </div>
@@ -765,30 +752,25 @@ export default function DashboardPage() {
           </div>
 
           {/* ROW 4: Pipeline + Intel + LiveActivity/RoleWidget */}
-          <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: "1.5fr 1fr 1fr" }}
-          >
+          <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.5fr_1fr_1fr]">
             {/* Pipeline panel */}
             <div
-              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
+              className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col"
               style={{
-                background: "rgba(35, 35, 40, 0.65)",
-                border: "1px solid rgba(255,255,255,0.08)",
                 minHeight: 320,
               }}
             >
               {/* Panel header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+              <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
                 <div className="flex items-center gap-2">
-                  <FileText size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">
+                  <FileText size={12} className="text-[var(--bz-text-3)]" />
+                  <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
                     Process Pipeline
                   </span>
                 </div>
                 <Link
                   href="/process"
-                  className="flex items-center gap-1 text-[9px] text-white/25 hover:text-white/55 transition-colors"
+                  className="flex items-center gap-1 text-[9px] text-[var(--bz-text-3)] hover:text-[var(--bz-text-1)] transition-colors"
                 >
                   View all <ArrowUpRight size={9} />
                 </Link>
@@ -796,16 +778,16 @@ export default function DashboardPage() {
 
               {/* Column headers */}
               <div
-                className="grid px-3 py-1.5 border-b border-white/[0.04]"
+                className="bz-product-divider grid px-3 py-1.5 border-b"
                 style={{ gridTemplateColumns: "1fr auto auto" }}
               >
-                <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest">
+                <span className="text-[8px] font-semibold text-[var(--bz-text-3)] uppercase tracking-widest">
                   Client
                 </span>
-                <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest">
+                <span className="text-[8px] font-semibold text-[var(--bz-text-3)] uppercase tracking-widest">
                   Status
                 </span>
-                <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest ml-3">
+                <span className="text-[8px] font-semibold text-[var(--bz-text-3)] uppercase tracking-widest ml-3">
                   Due
                 </span>
               </div>
@@ -813,7 +795,7 @@ export default function DashboardPage() {
               {/* Rows */}
               <div className="flex flex-col py-1 flex-1">
                 {practices.length === 0 ? (
-                  <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+                  <div className="flex items-center justify-center py-10 text-[11px] text-[var(--bz-text-3)]">
                     No processes assigned
                   </div>
                 ) : (
@@ -839,24 +821,22 @@ export default function DashboardPage() {
 
             {/* Intel panel */}
             <div
-              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
+              className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col"
               style={{
-                background: "rgba(35, 35, 40, 0.65)",
-                border: "1px solid rgba(255,255,255,0.08)",
                 minHeight: 320,
               }}
             >
               {/* Panel header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+              <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
                 <div className="flex items-center gap-2">
-                  <TrendingUp size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">
+                  <TrendingUp size={12} className="text-[var(--bz-text-3)]" />
+                  <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
                     Intelligence Feed
                   </span>
                 </div>
                 <Link
                   href="/intelligence"
-                  className="flex items-center gap-1 text-[9px] text-white/25 hover:text-white/55 transition-colors"
+                  className="flex items-center gap-1 text-[9px] text-[var(--bz-text-3)] hover:text-[var(--bz-text-1)] transition-colors"
                 >
                   All <ExternalLink size={9} />
                 </Link>
@@ -869,14 +849,14 @@ export default function DashboardPage() {
                     {[1, 2, 3, 4, 5].map((i) => (
                       <div
                         key={i}
-                        className="h-10 rounded-lg bg-white/[0.03] animate-pulse"
+                        className="h-10 rounded-lg bg-[var(--bz-surface)] animate-pulse"
                       />
                     ))}
                   </div>
                 )}
                 {!intelLoading &&
                   (!intelArticles || intelArticles.length === 0) && (
-                    <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+                    <div className="flex items-center justify-center py-10 text-[11px] text-[var(--bz-text-3)]">
                       No recent articles
                     </div>
                   )}

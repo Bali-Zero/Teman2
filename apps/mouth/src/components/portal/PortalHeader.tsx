@@ -13,6 +13,7 @@ import { Menu, X, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { routeTitles } from "@/types/navigation";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 // Lazy: notifications + impersonation are not first-paint critical.
 // Reduces parallel chunks on /portal/* — ERR_INSUFFICIENT_RESOURCES mitigation.
@@ -38,6 +39,7 @@ interface PortalHeaderProps {
   showBackButton?: boolean;
   onBack?: () => void;
   customTitle?: string;
+  mobileMenuToggleRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export function PortalHeader({
@@ -47,6 +49,7 @@ export function PortalHeader({
   showBackButton = false,
   onBack,
   customTitle,
+  mobileMenuToggleRef,
 }: PortalHeaderProps) {
   const pathname = usePathname();
 
@@ -85,8 +88,8 @@ export function PortalHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[var(--portal-header-bg)] backdrop-blur-[24px] border-b border-[var(--glass-rim)] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+    <header className="sticky top-0 z-30 w-full bg-[var(--portal-header-bg)] backdrop-blur-[24px] border-b border-[var(--bz-border)] shadow-[var(--bz-shell-header-shadow)]">
+      <div className="flex items-center justify-between h-[var(--bz-header-height,64px)] px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-3">
           {/* Back Button */}
@@ -104,12 +107,15 @@ export function PortalHeader({
 
           {/* Mobile Menu Button */}
           <button
+            ref={mobileMenuToggleRef}
+            type="button"
             onClick={onMobileMenuToggle}
             className={cn(
-              "p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors",
-              showBackButton && "md:hidden",
+              "p-2 rounded-xl hover:bg-[var(--background-elevated)] transition-colors md:hidden",
             )}
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-controls="workspace-mobile-nav"
+            aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? (
               <X className="w-5 h-5 text-[var(--foreground)]" />
@@ -120,24 +126,27 @@ export function PortalHeader({
 
           {/* Page Title */}
           <div className="hidden sm:block">
-            <h1 className="text-lg font-bold text-[var(--tx-pure)] tracking-wide">
+            <h1 className="text-xl font-semibold text-[var(--tx-pure)] tracking-[-0.01em] [font-family:var(--bz-product-heading-font)]">
               {getPageTitle()}
             </h1>
-            <p className="text-[11px] text-[var(--tx-secondary)] uppercase tracking-widest font-bold mt-0.5">
+            <p className="text-xs text-[var(--tx-secondary)] mt-0.5">
               {formatDate()}{" "}
-              <span className="text-[var(--bz-copper)] opacity-70 px-1">•</span>{" "}
-              {getGreeting()}, {userName.split(" ")[0]}
+              <span aria-hidden="true" className="text-[var(--bz-copper)] px-1">
+                ·
+              </span>{" "}
+              {getGreeting()}, {userName.split(" ")[0] || "there"}
             </p>
           </div>
 
           {/* Mobile Page Title */}
-          <h1 className="sm:hidden text-lg font-bold text-[var(--tx-pure)] tracking-wide">
+          <h1 className="sm:hidden text-lg font-semibold text-[var(--tx-pure)] [font-family:var(--bz-product-heading-font)]">
             {getPageTitle()}
           </h1>
         </div>
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {/* Superuser impersonation (renders null for non-superusers) */}
           <SuperuserImpersonationBar />
           {/* Notifications */}

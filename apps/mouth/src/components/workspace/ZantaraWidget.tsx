@@ -172,10 +172,10 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
       <div
         className="fixed top-[10vh] right-0 z-[61] h-[80vh] w-[40vw] min-w-[340px] max-w-[640px] flex flex-col rounded-l-2xl overflow-hidden shadow-2xl"
         style={{
-          background: "rgba(10,10,16,0.72)",
+          background: "var(--surface-overlay)",
           backdropFilter: "blur(28px) saturate(1.4)",
           WebkitBackdropFilter: "blur(28px) saturate(1.4)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          border: "1px solid var(--bz-border)",
           borderRight: "none",
         }}
         role="dialog"
@@ -185,7 +185,7 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 py-4 border-b"
-          style={{ borderColor: "rgba(255,255,255,0.07)" }}
+          style={{ borderColor: "var(--bz-border)" }}
         >
           <div className="flex items-center gap-3">
             <Image
@@ -214,7 +214,7 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
             <Link
               href="/terminal"
               onClick={onClose}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium uppercase tracking-[0.4px] transition-colors hover:bg-white/05"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium uppercase tracking-[0.4px] transition-colors hover:bg-[var(--surface-raised)]"
               style={{ color: "var(--bz-text-3)" }}
             >
               <SquareArrowOutUpRight size={10} />
@@ -222,7 +222,7 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
             </Link>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg transition-colors hover:bg-white/05"
+              className="p-1.5 rounded-lg transition-colors hover:bg-[var(--surface-raised)]"
               style={{ color: "var(--bz-text-3)" }}
               aria-label="Close Zantara"
             >
@@ -260,20 +260,20 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
                 style={
                   msg.role === "user"
                     ? {
-                        background: "var(--bz-accent)",
+                        background: "var(--bz-sidebar-active-fill)",
                         color: "#fff",
                       }
                     : {
-                        background: "rgba(255,255,255,0.05)",
+                        background: "var(--surface-raised)",
                         color: "var(--bz-text-1)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid var(--bz-border)",
                       }
                 }
               >
                 {msg.role === "user" ? (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 ) : msg.content ? (
-                  <div className="prose prose-invert prose-xs max-w-none prose-p:my-0.5 prose-headings:my-1 prose-ul:my-0.5 prose-li:my-0">
+                  <div className="prose prose-xs max-w-none prose-p:my-0.5 prose-headings:my-1 prose-ul:my-0.5 prose-li:my-0 text-[var(--bz-text-1)]">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
@@ -316,7 +316,7 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
         {/* Input */}
         <div
           className="border-t px-4 py-3.5"
-          style={{ borderColor: "rgba(255,255,255,0.07)" }}
+          style={{ borderColor: "var(--bz-border)" }}
         >
           <form
             onSubmit={(e) => {
@@ -333,8 +333,8 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
               aria-label="Ask Zantara"
               className="flex-1 rounded-xl px-4 py-2.5 text-[12.5px] focus:outline-none transition-all"
               style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--bz-card)",
+                border: "1px solid var(--bz-border)",
                 color: "var(--bz-text-1)",
               }}
               disabled={isStreaming}
@@ -344,7 +344,7 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
               disabled={!input.trim() || isStreaming}
               className="p-2.5 rounded-xl transition-all disabled:opacity-30"
               style={{
-                background: "var(--bz-accent)",
+                background: "var(--bz-sidebar-active-fill)",
                 color: "#fff",
               }}
               aria-label="Send message"

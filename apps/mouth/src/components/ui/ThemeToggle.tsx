@@ -30,7 +30,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? "operative-light" : "operative-dark")}
-      className="p-1.5 rounded-lg transition-colors hover:bg-white/[0.06]"
+      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--surface-raised)]"
       style={{ color: "var(--bz-text-2)" }}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Light mode" : "Dark mode"}

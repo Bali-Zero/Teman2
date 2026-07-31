@@ -198,7 +198,7 @@ export default function IntelligencePage() {
       <div
         className="flex items-center justify-between px-5 py-3 rounded-xl"
         style={{
-          background: "rgba(255,255,255,0.02)",
+          background: "var(--surface-raised)",
           border: "1px solid rgba(255,255,255,0.06)",
         }}
       >

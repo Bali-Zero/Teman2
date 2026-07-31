@@ -3,7 +3,10 @@ export type CaseStatus =
   | "waiting_documents"
   | "sending_invoice"
   | "on_process"
-  | "completed";
+  | "completed"
+  | "unknown";
+
+export type WorkflowStatus = Exclude<CaseStatus, "unknown">;
 
 export interface ColumnColorConfig {
   label: string;
@@ -18,66 +21,73 @@ export interface ColumnColorConfig {
 
 export const COLUMN_COLORS: Record<CaseStatus, ColumnColorConfig> = {
   inquiry: {
-    // Pastel slate — warm neutral, not cold
+    // Neutral intake: status is carried by label + dot, not a loud card.
     label: "Inquiry",
-    gradientStart: "#cbd5e1",
-    gradientEnd: "#94a3b8",
-    tintBg: "rgba(203,213,225, 0.05)",
-    tintBorder: "rgba(203,213,225, 0.12)",
-    badgeBg: "rgba(203,213,225, 0.18)",
-    textColor: "#cbd5e1",
-    dotColor: "bg-slate-300",
+    gradientStart: "var(--bz-text-2)",
+    gradientEnd: "var(--bz-text-3)",
+    tintBg: "color-mix(in srgb, var(--bz-text-2) 5%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--bz-text-2) 18%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--bz-text-2) 12%, transparent)",
+    textColor: "var(--bz-text-2)",
+    dotColor: "bg-[var(--bz-text-2)]",
   },
   waiting_documents: {
-    // Pastel red — was amber, but it collided with Sending Invoice (yellow).
-    // Red semantics also fit "action needed from client" → documents missing.
-    // Kept pastel (red-300/400) so it doesn't compete with saturated
-    // urgent/unpaid badges.
+    // Waiting is attention, not failure: reserve danger red for blockers.
     label: "Waiting Documents",
-    gradientStart: "#fca5a5",
-    gradientEnd: "#f87171",
-    tintBg: "rgba(252,165,165, 0.05)",
-    tintBorder: "rgba(252,165,165, 0.12)",
-    badgeBg: "rgba(252,165,165, 0.18)",
-    textColor: "#fca5a5",
-    dotColor: "bg-red-300",
+    gradientStart: "var(--state-warning)",
+    gradientEnd: "var(--state-warning)",
+    tintBg: "color-mix(in srgb, var(--state-warning) 5%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--state-warning) 22%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+    textColor: "var(--state-warning)",
+    dotColor: "bg-[var(--state-warning)]",
   },
   sending_invoice: {
-    // Pastel yellow — softened from the previous harsh yellow-500 to a
-    // creamier yellow-300 so it pairs with the rest of the pastel palette.
+    // Copper keeps this commercial step distinct from compliance warnings.
     label: "Sending Invoice",
-    gradientStart: "#fde047",
-    gradientEnd: "#facc15",
-    tintBg: "rgba(253,224,71, 0.05)",
-    tintBorder: "rgba(253,224,71, 0.12)",
-    badgeBg: "rgba(253,224,71, 0.18)",
-    textColor: "#fde047",
-    dotColor: "bg-yellow-300",
+    gradientStart: "var(--bz-copper-text)",
+    gradientEnd: "var(--bz-copper-text)",
+    tintBg: "color-mix(in srgb, var(--bz-copper-text) 5%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--bz-copper-text) 22%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--bz-copper-text) 12%, transparent)",
+    textColor: "var(--bz-copper-text)",
+    dotColor: "bg-[var(--bz-copper-text)]",
   },
   on_process: {
-    // Pastel blue — airier than the previous royal blue
     label: "On Process",
-    gradientStart: "#93c5fd",
-    gradientEnd: "#60a5fa",
-    tintBg: "rgba(147,197,253, 0.05)",
-    tintBorder: "rgba(147,197,253, 0.12)",
-    badgeBg: "rgba(147,197,253, 0.18)",
-    textColor: "#93c5fd",
-    dotColor: "bg-blue-300",
+    gradientStart: "var(--state-info)",
+    gradientEnd: "var(--state-info)",
+    tintBg: "color-mix(in srgb, var(--state-info) 5%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--state-info) 22%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--state-info) 12%, transparent)",
+    textColor: "var(--state-info)",
+    dotColor: "bg-[var(--state-info)]",
   },
   completed: {
     label: "Completed",
-    gradientStart: "#22c55e",
-    gradientEnd: "#16a34a",
-    tintBg: "rgba(34,197,94, 0.04)",
-    tintBorder: "rgba(34,197,94, 0.09)",
-    badgeBg: "rgba(34,197,94, 0.12)",
-    textColor: "#22c55e",
-    dotColor: "bg-green-500",
+    gradientStart: "var(--state-success)",
+    gradientEnd: "var(--state-success)",
+    tintBg: "color-mix(in srgb, var(--state-success) 4%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--state-success) 18%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--state-success) 10%, transparent)",
+    textColor: "var(--state-success)",
+    dotColor: "bg-[var(--state-success)]",
+  },
+  unknown: {
+    // Preserve unexpected backend states visibly instead of silently treating
+    // them as intake. They are shown in the board with their raw sub-status.
+    label: "Needs Review",
+    gradientStart: "var(--state-danger)",
+    gradientEnd: "var(--state-warning)",
+    tintBg: "color-mix(in srgb, var(--state-danger) 5%, transparent)",
+    tintBorder: "color-mix(in srgb, var(--state-danger) 22%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+    textColor: "var(--state-danger)",
+    dotColor: "bg-[var(--state-danger)]",
   },
 };
 
-export const COLUMN_ORDER: CaseStatus[] = [
+export const COLUMN_ORDER: WorkflowStatus[] = [
   "inquiry",
   "waiting_documents",
   "sending_invoice",
@@ -105,5 +115,14 @@ export function getStatusColumn(status: string): CaseStatus {
     status === "quotation"
   )
     return "sending_invoice";
-  return "inquiry";
+  return "unknown";
+}
+
+export function matchesStatusFilter(
+  status: string,
+  selectedColumn: string,
+): boolean {
+  const visibleColumn = getStatusColumn(status);
+  if (selectedColumn === "inquiry" && visibleColumn === "unknown") return true;
+  return visibleColumn === selectedColumn;
 }

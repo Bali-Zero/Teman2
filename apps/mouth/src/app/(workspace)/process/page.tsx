@@ -52,6 +52,7 @@ import {
   COLUMN_COLORS,
   COLUMN_ORDER,
   getStatusColumn,
+  matchesStatusFilter,
   type CaseStatus,
 } from "@/components/process/kanban-colors";
 import {
@@ -162,6 +163,14 @@ const statusDotStyle = (column: CaseStatus): React.CSSProperties => ({
   backgroundColor: COLUMN_COLORS[column].textColor,
 });
 
+function formatStatusLabel(status?: string | null): string {
+  if (!status) return "Unknown status";
+
+  return status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 /** WhatsApp + Email quick actions — identical on kanban cards and table rows. */
 function ContactQuickActions({ practice }: { practice: Practice }) {
   return (
@@ -176,7 +185,7 @@ function ContactQuickActions({ practice }: { practice: Practice }) {
               "_blank",
             );
           }}
-          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_20%,transparent)] text-[var(--accent-whatsapp)] transition-colors"
+          className="p-1.5 rounded touch-manipulation hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_20%,transparent)] text-[var(--accent-whatsapp)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-whatsapp)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
           title="WhatsApp"
           aria-label="Contact via WhatsApp"
         >
@@ -189,7 +198,7 @@ function ContactQuickActions({ practice }: { practice: Practice }) {
             e.stopPropagation();
             window.open(`mailto:${practice.client_email}`, "_blank");
           }}
-          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)] transition-colors"
+          className="p-1.5 rounded touch-manipulation hover:bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--state-info)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
           title="Email"
           aria-label="Send email"
         >
@@ -530,8 +539,7 @@ export default function PratichePage() {
         const currentColumn = getStatusColumn(p.status);
         if (currentColumn === columnStatus) return false;
         const transitions = (p as any).status_transitions as
-          | StatusTransition[]
-          | undefined;
+          StatusTransition[] | undefined;
         if (!transitions || transitions.length === 0) return false;
         return transitions.some(
           (t) => getStatusColumn(t.status) === columnStatus,
@@ -562,7 +570,10 @@ export default function PratichePage() {
           }
 
           // Status filter
-          if (filters.status && getStatusColumn(p.status) !== filters.status) {
+          if (
+            filters.status &&
+            !matchesStatusFilter(p.status, filters.status)
+          ) {
             return false;
           }
 
@@ -671,9 +682,10 @@ export default function PratichePage() {
   // Simplified 5-step workflow: inquiry → waiting_documents → sending_invoice → on_process → completed
   const practicesByStatus = useMemo(
     () => ({
-      inquiry: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "inquiry",
-      ),
+      inquiry: filteredPractices.filter((p) => {
+        const statusColumn = getStatusColumn(p.status);
+        return statusColumn === "inquiry" || statusColumn === "unknown";
+      }),
       waiting_documents: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "waiting_documents",
       ),
@@ -745,12 +757,12 @@ export default function PratichePage() {
   const totalPages = Math.ceil(filteredPractices.length / itemsPerPage);
 
   const SkeletonCard = () => (
-    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md space-y-2">
-      <div className="h-4 bg-[rgba(255,255,255,0.05)] rounded w-3/4 animate-pulse" />
-      <div className="h-3 bg-[rgba(255,255,255,0.05)] rounded w-1/2 animate-pulse" />
+    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] space-y-2">
+      <div className="h-4 bg-[var(--bz-surface)] rounded w-3/4 animate-pulse" />
+      <div className="h-3 bg-[var(--bz-surface)] rounded w-1/2 animate-pulse" />
       <div className="flex gap-2 mt-4 pt-3 border-t border-[var(--bz-border)]">
-        <div className="h-6 w-6 bg-[rgba(255,255,255,0.05)] rounded animate-pulse" />
-        <div className="h-6 w-6 bg-[rgba(255,255,255,0.05)] rounded animate-pulse" />
+        <div className="h-6 w-6 bg-[var(--bz-surface)] rounded animate-pulse" />
+        <div className="h-6 w-6 bg-[var(--bz-surface)] rounded animate-pulse" />
       </div>
     </div>
   );
@@ -762,7 +774,7 @@ export default function PratichePage() {
         subtitle="Manage KITAS, Visa, PT PMA, Tax and other processes"
         actions={
           <Button
-            className="gap-2 bg-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/90 text-white"
+            className="gap-2 bg-[var(--bz-accent)] text-[var(--accent-foreground)] hover:bg-[var(--bz-accent)]/90"
             onClick={handleNewCase}
           >
             <Plus className="w-4 h-4" />
@@ -887,25 +899,25 @@ export default function PratichePage() {
             placeholder="Search process… (press / to focus)"
             ariaLabel="Search process"
             title="Press / to focus search, Escape to clear"
-            className="border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
+            className="border border-[var(--bz-border)] bg-[var(--bz-card)] text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
           />
           <div className="flex gap-2">
             <Button
               variant={showFilters ? "default" : "outline"}
-              className="gap-2 border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(35,35,40,0.8)]"
+              className="gap-2 border-[var(--bz-border)] bg-[var(--bz-card)] text-[var(--bz-text-1)] hover:bg-[var(--bz-card-hover)]"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="w-4 h-4" />
               Filters
               {activeFiltersCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[var(--bz-accent)] text-white">
+                <span className="ml-1 rounded-full bg-[var(--bz-accent)] px-1.5 py-0.5 text-xs text-[var(--accent-foreground)]">
                   {activeFiltersCount}
                 </span>
               )}
             </Button>
             <Button
               variant="outline"
-              className="gap-2 border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md text-[var(--bz-text-2)] hover:bg-[rgba(35,35,40,0.8)] hover:text-[var(--bz-text-1)]"
+              className="gap-2 border-[var(--bz-border)] bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card-hover)] hover:text-[var(--bz-text-1)]"
               onClick={exportCSV}
               title={`Export ${filteredPractices.length} processes as CSV`}
               aria-label={`Export ${filteredPractices.length} processes as CSV`}
@@ -913,7 +925,7 @@ export default function PratichePage() {
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>
             </Button>
-            <div className="flex rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md overflow-hidden">
+            <div className="flex rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] overflow-hidden">
               {(
                 [
                   { mode: "kanban", icon: LayoutGrid, label: "Kanban Board" },
@@ -1031,7 +1043,7 @@ export default function PratichePage() {
           <FilterBar
             activeCount={activeFiltersCount}
             onClearAll={clearFilters}
-            className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-xl shadow-2xl"
+            className="bz-product-panel rounded-lg"
             gridClassName="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
             <FilterSelect
@@ -1102,7 +1114,15 @@ export default function PratichePage() {
 
       {/* Kanban Board View - Simplified 5-Step Workflow */}
       {viewMode === "kanban" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 overflow-x-auto">
+        <div
+          role="region"
+          aria-label="Process board"
+          className="relative grid grid-flow-col auto-cols-[85vw] gap-4 overflow-x-auto overscroll-x-contain scroll-px-1 snap-x snap-mandatory pb-2 pt-6 sm:auto-cols-[minmax(280px,1fr)] xl:grid-flow-row xl:auto-cols-auto xl:grid-cols-5 xl:overflow-visible xl:pt-0"
+        >
+          <p className="absolute right-1 top-0 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-text-2)] xl:hidden">
+            Swipe to explore stages
+            <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </p>
           {COLUMN_ORDER.map((statusKey) => {
             const colors = COLUMN_COLORS[statusKey];
             const columnPractices = practicesByStatus[statusKey] || [];
@@ -1115,7 +1135,7 @@ export default function PratichePage() {
             return (
               <div
                 key={statusKey}
-                className="rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden shadow-xl backdrop-blur-md"
+                className="snap-start rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden shadow-xl backdrop-blur-md xl:min-w-0"
                 style={{
                   background: colors.tintBg,
                   border: `1px solid var(--bz-border)`,
@@ -1130,56 +1150,70 @@ export default function PratichePage() {
                 />
 
                 <div className="p-4 flex flex-col flex-1">
-                  <div
-                    className={`flex items-center justify-between mb-3 ${
-                      isCompleted ? "cursor-pointer select-none" : ""
-                    }`}
-                    onClick={
-                      isCompleted
-                        ? () => setCompletedCollapsed((v) => !v)
-                        : undefined
-                    }
-                    role={isCompleted ? "button" : undefined}
-                    aria-expanded={
-                      isCompleted ? !completedCollapsed : undefined
-                    }
-                    aria-label={
-                      isCompleted
-                        ? completedCollapsed
+                  {isCompleted ? (
+                    <button
+                      type="button"
+                      onClick={() => setCompletedCollapsed((value) => !value)}
+                      className="flex w-full items-center justify-between mb-3 rounded-md text-left touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--state-success)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
+                      aria-expanded={!completedCollapsed}
+                      aria-controls={`process-column-${statusKey}-content`}
+                      aria-label={
+                        completedCollapsed
                           ? "Expand completed"
                           : "Collapse completed"
-                        : undefined
-                    }
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${colors.dotColor}`}
-                      />
-                      <h3
-                        className="font-semibold text-sm uppercase tracking-wider"
-                        style={{ color: colors.textColor }}
-                      >
-                        {colors.label}
-                      </h3>
-                      {isCompleted && (
+                      }
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${colors.dotColor}`}
+                        />
+                        <h3
+                          className="font-semibold text-sm uppercase tracking-wider"
+                          style={{ color: colors.textColor }}
+                        >
+                          {colors.label}
+                        </h3>
                         <ChevronDown
                           className={`w-3.5 h-3.5 transition-transform ${
                             completedCollapsed ? "-rotate-90" : ""
                           }`}
                           style={{ color: colors.textColor }}
                         />
-                      )}
+                      </div>
+                      <span
+                        className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{
+                          background: colors.badgeBg,
+                          color: colors.textColor,
+                        }}
+                      >
+                        {columnPractices.length}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${colors.dotColor}`}
+                        />
+                        <h3
+                          className="font-semibold text-sm uppercase tracking-wider"
+                          style={{ color: colors.textColor }}
+                        >
+                          {colors.label}
+                        </h3>
+                      </div>
+                      <span
+                        className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{
+                          background: colors.badgeBg,
+                          color: colors.textColor,
+                        }}
+                      >
+                        {columnPractices.length}
+                      </span>
                     </div>
-                    <span
-                      className="text-xs px-2 py-1 rounded-full font-medium"
-                      style={{
-                        background: colors.badgeBg,
-                        color: colors.textColor,
-                      }}
-                    >
-                      {columnPractices.length}
-                    </span>
-                  </div>
+                  )}
                   {columnPractices.length > 0 &&
                     (() => {
                       // NOTE: BE serializes numeric(15,2) as string via asyncpg+Decimal,
@@ -1202,7 +1236,10 @@ export default function PratichePage() {
                       );
                     })()}
 
-                  <div className="flex-1 space-y-3">
+                  <div
+                    id={`process-column-${statusKey}-content`}
+                    className="flex-1 space-y-3"
+                  >
                     {isLoading ? (
                       <div data-testid="loading-skeleton">
                         <SkeletonCard />
@@ -1213,7 +1250,7 @@ export default function PratichePage() {
                       <button
                         type="button"
                         onClick={() => setCompletedCollapsed(false)}
-                        className="w-full rounded-lg border border-dashed text-xs py-6 px-3 transition-colors hover:bg-white/5"
+                        className="w-full rounded-lg border border-dashed text-xs py-6 px-3 transition-colors hover:bg-[var(--bz-card-hover)]"
                         style={{
                           borderColor: colors.tintBorder,
                           color: colors.textColor,
@@ -1239,6 +1276,13 @@ export default function PratichePage() {
                         {columnPractices.map((practice) => {
                           const cardIsCompleted =
                             getStatusColumn(practice.status) === "completed";
+                          const statusColumn = getStatusColumn(practice.status);
+                          const rawStatusLabel = formatStatusLabel(
+                            practice.status,
+                          );
+                          const hasSubStatus =
+                            statusColumn === "unknown" ||
+                            rawStatusLabel !== colors.label;
 
                           const serviceLabel =
                             practice.practice_type_name ||
@@ -1259,7 +1303,7 @@ export default function PratichePage() {
                           return (
                             <div
                               key={practice.id}
-                              className={`relative group cursor-pointer rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-2xl backdrop-blur-xl ${
+                              className={`relative group cursor-pointer rounded-[var(--bz-product-radius)] border transition-all hover:-translate-y-0.5 ${
                                 updatingId === practice.id
                                   ? "opacity-70 pointer-events-none"
                                   : ""
@@ -1269,15 +1313,13 @@ export default function PratichePage() {
                                   : ""
                               }`}
                               style={{
-                                // Liquid glass: column color tint + brighter specular highlight over a lighter base
+                                // Status tint stays subtle; lifecycle is carried
+                                // by the label and dot, never by a saturated card.
                                 background: `linear-gradient(150deg,
-                                  ${colors.gradientStart}66 0%,
-                                  ${colors.gradientEnd}44 45%,
-                                  rgba(255,255,255,0.14) 100%),
-                                  linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%),
-                                  rgba(78,84,96,0.30)`,
-                                borderColor: `${colors.gradientStart}a0`,
-                                boxShadow: `0 1px 0 rgba(255,255,255,0.22) inset, 0 10px 28px ${colors.gradientStart}4d`,
+                                  color-mix(in srgb, ${colors.gradientStart} 10%, var(--bz-card)) 0%,
+                                  var(--bz-card) 72%)`,
+                                borderColor: colors.tintBorder,
+                                boxShadow: "var(--bz-shadow-card)",
                               }}
                               onContextMenu={(e) =>
                                 handleContextMenu(e, practice)
@@ -1285,6 +1327,7 @@ export default function PratichePage() {
                               onClick={() =>
                                 router.push(`/process/${practice.id}`)
                               }
+                              data-testid={`process-card-${practice.id}`}
                             >
                               {updatingId === practice.id && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-2xl z-10">
@@ -1351,7 +1394,21 @@ export default function PratichePage() {
                                   )}
 
                                   <button
-                                    className="absolute top-3 right-3 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.08)] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    type="button"
+                                    className="absolute right-10 top-3 rounded-md p-1 text-[var(--bz-text-2)] opacity-100 transition-opacity hover:bg-[var(--bz-card-hover)] hover:text-[var(--bz-text-1)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)] sm:opacity-0 sm:group-hover:opacity-100"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      router.push(`/process/${practice.id}`);
+                                    }}
+                                    title="Open process"
+                                    aria-label={`Open process ${practice.id}: ${serviceLabel}`}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="absolute right-3 top-3 rounded-md p-1 text-[var(--bz-text-2)] opacity-100 transition-opacity hover:bg-[var(--bz-card-hover)] hover:text-[var(--bz-text-1)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)] sm:opacity-0 sm:group-hover:opacity-100"
                                     onClick={(e) =>
                                       handleMenuClick(e, practice)
                                     }
@@ -1369,6 +1426,21 @@ export default function PratichePage() {
                                 >
                                   {serviceLabel}
                                 </p>
+
+                                {hasSubStatus && (
+                                  <p
+                                    className={`mb-2 text-[10px] font-medium ${
+                                      statusColumn === "unknown"
+                                        ? "text-[var(--state-danger)]"
+                                        : "text-[var(--bz-text-2)]"
+                                    }`}
+                                    title={`Backend status: ${rawStatusLabel}`}
+                                  >
+                                    {statusColumn === "unknown"
+                                      ? `Needs review · ${rawStatusLabel}`
+                                      : rawStatusLabel}
+                                  </p>
+                                )}
 
                                 {/* Family-member tag */}
                                 {practice.family_member_name && (
@@ -1476,7 +1548,7 @@ export default function PratichePage() {
                                 )}
 
                                 {/* Quick actions — hidden until hover */}
-                                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                                   <ContactQuickActions practice={practice} />
                                   <button
                                     onClick={(e) => {
@@ -1485,7 +1557,7 @@ export default function PratichePage() {
                                         `/clients/${practice.client_id}?tab=documents`,
                                       );
                                     }}
-                                    className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] transition-colors ml-auto"
+                                    className="p-1.5 rounded touch-manipulation hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] transition-colors ml-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--state-warning)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-card)]"
                                     title="View Documents"
                                     aria-label="View documents"
                                   >
@@ -1541,7 +1613,7 @@ export default function PratichePage() {
 
       {/* List View */}
       {viewMode === "list" && (
-        <div className="rounded-xl border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md shadow-2xl overflow-hidden">
+        <div className="bz-product-panel overflow-hidden">
           {isLoading ? (
             <div className="p-12 text-center">
               <div className="animate-pulse space-y-4">
@@ -1582,7 +1654,7 @@ export default function PratichePage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[rgba(35,35,40,0.8)] border-b border-[var(--bz-border)] backdrop-blur-lg">
+                <thead className="bg-[var(--bz-surface)] border-b border-[var(--bz-border)]">
                   <tr>
                     {(
                       [
@@ -1645,7 +1717,7 @@ export default function PratichePage() {
                   {paginatedPractices.map((practice) => (
                     <tr
                       key={practice.id}
-                      className="hover:bg-[rgba(255,255,255,0.05)] transition-colors cursor-pointer"
+                      className="hover:bg-[var(--bz-card-hover)] transition-colors cursor-pointer"
                       onContextMenu={(e) => handleContextMenu(e, practice)}
                       onClick={() => router.push(`/process/${practice.id}`)}
                     >
@@ -1826,7 +1898,7 @@ export default function PratichePage() {
                         >
                           <ContactQuickActions practice={practice} />
                           <button
-                            className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+                            className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-card-hover)] transition-colors"
                             onClick={(e) => handleMenuClick(e, practice)}
                             title="More options"
                             aria-label="More options"
@@ -1842,7 +1914,7 @@ export default function PratichePage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bz-border)] bg-[rgba(35,35,40,0.8)] backdrop-blur-lg">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bz-border)] bg-[var(--bz-surface)]">
                   <div className="text-sm text-[var(--bz-text-2)]">
                     Showing {(listPageNumber - 1) * itemsPerPage + 1} to{" "}
                     {Math.min(
@@ -1872,7 +1944,7 @@ export default function PratichePage() {
                               onClick={() => setListPageNumber(pageNum)}
                               className={`px-2 py-1 rounded-lg transition-colors ${
                                 listPageNumber === pageNum
-                                  ? "bg-[var(--bz-accent)] text-white"
+                                  ? "bg-[var(--bz-accent)] text-[var(--accent-foreground)]"
                                   : "bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)]"
                               }`}
                             >
@@ -1905,8 +1977,13 @@ export default function PratichePage() {
       {/* Info Footer */}
       <div className="text-center py-8">
         <p className="text-xs text-[var(--bz-text-2)]">
-          Pro Tip: Right-click or use the menu on cards to quickly change
-          process status.
+          <span className="sm:hidden">
+            Tap a card to open it. Swipe horizontally to review every stage.
+          </span>
+          <span className="hidden sm:inline">
+            Pro Tip: Right-click or use the menu on cards to quickly change
+            process status.
+          </span>
         </p>
       </div>
 
@@ -1914,7 +1991,7 @@ export default function PratichePage() {
       {selectedPractice && menuPosition && (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--bz-border)] bg-[rgba(30,30,35,0.8)] backdrop-blur-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] shadow-[var(--bz-shadow-card)] py-1 animate-in fade-in zoom-in-95 duration-100"
           style={{
             // ✅ Smart positioning: adjusts based on viewport boundaries
             // Menu height ~340px (header 40px + 9 items * 32px + padding)
@@ -1932,7 +2009,7 @@ export default function PratichePage() {
             maxWidth: "calc(100vw - 20px)",
           }}
         >
-          <div className="px-3 py-2 border-b border-[var(--bz-border)] bg-[rgba(40,40,45,0.6)] backdrop-blur-md rounded-t-lg">
+          <div className="px-3 py-2 border-b border-[var(--bz-border)] bg-[var(--bz-surface)] rounded-t-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--bz-text-1)]">
@@ -1951,7 +2028,7 @@ export default function PratichePage() {
                   setSelectedPractice(null);
                   setMenuPosition(null);
                 }}
-                className="text-[10px] px-2 py-1 rounded border border-[rgba(255,255,255,0.08)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:border-[var(--bz-accent)]/40 transition-colors"
+                className="text-[10px] px-2 py-1 rounded border border-[var(--bz-border)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:border-[var(--bz-accent)]/40 transition-colors"
               >
                 Open →
               </button>
@@ -2010,7 +2087,7 @@ export default function PratichePage() {
                           : ps === "partial"
                             ? "color-mix(in srgb, var(--state-warning) 25%, transparent)"
                             : "color-mix(in srgb, var(--state-danger) 25%, transparent)"
-                        : "rgba(255,255,255,0.05)",
+                        : "var(--bz-surface)",
                     color:
                       selectedPractice.payment_status === ps
                         ? ps === "paid"
@@ -2082,9 +2159,7 @@ export default function PratichePage() {
                     disabled={isCurrent || updatingId !== null}
                     className="flex-1 text-[10px] py-1 rounded font-medium transition-all disabled:opacity-40 disabled:cursor-default capitalize"
                     style={{
-                      background: isCurrent
-                        ? p.active
-                        : "rgba(255,255,255,0.05)",
+                      background: isCurrent ? p.active : "var(--bz-surface)",
                       color: isCurrent ? p.color : "var(--bz-text-2)",
                       border: isCurrent
                         ? `1px solid ${p.border}`

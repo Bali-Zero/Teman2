@@ -86,18 +86,9 @@ export function PortalMessages({
   ).length;
 
   return (
-    <div
-      className="rounded-xl border overflow-hidden flex flex-col"
-      style={{
-        background: "rgba(30, 30, 35, 0.7)",
-        borderColor: "rgba(255, 255, 255, 0.05)",
-      }}
-    >
+    <div className="bz-product-panel overflow-hidden flex flex-col">
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
-      >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
         <div className="flex items-center gap-2">
           <MessageSquare
             className="w-4 h-4"
@@ -187,17 +178,14 @@ export function PortalMessages({
       </div>
 
       {/* Input */}
-      <div
-        className="flex items-center gap-2 px-4 py-3 border-t"
-        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
-      >
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-[var(--bz-border)]">
         <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
           placeholder={`Message ${clientName}...`}
-          className="flex-1 bg-transparent border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:border-[var(--bz-accent)]/50"
+          className="flex-1 bg-[var(--bz-surface)] border border-[var(--bz-border)] rounded-lg px-3 py-2 text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:border-[var(--bz-accent)]/50"
         />
         <Button
           size="sm"

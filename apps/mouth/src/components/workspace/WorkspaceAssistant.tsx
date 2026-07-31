@@ -209,13 +209,13 @@ export function WorkspaceAssistant() {
       {/* Chat Panel */}
       {open && (
         <div
-          className="fixed bottom-20 right-4 sm:right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[75vh] flex flex-col rounded-2xl bg-[var(--bz-surface,#111)] border border-white/10 shadow-2xl shadow-black/50 overflow-hidden"
+          className="fixed bottom-20 right-4 sm:right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[75vh] flex flex-col rounded-2xl bg-[var(--bz-surface)] border border-[var(--bz-border)] shadow-[var(--bz-shadow-card)] overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Zantara Assistant"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[var(--bz-base,#0c0c0e)]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)] bg-[var(--bz-base)]">
             <div className="flex items-center gap-2.5">
               <Image
                 src="/assets/logo/zantara-lotus.png"
@@ -225,8 +225,10 @@ export function WorkspaceAssistant() {
                 className="w-7 h-7"
               />
               <div>
-                <p className="text-sm font-medium text-white">Zantara</p>
-                <p className="text-[10px] text-white/40">
+                <p className="text-sm font-medium text-[var(--bz-text-1)]">
+                  Zantara
+                </p>
+                <p className="text-[10px] text-[var(--bz-text-3)]">
                   Assistant for {userName} &middot; Cmd+J
                 </p>
               </div>
@@ -235,18 +237,18 @@ export function WorkspaceAssistant() {
               <Link
                 href="/terminal"
                 onClick={handleOpenInTerminal}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-[var(--surface-raised)] transition-colors"
                 aria-label="Open in terminal"
                 title="Open in terminal"
               >
-                <SquareArrowOutUpRight className="w-4 h-4 text-white/50" />
+                <SquareArrowOutUpRight className="w-4 h-4 text-[var(--bz-text-2)]" />
               </Link>
               <button
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-[var(--surface-raised)] transition-colors"
                 aria-label="Close assistant"
               >
-                <X className="w-4 h-4 text-white/50" />
+                <X className="w-4 h-4 text-[var(--bz-text-2)]" />
               </button>
             </div>
           </div>
@@ -257,9 +259,9 @@ export function WorkspaceAssistant() {
             className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
           >
             {messages.length === 0 && (
-              <div className="text-center py-8 text-white/30 text-sm">
+              <div className="text-center py-8 text-[var(--bz-text-2)] text-sm">
                 <p>Halo {userName}! Tanya apa saja.</p>
-                <p className="mt-1 text-xs text-white/20">
+                <p className="mt-1 text-xs text-[var(--bz-text-3)]">
                   Contoh: &quot;klien saya yang expire bulan ini&quot;
                 </p>
               </div>
@@ -272,8 +274,8 @@ export function WorkspaceAssistant() {
                 <div
                   className={`max-w-[85%] rounded-xl px-3.5 py-2 text-sm leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-[var(--bz-accent,#d4845a)] text-white"
-                      : "bg-white/5 text-white/90 border border-white/5"
+                      ? "bg-[var(--bz-sidebar-active-fill)] text-white"
+                      : "bg-[var(--surface-raised)] text-[var(--bz-text-1)] border border-[var(--bz-border)]"
                   }`}
                 >
                   {msg.role === "assistant" ? (
@@ -291,12 +293,12 @@ export function WorkspaceAssistant() {
                           </ol>
                         ),
                         strong: ({ children }) => (
-                          <strong className="font-semibold text-white">
+                          <strong className="font-semibold text-[var(--bz-text-1)]">
                             {children}
                           </strong>
                         ),
                         code: ({ children }) => (
-                          <code className="bg-white/10 px-1 py-0.5 rounded text-xs">
+                          <code className="bg-[var(--surface-raised)] px-1 py-0.5 rounded text-xs">
                             {children}
                           </code>
                         ),
@@ -308,7 +310,7 @@ export function WorkspaceAssistant() {
                     msg.content
                   )}
                   {msg.isStreaming && msg.content && (
-                    <span className="inline-block w-1.5 h-4 bg-[var(--bz-accent,#d4845a)] animate-pulse ml-0.5 rounded-sm" />
+                    <span className="inline-block w-1.5 h-4 bg-[var(--bz-copper-text)] animate-pulse ml-0.5 rounded-sm" />
                   )}
                 </div>
               </div>
@@ -316,7 +318,7 @@ export function WorkspaceAssistant() {
           </div>
 
           {/* Input */}
-          <div className="px-3 py-2.5 border-t border-white/10 bg-[var(--bz-base,#0c0c0e)]">
+          <div className="px-3 py-2.5 border-t border-[var(--bz-border)] bg-[var(--bz-base)]">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -331,12 +333,12 @@ export function WorkspaceAssistant() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Tanya Zantara..."
                 disabled={isStreaming}
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--bz-accent,#d4845a)] disabled:opacity-50"
+                className="flex-1 bg-[var(--bz-card)] border border-[var(--bz-border)] rounded-lg px-3 py-2 text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-focus-ring)] disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={isStreaming || !input.trim()}
-                className="p-2 rounded-lg bg-[var(--bz-accent,#d4845a)] hover:bg-[var(--bz-accent,#d4845a)]/80 disabled:opacity-30 transition-all"
+                className="p-2 rounded-lg bg-[var(--bz-sidebar-active-fill)] hover:opacity-90 disabled:opacity-30 transition-all"
                 aria-label="Send message"
               >
                 {isStreaming ? (
@@ -355,14 +357,14 @@ export function WorkspaceAssistant() {
         onClick={() => setOpen((prev) => !prev)}
         className={`fixed bottom-4 right-4 sm:right-6 z-50 w-12 h-12 rounded-full shadow-lg shadow-black/30 flex items-center justify-center transition-all duration-200 ${
           open
-            ? "bg-white/10 border border-white/20"
-            : "bg-[var(--bz-accent,#d4845a)] hover:scale-105"
+            ? "bg-[var(--bz-card)] border border-[var(--bz-border-hover)]"
+            : "bg-[var(--bz-sidebar-active-fill)] hover:scale-105"
         }`}
         aria-label={open ? "Close Zantara" : "Open Zantara (Cmd+J)"}
         title="Cmd+J"
       >
         {open ? (
-          <X className="w-5 h-5 text-white/70" />
+          <X className="w-5 h-5 text-[var(--bz-text-1)]" />
         ) : (
           <MessageCircle className="w-5 h-5 text-white" />
         )}

@@ -176,8 +176,8 @@ export const getPassportValidityColor = (
     return {
       color: "gray",
       label: "No expiry",
-      bgClass: "bg-gray-500/20",
-      textClass: "text-gray-400",
+      bgClass: "bg-[var(--bz-surface)]",
+      textClass: "text-[var(--bz-text-2)]",
       alertLevel: "ok",
       monthsUntil: 999,
     };

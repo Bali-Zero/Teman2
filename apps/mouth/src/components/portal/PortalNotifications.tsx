@@ -115,7 +115,7 @@ export function PortalNotificationsList({
           {notifications.map((notif) => (
             <div
               key={notif.id}
-              className="px-4 py-3 flex items-start gap-3 transition-colors hover:bg-white/[0.02]"
+              className="px-4 py-3 flex items-start gap-3 transition-colors hover:bg-[var(--surface-raised)]"
               style={
                 !notif.read ? { background: "rgba(201,169,110,0.04)" } : {}
               }
@@ -215,7 +215,7 @@ export function PortalNotificationsPopover() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg transition-colors hover:bg-white/[0.05] focus-ring"
+        className="relative p-2 rounded-lg transition-colors hover:bg-[var(--surface-raised)] focus-ring"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
         <Bell className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />

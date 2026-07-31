@@ -16,29 +16,32 @@ export const STANDARD_FOLDERS: Record<string, { label: string; icon: string }> =
 // Status badge colors — canonical 6-state vocabulary
 // (mirrors backend practice_state_machine.VALID_TRANSITIONS keys).
 export const STATUS_COLORS: Record<string, string> = {
-  inquiry: "bg-blue-500/20 text-blue-400",
-  waiting_documents: "bg-pink-500/20 text-pink-400",
-  sending_invoice: "bg-yellow-500/20 text-yellow-400",
-  on_process: "bg-purple-500/20 text-purple-400",
-  completed: "bg-green-500/20 text-green-400",
-  cancelled: "bg-red-500/20 text-red-400",
+  inquiry: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
+  waiting_documents: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
+  sending_invoice: "bg-[var(--bz-copper-text)]/10 text-[var(--bz-copper-text)]",
+  on_process: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
+  completed: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
+  cancelled: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
 };
 
 // Alert color styles
 export const ALERT_COLORS: Record<string, string> = {
-  green: "bg-green-500/20 text-green-400 border-green-500/30",
-  yellow: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  red: "bg-red-500/20 text-red-400 border-red-500/30",
-  expired: "bg-red-600/30 text-red-300 border-red-600/50",
+  green:
+    "bg-[var(--state-success)]/10 text-[var(--state-success)] border-[var(--state-success)]/30",
+  yellow:
+    "bg-[var(--state-warning)]/10 text-[var(--state-warning)] border-[var(--state-warning)]/30",
+  red: "bg-[var(--state-danger)]/10 text-[var(--state-danger)] border-[var(--state-danger)]/30",
+  expired:
+    "bg-[var(--state-danger)]/15 text-[var(--state-danger)] border-[var(--state-danger)]/50",
 };
 
 // Document category colors
 export const CATEGORY_COLORS: Record<string, string> = {
-  visas: "bg-blue-500/20 text-blue-400",
-  pma: "bg-purple-500/20 text-purple-400",
-  tax: "bg-emerald-500/20 text-emerald-400",
-  personal: "bg-orange-500/20 text-orange-400",
-  other: "bg-gray-500/20 text-gray-400",
+  visas: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
+  pma: "bg-[var(--bz-copper-text)]/10 text-[var(--bz-copper-text)]",
+  tax: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
+  personal: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
+  other: "bg-[var(--bz-surface)] text-[var(--bz-text-2)]",
 };
 
 // NOTE: Visa prices MUST come from PricingTool/backend API, never hardcoded (Golden Rule).

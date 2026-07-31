@@ -572,7 +572,7 @@ function ClientsListContent() {
             <div
               className="p-1 rounded-lg flex shadow-md backdrop-blur-md"
               style={{
-                background: "rgba(35, 35, 40, 0.65)",
+                background: "var(--bz-card)",
                 border: "1px solid var(--bz-border)",
               }}
             >
@@ -783,7 +783,7 @@ function ClientsListContent() {
             style={
               {
                 border: "1px solid var(--bz-border)",
-                background: "rgba(35, 35, 40, 0.65)",
+                background: "var(--bz-card)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
                 color: "var(--bz-text-1)",
@@ -808,7 +808,7 @@ function ClientsListContent() {
                 background:
                   filters.assigned_to === currentUserEmail
                     ? "var(--bz-accent)"
-                    : "rgba(35, 35, 40, 0.65)",
+                    : "var(--bz-card)",
                 color:
                   filters.assigned_to === currentUserEmail
                     ? "var(--bz-text-pure)"
@@ -831,7 +831,7 @@ function ClientsListContent() {
                 background:
                   silentFilter === days
                     ? "color-mix(in srgb, var(--state-danger) 20%, transparent)"
-                    : "rgba(35, 35, 40, 0.65)",
+                    : "var(--bz-card)",
                 color:
                   silentFilter === days
                     ? "var(--state-danger)"
@@ -869,7 +869,7 @@ function ClientsListContent() {
             className="rounded-xl shadow-xl backdrop-blur-xl transition-all duration-300"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(35, 35, 40, 0.65)",
+              background: "var(--bz-card)",
             }}
             clearLabel={
               <>
@@ -925,7 +925,7 @@ function ClientsListContent() {
                       background:
                         filters.assigned_to === currentUserEmail
                           ? "var(--bz-accent)"
-                          : "rgba(255,255,255,0.08)",
+                          : "var(--bz-surface)",
                       color:
                         filters.assigned_to === currentUserEmail
                           ? "var(--bz-text-pure)"
@@ -1018,7 +1018,7 @@ function ClientsListContent() {
                         color: "var(--bz-accent)",
                       }
                     : {
-                        background: "rgba(35,35,40,0.65)",
+                        background: "var(--bz-card)",
                         backdropFilter: "blur(12px)",
                         color: "var(--bz-text-2)",
                       }
@@ -1055,7 +1055,7 @@ function ClientsListContent() {
           className="rounded-xl p-12 text-center backdrop-blur-sm"
           style={{
             border: "1px solid var(--bz-border-hover)",
-            background: "rgba(35,35,40,0.65)",
+            background: "var(--bz-card)",
           }}
         >
           <CRMSkeleton count={6} />
@@ -1075,16 +1075,13 @@ function ClientsListContent() {
               }}
             />
           ) : viewMode === "table" ? (
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            >
+            <div className="bz-product-panel overflow-hidden">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr
                     style={{
-                      background: "rgba(255,255,255,0.04)",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      background: "var(--bz-surface)",
+                      borderBottom: "1px solid var(--bz-border)",
                     }}
                   >
                     {[
@@ -1140,26 +1137,32 @@ function ClientsListContent() {
                       <tr
                         key={client.id}
                         onClick={() => router.push(`/clients/${client.id}`)}
-                        className="cursor-pointer transition-colors"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            router.push(`/clients/${client.id}`);
+                          }
+                        }}
+                        role="link"
+                        tabIndex={0}
+                        aria-label={`Open client ${client.full_name || client.email}`}
+                        className="cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--bz-focus-ring)]"
                         style={{
+                          height: "var(--bz-product-row-height)",
                           background:
-                            idx % 2 === 0
-                              ? "transparent"
-                              : "rgba(255,255,255,0.015)",
+                            idx % 2 === 0 ? "transparent" : "var(--bz-surface)",
                           borderBottom: "1px solid var(--bz-border)",
                         }}
                         onMouseEnter={(e) => {
                           (
                             e.currentTarget as HTMLTableRowElement
-                          ).style.background = "rgba(255,255,255,0.06)";
+                          ).style.background = "var(--bz-card-hover)";
                         }}
                         onMouseLeave={(e) => {
                           (
                             e.currentTarget as HTMLTableRowElement
                           ).style.background =
-                            idx % 2 === 0
-                              ? "transparent"
-                              : "rgba(255,255,255,0.015)";
+                            idx % 2 === 0 ? "transparent" : "var(--bz-surface)";
                         }}
                       >
                         <td
@@ -1338,7 +1341,7 @@ function ClientsListContent() {
           className="rounded-xl border border-dashed p-12 text-center"
           style={{
             borderColor: "var(--bz-border)",
-            background: "rgba(35,35,40,0.65)",
+            background: "var(--bz-card)",
           }}
         >
           <Users

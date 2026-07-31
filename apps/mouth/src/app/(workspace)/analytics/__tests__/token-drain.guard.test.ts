@@ -92,8 +92,10 @@ describe("analytics suite drain guard (WS2 slice 6)", () => {
 
   it("hub: panels read the dashboard recipe + --bz-border", () => {
     const src = readFileSync(PAGES.hub, "utf8");
-    expect(src).toContain("rgba(35,35,40,0.6)"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(src).toContain("var(--bz-card)");
     expect(src).toContain("var(--bz-border)");
+    expect(src).not.toContain("rgba(35,35,40,0.6)"); // token-lint-ok: regression guard string, not a color use
+    expect(src).not.toContain("rgba(25,25,30,0.3)"); // token-lint-ok: regression guard string, not a color use
     expect(src).not.toContain("rgba(255, 255, 255, 0.05)"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(src).not.toContain("rgba(32,32,36"); // token-lint-ok: drain-guard assertion string, not a color use
   });
@@ -109,7 +111,7 @@ describe("analytics suite drain guard (WS2 slice 6)", () => {
     const src = readFileSync(PAGES.funnel, "utf8");
     expect(src).toContain("var(--state-danger)");
     expect(src).toContain("var(--bz-text-2)");
-    expect(src).toContain("rgba(35,35,40,0.65)"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(src).toContain("var(--bz-card)");
     expect(src).not.toContain("var(--color-text-secondary"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(src).not.toContain("rgba(26,26,30"); // token-lint-ok: drain-guard assertion string, not a color use
   });

@@ -221,7 +221,7 @@ export function EditClientModal({
             Upload a profile picture (max 2MB)
           </p>
           <label
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-white transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-sidebar-active-fill)] text-white transition-colors ${
               isUploadingAvatar
                 ? "opacity-60 cursor-not-allowed"
                 : "hover:bg-[var(--bz-accent)]/90 cursor-pointer"

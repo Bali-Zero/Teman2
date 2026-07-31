@@ -21,15 +21,21 @@ import { formatCurrency } from "./utils";
 import { AiSummaryCard } from "./AiSummaryCard";
 
 const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
-  urgent: { label: "🔥 urgent", className: "bg-red-500/15 text-red-400" },
-  high: { label: "↑ high", className: "bg-orange-500/12 text-orange-400" },
+  urgent: {
+    label: "🔥 urgent",
+    className: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+  },
+  high: {
+    label: "↑ high",
+    className: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
+  },
 };
 
 const PAYMENT_STYLES: Record<string, string> = {
-  paid: "bg-green-500/20 text-green-400",
-  partial: "bg-yellow-500/20 text-yellow-400",
-  unpaid: "bg-red-500/20 text-red-400",
-  pending: "bg-orange-500/20 text-orange-400",
+  paid: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
+  partial: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
+  unpaid: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+  pending: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
 };
 
 export function ProcessTab({
@@ -141,24 +147,24 @@ export function ProcessTab({
               {formatCurrency(revenueSummary.total)}
             </p>
           </div>
-          <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-green-400 mb-0.5">
+          <div className="rounded-lg bg-[var(--state-success)]/10 border border-[var(--state-success)]/20 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--state-success)] mb-0.5">
               Paid
             </p>
-            <p className="text-sm font-bold text-green-400">
+            <p className="text-sm font-bold text-[var(--state-success)]">
               {formatCurrency(revenueSummary.paid)}
             </p>
           </div>
           <div
-            className={`rounded-lg p-3 border ${revenueSummary.outstanding > 0 ? "bg-orange-500/10 border-orange-500/20" : "bg-[var(--bz-surface)] border-[var(--bz-border)]"}`}
+            className={`rounded-lg p-3 border ${revenueSummary.outstanding > 0 ? "bg-[var(--state-warning)]/10 border-[var(--state-warning)]/20" : "bg-[var(--bz-surface)] border-[var(--bz-border)]"}`}
           >
             <p
-              className={`text-[10px] uppercase tracking-wider mb-0.5 ${revenueSummary.outstanding > 0 ? "text-orange-400" : "text-[var(--bz-text-2)]"}`}
+              className={`text-[10px] uppercase tracking-wider mb-0.5 ${revenueSummary.outstanding > 0 ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
             >
               Outstanding
             </p>
             <p
-              className={`text-sm font-bold ${revenueSummary.outstanding > 0 ? "text-orange-400" : "text-[var(--bz-text-1)]"}`}
+              className={`text-sm font-bold ${revenueSummary.outstanding > 0 ? "text-[var(--state-warning)]" : "text-[var(--bz-text-1)]"}`}
             >
               {formatCurrency(revenueSummary.outstanding)}
             </p>
@@ -176,7 +182,7 @@ export function ProcessTab({
                 onClick={() => setFilterStatus(s)}
                 className={`text-xs px-2 py-1 rounded-full transition-colors ${
                   filterStatus === s
-                    ? "bg-[var(--bz-accent)] text-white"
+                    ? "bg-[var(--bz-sidebar-active-fill)] text-white"
                     : "bg-[var(--bz-surface)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
                 }`}
               >
@@ -205,7 +211,7 @@ export function ProcessTab({
       )}
 
       {practices.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl space-y-2">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-12 text-center shadow-[var(--bz-shadow-card)] space-y-2">
           <FolderOpen className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
           <p className="text-sm font-medium text-[var(--bz-text-1)]">
             No services yet
@@ -226,7 +232,7 @@ export function ProcessTab({
           </div>
         </div>
       ) : sortedPractices.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-8 text-center shadow-[var(--bz-shadow-card)]">
           <p className="text-[var(--bz-text-2)] text-sm">
             No processes match this filter
           </p>
@@ -281,7 +287,7 @@ export function ProcessTab({
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       STATUS_COLORS[practice.status] ||
-                      "bg-gray-500/20 text-gray-400"
+                      "bg-[var(--bz-surface)] text-[var(--bz-text-2)]"
                     }`}
                   >
                     {practice.status.replace(/_/g, " ")}
@@ -360,11 +366,11 @@ export function ProcessTab({
                     const isCritical = daysLeft >= 0 && daysLeft <= 14;
                     const isWarning = daysLeft > 14 && daysLeft <= 30;
                     const chipClass = isExpired
-                      ? "bg-red-500/20 text-red-400"
+                      ? "bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
                       : isCritical
-                        ? "bg-red-500/15 text-red-400"
+                        ? "bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
                         : isWarning
-                          ? "bg-yellow-500/15 text-yellow-400"
+                          ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                           : ALERT_COLORS[practice.alert_color || "green"];
                     const label = isExpired
                       ? `exp ${Math.abs(daysLeft)}d ago`
@@ -393,7 +399,7 @@ export function ProcessTab({
                   <span
                     className={`text-xs px-2 py-0.5 rounded ${
                       PAYMENT_STYLES[practice.payment_status] ||
-                      "bg-gray-500/20 text-gray-400"
+                      "bg-[var(--bz-surface)] text-[var(--bz-text-2)]"
                     }`}
                   >
                     {practice.payment_status}
@@ -419,7 +425,7 @@ export function ProcessTab({
                           background:
                             ageDays > 14
                               ? "rgba(239,68,68,0.10)"
-                              : "rgba(255,255,255,0.04)",
+                              : "var(--surface-raised)",
                           color: ageDays > 14 ? "#f87171" : "var(--bz-text-2)",
                         }}
                         title={`Last updated ${ageDays} days ago`}

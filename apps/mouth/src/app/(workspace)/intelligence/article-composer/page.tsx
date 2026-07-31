@@ -55,7 +55,7 @@ const DRAFT_KEY = "bz_composer_draft_v2";
 // Warm Depth glassmorphism reusable styles
 const cardClass = "rounded-2xl border overflow-hidden";
 const cardStyle: React.CSSProperties = {
-  background: "rgba(35,35,40,0.65)",
+  background: "var(--bz-card)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
   borderColor: "var(--bz-border)",
@@ -63,7 +63,7 @@ const cardStyle: React.CSSProperties = {
 const inputClass =
   "w-full rounded-xl border px-3 py-2.5 text-[13px] outline-none transition-all";
 const inputBaseStyle: React.CSSProperties = {
-  background: "rgba(35,35,40,0.6)",
+  background: "var(--surface-raised)",
   borderColor: "var(--bz-border)",
   color: "var(--bz-text-1)",
 };
@@ -618,7 +618,7 @@ export default function ArticleComposerPage() {
               style={{
                 background:
                   loading || !configured
-                    ? "rgba(255,255,255,0.06)"
+                    ? "var(--surface-raised)"
                     : "linear-gradient(135deg, var(--bz-accent), var(--bz-accent-hover))",
                 boxShadow:
                   loading || !configured
@@ -724,7 +724,7 @@ export default function ArticleComposerPage() {
               >
                 <div
                   className="mb-4 rounded-full p-4"
-                  style={{ background: "rgba(255,255,255,0.04)" }}
+                  style={{ background: "var(--surface-raised)" }}
                 >
                   <Sparkles
                     className="h-8 w-8"
@@ -802,7 +802,7 @@ export default function ArticleComposerPage() {
                       className="rounded-full border px-2 py-0.5 text-[11px]"
                       style={{
                         borderColor: "var(--bz-border)",
-                        background: "rgba(255,255,255,0.04)",
+                        background: "var(--surface-raised)",
                         color: "var(--bz-text-2)",
                       }}
                     >
@@ -812,7 +812,7 @@ export default function ArticleComposerPage() {
                       className="rounded-full border px-2 py-0.5 text-[11px]"
                       style={{
                         borderColor: "var(--bz-border)",
-                        background: "rgba(255,255,255,0.04)",
+                        background: "var(--surface-raised)",
                         color: "var(--bz-text-2)",
                       }}
                     >
@@ -1148,7 +1148,7 @@ export default function ArticleComposerPage() {
                           className="rounded-full border px-2 py-0.5 text-[11px]"
                           style={{
                             borderColor: "var(--bz-border)",
-                            background: "rgba(255,255,255,0.04)",
+                            background: "var(--surface-raised)",
                             color: "var(--bz-text-2)",
                           }}
                         >
@@ -1200,7 +1200,7 @@ export default function ArticleComposerPage() {
                           <SelectTrigger
                             className="h-8 text-[12px] rounded-xl"
                             style={{
-                              background: "rgba(35,35,40,0.6)",
+                              background: "var(--surface-raised)",
                               borderColor: "var(--bz-border)",
                               color: "var(--bz-text-2)",
                             }}

@@ -73,10 +73,11 @@ export function MonthPillTabs({
   const isFuture = (m: string) => m > currentMonth;
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-[rgba(32,32,36,0.5)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] rounded-xl w-fit shadow-xl">
+    <div className="flex w-fit items-center gap-1 rounded-[var(--bz-product-radius-sm)] border border-[var(--bz-border)] bg-[var(--bz-card)] p-1 shadow-[var(--bz-shadow-card)]">
       <button
+        type="button"
         onClick={() => onMonthChange(addMonths(selectedMonth, -1))}
-        className="p-1.5 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors rounded-lg hover:bg-[rgba(255,255,255,0.05)]"
+        className="rounded-lg p-1.5 text-[var(--bz-text-2)] transition-colors hover:bg-[var(--bz-surface)] hover:text-[var(--bz-text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)]"
         aria-label="Previous month"
       >
         <ChevronLeft className="w-3.5 h-3.5" />
@@ -89,15 +90,16 @@ export function MonthPillTabs({
 
         return (
           <button
+            type="button"
             key={m}
             onClick={() => !future && onMonthChange(m)}
             disabled={future}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+            className={`rounded-lg px-3 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] ${
               isSelected
-                ? "bg-gradient-to-br from-[var(--bz-accent-warm)] to-[rgba(212,132,90,0.8)] text-white shadow-lg shadow-[rgba(212,132,90,0.3)]"
+                ? "bg-[var(--bz-accent)] text-[var(--accent-foreground)] shadow-sm"
                 : future
-                  ? "text-[var(--bz-text-2)]/30 cursor-not-allowed"
-                  : "text-[var(--bz-text-2)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--bz-text-1)]"
+                  ? "cursor-not-allowed text-[var(--bz-text-2)] opacity-40"
+                  : "text-[var(--bz-text-2)] hover:bg-[var(--bz-surface)] hover:text-[var(--bz-text-1)]"
             }`}
           >
             {MONTH_LABELS[mNum - 1]}
@@ -106,12 +108,13 @@ export function MonthPillTabs({
       })}
 
       <button
+        type="button"
         onClick={() => {
           const next = addMonths(selectedMonth, 1);
           if (!isFuture(next)) onMonthChange(next);
         }}
         disabled={isFuture(addMonths(selectedMonth, 1))}
-        className="p-1.5 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors rounded-lg hover:bg-[rgba(255,255,255,0.05)] disabled:opacity-30 disabled:cursor-not-allowed"
+        className="rounded-lg p-1.5 text-[var(--bz-text-2)] transition-colors hover:bg-[var(--bz-surface)] hover:text-[var(--bz-text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-focus-ring)] disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next month"
       >
         <ChevronRight className="w-3.5 h-3.5" />

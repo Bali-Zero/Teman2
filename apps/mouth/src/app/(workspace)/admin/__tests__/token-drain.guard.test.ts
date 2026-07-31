@@ -65,7 +65,7 @@ describe("admin/system drain guard (WS2 slice 6)", () => {
   it("alerts read --state-danger, panels read the dashboard recipe", () => {
     const src = readFileSync(PAGE, "utf8");
     expect(src).toContain("var(--state-danger)");
-    expect(src).toContain("rgba(35,35,40,0.65)"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(src).toContain("var(--bz-card)");
     expect(src).toContain("var(--bz-border)");
   });
 });

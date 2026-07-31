@@ -298,6 +298,11 @@
 
   /* Sidebar — GARUDA pill active */
   --sidebar-active-bg: #d4845a;
+  /* Filled controls need a darker, white-text-safe copper than the accent
+     used for icons and large text. This stays AA in both theme modes. */
+  --bz-sidebar-active-fill: #9d5230;
+  --bz-focus-ring: #d4845a;
+  --border-focus: var(--bz-focus-ring);
   --sidebar-active-border: transparent;
   --sidebar-pill-radius: 12px;
 
@@ -318,22 +323,22 @@
   --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
   /* Header surface — dark default; overridden under operative-light */
   --portal-header-bg: rgba(29, 39, 59, 0.7);
+  --bz-shell-header-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+  --bz-bottom-nav-bg: rgba(19, 19, 21, 0.82);
+  --bz-bottom-nav-border: rgba(255, 255, 255, 0.06);
+  --bz-bottom-nav-shadow: 0 -12px 32px rgba(0, 0, 0, 0.2);
+  --bz-bottom-nav-active: rgba(212, 132, 90, 0.12);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
    PORTAL LIGHT SURFACE — "Rumah Putih / Lounge" (2026-06-21)
 
-   The pre-paint themeInitScript in layout.tsx already routes `my.` (and
-   `zantara.`) → data-theme="operative-light", while `kita.`/`prime.` →
-   operative-dark. BUT the operative-light shell variables were never defined
-   (superscar #2 "Esiste ≠ Armato": routing wired, theme unarmed) — so the
-   client portal received the dark `:root` values. This block ARMS the light
-   surface by overriding the GARUDA shell tokens under [data-theme="operative-light"].
-
-   Scoped to data-theme on <html>, set per-DOMAIN — so it CANNOT leak into kita
-   (operative-dark) or the editorial site. The client gets a calm warm-paper
-   lounge; the team backoffice stays dark. Accent copper is kept for brand
-   continuity; only base/text/border/elevated invert. WCAG AA verified:
+   The pre-paint themeInitScript in layout.tsx routes `kita.`, `my.` and
+   `zantara.` to data-theme="operative-light" by default; `prime.` retains the
+   immersive operative-dark persona. This block arms the common daylight
+   surface, then product-scoped tokens below differentiate the team workspace
+   from the client portal. Accent copper is kept for brand continuity while
+   base/text/border/elevated invert. WCAG AA verified:
    ink #16213a on paper #f4f1ea ≈ 12.8:1; soft-ink #475372 ≈ 6.4:1.
    ─────────────────────────────────────────────────────────────────────────── */
 [data-theme="operative-light"] {
@@ -387,6 +392,8 @@
      step. */
   --bz-copper: #b5633a;
   --bz-copper-text: #9d5230;
+  --bz-focus-ring: #9d5230;
+  --border-focus: var(--bz-focus-ring);
 
   /* Daylight gold for warm accents / focus rings (was #c9a96e = 1.98:1 on
      paper, below even the 3:1 non-text floor). #8a6d3b = 4.30:1. */
@@ -432,9 +439,122 @@
   /* Focus indicator — universal keyboard navigation (WCAG 2.1.1 + 2.4.7)
      Scoped to operative-light only — cannot leak into kita/dark theme. */
   *:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--bz-focus-ring);
     outline-offset: 2px;
   }
+}
+
+/* ── Bali Zero product family ──
+   Theme answers light/dark. Product answers density, shape and atmosphere.
+   Keeping those axes separate lets Kita and My share one accessible system
+   without pretending they serve the same job. */
+[data-product="kita"] {
+  --bz-product-radius: 12px;
+  --bz-product-page-gap: 20px;
+  --bz-product-row-height: 52px;
+  --bz-product-heading-font: "Inter", system-ui, sans-serif;
+  --bz-header-height: 48px;
+}
+
+[data-product="my"] {
+  --bz-product-radius: 18px;
+  --bz-product-page-gap: 28px;
+  --bz-product-row-height: 60px;
+  --bz-product-heading-font: var(--font-serif), Georgia, serif;
+  --bz-header-height: 64px;
+}
+
+/* Kita: warm ivory daylight, compact and operational. */
+[data-theme="operative-light"][data-product="kita"] {
+  --bz-kita-canvas: #f8f6f2;
+  --bz-kita-card: #ffffff;
+  --bz-kita-card-hover: #fbf8f3;
+  --bz-kita-overlay: rgba(255, 253, 249, 0.86);
+  --bz-kita-nav: rgba(255, 253, 249, 0.92);
+
+  --surface-base: var(--bz-kita-canvas);
+  --surface-matter: var(--bz-kita-card);
+  --surface-overlay: var(--bz-kita-overlay);
+  --nav-bg: var(--bz-kita-nav);
+
+  --bz-base: var(--bz-kita-canvas);
+  --bz-elevated: var(--bz-kita-card);
+  --bz-surface: var(--bz-kita-card);
+  --bz-card: var(--bz-kita-card);
+  --bz-card-hover: var(--bz-kita-card-hover);
+  --bz-text-1: #172033;
+  --bz-text-2: #4d5870;
+  --bz-text-3: #596275;
+  --bz-border: rgba(55, 44, 32, 0.1);
+  --bz-border-hover: rgba(55, 44, 32, 0.17);
+
+  --background: var(--bz-kita-canvas);
+  --background-secondary: var(--bz-kita-card);
+  --background-elevated: var(--bz-kita-card);
+  --background-hover: var(--bz-kita-card-hover);
+  --foreground: #172033;
+  --foreground-secondary: #4d5870;
+  --foreground-muted: #596275;
+  --border: rgba(55, 44, 32, 0.1);
+  --border-hover: rgba(55, 44, 32, 0.17);
+
+  --kbli-bg-base: var(--bz-kita-canvas);
+  --kbli-bg-primary: var(--bz-kita-canvas);
+  --kbli-bg-secondary: var(--bz-kita-card);
+  --kbli-bg-elevated: var(--bz-kita-card);
+  --kbli-bg-surface: var(--bz-kita-card);
+  --kbli-bg-surface-hover: var(--bz-kita-card-hover);
+  --kbli-bg-card: var(--bz-kita-card);
+  --kbli-bg-card-hover: var(--bz-kita-card-hover);
+  --kbli-bg-input: var(--bz-kita-card);
+  --kbli-text-primary: #172033;
+  --kbli-text-secondary: #4d5870;
+  --kbli-text-muted: #596275;
+  --kbli-border: rgba(55, 44, 32, 0.1);
+  --kbli-border-hover: rgba(55, 44, 32, 0.17);
+
+  --portal-header-bg: rgba(248, 246, 242, 0.86);
+  --bz-shell-header-shadow: 0 8px 30px rgba(64, 46, 30, 0.05);
+}
+
+/* My: warm paper, softer depth and more breathing room. */
+[data-theme="operative-light"][data-product="my"] {
+  --bz-shell-header-shadow: 0 10px 34px rgba(22, 33, 58, 0.06);
+  --bz-bottom-nav-bg: rgba(255, 255, 255, 0.9);
+  --bz-bottom-nav-border: rgba(22, 33, 58, 0.09);
+  --bz-bottom-nav-shadow: 0 -12px 32px rgba(22, 33, 58, 0.08);
+  --bz-bottom-nav-active: rgba(181, 99, 58, 0.1);
+}
+
+[data-theme="operative-light"] .glass-panel-deep {
+  box-shadow: 4px 0 24px rgba(22, 33, 58, 0.06);
+}
+
+/* Shared product surfaces. These are intentionally color-agnostic: theme
+   tokens supply the palette while the product persona supplies the radius. */
+.bz-product-panel {
+  background: var(--bz-card);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-product-radius, 12px);
+  box-shadow: var(--bz-shadow-card);
+}
+
+.bz-product-panel--interactive {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.bz-product-panel--interactive:hover {
+  background: var(--bz-card-hover);
+  border-color: var(--bz-border-hover);
+  box-shadow: var(--bz-shadow-card-hover);
+}
+
+.bz-product-divider {
+  border-color: var(--bz-border);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

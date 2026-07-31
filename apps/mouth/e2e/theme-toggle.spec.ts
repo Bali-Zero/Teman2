@@ -1,32 +1,88 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
-test.describe("Theme Toggle", () => {
-  // Theme toggle is in workspace (requires auth), test on dev with bypass
-  test("html element does not have hardcoded dark class", async ({ page }) => {
-    await page.goto("/");
-    // The root html should NOT have className="dark" anymore
-    // (the canonical core ThemeProvider uses the data-theme attribute)
-    const htmlClass = await page.locator("html").getAttribute("class");
-    // class may carry utilities, but the old hardcoded "dark" token is gone
-    // (core ThemeProvider sets data-theme instead)
-    expect((htmlClass ?? "").split(/\s+/)).not.toContain("dark");
-    const dataTheme = await page.locator("html").getAttribute("data-theme");
-    expect(dataTheme).toBeTruthy();
+const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
+const KITA_ORIGIN = `http://kita.localhost:${E2E_PORT}`;
+const MY_ORIGIN = `http://my.localhost:${E2E_PORT}`;
+
+async function seedTheme(page: Page, theme?: string): Promise<void> {
+  await page.route("**/api/**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ data: {}, articles: [] }),
+    });
   });
 
-  test("data-theme defaults to editorial on the public host", async ({
+  await page.addInitScript((storedTheme) => {
+    localStorage.removeItem("bz-theme");
+    localStorage.removeItem("theme");
+    if (storedTheme) {
+      localStorage.setItem("bz-theme", storedTheme);
+    }
+  }, theme);
+}
+
+test.describe("Bali Zero product-family theme contract page Page", () => {
+  test("Kita defaults to day mode without a stored preference", async ({
     page,
   }) => {
-    await page.goto("/");
-    // Pre-paint script in app/layout.tsx: kita./prime. → operative-dark,
-    // my./zantara. → operative-light, everything else (public/dev) → editorial.
-    const dataTheme = await page.locator("html").getAttribute("data-theme");
-    expect(dataTheme).toBe("editorial");
+    await seedTheme(page);
+
+    await page.goto(`${KITA_ORIGIN}/`);
+
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      "operative-light",
+    );
   });
 
-  test("ThemeProvider applies data-theme attribute", async ({ page }) => {
-    await page.goto("/");
-    // Verify the attribute exists on html element
+  test("My defaults to day mode without a stored preference", async ({
+    page,
+  }) => {
+    await seedTheme(page);
+
+    await page.goto(`${MY_ORIGIN}/portal/login-upgraded`);
+
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      "operative-light",
+    );
+  });
+
+  test("an explicit dark preference wins over the product day default", async ({
+    page,
+  }) => {
+    await seedTheme(page, "operative-dark");
+
+    await page.goto(`${KITA_ORIGIN}/`);
+
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      "operative-dark",
+    );
+  });
+
+  test("a legacy Appearance dark preference remains honoured", async ({
+    page,
+  }) => {
+    await seedTheme(page, "dark");
+
+    await page.goto(`${KITA_ORIGIN}/`);
+
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      "operative-dark",
+    );
+  });
+
+  test("theme selection uses the data-theme contract instead of a dark class", async ({
+    page,
+  }) => {
+    await seedTheme(page);
+
+    await page.goto(`${KITA_ORIGIN}/`);
+
+    const htmlClass = await page.locator("html").getAttribute("class");
+    expect((htmlClass ?? "").split(/\s+/)).not.toContain("dark");
     await expect(page.locator("html[data-theme]")).toBeAttached();
   });
 });

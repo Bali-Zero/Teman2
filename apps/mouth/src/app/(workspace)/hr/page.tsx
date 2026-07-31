@@ -7,10 +7,11 @@ import * as hrApi from "@/lib/api/hr/hr";
 import type { AdminDashboard, PersonalDashboard } from "@/types/hr";
 import { Money } from "@balizero/core";
 
-/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+/** Dashboard panel recipe — follows the active Kita surface theme. */
 const PANEL: React.CSSProperties = {
-  background: "rgba(35,35,40,0.65)",
+  background: "var(--bz-card)",
   borderColor: "var(--bz-border)",
+  boxShadow: "var(--bz-shadow-card)",
 };
 
 function StatCard({

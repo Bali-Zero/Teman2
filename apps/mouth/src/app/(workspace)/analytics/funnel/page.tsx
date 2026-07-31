@@ -115,7 +115,7 @@ export default function FunnelAnalyticsPage() {
 
           <div
             style={{
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
               border: "1px solid var(--bz-border)",
               borderRadius: 12,
               padding: 16,
@@ -143,7 +143,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        background: "rgba(35,35,40,0.65)",
+        background: "var(--bz-card)",
         border: "1px solid var(--bz-border)",
         borderRadius: 12,
         padding: 16,

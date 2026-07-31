@@ -68,8 +68,8 @@ describe("Appearance settings — theme persistence (WS4)", () => {
     choose("Light");
     save();
 
-    expect(localStorage.getItem("bz-theme")).toBe("light");
-    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(localStorage.getItem("bz-theme")).toBe("operative-light");
+    expect(document.documentElement.dataset.theme).toBe("operative-light");
   });
 
   it("GUILT: saving never writes the retired `theme` key", () => {
@@ -88,8 +88,8 @@ describe("Appearance settings — theme persistence (WS4)", () => {
     choose("System");
     save();
 
-    expect(localStorage.getItem("bz-theme")).toBe("dark");
-    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("bz-theme")).toBe("operative-dark");
+    expect(document.documentElement.dataset.theme).toBe("operative-dark");
   });
 
   it("resolves 'System' to light when the OS prefers light", () => {
@@ -98,7 +98,7 @@ describe("Appearance settings — theme persistence (WS4)", () => {
     choose("System");
     save();
 
-    expect(localStorage.getItem("bz-theme")).toBe("light");
+    expect(localStorage.getItem("bz-theme")).toBe("operative-light");
   });
 
   it("reflects the theme actually in force, not a hardcoded default", () => {

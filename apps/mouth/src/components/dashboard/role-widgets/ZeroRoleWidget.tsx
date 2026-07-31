@@ -20,43 +20,46 @@ export function ZeroRoleWidget({ metrics }: Props) {
     <div className="flex flex-col h-full gap-3">
       {/* Revenue block */}
       <div>
-        <span className="text-[9px] font-bold text-[#9880d8]/70 tracking-[.12em] uppercase">
+        <span className="text-[9px] font-bold text-[var(--bz-text-3)] tracking-[.12em] uppercase">
           Revenue · MTD
         </span>
         <div className="mt-1.5 flex items-end gap-2">
-          <span className="text-[28px] font-black text-white leading-none tracking-tight">
+          <span className="text-[28px] font-black text-[var(--bz-text-1)] leading-none tracking-tight">
             {formatIDRCompact(metrics.revenue_mtd)}
           </span>
         </div>
         <div className="flex items-center gap-1 mt-1">
-          <TrendingUp size={10} className="text-accent-sage" />
-          <span className="text-[9px] font-semibold text-accent-sage">
+          <TrendingUp size={10} className="text-[var(--state-success)]" />
+          <span className="text-[9px] font-semibold text-[var(--state-success)]">
             +12% vs last month
           </span>
         </div>
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-white/[0.06]" />
+      <div className="h-px bg-[var(--bz-border)]" />
 
       {/* Alert rows */}
       <div className="flex flex-col gap-1.5 flex-1">
         {metrics.visti_scadenza > 0 && (
-          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(196,92,120,0.07)] border border-[rgba(196,92,120,0.18)]">
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[color-mix(in_srgb,var(--state-danger)_7%,transparent)] border border-[color-mix(in_srgb,var(--state-danger)_18%,transparent)]">
             <AlertTriangle
               size={11}
-              className="text-accent-pink-editorial flex-shrink-0"
+              className="text-[var(--state-danger)] flex-shrink-0"
             />
-            <span className="text-[10px] font-semibold text-accent-pink-editorial">
+            <span className="text-[10px] font-semibold text-[var(--state-danger)]">
               {metrics.visti_scadenza} visti &lt; 7gg
             </span>
           </div>
         )}
 
         {metrics.fatture_overdue > 0 && (
-          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(184,154,64,0.07)] border border-[rgba(184,154,64,0.18)]">
-            <FileWarning size={11} className="text-[#b89a40] flex-shrink-0" />
-            <span className="text-[10px] font-semibold text-[#b89a40]">
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[color-mix(in_srgb,var(--state-warning)_7%,transparent)] border border-[color-mix(in_srgb,var(--state-warning)_18%,transparent)]">
+            <FileWarning
+              size={11}
+              className="text-[var(--state-warning)] flex-shrink-0"
+            />
+            <span className="text-[10px] font-semibold text-[var(--state-warning)]">
               {metrics.fatture_overdue}{" "}
               {metrics.fatture_overdue === 1 ? "fattura" : "fatture"} overdue
             </span>
@@ -64,26 +67,32 @@ export function ZeroRoleWidget({ metrics }: Props) {
         )}
 
         {!hasAlerts && (
-          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(92,184,138,0.06)] border border-[rgba(92,184,138,0.16)]">
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[color-mix(in_srgb,var(--state-success)_6%,transparent)] border border-[color-mix(in_srgb,var(--state-success)_16%,transparent)]">
             <CheckCircle2
               size={11}
-              className="text-accent-sage flex-shrink-0"
+              className="text-[var(--state-success)] flex-shrink-0"
             />
-            <span className="text-[10px] font-semibold text-accent-sage">
+            <span className="text-[10px] font-semibold text-[var(--state-success)]">
               No critical alerts
             </span>
           </div>
         )}
 
         {/* System status */}
-        <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(74,142,196,0.06)] border border-[rgba(74,142,196,0.16)]">
-          <Server size={11} className="text-[#4a8ec4] flex-shrink-0" />
-          <span className="text-[10px] font-semibold text-[#4a8ec4]">
+        <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[color-mix(in_srgb,var(--state-info)_6%,transparent)] border border-[color-mix(in_srgb,var(--state-info)_16%,transparent)]">
+          <Server
+            size={11}
+            className="text-[var(--state-info)] flex-shrink-0"
+          />
+          <span className="text-[10px] font-semibold text-[var(--state-info)]">
             Fly.io {metrics.fly_uptime}%
           </span>
           <span
-            className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-accent-sage"
-            style={{ boxShadow: "0 0 4px rgba(92,184,138,0.8)" }}
+            className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--state-success)]"
+            style={{
+              boxShadow:
+                "0 0 4px color-mix(in srgb, var(--state-success) 80%, transparent)",
+            }}
           />
         </div>
       </div>

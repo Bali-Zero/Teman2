@@ -67,10 +67,13 @@ const ARCHETYPE_LABELS: Record<string, string> = {
 };
 
 const TIER_BADGE_COLORS: Record<string, string> = {
-  VIP: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-  standard: "bg-blue-500/20 text-blue-300 border-blue-500/40",
-  archive: "bg-gray-500/20 text-gray-400 border-gray-500/40",
-  unknown: "bg-gray-700/20 text-gray-500 border-gray-700/40",
+  VIP: "bg-[var(--state-warning)]/10 text-[var(--state-warning)] border-[var(--state-warning)]/40",
+  standard:
+    "bg-[var(--state-info)]/10 text-[var(--state-info)] border-[var(--state-info)]/40",
+  archive:
+    "bg-[var(--bz-surface)] text-[var(--bz-text-2)] border-[var(--bz-border)]",
+  unknown:
+    "bg-[var(--bz-surface)] text-[var(--bz-text-3)] border-[var(--bz-border)]",
 };
 
 function formatRelativeTime(iso: string | null): string {
@@ -89,13 +92,13 @@ function formatRelativeTime(iso: string | null): string {
 }
 
 function freshnessColor(iso: string | null): string {
-  if (!iso) return "text-gray-500";
+  if (!iso) return "text-[var(--bz-text-3)]";
   const ts = new Date(iso).getTime();
-  if (Number.isNaN(ts)) return "text-gray-500";
+  if (Number.isNaN(ts)) return "text-[var(--bz-text-3)]";
   const diffH = (Date.now() - ts) / (1000 * 60 * 60);
-  if (diffH < 24) return "text-green-400";
-  if (diffH < 24 * 7) return "text-yellow-400";
-  return "text-red-400";
+  if (diffH < 24) return "text-[var(--state-success)]";
+  if (diffH < 24 * 7) return "text-[var(--state-warning)]";
+  return "text-[var(--state-danger)]";
 }
 
 export function AiSummaryCard({
@@ -141,8 +144,8 @@ export function AiSummaryCard({
   // Loading state
   if (loading) {
     return (
-      <div className="rounded-lg border border-gray-700/50 bg-gray-900/40 p-4">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
+      <div className="bz-product-panel p-4">
+        <div className="flex items-center gap-2 text-sm text-[var(--bz-text-2)]">
           <Sparkles className="h-4 w-4 animate-pulse" />
           <span>Loading {title}…</span>
         </div>
@@ -153,12 +156,14 @@ export function AiSummaryCard({
   // Error state
   if (error) {
     return (
-      <div className="rounded-lg border border-red-700/40 bg-red-950/20 p-4">
-        <div className="flex items-start gap-2 text-sm text-red-400">
+      <div className="rounded-lg border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-4">
+        <div className="flex items-start gap-2 text-sm text-[var(--state-danger)]">
           <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div>
             <div className="font-medium">Failed to load {title}</div>
-            <div className="text-xs text-red-300/70 mt-1">{error}</div>
+            <div className="text-xs text-[var(--state-danger)]/70 mt-1">
+              {error}
+            </div>
           </div>
         </div>
       </div>
@@ -170,14 +175,14 @@ export function AiSummaryCard({
   // Empty states: not generated / pending
   if (response.status === "not_generated") {
     return (
-      <div className="rounded-lg border border-gray-700/50 bg-gray-900/40 p-4">
-        <div className="flex items-start gap-2 text-sm text-gray-400">
+      <div className="bz-product-panel p-4">
+        <div className="flex items-start gap-2 text-sm text-[var(--bz-text-2)]">
           <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div>
-            <div className="font-medium text-gray-300">
+            <div className="font-medium text-[var(--bz-text-1)]">
               {title} not generated yet
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-[var(--bz-text-3)] mt-1">
               The CRM-Guardian worker has not processed this client. It will run
               automatically when Drive content changes.
             </div>
@@ -189,12 +194,12 @@ export function AiSummaryCard({
 
   if (response.status === "pending") {
     return (
-      <div className="rounded-lg border border-blue-700/40 bg-blue-950/20 p-4">
-        <div className="flex items-start gap-2 text-sm text-blue-300">
+      <div className="rounded-lg border border-[var(--state-info)]/40 bg-[var(--state-info)]/10 p-4">
+        <div className="flex items-start gap-2 text-sm text-[var(--state-info)]">
           <Clock className="h-4 w-4 mt-0.5 flex-shrink-0 animate-pulse" />
           <div>
             <div className="font-medium">{title} generation in progress</div>
-            <div className="text-xs text-blue-200/70 mt-1">
+            <div className="text-xs text-[var(--state-info)]/70 mt-1">
               Worker is processing this client. Refreshing every{" "}
               {Math.round(pollIntervalMs / 1000)}s.
             </div>
@@ -209,7 +214,13 @@ export function AiSummaryCard({
   if (!summary) return null;
 
   return (
-    <div className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-950/10 to-gray-900/40 p-4">
+    <div
+      className="bz-product-panel p-4"
+      style={{
+        borderColor:
+          "color-mix(in srgb, var(--state-warning) 30%, transparent)",
+      }}
+    >
       <CardHeader
         title={title}
         generatedAt={response.generated_at}
@@ -241,11 +252,13 @@ function CardHeader({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-amber-400" />
-        <h3 className="text-sm font-semibold text-gray-100">{title}</h3>
+        <Sparkles className="h-4 w-4 text-[var(--state-warning)]" />
+        <h3 className="text-sm font-semibold text-[var(--bz-text-1)]">
+          {title}
+        </h3>
         {lowConfidence && (
           <span
-            className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-300"
+            className="rounded-full border border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--state-warning)]"
             title="Extraction confidence below 0.6 — manual review recommended"
           >
             Review
@@ -255,7 +268,7 @@ function CardHeader({
       <div className="flex items-center gap-3 text-xs">
         {confidencePct !== null && (
           <span
-            className="text-gray-400"
+            className="text-[var(--bz-text-2)]"
             title={`Extraction confidence: ${confidence?.toFixed(2)}`}
           >
             {confidencePct}%
@@ -269,7 +282,7 @@ function CardHeader({
         </span>
         <button
           onClick={onRefresh}
-          className="text-gray-400 hover:text-gray-200 transition-colors"
+          className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors"
           title="Refresh summary"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -321,7 +334,7 @@ function OverviewBody({ summary }: { summary: L1ClientSummary }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded border border-gray-600/50 bg-gray-800/40 px-2 py-1 text-xs text-gray-300">
+        <span className="rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2 py-1 text-xs text-[var(--bz-text-2)]">
           {archetypeLabel}
         </span>
         <span
@@ -330,23 +343,23 @@ function OverviewBody({ summary }: { summary: L1ClientSummary }) {
           {tier === "unknown" ? "Unknown tier" : tier}
         </span>
         {profile?.primary_service && profile.primary_service !== "unknown" && (
-          <span className="rounded border border-gray-600/50 bg-gray-800/40 px-2 py-1 text-xs text-gray-400">
+          <span className="rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2 py-1 text-xs text-[var(--bz-text-2)]">
             {profile.primary_service.replace(/_/g, " ")}
           </span>
         )}
       </div>
       {summary.narrative_en && (
-        <p className="text-sm text-gray-300 leading-relaxed">
+        <p className="text-sm text-[var(--bz-text-2)] leading-relaxed">
           {summary.narrative_en}
         </p>
       )}
       {summary.compliance?.red_flags &&
         summary.compliance.red_flags.length > 0 && (
-          <div className="rounded border border-red-700/40 bg-red-950/20 p-2">
-            <div className="flex items-center gap-1 text-xs font-medium text-red-300 mb-1">
+          <div className="rounded border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-2">
+            <div className="flex items-center gap-1 text-xs font-medium text-[var(--state-danger)] mb-1">
               <AlertTriangle className="h-3 w-3" /> Red flags
             </div>
-            <ul className="text-xs text-red-200/80 space-y-0.5 list-disc list-inside">
+            <ul className="text-xs text-[var(--state-danger)]/80 space-y-0.5 list-disc list-inside">
               {summary.compliance.red_flags.map((f, i) => (
                 <li key={i}>{f}</li>
               ))}
@@ -364,10 +377,12 @@ function CompanyBody({ summary }: { summary: L1ClientSummary }) {
   }
   return (
     <div className="space-y-2 text-sm">
-      <div className="font-medium text-gray-100">
+      <div className="font-medium text-[var(--bz-text-1)]">
         {c.legal_name}
         {c.legal_form && (
-          <span className="ml-2 text-xs text-gray-500">({c.legal_form})</span>
+          <span className="ml-2 text-xs text-[var(--bz-text-3)]">
+            ({c.legal_form})
+          </span>
         )}
       </div>
       <KvRow label="NIB" value={c.nib} />
@@ -416,38 +431,42 @@ function TaxBody({ summary }: { summary: L1ClientSummary }) {
       )}
       {records.length > 0 && (
         <div className="mt-2 space-y-1">
-          <div className="text-xs font-medium text-gray-400 mb-1">
+          <div className="text-xs font-medium text-[var(--bz-text-2)] mb-1">
             Tax records ({records.length})
           </div>
           {records.slice(0, 5).map((r, i) => (
             <div
               key={i}
-              className="rounded border border-gray-700/40 bg-gray-900/40 px-2 py-1 text-xs"
+              className="rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2 py-1 text-xs"
             >
-              <span className="font-medium text-gray-200">{r.period}</span>
+              <span className="font-medium text-[var(--bz-text-1)]">
+                {r.period}
+              </span>
               {r.spt_type && (
-                <span className="ml-2 text-gray-500">{r.spt_type}</span>
+                <span className="ml-2 text-[var(--bz-text-3)]">
+                  {r.spt_type}
+                </span>
               )}
               <span
                 className={`ml-2 ${
                   r.status === "filed"
-                    ? "text-green-400"
+                    ? "text-[var(--state-success)]"
                     : r.status === "overdue"
-                      ? "text-red-400"
-                      : "text-gray-500"
+                      ? "text-[var(--state-danger)]"
+                      : "text-[var(--bz-text-3)]"
                 }`}
               >
                 {r.status}
               </span>
               {r.amount_idr !== null && r.amount_idr !== undefined && (
-                <span className="ml-2 text-gray-400">
+                <span className="ml-2 text-[var(--bz-text-2)]">
                   Rp {r.amount_idr.toLocaleString("id-ID")}
                 </span>
               )}
             </div>
           ))}
           {records.length > 5 && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-[var(--bz-text-3)]">
               + {records.length - 5} more…
             </div>
           )}
@@ -504,21 +523,27 @@ function FamilyBody({ summary }: { summary: L1ClientSummary }) {
   }
   return (
     <div className="space-y-1 text-sm">
-      <div className="text-xs font-medium text-gray-400 mb-1">
+      <div className="text-xs font-medium text-[var(--bz-text-2)] mb-1">
         Shareholders / persons ({shareholders.length})
       </div>
       {shareholders.map((s, i) => (
         <div
           key={i}
-          className="rounded border border-gray-700/40 bg-gray-900/40 px-2 py-1 text-xs"
+          className="rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2 py-1 text-xs"
         >
-          <span className="font-medium text-gray-200">{s.name}</span>
-          {s.role && <span className="ml-2 text-gray-500">{s.role}</span>}
+          <span className="font-medium text-[var(--bz-text-1)]">{s.name}</span>
+          {s.role && (
+            <span className="ml-2 text-[var(--bz-text-3)]">{s.role}</span>
+          )}
           {s.percentage !== null && s.percentage !== undefined && (
-            <span className="ml-2 text-gray-400">{s.percentage}%</span>
+            <span className="ml-2 text-[var(--bz-text-2)]">
+              {s.percentage}%
+            </span>
           )}
           {s.nationality && (
-            <span className="ml-2 text-gray-500">{s.nationality}</span>
+            <span className="ml-2 text-[var(--bz-text-3)]">
+              {s.nationality}
+            </span>
           )}
         </div>
       ))}
@@ -538,8 +563,9 @@ function DocumentsBody({ summary }: { summary: L1ClientSummary }) {
   }, {});
   return (
     <div className="space-y-2 text-sm">
-      <div className="text-xs text-gray-400">
-        Total documents: <span className="text-gray-200">{docs.length}</span>
+      <div className="text-xs text-[var(--bz-text-2)]">
+        Total documents:{" "}
+        <span className="text-[var(--bz-text-1)]">{docs.length}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {Object.entries(byType)
@@ -547,9 +573,9 @@ function DocumentsBody({ summary }: { summary: L1ClientSummary }) {
           .map(([type, count]) => (
             <span
               key={type}
-              className="rounded border border-gray-700/40 bg-gray-900/40 px-2 py-0.5 text-xs text-gray-300"
+              className="rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2 py-0.5 text-xs text-[var(--bz-text-2)]"
             >
-              {type} <span className="text-gray-500">({count})</span>
+              {type} <span className="text-[var(--bz-text-3)]">({count})</span>
             </span>
           ))}
       </div>
@@ -563,7 +589,7 @@ function ProcessBody({ summary }: { summary: L1ClientSummary }) {
 
   if (flags.length === 0 && notes.length === 0) {
     return (
-      <div className="flex items-center gap-2 text-sm text-green-400">
+      <div className="flex items-center gap-2 text-sm text-[var(--state-success)]">
         <CheckCircle2 className="h-4 w-4" />
         <span>No red flags detected.</span>
       </div>
@@ -572,11 +598,11 @@ function ProcessBody({ summary }: { summary: L1ClientSummary }) {
   return (
     <div className="space-y-2 text-sm">
       {flags.length > 0 && (
-        <div className="rounded border border-red-700/40 bg-red-950/20 p-2">
-          <div className="text-xs font-medium text-red-300 mb-1 flex items-center gap-1">
+        <div className="rounded border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-2">
+          <div className="text-xs font-medium text-[var(--state-danger)] mb-1 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" /> Red flags ({flags.length})
           </div>
-          <ul className="text-xs text-red-200/80 list-disc list-inside space-y-0.5">
+          <ul className="text-xs text-[var(--state-danger)]/80 list-disc list-inside space-y-0.5">
             {flags.map((f, i) => (
               <li key={i}>{f}</li>
             ))}
@@ -584,11 +610,11 @@ function ProcessBody({ summary }: { summary: L1ClientSummary }) {
         </div>
       )}
       {notes.length > 0 && (
-        <div className="rounded border border-gray-700/40 bg-gray-900/40 p-2">
-          <div className="text-xs font-medium text-gray-400 mb-1">
+        <div className="rounded border border-[var(--bz-border)] bg-[var(--bz-surface)] p-2">
+          <div className="text-xs font-medium text-[var(--bz-text-2)] mb-1">
             Extraction notes
           </div>
-          <ul className="text-xs text-gray-300/80 list-disc list-inside space-y-0.5">
+          <ul className="text-xs text-[var(--bz-text-2)]/80 list-disc list-inside space-y-0.5">
             {notes.map((n, i) => (
               <li key={i}>{n}</li>
             ))}
@@ -611,25 +637,25 @@ function TimelineBody({ summary }: { summary: L1ClientSummary }) {
   );
   return (
     <div className="space-y-1 text-sm">
-      <div className="text-xs font-medium text-gray-400 mb-1">
+      <div className="text-xs font-medium text-[var(--bz-text-2)] mb-1">
         {events.length} extracted events
       </div>
       {sorted.slice(0, 8).map((e, i) => (
         <div
           key={i}
-          className="border-l-2 border-amber-500/30 pl-2 py-1 text-xs"
+          className="border-l-2 border-[var(--state-warning)]/30 pl-2 py-1 text-xs"
         >
           <div className="flex items-center gap-2">
-            <span className="text-amber-300 font-medium">
+            <span className="text-[var(--state-warning)] font-medium">
               {e.event_date ?? "Unknown date"}
             </span>
-            <span className="text-gray-500">{e.event_type}</span>
+            <span className="text-[var(--bz-text-3)]">{e.event_type}</span>
           </div>
-          <div className="text-gray-300 mt-0.5">{e.description}</div>
+          <div className="text-[var(--bz-text-2)] mt-0.5">{e.description}</div>
         </div>
       ))}
       {sorted.length > 8 && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-[var(--bz-text-3)]">
           + {sorted.length - 8} more events…
         </div>
       )}
@@ -653,9 +679,11 @@ function KvRow({
   if (value === null || value === undefined || value === "") return null;
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-xs text-gray-500 min-w-[110px]">{label}:</span>
+      <span className="text-xs text-[var(--bz-text-3)] min-w-[110px]">
+        {label}:
+      </span>
       <span
-        className={`text-xs ${highlight ? "text-yellow-300 font-medium" : "text-gray-200"}`}
+        className={`text-xs ${highlight ? "text-[var(--state-warning)] font-medium" : "text-[var(--bz-text-1)]"}`}
       >
         {value}
       </span>
@@ -664,5 +692,5 @@ function KvRow({
 }
 
 function EmptySectionMsg({ text }: { text: string }) {
-  return <div className="text-xs text-gray-500 italic">{text}</div>;
+  return <div className="text-xs text-[var(--bz-text-3)] italic">{text}</div>;
 }

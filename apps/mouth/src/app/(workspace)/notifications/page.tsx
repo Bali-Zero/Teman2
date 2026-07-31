@@ -153,7 +153,7 @@ export default function NotificationsDashboardPage() {
       case "failed":
         return "text-[var(--state-danger)] bg-[color-mix(in_srgb,var(--state-danger)_12%,transparent)]";
       default:
-        return "text-[var(--bz-text-secondary)] bg-[rgba(255,255,255,0.05)]";
+        return "text-[var(--bz-text-secondary)] bg-[var(--surface-raised)]";
     }
   };
 
@@ -420,7 +420,7 @@ export default function NotificationsDashboardPage() {
                             <span
                               className="text-[10px] px-1.5 py-0.5 rounded tabular-nums self-start"
                               style={{
-                                background: "rgba(255,255,255,0.04)",
+                                background: "var(--surface-raised)",
                                 color: "var(--muted-foreground)",
                               }}
                             >
@@ -547,13 +547,13 @@ function StatCard({
     amber:
       "bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] text-[var(--state-warning)]",
     red: "bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] text-[var(--state-danger)]",
-    gray: "bg-[rgba(255,255,255,0.05)] text-[var(--bz-text-secondary)]",
+    gray: "bg-[var(--surface-raised)] text-[var(--bz-text-secondary)]",
   };
 
   return (
     <div className={cn("rounded-xl border p-4", colorClasses[color])}>
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-[rgba(255,255,255,0.08)]">
+        <div className="p-2 rounded-lg bg-[var(--surface-raised)]">
           <Icon className="w-5 h-5" />
         </div>
         <div>

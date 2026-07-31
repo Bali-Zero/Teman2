@@ -463,7 +463,7 @@ export default function VisaOraclePage() {
         className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
         style={{
           borderColor: "var(--bz-border)",
-          background: "rgba(255,255,255,0.01)",
+          background: "var(--surface-raised)",
         }}
       >
         <div
@@ -510,7 +510,7 @@ export default function VisaOraclePage() {
       <div
         className="flex items-center justify-between px-4 py-3 rounded-2xl border mb-2"
         style={{
-          background: "rgba(35,35,40,0.65)",
+          background: "var(--bz-card)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           borderColor: "var(--bz-border)",
@@ -569,7 +569,7 @@ export default function VisaOraclePage() {
       <div
         className="flex flex-col sm:flex-row gap-3 px-4 py-3 rounded-2xl border mb-6"
         style={{
-          background: "rgba(35,35,40,0.65)",
+          background: "var(--bz-card)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           borderColor: "var(--bz-border)",
@@ -588,7 +588,7 @@ export default function VisaOraclePage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"
             style={{
-              background: "rgba(35,35,40,0.6)",
+              background: "var(--surface-raised)",
               border: "1px solid var(--bz-border)",
               color: "var(--bz-text-1)",
             }}
@@ -603,7 +603,7 @@ export default function VisaOraclePage() {
           <SelectTrigger
             className="w-[130px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(35,35,40,0.6)",
+              background: "var(--surface-raised)",
               borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
@@ -629,7 +629,7 @@ export default function VisaOraclePage() {
           <SelectTrigger
             className="w-[140px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(35,35,40,0.6)",
+              background: "var(--surface-raised)",
               borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
@@ -708,7 +708,7 @@ export default function VisaOraclePage() {
             key={item.id}
             className="rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg"
             style={{
-              background: "rgba(35,35,40,0.65)",
+              background: "var(--bz-card)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
               borderColor: "var(--bz-border)",
@@ -718,7 +718,7 @@ export default function VisaOraclePage() {
             {/* Card header */}
             <div
               className="px-4 py-4"
-              style={{ background: "rgba(255,255,255,0.02)" }}
+              style={{ background: "var(--surface-raised)" }}
             >
               <div className="flex items-start gap-3">
                 <button
@@ -808,7 +808,7 @@ export default function VisaOraclePage() {
                 <div
                   className="rounded-xl p-3"
                   style={{
-                    background: "rgba(255,255,255,0.02)",
+                    background: "var(--surface-raised)",
                     border: "1px solid var(--bz-border)",
                   }}
                 >
