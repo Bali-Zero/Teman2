@@ -85,7 +85,7 @@ export default async function HomeV2() {
           </>
         }
       />
-      <main id="main-content">
+      <main id="main-content" className="pt-14">
         <HeroBlueprint />
         <FunnelFeature funnel="visa" layout="full" />
         <FunnelFeature funnel="kbli" layout="full" />
