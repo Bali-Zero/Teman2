@@ -464,51 +464,51 @@
   --bz-header-height: 64px;
 }
 
-/* Kita: cool mineral daylight, compact and operational. */
+/* Kita: warm ivory daylight, compact and operational. */
 [data-theme="operative-light"][data-product="kita"] {
-  --surface-base: #f5f6f8;
+  --surface-base: #f8f6f2;
   --surface-matter: #ffffff;
-  --surface-overlay: rgba(255, 255, 255, 0.84);
-  --nav-bg: rgba(255, 255, 255, 0.9);
+  --surface-overlay: rgba(255, 253, 249, 0.86);
+  --nav-bg: rgba(255, 253, 249, 0.92);
 
-  --bz-base: #f5f6f8;
+  --bz-base: #f8f6f2;
   --bz-elevated: #ffffff;
   --bz-surface: #ffffff;
   --bz-card: #ffffff;
-  --bz-card-hover: #f8f9fb;
+  --bz-card-hover: #fbf8f3;
   --bz-text-1: #172033;
   --bz-text-2: #4d5870;
   --bz-text-3: #596275;
-  --bz-border: rgba(23, 32, 51, 0.09);
-  --bz-border-hover: rgba(23, 32, 51, 0.16);
+  --bz-border: rgba(55, 44, 32, 0.1);
+  --bz-border-hover: rgba(55, 44, 32, 0.17);
 
-  --background: #f5f6f8;
+  --background: #f8f6f2;
   --background-secondary: #ffffff;
   --background-elevated: #ffffff;
-  --background-hover: #f8f9fb;
+  --background-hover: #fbf8f3;
   --foreground: #172033;
   --foreground-secondary: #4d5870;
   --foreground-muted: #596275;
-  --border: rgba(23, 32, 51, 0.09);
-  --border-hover: rgba(23, 32, 51, 0.16);
+  --border: rgba(55, 44, 32, 0.1);
+  --border-hover: rgba(55, 44, 32, 0.17);
 
-  --kbli-bg-base: #f5f6f8;
-  --kbli-bg-primary: #f5f6f8;
+  --kbli-bg-base: #f8f6f2;
+  --kbli-bg-primary: #f8f6f2;
   --kbli-bg-secondary: #ffffff;
   --kbli-bg-elevated: #ffffff;
   --kbli-bg-surface: #ffffff;
-  --kbli-bg-surface-hover: #f8f9fb;
+  --kbli-bg-surface-hover: #fbf8f3;
   --kbli-bg-card: #ffffff;
-  --kbli-bg-card-hover: #f8f9fb;
+  --kbli-bg-card-hover: #fbf8f3;
   --kbli-bg-input: #ffffff;
   --kbli-text-primary: #172033;
   --kbli-text-secondary: #4d5870;
   --kbli-text-muted: #596275;
-  --kbli-border: rgba(23, 32, 51, 0.09);
-  --kbli-border-hover: rgba(23, 32, 51, 0.16);
+  --kbli-border: rgba(55, 44, 32, 0.1);
+  --kbli-border-hover: rgba(55, 44, 32, 0.17);
 
-  --portal-header-bg: rgba(245, 246, 248, 0.84);
-  --bz-shell-header-shadow: 0 8px 30px rgba(23, 32, 51, 0.05);
+  --portal-header-bg: rgba(248, 246, 242, 0.86);
+  --bz-shell-header-shadow: 0 8px 30px rgba(64, 46, 30, 0.05);
 }
 
 /* My: warm paper, softer depth and more breathing room. */
