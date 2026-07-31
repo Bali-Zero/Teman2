@@ -13,7 +13,29 @@ sources:
   - WebSearch: Portugal/UAE/Thailand/Malaysia/Greece advisory fees; HNW consultation fee patterns (2026-07-21)
 disclaimer: No number here is client-facing or authorized. All figures are "market comparable" or "recommended band." Any price used with a client MUST route through Bali Zero PricingTool + explicit Zero sign-off.
 fx: USD conversions at ~IDR 16,400/USD (mid-2026)
+government_fee_superseded_by: research/marketing/2026-07-21-e33-competitor-price-scan-indonesia.md
 ---
+
+> ⚠️ **CORRECTION 2026-07-31 — the government-fee anchor in this document is WRONG. Do not use it.**
+> §"Disagreement flagged (government fee)" below resolves the 13M-vs-21M split in favour of
+> **~IDR 13M (PP 45/2024)** and instructs that anchor be used in every service-fee-vs-government-fee
+> split. That resolution was made from secondary sources and is falsified by
+> [`2026-07-21-e33-competitor-price-scan-indonesia.md`](2026-07-21-e33-competitor-price-scan-indonesia.md),
+> a sibling scan authored the same day that was never merged to main until 2026-07-31. That scan
+> fetched the **official PNBP tariff table live from an `imigrasi.go.id` subdomain** and itemises it
+> verbatim: visa Rp 3.0M + ITAS 5y Rp 12.0M + re-entry 5y Rp 6.0M + Ditjen approval Rp 0.2M
+> = **~IDR 21.2M** for the 5-year main applicant. Emerhub's ~21M — dismissed here as "likely stale" —
+> was right.
+>
+> Consequence, because this document tells the reader to price against the anchor: the government
+> cost is understated by **~IDR 8M**, so every margin figure derived from the 13M anchor overstates
+> the professional margin by that amount. The scan's own reading of the same market: inside a
+> 35M all-in local price the true professional margin is only **~14M**, not ~22M.
+>
+> Everything else in this document (competitor positioning, international comparables, the
+> "Evidence-Managed Residency" thesis) is untouched by this correction. Prices remain non-client-facing
+> and still route through PricingTool + Zero sign-off (Legge 5).
+
 
 # E33 "Second Home Residency" — Pricing & Market Positioning Research
 
