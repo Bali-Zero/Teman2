@@ -86,7 +86,10 @@ export default defineConfig({
           ? `npm run dev -- --webpack --port ${E2E_PORT}`
           : `npm run dev -- --port ${E2E_PORT}`,
         url: `http://127.0.0.1:${E2E_PORT}`,
-        env: { NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS: "1" },
+        env: {
+          NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS: "1",
+          NEXT_PUBLIC_HIDE_CELL_WIDGET: "1",
+        },
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: "pipe",

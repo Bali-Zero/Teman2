@@ -11,6 +11,7 @@ import GateScreen from "./GateScreen";
 // useTeamStatus removed — PANOPTICON auto-clock-in from login (2026-04-14)
 import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
+import { CellWidget } from "@/components/cell/CellWidget";
 import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { I18nProvider } from "@/i18n";
@@ -35,6 +36,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const pathname = usePathname();
+  const isTerminalPage = pathname === "/terminal";
   const pageTitle = getRouteTitle(pathname);
   const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
@@ -452,6 +454,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             </main>
           </div>
         </div>
+        {!isTerminalPage &&
+          process.env.NEXT_PUBLIC_HIDE_CELL_WIDGET !== "1" && <CellWidget />}
         <ZantaraWidget
           open={isZantaraOpen}
           onClose={() => setIsZantaraOpen(false)}
