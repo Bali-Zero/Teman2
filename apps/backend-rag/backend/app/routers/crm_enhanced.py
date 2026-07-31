@@ -8,6 +8,7 @@ Provides endpoints for:
 - Auto OCR for passport documents
 """
 
+import asyncio
 import base64
 import logging
 import re as regex
@@ -63,7 +64,13 @@ async def _download_drive_file(file_id: str) -> tuple[bytes, str]:
 
     drive_service = ServiceAccountDriveService()
     if not drive_service.credentials.token:
-        drive_service.credentials.refresh(google_auth_requests.Request())
+        # google-auth's refresh() is synchronous: called bare inside an async
+        # function it blocks the event loop for the whole TLS handshake to
+        # oauth2.googleapis.com. `documents_proxy._get_drive_access_token`
+        # already offloads it; this twin did not.
+        await asyncio.to_thread(
+            drive_service.credentials.refresh, google_auth_requests.Request()
+        )
     access_token = drive_service.credentials.token
     if not access_token:
         raise RuntimeError("Drive not connected")
