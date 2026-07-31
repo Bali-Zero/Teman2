@@ -175,7 +175,7 @@ async function seedSyntheticProcessBoard(page: Page): Promise<void> {
   });
 }
 
-test.describe("Bali Zero product-family shells", () => {
+test.describe("Bali Zero product-family shells page Page", () => {
   test("Kita mobile shell stays within the viewport", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await seedSyntheticPortalSession(page);

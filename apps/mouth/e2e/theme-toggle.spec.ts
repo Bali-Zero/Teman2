@@ -21,7 +21,7 @@ async function seedTheme(page: Page, theme?: string): Promise<void> {
   }, theme);
 }
 
-test.describe("Bali Zero product-family theme contract", () => {
+test.describe("Bali Zero product-family theme contract page Page", () => {
   test("Kita defaults to day mode without a stored preference", async ({
     page,
   }) => {

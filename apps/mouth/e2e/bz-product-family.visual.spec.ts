@@ -312,7 +312,7 @@ async function capture(
   });
 }
 
-test.describe("Bali Zero product-family visual gallery", () => {
+test.describe("Bali Zero product-family visual gallery page Page", () => {
   test.skip(
     !process.env.BZ_VISUAL_GALLERY,
     "Run only for design-review output",
