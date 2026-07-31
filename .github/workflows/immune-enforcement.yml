@@ -98,7 +98,9 @@ jobs:
               scripts/lint_worktree_husky_symlink.py|\
               scripts/tests/test_lint_worktree_husky_symlink.py|\
               scripts/tests/test_root_manifest_does_not_contradict_itself.py|\
+              scripts/tests/test_lock_honors_root_overrides.py|\
               package.json|\
+              package-lock.json|\
               apps/*/package.json|\
               packages/*/package.json|\
               infra/doc-lint/*|\
@@ -197,6 +199,7 @@ jobs:
             scripts/tests/test_lint_doc_executable_refs.py \
             scripts/tests/test_lint_worktree_husky_symlink.py \
             scripts/tests/test_root_manifest_does_not_contradict_itself.py \
+            scripts/tests/test_lock_honors_root_overrides.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
