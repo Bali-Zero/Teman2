@@ -277,6 +277,7 @@ export default function PortalLayout({
                 className="fixed inset-y-0 left-0 z-50 md:hidden"
               >
                 <AppSidebar
+                  id="workspace-mobile-nav"
                   user={{
                     ...user,
                     role: "client",

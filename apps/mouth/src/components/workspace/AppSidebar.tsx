@@ -72,6 +72,7 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 interface AppSidebarProps {
+  id?: string;
   user: {
     name: string;
     email: string;
@@ -92,6 +93,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({
+  id,
   user,
   unreadWhatsApp = 0,
   reviewCount = 0,
@@ -211,7 +213,7 @@ export function AppSidebar({
 
   return (
     <aside
-      id="workspace-mobile-nav"
+      id={id}
       aria-label={ariaLabel}
       className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300 glass-panel-deep"
       style={{

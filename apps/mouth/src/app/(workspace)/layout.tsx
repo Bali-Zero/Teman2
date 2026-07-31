@@ -408,6 +408,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                 className="fixed inset-y-0 left-0 z-50 md:hidden"
               >
                 <AppSidebar
+                  id="workspace-mobile-nav"
                   user={user}
                   unreadWhatsApp={0}
                   reviewCount={gateStatus?.sections?.documents?.count ?? 0}
