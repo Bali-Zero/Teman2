@@ -52,6 +52,7 @@ import {
   COLUMN_COLORS,
   COLUMN_ORDER,
   getStatusColumn,
+  matchesStatusFilter,
   type CaseStatus,
 } from "@/components/process/kanban-colors";
 import {
@@ -569,7 +570,10 @@ export default function PratichePage() {
           }
 
           // Status filter
-          if (filters.status && getStatusColumn(p.status) !== filters.status) {
+          if (
+            filters.status &&
+            !matchesStatusFilter(p.status, filters.status)
+          ) {
             return false;
           }
 

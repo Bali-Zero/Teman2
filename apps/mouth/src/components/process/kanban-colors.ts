@@ -117,3 +117,12 @@ export function getStatusColumn(status: string): CaseStatus {
     return "sending_invoice";
   return "unknown";
 }
+
+export function matchesStatusFilter(
+  status: string,
+  selectedColumn: string,
+): boolean {
+  const visibleColumn = getStatusColumn(status);
+  if (selectedColumn === "inquiry" && visibleColumn === "unknown") return true;
+  return visibleColumn === selectedColumn;
+}
