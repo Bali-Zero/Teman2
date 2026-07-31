@@ -27,6 +27,7 @@ import {
   CreditCard,
   Lock,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -179,6 +180,7 @@ function ProfileMasthead() {
 // ============================================================================
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { error } = useToast();
   const [profile, setProfile] = useState<PortalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -200,7 +202,23 @@ export default function ProfilePage() {
       const data = await api.portal.getProfile();
       setProfile(data);
     } catch (err) {
-      error("Failed to load profile", "Please try again later");
+      const is403 =
+        (err as Error).message === "Forbidden" ||
+        (err as Error).message.includes("HTTP 403");
+      error(
+        "Failed to load profile",
+        is403 ? "Your account needs verification." : "Please try again later",
+        is403
+          ? {
+              label: "Contact your team",
+              onClick: () =>
+                window.open("https://wa.me/6282230102328", "_blank"),
+            }
+          : {
+              label: "Chat with your team",
+              onClick: () => router.push("/portal/messages"),
+            },
+      );
       logger.error("Failed to load portal profile", {}, err as Error);
     } finally {
       setIsLoading(false);

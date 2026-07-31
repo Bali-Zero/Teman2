@@ -79,6 +79,12 @@ SSH_HOSTS: dict[str, str] = {
 
 PROBE_TIMEOUT_S = 30
 
+# ssh's own failures (name resolution, connect, auth) exit 255; anything else is
+# the remote command's status passed through. Only the former is a flap.
+SSH_TRANSPORT_RC = 255
+PROBE_SSH_ATTEMPTS = 3
+PROBE_RETRY_BACKOFF_S = 1.0
+
 
 def detect_machine() -> str:
     user = getpass.getuser()
@@ -137,7 +143,53 @@ class EdgeReport:
     source_file: str = ""
 
 
+_SSH_INVOCATION_RE = re.compile(r"(?:^|[|;&]\s*|\bthen\s+|\bdo\s+)ssh\s")
+
+
+def _ssh_bearing(cmd: str, via: str) -> bool:
+    """Does this probe cross the network via ssh — however it was spelled?
+
+    `via: ssh:<host>` is the obvious half. The other half is a `type: cmd` probe
+    that shells out to ssh itself and therefore runs with via=local, which is how
+    the ssh_link edges are actually declared:
+
+        probe: { type: cmd, cmd: "ssh -o ConnectTimeout=8 pro-lan true" }
+
+    Keying the retry off `via` alone missed exactly the edge whose flap motivated
+    it. Anchored to a command position (start of line, after a pipe/semicolon/&,
+    after then/do) and requiring trailing whitespace, so a path that merely
+    contains the letters — `test -e ~/.ssh/config` — is not mistaken for an
+    invocation.
+    """
+    return via.startswith("ssh:") or bool(_SSH_INVOCATION_RE.search(cmd))
+
+
 def _run(cmd: str, via: str, no_ssh: bool) -> ProbeResult:
+    """Run one probe, retrying only when the ssh TRANSPORT failed.
+
+    A single attempt makes this verifier report the network instead of the
+    organism. This fleet's aliases resolve over mDNS, which blips: one failed
+    `ssh true` in ssh_reachable() marks the whole machine unreachable, so every
+    edge on it becomes SKIPPED and any ssh-probed edge declared healthy flips to
+    REGRESSED — a false alarm plus a silently blanked census. Measured on m5
+    during a real blip: 1 REGRESSED (`Could not resolve hostname`) and 194 of 354
+    edges SKIPPED, from that one name lookup.
+
+    What is retried is deliberately narrow. ssh reserves exit 255 for its OWN
+    failures and otherwise passes the remote command's status through, so 255 /
+    timeout / spawn-error are the transport, while any other non-zero is a real
+    verdict from a probe that actually ran (`launchctl list | grep` exiting 1
+    means the label is absent — retrying that would only make a true negative
+    slow). Probes that never touch ssh are never retried: no transport to flap.
+
+    Retrying does not make a dead link green — measured the same day: pro-lan
+    failed 5/5 real attempts with rc 255, and stays REGRESSED. What changes is
+    that a link which comes back on attempt 2 no longer costs the census a
+    machine.
+
+    Every retry is recorded in the returned detail — a verifier that quietly
+    papers over a flaky link is the disease it exists to catch (cicatrix #8).
+    """
     if via.startswith("ssh:"):
         if no_ssh:
             return ProbeResult(False, "ssh disabled (--no-ssh)")
@@ -145,16 +197,39 @@ def _run(cmd: str, via: str, no_ssh: bool) -> ProbeResult:
         full = ["ssh", "-o", "ConnectTimeout=8", host, cmd]
     else:
         full = ["/bin/bash", "-lc", cmd]
-    try:
-        proc = subprocess.run(
-            full, capture_output=True, text=True, timeout=PROBE_TIMEOUT_S
-        )
-    except subprocess.TimeoutExpired:
-        return ProbeResult(False, f"timeout {PROBE_TIMEOUT_S}s")
-    except OSError as exc:
-        return ProbeResult(False, f"spawn error: {exc}")
-    out = (proc.stdout or "") + (proc.stderr or "")
-    return ProbeResult(proc.returncode == 0, out.strip()[:300])
+
+    is_ssh = _ssh_bearing(cmd, via)
+    attempts = PROBE_SSH_ATTEMPTS if is_ssh else 1
+    detail = ""
+
+    for attempt in range(1, attempts + 1):
+        transport_failed = False
+        try:
+            proc = subprocess.run(
+                full, capture_output=True, text=True, timeout=PROBE_TIMEOUT_S
+            )
+        except subprocess.TimeoutExpired:
+            detail, transport_failed = f"timeout {PROBE_TIMEOUT_S}s", True
+        except OSError as exc:
+            detail, transport_failed = f"spawn error: {exc}", True
+        else:
+            out = (proc.stdout or "") + (proc.stderr or "")
+            detail = out.strip()[:300]
+            if proc.returncode == 0:
+                if attempt > 1:
+                    detail = f"[ok after {attempt} attempts] {detail}".strip()
+                return ProbeResult(True, detail)
+            # Remote command ran and said no — that is an answer, not a flap.
+            if not (is_ssh and proc.returncode == SSH_TRANSPORT_RC):
+                return ProbeResult(False, detail)
+            transport_failed = True
+
+        if not transport_failed or attempt == attempts:
+            break
+        time.sleep(PROBE_RETRY_BACKOFF_S * attempt)
+
+    suffix = f" [transport failed {attempts}x]" if attempts > 1 else ""
+    return ProbeResult(False, (detail + suffix).strip()[:300])
 
 
 def _expand(path: str, via: str) -> str:

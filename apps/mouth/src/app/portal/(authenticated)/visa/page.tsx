@@ -15,6 +15,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Plane, Calendar, FileText, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { StatusBadge, PortalEmptyState } from "@/components/portal";
 import { useToast } from "@/components/ui/toast";
@@ -92,6 +93,7 @@ function VisaMasthead() {
 }
 
 export default function VisaPage() {
+  const router = useRouter();
   const { error } = useToast();
   const [visaInfo, setVisaInfo] = useState<VisaInfo | null>(null);
   const [needsClientSelection, setNeedsClientSelection] = useState(false);
@@ -115,7 +117,23 @@ export default function VisaPage() {
         setNeedsClientSelection(true);
         return;
       }
-      error("Failed to load visa information", "Please try again later");
+      const is403 =
+        (err as Error).message === "Forbidden" ||
+        (err as Error).message.includes("HTTP 403");
+      error(
+        "Failed to load visa information",
+        is403 ? "Your account needs verification." : "Please try again later",
+        is403
+          ? {
+              label: "Contact your team",
+              onClick: () =>
+                window.open("https://wa.me/6282230102328", "_blank"),
+            }
+          : {
+              label: "Chat with your team",
+              onClick: () => router.push("/portal/messages"),
+            },
+      );
       logger.error("Failed to load portal visa info", {}, err as Error);
     } finally {
       setIsLoading(false);

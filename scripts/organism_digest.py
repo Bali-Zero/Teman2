@@ -152,6 +152,19 @@ def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[st
         except Exception as e:
             errs.append(f"heartbeat: {path.name} unreadable ({type(e).__name__})")
             continue
+        # wr2_runtime_stamp provenance files (ts/pid/host/checkout/head_sha/...,
+        # scripts/lib/wr2_runtime_stamp.py) are written per-INVOCATION by one-shot
+        # workers, not on a recurring cadence — a `checkout` under .worktrees/ is
+        # an ephemeral agent sandbox (superscar #5/#1) that is reaped after its
+        # task ends and can never be the canonical recurring producer, so its
+        # mtime aging forever is not a broken promise, just an unreaped one-off
+        # stamp. Evidence 2026-07-29: Mini's wr2.html_apply.runtime.json read
+        # "silent 79h" from a worktree (docs-inventory-check-blocker2-surgical-0725)
+        # reaped days earlier, while the SAME organ's stamp on Pro's canonical
+        # deploy-clone (~/nuzantara-deploy) was 3 minutes old.
+        checkout = data.get("checkout")
+        if isinstance(checkout, str) and "/.worktrees/" in checkout:
+            continue
         status = str(data.get("status", "")).lower()
         if age_h > window_stale_h:
             lines.append(f"organ {path.stem}: silent {age_h:.0f}h")
@@ -333,6 +346,38 @@ def _selftest() -> int:
             d = build_digest(24)
             expect("innocence: stale non-primary arsenal_probe not flagged silent",
                    not any("arsenal_probe" in ln for ln in d["organs"]))
+
+            # ---- innocence: a wr2_runtime_stamp provenance file whose `checkout`
+            # is under .worktrees/ is a one-off stamp from a reaped ephemeral
+            # sandbox, never a recurring promise on THIS host — must not be
+            # flagged "silent" no matter how old (2026-07-29 finding: Mini read
+            # 79h-silent from a worktree gone days earlier while the real
+            # production daemon's own heartbeat on Pro was minutes old)
+            hb5 = fake_home / ".organism" / "last_seen" / "wr2.html_apply.runtime.json"
+            hb5.write_text(json.dumps({
+                "ts": "2026-07-25T22:02:05Z", "pid": 1, "host": "mini-pro2",
+                "checkout": "/Users/nuzantara/nuzantara/.worktrees/some-reaped-lane",
+                "head_sha": "deadbeef", "dirty": True, "stale_modules": [], "errors": [],
+            }))
+            os.utime(hb5, (old, old))
+            d = build_digest(24)
+            expect("innocence: worktree-sourced runtime stamp not flagged silent",
+                   not any("wr2.html_apply" in ln for ln in d["organs"]))
+
+            # ---- guilt: same organ, but stamped from a CANONICAL (non-worktree)
+            # checkout — e.g. the real deploy-clone daemon — must still flag when
+            # stale. Proves the exemption is scoped to .worktrees/, not to any
+            # file carrying a `checkout` field.
+            hb6 = fake_home / ".organism" / "last_seen" / "wr2.supervisor.runtime.json"
+            hb6.write_text(json.dumps({
+                "ts": "2026-07-25T22:02:05Z", "pid": 1, "host": "Nuzantara",
+                "checkout": "/Users/nuzantara/nuzantara-deploy",
+                "head_sha": "deadbeef", "dirty": False, "stale_modules": [], "errors": [],
+            }))
+            os.utime(hb6, (old, old))
+            d = build_digest(24)
+            expect("guilt: canonical-checkout runtime stamp still flags silent",
+                   any("wr2.supervisor.runtime: silent" in ln for ln in d["organs"]))
 
             # ---- guilt: stale arsenal_probe on its PRIMARY node still flags
             hb4 = fake_home / ".organism" / "last_seen" / "mini.arsenal_probe.json"

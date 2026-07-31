@@ -120,3 +120,17 @@ docs/runbooks/README.md
 # canonical format (internal sha256 checksum); prettier's list-indent fights the
 # generator = format deadlock, same class as INDEX.md above (2026-07-13).
 apps/organism/organism/organs_registry.yaml
+
+# Cicatrix scar records — the exact bytes are load-bearing, and Prettier rewrites them.
+# Measured 2026-07-30 on origin/main: inside these long paragraphs Prettier parsed literal
+# text as emphasis delimiters and SWAPPED them, silently corrupting three tokens of the W104
+# record — `bz:log-anomaly:*` became `bz:log-anomaly:_` (a Redis key glob turned into an
+# underscore), and `_line_is_fresh` / `_publish_redis_event` lost their leading underscore to
+# a `*`. A session grepping those names finds nothing. It also deleted 68 spaces adjacent to
+# inline-code spans (`redis-cli`esce 0 e mette`NOAUTH`su STDOUT). Correct prose could not be
+# committed at all: the pre-commit prettier check rejected it and `--write` re-broke it.
+# This file is injected into every session's context and is grepped by `scar query`, so a
+# formatter must not be a writer here. Damage restored in the same commit as this entry.
+.claude/rules/cicatrix-superscar.md
+.claude/rules/cicatrix-scars.md
+.claude/rules/cicatrix-scars-archive.md

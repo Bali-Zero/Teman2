@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { Locale } from "./types";
 import { DEFAULT_LOCALE, LOCALES } from "./types";
+import { LANG_OWNER_ATTR, LANG_OWNER_CONTENT } from "./content-locale";
 import en from "./locales/en.json";
 import id from "./locales/id.json";
 import it from "./locales/it.json";
@@ -51,6 +52,19 @@ function interpolate(
   );
 }
 
+/**
+ * `<html lang>` has two would-be writers — this provider (UI-chrome locale,
+ * from `blog-language`) and a page that knows the language its CONTENT was
+ * served in. The attribute describes the content, so the page wins whenever
+ * it has claimed ownership; see i18n/content-locale.ts.
+ */
+function pageOwnsLang(): boolean {
+  return (
+    document.documentElement.getAttribute(LANG_OWNER_ATTR) ===
+    LANG_OWNER_CONTENT
+  );
+}
+
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = React.useState<Locale>(DEFAULT_LOCALE);
 
@@ -58,14 +72,17 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("blog-language");
     if (saved && LOCALES.includes(saved as Locale)) {
       setLocaleState(saved as Locale);
-      document.documentElement.lang = saved;
+      if (!pageOwnsLang()) document.documentElement.lang = saved;
     }
   }, []);
 
   const setLocale = React.useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
     localStorage.setItem("blog-language", newLocale);
-    document.documentElement.lang = newLocale;
+    // The UI locale still changes; `<html lang>` does NOT when a page owns it.
+    // Switching the chrome to Italian does not translate an English article
+    // body — declaring "it" there would describe a document that is not in it.
+    if (!pageOwnsLang()) document.documentElement.lang = newLocale;
   }, []);
 
   const t: TranslationFn = React.useCallback(

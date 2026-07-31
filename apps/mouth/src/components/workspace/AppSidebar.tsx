@@ -131,7 +131,7 @@ export function AppSidebar({
         : "hover:bg-[var(--surface-raised)] hover:text-[var(--bz-text-1)]",
     );
     const sharedStyle = active
-      ? { background: "var(--bz-sidebar-active-fill)", color: "#fff" }
+      ? { background: "var(--bz-copper-deep)", color: "#fff" }
       : { color: "var(--bz-text-2)" };
 
     const sharedContent = (

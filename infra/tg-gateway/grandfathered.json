@@ -156,7 +156,6 @@
     "scripts/sota_fase0_final_check.py",
     "scripts/supervisor_autofix_tier2.sh",
     "scripts/system_doctor.py",
-    "scripts/verify_connectome_run.sh",
     "scripts/verify_home_bridge_sync.sh",
     "scripts/wa_army_watcher.sh",
     "scripts/wa_corpus_daily_run.sh",

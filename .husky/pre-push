@@ -526,6 +526,24 @@ else
             # The ONLY place the suite genuinely ran to a pass. Every other
             # path out of this block either exits 1 or leaves a skip reason.
             BACKEND_SUITE_RAN=1
+        elif [ "$TEST_RC" -eq 75 ]; then
+            # 75 = EX_TEMPFAIL, returned by prepush_suite_lock.sh ONLY when it
+            # never acquired the machine lock. The wrapped pytest was not even
+            # spawned, so there is nothing to reproduce and nothing to blame.
+            #
+            # Before this branch existed the timeout exited 1 — pytest's own
+            # "tests failed" — and fell through to the generic branch below,
+            # which printed "❌ Python tests FAILED" plus a reproduce command
+            # for a suite that never ran. Seen twice on 2026-07-29 on a
+            # 9-waiter M5. Third instance of the same disease as #45 and W104:
+            # the exit code is the reply, and two replies sharing one value
+            # means the verdict names something it never measured.
+            echo "⚠️  Backend suite NEVER RAN — this machine's suite lock was not acquired. NO VERDICT, push blocked."
+            echo "   Nothing here is a statement about your diff: no test judged it. Do NOT hunt a regression,"
+            echo "   and do NOT print a reproduce command — there is no failure to reproduce."
+            echo "   Retry when the queue drains. The wrapper above prints who holds the lock and how long it has"
+            echo "   actually been alive; judge staleness from THAT, not from how long you personally waited."
+            exit 1
         elif [ "$TEST_RC" -ge 128 ]; then
             TEST_SIGNAL=$((TEST_RC - 128))
             echo "⚠️  Python test run TERMINATED by signal $TEST_SIGNAL — NO VERDICT, push blocked pending re-run."

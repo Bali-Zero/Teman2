@@ -188,13 +188,31 @@ describe("VisaPage (WS3 day pass)", () => {
     expect(mockToastError).not.toHaveBeenCalled();
   });
 
-  it("shows a toast when loading fails", async () => {
-    mockGetVisaStatus.mockRejectedValue(new Error("boom"));
+  it("shows a contact toast when loading fails with 403", async () => {
+    mockGetVisaStatus.mockRejectedValue(new Error("Forbidden"));
+    render(<VisaPage />);
+    await screen.findByRole("heading", { level: 1 });
+    expect(mockToastError).toHaveBeenCalledWith(
+      "Failed to load visa information",
+      "Your account needs verification.",
+      expect.objectContaining({
+        label: "Contact your team",
+        onClick: expect.any(Function),
+      }),
+    );
+  });
+
+  it("shows a chat toast when loading fails with non-403", async () => {
+    mockGetVisaStatus.mockRejectedValue(new Error("Network error"));
     render(<VisaPage />);
     await screen.findByRole("heading", { level: 1 });
     expect(mockToastError).toHaveBeenCalledWith(
       "Failed to load visa information",
       "Please try again later",
+      expect.objectContaining({
+        label: "Chat with your team",
+        onClick: expect.any(Function),
+      }),
     );
   });
 });
