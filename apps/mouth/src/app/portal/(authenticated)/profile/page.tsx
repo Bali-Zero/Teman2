@@ -29,8 +29,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-// From its own module, not the barrel: tests vi.mock "@/lib/api".
-import { ApiError } from "@/lib/api/error-handler";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -204,17 +202,22 @@ export default function ProfilePage() {
       const data = await api.portal.getProfile();
       setProfile(data);
     } catch (err) {
-      // Branch on the real HTTP status. This read `err.status` and
-      // `err.response.status`, neither of which the api client ever set, so
-      // `is403` was permanently false and the 403 copy below was dead code.
-      const is403 = err instanceof ApiError && err.statusCode === 403;
+      const is403 =
+        (err as Error).message === "Forbidden" ||
+        (err as Error).message.includes("HTTP 403");
       error(
         "Failed to load profile",
         is403 ? "Your account needs verification." : "Please try again later",
-        {
-          label: is403 ? "Contact your team" : "Chat with your team",
-          onClick: () => router.push("/portal/messages"),
-        },
+        is403
+          ? {
+              label: "Contact your team",
+              onClick: () =>
+                window.open("https://wa.me/6282230102328", "_blank"),
+            }
+          : {
+              label: "Chat with your team",
+              onClick: () => router.push("/portal/messages"),
+            },
       );
       logger.error("Failed to load portal profile", {}, err as Error);
     } finally {
