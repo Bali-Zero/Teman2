@@ -170,6 +170,11 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                     pointerEvents: i === active ? "auto" : "none",
                   }}
                 >
+                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-muted)]">
+                    <span className="text-[var(--text-tertiary)] text-[11px] font-semibold uppercase tracking-[0.15em]">
+                      {s.category ?? "Bali Zero"}
+                    </span>
+                  </div>
                   <Image
                     src={s.coverImage as string}
                     alt={s.title || ""}
