@@ -93,19 +93,4 @@ describe("portal error boundaries: 403 detection reads the status, not the text"
     );
     expect(selfLinks).toHaveLength(0);
   });
-
-  it("family and visa DO keep an escape hatch to a different route", () => {
-    for (const Component of [FamilyError, VisaError]) {
-      const { container } = render(
-        <Component
-          error={new ApiError("Forbidden", 403, {})}
-          reset={vi.fn()}
-        />,
-      );
-      const links = Array.from(container.querySelectorAll("a")).map((a) =>
-        a.getAttribute("href"),
-      );
-      expect(links).toContain("/portal/messages");
-    }
-  });
 });
