@@ -263,7 +263,7 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     expect(PAGE).toContain("baliBlockClause(kbli.baliL4?.status)");
   });
 
-  it("pins the population: 456 render the notice, only 39 are MSME-reserved", () => {
+  it("pins the population: 455 render the notice, only 39 are MSME-reserved", () => {
     // Mirrors the component's own guard: baliBlocked && !nationallyClosed.
     const nationallyClosed = (r: RawRecord) =>
       r.pma_cap_special !== true &&
@@ -275,11 +275,41 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     const msme = notice.filter(
       (r) => r.l4_bali?.status === "CHIUSO_PMA_NO_BESAR",
     );
-    expect(notice.length).toBe(456);
+    // 456 until 2026-08-01, when the Perpres 49/2021 Lampiran III cure gave
+    // twenty codes their lawful foreign cap. Exactly ONE of them is also
+    // Bali-blocked — 16221 (Industri Barang Bangunan dari Kayu), now 0%
+    // foreign — so it stops qualifying for a notice whose whole job is to
+    // explain a BALI-specific cause. The binding cause for 16221 is national
+    // now, and the national layer says it. The other nineteen sit at 49%,
+    // which is not 0, so they stay. A drop of one after patching twenty is
+    // the expected shape here, not a rounding accident.
+    expect(notice.length).toBe(455);
     expect(msme.length).toBe(39);
-    // 417 pages were being told a cause that was not theirs — 5.8x the
+    // 416 pages were being told a cause that was not theirs — 5.8x the
     // licensing-frame defect, and above the fold rather than deep in the page.
-    expect(notice.length - msme.length).toBe(417);
+    expect(notice.length - msme.length).toBe(416);
+  });
+
+  it("the count above is a SUBTRACTION, and names what it subtracted", () => {
+    // Deliberately not `notice.filter(nationallyClosed) === []`: `notice` is
+    // DEFINED as blocked && !nationallyClosed, so that assertion is empty by
+    // construction and would pass against any dataset whatsoever. This one
+    // decomposes the population instead, so it fails if 16221 ever regains a
+    // non-zero cap (the Perpres cure regressed) and it fails if the split
+    // stops adding up.
+    const nationallyClosed = (r: RawRecord) =>
+      r.pma_cap_special !== true &&
+      ((r.pma_status ?? "").toUpperCase() === "TERTUTUP" ||
+        (r.pma_max_asing ?? 0) === 0);
+    const blocked = RECORDS.filter((r) => r.l4_bali?.blocked === true);
+    const excluded = blocked.filter(nationallyClosed);
+    expect(excluded.map((r) => r.kode_kbli_2025)).toContain("16221");
+    expect(blocked.length - excluded.length).toBe(455);
+    // and it left by CAP, not by status — the status is TERBATAS, which the
+    // banner's guard does not look at
+    const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
+    expect(woodBuilding?.pma_max_asing).toBe(0);
+    expect((woodBuilding?.pma_status ?? "").toUpperCase()).toBe("TERBATAS");
   });
 
   it("INNOCENCE: the 39 MSME-reserved codes keep their original meaning", () => {
@@ -341,11 +371,17 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     const msme = answers.filter(
       (r) => r.l4_bali?.status === "CHIUSO_PMA_NO_BESAR",
     );
-    expect(answers.length).toBe(455);
+    // 455 until 2026-08-01 — same single departure as the banner above
+    // (16221), reached by a DIFFERENT predicate: there it left because its cap
+    // became 0, here because its status became TERBATAS. Two guards, two
+    // reasons, one code; that they agree on this record is a coincidence of
+    // the cure, not evidence the populations are the same. The test below
+    // still proves they are not.
+    expect(answers.length).toBe(454);
     expect(msme.length).toBe(39);
-    // 416 answers named a cause that was not theirs — in the visible Q&A and in
+    // 415 answers named a cause that was not theirs — in the visible Q&A and in
     // the FAQPage JSON-LD, which is the copy that leaves the site.
-    expect(answers.length - msme.length).toBe(416);
+    expect(answers.length - msme.length).toBe(415);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
