@@ -1,0 +1,377 @@
+{
+ "instrument": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu)",
+ "vintage": "2021-05-25",
+ "transcribed_from": "page images rendered at 200dpi; the PDF text layer corrupts codes and percentages",
+ "unit": "(bidang usaha, KBLI-2020) pair — the cap does not attach to the code alone",
+ "rows": [
+  {
+   "entry": 1,
+   "bidang_usaha": "Industri pengolahan kopi yang sudah mendapatkan indikasi geografis",
+   "kbli_2020": "10761",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #1",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 2,
+   "bidang_usaha": "Industri batik cap",
+   "kbli_2020": "13134",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #2",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 3,
+   "bidang_usaha": "Industri barang bangunan dari kayu",
+   "kbli_2020": "16221",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #3",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 4,
+   "bidang_usaha": "Industri kosmetik tradisional",
+   "kbli_2020": "20232",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #4",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 5,
+   "bidang_usaha": "Industri bahan baku obat tradisional untuk manusia",
+   "kbli_2020": "21021",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #5",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 6,
+   "bidang_usaha": "Industri produk obat tradisional untuk manusia",
+   "kbli_2020": "21022",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #6",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 7,
+   "bidang_usaha": "Industri senjata dan amunisi",
+   "kbli_2020": "25200",
+   "foreign_cap_pct": 49,
+   "condition": "may exceed 49% with Menteri Pertahanan approval",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 7,
+   "bidang_usaha": "Industri kendaraan perang",
+   "kbli_2020": "30400",
+   "foreign_cap_pct": 49,
+   "condition": "may exceed 49% with Menteri Pertahanan approval",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 7,
+   "bidang_usaha": "Industri radar pertahanan untuk sistem persenjataan",
+   "kbli_2020": "26513",
+   "foreign_cap_pct": 49,
+   "condition": "may exceed 49% with Menteri Pertahanan approval",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 7,
+   "bidang_usaha": "Industri kapal perang",
+   "kbli_2020": "30111",
+   "foreign_cap_pct": 49,
+   "condition": "may exceed 49% with Menteri Pertahanan approval",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 7,
+   "bidang_usaha": "Industri pesawat terbang militer",
+   "kbli_2020": "30300",
+   "foreign_cap_pct": 49,
+   "condition": "may exceed 49% with Menteri Pertahanan approval",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 8,
+   "bidang_usaha": "Industri kapal: Pinisi, Cadik, kapal dari kayu lainnya dengan desain khas tradisional",
+   "kbli_2020": "30111",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #8",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 9,
+   "bidang_usaha": "Angkutan laut dalam negeri liner dan tramper untuk penumpang",
+   "kbli_2020": "50111",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #9",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 10,
+   "bidang_usaha": "Angkutan laut dalam negeri untuk wisata",
+   "kbli_2020": "50113",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #10",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 11,
+   "bidang_usaha": "Angkutan laut dalam negeri perintis untuk penumpang",
+   "kbli_2020": "50114",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #11",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 12,
+   "bidang_usaha": "Angkutan laut dalam negeri liner dan tramper untuk barang",
+   "kbli_2020": "50131",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #12",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 13,
+   "bidang_usaha": "Angkutan laut dalam negeri untuk barang khusus",
+   "kbli_2020": "50133",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #13",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 14,
+   "bidang_usaha": "Angkutan laut dalam negeri perintis untuk barang",
+   "kbli_2020": "50134",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #14",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 15,
+   "bidang_usaha": "Angkutan laut dalam negeri pelayaran rakyat",
+   "kbli_2020": "50135",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #15",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 16,
+   "bidang_usaha": "Angkutan laut luar negeri liner dan tramper untuk barang",
+   "kbli_2020": "50141",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #16",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 17,
+   "bidang_usaha": "Angkutan laut luar negeri untuk barang khusus",
+   "kbli_2020": "50142",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #17",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 18,
+   "bidang_usaha": "Angkutan penyeberangan umum antar provinsi",
+   "kbli_2020": "50214",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #18",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 19,
+   "bidang_usaha": "Angkutan penyeberangan perintis antar provinsi",
+   "kbli_2020": "50215",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #19",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 20,
+   "bidang_usaha": "Angkutan penyeberangan umum antar kabupaten/kota",
+   "kbli_2020": "50216",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #20",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 21,
+   "bidang_usaha": "Angkutan penyeberangan perintis antar kabupaten/kota",
+   "kbli_2020": "50217",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #21",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 22,
+   "bidang_usaha": "Angkutan penyeberangan umum dalam kabupaten/kota",
+   "kbli_2020": "50218",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #22",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 23,
+   "bidang_usaha": "Angkutan sungai dan danau untuk penumpang dengan trayek tetap dan teratur",
+   "kbli_2020": "50211",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #23",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 24,
+   "bidang_usaha": "Angkutan sungai dan danau untuk penumpang dengan trayek tidak tetap dan tidak teratur",
+   "kbli_2020": "50212",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #24",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 25,
+   "bidang_usaha": "Angkutan sungai dan danau dengan trayek tidak tetap dan tidak teratur untuk wisata",
+   "kbli_2020": "50213",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #25",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 26,
+   "bidang_usaha": "Angkutan sungai dan danau untuk barang umum dan/atau hewan",
+   "kbli_2020": "50221",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #26",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 27,
+   "bidang_usaha": "Angkutan sungai dan danau untuk barang khusus",
+   "kbli_2020": "50222",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #27",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 28,
+   "bidang_usaha": "Angkutan sungai dan danau untuk barang berbahaya",
+   "kbli_2020": "50223",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #28",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 29,
+   "bidang_usaha": "Angkutan moda udara niaga berjadwal",
+   "kbli_2020": "51101",
+   "foreign_cap_pct": 49,
+   "condition": "national capital owner must retain single majority",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #29",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 30,
+   "bidang_usaha": "Angkutan udara niaga tidak berjadwal dalam negeri",
+   "kbli_2020": "51102",
+   "foreign_cap_pct": 49,
+   "condition": "national capital owner must retain single majority",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #30",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 31,
+   "bidang_usaha": "Kegiatan angkutan udara",
+   "kbli_2020": "51109",
+   "foreign_cap_pct": 49,
+   "condition": "national capital owner must retain single majority",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #31",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 32,
+   "bidang_usaha": "Aktivitas kurir",
+   "kbli_2020": "53201",
+   "foreign_cap_pct": 49,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #32",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 33,
+   "bidang_usaha": "Penerbitan surat kabar, majalah, dan buletin (pers)",
+   "kbli_2020": "58130",
+   "foreign_cap_pct": 0,
+   "condition": "0% at establishment; 49% via capital market for expansion",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #33",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 34,
+   "bidang_usaha": "Lembaga Penyiaran Swasta (LPS)",
+   "kbli_2020": "60102",
+   "foreign_cap_pct": 0,
+   "condition": "0% at establishment; 20% for expansion",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #34",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 35,
+   "bidang_usaha": "Lembaga Penyiaran Berlangganan (LPB)",
+   "kbli_2020": "60202",
+   "foreign_cap_pct": 0,
+   "condition": "0% at establishment; 20% for expansion",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #35",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 36,
+   "bidang_usaha": "Aktivitas biro perjalanan ibadah umroh dan haji khusus",
+   "kbli_2020": "79122",
+   "foreign_cap_pct": 0,
+   "condition": "domestic capital and Islamic faith requirement",
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #36",
+   "vintage": "2021-05-25"
+  },
+  {
+   "entry": 37,
+   "bidang_usaha": "Sanggar seni",
+   "kbli_2020": "90011",
+   "foreign_cap_pct": 0,
+   "condition": null,
+   "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #37",
+   "vintage": "2021-05-25"
+  }
+ ]
+}
