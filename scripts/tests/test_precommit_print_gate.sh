@@ -2,7 +2,7 @@
 # test_precommit_print_gate.sh — guilt + innocence for the `.husky/pre-commit`
 # Golden Rule #8 gate (no print() in backend code).
 #
-# THE DEFECT (measured 2026-08-01): the gate re-implemented ruff's T201 with a
+# THE DEFECT (measured 2026-08-02): the gate re-implemented ruff's T201 with a
 # text scan. A text scan cannot see `# noqa: T201` — which ruff honors, and which
 # `sentry_config.py::_before_send` genuinely needs, because a logger call there
 # re-enters Sentry's LoggingIntegration — and it cannot tell a call from the word
@@ -193,7 +193,7 @@ esac
 #    PLATFORM NOTE, declared rather than assumed: this case only bites where
 #    xargs runs its command on empty input. GNU xargs (Linux CI) does — that is
 #    what `-r/--no-run-if-empty` turns off. BSD xargs (macOS, measured
-#    2026-08-01) does NOT, so removing the guard cannot redden this case on a
+#    2026-08-02) does NOT, so removing the guard cannot redden this case on a
 #    dev Mac. It is pinned here because CI is where it would bite, and the line
 #    below says out loud which of the two shells is running, so nobody reads a
 #    structurally-vacuous pass as coverage (W108).

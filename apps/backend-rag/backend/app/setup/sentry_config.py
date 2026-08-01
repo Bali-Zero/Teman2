@@ -119,17 +119,46 @@ _CLIENT_ID_RE = re.compile(r"\bCL-\d{3,}\b")
 # SHAPE-anchored: formatted Indonesian NPWP, e.g. "01.234.567.8-901.000".
 _NPWP_RE = re.compile(r"\b\d{2}\.\d{3}\.\d{3}\.\d-\d{3}\.\d{3}\b")
 
-# SHAPE-anchored: international phone, e.g. "+62 812 3456 7890", "+6281234567890".
-# `.` is deliberately NOT a separator here: with it, a signed float in a metrics
-# line (`latency +12.345678901`) matches and gets redacted. Dot-separated phone
-# numbers are the rarer shape and WhatsApp never emits them; a destroyed metric
-# is the worse failure.
-_PHONE_INTL_RE = re.compile(r"\+\d{1,3}(?:[\s-]?\d){7,14}\b")
+# SHAPE-anchored: international phone, e.g. "+62 812 3456 7890", "+6281234567890",
+# "+62 (812) 3456-7890". Two forms, deliberately separate:
+#   FMT — a country code followed by a SEPARATOR. A signed integer is never
+#         written "+62 (812)", so the separator is the discriminator.
+#   RUN — a contiguous run of 11+ digits after the "+". Shorter contiguous runs
+#         are left alone: "+12345678" is equally a rupiah delta and
+#         "+1234567890" a byte offset, and in a repo whose logs carry revenue
+#         and byte counts that is the likelier reading. 11 is not a threshold
+#         tuned to the fixtures: an E.164 number CARRYING its country code is
+#         11-15 digits (+1 and ten national digits, +62 and nine to eleven), so
+#         it sits where real phone numbers begin and leaves the 10-digit band
+#         below it to the counters.
+# `.` is deliberately NOT a separator: with it, a signed float in a metrics line
+# (`latency +12.345678901`) matches and gets redacted. Dot-separated phone numbers
+# are the rarer shape and WhatsApp never emits them.
+# Both are bounded repetitions of a single class — no nested quantifier, hence no
+# catastrophic backtracking (the ReDoS shape cured in core/legal/constants.py).
+_PHONE_INTL_FMT_RE = re.compile(r"\+\d{1,3}[\s()-]{1,3}\d[\d\s()-]{5,16}\d")
+_PHONE_INTL_RUN_RE = re.compile(r"\+\d{11,15}\b")
 
-# SHAPE-anchored: Indonesian mobile in local (`08…`) or WhatsApp-JID (`62…`) form.
-# An epoch in seconds or milliseconds starts with 1, never 08 or 62, so neither
-# collides with the timestamps that dominate log lines.
-_PHONE_ID_RE = re.compile(r"\b(?:08\d{8,11}|62\d{9,12})\b")
+# SHAPE-anchored: Indonesian mobile in local (`08…`) form, with or without the
+# separators people actually type ("0812 3456 7890", "0812-3456-7890"). The
+# LEADING ZERO is the discriminator: a count is never written 0812…
+# The first draft matched contiguous digits only, so the separated forms — how a
+# human types the number into the CRM field these messages quote — walked through.
+_PHONE_LOCAL_RE = re.compile(r"\b08\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{3,5}\b")
+
+# SHAPE-anchored: WhatsApp-JID form (`62…`). Kept DELIBERATELY WIDE, and its
+# collateral accepted on evidence rather than preference: the dominant real shape
+# in this codebase is `logger.info("... %s", phone)` — measured across
+# backend/app/routers/whatsapp_chat.py — which renders the number BARE, with no
+# adjacent label and no @s.whatsapp.net suffix. Label-anchoring it would miss the
+# leak that actually happens.
+# ACCEPTED COLLATERAL, stated because it is real: an 11-14 digit integer starting
+# with 62 — a token count, a byte total — reads [REDACTED]. Under UU PDP the safe
+# direction is to over-redact, and no shape separates the two.
+# (An earlier comment here defended this pattern against EPOCHS, which start with
+# 1 and never collide. That was the wrong adversary: the collision is with COUNTS,
+# and two reviewers from different model families found it independently.)
+_PHONE_ID_RE = re.compile(r"\b62\d{9,12}\b")
 
 # LABEL-anchored: the value carries no distinctive shape, so the field must name
 # itself. Covers NIB/NIK/KTP/NPWP-16-digit and passport/paspor numbers.
@@ -157,7 +186,9 @@ def _redact_string(s: str) -> str:
     s = _EMAIL_RE.sub(PII_REDACTION_PLACEHOLDER, s)
     s = _CLIENT_ID_RE.sub(PII_REDACTION_PLACEHOLDER, s)
     s = _NPWP_RE.sub(PII_REDACTION_PLACEHOLDER, s)
-    s = _PHONE_INTL_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    s = _PHONE_INTL_FMT_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    s = _PHONE_INTL_RUN_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    s = _PHONE_LOCAL_RE.sub(PII_REDACTION_PLACEHOLDER, s)
     s = _PHONE_ID_RE.sub(PII_REDACTION_PLACEHOLDER, s)
     # Keep the label, drop the value: "NIB 1234567890123" -> "NIB [REDACTED]".
     # The label is what makes the breadcrumb still worth reading.
@@ -242,10 +273,27 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] 
             f"[sentry_config] _before_send raised {type(exc).__name__}: {exc}",
             file=sys.stderr,
         )
+        # `exception` is the one field this fallback keeps, and it is exactly
+        # where a formatted message with PII lives (`exception.values[].value`,
+        # frame vars). Returning it raw made the docstring above — "we strip
+        # everything else (incl. potentially-unscrubbed data)" — false for the
+        # only field it does not strip. Two independent reviewers, different
+        # model families, found this path on the same diff. So scrub it on its
+        # own: whatever broke the full walk is usually in `extra`/locals.
+        try:
+            safe_exception = _scrub(event.get("exception"))
+        except Exception:
+            # Second failure: drop the exception entirely. Losing the stack is a
+            # diagnosis cost; shipping unredacted PII is a UU PDP breach, and the
+            # tag below still tells the reader an event was suppressed here.
+            safe_exception = None
         return {
             "level": event.get("level"),
-            "exception": event.get("exception"),
-            "tags": {"sentry_hook_error": "true"},
+            "exception": safe_exception,
+            "tags": {
+                "sentry_hook_error": "true",
+                "sentry_exception_dropped": "true" if safe_exception is None else "false",
+            },
         }
 
 

@@ -242,7 +242,7 @@ if [ -n "$PY_FILES" ]; then
         # a text scan cannot see `# noqa: T201` (which ruff honors, and which
         # sentry_config.py's before_send needs — a logger call there re-enters Sentry)
         # and cannot tell a call from the word "print(" inside a comment.
-        # Measured 2026-08-01 across the whole scope: 3 files tripped the old grep and
+        # Measured 2026-08-02 across the whole scope: 3 files tripped the old grep and
         # every one was a false positive — two were comments, one of which literally
         # says the code does NOT print. Zero true positives; it only blocked commits.
         # Limit, declared: ruff reads the WORKTREE file, not the staged blob (the old
@@ -251,7 +251,7 @@ if [ -n "$PY_FILES" ]; then
         # GNU xargs (the Linux CI runners) runs its command even when input is empty
         # — that is what `-r/--no-run-if-empty` exists to switch off — so without the
         # guard this degrades into a bare `ruff check` over the whole repository.
-        # Measured 2026-08-01 on macOS: BSD xargs does NOT run on empty input and
+        # Measured 2026-08-02 on macOS: BSD xargs does NOT run on empty input and
         # does not accept `-r`, so `[ -n ]` is the form that holds on both.
         if ! command -v ruff >/dev/null 2>&1; then
             echo "❌ ERROR: cannot verify Golden Rule #8 — ruff is not on PATH."
