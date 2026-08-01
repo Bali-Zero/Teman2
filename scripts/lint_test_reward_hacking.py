@@ -113,6 +113,27 @@ def _is_fixture(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+def _names_an_assertion(name: str) -> bool:
+    """True for `assert_x` AND for `_assert_x` — the leading underscore is FORM.
+
+    The rule already trusted any callable named `assert*` to do the asserting.
+    A module-private helper is the same entity with a Python visibility marker
+    in front of it, and marking a helper private is the ordinary convention for
+    one that is not part of the module's API — so the guard was rejecting
+    precisely the tidier spelling. Measured when it bit: 13 tests in this repo
+    whose ONLY assertion is an underscore-prefixed helper, all of them real
+    (`tests/test_sentry_pii_redaction.py::_assert_no_pii` walks the whole event
+    and raises with the leaked value named). They were invisible until the file
+    was staged, because this linter only sees staged files — the same way W95's
+    297 async findings sat latent.
+
+    The trade is symmetric with the rule it extends: a helper named `_assert_*`
+    that does not assert now excuses its callers, exactly as `assert_*` always
+    could. Family #3 — match the entity, not the spelling.
+    """
+    return name.lstrip("_").startswith("assert")
+
+
 def _body_has_assertion(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """True if the test body contains an assert, a self.assert*, or pytest.raises."""
     for node in ast.walk(fn):
@@ -121,10 +142,10 @@ def _body_has_assertion(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         if isinstance(node, ast.Call):
             f = node.func
             if isinstance(f, ast.Attribute):
-                if f.attr.startswith("assert") or f.attr == "raises" or f.attr == "fail":
+                if _names_an_assertion(f.attr) or f.attr == "raises" or f.attr == "fail":
                     return True
             if isinstance(f, ast.Name) and (
-                f.id.startswith("assert") or f.id == "raises"
+                _names_an_assertion(f.id) or f.id == "raises"
             ):
                 return True
         # `with pytest.raises(...)` counts (it's a Call captured above).

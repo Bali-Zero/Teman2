@@ -356,3 +356,58 @@ if __name__ == "__main__":
     import pytest
 
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# --------------------------------------------------------------------------- #
+# RH005 vs a module-private assertion helper (2026-08-02)
+#
+# The rule already trusted `assert_*`; `_assert_*` is the same entity with a
+# Python visibility marker in front. It bit on `tests/test_sentry_pii_redaction.py`,
+# where 10 long-standing tests delegate to `_assert_no_pii()` — and it bit only
+# when that file was first staged, because this linter sees staged files alone.
+# --------------------------------------------------------------------------- #
+def test_rh005_silent_when_the_only_assertion_is_a_private_helper():
+    src = """
+def _assert_no_pii(event):
+    assert event is not None
+
+def test_redacts_request_body():
+    _assert_no_pii(before_send({"a": 1}))
+"""
+    assert "RH005" not in _codes(src)
+
+
+def test_rh005_silent_on_a_private_helper_reached_through_an_attribute():
+    src = """
+def test_redacts_via_module_helper():
+    helpers._assert_no_pii(before_send({"a": 1}))
+"""
+    assert "RH005" not in _codes(src)
+
+
+def test_rh005_still_fires_when_the_private_helper_is_not_an_assertion():
+    """Innocence has a floor: `_setup(...)` is not an assertion by any spelling."""
+    src = """
+def _setup_event(payload):
+    return dict(payload)
+
+def test_builds_an_event_and_checks_nothing():
+    _setup_event({"a": 1})
+"""
+    assert "RH005" in _codes(src)
+
+
+def test_rh005_still_fires_on_an_assertionless_test_beside_a_private_helper():
+    """The helper's presence in the file must not excuse a test that ignores it."""
+    src = """
+def _assert_no_pii(event):
+    assert event is not None
+
+def test_uses_the_helper():
+    _assert_no_pii(before_send({"a": 1}))
+
+def test_forgot_to_use_it():
+    before_send({"a": 1})
+"""
+    codes = _codes(src)
+    assert "RH005" in codes
