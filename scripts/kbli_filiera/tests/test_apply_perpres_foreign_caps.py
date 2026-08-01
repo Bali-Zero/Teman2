@@ -37,9 +37,36 @@ def test_every_divergent_code_on_the_real_dataset_is_adjudicated():
 
 
 def test_the_table_names_no_code_the_evidence_does_not():
+    """Every adjudicated code must be one the instrument actually reaches.
+
+    This asserted `set(ADJUDICATION) == divergent` until the cure ran, and that
+    equality is only true BEFORE it: once the plain codes are patched they stop
+    being divergent while the table must keep them — the table is the record of
+    what was decided, not a snapshot of what is still broken. The version that
+    survives the cure is: no phantom entries, and no divergence left undecided
+    (the test above). Written down because the equality passed locally and
+    failed in CI for exactly this reason: the suite was run before the data
+    change it was about.
+    """
     records = json.loads(CANONICAL.read_text())["data"]
-    divergent = {i["kbli_2025"] for i in classify_join(RELATION, records)["disagree"]}
-    assert set(ADJUDICATION) == divergent
+    result = classify_join(RELATION, records)
+    judged = {i["kbli_2025"] for bucket in ("agree", "disagree", "ambiguous")
+              for i in result[bucket]}
+    assert set(ADJUDICATION) <= judged
+
+
+def test_every_plain_code_now_carries_the_lawful_cap():
+    """The cure's own end-proof, read off the dataset rather than the applier.
+
+    A `plain` verdict is a promise that the code SHOULD carry the annex's cap.
+    Once applied, it must actually agree — so this test fails both if the patch
+    was never run and if something later reverts one of the twenty.
+    """
+    records = json.loads(CANONICAL.read_text())["data"]
+    result = classify_join(RELATION, records)
+    agreeing = {i["kbli_2025"] for i in result["agree"]}
+    plain = {c for c, (verdict, _) in ADJUDICATION.items() if verdict == PLAIN}
+    assert plain <= agreeing, f"plain but still divergent: {sorted(plain - agreeing)}"
 
 
 # --- guilt ------------------------------------------------------------------
@@ -145,6 +172,18 @@ def test_apply_preserves_the_datasets_own_serialisation(tmp_path):
     before = path.read_bytes()
     assert mod.main(["--apply", "--dataset", str(path)]) == 0
     assert path.read_bytes() == before
+
+
+def test_applying_to_a_fixture_never_touches_the_repos_sidecar(tmp_path):
+    """Applying to the real canonical fans the change out to four copies and
+    bumps the SEO sidecar. Applying to a fixture must do neither — a test that
+    rewrites production state is its own defect (W96)."""
+    sidecar_before = mod.SIDECAR_PATH.read_bytes()
+    copy_before = mod.SIDECAR_DATASET_PATH.stat().st_mtime_ns
+    path = _dataset(tmp_path, [_rec("25200", ["25200"], 100)])
+    assert mod.main(["--apply", "--dataset", str(path)]) == 0
+    assert mod.SIDECAR_PATH.read_bytes() == sidecar_before
+    assert mod.SIDECAR_DATASET_PATH.stat().st_mtime_ns == copy_before
 
 
 def test_dry_run_writes_nothing(tmp_path):

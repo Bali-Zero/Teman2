@@ -34,8 +34,11 @@ gives two caps is marked plain.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 _FILIERA_DIR = str(Path(__file__).resolve().parent)
@@ -52,6 +55,9 @@ from perpres_foreign_cap_relation import (  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+SYNC_SCRIPT = REPO_ROOT / "scripts" / "sync_kbli_dataset.sh"
+SIDECAR_DATASET_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json"
+SIDECAR_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-dataset-version.json"
 
 PLAIN = "plain"          # 2025 code names the same activity the annex restricts
 BROADER = "broader"      # 2025 code covers more than the restricted activity
@@ -163,6 +169,40 @@ def plan(records: list[dict]) -> tuple[list[dict], list[str]]:
     return planned, refusals
 
 
+def run_sync() -> None:
+    """Fan the canonical out to its four published copies.
+
+    Skipping this is not cosmetic: `check-kbli-dataset-sync` fails the PR, and
+    `apps/mouth` serves its OWN physical copy, so an un-synced cure changes
+    nothing on the pages it was written for.
+    """
+    result = subprocess.run(["bash", str(SYNC_SCRIPT), "sync"], cwd=REPO_ROOT,
+                            capture_output=True, text=True, check=False)
+    sys.stdout.write(result.stdout)
+    sys.stderr.write(result.stderr)
+    if result.returncode != 0:
+        raise SystemExit(f"sync_kbli_dataset.sh failed with exit {result.returncode}")
+
+
+def update_sidecar() -> None:
+    """Bump the SEO/derived-pin sidecar the required frontend suite guards.
+
+    Every filiera compiler carries this; this one did not, and all three
+    dataset-derived gates went red on its first PR — the sidecar hash, the copy
+    sync, and the batch membership pin. A compiler that writes the canonical and
+    leaves its derivatives stale is a half-cure that fails somebody else's check.
+    """
+    if not SIDECAR_DATASET_PATH.exists():
+        raise SystemExit(f"sidecar dataset copy missing: {SIDECAR_DATASET_PATH} (sync must run first)")
+    digest = hashlib.sha256(SIDECAR_DATASET_PATH.read_bytes()).hexdigest()
+    sidecar = json.loads(SIDECAR_PATH.read_text(encoding="utf-8"))
+    before = sidecar.get("datasetSha256")
+    sidecar["datasetSha256"] = f"sha256:{digest}"
+    sidecar["lastModified"] = date.today().isoformat()
+    SIDECAR_PATH.write_text(json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"sidecar: {before} -> {sidecar['datasetSha256']}")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true", help="write the dataset (default: dry-run)")
@@ -213,6 +253,16 @@ def main(argv: list[str] | None = None) -> int:
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     path.write_text(body + ("\n" if original_text.endswith("\n") else ""), encoding="utf-8")
     print(f"\nAPPLIED: {touched} record(s) patched in {path.name}")
+
+    # Only for the real canonical. A test fixture in tmp_path must never reach
+    # out and rewrite the repo's copies or the sidecar (W96: tests that write
+    # production state), so the derivatives are keyed on identity, not on the
+    # fact that --apply was passed.
+    if path.resolve() == CANONICAL.resolve():
+        run_sync()
+        update_sidecar()
+    else:
+        print(f"(not the canonical: skipping copy sync + sidecar for {path})")
     return 0
 
 
