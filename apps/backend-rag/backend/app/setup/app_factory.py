@@ -710,10 +710,6 @@ def create_app() -> FastAPI:
 
     app.include_router(audio_router, prefix="/api")
 
-    from backend.app.streaming import router as streaming_router
-
-    app.include_router(streaming_router)
-
     from backend.app.routers.system_observability import router as system_observability_router
 
     app.include_router(system_observability_router)
