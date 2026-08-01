@@ -26,7 +26,62 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-08-01 — keep current)
+## 1. LIVE STATE (last update 2026-08-02 — keep current)
+
+**🟢 2026-08-02 — THE PERPRES CAP IS LIVE ON THE CHANNELS. Twenty codes cured, and the cure had to be
+chased through four stores before a client could see it.** #3515 (canonical) → #3517 (Qdrant sync
+tool) → #3518 (LLM corpus). What a client is told now, measured on prod rather than inferred:
+
+- `chat_kbli` on `51101`: _"no, you cannot own 100% … limited to a maximum of 49% … the Indonesian
+  partner must retain a single majority."_ Before: 100% open.
+- `inspect_kbli 51101`: `pma_status` **TERBATAS**. Before: TERBUKA.
+- Innocence held on both surfaces: `10761` still reads TERBUKA/100%, correctly — the annex restricts
+  only _coffee processing that holds a geographical indication_, a narrower **bidang usaha** than the
+  2025 code. That is why 12 BROADER + 2 RENAMED codes were REFUSED rather than patched.
+
+**THE LESSON WORTH KEEPING: `inspect_kbli` reads `pma_status` from QDRANT FIRST, and the kg_nodes
+property only as a fallback.** So `kg_kbli_resync.py` — which exists _because_ that endpoint once
+served a stale status — is a no-op on that field while Qdrant carries a value. Measured: after the KG
+resync, `kg_nodes` said TERBATAS on all twenty and the endpoint still answered TERBUKA. The
+propagation order that actually reaches a client:
+
+1. `kbli_documents_cure.py --only <codes> --apply` — feeds `chat_kbli` verbatim. **The cap lands in
+   `content`, not in `metadata`**; the metadata cap key stays absent by design.
+2. `kg_kbli_resync.py --apply` — syncs `pma_status` only; the cap field is on **0** kg_nodes rows.
+3. `kbli_qdrant_pma_sync.py --collection kbli_2025_final_hybrid --codes <…> --apply` — **the decisive
+   one**, new in #3517. Payload-only merge, never a re-index (the embedding model is FROZEN).
+4. `kbli_inspect_cache_bust.py --only <codes> --apply` — up to a 30-day TTL; a cured store is
+   invisible until evicted. Any diagnostic call made BEFORE the cure writes a stale entry: 1 of the 20
+   needed eviction, and it was the one this session had queried.
+
+**PROBE TRAPS PAID FOR HERE** — each returned a clean, believable zero or a plausible wrong answer:
+
+- `kbli_2025_final` **is not a collection**. It resolves to `kbli_2025_final_hybrid`;
+  `kbli_2025_final_oss` (10,825 points) answers to none of the code keys. A filter on a non-existent
+  collection returns zero points for EVERY code, including ones you know exist. Run a code you know
+  exists as a positive control before believing any zero — the same rule vindicated the cache-bust
+  step, where `0/20` was true and `56101` proved the tool could still see one.
+- `kg_nodes.name` is the ENGLISH TITLE; the code lives in the `kode` property.
+- On a static file, a cache-busting query does NOT bust the Vercel edge cache, and neither does a
+  client no-cache header. **Compare the `etag` against an md5 you computed yourself.**
+
+**🟡 STILL OPEN — the frontend half is merged but NOT SERVED (`operator[credential]`).** The cured
+`llms-kbli.txt` is on main and two production/READY deployments carry it, but `balizero.com` still
+serves the etag of the PRE-cure file, with 61 TERTUTUP rows still reading 100%. No Vercel credential
+on the fleet works (M5 token → 403 invalidToken; Pro's auth file is a placeholder with no token key;
+Mini has none; no repo secret, no workflow). The `mcp__vercel__*` tools have their own auth but expose
+no promote, and every `*.vercel.app` alias is SSO-protected — `balizero.com` is the only host this can
+be measured on. Unblocking needs an interactive `vercel` login. **Which of the three causes it is —
+stale alias, manual promotion, or edge cache — is NOT established**, only the symptom and the remedy
+family.
+
+**🟡 STILL OPEN — 14 codes deliberately unadjudicated.** 12 BROADER + 2 RENAMED, where the 2025 code
+is wider than the _bidang usaha_ the instrument restricts. A cap there is a per-code decision, not a
+deduction; `--strict` on `perpres_foreign_cap_relation.py` stays disarmed until they are ruled on
+(arming a gate on a live backlog is its own defect).
+
+**🟡 `operator[business]` — whether any client already advised on one of these codes should be
+reached back to.** Not a technical question, and not a session's to answer.
 
 **🔴🔴 2026-08-01 (F2, evening) — WE TELL CLIENTS THEY CAN WHOLLY OWN AN INDONESIAN ARMS FACTORY, A
 SCHEDULED AIRLINE AND AN UMRAH TRAVEL AGENCY. THE OPERATIVE PERPRES CAPS ALL THREE.** Proven on the live
