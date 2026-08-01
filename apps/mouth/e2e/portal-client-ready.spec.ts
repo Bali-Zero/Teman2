@@ -660,7 +660,7 @@ test.describe("portal client ready smoke", () => {
     expect(errors).toEqual([]);
   });
 
-  test("overview combines bureaucracy recap with Bali Zero Dispatch", async ({
+  test("@offline legacy dashboard URL preserves the query and opens the portal home", async ({
     context,
     page,
   }) => {
@@ -668,22 +668,12 @@ test.describe("portal client ready smoke", () => {
     const unhandledApiCalls: string[] = [];
     await mockPortalApi(context, unhandledApiCalls);
 
-    await page.goto("/portal/dashboard");
+    await page.goto("/portal/dashboard?source=legacy");
 
+    await expect(page).toHaveURL(/\/portal\?source=legacy$/);
     await expect(
-      page.getByRole("heading", { name: "My Overview" }),
+      page.getByRole("heading", { name: "Welcome Back" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("main").getByText("Ari Test Client"),
-    ).toBeVisible();
-    await expect(page.getByText(/Since your last visit/)).toBeVisible();
-    await expect(page.getByLabel("The Bali Zero Dispatch")).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /KITAS renewal checklist/i }),
-    ).toHaveAttribute(
-      "href",
-      "https://balizero.com/visas/kitas-renewal-checklist",
-    );
 
     await assertNoHorizontalOverflow(page);
     expect(unhandledApiCalls).toEqual([]);
@@ -760,7 +750,6 @@ test.describe("portal client ready smoke", () => {
 
     const sections = [
       { path: "/portal", text: "Welcome Back" },
-      { path: "/portal/dashboard", text: "My Overview" },
       { path: "/portal/matters", text: "Your matters" },
       { path: "/portal/matters/101", text: "Investor KITAS Renewal" },
       { path: "/portal/process", text: "My Processes" },
