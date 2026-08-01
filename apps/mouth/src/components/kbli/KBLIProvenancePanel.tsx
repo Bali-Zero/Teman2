@@ -70,7 +70,10 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
   } else if (prov.licensing.status === "pending_crosswalk") {
     // Two honest readings of the no-scope set, discriminated by whether rows
     // are actually served (114 carry PP28-via-2020 rows; 101 have none —
-    // special/sectoral regime). Wording per corner rule F12: a 404 attests
+    // special/sectoral regime). Wording per corner rule F12 — and the status
+    // is NOT named: `no_oss_risk` covers a missing dump line, any non-200 and
+    // `success:false`, so writing "404" asserts something we may not have seen.
+    // A 404 would attest
     // retrievability via the OSS API, never regulatory absence.
     const hasRows = kbli.licensing.length > 0;
     rows.push({
@@ -81,8 +84,8 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
       vintage: hasRows ? "KBLI 2020" : "—",
       verdict: hasRows ? "pending" : "gap",
       detail: hasRows
-        ? "No KBLI-2025 risk scope was retrievable from the OSS API for this code (ruang-lingkup 404). The rows shown were recorded under the KBLI-2020 numbering and await per-code crosswalk adjudication."
-        : "No KBLI-2025 risk scope was retrievable from the OSS API for this code (ruang-lingkup 404), and no licensing rows are served on this page. Activities in this group are typically licensed under a special or sectoral regime — on the crosswalk watchlist: if OSS publishes a scope, the code is re-adjudicated.",
+        ? "No KBLI-2025 risk scope was retrievable from the OSS API for this code. The rows shown were recorded under the KBLI-2020 numbering and await per-code crosswalk adjudication."
+        : "No KBLI-2025 risk scope was retrievable from the OSS API for this code, and no licensing rows are served on this page. Activities in this group are typically licensed under a special or sectoral regime — on the crosswalk watchlist: if OSS publishes a scope, the code is re-adjudicated.",
     });
   } else if (prov.licensing.status === "unverified_source") {
     rows.push({

@@ -215,7 +215,11 @@ function KeyFacts({
         label: "OSS-RBA Rows",
         value: notClassifiable
           ? "Detached (unverified source)"
-          : "None retrievable (404)",
+          : // Corner rule F12: `_l2_status = no_oss_risk` is written for a
+            // MISSING dump line, ANY non-200, or `success: false` — so naming
+            // a 404 asserts an HTTP status we did not necessarily observe, in
+            // the one sentence whose whole job is honesty.
+            "None retrievable via the OSS API",
       },
       {
         label: "Foreign Ownership",
