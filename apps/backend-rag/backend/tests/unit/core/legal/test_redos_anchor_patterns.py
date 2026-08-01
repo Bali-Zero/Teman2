@@ -1,15 +1,27 @@
 """
-Guilt AND innocence for the anchor-adjacent-`\\s` ReDoS cure in the legal module.
+Guilt AND innocence for the `\\s`-overlaps-`\\n` ReDoS cure in the legal module.
 
-py/polynomial-redos alerts #7771/#7772/#7773 (chunker), #7781/#7782 (structure_parser)
-and #7777 (quality_validators). The shape is a MULTILINE anchor — `^`, or the `(?:^|\\n)`
-idiom — followed by `\\s*`: `\\s` matches `\\n`, the character the anchor already ranges
-over, so the engine gets O(n) start positions times O(n) backtracking on a run of blank
-lines. `/api/legal/ingest` feeds this module OCR'd PDFs, which are mostly blank lines.
+py/polynomial-redos #7771/#7772/#7773 (chunker), #7781/#7782 and #7778/#7783
+(structure_parser), #7777 (quality_validators). Two quantifiers that can eat the SAME
+newline, in two forms: (a) a MULTILINE anchor followed by `\\s*`, and (b) `\\s*\\n?\\s*`.
+`/api/legal/ingest` feeds this module OCR'd PDFs, which are mostly blank lines.
 
-Innocence carries as much weight as guilt here. A regex that no longer backtracks but no
-longer finds `Pasal 2` has traded a slow ingest for a silently truncated law, and nothing
-downstream would notice: the chunker would just emit fewer chunks.
+This file is shaped by the TWO mistakes the first draft of the cure made, both caught by
+adversarial review rather than by its author. Neither is a detail:
+
+  1. The cure was `[ \\t\\r]`, which LOOKS like "horizontal whitespace" but is not `\\s`
+     minus `\\n` — Python's `\\s` also matches NBSP, FORM FEED (the PDF page break),
+     vertical tab and every Unicode space, and nothing upstream normalises them away. So
+     `\\xa0Pasal 1` went from two articles to zero: a fast regex that silently truncates
+     a law. `TestTheClassIsExactlyBackslashSMinusNewline` is that mistake, guarded.
+  2. Form (b) was measured "linear, <1ms at 16k" and shipped as such. It was 2.87s. The
+     payloads were bare newline runs, which never get past `^BAB`, and payloads with any
+     non-newline character let the trailing `(.+?)` close immediately — the measurement
+     was of the payload, not the pattern. Every `PREFIX_*` payload below exists for that.
+
+Innocence carries as much weight as guilt throughout: a regex that no longer backtracks
+but no longer finds `Pasal 2` has traded a slow ingest for a silently truncated law, and
+nothing downstream would notice — the chunker would just emit fewer chunks.
 """
 
 import re
@@ -35,15 +47,28 @@ CURED = {
     "AYAT_PATTERN": const.AYAT_PATTERN,
     "AYAT_MARKER_PREFIX": re.compile(const.AYAT_MARKER_PREFIX, re.MULTILINE),
     "PAGE_NUMBER_LINE": re.compile(const.PAGE_NUMBER_LINE, re.MULTILINE),
+    "BAB_PATTERN": const.BAB_PATTERN,
     **{f"NOISE_PATTERNS[{i}]": p for i, p in enumerate(const.NOISE_PATTERNS)},
 }
 
-# Payloads shaped like what the anchor/`\s` overlap actually eats.
+# The anchor-overlap forms eat a bare run of blank lines. The INTERIOR `\s*\n?\s*` form
+# does not: it hides behind the pattern's own literal, and any non-newline character in
+# the run lets the trailing `(.+?)` close immediately. `BAB_PATTERN` measured "linear,
+# <1ms at 16k" on every payload here EXCEPT `PREFIX_bab`, where it took 2.87s — the
+# payload, not the pattern, was what the first audit measured. Every literal-prefixed
+# row below exists because of that.
 PAYLOADS = {
     "blank_lines": "\n" * ADVERSARIAL_N,
     "space_newline": " \n" * (ADVERSARIAL_N // 2),
     "crlf": "\r\n" * (ADVERSARIAL_N // 2),
     "tabs_and_newlines": "\t\n" * (ADVERSARIAL_N // 2),
+    "nbsp_newline": "\xa0\n" * (ADVERSARIAL_N // 2),
+    "formfeed_newline": "\f\n" * (ADVERSARIAL_N // 2),
+    "PREFIX_pasal": "Pasal 1" + "\n" * ADVERSARIAL_N,
+    "PREFIX_ayat": "(1)" + "\n" * ADVERSARIAL_N,
+    "PREFIX_bab": "BAB I" + "\n" * ADVERSARIAL_N,
+    "PREFIX_bab_nbsp": "BAB I" + "\xa0\n" * (ADVERSARIAL_N // 2),
+    "PREFIX_pagesep": "- 1 -" + "\n" * ADVERSARIAL_N,
 }
 
 
@@ -62,45 +87,82 @@ class TestLinearity:
             f"{name} took {took:.3f}s on {payload} (budget {BUDGET_SECONDS}s)"
         )
 
-    # Each row is (name, the literal pre-fix source, the cured pattern it became).
-    # The ONLY difference within a row is `\s*` vs `[ \t\r]*` after the anchor.
+    # Each row is (name, pre-fix source, ITS REAL FLAGS, the cured pattern it became, THE
+    # PAYLOAD THAT EXPOSES IT). Both the flags and the payload are per-row on purpose:
+    #   - a bare newline run exposes the anchor form but never BAB's interior one;
+    #   - BAB is NOT DOTALL, and compiling its pre-fix source WITH DOTALL makes `(.+?)`
+    #     swallow the first newline and the quadratic disappears.
+    # Getting either wrong reproduces nothing and reads as "measured fast", which is
+    # precisely how BAB shipped as "linear" in the first draft of this file.
+    M = re.IGNORECASE | re.MULTILINE
     PRE_FIX = [
         (
             "PASAL_PATTERN",
             r"(?:^|\n)\s*Pasal\s+([IVXLC]+|\d+[A-Z]?)\s*\n?\s*(.+?)"
             r"(?=(?:^|\n)\s*Pasal\s+(?:[IVXLC]+|\d+[A-Z]?)|^\s*BAB\s+|^Penjelasan|\Z)",
+            M | re.DOTALL,
             lambda: const.PASAL_PATTERN,
+            "\n" * 8_000,
         ),
         (
             "AYAT_PATTERN",
             r"(?:^|\n)\s*\((\d+)\)\s*(.+?)(?=(?:^|\n)\s*\(\d+\)|$)",
+            re.MULTILINE | re.DOTALL,
             lambda: const.AYAT_PATTERN,
+            "\n" * 8_000,
         ),
         (
             "AYAT_MARKER_PREFIX",
             r"(?:^|\n)\s*\((\d+)\)",
+            re.MULTILINE,
             lambda: re.compile(const.AYAT_MARKER_PREFIX, re.MULTILINE),
+            "\n" * 8_000,
         ),
         (
             "PAGE_NUMBER_LINE",
             r"^\s*\d+\s*$",
+            re.MULTILINE,
             lambda: re.compile(const.PAGE_NUMBER_LINE, re.MULTILINE),
+            "\n" * 8_000,
         ),
-        ("PAGE_SEPARATOR", r"^\s*-\s*\d+\s*-\s*$", lambda: const.NOISE_PATTERNS[3]),
+        (
+            "PAGE_SEPARATOR",
+            r"^\s*-\s*\d+\s*-\s*$",
+            re.MULTILINE,
+            lambda: const.NOISE_PATTERNS[3],
+            "\n" * 8_000,
+        ),
+        (
+            "BAB_PATTERN",
+            r"^BAB\s+([IVX]+|[A-Z]+|\d+)\s*\n?\s*(.+?)(?=\n|$)",
+            M,  # NOT DOTALL — that is the whole point
+            lambda: const.BAB_PATTERN,
+            "BAB I" + "\n" * 8_000,  # the literal prefix IS the reproduction
+        ),
     ]
 
-    @pytest.mark.parametrize("name,pre_fix_source,cured", PRE_FIX, ids=[r[0] for r in PRE_FIX])
-    def test_the_cure_is_what_makes_it_fast(self, name: str, pre_fix_source: str, cured) -> None:
+    @pytest.mark.parametrize(
+        "name,pre_fix_source,flags,cured,payload", PRE_FIX, ids=[r[0] for r in PRE_FIX]
+    )
+    def test_the_cure_is_what_makes_it_fast(
+        self, name: str, pre_fix_source: str, flags: int, cured, payload: str
+    ) -> None:
         """
         Pins CAUSATION, not just the outcome. Without this a future rewrite could satisfy
         the budget above for some unrelated reason and the lesson would be lost — and it
-        names each pattern, because a cure applied to one of six is how this family got
-        five instances in the first place.
+        names each pattern, because a cure applied to one of seven is how this family got
+        six instances in the first place.
         """
-        pre_fix = re.compile(pre_fix_source, re.IGNORECASE | re.MULTILINE | re.DOTALL)
-        text = "\n" * 8_000  # small: the pre-fix patterns are quadratic, keep CI cheap
-        slow, fast = _elapsed(pre_fix, text), _elapsed(cured(), text)
+        pre_fix = re.compile(pre_fix_source, flags)
+        slow, fast = _elapsed(pre_fix, payload), _elapsed(cured(), payload)
         assert slow > 20 * fast, f"{name}: pre-fix {slow:.4f}s vs cured {fast:.4f}s"
+
+    def test_the_pre_fix_flags_match_what_the_module_actually_compiles(self) -> None:
+        """Innocence for the table above: a wrong flag makes a pre-fix source look fast
+        and silently turns every causation row into a no-op."""
+        assert const.PASAL_PATTERN.flags & re.DOTALL
+        assert const.AYAT_PATTERN.flags & re.DOTALL
+        assert not (const.BAB_PATTERN.flags & re.DOTALL)
 
 
 class TestNoAnchorAdjacentWhitespaceReturns:
@@ -109,15 +171,20 @@ class TestNoAnchorAdjacentWhitespaceReturns:
     instance in this module fails here instead of waiting for the next scan.
     """
 
-    # `^` (not the `[^...]` negation) or the tail of `(?:^|\n)`, then the `\s` class.
-    DETECTOR = re.compile(r"(?<!\[)\^\\s|\\n\)\\s")
+    # Form (a): `^` (not the `[^...]` negation) or the tail of `(?:^|\n)`, then `\s`.
+    # Form (b): `\s*\n?\s*` — two `\s` quantifiers straddling an optional newline, all
+    #           three able to eat the same character. Added after form (b) shipped
+    #           undetected in BAB_PATTERN: a guard that knows one shape of a family
+    #           certifies the others clean.
+    DETECTOR = re.compile(r"(?<!\[)\^\\s|\\n\)\\s|\\s[*+]\\n\?\\s[*+]")
 
     def test_innocence_of_the_detector(self) -> None:
         """The detector must not fire on the cure, nor on a negated class, nor on a
         `\\s` that is gated by a literal (those have O(1) start positions)."""
         for safe in (
-            r"(?:^|\n)[ \t\r]*Pasal\s+",
-            r"^[ \t\r]*\d+[ \t\r]*$",
+            r"(?:^|\n)[^\S\n]*Pasal\s+",
+            r"^[^\S\n]*\d+[^\S\n]*$",
+            r"^BAB\s+([IVX]+)(?:[^\S\n]*\n)*[^\S\n]*(.+?)(?=\n|$)",
             r"[^\s|;&)]+",
             r"^PRESIDEN REPUBLIK INDONESIA\s*\n",
             r"^Halaman\s+\d+\s+dari\s+\d+",
@@ -126,12 +193,13 @@ class TestNoAnchorAdjacentWhitespaceReturns:
             assert not self.DETECTOR.search(safe), safe
 
     def test_guilt_of_the_detector(self) -> None:
-        """And it must fire on every shape this commit removed."""
+        """And it must fire on every shape this commit removed — BOTH forms."""
         for guilty in (
             r"(?:^|\n)\s*Pasal\s+([IVXLC]+|\d+[A-Z]?)",
             r"(?:^|\n)\s*\((\d+)\)",
             r"^\s*\d+\s*$",
             r"^\s*-\s*\d+\s*-\s*$",
+            r"^BAB\s+([IVX]+|[A-Z]+|\d+)\s*\n?\s*(.+?)(?=\n|$)",  # form (b)
         ):
             assert self.DETECTOR.search(guilty), guilty
 
@@ -152,6 +220,95 @@ class TestNoAnchorAdjacentWhitespaceReturns:
         quality_validators.py, neither of which is a `re.Pattern` here."""
         for name in ("PAGE_NUMBER_LINE", "AYAT_MARKER_PREFIX"):
             assert not self.DETECTOR.search(getattr(const, name)), name
+
+
+class TestTheClassIsExactlyBackslashSMinusNewline:
+    """
+    The cure narrows a character class, so the class itself is the risk — and this is
+    where the first attempt was WRONG. `[ \\t\\r]` looks like "horizontal whitespace",
+    but Python's `\\s` on a str pattern also matches NBSP, FORM FEED (the PDF page
+    break), vertical tab and every Unicode space, and `WHITESPACE_FIXES` normalises
+    none of them. `\\xa0Pasal 1` then parsed to ZERO articles. `[^\\S\\n]` is the
+    complement done properly: `\\s` minus `\\n`, nothing else.
+    """
+
+    PRE_FIX_PASAL = re.compile(
+        r"(?:^|\n)\s*Pasal\s+([IVXLC]+|\d+[A-Z]?)\s*\n?\s*(.+?)"
+        r"(?=(?:^|\n)\s*Pasal\s+(?:[IVXLC]+|\d+[A-Z]?)|^\s*BAB\s+|^Penjelasan|\Z)",
+        re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    )
+    PRE_FIX_AYAT = re.compile(
+        r"(?:^|\n)\s*\((\d+)\)\s*(.+?)(?=(?:^|\n)\s*\(\d+\)|$)", re.MULTILINE | re.DOTALL
+    )
+    PRE_FIX_PAGENUM = re.compile(r"^\s*\d+\s*$", re.MULTILINE)
+    PRE_FIX_PAGESEP = re.compile(r"^\s*-\s*\d+\s*-\s*$", re.MULTILINE)
+
+    # Every character `\s` matches except `\n` itself. A PDF text extractor emits the
+    # exotic ones routinely — `\f` IS the page break.
+    WHITESPACE = [" ", "\t", "\r", "\x0b", "\x0c", "\xa0", " ", " ", "　"]
+    IDS = ["space", "tab", "cr", "vtab", "formfeed", "nbsp", "em", "narrow_nbsp", "ideographic"]
+
+    @pytest.mark.parametrize("ws", WHITESPACE, ids=IDS)
+    def test_articles_are_found_through_any_whitespace_the_old_pattern_accepted(
+        self, ws: str
+    ) -> None:
+        text = f"Preamble\n{ws}Pasal 1\nIsi satu.\n{ws}Pasal 2\nIsi dua."
+        assert const.PASAL_PATTERN.findall(text) == self.PRE_FIX_PASAL.findall(text)
+        assert len(const.PASAL_PATTERN.findall(text)) == 2
+
+    @pytest.mark.parametrize("ws", WHITESPACE, ids=IDS)
+    def test_clauses_are_found_through_any_whitespace_the_old_pattern_accepted(
+        self, ws: str
+    ) -> None:
+        text = f"Ketentuan:\n{ws}(1) Satu.\n{ws}(2) Due."
+        assert const.AYAT_PATTERN.findall(text) == self.PRE_FIX_AYAT.findall(text)
+        assert len(const.AYAT_PATTERN.findall(text)) == 2
+
+    @pytest.mark.parametrize("ws", WHITESPACE, ids=IDS)
+    def test_page_artifacts_are_still_stripped_through_any_whitespace(self, ws: str) -> None:
+        page_num = f"Pasal 1\nIsi.\n{ws}12{ws}\nPasal 2\nIsi."
+        page_sep = f"Pasal 1\nIsi.\n{ws}- 12 -{ws}\nPasal 2\nIsi."
+        cured_num = re.compile(const.PAGE_NUMBER_LINE, re.MULTILINE)
+        assert cured_num.sub("", page_num) == self.PRE_FIX_PAGENUM.sub("", page_num)
+        assert const.NOISE_PATTERNS[3].sub("", page_sep) == self.PRE_FIX_PAGESEP.sub("", page_sep)
+        assert "12" not in const.NOISE_PATTERNS[3].sub("", cured_num.sub("", page_sep))
+
+    @pytest.mark.parametrize("ws", WHITESPACE, ids=IDS)
+    def test_the_cured_classes_accept_exactly_that_character(self, ws: str) -> None:
+        """Direct on the class, so a failure above cannot be blamed on the surrounding
+        pattern. `\\n` is the one character that must NOT be accepted."""
+        for source in (const.PAGE_NUMBER_LINE, const.AYAT_MARKER_PREFIX):
+            assert r"[^\S\n]" in source, f"{source!r} no longer uses the shared class"
+        cls = re.compile(r"^[^\S\n]+$")
+        assert cls.match(ws), f"{ws!r} rejected by [^\\S\\n]"
+        assert not cls.match("\n"), "newline must NOT be in the class — it is the anchor's job"
+
+
+class TestBabTitleAcrossBlankLines:
+    """
+    BAB's body group is NOT DOTALL, so unlike PASAL its prefix genuinely has to cross the
+    newlines to reach the title. That is why the cure there is `(?:[^\\S\\n]*\\n)*[^\\S\\n]*`
+    — unambiguous but still multi-line — and not the same class the others got.
+    """
+
+    PRE_FIX = re.compile(
+        r"^BAB\s+([IVX]+|[A-Z]+|\d+)\s*\n?\s*(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE
+    )
+
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("BAB I KETENTUAN\n", [("I", "KETENTUAN")]),
+            ("BAB I\nKETENTUAN\n", [("I", "KETENTUAN")]),
+            ("BAB II\n\nPERIZINAN\n", [("II", "PERIZINAN")]),
+            ("BAB III\n\n\nSANKSI\n", [("III", "SANKSI")]),
+            ("BAB IV\xa0\n\xa0PENUTUP\n", [("IV", "PENUTUP")]),
+        ],
+        ids=["same_line", "one_newline", "blank_line", "two_blank_lines", "nbsp_padded"],
+    )
+    def test_title_still_found_and_identical_to_the_pre_fix_pattern(self, text, expected) -> None:
+        assert const.BAB_PATTERN.findall(text) == expected
+        assert const.BAB_PATTERN.findall(text) == self.PRE_FIX.findall(text)
 
 
 class TestOneRuleOneSpelling:
