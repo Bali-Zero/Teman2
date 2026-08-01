@@ -6,7 +6,11 @@ Removes non-content artifacts from Indonesian legal documents
 import logging
 import re
 
-from backend.core.legal.constants import NOISE_PATTERNS, WHITESPACE_FIXES
+from backend.core.legal.constants import (
+    NOISE_PATTERNS,
+    PAGE_NUMBER_LINE,
+    WHITESPACE_FIXES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +64,9 @@ class LegalCleaner:
         cleaned = re.sub(r"Pasal\s+(\d+[A-Z]?)", r"Pasal \1", cleaned, flags=re.IGNORECASE)
 
         # Step 5: Remove standalone page numbers (lines with only numbers)
-        cleaned = re.sub(r"^\s*\d+\s*$", "", cleaned, flags=re.MULTILINE)
+        # Shared with NOISE_PATTERNS — this used to be a second literal copy of the
+        # same rule, and the copy carried the `\s*`-after-`^` that made it quadratic.
+        cleaned = re.sub(PAGE_NUMBER_LINE, "", cleaned, flags=re.MULTILINE)
 
         # Step 6: Final cleanup - remove excessive blank lines
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)

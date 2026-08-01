@@ -7,6 +7,8 @@ import hashlib
 import re
 from typing import Any
 
+from backend.core.legal.constants import AYAT_MARKER_PREFIX
+
 
 def calculate_text_fingerprint(text: str) -> str:
     """
@@ -127,10 +129,12 @@ def extract_ayat_numbers(pasal_text: str) -> list[int]:
     Returns:
         List of ayat numbers found (may have duplicates or gaps)
     """
-    # Pattern: (digit+) at line start or after newline
-    pattern = r"(?:^|\n)\s*\((\d+)\)"
-
-    matches = re.findall(pattern, pasal_text, re.MULTILINE)
+    # Pattern: (digit+) at line start or after newline.
+    # Shared with AYAT_PATTERN — this was a second literal copy, and the copy is the one
+    # CodeQL flagged as quadratic (#7777): `\s*` after the `(?:^|\n)` anchor overlaps with
+    # the anchor itself, so a run of blank lines gave O(n) start positions × O(n) backtrack
+    # (measured: 4.6s on 32k of " \n"; 0.9ms after).
+    matches = re.findall(AYAT_MARKER_PREFIX, pasal_text, re.MULTILINE)
 
     return [int(m) for m in matches]
 
