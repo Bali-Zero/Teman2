@@ -30,7 +30,6 @@ _patches = {
     "backend.app.setup.router_registration": MagicMock(),
     "backend.app.routers.root_endpoints": MagicMock(router=APIRouter()),
     "backend.app.routers.audio": MagicMock(router=APIRouter()),
-    "backend.app.streaming": MagicMock(router=APIRouter()),
     "backend.app.routers.system_observability": MagicMock(router=APIRouter()),
     "backend.app.routers.article_composer": MagicMock(limiter=MagicMock()),
     "slowapi": MagicMock(_rate_limit_exceeded_handler=MagicMock()),
