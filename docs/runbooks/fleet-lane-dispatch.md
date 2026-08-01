@@ -51,12 +51,51 @@ actively negative — **coders on the SAME artifact degrade ~70%**. Parallelism 
 is worth _less_ than serial work, so `place` exits 1 rather than printing a caveat someone
 scrolls past.
 
-Same doctrine as that module on ambiguity: **it resolves to serial.** A live lane whose file
-scope cannot be determined — freshly created with nothing written yet (`empty`), or carrying a
-git-quoted path (`opaque`) — blocks placement, because non-overlap cannot be _proven_. Override
-with `--allow-unknown-scope` only after checking by hand.
+Same doctrine as that module on ambiguity: **it resolves to serial** — but only where there
+genuinely is ambiguity. The distinction is the one the first draft got wrong, and getting it
+wrong in either direction breaks the tool:
 
-Passing no `--files` skips collision checking entirely and says so loudly. Don't.
+| Lane scope                                  | Meaning                                      | Effect                            |
+| ------------------------------------------- | -------------------------------------------- | --------------------------------- |
+| `known` / `declared` overlapping your files | measured collision                           | **REFUSE**                        |
+| `opaque`                                    | git quoted a path; we refuse to guess it     | **REFUSE** — failed to measure    |
+| `partial`                                   | the scan never confirmed a step              | **REFUSE** — failed to measure    |
+| `empty`                                     | the scan completed and the lane owns nothing | advisory line, placement proceeds |
+
+`empty` is a **completed measurement**, not ignorance, and treating it as a refusal is not
+theoretical: two long-idle empty worktrees on Pro blocked _every_ placement across the whole
+fleet the first time this ran for real. A guard that stops all work because some lane elsewhere
+might one day touch your file is how a guard gets switched off.
+
+`--allow-unknown-scope` overrides the two failed-measurement cases and an unreachable node.
+
+**A node that cannot be probed refuses too.** If Pro holds a lane on your file and Pro's ssh is
+down, "I could not look" is not "nothing is there" — the earlier draft printed a warning and
+placed the lane anyway, which made the advertised fail-closed contract false on the exact path
+it existed for.
+
+**`--files` is required.** It used to be optional, and omitting it silently skipped the only
+check that makes parallel lanes safe. To place without it you must say `--no-collision-check`
+out loud.
+
+### Declared scope — why a fresh lane does not block the fleet
+
+A lane created seconds ago owns no files. `place` therefore records the scope it was given in
+`~/.organism/fleet_dispatch/lanes/<worktree>.scope` **on the target machine**, so the lane
+announces what it is about to touch before it touches it. The sidecar's first line is
+`branch=<branch>`: nothing reaps these files, so a reused task-id would otherwise inherit the
+previous lane's declaration and be refused for files it never touches.
+
+A lane opened through `place` is knowable from birth. One made by a bare `git worktree add`
+is not — which is the correct incentive.
+
+### Known residual race, declared rather than hidden
+
+The check and the creation are **not atomic across machines**. Two `place` calls issued
+concurrently from two sessions can both see no collision and both create a lane on the same
+file. The sidecar narrows the window to probe-plus-create; it does not close it. Closing it
+needs a fleet-wide reservation (`scripts/agent_lease.py` is the natural home). Do not read the
+collision check as a mutex.
 
 ## What `place` buys you beyond convenience
 
@@ -106,6 +145,20 @@ Exit 4 is deliberate and is not exit 0. A sweep that probed nothing has not foun
   `origin/main` ref (W106b). Pass `--fetch` when you need `behind` to be authoritative.
 - **No repo path is stored in the roster.** Every node resolves `$HOME/nuzantara` on the
   _target_, because M5 is `balizero` and Pro/Mini are `nuzantara` (superscar family #1).
+- **A completed scan says so.** `git ... | awk | while` returns the status of the `while`, so a
+  missing repo produced rc=0 with empty stdout — byte-identical to "this node has no lanes".
+  The scan must now end with `FLEET_LANES_DONE` or it counts as failed. The first draft of this
+  very file quoted W84 while containing the defect W84 names.
+- **`git status --porcelain` needs `-uall`,** or a wholly-untracked directory is reported as
+  `dir/` and `dir/a.py` never collides. A rename is `R  old -> new`: taking the last field
+  loses `old`, and a lane asking for `old` sails through. Both were live false negatives; git
+  output is now parsed in Python, never in `awk`.
+- **Paths are normalized before comparison.** `./scripts/x.py` did not collide with
+  `scripts/x.py` — a set intersection on raw strings compares spellings, not files. Containment
+  counts too: a lane holding `apps/mouth` owns `apps/mouth/page.tsx`.
+- **A truncated reply is not a green one.** A `FLEET_CAP` line cut short before `lock` carried a
+  healthy load, and `get("lock") == "held"` is False for a missing field exactly as for a free
+  one — so it classified READY. Every field the verdict reads must be present.
 
 ## Related
 
