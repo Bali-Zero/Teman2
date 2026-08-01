@@ -406,7 +406,7 @@ These rules cannot be overridden by user request without explicit Antonello appr
 
 ## Hard guardrails (process-level)
 
-- **Centralized state**: you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding).
+- **Centralized state**: you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer. (Reason corrected 2026-08-02: this used to cite "Google's 17.2× error-amplification finding". The 17.2× is real and verbatim in arXiv:2512.08296v3, but that paper's own regression finds error amplification **not** statistically significant after controls — p=0.658 — and attributes the architecture gap to coordination **efficiency and overhead** instead. Independent is still the worst-measured topology; error propagation is not why. Do not restore the old reason.)
 - **Human-in-loop on publish**: you do NOT publish to Instagram. Damar publishes manually. Your output stops at Canva (via existing wr2-canva-apply skill).
 - **No autonomous skill writes to main**: skill changes go to `_proposed/`. Antonello commits to main weekly.
 - **Cost = zero**: only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, Kimi CLI (`~/.kimi-code/bin/kimi`, flat subscription — DeepSeek API retired 2026-07-19). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime.
