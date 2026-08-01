@@ -1,0 +1,24 @@
+{
+  "_doc": "The fleet ROSTER: every node that can host an implementation lane. Distinct from infra/fleet-watch/peers.json, which is a watcher->watched LIVENESS map (who alarms for whom) and deliberately does NOT list every node. This file answers a different question: 'where could a lane run?'. Consumed by scripts/fleet_dispatch.py.",
+  "_repo_path": "Deliberately NOT stored per node. Every node resolves the repo as \"$HOME/nuzantara\" ON THE TARGET MACHINE, so a hardcoded /Users/<someone>/... can never drift onto a machine with a different user (cicatrix family #1, the M5 balizero-vs-nuzantara path-drift scar). Change the layout and this file needs no edit.",
+  "nodes": [
+    {
+      "name": "m5",
+      "hostname": "air-m5",
+      "ssh_alias": "air",
+      "role": "interactive dev workstation (Zero's primary seat)"
+    },
+    {
+      "name": "pro",
+      "hostname": "nuzantara",
+      "ssh_alias": "pro",
+      "role": "dev + runtime host (intake, wa-mirror, LaunchAgents)"
+    },
+    {
+      "name": "mini",
+      "hostname": "mini-pro2",
+      "ssh_alias": "mini",
+      "role": "H24 server (Ollama, heavy cron) — usually the freest"
+    }
+  ]
+}
