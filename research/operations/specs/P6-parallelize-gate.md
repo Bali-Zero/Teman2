@@ -22,7 +22,19 @@ brief lo aveva tradotto in "BUILD∥ default". Il council ha smontato l'enunciat
 | **Breadth-di-ricerca** (esplorazione, fan-out di letture) | **NO** (+90.2% Anthropic su research) | i 5 angoli della deep-research di questo ciclo |
 | **Specialist con RUOLI diversi** | **NO** (è il regime dove multi-agent vince) | federation: gemini-search ∥ codex-sandbox ∥ claude-redteam |
 | **Pezzi del sistema strutturalmente indipendenti** | **NO se davvero indipendenti** | modulo A e modulo B con zero file/contratti condivisi |
-| **Coder paralleli sullo STESSO artefatto** | **SÌ, −70%** (Google 2512.08296) + failure-mode Devin | 3 agenti che editano lo stesso file/feature |
+| **Coder paralleli sullo STESSO artefatto** | **SÌ, −30%** (CooperBench, arXiv 2601.13295) + failure-mode Devin | 3 agenti che editano lo stesso file/feature |
+
+> **Citazione corretta 2026-08-01 — non ripristinare il numero vecchio.** Questa riga
+> citava `−70% (Google 2512.08296)`. Verificato alla fonte: quel −70,0% è **sequential
+> planning** (PlanCraft, topologia Independent), non coding; sul benchmark di coding
+> dello stesso paper (SWE-bench Verified) le topologie multi-agent stanno fra −2,1% e
+> −14,9%, e misurano N agenti sulla **stessa** issue. Lo studio che misura davvero il
+> caso di questa riga — lavoro **diverso ma sovrapposto** nello stesso repo — è
+> **CooperBench** (Khatua et al., Stanford, 2026-01-19): 600+ task collaborativi, 12
+> librerie, 4 linguaggi, test scritti da esperti; due agenti che cooperano riescono in
+> media il **30% in meno** di un solo agente che fa entrambi i task. Il ceiling 3-4
+> agenti (riga 56) resta di 2512.08296 ed è verbatim: era solo il −70% a venire dalla
+> riga sbagliata.
 
 > **"Dove si può" (utente) = i primi tre tipi.** Il quarto è ciò che l'evidenza vieta. La contraddizione
 > desiderio-vs-evidenza è **apparente**: si scioglie limitando il fan-out ai tipi che non degradano.

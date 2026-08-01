@@ -25,8 +25,23 @@ Design contract (spec ``research/operations/specs/P6-parallelize-gate.md``):
   ambiguous/high-risk tasks is *optional and documented*, NOT implemented here —
   this module stays deterministic so the gate tests are falsifiable.
 * **Coders on the same artifact are NEVER parallelized** (spec §4 cond. 2,
-  Google arXiv 2512.08296 ``−70%`` on sequential coding). This is the one hard
-  prohibition the estimator enforces structurally, not heuristically.
+  CooperBench ``−30%`` on overlapping code — Khatua et al., *"CooperBench: Why
+  Coding Agents Cannot be Your Teammates Yet"*, arXiv 2601.13295, 2026-01-19:
+  600+ collaborative tasks across 12 libraries in 4 languages with
+  expert-written tests; two agents working together average **30% lower**
+  success than one agent performing both tasks individually). This is the one
+  hard prohibition the estimator enforces structurally, not heuristically.
+
+  CITATION CORRECTED 2026-08-01 — do not "restore" the old number. This rule
+  used to cite ``Google arXiv 2512.08296 −70% on sequential coding``. Verified
+  at source: that paper's −70.0% is **sequential planning** (PlanCraft,
+  Independent topology), not coding at all; on its own coding benchmark
+  (SWE-bench Verified) every multi-agent topology lands between −2.1% and
+  −14.9%, and that measures N agents on the SAME issue, not two agents on
+  different-but-overlapping work. CooperBench is the study that actually
+  measures THIS rule's case. The 3–4 coder ceiling below is genuinely from
+  2512.08296 and is quoted verbatim there — only the −70% was borrowed from
+  the wrong row.
 
 The four kinds of parallelism (spec §0):
 
@@ -36,7 +51,7 @@ kind                              degrades?   estimator verdict
 breadth-of-research               no          may be True
 specialist roles (disjoint)       no          may be True
 structurally-independent pieces   no          may be True (if disjoint)
-coders on the SAME artifact       yes (−70%)  ALWAYS False
+coders on the SAME artifact       yes (−30%)  ALWAYS False
 ================================  ==========  ===========================
 """
 
@@ -50,7 +65,9 @@ from enum import Enum
 # Constants — the bayesian prior cap (spec §3.3) and merge-cost bands (§3.5).
 # ─────────────────────────────────────────────────────────────────────────────
 
-#: Initial coder-concurrency ceiling (Google arXiv 2512.08296 hard 3-4 ceiling).
+#: Initial coder-concurrency ceiling (Google arXiv 2512.08296 hard 3-4 ceiling —
+#: verified verbatim at source 2026-08-01: "beyond 3-4 agents, creating a hard
+#: resource ceiling where communication cost dominates reasoning capability").
 #: Applies to CPU-bound concurrent *coders*, NOT to short I/O-bound infra agents
 #: (search/explore). A bayesian *prior*, updatable with local feedback — never a
 #: dogma (spec §3.3, §3.6). The gate enforces it as a ceiling, not a target.
