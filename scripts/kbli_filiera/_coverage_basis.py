@@ -81,6 +81,26 @@ HONEST_LICENSING = frozenset(
 HONEST_PMA = frozenset({PMA_LOCATED, PMA_DECLARED_UNVERIFIED})
 HONEST_CROSSWALK = frozenset({XW_LOCATED, XW_DECLARED_GAP})
 
+# STRONG states: a per-code government locator of the CURRENT vintage. Honesty
+# alone is not enough for the ratchet, and the reason is measured, not theoretical:
+# wiping `per_skala` on all 1,342 codes that have rows turns every one of them
+# into `declared_gap`, which is honest — so the aggregate score reads a PERFECT
+# 1,559/1,559 while the entire verified licensing layer has been destroyed. Run
+# on the real dataset 2026-08-01, the count-only ratchet passed that mutation.
+# A gate that rewards deleting data is worse than no gate.
+#
+# So the ratchet also asserts, per code: a code that HELD a strong state may
+# never stop holding it.
+#
+# `sourced_pp28_vintage_pending` is deliberately NOT strong. Detaching a
+# vintage-2020 PP28 row into a declared gap is this programme's own cure (Batch
+# A did it 122 times); marking it strong would make the gate fire on exactly the
+# work it exists to protect. A pp28 code that degrades to `bare` is still caught
+# — by the bare-count arm.
+STRONG_LICENSING = frozenset({LIC_SOURCED_OSS_2025})
+STRONG_PMA = frozenset({PMA_LOCATED})
+STRONG_CROSSWALK = frozenset({XW_LOCATED})
+
 
 def _rows(record: dict[str, Any]) -> list:
     value = record.get("per_skala")
@@ -158,7 +178,7 @@ def crosswalk_is_adjudicated(record: dict[str, Any]) -> bool:
 
 
 AXES: dict[str, tuple] = {
-    "licensing": (classify_licensing, HONEST_LICENSING),
-    "pma": (classify_pma, HONEST_PMA),
-    "crosswalk": (classify_crosswalk, HONEST_CROSSWALK),
+    "licensing": (classify_licensing, HONEST_LICENSING, STRONG_LICENSING),
+    "pma": (classify_pma, HONEST_PMA, STRONG_PMA),
+    "crosswalk": (classify_crosswalk, HONEST_CROSSWALK, STRONG_CROSSWALK),
 }

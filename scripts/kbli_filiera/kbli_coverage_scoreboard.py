@@ -75,6 +75,12 @@ def load_records(path: Path) -> list[dict[str, Any]]:
     records = payload["data"] if isinstance(payload, dict) else payload
     if not isinstance(records, list) or not records:
         raise ValueError(f"{path}: expected a non-empty record list")
+    codes = [str(r.get(CODE_FIELD)) for r in records]
+    if len(set(codes)) != len(codes):
+        # Without this, a code could be duplicated and another dropped while
+        # every aggregate count stays put — a swap the ratchet would never see.
+        duplicates = sorted({c for c in codes if codes.count(c) > 1})
+        raise ValueError(f"{path}: duplicate codes: {duplicates[:PRINT_SAMPLE]}")
     return records
 
 
@@ -85,14 +91,18 @@ def build_scoreboard(records: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(records)
     axes: dict[str, Any] = {}
 
-    for axis_name, (classify, honest_states) in AXES.items():
+    for axis_name, (classify, honest_states, strong_states) in AXES.items():
         states: dict[str, int] = {}
         defect_codes: list[str] = []
+        strong_codes: list[str] = []
         for record in records:
+            code = str(record.get(CODE_FIELD))
             state = classify(record)
             states[state] = states.get(state, 0) + 1
             if state not in honest_states:
-                defect_codes.append(str(record.get(CODE_FIELD)))
+                defect_codes.append(code)
+            if state in strong_states:
+                strong_codes.append(code)
         honest = sum(n for state, n in states.items() if state in honest_states)
         if honest + len(defect_codes) != total:
             raise AssertionError(
@@ -102,8 +112,10 @@ def build_scoreboard(records: list[dict[str, Any]]) -> dict[str, Any]:
             "total": total,
             "honest": honest,
             "defect": len(defect_codes),
+            "strong": len(strong_codes),
             "states": dict(sorted(states.items())),
             "defect_codes": sorted(defect_codes),
+            "strong_codes": sorted(strong_codes),
         }
 
     axes["crosswalk"]["adjudicated"] = sum(1 for r in records if crosswalk_is_adjudicated(r))
@@ -115,11 +127,34 @@ def ratchet_regressions(current: dict[str, Any], baseline: dict[str, Any]) -> li
     NOT a regression (it is a new axis); an axis absent from `current` IS one
     (someone deleted a measurement, which is how coverage silently vanishes)."""
     problems: list[str] = []
+    # Read BOTH sides through .get(): a malformed payload must produce a report,
+    # never a KeyError. A gate that raises instead of reporting is a gate whose
+    # verdict nobody sees.
+    base_total = baseline.get("total_codes", 0)
+    now_total = current.get("total_codes", 0)
+    if now_total < base_total:
+        problems.append(f"catalogue shrank {base_total} -> {now_total} codes")
     for axis_name, base in sorted(baseline.get("axes", {}).items()):
         now = current.get("axes", {}).get(axis_name)
         if now is None:
             problems.append(f"{axis_name}: axis disappeared from the scoreboard")
             continue
+
+        # THE ARM THAT MATTERS. Aggregate honesty is gameable: turning every
+        # sourced code into a declared gap keeps `honest` at 100% while deleting
+        # the whole verified layer. Per-code strong-state retention is not.
+        lost_strong = sorted(set(base.get("strong_codes", [])) - set(now.get("strong_codes", [])))
+        if lost_strong:
+            shown = ", ".join(lost_strong[:PRINT_SAMPLE])
+            problems.append(
+                f"{axis_name}: {len(lost_strong)} code(s) LOST their government locator "
+                f"(showing {min(len(lost_strong), PRINT_SAMPLE)}): {shown}"
+            )
+        if axis_name == "crosswalk" and now.get("adjudicated", 0) < base.get("adjudicated", 0):
+            problems.append(
+                f"crosswalk: adjudicated inheritance fell "
+                f"{base['adjudicated']} -> {now['adjudicated']}"
+            )
         if now["honest"] < base["honest"]:
             problems.append(
                 f"{axis_name}: honest coverage fell {base['honest']} -> {now['honest']} "
@@ -141,7 +176,10 @@ def render(scoreboard: dict[str, Any]) -> str:
     lines = [f"KBLI completion scoreboard — {total} codes", ""]
     for axis_name, axis in scoreboard["axes"].items():
         pct = 100.0 * axis["honest"] / total if total else 0.0
-        lines.append(f"  {axis_name:<10} honest {axis['honest']:>5}/{total}  ({pct:.1f}%)")
+        lines.append(
+            f"  {axis_name:<10} honest {axis['honest']:>5}/{total}  ({pct:.1f}%)"
+            f"   locator-bearing: {axis['strong']}"
+        )
         for state, count in axis["states"].items():
             lines.append(f"      {state:<32} {count:>5}")
         if axis["defect"]:
@@ -168,6 +206,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--update-baseline", action="store_true", help="rewrite the baseline from the current dataset"
     )
+    parser.add_argument(
+        "--accept-regression",
+        action="store_true",
+        help="with --update-baseline: record a WORSE state on purpose (say why in the PR)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -179,6 +222,24 @@ def main(argv: list[str] | None = None) -> int:
     scoreboard = build_scoreboard(records)
 
     if args.update_baseline:
+        # `--update-baseline` is the ratchet's only escape hatch, so it must not
+        # be a silent one: rewriting the baseline over a regression would launder
+        # the very degradation the gate exists to catch, and the diff would look
+        # like routine bookkeeping. Refuse unless the intent is spelled out.
+        if args.baseline.exists() and not args.accept_regression:
+            try:
+                previous = json.loads(args.baseline.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                previous = None
+            if previous:
+                problems = ratchet_regressions(scoreboard, previous)
+                if problems:
+                    print("REFUSING to overwrite the baseline — this would record a regression:")
+                    for problem in problems:
+                        print(f"  - {problem}")
+                    print("\nIf the degradation is intended, re-run with --accept-regression and")
+                    print("say why in the PR body; the flag is greppable in the diff on purpose.")
+                    return EXIT_REGRESSION
         args.baseline.parent.mkdir(parents=True, exist_ok=True)
         args.baseline.write_text(json.dumps(scoreboard, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"baseline written: {args.baseline}")
@@ -196,6 +257,12 @@ def main(argv: list[str] | None = None) -> int:
         baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         print(f"CANNOT VERIFY: baseline unreadable ({args.baseline}): {exc}")
+        return EXIT_CANNOT_VERIFY
+
+    if not baseline.get("axes"):
+        # An empty axis map compares nothing and would pass everything. That is
+        # "I traversed zero things", which is cannot-verify, never clean (W84).
+        print(f"CANNOT VERIFY: baseline has no axes to compare ({args.baseline})")
         return EXIT_CANNOT_VERIFY
 
     problems = ratchet_regressions(scoreboard, baseline)

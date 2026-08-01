@@ -179,7 +179,7 @@ def test_build_scoreboard_refuses_a_mismatched_partition():
     """If a future edit adds a state to a classifier but forgets to declare
     whether it is honest, the builder must raise rather than quietly score it."""
     original = B.AXES["licensing"]
-    S.AXES["licensing"] = (lambda r: "a_state_nobody_declared", frozenset())
+    S.AXES["licensing"] = (lambda r: "a_state_nobody_declared", frozenset(), frozenset())
     try:
         board = S.build_scoreboard([rec("01111")])
         # Undeclared states are counted as defects, never silently dropped.
@@ -193,11 +193,127 @@ def test_build_scoreboard_refuses_a_mismatched_partition():
 # --------------------------------------------------------------------------
 
 
-def _board(honest: int, defect: int, codes: list[str]) -> dict:
+def _board(honest: int, defect: int, codes: list[str], strong: list[str] | None = None) -> dict:
     return {
         "total_codes": honest + defect,
-        "axes": {"pma": {"total": honest + defect, "honest": honest, "defect": defect, "states": {}, "defect_codes": codes}},
+        "axes": {
+            "pma": {
+                "total": honest + defect,
+                "honest": honest,
+                "defect": defect,
+                "states": {},
+                "defect_codes": codes,
+                "strong": len(strong or []),
+                "strong_codes": strong or [],
+            }
+        },
     }
+
+
+def _canonical(tmp_path, records: list[dict]):
+    path = tmp_path / "c.json"
+    path.write_text(json.dumps({"data": records}), encoding="utf-8")
+    return path
+
+
+# --- the arm the adversarial review forced (2026-08-01) --------------------
+
+
+def test_guilt_wiping_every_sourced_row_is_a_REGRESSION_not_a_perfect_score(tmp_path):
+    """THE bypass a count-only ratchet let through, reproduced end-to-end.
+
+    Detaching every code turns them all into `declared_gap`, which is honest —
+    so aggregate coverage reads 100% while the entire verified licensing layer
+    is gone. Measured on the real 1,559-record dataset before the fix: green.
+    """
+    sourced = [
+        rec(f"0111{i}", per_skala=[{"skala_usaha": "Besar"}], _l2_source=B.OSS_2025_SOURCE)
+        for i in range(4)
+    ]
+    canonical = _canonical(tmp_path, sourced)
+    baseline = tmp_path / "b.json"
+    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"]) == S.EXIT_OK
+
+    wiped = [rec(r[B.CODE_FIELD], per_skala=[], _l2_source=B.OSS_2025_SOURCE) for r in sourced]
+    canonical.write_text(json.dumps({"data": wiped}), encoding="utf-8")
+
+    board = S.build_scoreboard(wiped)
+    assert board["axes"]["licensing"]["honest"] == 4, "still 'honest' — that is the trap"
+    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"]) == S.EXIT_REGRESSION
+
+
+def test_innocence_the_programmes_own_cure_path_is_still_allowed(tmp_path):
+    """Detaching a vintage-2020 PP28 row into a declared gap is what Batch A did
+    122 times. If the strong-state arm fired on that, the gate would attack the
+    work it exists to protect — so `sourced_pp28_vintage_pending` is NOT strong.
+    """
+    before = [rec("93111", per_skala=[{"x": 1}], _l2_status=B.NO_OSS_RISK, pp28_sources=["93111"])]
+    canonical = _canonical(tmp_path, before)
+    baseline = tmp_path / "b.json"
+    S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+
+    after = [rec("93111", per_skala=[], _l2_status=B.NO_OSS_RISK, pp28_sources=["93111"])]
+    canonical.write_text(json.dumps({"data": after}), encoding="utf-8")
+    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"]) == S.EXIT_OK
+
+
+def test_guilt_swapping_one_fix_for_one_degradation_is_caught(tmp_path):
+    """Aggregate counts stay identical; the identity of the codes does not."""
+    before = _board(2, 0, [], strong=["A", "B"])
+    after = _board(2, 0, [], strong=["A", "C"])
+    problems = S.ratchet_regressions(after, before)
+    assert problems and "LOST their government locator" in problems[0]
+    assert "B" in problems[0]
+
+
+def test_guilt_a_shrinking_catalogue_is_caught():
+    before = _board(10, 0, [], strong=[])
+    after = _board(9, 0, [], strong=[])
+    after["total_codes"] = 9
+    before["total_codes"] = 10
+    assert any("catalogue shrank" in p for p in S.ratchet_regressions(after, before))
+
+
+def test_guilt_duplicate_codes_are_refused_by_the_loader(tmp_path):
+    """A code duplicated while another is dropped keeps every aggregate put."""
+    canonical = _canonical(tmp_path, [rec("01111"), rec("01111")])
+    with pytest.raises(ValueError, match="duplicate codes"):
+        S.load_records(canonical)
+
+
+def test_guilt_falling_crosswalk_adjudication_is_caught():
+    before = {"total_codes": 1, "axes": {"crosswalk": {"honest": 1, "defect": 0, "adjudicated": 5, "defect_codes": [], "strong_codes": []}}}
+    after = {"total_codes": 1, "axes": {"crosswalk": {"honest": 1, "defect": 0, "adjudicated": 2, "defect_codes": [], "strong_codes": []}}}
+    assert any("adjudicated inheritance fell" in p for p in S.ratchet_regressions(after, before))
+
+
+def test_update_baseline_refuses_to_launder_a_regression(tmp_path, capsys):
+    """The escape hatch must not be a silent one: overwriting the baseline over
+    a regression would make the degradation look like routine bookkeeping."""
+    good = [rec("01111", per_skala=[{"x": 1}], _l2_source=B.OSS_2025_SOURCE)]
+    canonical = _canonical(tmp_path, good)
+    baseline = tmp_path / "b.json"
+    S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+
+    canonical.write_text(json.dumps({"data": [rec("01111", per_skala=[])]}), encoding="utf-8")
+    rc = S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+    assert rc == S.EXIT_REGRESSION
+    assert "REFUSING to overwrite" in capsys.readouterr().out
+
+    rc = S.main(
+        ["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline", "--accept-regression"]
+    )
+    assert rc == S.EXIT_OK, "the deliberate override must still work, just loudly"
+
+
+def test_a_baseline_with_no_axes_is_cannot_verify_not_clean(tmp_path, capsys):
+    """Comparing nothing passes everything (W84)."""
+    canonical = _canonical(tmp_path, [rec("01111")])
+    baseline = tmp_path / "b.json"
+    baseline.write_text(json.dumps({"total_codes": 1, "axes": {}}), encoding="utf-8")
+    rc = S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"])
+    assert rc == S.EXIT_CANNOT_VERIFY
+    assert "no axes to compare" in capsys.readouterr().out
 
 
 def test_guilt_ratchet_fires_when_honest_coverage_falls():
@@ -226,8 +342,11 @@ def test_innocence_ratchet_is_silent_on_a_brand_new_axis():
 
 
 def test_guilt_ratchet_fires_when_an_axis_disappears():
+    """Asserted across ALL problems, not `problems[0]`: a payload missing its
+    axes is also a payload with zero codes, so the shrink arm fires too, and
+    pinning position would make this test brittle against a correct tool."""
     problems = S.ratchet_regressions({"axes": {}}, _board(10, 5, ["a"]))
-    assert problems and "disappeared" in problems[0]
+    assert any("disappeared" in p for p in problems), problems
 
 
 # --------------------------------------------------------------------------

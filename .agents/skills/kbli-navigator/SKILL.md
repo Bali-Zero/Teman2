@@ -1531,10 +1531,18 @@ Live number: `python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py`. At the 
 
 Three consequences, and they reorganise the whole programme:
 
-1. **The licensing axis is CLOSED for honesty.** The "99 codes still to adjudicate" this corner has
-   been carrying are DECLARED GAPS, not lies in production. Moving them from gap to verified value is
-   product improvement — and F4's refresh loop does it for free when OSS publishes the scope. Nobody
-   needs to sit and adjudicate them.
+1. **The licensing axis is closed for honesty IN THE DATA — the SURFACE is a separate claim, and the
+   adversarial gate refused to let the two be merged.** The "99 codes still to adjudicate" this corner
+   has been carrying are DECLARED GAPS in canonical, not lies in it; moving them from gap to verified
+   value is product improvement, and F4's refresh loop does it for free when OSS publishes the scope.
+   But data-honest ≠ page-honest: the conformance detector compares row COUNTS and `licensing_status`,
+   never the `content` markdown the bot injects verbatim, so a stale licensing claim can survive inside
+   a document whose row count is legitimately zero. And the gate found a live over-claim on the web
+   surface — `LicensingSection` printed **"None retrievable (404)"** for gap codes while `no_oss_risk`
+   is written for a missing dump line, ANY non-200 or `success:false`, i.e. an HTTP status we did not
+   necessarily observe (corner rule F12, which the provenance panel's own comment quotes correctly
+   while the panel then named the status anyway). Cured in this ship on all three strings. The
+   content-level check is NOT built: ledger line, not a claim.
 2. **The PMA axis is the remaining exposure, and it is the most-read fact on the product.**
    `pma_source` reads the identical string `"Perpres 10/2021, 49/2021"` on all 1,559 records — a layer
    annotation that can never explain a per-code verdict, the exact shape that made `moratorium.rule`
@@ -1542,9 +1550,17 @@ Three consequences, and they reorganise the whole programme:
    judgments — and the evidence is already on disk: the Perpres 10/2021 + 49/2021 lampiran were
    fetched and sha256-pinned into the Mini vault on 2026-07-19 and the manifest says, verbatim,
    _"fetched whole, NOT unzipped/parsed/extracted this pass"_.
-3. **The crosswalk is not a third sweep.** pp28 feeds licensing on **5** codes, all adjudicated. Batch
-   B's 478-code risk thesis is defused by measurement; what remains of it is ONE editorial decision on
-   the 560 pages that show two different predecessors side by side.
+3. **The crosswalk is not a third sweep — but it does NOT retire, and the first draft of this plan got
+   that wrong.** pp28 feeds LICENSING on **5** codes, all adjudicated: that measurement stood up to the
+   cross-family gate. What the gate refuted was the INFERENCE drawn from it. `pp28_sources` also drives
+   the rendered **"Previous codes (KBLI 2020)"** element (`kbli-data.server.ts:323` → `page.tsx:891`)
+   and the PMA provenance verdict (`kbli-provenance.ts:99`), and **121 codes have pp28 as their ONLY
+   source of 2020 ancestry** (measured: 1,384 records carry `pp28_sources`, 221 carry no BPS ancestry,
+   121 sit in both sets). So Batch B **re-aims** rather than retires: from "478 codes of licensing
+   risk" to "121 codes whose rendered ancestry rests on a single unverified source, plus the 560-page
+   BPS-vs-pp28 divergence". Recorded plainly because the error is instructive: I measured ONE consumer
+   and generalised to all of them — the consumer-map rule this corner states (§4 rule 6), applied
+   against its own author.
 
 ### 5.1 F0 — THE SCOREBOARD ✅ SHIPPED 2026-08-01
 
@@ -1626,13 +1642,37 @@ Deliberately not asked now: asking now means deciding on the large population. F
 
 ### 5.6 What this plan RETIRES (say it out loud, it contradicts signed work)
 
-- **Batch B as a 478-code sweep** — risk thesis defused by measurement (pp28 load-bearing on licensing:
-  5 codes). This retires part of a SIGNED design (#2801 REV-4b). Its Phase-0 parser and the populate
-  step stay: they are what made the measurement possible.
+- **Batch B as a 478-code LICENSING sweep** — that thesis is defused by measurement (pp28 load-bearing
+  on licensing: 5 codes). It is **re-aimed, NOT retired**: the cross-family gate showed pp28 still
+  solely carries the rendered 2020 ancestry on 121 codes, so the batch shrinks and changes target
+  rather than disappearing. This narrows a SIGNED design (#2801 REV-4b); its Phase-0 parser and the
+  populate step stay — they are what made the measurement possible.
 - **Batches C/D as sweeps** (~1,438) — never had a measured risk thesis. If the scoreboard grows one,
   they come back.
 - **The Tier-4 AQL ratification waiting on Zero** — it sampled a sweep we no longer run.
 - **"99 codes to adjudicate"** → 217 declared gaps that F4 closes for free.
+
+### 5.6bis This plan was gated before it shipped, and the gate changed it
+
+Generator ≠ grader (CLAUDE.md §6): the plan's four claims went to **Codex GPT-5.6-sol at xhigh,
+instructed to refute**. It returned three blockers, two of which changed this document and one of
+which changed the code:
+
+- **C4 refuted** — the Batch-B retirement did not follow from a licensing-only measurement (above).
+- **C2 narrowed** — "closed for honesty" is true of the data, not proven of the rendered surface;
+  it also found the live `(404)` over-claim, now cured.
+- **The ratchet was gameable and this was reproduced, not argued**: wiping `per_skala` on all 1,342
+  codes with rows turns every one into `declared_gap`, which is honest, so the count-only gate scored
+  a PERFECT 1,559/1,559 while the entire verified licensing layer was destroyed — green light,
+  measured on the real dataset. Fixed with a per-code STRONG-state arm (a code that held a government
+  locator may never stop holding one), plus catalogue-shrink, duplicate-code, adjudication-fall and
+  guarded-`--update-baseline` arms.
+- **C3 survived**, with its wording tightened to what was measured: "PMA is the largest MEASURED
+  exposure — 1,544 of 1,559 records bare", not "the real remaining exposure".
+
+Declared limits of that gate, so nobody reads it as more than it was: its capture begins at finding
+**#2**, so finding #1 was lost and is NOT accounted for here; and it could not reach the production
+database, so nothing it says about deployed state was verified by it.
 
 ### 5.7 The arithmetic that makes this decisive and the previous roadmap not
 
