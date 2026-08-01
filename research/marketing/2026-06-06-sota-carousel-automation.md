@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-citation-repoint
+---
+
 # SOTA Agentic Carousel-Generation Automations — Architectures + Reusable Code
 
 **Captured**: 2026-06-06
