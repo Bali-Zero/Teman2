@@ -28,6 +28,46 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-08-01 — keep current)
 
+**🟢 2026-08-01 (later same day) — THE THREE SEA-CABOTAGE LIES ARE GONE FROM THE CHANNEL: 5 OF THE 8
+`pma_status` DIVERGENCES CURED IN PROD AND PROVEN LIVE. The other 3 were held back, and WHY is the more
+useful half of this entry.** `chat_kbli` for `50122` now answers _"you cannot own 100% … **TERBATAS** …
+cap **49%** … joint venture ≥51%"_ where it used to answer open; `50123`/`50126` likewise, plus
+`02102`/`73100` which failed restrictively. Applied inside the Fly machine
+(`python backend/scripts/kbli_documents_cure.py --only 02102,50122,50123,50126,73100 --apply`) and
+re-read through the READ-ONLY role, never the applier's own report — `kbli_documents_archive` holds the
+pre-cure rows byte-exact, so the before/after is evidence rather than memory. Licensing rows on those 5
+went 1 → 4-12 each. Three traps paid for here, all cheap to avoid next time:
+
+- **`PYTHONPATH=.` KILLS the prod container** (it REPLACES site-packages, it does not extend them) — the
+  first run died on `ModuleNotFoundError: asyncpg`. This script imports nothing from `backend.*`; run it
+  with a bare `cd /app && python backend/scripts/…`.
+- **The canonical dataset is NOT in the image** (`/app/source_documents` does not exist — L2.11b), so the
+  cure fetches `--dataset` over HTTP. `RAW_BASE` names `Balizero1987/Teman2` while this repo is known as
+  `Bali-Zero/Teman2`: identity was established by downloading it and matching sha256 against
+  `origin/main`'s blob, never by trusting the name.
+- **The script's own docstring claimed a safety gate that does not exist** — it said an `--only` code
+  without a `per_skala_disputed_*` marker "is skipped with a logged reason". `main()` never checks the
+  marker; it gates `--all-quarantined` only. None of these 8 codes carries the marker, so the documented
+  behaviour would have skipped every one of them. Corrected in the file, with the REAL guarantee stated
+  in its place (the cure is a pure function of the canonical record, so verify the record with
+  `_coverage_basis.classify_licensing/classify_pma` — all 5 cured codes are `sourced_oss_2025` +
+  `located`).
+
+**THE THREE HELD BACK — each is a different lesson, none is "not done yet".** `02101`/`03120`: canonical
+says `TERBUKA` but carries `pma_cap_verified: false` and no `pma_official_basis`, so curing would push an
+UNSOURCED "100% open" onto a second surface (`03120` = freshwater capture fisheries). The table's current
+`TERBATAS` is equally unsourced but errs conservatively — holding adds no new claim. Their cure is
+L2.11c (make the SITE honest), already Zero-gated, not this tool. `03110`: the cure is correct but
+computes **48,008 chars** of `content` against a table whose live max is **25,483** (p99 13,272, median
+2,458) — and `chat_kbli` injects `content` VERBATIM with no truncation. A 69-row licensing table wants a
+channel-appropriate rendering before it enters an LLM context. **Size is a scope dimension on this store
+and on no other.** Cache needed no eviction and this was checked, not assumed: `@cached` keys on the
+hashed args including `parent_docs`, so a changed row misses by construction.
+
+**Also found live, NOT cured:** every `chat_kbli` answer is stamped `sources: [{"title": "PP 28/2025"}]`,
+including this one, whose decisive fact (the 49% cap) comes from **Perpres 10/2021 Lampiran III**. A real
+regulation attached to the wrong claim — same family as L2.11d. Ledgered.
+
 **🟢 2026-08-01 — THE PROGRAMME NOW HAS A SCOREBOARD, AND IT SAYS THE AXIS WE WERE WORKING ON IS DONE
 WHILE THE ONE NOBODY TOUCHED IS AT 1%.** Run
 `python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py` before trusting any number below it.
