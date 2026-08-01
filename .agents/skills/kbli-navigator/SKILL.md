@@ -83,6 +83,29 @@ it on a 35-item backlog would turn every unrelated PR red (W95). Flipping it is 
 cure lane. Still in force check done before using any of this as a yardstick: no presidential regulation
 has replaced 10/2021+49/2021 as of 2026.
 
+**CURE APPLIED to canonical the same day — 20 patched, 14 deliberately not.** `DISAGREE 35 → 14`
+(`agree 6 → 27`; the arithmetic works out to 21 rows because `51101` is reached from two ancestors).
+Patched: the arms/military family (`25200`, `30400`), both commercial air-transport codes, all 11
+ferry / river-lake / pelayaran-rakyat codes, couriers (`53200`), wooden building materials (`16221`) and
+umrah travel (`79122`). Each carries `pma_official_basis` = the annex entry, `pma_cap_verified: true`
+and a `pma_kondisi` naming the actual condition (single majority · Defence Minister approval · domestic
+capital only) — the conditions the old single-integer model silently dropped.
+**0% foreign becomes `TERBATAS`, never `TERTUTUP`**: "Modal dalam negeri 100%" closes the activity to
+FOREIGN capital, not to everyone, and `TERTUTUP` here holds narcotics and alcohol. The precedent is
+`47111` (TERBATAS / 0 / "UMKM only"). Filing an umrah agency with narcotics would have been a different
+false statement, arrived at by tidiness.
+**Not patched, with the reason written per code in `ADJUDICATION`:** 12 where the 2025 code is BROADER
+than the restricted activity (`10761` is all coffee processing, the annex restricts only coffee with a
+geographical indication; `26513` is electronic measuring instruments, the annex restricts defence radar;
+`30301`-`30303` are civil aircraft, the annex restricts military) and 2 where the rename looks right but
+is unproven (`21021`/`21022`: "Obat Bahan Alam" is plausibly today's name for "obat tradisional" — that
+equivalence wants a BPOM instrument, not an inference). **The list of what we refused to touch is as
+much the deliverable as the patch.**
+A formatting trap worth remembering: the canonical file is 540,083 lines at `indent=2`, and the first
+writer draft used `indent=1` — a 20-record change would have arrived as an unreviewable whole-file diff.
+Matching the file's own serialisation keeps it at **126 added / 66 removed**, and a test now pins it
+(a run with nothing to patch must leave the bytes identical).
+
 **Corollary that corrects this morning's scoreboard: the PMA axis is not merely "1% located" — where we
 now HAVE the source, the catalogue contradicts it.** And `classify_pma` over-counts: several of the 13
 `located` records carry a documented ABSENCE ("code absent from all 3 lampiran → open-default"), which is

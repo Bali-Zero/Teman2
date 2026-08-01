@@ -176,11 +176,24 @@ def test_cap_is_always_a_percentage_or_a_declared_gap(records: list[dict]) -> No
 
 
 def test_umkm_reserved_is_tri_state_and_rare(records: list[dict]) -> None:
-    """2 reserved / 1488 open / 69 undetermined — NOT 71 blanket True."""
+    """2 reserved / 1468 open / 89 undetermined — NOT 71 blanket True.
+
+    The split was 1488/69 until 2026-08-02, when the Perpres 49/2021 Lampiran III
+    cure moved 20 codes out of TERBUKA (arms and ammunition, military vehicles,
+    commercial air transport, the ferry family, couriers, umrah travel). They
+    became `None` — undetermined — which is the honest verdict: leaving TERBUKA
+    says nothing at all about a K-UMKM reservation.
+    """
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
     assert verdicts.count(True) == 2
-    assert verdicts.count(False) == 1488
-    assert verdicts.count(None) == 69
+    assert verdicts.count(False) == 1468
+    assert verdicts.count(None) == 89
+    # The counts above are population pins and will move again with the data.
+    # This one is the invariant underneath them, and it must not: `False` means
+    # exactly "TERBUKA and not named as reserved" — never a guess from silence.
+    named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
+    terbuka = {r["kode_kbli_2025"] for r in records if r.get("pma_status") == "TERBUKA"}
+    assert verdicts.count(False) == len(terbuka - named)
 
 
 def test_every_umkm_true_is_named_by_the_data(records: list[dict]) -> None:
@@ -192,19 +205,29 @@ def test_every_umkm_true_is_named_by_the_data(records: list[dict]) -> None:
             assert named or allocated, f"{r['kode_kbli_2025']} flagged with no basis"
 
 
-def test_exactly_nine_codes_stop_being_wrongly_rejected(records: list[dict]) -> None:
-    """Blast radius of the cure, measured: 9 codes leave the REJECTED bucket.
+def test_the_cure_only_ever_shrinks_the_rejected_bucket(records: list[dict]) -> None:
+    """Blast radius, measured: 27 codes leave the REJECTED bucket, none enters.
 
-    Old rule: `is_pma and pma_status != TERBUKA` -> REJECTED (71 codes).
-    New rule: REJECTED only where the adjudicated cap is 0% (62 codes).
+    Old rule: `is_pma and pma_status != TERBUKA` -> REJECTED.
+    New rule: REJECTED only where the adjudicated cap is 0%.
+
+    Was named `test_exactly_nine_...` while the counts were 71 / 62 / 9. On
+    2026-08-02 the Perpres 49/2021 Lampiran III cure moved 20 codes out of
+    TERBUKA: 18 of them at a 49% cap (they join the codes that stop being
+    wrongly rejected, 9 -> 27) and 2 at 0% (16221, 79122 — they join
+    `new_rejected`, 62 -> 64). The name was renamed rather than left lying:
+    a test whose name asserts a number it no longer checks is worse than one
+    with no name at all.
     """
     old_rejected = {r["kode_kbli_2025"] for r in records if r.get("pma_status") != "TERBUKA"}
     new_rejected = {
         r["kode_kbli_2025"] for r in records if KBLIEye._foreign_cap(r)[0] == 0
     }
-    assert len(old_rejected) == 71
+    assert len(old_rejected) == 91
+    assert len(new_rejected) == 64
+    assert len(old_rejected - new_rejected) == 27
+    # The counts above move with the data; THIS is the property that must not.
     assert new_rejected <= old_rejected, "the cure must never REJECT something new"
-    assert len(old_rejected - new_rejected) == 9
 
 
 def test_missing_cap_falls_back_to_status_not_to_zero(records: list[dict]) -> None:
