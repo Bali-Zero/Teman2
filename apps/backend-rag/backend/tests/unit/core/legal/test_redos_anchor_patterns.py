@@ -486,3 +486,66 @@ class TestChunkerCallerAssumption:
         assert const.PASAL_PATTERN.match("Pasal 1\nIsi.") is not None
         assert const.PASAL_PATTERN.match("\nPasal 1\nIsi.") is not None
         assert const.PASAL_PATTERN.match("\n\nPasal 1\nIsi.") is None
+
+
+# ---------------------------------------------------------------------------
+# The payload table above is HAND-PICKED, and a hand-picked table is exactly what let
+# form (b) ship as "measured linear". After the merge, CodeQL re-scanned the merge commit
+# and named two payloads nobody in this file had tried — `"\nPasal C" + "\n"*n` and
+# `"BAB I" + "00"*n`. Neither reproduces anything (they are linear on the PRE-fix patterns
+# too: a symbolic path through the NFA, not an executed one). But the point stands: the
+# author picks payloads out of the same head that wrote the regex, so the blind spot is
+# shared. This sweep replaces taste with a cross-product, and — the part that makes it
+# worth its runtime — it is shown catching the bug we already know about before it is
+# allowed to certify anything.
+# ---------------------------------------------------------------------------
+
+SWEEP_N = 20_000
+SWEEP_BUDGET_SECONDS = 0.25
+
+SWEEP_PREFIXES = (
+    "",
+    "\n",
+    "BAB I",
+    "BAB I\n",
+    "\nPasal 1",
+    "\nPasal C",  # CodeQL's own witness: `C` is a roman numeral in `[IVXLC]`
+    "\n(1)",
+    "- 12 -",
+    "\n 1 ",
+    "Halaman 1 dari 2",
+)
+SWEEP_PUMPS = ("\n", "\n\n", " \n", "\n ", " ", "\t", "\r", "\xa0", "0", "00", "A", "x\n")
+
+# Kept verbatim as the sweep's CONTROL, never as a thing under test: a sweep that reports
+# "nothing found" proves nothing until it is seen reporting the defect that already bit us.
+_PRE_FIX_BAB = re.compile(
+    r"^BAB\s+([IVX]+|[A-Z]+|\d+)\s*\n?\s*(.+?)(?=\n|$)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+class TestPayloadSweep:
+    """Cross-product search, so the next quadratic is not found by the next scanner."""
+
+    def test_control_the_sweep_budget_catches_the_pre_fix_quadratic(self):
+        """If this budget cannot fail, the sweep below is decoration."""
+        elapsed = _elapsed(_PRE_FIX_BAB, "BAB I" + "\n" * SWEEP_N)
+        assert elapsed > SWEEP_BUDGET_SECONDS, (
+            f"the pre-fix form (b) finished in {elapsed:.4f}s, under the "
+            f"{SWEEP_BUDGET_SECONDS}s budget — the budget no longer discriminates, so "
+            "the sweep's clean result is worthless. Re-derive the budget."
+        )
+
+    @pytest.mark.parametrize("name", sorted(CURED))
+    def test_no_cured_pattern_is_superlinear_on_any_swept_payload(self, name):
+        rx = CURED[name]
+        for prefix in SWEEP_PREFIXES:
+            for pump in SWEEP_PUMPS:
+                text = prefix + pump * SWEEP_N
+                elapsed = _elapsed(rx, text)
+                assert elapsed < SWEEP_BUDGET_SECONDS, (
+                    f"{name} took {elapsed:.4f}s on prefix={prefix!r} pump={pump!r} at "
+                    f"n={SWEEP_N} (budget {SWEEP_BUDGET_SECONDS}s). A payload shape this "
+                    "file did not anticipate reaches a quadratic path."
+                )
