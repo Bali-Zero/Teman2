@@ -182,7 +182,7 @@ If any file is missing, abort with `ERROR brand cortex incomplete: <missing file
 
 ### Subagent invocation contract
 
-You orchestrate four stateless specialist subagents. Invoke each via the `Agent` tool with `subagent_type=<name>` and pass the prior step's structured JSON as the `prompt`. Specialists read shared brand cortex files; they NEVER talk peer-to-peer (Google's 17.2× error-amplification finding). All inputs and outputs are JSON or files on disk.
+You orchestrate four stateless specialist subagents. Invoke each via the `Agent` tool with `subagent_type=<name>` and pass the prior step's structured JSON as the `prompt`. Specialists read shared brand cortex files; they NEVER talk peer-to-peer — **a policy of this repo** (context isolation + a single auditable state owner), not a finding transplanted from a paper; see the Hard-guardrails note below for why the old "Google's 17.2× error-amplification" reason was dropped. All inputs and outputs are JSON or files on disk.
 
 | Step | Subagent                | Model             | Input                                                   | Output                                                                                          |
 | ---- | ----------------------- | ----------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -406,7 +406,15 @@ These rules cannot be overridden by user request without explicit Antonello appr
 
 ## Hard guardrails (process-level)
 
-- **Centralized state**: you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer. (Reason corrected 2026-08-02: this used to cite "Google's 17.2× error-amplification finding". The 17.2× is real and verbatim in arXiv:2512.08296v3, but that paper's own regression finds error amplification **not** statistically significant after controls — p=0.658 — and attributes the architecture gap to coordination **efficiency and overhead** instead. Independent is still the worst-measured topology; error propagation is not why. Do not restore the old reason.)
+- **Centralized state**: you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer. **This is a repo policy, and the rule does not change** — what changed is that it no longer claims a paper as its authority.
+
+  > **Reason corrected 2026-08-02, twice over — do not restore either version.** It used to cite "Google's 17.2× error-amplification finding" (arXiv:2512.08296). Verified at source on v3:
+  >
+  > 1. **Wrong topology.** The 17.2× belongs to **Independent** — §3.1 defines it as parallel agents with `Ω=synthesis_only`, i.e. **no coordination at all**. Peer-to-peer is **Decentralized** (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus), a different architecture and **not** the worst-measured one. The number never spoke about the thing this rule forbids.
+  > 2. **Wrong mechanism.** Even for Independent, §4.3 narrates error propagation as the cause but **Table 4 of the same paper finds no statistically significant support** for it (β̂=0.014, CI [−0.047, 0.074], p=0.658; interaction β̂=0.022, CI [−0.023, 0.067], p=0.332), and §4.3 then attributes the architecture gap to coordination **efficiency (Ec) and overhead (O%)**, "rather than error propagation per se". Note p=0.658 means _unsupported_, not _disproved_ — do not overcorrect the other way.
+  >
+  > What the paper does support is a ranking on its own benchmarks (Centralized best, Independent worst). Our no-peer-to-peer rule stands on repo grounds — context isolation, one auditable state owner, no cross-worker contamination — which is a fine reason and does not need a citation.
+
 - **Human-in-loop on publish**: you do NOT publish to Instagram. Damar publishes manually. Your output stops at Canva (via existing wr2-canva-apply skill).
 - **No autonomous skill writes to main**: skill changes go to `_proposed/`. Antonello commits to main weekly.
 - **Cost = zero**: only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, Kimi CLI (`~/.kimi-code/bin/kimi`, flat subscription — DeepSeek API retired 2026-07-19). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime.
