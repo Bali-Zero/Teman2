@@ -28,6 +28,67 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-08-01 — keep current)
 
+**🔴🔴 2026-08-01 (F2, evening) — WE TELL CLIENTS THEY CAN WHOLLY OWN AN INDONESIAN ARMS FACTORY, A
+SCHEDULED AIRLINE AND AN UMRAH TRAVEL AGENCY. THE OPERATIVE PERPRES CAPS ALL THREE.** Proven on the live
+site, not inferred — `/kbli/25200` (Industri Senjata dan Amunisi), `/kbli/79122` (Biro Perjalanan Ibadah
+Umrah dan Haji Khusus), `/kbli/51101` (Angkutan Udara Niaga Berjadwal) each render **"100% Open"** with
+**zero** occurrences of "49%". The law: 49% for the first and third (defence needs the Minister's
+approval to exceed it; air additionally requires the national owner to keep single majority), **0%** for
+umrah travel. Found by opening the Perpres lampiran that had been in the vault since 2026-07-19 and that
+nobody had read.
+
+**Three independent things had to be true for this to survive, and each is its own lesson:**
+
+1. **The instrument everyone cites is the wrong one.** Perpres 49/2021 arts. 3/4/5 read
+   `Lampiran I diubah` · `Lampiran II diubah` · `Lampiran III diubah` — all three annexes of 10/2021 were
+   REPLACED. Canonical's locator for `47221` still says "Perpres 10/2021 Lampiran III … entry #44"; the
+   operative Lampiran III has **37** entries and does not contain 47221 at all (49/2021 moved it into the
+   body, art. 3a, as _persyaratan lainnya_ — a different legal category from a percentage cap). Follow
+   that locator today and it leads nowhere.
+2. **The vaulted 10/2021 lampiran are text-layer-dead** — 0 real words and 0 five-digit sequences extract
+   from all three. So `grep <code>` there returns 0 for EVERY code, always. At least two canonical
+   verdicts rest on exactly such a negative: `02102` ("code absent from all 3 lampiran (grep 0) →
+   open-default") and `73100` ("ZERO 73xxx codes anywhere → neighbor-% contamination"). Not proven wrong
+   — **proven unverifiable with what we hold**, which is not the same thing and must not be written up as
+   if it were.
+3. **The operative annex's own text layer corrupts the two columns that matter** (`26513`→"265L3",
+   `49%`→"497o", `100%`→"lOOo/o"). A parse of it read 40 code tokens for a 41-pair table and could not
+   read a single percentage. The four pages were rendered at 200dpi and transcribed **from the images**;
+   the image is the authority, the text layer is the suspect.
+
+**The measured join (F2 step 3, through the BPS crosswalk — never bare digits): agree 6 · DISAGREE 35 ·
+ambiguous-by-law 2 · no 2025 heir 1.** A first reading of the titles puts ~20 of the 35 in "activity
+identity is plain" (`Industri Senjata dan Amunisi`, `Aktivitas Kurir`, `Pelayaran Rakyat`, 11
+ferry/river-lake codes, couriers, military vehicles) and ~15 in "the 2025 code is BROADER than the
+restricted activity" — `10761` is _Pengolahan Kopi_ while the law restricts only coffee **with a
+geographical indication**; `26513` is _Alat Ukur dan Alat Uji Elektronik_ while the law restricts
+**defence radar**. That second bucket is the D0–D6 population §5.3 said would be produced rather than
+promised; it now has a number.
+
+**THE STRUCTURAL FINDING, bigger than the 35: the cap attaches to the (bidang usaha, KBLI) PAIR, never
+to the code.** Entry 7 caps `30111` at 49% as a warship yard; entry 8 caps **the same code** at 0% as a
+builder of pinisi, cadik and traditional wooden vessels — and the body says so explicitly (art. 3(3):
+where one KBLI spans several bidang usaha, the requirement applies only to the bidang usaha named in the
+column). Our single `pma_max_asing` integer cannot express that, nor a phase-dependent cap (`58130`: 0%
+at establishment, 49% via the capital market for expansion; broadcasting 20% likewise), nor a
+conditional one. **Any future cure that picks one number for such a code is asserting something the
+instrument does not say** — those codes are reported `ambiguous` and are not auto-patchable by
+construction (pinned by a parametrised test: even when the catalogue happens to match one of the two
+lawful values, the verdict stays ambiguous).
+
+Shipped: `scripts/kbli_filiera/perpres_foreign_cap_relation.py` + `data/kbli-filiera/perpres-foreign-caps.json`
+(41 pairs, per-entry locator, vintage 2021-05-25) + 16 guilt/innocence/transcription-pin tests,
+mutation-verified. **A REPORTER, not a gate**: `--strict` exists and is deliberately NOT armed — arming
+it on a 35-item backlog would turn every unrelated PR red (W95). Flipping it is the closing act of the
+cure lane. Still in force check done before using any of this as a yardstick: no presidential regulation
+has replaced 10/2021+49/2021 as of 2026.
+
+**Corollary that corrects this morning's scoreboard: the PMA axis is not merely "1% located" — where we
+now HAVE the source, the catalogue contradicts it.** And `classify_pma` over-counts: several of the 13
+`located` records carry a documented ABSENCE ("code absent from all 3 lampiran → open-default"), which is
+not a locator. It measures the field's shape, not the entity — the family-#3 disease, in the instrument
+built to measure the disease.
+
 **🟢 2026-08-01 (later same day) — THE THREE SEA-CABOTAGE LIES ARE GONE FROM THE CHANNEL: 5 OF THE 8
 `pma_status` DIVERGENCES CURED IN PROD AND PROVEN LIVE. The other 3 were held back, and WHY is the more
 useful half of this entry.** `chat_kbli` for `50122` now answers _"you cannot own 100% … **TERBATAS** …
