@@ -233,20 +233,43 @@ fi
 echo "🐍 Checking for print() statements in Python files..."
 PY_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '\.py$' || true)
 if [ -n "$PY_FILES" ]; then
+    # PRINT_GATE_BEGIN — extracted verbatim by scripts/tests/test_precommit_print_gate.sh
     # Exclude scripts/ and tests/ from this check (they can use print)
     BACKEND_PY_FILES=$(echo "$PY_FILES" | grep -E '^apps/backend-rag/backend/(app|services|core|middleware)/' || true)
     if [ -n "$BACKEND_PY_FILES" ]; then
-        # Use word-boundary check so identifiers ending in "print(" don't false-match
-        # (es. _signal_fingerprint(, import_blueprint(). See lessons.md 2026-04-19.
-        # Also skip lines starting with `>>>` (Python interactive docstring examples)
-        # so docstrings like `>>> print(variants)` don't trip the check.
-        if echo "$BACKEND_PY_FILES" | xargs grep -nE '(^|[^a-zA-Z_])print\(' 2>/dev/null | grep -vE ':\s*>>>\s' | grep -q .; then
+        # Golden Rule #8 IS ruff's T201, and ruff already runs on these same staged
+        # files further down this hook. So RUN the rule instead of re-implementing it:
+        # a text scan cannot see `# noqa: T201` (which ruff honors, and which
+        # sentry_config.py's before_send needs — a logger call there re-enters Sentry)
+        # and cannot tell a call from the word "print(" inside a comment.
+        # Measured 2026-08-01 across the whole scope: 3 files tripped the old grep and
+        # every one was a false positive — two were comments, one of which literally
+        # says the code does NOT print. Zero true positives; it only blocked commits.
+        # Limit, declared: ruff reads the WORKTREE file, not the staged blob (the old
+        # grep did too), so a partial `git add -p` is judged on the working copy.
+        # The [ -n ] guard above is load-bearing, and it is NOT portable decoration:
+        # GNU xargs (the Linux CI runners) runs its command even when input is empty
+        # — that is what `-r/--no-run-if-empty` exists to switch off — so without the
+        # guard this degrades into a bare `ruff check` over the whole repository.
+        # Measured 2026-08-01 on macOS: BSD xargs does NOT run on empty input and
+        # does not accept `-r`, so `[ -n ]` is the form that holds on both.
+        if ! command -v ruff >/dev/null 2>&1; then
+            echo "❌ ERROR: cannot verify Golden Rule #8 — ruff is not on PATH."
+            echo "   This is a CANNOT-VERIFY, not a clean bill. Install ruff and retry."
+            exit 1
+        fi
+        PRINT_RC=0
+        PRINT_OUT=$(echo "$BACKEND_PY_FILES" | xargs ruff check --select T201 --force-exclude --no-cache 2>&1) || PRINT_RC=$?
+        if [ "$PRINT_RC" -ne 0 ]; then
+            echo "$PRINT_OUT"
             echo "❌ ERROR: Found print() statements in backend code."
             echo "   Golden Rule #8: Use logger.info/debug/error() instead"
             echo "   Add: logger = logging.getLogger(__name__)"
+            echo "   Deliberate? Append '# noqa: T201' plus the reason, as sentry_config.py does."
             exit 1
         fi
     fi
+    # PRINT_GATE_END
 fi
 
 # Golden Rule #6: No Hardcoding Secrets
