@@ -293,7 +293,7 @@ che P3 propagherà come `source{}` (X6).
 | `mask_pii()` (log/Telegram/last_error) | **NUOVO** | regex NIK(16)/NPWP(16/15)/passport/phone/email → `<NIK>` ecc. C6. §6 di 04-2. |
 
 **Stadi = funzioni deterministiche in-process** (`STAGES=[classify, extract, validate, route]`),
-NON agenti dialoganti (verdetto panel unanime + NB 05c "17.2× error amplification su peer-to-peer").
+NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplification su peer-to-peer"~~ — **citazione RITIRATA 2026-08-02**: il 17.2× è di `Independent` (nessun coordinamento), non del peer-to-peer/`Decentralized`, e il paper non lo sostiene come causa — vedi `05c-nb-patterns.md` §1.4-nota. La scelta resta, su basi di repo).
 
 ### P3 — CLASSIFY → EXTRACT → VALIDATE  → modulo `backend/intake/stages/`
 
@@ -439,7 +439,7 @@ NON agenti dialoganti (verdetto panel unanime + NB 05c "17.2× error amplificati
 
 ## 7. SINTESI (12 righe)
 
-1. UN sistema, 5 stadi (P1→P5), 1 orchestratore deterministico (no swarm — panel unanime + NB 17.2×).
+1. UN sistema, 5 stadi (P1→P5), 1 orchestratore deterministico (no swarm — panel unanime; la vecchia citazione "NB 17.2×" è RITIRATA 2026-08-02, vedi `05c-nb-patterns.md` §1.4-nota — la decisione non cambia).
 2. Tutto LOCALE sul Pro `nuzantara_dev` (Law 2): coda, blob PII, worker, correzioni. Mai Fly/cloud/RAG/NotebookLM.
 3. Le 12 contraddizioni X1-X12 chiuse da una tabella canonica: `intake_queue`+`document_instances`, PK BIGSERIAL, `intake_key=sha256(source|source_ref|blob_hash|pipeline_version)`, source `whatsapp|drive|zoho`, pipeline_version `VARCHAR(32)='intake-v1'`, blob_hash hex64, needs_review_fields[].
 4. Panel C1-C7 recepiti: dedup composito+pipeline_version (C1), exactly-once SKIP LOCKED+lease+DLQ (C2), HITL per-campo (C3), entity-res link-only default (C4), versioning supersession (C5), no CoT grezzo (C6), verify=firma+diff (C7).

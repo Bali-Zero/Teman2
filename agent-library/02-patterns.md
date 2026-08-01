@@ -253,22 +253,32 @@ Pre-publish artifact: `~/.claude/agents/devils-advocate.md` ("find the legal fla
 
 > **Citazione corretta 2026-08-02 — non ripristinare la vecchia motivazione.** Fino a oggi questa riga
 > diceva «centralized preferita: error amplification 4.4× vs independent 17.2× (Kim et al.
-> arxiv 2512.08296)». I due numeri **esistono davvero** nel paper (v3, verbatim: _"Independent systems
-> amplify trace-level errors 17.2× … Centralized coordination, however, contains this to 4.4×"_) — ma
-> il paper stesso, **dopo i controlli, li dichiara non significativi**: _"neither the main effect of
-> error amplification (β̂=0.014, p=0.658) nor its interaction with tool count (β̂=0.022, p=0.332)
-> reaches statistical significance"_, e conclude che le differenze fra architetture _"are better
-> explained by other coordination mechanisms, particularly efficiency and overhead, rather than error
-> propagation per se"_. Citare il 17.2× come **causa** della preferenza per centralized afferma
-> esattamente ciò che la fonte rifiuta.
+> arxiv 2512.08296)». I due numeri **esistono davvero** nel paper — **§4.3**, verbatim: _"Independent
+> systems amplify trace-level errors 17.2× through unchecked error propagation … Centralized
+> coordination, however, contains this to 4.4× by enforcing validation bottlenecks"_.
+>
+> **Ma la narrazione causale di §4.3 non è sostenuta dall'analisi aggiustata dello stesso paper, ed è
+> questa la trappola.** Quella frase racconta il meccanismo; la **Table 4** lo misura sotto controlli e
+> **non trova supporto statisticamente significativo** (le due cose possono coesistere — un rapporto
+> descrittivo non è un effetto stimato — ma solo la seconda autorizza a parlare di causa): `log(1+Aeᵗʳᵃᶜᵉ)` β̂=0.014, 95% CI **[−0.047, 0.074]**, p=0.658†;
+> `Aeᵗʳᵃᶜᵉ×T` β̂=0.022, CI **[−0.023, 0.067]**, p=0.332† († = non significativo). Entrambi gli
+> intervalli attraversano lo zero. Subito dopo la Table 5, §4.3 conclude: _"the dramatic performance
+> differences across architectures … are better explained by other coordination mechanisms,
+> particularly efficiency (Ec) and overhead (O%), rather than error propagation per se"_.
+>
+> **Formulazione precisa** (la sfumatura conta, visto che questa nota parla proprio di overclaim):
+> p=0.658 significa che la regressione **non trova supporto** per l'effetto — non che lo **smentisca**.
+> Un CI così largo è compatibile anche con un effetto piccolo. Quindi: il 17.2× non è utilizzabile come
+> **causa**, ma non è "confutato".
 >
 > La preferenza per centralized **resta** — è la topologia che il paper misura come migliore sui suoi
-> benchmark — ma il meccanismo da citare è **efficienza e overhead di coordinamento**, non
-> l'amplificazione d'errore. Storia: questo repo aveva ledgerizzato a giugno che «il 17.2× non è nel
-> paper, è un commento TDS». **Quella nota era il fantasma**: il numero c'è. Il difetto era un altro e
-> peggiore. Verificato alla fonte 2026-08-02 su arXiv:2512.08296v3.
+> benchmark — e il meccanismo che il paper stesso indica è **efficienza e overhead di coordinamento**.
+>
+> Storia, corretta a sua volta: questo repo aveva ledgerizzato a giugno che «il 17.2× non è nel paper,
+> è un commento TDS». **Quella nota era il fantasma** — il numero c'è. Verificato alla fonte
+> 2026-08-02 su arXiv:2512.08296v3 (§4.3 + Table 4).
 
-**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); independent topology (peer-to-peer no coordination — la topologia che il paper misura peggio, per overhead ed efficienza di coordinamento; **non** citare il 17.2× come sua causa).
+**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); topologia **Independent** — che nel paper (§3.1) significa agenti paralleli con `Ω=synthesis_only`, cioè **nessun coordinamento** e nessuna cross-validation: è quella misurata peggio, per overhead ed efficienza di coordinamento; **non** citare il 17.2× come sua causa. ⚠️ Independent **non** è "peer-to-peer": il peer-to-peer è **Decentralized** (§3.1, `C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds + consenso), un'architettura diversa e non la peggiore misurata.
 
 **Esempio concreto**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_wave_pacing_design_rigor.md`
 

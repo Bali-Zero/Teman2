@@ -1,3 +1,11 @@
+---
+date: 2026-06-06
+domain: operations
+client_case: none
+adversarial_review: codex
+adversarial_review_note: "Frontmatter added 2026-08-02 with the correction blocks, not in 2026-06. The reviewed artifact is the CORRECTION (see the Adversarial review section at the end); the 2026-06 body is a dated record and was not re-reviewed."
+---
+
 # SOTA Agentic Carousel-Generation Automations — Architectures + Reusable Code
 
 **Captured**: 2026-06-06
@@ -22,7 +30,7 @@ brief/ground-truth → narrative/copy (structured) → layout/render → hero-im
 
 Three findings reframe our position:
 
-1. **Our no-peer-to-peer orchestrator topology is the academic SOTA recommendation**, not just an ops preference. (arXiv:2512.08296, Google, Dec 2025 — _qualitative_ claim verified; the "17.2× / 4.4×" multipliers are from secondary commentary, see §1.)
+1. ~~**Our no-peer-to-peer orchestrator topology is the academic SOTA recommendation**, not just an ops preference. (arXiv:2512.08296, Google, Dec 2025 — _qualitative_ claim verified; the "17.2× / 4.4×" multipliers are from secondary commentary, see §1.)~~ **RETRACTED 2026-08-02 — both halves are wrong.** The multipliers are the paper's own (§4.3, verbatim), not secondary commentary. And the paper's peer-to-peer architecture is `Decentralized`, which it does **not** rank worst — 17.2× belongs to `Independent` (parallel, `Ω=synthesis_only`, no coordination). So the 17.2× cannot support a no-peer rule; what the paper reports is that `Centralized` outperformed `Independent` **on its own benchmarks**. Our no-peer rule is an ops preference with good repo reasons, which is exactly what this line denied. See the correction block in §1.
 2. **Our binary PASS/FAIL critic is the statistically correct design.** VLMs reliably _rank_ but cannot reliably _score_ on absolute scales for vision-heavy tasks (arXiv:2604.25235, verified). Scalar 1-5 rubrics are noise for palette/composition.
 3. **Our weakest brick is cross-slide visual consistency** (anchor-reuse + sha256 only prevents _exact_ reuse, not _coherent_ lighting/palette/framing across slides). This is the highest-value upgrade — and it's solvable with tools already inside our Google AI Ultra subscription (Nano Banana Pro, 14 reference images) or with FLUX.1 Kontext multi-turn.
 
@@ -45,13 +53,22 @@ Three findings reframe our position:
 | Durable-execution layer           | Temporal (used by Postiz)                   | Long-running multi-step workflow durability; heavyweight. **Study-pattern.**                                                                                                                  |
 
 **The academic anchor for our no-peer rule** — calibrated honestly:
+⚠️ **Framing RETRACTED 2026-08-02**: there is no academic anchor for a *no-peer* rule in this paper. It ranks `Centralized` above `Independent` (no coordination) on its own benchmarks; peer-to-peer is `Decentralized`, which it does not rank worst. Our no-peer rule is a repo policy. See the correction block below.
 
 - arXiv:2512.08296 "Towards a Science of Scaling Agent Systems" (Kim, Gu, Park et al., Google, Dec 2025) **is a real paper** (verified abstract). Its load-bearing claim: _"architectures without centralized verification tend to propagate errors more than those with centralized coordination"_; it evaluates 5 topologies (Single, Independent, Centralized, Decentralized, Hybrid) and finds coordination yields diminishing returns and mismatched coordination degrades performance (relative range +80.8% to −70.0%).
-- ⚠️ **The specific "17.2× unstructured / 4.4× orchestrator" multipliers are NOT in the paper's abstract** — they come from secondary commentary ([Towards Data Science: "The 17x Error Trap"](https://towardsdatascience.com/why-your-multi-agent-system-is-failing-escaping-the-17x-error-trap-of-the-bag-of-agents/)). Cite the _paper_ for the qualitative finding; cite TDS for the numbers. (Our own brand-cortex/agent docs currently attribute "17.2×" to "Google" — worth softening to "centralized coordination contains error propagation (Google 2512.08296); a widely-cited secondary analysis puts unstructured amplification ~17×".)
+- ⚠️ **The specific "17.2× unstructured / 4.4× orchestrator" multipliers are NOT in the paper's abstract** — ~~they come from secondary commentary ([Towards Data Science: "The 17x Error Trap"](https://towardsdatascience.com/why-your-multi-agent-system-is-failing-escaping-the-17x-error-trap-of-the-bag-of-agents/)). Cite the _paper_ for the qualitative finding; cite TDS for the numbers. (Our own brand-cortex/agent docs currently attribute "17.2×" to "Google" — worth softening to "centralized coordination contains error propagation (Google 2512.08296); a widely-cited secondary analysis puts unstructured amplification ~17×".)~~ **Everything struck through is FALSE — retracted 2026-08-02, left visible because it is what propagated.** The numbers are the paper's own (§4.3).
 
-  > **CORRECTION 2026-08-02 — this bullet is accurate about the _abstract_ and wrong about the _paper_, and the difference cost us two months of a propagated phantom.** Read on **v3** at source: 17.2× and 4.4× **are the paper's own**, verbatim in the body — _"Independent systems amplify trace-level errors 17.2× … Centralized coordination, however, contains this to 4.4×"_. So "cite TDS for the numbers" is wrong: cite the paper. What survives, and is the point that actually matters, is the opposite of a sourcing quibble — **the paper itself declines to treat error amplification as the cause**: _"neither the main effect of error amplification (β̂=0.014, p=0.658) nor its interaction with tool count (β̂=0.022, p=0.332) reaches statistical significance"_, and it attributes the architecture gap to _"other coordination mechanisms, particularly efficiency and overhead, rather than error propagation per se"_. The topology ranking stands; the mechanism does not.
+  > **CORRECTION 2026-08-02 — this bullet contains one true observation and one false inference drawn from it, and the false half is what propagated.** Verified at source on **v3** (§4.3, §3.1, Table 4):
   >
-  > **How the phantom formed** — worth more than the correction. This bullet is *careful*: it says "not in the **abstract**". Propagated into memory it lost the qualifier and became "the 17.2× is not in the paper, it's TDS commentary" — a **false** claim derived from a **true** one by dropping a single word. A precise finding degrades into a phantom at the first hop that paraphrases it. Corrected surfaces: PR #3513 (agent-library, wr2-design-architect + its deep-research resource) and the follow-up completing the class audit.
+  > - **True**: the multipliers are not in the abstract.
+  > - **False**: "they come from secondary commentary". They are the paper's own, verbatim in **§4.3** — _"Independent systems amplify trace-level errors 17.2× through unchecked error propagation … Centralized coordination, however, contains this to 4.4× by enforcing validation bottlenecks"_. Absent from the abstract ⇏ absent from the paper. That inference, made **here**, is the phantom; §10 then repeated it as a verified finding. Not a word lost in transmission — a conclusion overreached at the source and never re-checked.
+  >
+  > **Two things this bullet could not have known, and they matter more than the provenance:**
+  >
+  > 1. **The number is about the wrong architecture for our rule.** §3.1: `Independent` = parallel agents, `Ω=synthesis_only`, **no coordination**. Peer-to-peer is `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus) and is **not** ranked worst. So 17.2× never supported a *no-peer-to-peer* rule.
+  > 2. **It is unsupported as a cause even for `Independent`.** §4.3 narrates error propagation as the mechanism, but **Table 4** of the same paper reports β̂=0.014, CI [−0.047, 0.074], p=0.658 and interaction β̂=0.022, CI [−0.023, 0.067], p=0.332 — both CIs straddling zero — and §4.3 concludes the gap is better explained by _"efficiency (Ec) and overhead (O%), rather than error propagation per se"_. **p=0.658 = unsupported, not disproved.**
+  >
+  > A descriptive ratio and a non-significant adjusted coefficient can coexist — they are different quantities. What does not survive is the §4.3 *narrative* that names error propagation as the mechanism, since the paper's own adjusted analysis does not support it; and that narrative is what a careful reader could take at face value. Corrected surfaces: PR #3513 and the follow-up completing the class audit.
 
 **LangGraph vs script-driven for OUR pipeline** — consensus: for a pipeline with conditional retry loops + a critic gate that loops back + (optional) human approval + crash-resume need, **LangGraph is SOTA over plain script**. Plain scripts win only for truly linear, no-retry, no-resume pipelines. Decisive advantages: structural gates as conditional edges (the model can't rationalize past a failure), PostgresSaver checkpointing (crash-resume + replay), first-class parallel fan-out, first-class durable interrupts. LangGraph is **already in our stack** (`kg_langgraph_orchestrator` has PostgresSaver; Federation Orchestrator uses LangGraph) — but WR2's primary carousel fan-out is script-driven. That's the migration target.
 
@@ -205,8 +222,8 @@ When vendoring any MIT/Apache code, keep the attribution header + add to a `PROV
 
 These were **verified by the orchestrator** (not just relayed from sub-lanes):
 
-- arXiv:2512.08296 — real; but "17.2×/4.4×" are secondary-commentary numbers, NOT in the abstract. Soften our internal attribution.
-  > **CORRECTED 2026-08-02 — and this line is where the phantom was born, one section after the true one.** §1 says "not in the **abstract**" (true). This line, in the same document, calls them "**secondary-commentary numbers**" (false: they are verbatim in the paper's body). The degradation took one hop, inside a single file, in a section titled _source-honesty_ — the summary of a verification is not the verification. What is genuinely wrong in the paper's use of them is not provenance but **causality**: its own regression finds error amplification not significant after controls (p=0.658). See the correction block in §1.
+- arXiv:2512.08296 — real; ~~but "17.2×/4.4×" are secondary-commentary numbers~~ **← FALSE, retracted 2026-08-02** (they are verbatim in §4.3), NOT in the abstract ← true. ~~Soften our internal attribution.~~ ← superseded, see §1.
+  > **CORRECTED 2026-08-02 — and this line is why a section titled _source-honesty_ is not itself a source.** It states as **orchestrator-verified** that the numbers are "secondary-commentary numbers". They are not: they are verbatim in **§4.3** of the paper. The false claim was not born here — §1 already drew it — but this line is what gave it the status of a *checked* fact, and that is what made it survive: everything downstream cited the honesty section, not the hedge. What is genuinely wrong is not provenance but **causality and architecture** — see the correction block in §1.
 - arXiv:2604.25235 — real (the `2604` prefix looked future-dated; it resolves; ranking-vs-scoring finding genuine).
 - `Hainrixz/open-carrusel` — real, MIT, 303★, `wrapSlideHtml()` confirmed present.
 
@@ -218,7 +235,7 @@ Items relayed from Sonnet lanes but **NOT independently re-verified by the orche
 
 - [ ] P1 cross-slide consistency: prototype Nano Banana Pro 14-ref via FlowKit on one real carousel; measure visual coherence vs current anchor-reuse.
 - [ ] Decide if `instructor` (P2) goes into brief-interpreter/storyboarder this cycle — it's the cheapest high-leverage change.
-- [x] ~~Soften the "17.2× (Google)" attribution wherever it appears in our agent docs / brand cortex to match §1.~~ **Superseded 2026-08-02, and do NOT re-open it in this form** — §1's prescription was wrong (the numbers ARE the paper's, see the correction block there). The work actually done is the opposite of "soften the attribution": the attribution to Google is correct, and what was removed is the use of 17.2× as the **causal reason** for the no-peer rule, which the paper's own regression rejects (p=0.658). Done in PR #3513 + its follow-up.
+- [x] ~~Soften the "17.2× (Google)" attribution wherever it appears in our agent docs / brand cortex to match §1.~~ **Superseded 2026-08-02, and do NOT re-open it in this form** — §1's prescription was wrong (the numbers ARE the paper's, see the correction block there). The work actually done is the opposite of "soften the attribution": the attribution to Google is correct, and what was removed is the use of 17.2× **for the no-peer rule at all** — first because it describes `Independent` (no coordination), not the peer-to-peer `Decentralized` that rule is about, and second because its causal reading is not supported by the paper's own adjusted analysis (Table 4: p=0.658 — unsupported, not disproved). Done in PR #3513 + its follow-up.
 - [ ] Re-verify the ~20 unverified repo star/date claims before any one becomes a dependency.
 - [ ] P6 LangGraph migration — park until next draft-loss-on-restart incident, then prioritize.
 
@@ -260,3 +277,29 @@ Questo conferma l'autopsy del 2026-06-04 ("A intelligente = dead-code, B che pub
 - **Fase 4** (breaking): migrazione LangGraph — feature-flag + shadow-run, parcheggiata fino al prossimo incidente draft-loss.
 
 **Correzione a §4/§8**: P4 (Satori/render-contract) e P5 (Playwright pool) **non si applicano al path di produzione** — che usa ReportLab, non un browser headless. Valgono solo per il path HTML-staging. La decisione consapevole (D2) è "ReportLab vs HTML/CSS", non "Playwright vs Satori".
+
+---
+
+## Adversarial review
+
+**Scope**: this section reviews the **2026-08-02 correction blocks only** (§0 finding 1, §1 anchor + bullet, §10 source-honesty bullet, §11 checklist item). The 2026-06-06 body is a dated record and was not re-reviewed.
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh`, fresh context, read-only sandbox, cross-family (generator = Claude Opus 5; grader ≠ generator). Two rounds, **both returned DO-NOT-SHIP**; this text ships after the third rework.
+
+### What the refuter caught that the author had not
+
+| # | Objection | Status |
+|---|---|---|
+| 1 | The correction said the paper's regression **"rejects"** error amplification. `p=0.658` means *unsupported after controls*, **not disproved** — the CI [−0.047, 0.074] is still compatible with a small effect. Correcting an overclaim with an overclaim. | fixed everywhere |
+| 2 | **The number is about the wrong architecture.** §3.1 defines `Independent` as parallel agents with `Ω=synthesis_only` — *no coordination*. Peer-to-peer is `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus), which the paper does **not** rank worst. So 17.2× never bore on a no-peer rule at all. This is a **deeper defect than the causal one** and neither the original note nor the first correction saw it. | fixed; the rule is now grounded in repo policy |
+| 3 | The "phantom was born by dropping the word *abstract*" story is **false**. §1 of this very file already inferred "they come from secondary commentary". The overreach happened here, at the source; §10 then promoted it to a *verified* finding. | narrative corrected |
+| 4 | Annotating a false assertion does not unsay it — a reader can still quote the line above the note. Applied inconsistently by the author (struck at §0, merely annotated at §1/§10). | all now struck in place, original text preserved visibly |
+| 5 | **"Every live surface is fixed" was false.** `doc-intake-unified/00-INDEX.md` describes `05-final-spec.md` as a *"SPEC FINALE ESEGUIBILE"* to build from and `05c-nb-patterns.md` as its ground truth — not archaeology. `05c` carries the conflation in its bluntest form (*"Decentralized topologies amplify errors 17.2×"*) and is where it entered the spec's "no swarm" rationale. | both corrected; ledger narrowed 8 files → 6 |
+| 6 | A line-number citation (`wr2-design-architect.md:428`) goes stale on the next edit. | replaced with a section reference |
+| 7 | "The paper contradicts itself" overstates: a descriptive ratio and a non-significant adjusted coefficient are different quantities and can coexist. | softened to "its §4.3 causal narrative is not supported by its own adjusted analysis" |
+
+### Limits of this review, stated rather than hidden
+
+- The refuter had **no internet access**. It could not verify §4.3 / §3.1 / Table 4 at source; those were fetched by the author from `arxiv.org/html/2512.08296v3` and given to the refuter as *claims by the author*. What the refuter checked is internal consistency, scope, and every assertion verifiable inside this repo.
+- The paper was read through its **HTML rendering**, not the PDF. Exact numerals were transcribed and are quoted verbatim; typography (β̂, subscripts) may differ.
+- Only **one** cross-family seat was used. Kimi was quota-dead and GLM unreachable on this machine at the time (`~/.organism/arsenal/last.json`), so there is no second independent opinion — an accepted weakness, not an oversight.

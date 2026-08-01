@@ -159,15 +159,14 @@ Anti-patterns observed in academic and industry literature, with mitigations:
 4. **Over-templating** — agent rigidly fills slots; all carousels look identical. _Mitigation_: skill library encodes _families_ of layouts with parameterized variation (typographic scale, hierarchy emphasis, image-text ratio). Agent picks family + parameters, not frozen template.
 5. **Under-constrained creativity** — without explicit guardrails, agent goes off-brand to be "interesting". _Mitigation_: critic agent with brand-rubric (palette adherence ≥ X%, type system adherence, copy in voice) and hard fail on rubric violations. Generator-Critic loop with conditional looping.
 6. **Single-critic blind spot** — generator and critic share same model's biases. _Mitigation_: persona-based multi-critic (typography + brand + copy + marketing-result), cross-model panel (Claude main, Gemini cross-check, NotebookLM ground-truth) — the **bipolar verifier** pattern already in use at Bali Zero.
-7. **Agent error compounding in multi-agent systems** — Google's 2025 study found independent multi-agent systems amplify errors **17.2×** vs single-agent baselines unless centralized state management is added. _Mitigation_: orchestrator agent owns canonical state, sub-agents are stateless functions that read shared state and emit deltas. **No autonomous peer-to-peer hand-offs in production.**
+7. **Uncoordinated parallel agents are the worst-measured topology** — Google's 2025 study (arXiv:2512.08296v3) ranks **Independent** (parallel agents, `Ω=synthesis_only`, no coordination and no cross-validation) last and **Centralized** (orchestrator-led) best across its benchmarks, attributing the gap to coordination **efficiency and overhead**. _Mitigation_: orchestrator agent owns canonical state, sub-agents are stateless functions that read shared state and emit deltas. **No autonomous peer-to-peer hand-offs in production** — a repo policy on its own grounds (see the correction below: the study's peer-to-peer architecture is `Decentralized`, which it does not rank worst).
 
-   > **⚠️ CORRECTION 2026-08-02 (the finding above is a historical record; this is the current reading).**
-   > The 17.2× is real and verbatim in arXiv:2512.08296v3 — but the paper's own regression finds error
-   > amplification **not statistically significant** after controls (β̂=0.014, p=0.658; interaction with
-   > tool count p=0.332) and concludes the architecture differences "are better explained by other
-   > coordination mechanisms, particularly efficiency and overhead, rather than error propagation per
-   > se". **The mitigation stands** — Independent remains the worst-measured topology and centralized
-   > orchestration the best — but error compounding is not the mechanism. Do not cite 17.2× as a cause.
+   > **⚠️ CORRECTED IN PLACE 2026-08-02 — the original text of this item asserted a cause the source does not support, and named the wrong architecture. Both are recorded here rather than silently dropped.** It read: _"Google's 2025 study found independent multi-agent systems amplify errors **17.2×** vs single-agent baselines unless centralized state management is added"_, and the no-peer-to-peer mitigation was derived from it.
+   >
+   > 1. **Wrong architecture for this mitigation.** 17.2× is **Independent** — §3.1, parallel with `Ω=synthesis_only`, i.e. _no coordination_. Peer-to-peer is **Decentralized** (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus), which the paper does **not** measure worst. The number never bore on a no-peer rule.
+   > 2. **Unsupported as a cause.** §4.3 narrates error propagation as the mechanism, but **Table 4 of the same paper** finds no statistically significant support: β̂=0.014, CI [−0.047, 0.074], p=0.658; interaction with tool count β̂=0.022, CI [−0.023, 0.067], p=0.332. §4.3 then attributes the gap to _"efficiency (Ec) and overhead (O%), rather than error propagation per se"_. **p=0.658 means unsupported, not disproved** — do not overcorrect.
+   >
+   > The mitigation stands on the ranking plus repo grounds (context isolation, one auditable state owner). Do not restore the causal wording.
 
 ---
 
@@ -208,7 +207,7 @@ For Bali Zero specifically, given constraints (solo-dev, agency-scale ~10–30 c
 4. Diffusion-variance hallucination check on any generated raster.
 5. Human review queue for final go/no-go on publish.
 
-**Single agent vs multi-agent verdict**: multi-agent **with strict orchestrator** is correct because specialist roles are genuinely different competencies; and Google's study still measures Independent (peer-to-peer, no coordination) as the worst topology — architecture must be **centralized state, stateless workers**, not peer-to-peer. Avoid temptation to give each sub-agent its own memory. (Corrected 2026-08-02: the warning used to be attributed to the 17.2× error-amplification figure; per the paper's own regression that effect is not significant after controls — the driver is coordination efficiency and overhead. See the correction note at item 7.)
+**Single agent vs multi-agent verdict**: multi-agent **with strict orchestrator** is correct because specialist roles are genuinely different competencies; and Google's study measures `Independent` (parallel, **no coordination**) as the worst topology on its own benchmarks — which argues for **centralized state, stateless workers**, and says nothing either way about peer-to-peer (that is `Decentralized`; see item 7). The no-peer-to-peer part of our architecture is **repo policy**, not a finding. Avoid temptation to give each sub-agent its own memory. (Corrected 2026-08-02: the warning used to be attributed to the 17.2× error-amplification figure; per the paper's own regression that effect is not significant after controls — the driver is coordination efficiency and overhead. See the correction note at item 7.)
 
 **Don't build (yet)**:
 

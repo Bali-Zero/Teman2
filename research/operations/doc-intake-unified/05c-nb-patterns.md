@@ -57,10 +57,27 @@ NB-AGENTS cita il pattern del sistema escalations (citazione 17) come riferiment
 
 | Anti-pattern | Evidenza NB-AGENTS | Impatto |
 |---|---|---|
-| **Peer-to-peer subagent handoff** | "Never let subagents communicate directly peer-to-peer. Decentralized topologies amplify errors 17.2×" (cit. 2, 7, 8) | Pipeline rompe su ogni errore intermedio |
+| **Peer-to-peer subagent handoff** | ~~"Never let subagents communicate directly peer-to-peer. Decentralized topologies amplify errors 17.2×" (cit. 2, 7, 8)~~ ⚠️ **CITAZIONE RITIRATA 2026-08-02** — vedi §1.4-nota | Pipeline rompe su ogni errore intermedio |
 | **Over-orchestration di pipeline sequenziale** | "Sequential tasks perform up to 70% worse when over-orchestrated" (cit. 1, 2) | Overhead senza beneficio se il flow è A→B→C lineare |
 | **Tool output hallucination** | "Agents fall into trap of remembering document contents from context window rather than invoking a read tool" (cit. 21, 22) | Estrazione basata su testo inventato, non OCR reale |
 | **Brief stale premise** | "Orchestrator must run mandatory empirical pre-brief sweep" (cit. 23-25) | 4 incidenti in 24h con halt — verificare stato reale prima di dispatch |
+
+> **§1.4-nota — CITAZIONE RITIRATA 2026-08-02 (l'anti-pattern resta, la sua evidenza no).** Verificato
+> alla fonte su arXiv:2512.08296v3: il **17.2× è di `Independent`**, che il paper (§3.1) definisce come
+> agenti paralleli con `Ω=synthesis_only`, cioè **senza alcun coordinamento**. Il peer-to-peer è
+> `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consenso) e **non** è la topologia misurata
+> peggio. La riga qui sopra attribuisce a Decentralized un numero che non gli appartiene — ed è la
+> forma più netta dell'errore, perché da qui è passata in `05-final-spec.md` come motivazione del
+> "no swarm". In più il paper, dopo i controlli, **non trova supporto statisticamente significativo**
+> per l'amplificazione d'errore come meccanismo (Table 4: β̂=0.014, CI [−0.047, 0.074], p=0.658;
+> interazione β̂=0.022, CI [−0.023, 0.067], p=0.332) e attribuisce il divario fra architetture a
+> _"efficiency (Ec) and overhead (O%), rather than error propagation per se"_. p=0.658 = **non
+> supportato**, non "smentito".
+>
+> **Cosa resta in piedi**: l'anti-pattern «orchestratore centrale, subagent stateless, niente handoff
+> peer-to-peer» è una **scelta di questo repo** (isolamento di contesto, un solo proprietario dello
+> stato, auditabilità) e regge da sola. Ciò che il paper sostiene davvero è un **ranking sui suoi
+> benchmark** (Centralized meglio di Independent). Non ripristinare la citazione.
 | **Race condition su shared dir** | "Multiple agents in shared directory overwrite files" (cit. 26, 27) — worktree isolation fix | Intake JSON sovrascritto da run parallelo |
 
 ---
@@ -112,7 +129,7 @@ Questo suggerisce che lo stadio `validate` del sistema unificato è **ibrido**: 
 ## 4. Verdetto architetturale
 
 ### CONFERMATO dall'NB:
-- Orchestratore centrale con subagent stateless (NON peer-to-peer) — il pattern è consolidato e ben documentato con metriche di errore (17.2× amplification su decentralized).
+- Orchestratore centrale con subagent stateless (NON peer-to-peer) — ~~il pattern è consolidato e ben documentato con metriche di errore (17.2× amplification su decentralized)~~ ⚠️ **la parte fra tilde è RITIRATA 2026-08-02**: il 17.2× è di `Independent` (nessun coordinamento), non di `Decentralized` (peer-to-peer), e il paper non lo sostiene come meccanismo causale — vedi §1.4-nota. **Il verdetto resta**, su basi di repo (isolamento di contesto, un solo proprietario dello stato) più il ranking del paper (Centralized > Independent sui suoi benchmark).
 - HITL gate pull-based con state machine esplicita — non chat interrupt.
 - Idempotency via DB upsert + content hash — già implementato in codebase (events_outbox pattern riusabile).
 
