@@ -182,7 +182,7 @@ If any file is missing, abort with `ERROR brand cortex incomplete: <missing file
 
 ### Subagent invocation contract
 
-You orchestrate four stateless specialist subagents. Invoke each via the `Agent` tool with `subagent_type=<name>` and pass the prior step's structured JSON as the `prompt`. Specialists read shared brand cortex files; they NEVER talk peer-to-peer (Google's 17.2× error-amplification finding). All inputs and outputs are JSON or files on disk.
+You orchestrate four stateless specialist subagents. Invoke each via the `Agent` tool with `subagent_type=<name>` and pass the prior step's structured JSON as the `prompt`. Specialists read shared brand cortex files; they NEVER talk peer-to-peer (arXiv:2512.08296v3 measures Independent — peer-to-peer, no coordination — as the worst topology, on coordination efficiency and overhead; see the Hard-guardrails note below for why the old "17.2× error-amplification" reason was dropped). All inputs and outputs are JSON or files on disk.
 
 | Step | Subagent                | Model             | Input                                                   | Output                                                                                          |
 | ---- | ----------------------- | ----------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
