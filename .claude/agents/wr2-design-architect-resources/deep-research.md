@@ -161,6 +161,14 @@ Anti-patterns observed in academic and industry literature, with mitigations:
 6. **Single-critic blind spot** — generator and critic share same model's biases. _Mitigation_: persona-based multi-critic (typography + brand + copy + marketing-result), cross-model panel (Claude main, Gemini cross-check, NotebookLM ground-truth) — the **bipolar verifier** pattern already in use at Bali Zero.
 7. **Agent error compounding in multi-agent systems** — Google's 2025 study found independent multi-agent systems amplify errors **17.2×** vs single-agent baselines unless centralized state management is added. _Mitigation_: orchestrator agent owns canonical state, sub-agents are stateless functions that read shared state and emit deltas. **No autonomous peer-to-peer hand-offs in production.**
 
+   > **⚠️ CORRECTION 2026-08-02 (the finding above is a historical record; this is the current reading).**
+   > The 17.2× is real and verbatim in arXiv:2512.08296v3 — but the paper's own regression finds error
+   > amplification **not statistically significant** after controls (β̂=0.014, p=0.658; interaction with
+   > tool count p=0.332) and concludes the architecture differences "are better explained by other
+   > coordination mechanisms, particularly efficiency and overhead, rather than error propagation per
+   > se". **The mitigation stands** — Independent remains the worst-measured topology and centralized
+   > orchestration the best — but error compounding is not the mechanism. Do not cite 17.2× as a cause.
+
 ---
 
 ## 9. Sintesi: design agent architecture per Bali Zero
@@ -200,7 +208,7 @@ For Bali Zero specifically, given constraints (solo-dev, agency-scale ~10–30 c
 4. Diffusion-variance hallucination check on any generated raster.
 5. Human review queue for final go/no-go on publish.
 
-**Single agent vs multi-agent verdict**: multi-agent **with strict orchestrator** is correct because specialist roles are genuinely different competencies; but Google's 17.2× error-amplification finding is a serious warning — architecture must be **centralized state, stateless workers**, not peer-to-peer. Avoid temptation to give each sub-agent its own memory.
+**Single agent vs multi-agent verdict**: multi-agent **with strict orchestrator** is correct because specialist roles are genuinely different competencies; and Google's study still measures Independent (peer-to-peer, no coordination) as the worst topology — architecture must be **centralized state, stateless workers**, not peer-to-peer. Avoid temptation to give each sub-agent its own memory. (Corrected 2026-08-02: the warning used to be attributed to the 17.2× error-amplification figure; per the paper's own regression that effect is not significant after controls — the driver is coordination efficiency and overhead. See the correction note at item 7.)
 
 **Don't build (yet)**:
 

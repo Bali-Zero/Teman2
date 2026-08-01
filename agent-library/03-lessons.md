@@ -196,8 +196,19 @@ single file).
 
 ### 19. Multi-agent topology Kim 2025
 
-**Sintesi**: Kim et al. arxiv 2512.08296 (Google DeepMind+MIT, Dec 2025). 5 topology controlled study, 180 configs. SAS=1× baseline, **Centralized (orchestrator-led)=4.4×**, **Independent (parallel no-coord)=17.2×** error amplification. Centralized preferito per task indipendenti parallelizzabili.
-**Quando applica**: design wave/cron multi-LLM cross-tool; scelta topology fra single-agent vs orchestrator-led vs peer-to-peer.
+**Sintesi**: Kim et al. arXiv:2512.08296 (**Google Research + Google DeepMind + MIT**, dic 2025, v3 apr 2026). Studio controllato su **260 configurazioni**, 6 benchmark agentici, 5 architetture (SAS + Independent/Centralized/Decentralized/Hybrid), 3 famiglie LLM. **Centralized (orchestrator-led) preferito** per task indipendenti parallelizzabili.
+
+**⚠️ Correzione 2026-08-02 — il MOTIVO che citavamo era sbagliato, e i numeri erano tre volte imprecisi.** Questa voce diceva «Google DeepMind+MIT, **180 configs**, Centralized=4.4× / Independent=17.2× **error amplification**» e usava quei due numeri come causa della preferenza. Verificato alla fonte su arXiv:2512.08296v3:
+
+- Le configurazioni sono **260**, non 180.
+- Le affiliazioni sono **tre** (Google Research, Google DeepMind, MIT), non due.
+- **4.4× e 17.2× ESISTONO** e sono verbatim (_"Independent systems amplify trace-level errors 17.2× … Centralized coordination, however, contains this to 4.4×"_) — **ma il paper li dichiara non significativi dopo i controlli**: _"neither the main effect of error amplification (β̂=0.014, p=0.658) nor its interaction with tool count (β̂=0.022, p=0.332) reaches statistical significance"_, e conclude che le differenze fra architetture _"are better explained by other coordination mechanisms, particularly efficiency and overhead, rather than error propagation per se"_.
+
+**Quindi**: la preferenza per centralized regge, ma il meccanismo da citare è **efficienza e overhead di coordinamento**. Il 17.2× **non** è la ragione, ed è scorretto usarlo come tale.
+
+**Nota sulla nostra memoria**: a giugno avevamo ledgerizzato che «il 17.2× non è nel paper, è un commento TDS». **Quella nota era essa stessa il fantasma** — il numero c'è, verbatim. Una nota che ci scriviamo noi ha lo stesso statuto di un report altrui: è un LEAD, non un fatto (cfr. `lessons_hallucinating_tool_output_is_diabolical`).
+
+**Quando applica**: design wave/cron multi-LLM cross-tool; scelta topology fra single-agent vs orchestrator-led vs peer-to-peer. E come promemoria: prima di citare un numero di un paper come **causa**, controlla se il paper lo tratta come tale.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_multi_agent_topology_kim_2025.md`
 **Pattern correlato**: `02-patterns.md#8` (parallel wave + capacity caps)
 

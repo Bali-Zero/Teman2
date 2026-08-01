@@ -249,9 +249,26 @@ Pre-publish artifact: `~/.claude/agents/devils-advocate.md` ("find the legal fla
 
 **Status**: implemented (superpowers:dispatching-parallel-agents skill + cap 4 documented operational rule)
 
-**Quando usarlo**: ≥2 task indipendenti senza shared state né dipendenze sequenziali. Orchestrator dispatcha N agent paralleli (cf. `superpowers:dispatching-parallel-agents`). Topology centralized (orchestrator-led) preferita: error amplification 4.4× vs independent (no-coord) 17.2× (Kim et al. 2025 arxiv 2512.08296).
+**Quando usarlo**: ≥2 task indipendenti senza shared state né dipendenze sequenziali. Orchestrator dispatcha N agent paralleli (cf. `superpowers:dispatching-parallel-agents`). Topology centralized (orchestrator-led) preferita — **ma NON per il motivo che citavamo**: vedi la nota qui sotto.
 
-**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); independent topology (peer-to-peer no coordination → 17.2× error).
+> **Citazione corretta 2026-08-02 — non ripristinare la vecchia motivazione.** Fino a oggi questa riga
+> diceva «centralized preferita: error amplification 4.4× vs independent 17.2× (Kim et al.
+> arxiv 2512.08296)». I due numeri **esistono davvero** nel paper (v3, verbatim: _"Independent systems
+> amplify trace-level errors 17.2× … Centralized coordination, however, contains this to 4.4×"_) — ma
+> il paper stesso, **dopo i controlli, li dichiara non significativi**: _"neither the main effect of
+> error amplification (β̂=0.014, p=0.658) nor its interaction with tool count (β̂=0.022, p=0.332)
+> reaches statistical significance"_, e conclude che le differenze fra architetture _"are better
+> explained by other coordination mechanisms, particularly efficiency and overhead, rather than error
+> propagation per se"_. Citare il 17.2× come **causa** della preferenza per centralized afferma
+> esattamente ciò che la fonte rifiuta.
+>
+> La preferenza per centralized **resta** — è la topologia che il paper misura come migliore sui suoi
+> benchmark — ma il meccanismo da citare è **efficienza e overhead di coordinamento**, non
+> l'amplificazione d'errore. Storia: questo repo aveva ledgerizzato a giugno che «il 17.2× non è nel
+> paper, è un commento TDS». **Quella nota era il fantasma**: il numero c'è. Il difetto era un altro e
+> peggiore. Verificato alla fonte 2026-08-02 su arXiv:2512.08296v3.
+
+**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); independent topology (peer-to-peer no coordination — la topologia che il paper misura peggio, per overhead ed efficienza di coordinamento; **non** citare il 17.2× come sua causa).
 
 **Esempio concreto**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_wave_pacing_design_rigor.md`
 
