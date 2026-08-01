@@ -7,6 +7,7 @@ Handles staging area operations for Intel articles.
 import hashlib
 import json
 import logging
+import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,43 @@ from backend.app.metrics import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Shape of an intel staging item id, and the SINGLE place that decides it.
+#
+# WHY (CodeQL py/path-injection #7793/#7794/#7795/#7796/#7797 + #3677-#3679, 2026-08-01)
+# --------------------------------------------------------------------------------------
+# Every staging path is built as `staging_dir / f"{item_id}.json"`. With no shape
+# check, `item_id = "../../../../etc/passwd"` resolves OUTSIDE the staging directory
+# — verified against the live rag machine, where that join resolves to
+# `/etc/passwd.json`. `archive_item()` then MOVES whatever it finds there.
+#
+# The triage of those alerts recorded that the reachable-by-path-param call sites were
+# safe only because uvicorn percent-decodes before routing (`%2F` yields a 404) — that
+# is INHERITED safety, asserted nowhere in this module. It also does not extend to the
+# sources these alerts actually name: a JSON body (`POST /api/intel/staging/bulk-reject/
+# {type}` takes `item_ids: list[str]`) and a Telegram `/cover` caption, neither of which
+# passes through any URL decoder. This module now asserts the shape itself.
+#
+# `generate_item_id()` emits `{intel_type}_{YYYYmmdd_HHMMSS}_{sha256[:8]}`; a live
+# sample of ids on the prod staging volume matched this pattern in full.
+#
+# Imported by `intel_cover_handler` too, so the two path-building surfaces cannot drift
+# apart — same reason `_memory_identity` is shared by its two chokepoints.
+_ITEM_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
+
+def assert_valid_item_id(item_id: str) -> None:
+    """
+    Reject any item id that could escape the staging directory when joined into a path.
+
+    Raises:
+        ValueError: if the id is not a bare `[A-Za-z0-9_-]{1,128}` token. The offending
+            value is NOT echoed into the message — it reaches this code from a request
+            body or a chat caption, and the message travels into logs and API responses.
+    """
+    if not isinstance(item_id, str) or not _ITEM_ID_RE.match(item_id):
+        raise ValueError("Malformed intel item_id")
+
 
 # WR2 liveness rewire — red-team round (FIX1+FIX2, 2026-07-18).
 _VALID_LIVENESS_TIERS = {"breaking", "developing", "evergreen"}
@@ -153,7 +191,11 @@ class IntelStagingService:
 
         Returns:
             Path to saved file
+
+        Raises:
+            ValueError: if item_id is not a bare token (would escape the staging dir).
         """
+        assert_valid_item_id(item_id)
         staging_dir = self.get_staging_dir(intel_type)
         staging_file = staging_dir / f"{item_id}.json"
 
@@ -192,8 +234,19 @@ class IntelStagingService:
             item_id: Unique item identifier
 
         Returns:
-            Item data or None if not found
+            Item data, or None if not found — including when item_id is malformed. A read
+            answers "does this item exist", and an id that cannot name a staging item
+            names nothing; callers already map None to 404, so no caller changes.
         """
+        try:
+            assert_valid_item_id(item_id)
+        except ValueError:
+            logger.warning(
+                "Rejected malformed intel item_id on read",
+                extra={"intel_type": intel_type},
+            )
+            return None
+
         staging_dir = self.get_staging_dir(intel_type)
         file_path = staging_dir / f"{item_id}.json"
 
@@ -444,7 +497,12 @@ class IntelStagingService:
 
         Returns:
             Path to archived file
+
+        Raises:
+            ValueError: if item_id is not a bare token. A move is an ACTION, not a
+                lookup, so it refuses loudly instead of degrading to "not found".
         """
+        assert_valid_item_id(item_id)
         staging_dir = self.get_staging_dir(intel_type)
         file_path = staging_dir / f"{item_id}.json"
 
