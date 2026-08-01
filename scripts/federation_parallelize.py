@@ -24,9 +24,46 @@ Design contract (spec ``research/operations/specs/P6-parallelize-gate.md``):
 * **No LLM call on the conservative path** (spec §3.1). Escalation-to-Claude for
   ambiguous/high-risk tasks is *optional and documented*, NOT implemented here —
   this module stays deterministic so the gate tests are falsifiable.
-* **Coders on the same artifact are NEVER parallelized** (spec §4 cond. 2,
-  Google arXiv 2512.08296 ``−70%`` on sequential coding). This is the one hard
-  prohibition the estimator enforces structurally, not heuristically.
+* **Coders on the same artifact are NEVER parallelized** (spec §4 cond. 2).
+  This is an **operational safety policy of this repo, not a research-established
+  invariant** — say it plainly, because the code enforces it unconditionally:
+  ``_estimate_merge_cost`` returns ``HIGH`` on artifact overlap *before*
+  ``has_explicit_contract`` is ever read (that flag can only lift MED→LOW on work
+  already proven disjoint). We choose a false-negative (a serial run that could
+  have been parallel) over a false-positive, because a wrong parallel run costs a
+  silent semantic conflict and a serial one costs only time. No published study
+  we have read establishes an absolute prohibition; the evidence below supports
+  strong caution, and we round caution up to a rule on purpose.
+
+  WHAT THE EVIDENCE ACTUALLY SAYS (each measured on a *different* shape — do not
+  collapse them into one number):
+
+  - **CooperBench** — Khatua et al., *"Why Coding Agents Cannot be Your Teammates
+    Yet"*, arXiv 2601.13295, 2026-01-19. 600+ tasks, 12 libraries, 4 languages,
+    expert-written tests. Two agents get two *different* features, each in its own
+    docker container, and the patches are merged afterwards; 77.3% of tasks have
+    conflicting ground-truth solutions. Headline: **30% lower average success**
+    than one agent doing both; pooled retention 0.59, i.e. "41% of Solo capability
+    is lost when agents must coordinate"; leading models reach only ~25% in the
+    cooperative setting. NOTE THE SHAPE: this is *separate-workspace parallel
+    features whose patches collide later* — which is our worktree fleet — and NOT
+    two agents co-editing one file. It is the closest evidence we have, and it is
+    still not a measurement of this rule's literal case.
+  - **SWE-bench Verified** (inside arXiv 2512.08296): N agents on the *same*
+    issue. Every topology degrades, mildly — −2.1% (Hybrid) to −14.9%
+    (Independent) — and individual cells sometimes beat the single-agent
+    baseline. Conditional caution, not universality.
+  - **NOT applicable**: that paper's **−70.0%** is PlanCraft *sequential
+    planning*, Independent topology. It is not a coding result.
+
+  CITATION CORRECTED 2026-08-01, and the correction is itself falsifiable.
+  Until 2026-08-01 this rule cited ``arXiv 2512.08296 −70% on sequential
+  coding``; verified against arXiv:2512.08296v3 and arXiv:2601.13295v2, that
+  −70% is planning. Do not restore it. What WOULD reopen this: a study measuring
+  concurrent edits to one artifact directly, a revision of either paper changing
+  the cited tables, or local telemetry from our own fleet. The prohibition is a
+  policy and policies are revisable — what is not revisable is attributing it to
+  a number the source does not support.
 
 The four kinds of parallelism (spec §0):
 
@@ -36,8 +73,13 @@ kind                              degrades?   estimator verdict
 breadth-of-research               no          may be True
 specialist roles (disjoint)       no          may be True
 structurally-independent pieces   no          may be True (if disjoint)
-coders on the SAME artifact       yes (−70%)  ALWAYS False
+coders on the SAME artifact       assumed*    ALWAYS False (policy)
 ================================  ==========  ===========================
+
+\\* "assumed": no study we have read measures concurrent edits to ONE artifact.
+The nearest evidence (CooperBench, −30% on separate-workspace overlapping
+features) is a strictly easier setting and still degrades, so we treat the
+harder case as worse and refuse it. That inference is ours, not the paper's.
 """
 
 from __future__ import annotations
@@ -50,7 +92,15 @@ from enum import Enum
 # Constants — the bayesian prior cap (spec §3.3) and merge-cost bands (§3.5).
 # ─────────────────────────────────────────────────────────────────────────────
 
-#: Initial coder-concurrency ceiling (Google arXiv 2512.08296 hard 3-4 ceiling).
+#: Initial coder-concurrency ceiling. arXiv 2512.08296 says verbatim: "beyond
+#: 3-4 agents, creating a hard resource ceiling where communication cost
+#: dominates reasoning capability" (verified at source 2026-08-01). CAVEAT, so
+#: nobody over-reads it: that result comes from cross-domain turn growth under a
+#: FIXED total reasoning budget (4,800 tokens) — it is not a coder-specific nor
+#: a CPU-concurrency ceiling, and the paper calls larger collectives an open
+#: question. Applying it to concurrent coders while exempting short I/O-bound
+#: infra agents is OUR extrapolation (spec §3.3), which is exactly why it is a
+#: bayesian prior updatable with local feedback and never a dogma (§3.6).
 #: Applies to CPU-bound concurrent *coders*, NOT to short I/O-bound infra agents
 #: (search/explore). A bayesian *prior*, updatable with local feedback — never a
 #: dogma (spec §3.3, §3.6). The gate enforces it as a ceiling, not a target.

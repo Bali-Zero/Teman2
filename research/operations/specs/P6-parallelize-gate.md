@@ -1,3 +1,17 @@
+---
+date: 2026-08-01
+domain: operations
+adversarial_review: codex
+adversarial_review_note: >-
+  Codex GPT-5.6-Sol, xhigh, cross-family, 2026-08-01. Verdict on the FIRST draft
+  of the 2026-08-01 citation fix: DO-NOT-SHIP, 3 CONFIRMED-DEFECTs — (1) an
+  absolute prohibition is not supported by a -30% average; (2) CooperBench
+  measures separate-workspace overlapping features, not same-artifact
+  co-editing, so the replacement citation was stretched too; (3) the 3-4 ceiling
+  is budget-derived, not coder-specific. All three are reworked into §0 below;
+  none was waived. Findings independently re-verified at source before use.
+---
+
 # PEZZO 6 — Gate "SE parallelizzare" + BUILD∥ in sicurezza
 
 > **Spec studio (non implementazione).** Ciclo calibrato: reuse-first (disk-state VERIFICATO) +
@@ -8,6 +22,35 @@
 > degradano (breadth-ricerca + specialist-ruoli-diversi), **mai coder paralleli sullo stesso
 > artefatto**. La richiesta dell'utente ("dove si può in parallelo") è coerente con l'evidenza — perché
 > "dove si può" = esattamente quei tipi.
+
+---
+
+## Adversarial review
+
+**Seat**: Codex GPT-5.6-Sol, `xhigh`, `--sandbox read-only`, cross-family (l'autore
+del diff è Claude Opus 5; generator ≠ grader). **Data**: 2026-08-01. **Mandato**:
+refutare, con default a «refuted» in caso di dubbio.
+
+**6 obiezioni sollevate, 3 CONFIRMED-DEFECT + 2 PLAUSIBLE sopravvissute, 1 respinta.
+Verdetto sulla prima stesura: DO-NOT-SHIP.** Nessuna è stata derogata: tutte
+rilavorate in §0 e nel docstring del modulo. Ogni numero del refuter è stato
+ri-verificato alla fonte prima di usarlo (W65 — anche il refuter allucina).
+
+| # | Obiezione | Esito |
+|---|---|---|
+| 1 | Un −30% medio non regge una proibizione **assoluta** senza scappatoie; il codice asserisce più di quanto l'evidenza sostenga | **CONFIRMED** — e verificato sul codice: `_estimate_merge_cost` ritorna `HIGH` sull'overlap **prima** di leggere `has_explicit_contract` (righe 255-257), quindi il contratto non può ribattere. Riscritto: la regola è dichiarata **policy operativa nostra**, non invariante stabilito dalla ricerca |
+| 2 | CooperBench non misura il caso di questa riga: due feature **diverse** in container **separati**, patch mergiate dopo — non co-editing dello stesso file | **CONFIRMED** — sostituivo un numero stirato con un altro numero stirato. Riscritto: setup dichiarato per esteso, e detto esplicitamente che nessuno studio letto misura il caso letterale |
+| 3 | Il −70,0% è davvero *sequential planning* e non coding? | **NOT-A-DEFECT** — la riclassificazione è corretta (unico punto in cui il refuter ha confermato la stesura) |
+| 4 | Il ceiling 3-4 è mis-scoped: deriva dalla crescita dei turni sotto budget di reasoning fisso (4.800 token), non è specifico dei coder né della concorrenza CPU | **CONFIRMED** — aggiunto caveat esplicito: la citazione è verbatim, l'applicazione ai coder è **estrapolazione nostra** |
+| 5 | Il «−30%» nudo nasconde metrica e aggregazione (abstract 30% successo medio; retention pooled 0,59 = «41% della capacità solo persa»; modelli di punta ~25% in coop) | **PLAUSIBLE** — metriche ora esplicitate tutte e tre invece di una costante senza contesto |
+| 6 | Il «do-not-restore» congela un'interpretazione che dovrebbe restare falsificabile | **PLAUSIBLE** — la nota ora fissa la **versione** dei paper (2512.08296v3, 2601.13295v2) e dichiara che cosa la riaprirebbe |
+
+**Cosa NON è stato affrontato qui** (dichiarato, non nascosto): il refuter osserva che
+CooperBench documenta anche pattern di coordinamento *riusciti* con contratti su
+interfacce e punti di inserimento. Renderne la proibizione **ribattibile** (permettere
+il parallelo su artefatto condiviso quando esiste un contratto formale a monte) è un
+cambio di **comportamento** del gate, non di citazione — fuori dallo scope di questa
+correzione, e va a ledger.
 
 ---
 
@@ -22,7 +65,36 @@ brief lo aveva tradotto in "BUILD∥ default". Il council ha smontato l'enunciat
 | **Breadth-di-ricerca** (esplorazione, fan-out di letture) | **NO** (+90.2% Anthropic su research) | i 5 angoli della deep-research di questo ciclo |
 | **Specialist con RUOLI diversi** | **NO** (è il regime dove multi-agent vince) | federation: gemini-search ∥ codex-sandbox ∥ claude-redteam |
 | **Pezzi del sistema strutturalmente indipendenti** | **NO se davvero indipendenti** | modulo A e modulo B con zero file/contratti condivisi |
-| **Coder paralleli sullo STESSO artefatto** | **SÌ, −70%** (Google 2512.08296) + failure-mode Devin | 3 agenti che editano lo stesso file/feature |
+| **Coder paralleli sullo STESSO artefatto** | **assunto\*** (nessuno studio lo misura direttamente) | 3 agenti che editano lo stesso file/feature |
+
+> **Citazione corretta 2026-08-01 — non ripristinare il numero vecchio, e non
+> sostituirlo con un altro numero che non misura questa riga.** Questa riga citava
+> `−70% (Google 2512.08296)`. Verificato alla fonte (arXiv:2512.08296v3): quel −70,0% è
+> **sequential planning** (PlanCraft, topologia Independent), non coding; sul benchmark
+> di coding dello stesso paper (SWE-bench Verified) le topologie stanno fra −2,1% e
+> −14,9%, e misurano N agenti sulla **stessa issue**.
+>
+> **\* «assunto»** — e va detto, perché il gate è incondizionato. La review avversariale
+> del 2026-08-01 (Codex GPT-5.6-Sol, xhigh, cross-family) ha bocciato la prima stesura
+> di questa correzione proprio qui: sostituivo un numero stirato con un altro numero
+> stirato. **CooperBench** (Khatua et al., arXiv 2601.13295v2, 2026-01-19) è l'evidenza
+> più vicina che abbiamo — 600+ task, 12 librerie, 4 linguaggi, test scritti da esperti,
+> **−30% di successo medio**, retention pooled 0,59 («41% della capacità solo persa»),
+> modelli di punta al ~25% in cooperativa — ma il suo setup è **due feature diverse, due
+> container separati, patch mergiate dopo** (77,3% dei task ha ground-truth in
+> conflitto). È la forma della **nostra flottiglia di worktree**, non due agenti che
+> editano lo stesso file. Nessuno studio che abbiamo letto misura il caso letterale di
+> questa riga.
+>
+> Quindi la proibizione assoluta è una **policy operativa nostra**, non un invariante
+> stabilito dalla ricerca: il caso più difficile lo assumiamo peggiore di quello più
+> facile già misurato, e preferiamo un falso-negativo (seriale evitabile, costa tempo) a
+> un falso-positivo (parallelo sbagliato, costa un conflitto semantico silenzioso).
+> L'inferenza è nostra, non del paper. Il ceiling 3-4 agenti (riga ~56) è verbatim in
+> 2512.08296, ma deriva dalla crescita dei turni sotto **budget di reasoning fisso
+> (4.800 token)**: non è un ceiling specifico dei coder né della concorrenza CPU —
+> applicarlo ai coder esentando gli agenti infra I/O-bound è ancora estrapolazione
+> nostra.
 
 > **"Dove si può" (utente) = i primi tre tipi.** Il quarto è ciò che l'evidenza vieta. La contraddizione
 > desiderio-vs-evidenza è **apparente**: si scioglie limitando il fan-out ai tipi che non degradano.
