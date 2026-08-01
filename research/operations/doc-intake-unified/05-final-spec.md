@@ -5,6 +5,7 @@ study: doc-intake-unified
 phase: 5 — FINAL EXECUTABLE SPEC
 status: DRAFT
 client_case: false
+adversarial_review: codex
 sources:
   - research/operations/doc-intake-unified/00-INDEX.md
   - research/operations/doc-intake-unified/01-system-study.md
@@ -463,3 +464,7 @@ NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplificat
 - **FASE 4 — Entity+routing**: RIUSA identity_resolver + decision-matrix C4 → scrive solo proposal (read-only). Test: AUTO_ATTACH vs LINK_CANDIDATE, omonimi AMBIGUOUS. Rischio MEDIO-ALTO (mitigato read-only).
 - **FASE 5 — HITL+writer (GO-LIVE)**: endpoint+CRM view (COPIA paperless-gpt)+Telegram notifier; resolve = unico writer D1/D2/interactions+corrections. Test: RBAC, idempotenza, 0 PII Telegram. Rischio ALTO (primo write prod, gate human obbligatorio).
 - **FASE 6 — Evolver**: step intake-corrections-digest volume-gated (≥30/sett), no-op sotto soglia → draft PR. Rischio BASSO.
+
+## Adversarial review
+
+Codex reviewed the 2026-08-02 citation correction; no objections survived.

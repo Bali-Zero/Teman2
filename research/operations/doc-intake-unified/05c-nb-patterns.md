@@ -3,6 +3,7 @@ date: 2026-06-04
 domain: operations/agent-craft
 sources: NB-AGENTS (6d449787, 157 sources), proposed-agents spec files (worktree s13-guard)
 generated_by: nb-curator
+adversarial_review: codex
 ---
 
 # NB Patterns — Document Intake Unified System
@@ -154,3 +155,6 @@ Il rischio più alto identificato da NB-AGENTS per questo specifico sistema è i
 | Business onboarding workflow | `client-onboarding-orchestrator` | Consumatore dell'intake output, non parte del pipeline stesso |
 | Compliance clock post-intake | `compliance-deadline-sentinel` | Triggered da onboarding orchestrator, non da intake direttamente |
 
+## Adversarial review
+
+Codex reviewed the 2026-08-02 citation correction; no objections survived.
