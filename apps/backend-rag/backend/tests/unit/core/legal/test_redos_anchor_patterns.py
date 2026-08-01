@@ -501,7 +501,15 @@ class TestChunkerCallerAssumption:
 # ---------------------------------------------------------------------------
 
 SWEEP_N = 20_000
-SWEEP_BUDGET_SECONDS = 0.25
+# Two verdicts, because either one alone is weak. The ABSOLUTE ceiling catches a gross
+# quadratic in one measurement; but a quadratic with a small coefficient can sit under any
+# ceiling at a fixed n and still be pathological further up the curve, so anything slow
+# enough to be measurable at all is also made to prove its GROWTH. Conversely a ratio
+# alone is pure noise at 0.4ms, which is why the floor gates it: a healthy pattern never
+# reaches the floor, never pays for the second measurement, and cannot flake on it.
+SWEEP_CEILING_SECONDS = 0.25
+SWEEP_RATIO_FLOOR_SECONDS = 0.004
+SWEEP_MAX_RATIO = 3.0
 
 SWEEP_PREFIXES = (
     "",
@@ -515,7 +523,15 @@ SWEEP_PREFIXES = (
     "\n 1 ",
     "Halaman 1 dari 2",
 )
-SWEEP_PUMPS = ("\n", "\n\n", " \n", "\n ", " ", "\t", "\r", "\xa0", "0", "00", "A", "x\n")
+SWEEP_PUMPS = (
+    "\n", "\n\n", " \n", "\n ", " ", "\t", "\r", "\xa0", "0", "00", "A", "x\n",
+    # longer/mixed runs: a one-character pump cannot express an alternating interior
+    "\n \n\t", "\n\xa0", " \n\n ",
+)
+# A suffix is not decoration: `PASAL_PATTERN` terminates on a lookahead with FOUR branches
+# (`\nPasal`, `^BAB`, `^Penjelasan`, `\Z`), and a payload that only ever ends in `\Z`
+# exercises one of them. Which branch fires changes where the backtracking stops.
+SWEEP_SUFFIXES = ("", "\nPasal 2", "\nBAB II", "\nPenjelasan Umum")
 
 # Kept verbatim as the sweep's CONTROL, never as a thing under test: a sweep that reports
 # "nothing found" proves nothing until it is seen reporting the defect that already bit us.
@@ -525,27 +541,53 @@ _PRE_FIX_BAB = re.compile(
 )
 
 
+def _sweep_verdict(rx: re.Pattern) -> str | None:
+    """Return a failure message for the first super-linear combination, or None.
+
+    The control and the patterns under test go through THIS function, so "the control
+    passes" and "the sweep would reject a regression" are the same claim rather than two
+    hopeful ones — the earlier draft asserted only that a locally-copied historical regex
+    was slow, which proves the budget discriminates and nothing about the sweep's reach.
+    """
+    for prefix in SWEEP_PREFIXES:
+        for pump in SWEEP_PUMPS:
+            for suffix in SWEEP_SUFFIXES:
+                text = prefix + pump * SWEEP_N + suffix
+                elapsed = _elapsed(rx, text)
+                where = f"prefix={prefix!r} pump={pump!r} suffix={suffix!r}"
+                if elapsed >= SWEEP_CEILING_SECONDS:
+                    return (
+                        f"{elapsed:.4f}s at n={SWEEP_N} on {where} "
+                        f"(ceiling {SWEEP_CEILING_SECONDS}s)"
+                    )
+                if elapsed > SWEEP_RATIO_FLOOR_SECONDS:
+                    doubled = _elapsed(rx, prefix + pump * (SWEEP_N * 2) + suffix)
+                    ratio = doubled / max(elapsed, 1e-9)
+                    if ratio > SWEEP_MAX_RATIO:
+                        return (
+                            f"{elapsed:.4f}s -> {doubled:.4f}s ({ratio:.1f}x for 2x input, "
+                            f"max {SWEEP_MAX_RATIO}x) on {where}"
+                        )
+    return None
+
+
 class TestPayloadSweep:
     """Cross-product search, so the next quadratic is not found by the next scanner."""
 
-    def test_control_the_sweep_budget_catches_the_pre_fix_quadratic(self):
-        """If this budget cannot fail, the sweep below is decoration."""
-        elapsed = _elapsed(_PRE_FIX_BAB, "BAB I" + "\n" * SWEEP_N)
-        assert elapsed > SWEEP_BUDGET_SECONDS, (
-            f"the pre-fix form (b) finished in {elapsed:.4f}s, under the "
-            f"{SWEEP_BUDGET_SECONDS}s budget — the budget no longer discriminates, so "
-            "the sweep's clean result is worthless. Re-derive the budget."
+    def test_control_the_sweep_rejects_the_pre_fix_quadratic(self):
+        """If the sweep cannot fail, every clean result below is decoration."""
+        verdict = _sweep_verdict(_PRE_FIX_BAB)
+        assert verdict is not None, (
+            "the sweep found NOTHING wrong with the pre-fix form (b), which took 2.87s at "
+            "n=16k when it was live. Either the grid no longer reaches it or the "
+            "thresholds no longer discriminate — in both cases the clean results below "
+            "mean nothing and must not be believed."
         )
 
     @pytest.mark.parametrize("name", sorted(CURED))
     def test_no_cured_pattern_is_superlinear_on_any_swept_payload(self, name):
-        rx = CURED[name]
-        for prefix in SWEEP_PREFIXES:
-            for pump in SWEEP_PUMPS:
-                text = prefix + pump * SWEEP_N
-                elapsed = _elapsed(rx, text)
-                assert elapsed < SWEEP_BUDGET_SECONDS, (
-                    f"{name} took {elapsed:.4f}s on prefix={prefix!r} pump={pump!r} at "
-                    f"n={SWEEP_N} (budget {SWEEP_BUDGET_SECONDS}s). A payload shape this "
-                    "file did not anticipate reaches a quadratic path."
-                )
+        verdict = _sweep_verdict(CURED[name])
+        assert verdict is None, (
+            f"{name}: {verdict}. A payload shape this file did not anticipate reaches a "
+            "quadratic path."
+        )
