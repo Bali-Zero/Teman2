@@ -22,6 +22,8 @@ sources:
   - research/operations/doc-intake-unified/05d-reusable-repos-github.md
   - research/operations/doc-intake-unified/05e-reusable-repos-infra.md
   - live: psql nuzantara_dev migrations_v2 (205 = highest, 206 free) + MODEL_TOPOLOGY.json (Pro, 2026-06-04)
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. Scope = the 2026-08-02 retraction of the 17.2x citation ONLY (see the Adversarial review section at the end). The 2026-06-04 body is a dated record and was NOT re-reviewed."
 ---
 
 # FASE 5 — FINAL EXECUTABLE SPEC: Unified Document-Intake (Bali Zero)
@@ -463,3 +465,22 @@ NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplificat
 - **FASE 4 — Entity+routing**: RIUSA identity_resolver + decision-matrix C4 → scrive solo proposal (read-only). Test: AUTO_ATTACH vs LINK_CANDIDATE, omonimi AMBIGUOUS. Rischio MEDIO-ALTO (mitigato read-only).
 - **FASE 5 — HITL+writer (GO-LIVE)**: endpoint+CRM view (COPIA paperless-gpt)+Telegram notifier; resolve = unico writer D1/D2/interactions+corrections. Test: RBAC, idempotenza, 0 PII Telegram. Rischio ALTO (primo write prod, gate human obbligatorio).
 - **FASE 6 — Evolver**: step intake-corrections-digest volume-gated (≥30/sett), no-op sotto soglia → draft PR. Rischio BASSO.
+
+---
+
+## Adversarial review
+
+**Scope**: the **2026-08-02 retraction of the 17.2× citation only** (the two lines that cited «NB 05c 17.2×» / «NB 17.2×» as the rationale for *no swarm*). The 2026-06-04 body is a dated record and was not re-reviewed — this key does not certify it.
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh`, fresh context, read-only, cross-family (generator = Claude Opus 5; grader ≠ generator).
+
+**How this file got here**: it was not in the original scope. The reviewer falsified the claim that only *live agent surfaces* still carried the citation, by pointing at `00-INDEX.md` — which calls `05-final-spec.md` a **"SPEC FINALE ESEGUIBILE"** a dev/agent builds from, and `05c-nb-patterns.md` its **ground truth**. Neither is archaeology, so both are corrected rather than ledgered.
+
+**What was wrong** (verified at source on arXiv:2512.08296v3, §3.1 / §4.3 / Table 4):
+
+1. **Wrong topology.** 17.2× measures `Independent` (§3.1: parallel, `Ω=synthesis_only`, *no coordination*). Peer-to-peer is `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus) and is **not** ranked worst. `05c` asserted the number *of* Decentralized — the conflation in its purest form, and the route by which it became the spec's "no swarm" rationale.
+2. **Unsupported as a cause.** §4.3 narrates error propagation; Table 4 of the same paper reports β̂=0.014, CI [−0.047, 0.074], p=0.658 (interaction β̂=0.022, CI [−0.023, 0.067], p=0.332) and §4.3 concludes the gap is better explained by *"efficiency (Ec) and overhead (O%), rather than error propagation per se"*. **p=0.658 = unsupported, not disproved.**
+
+**What did NOT change**: the architectural decision (central orchestrator, stateless subagents, no swarm). It stands on repo grounds — context isolation, one auditable state owner — plus the paper's benchmark ranking (`Centralized` > `Independent`). Only the citation was withdrawn.
+
+**Limits**: the reviewer had no internet access and could not check the paper itself; the §3.1/§4.3/Table 4 quotations were fetched by the author and given to it as claims. Single seat — Kimi quota-dead, GLM unreachable on this machine at the time.
