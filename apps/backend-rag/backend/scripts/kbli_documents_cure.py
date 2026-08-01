@@ -60,11 +60,40 @@ WHAT IT DOES per `--only` code (or every quarantined code under
 
 SCOPE DISCIPLINE (mirrors `kg_kbli_license_fix.py`): `--only` is MANDATORY
 unless `--all-quarantined` is passed explicitly — this script NEVER sweeps
-the full ~1,559-row table; only codes whose canonical record already carries
-a `per_skala_disputed_*` marker have a verified honest replacement to write.
-A `--only` code without that marker (or missing from the canonical dataset,
-or missing from `kbli_documents`) is skipped with a logged reason, never
-guessed at.
+the full ~1,559-row table.
+
+WHAT `--only` ACTUALLY GATES ON (corrected 2026-08-01 — this paragraph used
+to claim the opposite, and a session relied on the path it denied). The
+`per_skala_disputed_*` marker selects the `--all-quarantined` population and
+NOTHING else: `main()` hands an `--only` list straight to `plan_cure`, which
+skips a code only when it is missing from the canonical dataset or missing
+from `kbli_documents`. An `--only` code without the marker IS cured. The
+previous text asserted it would be "skipped with a logged reason, never
+guessed at" — false in code, and dangerous in the direction that matters,
+because it reads as a safety gate that does not exist.
+
+That is deliberate and it is also load-bearing, so the real guarantee has to
+be stated in place of the imaginary one: nothing here is ever guessed —
+`build_cured_content`/`build_cured_metadata` are pure functions of the
+canonical record, so the honesty of a cure equals the honesty of that record,
+marker or no marker. The marker was only ever a proxy for "someone
+adjudicated this code". When curing an unmarked code, establish the
+equivalent DIRECTLY and say so: the caller is asserting that the canonical
+record is sourced. `scripts/kbli_filiera/_coverage_basis.py` makes that
+checkable — `classify_licensing(record) == "sourced_oss_2025"` and
+`classify_pma(record) == "located"` mean the record names a per-code
+government locator. A canonical record carrying `pma_cap_verified: False`
+and no `pma_official_basis` does NOT, and curing it merely propagates an
+unsourced verdict to a second surface (2026-08-01: `02101` and `03120` were
+held back for exactly this reason, while six sibling divergences were cured).
+
+SIZE IS PART OF SCOPE on this table, unlike the others: `chat_kbli` injects
+`content` VERBATIM into the LLM context, so a code with a large `per_skala`
+renders a document that competes for that context. Measured on the live table
+2026-08-01: median 2,458 chars, p99 13,272, max 25,483. `03110` (69 canonical
+rows) computes to 48,008 — ~2x the largest row that has ever existed there —
+and was held back pending a channel-appropriate rendering. Read the dry-run's
+char count before `--apply`; it is not decoration.
 
 WHOLE-TABLE REFRESH IS OUT OF SCOPE for this script — the other ~1,486 rows
 in `kbli_documents` (never adjudicated) are unmanaged and untouched here; see
