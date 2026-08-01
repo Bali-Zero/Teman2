@@ -7,16 +7,24 @@ name: kbli-filiera-vault-compilers
 # network in the test battery (unittest.mock/monkeypatch fixtures only —
 # these are the sole sanctioned writers of the raw-evidence vault per
 # infra/claude-hooks/data-plane-registry.json, id "kbli-filiera").
+# The `paths:` list ALSO carries the canonical dataset and the coverage
+# baseline. Without them a data-plane commit could strip provenance from the
+# catalogue and this workflow would never run to notice — a gate that cannot see
+# the artefact it defends is decoration (W86 / the `paths:` blind spot).
 on:
   pull_request:
     paths:
       - "scripts/kbli_filiera/**"
+      - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "data/kbli-filiera/coverage-baseline.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
   push:
     branches:
       - main
     paths:
       - "scripts/kbli_filiera/**"
+      - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "data/kbli-filiera/coverage-baseline.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
 
 permissions:
@@ -43,3 +51,27 @@ jobs:
           set -uo pipefail
           python -m pip install --quiet pytest
           python -m pytest scripts/kbli_filiera/tests/ -v
+
+      # The completion ratchet (kbli-navigator corner §5 F0). One-way: an axis
+      # may never lose honest coverage and a bare fact may never appear. It does
+      # NOT assert any number is good — the PMA axis is allowed to sit at 1%
+      # here; F2 is what moves it. A gate that stayed red until the programme
+      # finished would be muted within a week.
+      #
+      # Exit 4 (cannot verify) is treated as a failure on purpose: in CI the
+      # dataset is always present, so unreadable means broken, not offline.
+      #
+      # The exit code is CAPTURED and re-raised rather than left to an implicit
+      # `-e` from the shell wrapper: a trailing `echo` after the command under
+      # test makes the step exit with the echo's status on any shell where -e is
+      # not in force, and the gate becomes decoration. This repo has been bitten
+      # by that exact shape ~20 times (W101, W108).
+      - name: KBLI coverage ratchet (no axis may get less honest)
+        run: |
+          set -uo pipefail
+          set +e
+          python scripts/kbli_filiera/kbli_coverage_scoreboard.py --check
+          RATCHET_RC=$?
+          set -e
+          echo "ratchet exit: ${RATCHET_RC}"
+          exit "${RATCHET_RC}"

@@ -14,6 +14,7 @@ from typing import Any
 
 from backend.app.core.config import settings
 from backend.services.integrations.telegram_bot_service import telegram_bot
+from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +200,17 @@ class IntelCoverHandler:
         return await telegram_bot.download_file(file_path)
 
     async def _upload_cover(self, intel_type: str, item_id: str, photo_bytes: bytes) -> None:
-        """Save cover image to staging and update staging JSON."""
+        """
+        Save cover image to staging and update staging JSON.
+
+        Raises:
+            ValueError: if item_id is not a bare token. This is the sink that WRITES
+                caller-supplied bytes to a path built from item_id, and item_id can
+                arrive from a Telegram `/cover` caption (`_match_article()` Priority-2),
+                which passes through no URL decoder — CodeQL #3677-#3679, #6462. Same
+                validator as the staging service, imported so the two cannot drift.
+        """
+        assert_valid_item_id(item_id)
         base_dir = Path(settings.get_intel_staging_base_dir)
         staging_dir = base_dir / intel_type
         covers_dir = staging_dir / "covers"
@@ -246,6 +257,14 @@ class IntelCoverHandler:
         pending = []
         for mapping in self._notification_map.values():
             item_id = mapping["item_id"]
+            try:
+                assert_valid_item_id(item_id)
+            except ValueError:
+                # An entry that cannot name a staging item cannot be listed as pending,
+                # and must not reach a path join. Same validator as the write path — a
+                # fix that covers only the sink that bit you is half a fix.
+                logger.warning("Skipping malformed item_id in notification map")
+                continue
             title = mapping.get("title", item_id)
             # Check if cover already exists
             base_dir = Path(settings.get_intel_staging_base_dir)

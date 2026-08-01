@@ -37,16 +37,100 @@ The two shapes it takes:
   document/client the requesting user is authorized to access."* Those four are #791, #792,
   #2868, #2869 — the IDOR fixed in PR #3496. **The verdict answers "is there a real problem
   here"; the reason answers "is CodeQL's rule violated". They are not the same question.**
-- **clear-text-logging (11) + transport-and-hashing (1): `fix_hint` is EMPTY.** No surviving
-  rationale at all. The likeliest reading is that logging a client's own email / user_id is a
-  PII exposure under UU PDP even when CodeQL's `(password)` label is wrong — a Bali Zero
-  concern CodeQL cannot know about — but **that is inference, not a record.** Treat those 12
-  as *unresolved and needing a fresh first-principles read*, not as adjudicated.
+- **clear-text-logging (11) + url-substring-sanitization (1): `fix_hint` is EMPTY.** No
+  surviving rationale at all. The likeliest reading is that logging a client's own email /
+  user_id is a PII exposure under UU PDP even when CodeQL's `(password)` label is wrong — a
+  Bali Zero concern CodeQL cannot know about — but **that is inference, not a record.** Treat
+  those 12 as *unresolved and needing a fresh first-principles read*, not as adjudicated.
+  **→ Now adjudicated; see "Update" below. The inference above turned out to be half right and
+  to miss the load-bearing half.**
+  <br>**CORRECTION (2026-08-01, later):** an earlier draft said the 12th orphan came from the
+  *transport-and-hashing* lane. It does not. Selecting on empty `fix_hint` and joining the
+  per-lane files for the rule gives exactly **11 `py/clear-text-logging-sensitive-data` + 1
+  `js/incomplete-url-substring-sanitization`** (`apps/mouth/src/lib/security/xss.ts:87`). Both
+  lanes show `overturned=1`, so "an exact per-lane match" picked the wrong one of two equally
+  plausible candidates — a coincidence read as an identification.
 
 Identifying which 22: the per-lane `overturned` counts below say how many per lane, not which
-ones. 12 are identifiable by their self-contradicting reason text (11 clear-text-logging + 1
-transport-and-hashing, an exact per-lane match). The other 10 are not individually
-identifiable from this data.
+ones. 12 are identifiable by their self-contradicting reason text plus an empty `fix_hint`.
+The other 10 are not individually identifiable from this data.
+
+## Update 2026-08-01, after this artifact was reviewed — the 12 orphans are adjudicated
+
+Appended rather than merged into the body above, so the reviewed record and its correction
+stay separately auditable.
+
+**All twelve sit in code that does not execute.** Not "low severity" — *unreachable*:
+
+| n | where | how that was established |
+|---|---|---|
+| 9 | `app/streaming.py` | no chat-stream route exists in either live process. Deleted in **PR #3499**; CodeQL closed all 9 on the next scan. |
+| 2 | `app/services/api_key_auth.py` (S03 auto-migration) | **0** `S03:` lines in a 99-line prod log window, against a positive control of 73 for `zantara.backend` |
+| 1 | `apps/mouth/src/lib/security/xss.ts:87` | `getSafeLinkProps` has **zero callers** — only its definition and a barrel re-export |
+
+**Why the overturns had no usable rationale, and what the pipeline was missing.** The refuter
+judged the code *as written* and was right on every count: an email really is logged (in
+`streaming.py` `user_id = user_email or …`, so the "it's only a session identifier" defence
+was false), a key prefix really is logged, the substring check really is incomplete. The
+analyst judged *severity*. **Neither asked the third question — does this code run?** On any
+scanner backlog, ask reachability BEFORE severity; it is the cheapest filter and it dominates.
+
+**Reachability has one honest instrument: the live route table of EVERY process.** An
+importer-count probe written for this pass failed in both directions and was discarded — TS
+basename matching over-matched (`page.tsx` → "page" = 919 "importers"), and Python grouped
+multi-line imports under-matched, so it reported the fully-registered `admin_zoho_auth` as a
+zero-importer dead router. Measured properly against `api` (555 paths) ∪ `rag` (229) = **756**,
+**all 7 finding-bearing routers are live**: `intel_scraper` is 100% rag-only, `crm_enhanced` 6
+of 8 rag-only, `legal_ingest` 6 of 9. Querying only the `api` table would have declared three
+live routers dead. Two related traps in the same pass: building `create_app()` in a throwaway
+process reports 6 routes because no lifespan runs, and the `rag` process binds `::`, so an
+IPv4 probe's "connection refused" proves nothing.
+
+**Where the numbers stand now** (server-side, `state=open&per_page=100` with `--paginate`):
+
+| | |
+|---|---|
+| dismissed in the original sweep | 164 |
+| dismissed after the fix shipped (the 4 `py/partial-ssrf`, IDOR cured and proven live) | 4 |
+| closed by CodeQL itself when `streaming.py` was deleted | 9 |
+| **open high/critical now** | **85** = 83 REAL + 2 uncertain |
+
+262 − 164 − 4 − 9 = 85. The 4 SSRF alerts would never have auto-closed: the rule fires on the
+URL interpolation, which the fix does not and should not remove — the host is a hardcoded
+literal, so *that rule* genuinely does not apply. Left open, the next triage re-derives an
+IDOR that is already fixed; each dismissal comment names #3496 and the live result.
+
+**Still not adjudicated:** nothing from the 12. `api_key_auth.py` carries **four** findings:
+two are orphans adjudicated above (#4672, #4673, clear-text logging on the dead S03 path); the
+other two — **#4669 and #4670, `py/weak-sensitive-data-hashing`** on `hashlib.sha256(api_key…)`
+— are untouched here. They are a design question about how keys are stored and compared, and
+downstream of the standing recommendation to delete the S03 second door rather than arm it.
+
+### How to re-measure the runtime claims
+
+Everything above that is *not* a repo fact is listed here with the command that produced it —
+an artifact asserting runtime state without a way to re-derive it is an assertion, not a
+record (raised by the adversarial review below):
+
+```bash
+# live route table of BOTH processes (api binds 127.0.0.1, rag binds :: — IPv4 alone lies)
+#   inside the container; ADMIN_API_KEY is read from env and never printed
+#   api:  flyctl ssh console -a nuzantara-rag --machine <api-machine>  -C "python -"
+#   rag:  flyctl ssh console -a nuzantara-rag --machine <rag-machine>  -C "python -"
+#   httpx.get("http://127.0.0.1:8080/openapi.json" | "http://[::1]:8080/openapi.json",
+#             headers={"X-Debug-Key": os.environ["ADMIN_API_KEY"]})
+# open high/critical, server-side filter + pagination (a bare `gh api` returns page 1 only)
+gh api --paginate "repos/Bali-Zero/Teman2/code-scanning/alerts?state=open&per_page=100" \
+  --jq '.[] | select(.rule.security_severity_level=="high" or .rule.security_severity_level=="critical") | .number' | wc -l
+# the S03 path's silence, WITH a positive control beside it
+flyctl logs -a nuzantara-rag --no-tail | grep -c 'S03:'            # 0
+flyctl logs -a nuzantara-rag --no-tail | grep -c 'zantara.backend' # 73 — the window is alive
+gh pr view 3499 --json state,mergedAt
+```
+
+Declared limit of that log check: `--no-tail` returned a 99-line window, i.e. *recent* traffic,
+not all history. It is consistent with the structural facts (migration 089 never applied,
+`api_key_records` absent, no caller passes a `conn`) but on its own it is a sample.
 
 ## Totals
 
@@ -196,3 +280,21 @@ Raised 6, of which **4 changed the document** and 2 were partially rejected:
 Not raised by the reviewer and worth stating: it verified the uvicorn `%2F` claim
 independently and confirmed the per-file counts, the SSRF sentence, and the partition
 arithmetic.
+
+### Second review — the "Update 2026-08-01" section
+
+Seat: **codex** (`gpt-5.6-terra`, medium effort), read-only against the repo. The section is
+authored by the same session that did the work it corrects, so it cannot certify itself.
+
+Five claims put up for falsification, **all CONFIRMED**: `streaming.py` absent from `HEAD`
+with no surviving reference including router registration · `getSafeLinkProps` has only its
+definition and the barrel re-export in `apps/` and `packages/` · 262 − 164 − 4 − 9 = 85 · the
+empty-`fix_hint` join yields exactly 11 `py/clear-text-logging-sensitive-data` + 1
+`js/incomplete-url-substring-sanitization` (#2144) · #4669/#4670 are
+`py/weak-sensitive-data-hashing`.
+
+**One overstatement raised and fixed:** the runtime claims (live route tables, PR #3499, the
+CodeQL closure) are not verifiable from the repository — they needed their measurement
+attached, not just their result. That is what the "How to re-measure" block above now is. The
+reviewer also flagged that "the 2 remaining `api_key_auth.py` findings" read ambiguously when
+the file carries four; corrected to name all four and their disposition.

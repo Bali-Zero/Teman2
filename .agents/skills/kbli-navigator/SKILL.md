@@ -26,7 +26,56 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-27 — keep current)
+## 1. LIVE STATE (last update 2026-08-01 — keep current)
+
+**🟢 2026-08-01 — THE PROGRAMME NOW HAS A SCOREBOARD, AND IT SAYS THE AXIS WE WERE WORKING ON IS DONE
+WHILE THE ONE NOBODY TOUCHED IS AT 1%.** Run
+`python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py` before trusting any number below it.
+Measured today: **licensing 1,559/1,559 honest** (1,337 OSS-2025-sourced · 217 declared gaps · 5
+PP28-located) · **crosswalk 1,338/1,559** (mechanical ancestry with a locator, 0 adjudicated — honest
+because the page claims provenance only) · **PMA 15/1,559 = 1.0%** (13 records name a per-code basis;
+**1,544 assert a foreign-ownership verdict with nothing on the record saying where it came from**).
+The plan that follows from this is §5, REWRITTEN today on Zero's mandate — it retires the A/B/C/D
+sweep framing. **The "99 no-scope codes still to adjudicate" carried by this section are DECLARED
+GAPS, not lies in production**; they are product improvement, and F4's refresh loop closes them free.
+
+**🔴 CORRECTION TO L2.11e BELOW — the 17 divergences it reports were ALREADY CURED when it was
+written.** Re-measured on prod this turn through the read-only role: all 17 read `TERTUTUP` with the
+canonical Title Case titles restored, and their `updated_at` is **2026-07-26T23:32Z** — i.e. the
+re-seed landed BEFORE the census that entry dates 2026-07-27. Nothing was lost; the ledger simply
+recorded a superseded state as current. Left in place below because its ANALYSIS (the divergence
+tracks rows that were never re-seeded, and the `--only` path needed no code change) is correct and is
+exactly what the two findings below confirm.
+
+**🔴 THE REAL POPULATION: 1,423 of `kbli_documents`' 1,563 rows (91%) have NEVER been touched by any
+cure.** Every cure to date ran `--only <named list>`, 140 rows in total. Measured two ways that agree
+exactly: `updated_at < 2026-07-01` = 1,423, and `judul = upper(judul)` (the original 2026-02-18
+UPPERCASE seed) = 1,423. Two findings fall out of it, both found by the new state-based detector
+(`scripts/kbli_filiera/kbli_surface_conformance.py`) on its first run, neither previously in this
+corner:
+
+- **8 live `pma_status` divergences** against canonical, in the store `chat_kbli` injects verbatim into
+  the LLM context. Three are PERMISSIVE: **`50122`/`50123`/`50126`** (sea cabotage) read `TERBUKA` in
+  the table while canonical carries an **adjudicated 49% cap** quoting Perpres 10/2021 Lampiran III —
+  and their siblings `50111`/`50121` read `TERBATAS`, so the answer a client gets depends on the last
+  digit. The other five (`02101`, `02102`, `03110`, `03120`, `73100`) fail restrictively. **Six of the
+  eight sync to an adjudicated basis; two (`02101`, `03120`) sync only to canonical's own value, which
+  itself carries `pma_cap_verified: false`** — a cure must not claim a truth fix on those two.
+- **80 codes where the channel serves NO licensing while canonical holds verified rows** — **687 rows**,
+  all from the trusted OSS-2025-native core, including `82400` (MICE organisers), `55400`, `56400`, the
+  `65xxx` insurance family and much of `85xxx` education. Verified not to be probe poverty: the
+  `content` column itself reads `Perizinan: N/A`. Honest-degrading, not a lie — but the WhatsApp/webchat
+  channel is materially poorer than the website on exactly the codes where our data is best.
+
+**Shipped with this entry (F0 + F1-detect of §5):** `kbli_coverage_scoreboard.py` + `_coverage_basis.py`
+
+- ratchet baseline `data/kbli-filiera/coverage-baseline.json`, armed in
+  `kbli-filiera-vault-compilers.yml` with the canonical dataset in its `paths:` trigger (a data-plane
+  commit that strips provenance cannot dodge the gate); and `kbli_surface_conformance.py`, read-only,
+  selecting on STATE rather than on a list of codes. 46 new guilt+innocence tests; the ratchet is
+  mutation-verified against the real 1,559-record dataset. **NOT yet armed on a schedule** — the
+  conformance detector needs DB access so it cannot live in CI; today it is a manual run, and that is a
+  ledger line, not a claim.
 
 **🟢 L2.13 — A CAPITAL THRESHOLD IS NOT A PERMIT: `inspect_kbli` CALLED 35 ENTITY TYPES
 "LICENSES" (#3323, SHIPPED + PROVEN-LIVE 2026-07-27, squash `ff2371156a`).**
@@ -1462,14 +1511,179 @@ corner (flagged only, nothing fixed here):**
     Sensitive data raises the adversarial gate, never parks the merge on a human. GO is per-batch
     (Legge 5) for the sweep; the ship of an already-GO'd batch is fully the session's.
 
-## 5. THE PLAN — GARUDA-FILIERA roadmap to the end
+## 5. THE PLAN — the completion programme (REWRITTEN 2026-08-01; supersedes the A/B/C/D batch-sweep roadmap)
 
-> Garuda certifies INTERNAL consistency (the 1,559 agree with each other); Filiera adds EXTERNAL
-> truth (each fact traces to a dated government source through the correct vintage). The end-state:
-> every rendered fact is government-sourced-with-locator OR an honest declared gap. Discrepancy
-> findings against BKPM/OSS stay INTERNAL (product feature: "we show the divergence with citations").
+> Zero's mandate, verbatim: _"voglio che organizzi un piano decisivo di completamento. Non mini serie
+> di azioni"_ (2026-08-01). What follows is what the MEASUREMENT says, not what the previous roadmap
+> assumed. Garuda still certifies INTERNAL consistency and Filiera still adds EXTERNAL truth; the
+> end-state is unchanged — every rendered fact government-sourced-with-locator OR an honest declared
+> gap. What changed is the SHAPE of the remaining work.
 
-### Seats (execution program, workflow doc §2) — family-independent by design
+### 5.0 The three axes are NOT three sweeps of 1,559 — measured 2026-08-01
+
+Live number: `python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py`. At the time of writing:
+
+| axis          | honest               | what the number means                                                                                                                                                                                        |
+| ------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **licensing** | **1,559/1,559** 100% | 1,337 OSS-2025-sourced · 217 declared gaps · 5 PP28-located/vintage-pending. **Zero codes carry cross-vintage licensing in silence.**                                                                        |
+| **crosswalk** | **1,338/1,559** 86%  | mechanical BPS ancestry WITH a lampiran locator, rendered as "provenance only, not a licensing claim". **0 adjudicated** — honest, not a defect, because the page makes no inheritance claim. 221 have none. |
+| **PMA**       | **15/1,559** 1.0%    | **13** records name a per-code basis (`pma_official_basis`), 2 declare themselves unverified, and **1,544 assert a foreign-ownership verdict with nothing on the record saying where it came from.**         |
+
+Three consequences, and they reorganise the whole programme:
+
+1. **The licensing axis is closed for honesty IN THE DATA — the SURFACE is a separate claim, and the
+   adversarial gate refused to let the two be merged.** The "99 codes still to adjudicate" this corner
+   has been carrying are DECLARED GAPS in canonical, not lies in it; moving them from gap to verified
+   value is product improvement, and F4's refresh loop does it for free when OSS publishes the scope.
+   But data-honest ≠ page-honest: the conformance detector compares row COUNTS and `licensing_status`,
+   never the `content` markdown the bot injects verbatim, so a stale licensing claim can survive inside
+   a document whose row count is legitimately zero. And the gate found a live over-claim on the web
+   surface — `LicensingSection` printed **"None retrievable (404)"** for gap codes while `no_oss_risk`
+   is written for a missing dump line, ANY non-200 or `success:false`, i.e. an HTTP status we did not
+   necessarily observe (corner rule F12, which the provenance panel's own comment quotes correctly
+   while the panel then named the status anyway). Cured in this ship on all three strings. The
+   content-level check is NOT built: ledger line, not a claim.
+2. **The PMA axis is the remaining exposure, and it is the most-read fact on the product.**
+   `pma_source` reads the identical string `"Perpres 10/2021, 49/2021"` on all 1,559 records — a layer
+   annotation that can never explain a per-code verdict, the exact shape that made `moratorium.rule`
+   useless as evidence on 111 pages (§1 L2.10). Curing it is ONE document parse + a join, not 1,559
+   judgments — and the evidence is already on disk: the Perpres 10/2021 + 49/2021 lampiran were
+   fetched and sha256-pinned into the Mini vault on 2026-07-19 and the manifest says, verbatim,
+   _"fetched whole, NOT unzipped/parsed/extracted this pass"_.
+3. **The crosswalk is not a third sweep — but it does NOT retire, and the first draft of this plan got
+   that wrong.** pp28 feeds LICENSING on **5** codes, all adjudicated: that measurement stood up to the
+   cross-family gate. What the gate refuted was the INFERENCE drawn from it. `pp28_sources` also drives
+   the rendered **"Previous codes (KBLI 2020)"** element (`kbli-data.server.ts:323` → `page.tsx:891`)
+   and the PMA provenance verdict (`kbli-provenance.ts:99`), and **121 codes have pp28 as their ONLY
+   source of 2020 ancestry** (measured: 1,384 records carry `pp28_sources`, 221 carry no BPS ancestry,
+   121 sit in both sets). So Batch B **re-aims** rather than retires: from "478 codes of licensing
+   risk" to "121 codes whose rendered ancestry rests on a single unverified source, plus the 560-page
+   BPS-vs-pp28 divergence". Recorded plainly because the error is instructive: I measured ONE consumer
+   and generalised to all of them — the consumer-map rule this corner states (§4 rule 6), applied
+   against its own author.
+
+### 5.1 F0 — THE SCOREBOARD ✅ SHIPPED 2026-08-01
+
+`scripts/kbli_filiera/kbli_coverage_scoreboard.py` + `_coverage_basis.py`, ratchet baseline at
+`data/kbli-filiera/coverage-baseline.json`, armed in `kbli-filiera-vault-compilers.yml` (the `paths:`
+trigger carries the canonical dataset, so a data-plane commit that strips provenance cannot dodge it).
+
+Completion stops being "we finished the lots" and becomes a number that can only go up. The ratchet is
+ONE-WAY and asserts nothing about whether a number is good: PMA may sit at 1% forever as far as CI is
+concerned. A gate that stayed red until the programme finished would be muted within a week.
+
+### 5.2 F1 — SIGILLA: make regression impossible BEFORE producing more truth
+
+The defect under **every** scar in §1 is that the truth exists in six copies cured one at a time
+(canonical, gold, the kbli-navigator fork, `kbli_documents`, KG, Qdrant). Every lot paid the same tax:
+"cured on 3 surfaces of 4".
+
+- ✅ **Detector shipped**: `scripts/kbli_filiera/kbli_surface_conformance.py` — read-only, compares
+  canonical against `kbli_documents` by STATE (every row judged, every canonical code asked for),
+  never by a list of codes. Exit 1 on divergence, exit 4 on cannot-verify.
+- ⬜ **Derivation**: the six surfaces become BUILT from canonical rather than patched. Detection first
+  is deliberate — it makes any new divergence loud immediately, while the builder is a bigger job.
+- ⬜ **Arm the detector on a schedule** (it needs DB access, so it cannot live in CI): cron on Pro/Mini
+  with a Telegram alert. Until then it is a manual run, and that is a ledger line, not a claim.
+
+**What the detector found on its first run (2026-08-01), neither of which was in this corner:**
+
+- **8 `pma_status` divergences**, canonical vs the store `chat_kbli` injects verbatim into the LLM
+  context. Three are permissive: `50122`/`50123`/`50126` (sea cabotage) read **TERBUKA** in the table
+  while canonical carries an **adjudicated 49% cap** quoting Perpres 10/2021 Lampiran III. Their
+  siblings `50111`/`50121` read TERBATAS — so the answer a client gets depends on the last digit.
+  The other five (`02101`, `02102`, `03110`, `03120`, `73100`) are restrictive-direction. **6 of the 8
+  sync to an adjudicated basis; 2 (`02101`, `03120`) only sync to canonical's own value, which itself
+  carries `pma_cap_verified: false` — the cure must not claim a truth fix on those two.**
+- **80 codes where the channel serves NO licensing while canonical holds verified OSS-2025 rows** —
+  **687 rows** in total, all from the trusted 2025-native core, including high-traffic activities
+  (`82400` MICE organisers, `55400`, `56400`, the `65xxx` insurance family, `85xxx` education). Not a
+  lie — the `content` column literally says `Perizinan: N/A` — but the WhatsApp/webchat channel is
+  materially poorer than the website on codes where our data is at its best.
+
+**Root cause of both, measured: 1,423 of the 1,563 rows (91%) have never been touched by any cure.**
+Every cure to date ran `--only <named list>`, totalling 140 rows. This is the corner's own
+meta-pattern — "the selector is the disease" — landing a fourth time, on the cure that closed the third.
+
+### 5.3 F2 — THE PMA AXIS: the parse nobody has run (the bulk of the remaining work)
+
+Same machine that already worked for the BPS crosswalk (Phase-0 gate: 20-page holdout, P=R=1.0,
+cross-family blind verification):
+
+1. Parser over the vaulted Perpres 10/2021 + 49/2021 lampiran → relation `(entry, cap, condition,
+LOCATOR, vintage)`.
+2. Acceptance gate on the BPS schema — holdout + cross-family blind + red-team. **No join before the
+   gate is green.**
+3. Join onto the 1,559 **through the BPS crosswalk** — never a bare-digit join (§4 rule 1). Three
+   outcomes per code: covered-with-locator / ambiguous / no entry → declared gap.
+4. **Only the ambiguous bucket** gets the expensive D0–D6 treatment below. That number is unknown
+   today and **producing it is F2's first deliverable** — not a promise about its size.
+
+**Why this is the phase that pays: it extinguishes FOUR of the six questions currently waiting on
+Zero** (the "unverified cap" qualifier, the 17 `CHIUSO_PMA_NO_BESAR` codes, the 24 verdicts standing
+on a disowned basis, the FATAL-2 re-label). Those questions exist because we have no locator. With a
+locator they are not decided — they are answered.
+
+### 5.4 F3 — the two decisions that survive, and they come AFTER F2
+
+- **(a)** the **560** codes rendering two different predecessors side by side (official BPS vs the
+  legacy pp28 element): keep both with a source note / BPS authoritative / adjudicate.
+- **(b)** how the page states whatever residue F2 leaves in "declared gap".
+
+Deliberately not asked now: asking now means deciding on the large population. F2 shrinks it.
+
+### 5.5 F4 — root and upkeep
+
+- **KG generator** — it does not exist; edges are deleted by hand and the 68% dedup disease is still
+  at the root.
+- **Refresh loop** OSS/JDIH: the 221 no-scope watchlist self-resolves when OSS publishes a scope, and
+  the 217 declared gaps become verified values **with no human work**. This is the only path by which
+  the "99 missing" close themselves.
+
+### 5.6 What this plan RETIRES (say it out loud, it contradicts signed work)
+
+- **Batch B as a 478-code LICENSING sweep** — that thesis is defused by measurement (pp28 load-bearing
+  on licensing: 5 codes). It is **re-aimed, NOT retired**: the cross-family gate showed pp28 still
+  solely carries the rendered 2020 ancestry on 121 codes, so the batch shrinks and changes target
+  rather than disappearing. This narrows a SIGNED design (#2801 REV-4b); its Phase-0 parser and the
+  populate step stay — they are what made the measurement possible.
+- **Batches C/D as sweeps** (~1,438) — never had a measured risk thesis. If the scoreboard grows one,
+  they come back.
+- **The Tier-4 AQL ratification waiting on Zero** — it sampled a sweep we no longer run.
+- **"99 codes to adjudicate"** → 217 declared gaps that F4 closes for free.
+
+### 5.6bis This plan was gated before it shipped, and the gate changed it
+
+Generator ≠ grader (CLAUDE.md §6): the plan's four claims went to **Codex GPT-5.6-sol at xhigh,
+instructed to refute**. It returned three blockers, two of which changed this document and one of
+which changed the code:
+
+- **C4 refuted** — the Batch-B retirement did not follow from a licensing-only measurement (above).
+- **C2 narrowed** — "closed for honesty" is true of the data, not proven of the rendered surface;
+  it also found the live `(404)` over-claim, now cured.
+- **The ratchet was gameable and this was reproduced, not argued**: wiping `per_skala` on all 1,342
+  codes with rows turns every one into `declared_gap`, which is honest, so the count-only gate scored
+  a PERFECT 1,559/1,559 while the entire verified licensing layer was destroyed — green light,
+  measured on the real dataset. Fixed with a per-code STRONG-state arm (a code that held a government
+  locator may never stop holding one), plus catalogue-shrink, duplicate-code, adjudication-fall and
+  guarded-`--update-baseline` arms.
+- **C3 survived**, with its wording tightened to what was measured: "PMA is the largest MEASURED
+  exposure — 1,544 of 1,559 records bare", not "the real remaining exposure".
+
+Declared limits of that gate, so nobody reads it as more than it was: its capture begins at finding
+**#2**, so finding #1 was lost and is NOT accounted for here; and it could not reach the production
+database, so nothing it says about deployed state was verified by it.
+
+### 5.7 The arithmetic that makes this decisive and the previous roadmap not
+
+Batch A adjudicated 114 codes in ~4 days of full conductor attention, per-code, paying the 4-6-surface
+tax every lot. At that rate three axes × 1,559 is **~4 months** sequential with a human gate per lot.
+This plan runs **one parse** where the previous one ran 1,546 judgments, and puts the invariant BEFORE
+the production instead of after.
+
+---
+
+### Seats (unchanged — they govern F2's ambiguous bucket) — family-independent by design
 
 - **Mente immobile / final gate**: **Fable 5** (max effort, interactive) — batch plans + acceptance
   criteria, quarantine adjudication, the final EMPIRICAL gate against raw vault evidence, sign-off.
@@ -1480,11 +1694,12 @@ corner (flagged only, nothing fixed here):**
   LOCATOR ONLY, never the reader.
 - **Red-team**: **Codex GPT-5.6-sol** (xhigh, read-only sandbox) — attacks mapping proposals + batch
   reports. Family-independence: extractor ≠ refuter ≠ red-team FAMILIES per batch.
-- **Operator**: **Zero** (Legge 5) — batch GO, publish decisions, consents.
+- **Operator**: **Zero** (Legge 5) — publish decisions, consents, the F3 editorial calls.
 
 ### Per-code scientific protocol — dossier D0→D6 (workflow doc §3)
 
-Each batch pins a vault-manifest revision; per-code lease `agent_lock:kbli-dossier:<code>`.
+Retained because F2's ambiguous bucket is exactly what it is for. Each batch pins a vault-manifest
+revision; per-code lease `agent_lock:kbli-dossier:<code>`.
 
 - **D0 Evidence pull** (deterministic): vault items for the code — BPS row, dated OSS snapshot, PP28
   lampiran rows. Endpoint inventories + negative controls so ABSENT is corroborated, not assumed.
@@ -1496,60 +1711,17 @@ Each batch pins a vault-manifest revision; per-code lease `agent_lock:kbli-dossi
 - **D4 Discrepancy & completeness scan**: cross-layer comparison; completeness invariants catch
   omission blindness.
 - **D5 Independent verification** (anti-correlation): the refuter does BLIND re-extraction, does not
-  grade its own work; divergence → quarantine. Inter-extractor agreement tracked per batch.
-- **D6 Batch gate**: deterministic censuses + gates G13–G17 → **Fable final empirical gate** (§ sampling)
-  against RAW vault evidence, never seat summaries → sign-off → compiler emits canonical vNext.
+  grade its own work; divergence → quarantine. Cross-family and image-grounded, never a review of the
+  text-pack (W100).
+- **D6 Batch gate**: deterministic censuses + gates G13–G17 → **Fable final empirical gate** against
+  RAW vault evidence, never seat summaries → sign-off → compiler emits canonical vNext.
 
-### Batches (risk classes, live enumeration 2026-07-16 — sizes may overlap across criteria)
-
-| Batch | Set                                                                                      | Size      | Regime                        |
-| ----- | ---------------------------------------------------------------------------------------- | --------- | ----------------------------- |
-| **A** | PP28-derived licensing, no OSS source (the ~no-scope heart; includes the 68112 siblings) | **119**   | **100% Fable review**         |
-| **B** | Cross-code stitches (`pp28_sources` → other codes)                                       | **478**   | AQL tightened start; D1-heavy |
-| **C** | (taxonomy remainder)                                                                     | **~1263** | AQL adaptive                  |
-| **D** | (residual class)                                                                         | **~175**  | AQL adaptive                  |
-
-Processed in taxonomy order. Sampling = ISO-2859-spirit AQL (start tightened, loosen only on a
-clean run of batches), NOT naive 10%/min-12 (red-team F6). No throughput promises before measurement.
-
-**Batch B design SIGNED 2026-07-19** (REV-4b, `research/operations/2026-07-19-kbli-batch-b-design.md`,
-#2801 merged) — pre-registration determinism gate closed after 4 Codex xhigh rounds + Gemini.
-Phase-0 parser gate PASSED + full-corpus BPS crosswalk relation shipped (PR #3083, 2026-07-24).
-Remaining gates before any lot: `populate_bps_ancestors.py` canonical-write compiler (not built),
-Tier-4 population count + AQL parameters (not computed), Zero's Legge-5 ratifications (AQL default,
-Tier-4 volume — pending those numbers), 5 fresh POS controls (not started). See LIVE STATE.
-
-### The four phases (methodology doc §rollout)
-
-- **Phase 0 — Garuda lands** (internal consistency; BE1/BE2 recertify). Cross-vintage rows flagged
-  "regulatory basis pending crosswalk audit" until Phase 1 clears them. → substantially DONE.
-- **Phase 1 — Collision sweep** (bounded, deterministic): ingest the BPS conversion table; run D0–D6
-  over Batches A→D; re-derive every no-scope / cross-vintage row via its correct 2020 ancestor or
-  detach-to-honest-gap; re-adjudicate the 63 phantom gold-remap rows through the same machinery;
-  extend the cross-vintage treatment to the `pma_status` layer (FATAL-2). Output: **zero unaudited
-  cross-vintage rows in the catalog.** → **pilot A1 (the 8 codes) DONE & proven-live; Batch A
-  remainder (~111) + B/C/D REMAIN** (each is a per-batch Zero GO).
-- **Phase 2 — Reproducible compilers**: a canonical builder (vault + curatela → canonical vNext,
-  deterministic, re-runnable) + a per-code **KG regenerator** that fixes the 68% dedup disease AT THE
-  ROOT (the KG catalog currently has no generator — spot-deleting edges is not the cure). G16 live.
-- **Phase 3 — Refresh loop**: OSS re-snapshot cron (Mini, rate-budgeted) + JDIH/ministry watchers
-  integrated with regulatory-watcher; the **221 no-scope watchlist** (when OSS publishes a scope, it
-  triggers re-adjudication); deltas feed the same queue. Keeps the navigator true over time.
-
-### Definition of DONE (the whole navigator validated)
+### Definition of DONE (unchanged, now machine-computed)
 
 Every one of the 1,559 codes: risk / licensing / PMA / Bali facts each carry a government locator +
 vintage OR an honest declared gap; zero silent cross-vintage fill; KG regenerated from a real
 generator; gold/editorial invalidated-and-rebuilt where their source changed; a running refresh loop.
-
-### Immediate next actions (when the current ship lands)
-
-1. Finish the 8-code ship: push → PR → `--auto --squash` → merge → Vercel → PROVE-LIVE
-   `curl /kbli/{51103,49213,50115,64310,20111,51203,60312}` shows honest-gap.
-2. ALIGN-FLEET: rebuild the native `kbli-navigator` desktop app (M5/Pro/Mini) off the new canonical.
-3. Write the pilot-A1 measured report (IAA, discrepancy census, cost) → basis for the Batch-A GO.
-4. On Zero's Batch-A GO: ingest the BPS crosswalk, stand up the D0–D6 dossier machinery, run the
-   119 Batch-A codes at 100% Fable review.
+The first clause is now `kbli_coverage_scoreboard.py`, and CI defends it.
 
 ## 6. WHO IS WHERE / MEMORY POINTERS
 
