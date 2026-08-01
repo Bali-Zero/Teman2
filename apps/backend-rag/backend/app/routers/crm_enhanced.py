@@ -384,8 +384,18 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
             """
             await conn.execute(update_sql, *params)
 
+        # The passport NUMBER used to be interpolated here. It is a UU PDP
+        # identity document field, and a log line is not a private surface:
+        # Sentry's LoggingIntegration turns every `logger.info` into a
+        # breadcrumb, and an unlabelled `": X1234567"` has nothing for the
+        # `_redact_string` hook to anchor on (pinned by
+        # `test_known_gap_an_unlabelled_passport_number_has_no_anchor`).
+        # What the operator actually needs from this line is whether the OCR
+        # found the field, not what it said.
         logger.info(
-            f"Auto OCR completed for client {client_id}: {extracted.get('passport_number', 'N/A')}",
+            "Auto OCR completed for client %s (passport_number extracted: %s)",
+            client_id,
+            bool(extracted.get("passport_number")),
         )
         return {"success": True, "extracted": extracted}
 

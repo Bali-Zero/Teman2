@@ -85,6 +85,59 @@ _EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.[\w.-]+")
 # upstream is a generic `id`.
 _CLIENT_ID_RE = re.compile(r"\bCL-\d{3,}\b")
 
+# --------------------------------------------------------------------------- #
+# Free-text identifiers.
+#
+# Everything above this line redacts by KEY, which is exact when the payload is
+# structured — and blind when it is a sentence. A formatted log message has no
+# keys: `logger.info(f"OCR done: {passport}")` reaches Sentry as one string, and
+# the LoggingIntegration is a DEFAULT integration (level=INFO -> breadcrumb,
+# event_level=ERROR -> event), so every log line in the process is a candidate.
+# Until 2026-08-02 free text was covered by email + `CL-\d{3,}` ONLY, which is
+# why this module's own docstring — promising that NPWP, NIB, passport and phone
+# never reach Sentry — was true of dicts and false of sentences.
+#
+# Two tiers, deliberately:
+#   SHAPE-anchored — the format is distinctive enough to stand alone.
+#   LABEL-anchored — bare digits are NOT distinctive (a 13-digit NIB is
+#     indistinguishable from an epoch-ms timestamp, which logs are full of), so
+#     these redact only when the field names itself nearby. Matching them
+#     unconditionally would eat every timestamp in every breadcrumb: an
+#     over-match here does not just add noise, it destroys the diagnostic value
+#     the event exists for.
+#
+# WHAT THIS STILL CANNOT DO — do not read the list above as full cover:
+#   * a personal NAME in free text ("Created client 7: Jane Doe") is not a
+#     regex-recognisable shape at all; it needs NER (see
+#     `backend/middleware/pii_scanner.py`, Presidio) and is out of scope for a
+#     hook that must stay fast and dependency-free on the error path;
+#   * an UNLABELLED passport (`"...: X1234567"`) has no anchor to catch.
+# Both are pinned as known-gap tests. The only real fix for them is not logging
+# the value — this hook is defence in depth, never a licence to log PII.
+# --------------------------------------------------------------------------- #
+
+# SHAPE-anchored: formatted Indonesian NPWP, e.g. "01.234.567.8-901.000".
+_NPWP_RE = re.compile(r"\b\d{2}\.\d{3}\.\d{3}\.\d-\d{3}\.\d{3}\b")
+
+# SHAPE-anchored: international phone, e.g. "+62 812 3456 7890", "+6281234567890".
+# `.` is deliberately NOT a separator here: with it, a signed float in a metrics
+# line (`latency +12.345678901`) matches and gets redacted. Dot-separated phone
+# numbers are the rarer shape and WhatsApp never emits them; a destroyed metric
+# is the worse failure.
+_PHONE_INTL_RE = re.compile(r"\+\d{1,3}(?:[\s-]?\d){7,14}\b")
+
+# SHAPE-anchored: Indonesian mobile in local (`08…`) or WhatsApp-JID (`62…`) form.
+# An epoch in seconds or milliseconds starts with 1, never 08 or 62, so neither
+# collides with the timestamps that dominate log lines.
+_PHONE_ID_RE = re.compile(r"\b(?:08\d{8,11}|62\d{9,12})\b")
+
+# LABEL-anchored: the value carries no distinctive shape, so the field must name
+# itself. Covers NIB/NIK/KTP/NPWP-16-digit and passport/paspor numbers.
+_LABELLED_ID_RE = re.compile(
+    r"(?i)\b(nib|nik|ktp|npwp|no[_\s.]?ktp|passport(?:[_\s.]?(?:number|no))?|paspor)"
+    r"\b[\s:=#]*([A-Z]{0,2}[\d][\d.\s-]{4,18}\d)"
+)
+
 
 def _is_pii_key(key: Any) -> bool:
     if not isinstance(key, str):
@@ -96,9 +149,19 @@ def _is_pii_key(key: Any) -> bool:
 
 
 def _redact_string(s: str) -> str:
-    """Mask emails and Bali Zero client_id patterns in free-text."""
+    """Mask identifiers in free text: emails, client_id, phones, NPWP, labelled IDs.
+
+    See the free-text block above for the two tiers and for what this still
+    cannot reach (bare personal names, unlabelled passport numbers).
+    """
     s = _EMAIL_RE.sub(PII_REDACTION_PLACEHOLDER, s)
     s = _CLIENT_ID_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    s = _NPWP_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    s = _PHONE_INTL_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    s = _PHONE_ID_RE.sub(PII_REDACTION_PLACEHOLDER, s)
+    # Keep the label, drop the value: "NIB 1234567890123" -> "NIB [REDACTED]".
+    # The label is what makes the breadcrumb still worth reading.
+    s = _LABELLED_ID_RE.sub(lambda m: f"{m.group(1)} {PII_REDACTION_PLACEHOLDER}", s)
     return s
 
 
