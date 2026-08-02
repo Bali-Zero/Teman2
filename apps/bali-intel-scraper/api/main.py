@@ -5,6 +5,7 @@ FastAPI server that wraps the scraping orchestrator
 
 import logging
 import os
+import re
 import sys
 from datetime import datetime
 from typing import Optional, List
@@ -601,6 +602,29 @@ PREVIEW_DIR = Path(__file__).parent.parent / "scripts" / "data" / "previews"
 PENDING_DIR = Path(__file__).parent.parent / "scripts" / "data" / "pending_articles"
 
 
+# Both preview routes below join `article_id` straight into a filesystem path — one
+# READS it, one WRITES caller-supplied HTML to it — and neither declares any auth.
+#
+# This DUPLICATES `_validate_article_id` in
+# `apps/backend-rag/backend/app/routers/preview.py`, deliberately: that is a different
+# app in a different process, so there is nothing to import. The two are pinned
+# character-for-character by `tests/test_preview_article_id_guard.py`, which reads the
+# other module's source — a duplicate that nothing compares is a duplicate that drifts.
+#
+# Note the asymmetry the guard does NOT fix: the backend-rag twin gates its upload with
+# `verify_internal_api_key`; this one has no auth at all. It is unreachable from the
+# internet today (the Fly app does not exist — this runs on the Pro, bound 0.0.0.0),
+# which is a deployment accident, not a design. Ledgered, not fixed here.
+_SAFE_ARTICLE_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_article_id(article_id: str) -> str:
+    """Validate article_id to prevent path traversal (CWE-22)."""
+    if not article_id or not _SAFE_ARTICLE_ID.match(article_id) or len(article_id) > 128:
+        raise HTTPException(status_code=400, detail="Invalid article_id format")
+    return article_id
+
+
 class PreviewUploadRequest(BaseModel):
     """Request to upload a preview HTML."""
 
@@ -625,6 +649,8 @@ async def get_preview(article_id: str):
 
     Preview URL: https://bali-intel-scraper.fly.dev/preview/{article_id}
     """
+    _validate_article_id(article_id)
+
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
     preview_path = PREVIEW_DIR / f"{article_id}.html"
@@ -646,6 +672,8 @@ async def upload_preview(request: PreviewUploadRequest):
     Called by the pipeline before sending Telegram notification,
     so the preview link is ready when team clicks it.
     """
+    _validate_article_id(request.article_id)
+
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
     preview_path = PREVIEW_DIR / f"{request.article_id}.html"
@@ -706,6 +734,8 @@ async def approve_article(article_id: str, action: ApprovalAction = None):
     This marks the article as approved and triggers publishing to BaliZero API.
     Called from the preview page approve button or Telegram callback.
     """
+    _validate_article_id(article_id)
+
     PENDING_DIR.mkdir(parents=True, exist_ok=True)
 
     pending_path = PENDING_DIR / f"{article_id}.json"
@@ -757,6 +787,8 @@ async def reject_article(article_id: str, action: ApprovalAction = None):
     This marks the article as rejected with an optional reason.
     The article will not be published.
     """
+    _validate_article_id(article_id)
+
     PENDING_DIR.mkdir(parents=True, exist_ok=True)
 
     pending_path = PENDING_DIR / f"{article_id}.json"
@@ -799,6 +831,8 @@ async def get_approval_status(article_id: str):
     """
     Get approval status for an article.
     """
+    _validate_article_id(article_id)
+
     PENDING_DIR.mkdir(parents=True, exist_ok=True)
 
     pending_path = PENDING_DIR / f"{article_id}.json"
