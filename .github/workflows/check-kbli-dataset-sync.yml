@@ -28,6 +28,8 @@ on:
       - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
       - "apps/kbli-navigator/data/kbli-2025.json"
       - "scripts/sync_kbli_dataset.sh"
+      - "scripts/lib/kbli_fleet_notice.sh"
+      - "scripts/tests/test_kbli_fleet_notice.py"
       - ".github/workflows/check-kbli-dataset-sync.yml"
   push:
     branches:
@@ -38,6 +40,8 @@ on:
       - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
       - "apps/kbli-navigator/data/kbli-2025.json"
       - "scripts/sync_kbli_dataset.sh"
+      - "scripts/lib/kbli_fleet_notice.sh"
+      - "scripts/tests/test_kbli_fleet_notice.py"
       - ".github/workflows/check-kbli-dataset-sync.yml"
 
 permissions:
@@ -74,3 +78,23 @@ jobs:
           set -uo pipefail
           chmod +x scripts/sync_kbli_dataset.sh
           scripts/sync_kbli_dataset.sh --check
+
+      # The 6th consumer copy — the macOS app on M5/Pro/Mini — lives OUTSIDE this repo, so
+      # the byte-compare above can never reach it. What CI *can* guard is that the notice
+      # which reports on it does not lie: scripts/lib/kbli_fleet_notice.sh used to compare
+      # only the app repo's Resources/ (refreshed by every build) and print "already matches
+      # canonical" while every installed .app was stale — 20 codes, 8 days, all of them
+      # promising more foreign ownership than the truth. This step names the corpus so it
+      # actually runs: in this repo scripts/tests/ executes only because a workflow says so.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: The native-app fleet notice tells the truth (guilt AND innocence)
+        run: |
+          set -uo pipefail
+          python -m pytest scripts/tests/test_kbli_fleet_notice.py -q
