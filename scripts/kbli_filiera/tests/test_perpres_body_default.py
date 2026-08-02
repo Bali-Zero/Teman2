@@ -466,3 +466,33 @@ def test_pasal7_flags_are_a_review_queue_and_the_name_says_so():
     assert not hasattr(mod, "foreign_barred_but_published_open")
     assert "REVIEW FLAG" in mod.pasal7_review_flags.__doc__
     assert "conditions the INVESTOR, not the ACTIVITY" in mod.pasal7_review_flags.__doc__
+
+
+# --------------------------------------------------------------------------
+# THE CATALOGUE ALREADY HAS A "PRIORITY" FIELD, AND IT TRACKS SOMETHING ELSE
+# --------------------------------------------------------------------------
+
+def test_pma_prioritas_disagrees_with_the_operative_annex_in_both_directions(canonical, prio):
+    """`pma_prioritas` asserts Pasal 3(1)(a) from an unknown source.
+
+    Measured against `Perpres 49/2021 Lampiran I`, the operative priority list:
+    the catalogue flags **18** codes, the annex names **194**, and they agree on
+    **6**. Twelve flagged codes are absent from the annex entirely — checked
+    line-by-line against the vaulted PDF with positive and negative controls,
+    not by a whole-document search (joining a 70-page layout into one string
+    fuses adjacent columns and manufactures five-digit matches; that probe first
+    reported `35111` as present, and it is not).
+
+    Latent rather than visible: `isPriority` is carried through
+    `kbli-data.ts:406`, `kbli-data.server.ts:302` and two type modules and has
+    **no render site**, so no page states it today (family #2, exists != armed).
+    Pinned so the divergence cannot drift silently in either direction, and so
+    that whoever wires a priority badge reads this first and takes the set from
+    the instrument rather than from the flag.
+    """
+    flagged = {c for c, r in canonical.items() if r.get("pma_prioritas")}
+    reached = {c for c, r in canonical.items() if ({c} | ancestors(r)) & prio}
+    assert len(flagged) == 18
+    assert len(flagged & reached) == 6
+    assert len(flagged - reached) == 12
+    assert len(reached - flagged) == 219
