@@ -2038,6 +2038,32 @@ hair salon, beauty care, sports facilities), each carrying two questions: does a
 reservation/cap apply, and can it in fact be run at Usaha Besar? Ledgered `operator[business]`. The
 safe interim treatment is a caveat on the page, never a re-label to closed.
 
+**The 23 are not one population — measured by WHO names them (2026-08-02).** The queue was handed to
+Zero as 23 undifferentiated codes, which overstates what has to be decided: splitting it with the
+module's own selector (`pasal7_review_flags`, never a hand-rolled re-read of `per_skala`), then
+joining each annex-named code to `perpres-umkm-reservation.json`, gives **three tiers of evidence,
+not one**:
+
+- **`95291`** (Vermak pakaian) — the annex names the **2025** code itself, `whole-row`. A reservation
+  genuinely applies; only the Besar question is open.
+- **`43110`** (Pembongkaran) — the annex names the 2025 code, but the row is `segment-qualified` to
+  construction grade _madya_, so the reservation does **not** cover the whole code.
+- **7 codes** — `55201` `55203` `55209` `79903` `96100` `96210` `96220`: the annex names a **retired
+  KBLI-2020** code (`55130` `55193` `55199` `79921` `96200` `96111` `96112`), and the attachment to
+  the 2025 code is **our crosswalk**, declared `mechanical-only`. The instrument never wrote these
+  digits — same 102-code dependency as above, here landing on the daily-question codes.
+- **14 codes** — named by nothing at all. Only the factual "can this be run at Usaha Besar?" question
+  remains, and our data cannot answer it.
+
+All nine annex-named rows sit in the **`dialokasikan`** column (an actual reservation), none in
+`kemitraan` (a partnership duty, **not** a foreign-ownership bar — the distinction §L2.11 paid for).
+
+**Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
+**24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
+**`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
+a queue about codes published open. (Measured with the report's own field, `besar`; a first probe
+keyed on `besar_state` returned **0 of 24** and was measuring its own poverty, not the data.)
+
 | locator (which instrument names it) | n       | OSS scale data (NOT a verdict) | n      |
 | ----------------------------------- | ------- | ------------------------------ | ------ |
 | `named-in-annex` (L-II / L-III)     | 270     | besar **observed**             | 1318   |
