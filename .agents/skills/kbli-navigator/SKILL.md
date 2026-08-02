@@ -96,6 +96,34 @@ between are the backend sync tool and this corner, so the served frontend and th
 where it renders. The recurrence question (nothing promotes unattended) is NOT re-opened here: it
 already has its own ledger line from 2026-07-30, and a second one would be a twin.
 
+**🟢 THE SIXTH SURFACE: the macOS app on M5/Pro/Mini — cured 2026-08-02, and it was missing from
+this corner entirely, which is why it kept being left out of the consumer map.** Write it down here
+or the next session will call five surfaces "all of them" too. `~/Desktop/kbli-navigator-app` builds
+`KBLI Navigator.app`, installed on the Desktop of all three machines plus a zip handed to the team —
+a consumer copy OUTSIDE the repo, so `check-kbli-dataset-sync` can never reach it. It was carrying
+`27a18d4821dc` against canonical `54a89c221135`: **20 codes divergent, all 20 promising MORE foreign
+ownership than the truth** (`25200` arms and `30400` military vehicles at 100% vs 49%, `51101`/`51102`
+airlines likewise, `79122` Umrah/Hajj at 100% vs 0). Exactly what PR #3515 said it had cured — the web
+had, the desktop had not — and not dormant: the M5 app had been opened 48 times, last on 2026-07-29.
+Cured by running tooling that already existed and had never been run (`deploy/install-3mac.sh`, then
+`make-team-installer.sh`); proven per machine by CONTENT, with `10761` as an unmoved control, and a
+full re-diff of 1,559 codes giving 0 divergent. `check-fleet.sh` now exits 0 with all four surfaces on
+`54a89c221135` = the `datasetSha256` in `apps/mouth/data/kbli-dataset-version.json`.
+
+**The lesson worth more than the fix:** `sync_kbli_dataset.sh` had a notice for exactly this, and it
+compared only the app repo's `Resources/` — which `build.sh` refreshes from canonical on every build.
+So between a build and a deploy it printed _"already matches canonical"_ over three stale laptops. A
+guard that can print the good news over a bad world is worse than no guard. Now in
+`scripts/lib/kbli_fleet_notice.sh`, judging BOTH files, with guilt+innocence tests a workflow actually
+names. Deliberately NOT made to exit non-zero — the `kbli_filiera` cure compilers call the sync script
+unconditionally under errexit, so that would abort a DATA cure to deliver a DEPLOY reminder; the ledger
+line that proposed it was refuted by reading the callers.
+
+**Still open on this surface (ledgered, not lost):** the app repo has **no git remote** — a HOME-fork
+by construction; `check-fleet.sh` is correct and **nothing executes it**; and on Mini a file provider
+re-stamps `com.apple.FinderInfo` within ~20s so an ad-hoc signature there cannot stay valid (NOT called
+breakage — `spctl` rejects all three machines equally, which is what ad-hoc signing means).
+
 **🟡 STILL OPEN — 14 codes deliberately unadjudicated.** 12 BROADER + 2 RENAMED, where the 2025 code
 is wider than the _bidang usaha_ the instrument restricts. A cap there is a per-code decision, not a
 deduction; `--strict` on `perpres_foreign_cap_relation.py` stays disarmed until they are ruled on

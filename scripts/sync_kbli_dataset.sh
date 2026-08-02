@@ -119,16 +119,20 @@ fi
 # it to the 3-Mac fleet + the team zip. This block makes the drift VISIBLE at exactly
 # the moment canonical changes (this script is the mandatory step after any change),
 # instead of relying on someone remembering (superscar #2: costruito ≠ armato).
-APP_REPO="$HOME/Desktop/kbli-navigator-app"
-if [[ "$MODE" == "sync" && -z "${CI:-}" && -d "$APP_REPO" ]]; then
-  APP_COPY="$APP_REPO/Resources/KBLI_2025_FINAL_CLEAN.json"
-  if ! cmp -s "$CANONICAL" "$APP_COPY" 2>/dev/null; then
-    echo ""
-    echo "⚠︎ native app fleet NOT aligned with the new canonical. To align everything:"
-    echo "   $APP_REPO/deploy/install-3mac.sh        # build + deploy M5/Pro/Mini + content probe"
-    echo "   $APP_REPO/deploy/make-team-installer.sh # refresh the team zip"
-    echo "   $APP_REPO/deploy/check-fleet.sh         # verify (read-only)"
+APP_REPO="${KBLI_APP_REPO:-$HOME/Desktop/kbli-navigator-app}"
+APP_BUNDLE_DIR="${KBLI_APP_BUNDLE_DIR:-$HOME/Desktop/KBLI Navigator.app}"
+if [[ "$MODE" == "sync" && -z "${CI:-}" ]]; then
+  # The verdict itself lives in scripts/lib/kbli_fleet_notice.sh so it can be pointed at a
+  # fake world and tested (guilt AND innocence) — inline, behind $HOME and `-z $CI`, it was
+  # unreachable by any test, which is how it went eight days telling the reassuring half of
+  # the truth. `[ -f ] &&` and NOT `source … || true`: under errexit a failed `source` is a
+  # special builtin and EXITS, the `||` never runs (W108).
+  FLEET_NOTICE="$(dirname "${BASH_SOURCE[0]}")/lib/kbli_fleet_notice.sh"
+  if [[ -f "$FLEET_NOTICE" ]]; then
+    # shellcheck source=scripts/lib/kbli_fleet_notice.sh
+    . "$FLEET_NOTICE"
+    kbli_fleet_notice "$CANONICAL" "$APP_REPO" "$APP_BUNDLE_DIR"
   else
-    echo "native app Resources/ already matches canonical (deploy still needed if bundles are older — check-fleet.sh)"
+    echo "⚠︎ $FLEET_NOTICE missing — the native app fleet was NOT checked (absence is not alignment)."
   fi
 fi
