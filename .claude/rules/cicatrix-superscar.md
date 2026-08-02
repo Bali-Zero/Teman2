@@ -310,7 +310,7 @@ LaunchAgents active-active) · NLM feeder split-brain (redis locale vs host para
 Queste non sono famiglie ricorrenti; restano scar singole consultabili nel file dettaglio:
 
 - **W38** — `backend_rag_v2` NOSUPERUSER (hardening strutturale, non un bug)
-- **P3 FLAKY** — `test_duplicate_alert_id_skipped` (clock-race puro in un test)
+- **P3 FLAKY** — `test_duplicate_alert_id_skipped` (clock-race puro in un test) — **CURATA 2026-08-02**: l'orologio è congelato (holder che il test avanza, MAI un iteratore di tick — il `logging` di Python legge `time.time()` per ogni LogRecord e ne esaurisce uno sizeato sul numero di alert). E il mutation ha trovato di peggio: il test asseriva un CONTEGGIO, quindi con la guardia di deduplica CANCELLATA restava verde — riscrivere la stessa chiave non fa crescere un dict, cioè testava una proprietà dei dict e non del codice. «Skipped» significa che sopravvive il PRIMO alert, e ora è quello che asserisce; aggiunta l'innocenza (due alert a un secondo di distanza restano due) che non ha mai avuto.
 - **W33** — kill-switch operatore su auto-remediation
 - **W40 / SQL v2 migrations** — collisione da numerazione manuale migrazioni
 - **W39** — Dependabot bump (manutenzione di routine)

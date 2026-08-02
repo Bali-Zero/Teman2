@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from backend.services.ingestion import performance_monitor as perf_mon
 from backend.services.ingestion.performance_monitor import (
     Alert,
     AlertSeverity,
@@ -302,13 +303,66 @@ class TestCreateAlert:
         self,
         mock_logger: MagicMock,
         monitor: PerformanceMonitor,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        # Create alert with known timestamp
+        """Same metric inside the same second collides on `alert_id` and is skipped.
+
+        The clock is FROZEN, and that is the whole point. `_create_alert` builds
+        `f"{metric_name}_{int(time.time())}"`, so this test used to make two real calls
+        and HOPE no second boundary fell between them; when one did, two alerts existed
+        and it failed `assert 2 == 1`. That is the documented `P3 FLAKY` orphan scar, and
+        it blocked the required pre-push gate on a loaded machine on 2026-08-02. Racing a
+        wall clock is not a test of deduplication — pinning the clock is.
+        """
+        monkeypatch.setattr(perf_mon.time, "time", lambda: 1_700_000_000.0)
+
         await monitor._create_alert("parsing_duration", 20.0, 15.0, AlertSeverity.CRITICAL)
         count_before = len(monitor.active_alerts)
-        # Same metric + same second → same alert_id → skip
+        alert_id = next(iter(monitor.active_alerts))
+
         await monitor._create_alert("parsing_duration", 25.0, 15.0, AlertSeverity.CRITICAL)
+
         assert len(monitor.active_alerts) == count_before
+        # The count alone is VACUOUS and this is the whole reason the line below exists:
+        # with the `if alert_id in self.active_alerts: return` guard deleted, the second
+        # call re-assigns `active_alerts[alert_id]`, the dict does not grow, and a
+        # count-only assertion still passes — it tests a property of dicts, not of the
+        # de-duplicator. Mutation-verified 2026-08-02: removing the guard left the whole
+        # class green until this assertion was added. "Skipped" means the FIRST alert
+        # survives, so that is what gets asserted.
+        assert monitor.active_alerts[alert_id].current_value == 20.0, (
+            "the duplicate overwrote the original instead of being skipped"
+        )
+
+    @pytest.mark.asyncio
+    @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
+    async def test_alerts_one_second_apart_are_both_kept(
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Innocence, which the guilt case above never had.
+
+        With the clock frozen, a de-duplicator that skipped EVERYTHING would satisfy the
+        test above — it asserts a count did not grow. This one advances the clock by one
+        second and requires the count to grow, so only real per-second de-duplication
+        passes both.
+        """
+        # A HOLDER the test advances, never an iterator of ticks: `_create_alert` is not
+        # the only reader of this clock — Python's own `logging` calls `time.time()` for
+        # every LogRecord, and `_create_alert` logs a warning. An iterator sized to the
+        # number of alerts is exhausted by the first call (measured: `StopIteration`
+        # surfacing as `RuntimeError: coroutine raised StopIteration`). A holder is
+        # correct for any number of internal reads.
+        now = {"t": 1_700_000_000.0}
+        monkeypatch.setattr(perf_mon.time, "time", lambda: now["t"])
+
+        await monitor._create_alert("parsing_duration", 20.0, 15.0, AlertSeverity.CRITICAL)
+        count_before = len(monitor.active_alerts)
+        now["t"] += 1.0
+        await monitor._create_alert("parsing_duration", 25.0, 15.0, AlertSeverity.CRITICAL)
+        assert len(monitor.active_alerts) == count_before + 1
 
 
 # ---------------------------------------------------------------------------
