@@ -44,6 +44,17 @@ TRAVERSAL = "../../../../tmp/pwned"
 LEGIT = "news_20260801_120000_a1b2c3d4"
 
 
+# MEASURED, and NOT fixed here: merely importing `backend.app.routers.intel` constructs
+# `IntelStagingService()` and `IntelApprovalService()` at module scope, and BOTH mkdir in
+# `__init__` — so collection alone creates `<staging_base>/{visa,news}` and the pending
+# dir (with real settings: `/tmp/staging/...`, `/tmp/pending_intel`). Proven by importing
+# the module with those paths pointed at names that did not exist: they appeared.
+# This PRE-DATES this file (every existing `unit/routers/test_intel_*` already imports the
+# same module) and the cure is making those singletons lazy — a production refactor, not a
+# test tweak — so it is a ledger line, not a silent assumption. The fixtures below keep
+# everything these tests THEMSELVES do inside tmp_path; they cannot undo an import.
+
+
 def _redirect_staging_root(monkeypatch, tmp_path) -> None:
     """
     W96: a unit test must not mkdir or write the real staging tree.
@@ -352,9 +363,25 @@ class TestScraperApiArticleIdRoutes:
         ]
         first = body[0] if body else None
         assert isinstance(first, ast.Expr), f"{route}'s first statement is not a call"
-        assert isinstance(first.value, ast.Call)
-        assert getattr(first.value.func, "id", None) == "_validate_article_id", (
+        call = first.value
+        assert isinstance(call, ast.Call)
+        assert getattr(call.func, "id", None) == "_validate_article_id", (
             f"{route} must validate article_id BEFORE any path is built"
+        )
+
+        # The callee NAME is not enough — `_validate_article_id("constant")` would
+        # satisfy it while the route still builds its path from the caller's value.
+        # Assert the ARGUMENT is the same expression the route goes on to join:
+        # the bare `article_id` parameter, or `request.article_id` for the body route.
+        # (Raised by the cross-family reviewer against the first version of this pin.)
+        assert len(call.args) == 1, f"{route}: validator called with {len(call.args)} args"
+        arg = call.args[0]
+        if isinstance(arg, ast.Attribute):
+            actual = f"{getattr(arg.value, 'id', '?')}.{arg.attr}"
+        else:
+            actual = getattr(arg, "id", "<not a name>")
+        assert actual in ("article_id", "request.article_id"), (
+            f"{route} validates `{actual}`, which is not the value it builds its path from"
         )
 
     def test_the_duplicated_regex_still_matches_the_one_it_was_copied_from(
