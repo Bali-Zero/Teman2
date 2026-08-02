@@ -78,6 +78,18 @@ def _elapsed(rx: re.Pattern, text: str) -> float:
     return time.perf_counter() - start
 
 
+# Repetitions for the RATIO verdict only. Timing noise is strictly additive — the
+# CPU cannot run faster than its own best pass — so the MINIMUM of k runs is the
+# low-noise estimator, and a genuinely quadratic pattern is slow in every one of
+# them, which is why this cannot hide a regression. The control test below proves
+# that on the pre-fix quadratic.
+_RATIO_REPEATS = 3
+
+
+def _elapsed_min(rx: re.Pattern, text: str, repeats: int = _RATIO_REPEATS) -> float:
+    return min(_elapsed(rx, text) for _ in range(repeats))
+
+
 class TestLinearity:
     @pytest.mark.parametrize("name", sorted(CURED))
     @pytest.mark.parametrize("payload", sorted(PAYLOADS))
@@ -505,8 +517,20 @@ SWEEP_N = 20_000
 # quadratic in one measurement; but a quadratic with a small coefficient can sit under any
 # ceiling at a fixed n and still be pathological further up the curve, so anything slow
 # enough to be measurable at all is also made to prove its GROWTH. Conversely a ratio
-# alone is pure noise at 0.4ms, which is why the floor gates it: a healthy pattern never
-# reaches the floor, never pays for the second measurement, and cannot flake on it.
+# alone is pure noise at 0.4ms, which is why the floor gates it.
+#
+# CORRECTED 2026-08-02, measured not reasoned. The sentence that stood here — "a healthy
+# pattern never reaches the floor, never pays for the second measurement, and cannot flake
+# on it" — was a MEASUREMENT FROZEN AT AUTHORING TIME (superscar #9 / W106: a constant that
+# was true when written and that nothing re-measures). On a machine with `mediaanalysisd`
+# holding ~188% CPU, a healthy pattern measured 0.0059s — past the 0.004s floor — and then
+# produced a 4.2x ratio from pure scheduler noise, failing a REQUIRED pre-push gate on a
+# branch containing zero backend changes. The ABSOLUTE ceiling passed comfortably in the
+# same run (0.0246s against 0.25s), which is what proves the regex was innocent and the
+# clock was not. The thresholds below are unchanged; only the ratio path's SAMPLING is,
+# via `_elapsed_min` (see there for why min-of-k cannot hide a regression). A guard that
+# fabricates reds under load is a guard someone eventually disarms — superscar #2 waiting
+# to happen, and the reason this was fixed rather than merely tolerated.
 SWEEP_CEILING_SECONDS = 0.25
 SWEEP_RATIO_FLOOR_SECONDS = 0.004
 SWEEP_MAX_RATIO = 3.0
@@ -561,7 +585,12 @@ def _sweep_verdict(rx: re.Pattern) -> str | None:
                         f"(ceiling {SWEEP_CEILING_SECONDS}s)"
                     )
                 if elapsed > SWEEP_RATIO_FLOOR_SECONDS:
-                    doubled = _elapsed(rx, prefix + pump * (SWEEP_N * 2) + suffix)
+                    # Both sides re-measured as min-of-k: the single sample above is
+                    # enough to decide whether to LOOK, never enough to convict.
+                    elapsed = _elapsed_min(rx, text)
+                    doubled = _elapsed_min(rx, prefix + pump * (SWEEP_N * 2) + suffix)
+                    if elapsed <= SWEEP_RATIO_FLOOR_SECONDS:
+                        continue
                     ratio = doubled / max(elapsed, 1e-9)
                     if ratio > SWEEP_MAX_RATIO:
                         return (
