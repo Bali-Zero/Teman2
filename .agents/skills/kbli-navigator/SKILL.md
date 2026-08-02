@@ -1989,6 +1989,30 @@ fetch command when the vault is absent.
 
 #### 🟢 F2 step 3 DONE — the negative locator, and what the BODY actually says
 
+**SHIPPED AND PROVEN LIVE 2026-08-02** (#3532 merged `223a8471`, #3536 the page-reader corpus;
+#3531 closed as content-on-main — main was AHEAD on 3 of its 7 files and the 4 "lost" lines were
+ones the later commit deliberately superseded, so merging it would have REGRESSED main; verified
+blob-per-file, never by ancestor or patch-id, W88).
+
+The citation is on the page. `/kbli/56101` reads `Basis: Perpres 10/2021 Pasal 3(1)(d) — no annex
+names this activity`; `/kbli/55203` reads `Perpres 49/2021 Lampiran II (Koperasi/UMKM) via
+KBLI-2020 55193`; `/kbli/11010` reads `Pasal 2(2)(b) (as amended by 49/2021) — closed by name`.
+65 distinct citations over 1,559 codes, 0 without one. Additive: no verdict, cap or label moved.
+
+**TWO consuming surfaces, not one — and the second was nearly missed.** `page.tsx:347` renders the
+visible line, but `api/kbli/gold/[code]/route.ts:31` serialises the whole `pma` object, so the field
+rides along into that JSON. Both were proven against a baseline recorded BEFORE the merge
+(`'Basis:'` = 0 with the code present 3× as the positive control; `pma` carrying 6 keys and no
+`citation`), and with a negative control per page (each carries **0** occurrences of `Pasal 6(3a)`,
+which belongs to `46333` — so it is not a blanket string).
+
+**Merging did not publish it.** The production deployment was `READY` for 25 minutes while
+`balizero.com` — and the project's own `mouth-git-main` alias — still served `1050e5c99`. Git-created
+production builds on this project land `readySubstate: STAGED` and never self-promote (ledgered
+2026-07-30); the session ran `POST /v10/projects/<id>/promote/<dpl>` → HTTP 201 and prod moved within
+15s. Read `/api/health`'s `.commit` (baked from `VERCEL_GIT_COMMIT_SHA`, recomputed per request) as
+the arbiter — a `?cb=` query does NOT bust the page cache on this route, so the header is not one.
+
 `perpres_body_default_relation.py --check`. This is the locator for the ~1,288 codes **no annex
 names** — the block that until now carried `pma_source: "Perpres 10/2021, 49/2021"` with no article
 behind it, i.e. a blanket attribution rather than a citation. Three corrections came out of reading
@@ -2021,6 +2045,88 @@ no Besar row** (villa, homestay, youth hostel, kedai minuman, management consult
 hair salon, beauty care, sports facilities), each carrying two questions: does an actual
 reservation/cap apply, and can it in fact be run at Usaha Besar? Ledgered `operator[business]`. The
 safe interim treatment is a caveat on the page, never a re-label to closed.
+
+**The 23 are not one population — measured by WHO names them (2026-08-02).** The queue was handed to
+Zero as 23 undifferentiated codes, which overstates what has to be decided: splitting it with the
+module's own selector (`pasal7_review_flags`, never a hand-rolled re-read of `per_skala`), then
+joining each annex-named code to `perpres-umkm-reservation.json`, gives **three tiers of evidence,
+not one**:
+
+- **`95291`** (Vermak pakaian) — the annex names the **2025** code itself, `whole-row`. A reservation
+  genuinely applies; only the Besar question is open.
+- **`43110`** (Pembongkaran) — the annex names the 2025 code, but the row is `segment-qualified` to
+  construction grade _madya_, so the reservation does **not** cover the whole code.
+- **7 codes** — `55201` `55203` `55209` `79903` `96100` `96210` `96220`: the annex names a **retired
+  KBLI-2020** code (`55130` `55193` `55199` `79921` `96200` `96111` `96112`), and the attachment to
+  the 2025 code is **our crosswalk**, declared `mechanical-only`. The instrument never wrote these
+  digits — same 102-code dependency as above, here landing on the daily-question codes.
+- **14 codes** — named by nothing at all. Only the factual "can this be run at Usaha Besar?" question
+  remains, and our data cannot answer it.
+
+All nine annex-named rows sit in the **`dialokasikan`** column (an actual reservation), none in
+`kemitraan` (a partnership duty, **not** a foreign-ownership bar — the distinction §L2.11 paid for).
+
+**🔴 AND THE REFUTED READING IS ALREADY LIVE — the caveat is not the open question (PROVEN on prod
+2026-08-02).** This section says "the safe interim treatment is a caveat on the page, never a
+re-label to closed", which presumes the page is currently neutral. **It is not.** `curl` on
+`balizero.com/kbli/55203` (Vila) returns, client-facing:
+
+> 🚫 **Reserved for MSME — closed to PT PMA** · "This activity is reserved for micro/small/medium
+> enterprises and closed to a PT PMA · **confidence HIGH**" · reason: _"OSS has no Usaha Besar scale
+> row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]"_ · prose:
+> _"In Bali, that path is closed today for a PT PMA."_
+
+That reason **is** `no Besar ⇒ no PMA` — verbatim the inference the cross-family legal review
+refuted two paragraphs above. It is not a dataset annotation: `l4_bali` reaches the client through
+the page body, the 🚫 badge, the **OG image** (`api/og/kbli/[code]/route.tsx:38`) and the blocked-%
+on the **index** (`kbli/page.tsx:36`).
+
+Measured on the rendering dataset (`KBLI_2025_FINAL_CLEAN.json` → `baliL4`): **39 codes** carry
+`CHIUSO_PMA_NO_BESAR`, all with `blocked: true`.
+
+- **22 of them ARE this queue**, every one at `confidence: HIGH` — villa, homestay, youth hostel,
+  kedai minuman, management consultancy, rumah pijat, salon, barber, laundry, tailoring.
+- **17 are the empty-`per_skala` codes**, all at `confidence: LOW` — 13 of them the `931xx`
+  sports-club family. The confidence field already separates the two, which is the one honest part.
+- **23 − 22 = 1**, and it is `93114` — exactly the code this section already flags as left
+  `APERTO_BALI_RISCHIO_ALTO` on the evidence that closes the other 22. The numbers close.
+
+**So the question put to the codeowner has the wrong shape.** It was asked as "does an actual
+reservation apply — should we add a caveat?"; the product **already answers it to clients in the
+affirmative, at HIGH confidence, on the daily-question codes**. The live options are keep / soften /
+withdraw a claim that is already being made, not whether to start making one. Still `operator[business]`
+(a re-label of client-facing pages is Legge 5) — but it is now a decision about a live assertion, and
+the sequencing changes with it: this outranks the caveat wording, because a caveat added under a 🚫
+badge would qualify a verdict the same page states as HIGH-confidence fact.
+
+**The other 17 are worse, and the dataset says so itself.** Cross the 39 against the module's
+three-state `besar` and the split is **perfect, with no mixing**: the 22 at `HIGH` are `besar:
+absent` (OSS publishes scale rows, none of them Besar — a weak fact, but a fact); the 17 at `LOW`
+are `besar: unobserved` — **`per_skala: []`**, no scale rows at all. Two things follow, both
+measured on the rendering dataset and confirmed on prod:
+
+- **All 17 carry, in their own `reason` text, the phrase _"the verdict cannot currently be
+  re-derived"_** (the risk-tier rows it was read from were set aside as unverifiable for KBLI 2025).
+  The record states the verdict is unsupported **and the page still renders the categorical 🚫
+  badge**; the only difference from the 22 is the word `LOW` printed beside it. Checked live on
+  `70100` (Kantor Pusat — a code clients actually use) and `93121`.
+- **7 of them assert a POSITIVE fact the record cannot support**: _"OSS has no Usaha Besar scale row
+  **(only Mikro/Kecil/Menengah)**"_ — a claim about which rows OSS publishes — on codes whose
+  `per_skala` **and** `per_skala_legacy` are both empty. `52211` (Terminal Darat) and six `931xx`
+  sports clubs. Saying "only Mikro/Kecil/Menengah" is claiming to have read rows that are not in the
+  record: not a debatable reading of Pasal 7, a statement contradicted by our own data.
+
+That last group is a different kind of defect from the queue: the queue is a **legal reading** the
+codeowner must rule on (Legge 5), while "we saw only M/K/M" is a **factual assertion our data
+refutes**. Kept together here and NOT patched in this pass — the fix still edits client-facing text
+on live pages, so it goes through the adversarial gate with the rest — but it should be ruled on
+first and separately, because no ruling on Pasal 7 makes that sentence true.
+
+**Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
+**24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
+**`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
+a queue about codes published open. (Measured with the report's own field, `besar`; a first probe
+keyed on `besar_state` returned **0 of 24** and was measuring its own poverty, not the data.)
 
 | locator (which instrument names it) | n       | OSS scale data (NOT a verdict) | n      |
 | ----------------------------------- | ------- | ------------------------------ | ------ |
