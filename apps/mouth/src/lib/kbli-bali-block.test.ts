@@ -8,6 +8,7 @@ import {
   containsItalian,
   isProposalOnly,
   narratesUnverifiedRoute,
+  baliBlockedHint,
 } from "./kbli-bali-block";
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 import goldData from "../../data/kbli-gold-all.json";
@@ -400,5 +401,139 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     const onlyFaq = faq.filter((r) => !bannerCodes.has(r.kode_kbli_2025));
     expect(onlyFaq).toHaveLength(0);
     expect(banner.length - faq.length).toBe(1);
+  });
+});
+
+describe("baliBlockedHint — the index card must not blame the moratorium for every block", () => {
+  // The card said "low and medium-low-risk activities are treated as closed"
+  // over a percentage covering 518 codes, 111 of which are blocked by something
+  // else entirely. That is the same over-attribution `isMoratoriumBasis` was
+  // added to prevent on the per-code page (cured 2026-07-27); the card was
+  // missed, so the cure covered one consumer of the same fact and not the other.
+  const moratorium = (n: number) =>
+    Array.from({ length: n }, () => ({
+      baliL4: { status: "BLOCCATO_CLASSE_RISCHIO", blocked: true },
+    }));
+  const scale = (n: number) =>
+    Array.from({ length: n }, () => ({
+      baliL4: { status: "CHIUSO_PMA_NO_BESAR", blocked: true },
+    }));
+  const open = (n: number) =>
+    Array.from({ length: n }, () => ({
+      baliL4: { status: "OK", blocked: false },
+    }));
+
+  it("names the non-moratorium codes instead of folding them into the risk tier", () => {
+    // Guilt: this is the shape that was being misdescribed.
+    const hint = baliBlockedHint([
+      ...moratorium(407),
+      ...scale(111),
+      ...open(1041),
+    ]);
+    expect(hint).toContain("407");
+    expect(hint).toContain("111");
+    expect(hint).toContain("518 of 1559");
+    // and it must NOT present the risk tier as the reason for all of them
+    expect(hint).not.toMatch(
+      /low and medium-low-risk activities are treated as closed/i,
+    );
+  });
+
+  it("keeps the qualifier that made the original sentence honest", () => {
+    // Innocence: the old copy's one virtue — it refused to pass as a legal
+    // finding — must survive the rewrite. Losing it would be a regression
+    // dressed as a correction.
+    //
+    // Case-INSENSITIVE on purpose. The first version of this assertion used
+    // toContain("A working assessment"), which the old hardcoded sentence
+    // failed on nothing but its lowercase "a" — i.e. it was asserting
+    // capitalisation while claiming to assert substance, and it "caught" a
+    // mutant that had the property it was testing for. Judge the entity, not
+    // the form (superscar #3), especially in the assertion meant to protect
+    // what must NOT change.
+    const hint = baliBlockedHint([
+      ...moratorium(407),
+      ...scale(111),
+      ...open(1041),
+    ]);
+    expect(hint).toMatch(
+      /a working assessment, not a certified legal determination/i,
+    );
+  });
+
+  it("does not invent a second cause when every block IS the moratorium", () => {
+    // Innocence: the "the other N for a different reason" clause must not fire
+    // on a population where it would be false.
+    const hint = baliBlockedHint([...moratorium(50), ...open(50)]);
+    expect(hint).toContain("all of them");
+    expect(hint).not.toMatch(/for a different reason/i);
+  });
+
+  it("derives the counts from the data it is given, not from a frozen constant", () => {
+    // The original went wrong by stating a rule in prose that the data later
+    // contradicted. Two different populations must produce two different
+    // sentences (W106: a constant is a measurement that stopped being taken).
+    const a = baliBlockedHint([...moratorium(10), ...scale(5), ...open(85)]);
+    const b = baliBlockedHint([...moratorium(20), ...scale(1), ...open(79)]);
+    expect(a).not.toEqual(b);
+    expect(a).toContain("15 of 100");
+    expect(b).toContain("21 of 100");
+  });
+
+  it("never enumerates the non-moratorium causes, because an enumeration goes stale", () => {
+    // The defect an adversarial review caught before ship: the first version
+    // listed "an ownership restriction ... no Usaha Besar scale row, or a
+    // sector regulator's own closure" — three of the FIVE statuses that occur,
+    // silently dropping CHIUSO_BALI (70209) and CHIUSO_BALI_PROPOSTO (79110).
+    // A new claim written while correcting an old one, unverified (W113).
+    //
+    // Built from the REAL status census, not from one fabricated status, which
+    // is why the original test suite could not have caught it.
+    const census: Array<[string, number]> = [
+      ["BLOCCATO_CLASSE_RISCHIO", 372],
+      ["CHIUSO_MORATORIA_BALI", 35],
+      ["TERTUTUP", 68],
+      ["CHIUSO_PMA_NO_BESAR", 39],
+      ["CHIUSO_REGOLATORE_SETTORIALE", 2],
+      ["CHIUSO_BALI", 1],
+      ["CHIUSO_BALI_PROPOSTO", 1],
+    ];
+    const codes = census.flatMap(([status, n]) =>
+      Array.from({ length: n }, () => ({ baliL4: { status, blocked: true } })),
+    );
+    const hint = baliBlockedHint([...codes, ...open(1041)]);
+    expect(hint).toContain("518 of 1559");
+    expect(hint).toContain("407");
+    expect(hint).toContain("111");
+    // No partial cause list may appear — naming some causes implies the set is
+    // complete, and it never is for long.
+    expect(hint).not.toMatch(/ownership restriction/i);
+    expect(hint).not.toMatch(/Usaha Besar scale row/i);
+    expect(hint).not.toMatch(/sector regulator/i);
+  });
+
+  it("says nothing at all rather than '0 of 0' when handed no codes", () => {
+    // Also from the same review: an empty array rendered "0 of 0 codes are
+    // treated as closed ... all of them under the moratorium", which is not a
+    // degraded sentence but a false one.
+    expect(baliBlockedHint([])).toBe("");
+  });
+
+  it("agrees with the served dataset — 518 blocked, 111 not by the moratorium", () => {
+    // Anchors the two figures to the real records rather than to my arithmetic,
+    // so a future overlay change fails here instead of silently making the
+    // card wrong again.
+    const codes = (
+      rawData as {
+        data: Array<{ l4_bali?: { status?: string; blocked?: boolean } }>;
+      }
+    ).data.map((r) => ({
+      baliL4: r.l4_bali
+        ? { status: r.l4_bali.status, blocked: r.l4_bali.blocked }
+        : null,
+    }));
+    const hint = baliBlockedHint(codes);
+    expect(hint).toContain("518 of 1559");
+    expect(hint).toContain("111");
   });
 });

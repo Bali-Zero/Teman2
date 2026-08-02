@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { getAllCodes, getSections } from "@/lib/kbli-data";
+import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
@@ -193,7 +194,7 @@ export default async function KBLIHomePage({
             {
               num: `~${baliBlockedPct}%`,
               label: "Blocked in Bali",
-              hint: "Bali Zero's conservative posture on the 13 May 2026 provincial moratorium: low and medium-low-risk activities are treated as closed to foreign-owned companies (PT PMA) pending clearer national guidance — a working assessment, not a certified legal determination. Every code page shows our current verdict.",
+              hint: baliBlockedHint(allCodes),
             },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (
