@@ -12,6 +12,7 @@ import type {
 } from "./kbli-types";
 import { resolveLicenseType } from "./kbli-derive";
 import { resolvePmaCap } from "./kbli-pma-cap";
+import { perpresCitation } from "./kbli-perpres-locator";
 import { deriveProvenance } from "./kbli-provenance";
 
 // Section names mapping
@@ -305,6 +306,10 @@ function transformCode(
       capSpecial: raw.pma_cap_special === true,
       capVerified: raw.pma_cap_verified !== false,
       routeTo: raw.pma_route_to ?? null,
+      // Same single source as the sibling reader in kbli-data.ts. The cap was
+      // once read in these two places with different defaults and rendered
+      // "0% Open" on a live page; the citation gets one writer from the start.
+      citation: perpresCitation(code),
     },
     licensing: (raw.per_skala || []).map((s) => ({
       scales: s.skala_usaha,

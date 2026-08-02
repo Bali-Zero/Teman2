@@ -23,6 +23,7 @@ import type {
 
 import { ENGLISH_TITLES } from "./kbli-english";
 import { resolvePmaCap } from "./kbli-pma-cap";
+import { perpresCitation } from "./kbli-perpres-locator";
 import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
 import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
@@ -409,6 +410,11 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     capSpecial: raw.pma_cap_special === true,
     capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
     routeTo: raw.pma_route_to ?? null,
+    // The ARTICLE, not just the instrument. `source` above is the blanket
+    // "Perpres 10/2021, 49/2021" every record carries; this is which of its
+    // articles actually names this code. Read from an artifact the compiler
+    // emits — never re-derived here, or the two would drift apart.
+    citation: perpresCitation(code),
   };
 
   const licensing: KBLILicenseByScale[] = (raw.per_skala ?? []).map(

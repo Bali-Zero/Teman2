@@ -1979,14 +1979,86 @@ page 1 directly, so they are NOT claimed as cross-instrument. Standing guard:
 `tests/test_perpres_l3_cross_instrument.py`, which SKIPS with an explicit CANNOT-VERIFY naming the
 fetch command when the vault is absent.
 
-**NEXT (step 3), and the correction that governs it**: the negative-locator join — "absent from both
-operative annexes ⇒ 100% by the body's default" — is **wrong for the 24 codes with a populated
-`per_skala` and no Besar row** ([[discovery_no_besar_scale_means_no_pma_and_17_of_those_verdicts_rest_on_an_empty_array_2026_08_02]]).
-Their honest verdict is neither 100% nor TERTUTUP: it is "a PMA cannot operate this at all", a third
-state — and a fourth `pma_status` value would render as **"Open"** on all 1,559 pages
-(`kbli-data.server.ts:365` returns `"open"` for anything but TERBATAS/TERTUTUP), so it must be a
-separate axis, never a new enum value. Any join must consult `per_skala` for a Besar row BEFORE
-writing a 100% default.
+#### 🟢 F2 step 3 DONE — the negative locator, and what the BODY actually says
+
+`perpres_body_default_relation.py --check`. This is the locator for the ~1,288 codes **no annex
+names** — the block that until now carried `pma_source: "Perpres 10/2021, 49/2021"` with no article
+behind it, i.e. a blanket attribution rather than a citation. Three corrections came out of reading
+the body instead of assuming it:
+
+**1. "Absent from both annexes" is NOT "residual".** The body names six codes itself, and 49/2021
+inserted both lists: **Pasal 2 ayat (2) huruf b** → `11010`/`11020`/`11031` tertutup (the alcohol
+INDUSTRIES); **Pasal 6 ayat (3a)** → `46333`/`47221`/`47826` under "persyaratan Penanaman Modal
+lainnya", a fourth regime that is deliberately not a percentage and not in Lampiran III. Two of the
+six (`11031`, `47826`) are not in the 2025 catalogue at all and the module reports that rather than
+absorbing it. Note also **`46333` publishes TERBUKA/100%** while the body puts it in that
+strictly-controlled category — the same defect `47221` (correctly TERBATAS/special) does not have.
+
+**2. The default is real and it has a citation.** **Pasal 3 ayat (1) huruf d + ayat (2)**: the
+residual category "dapat diusahakan oleh semua Penanam Modal". 49/2021's Pasal I touches Pasal 2,
+Pasal 6 and the three lampiran — **Pasal 3 and Pasal 7 are untouched**, verified in the amending
+instrument itself (W90: the ground truth ages too).
+
+**3. Pasal 7(1) gives a REVIEW QUEUE, not a bar — and the first draft got this wrong.**
+**Pasal 7 ayat (1)**: "Penanam Modal asing **hanya dapat** melakukan kegiatan usaha pada **Usaha
+Besar**". I first read that as `no Besar ⇒ no PMA` and wrote it as a citation. **An independent
+cross-family legal review refuted it before ship, and the refutation is right on the text**: the
+article conditions the INVESTOR and its project — it can stop a PMA that cannot qualify as large —
+but it does not convert the activity into one closed to foreign investment; only a reservation, a
+cap, or a rule making large-scale operation unavailable does that. And `per_skala` is OSS
+**licensing** data: "OSS publishes no Besar row" is not the legal fact "this activity cannot be
+conducted at Besar scale" — the same conflation the module's own three-state `besar_state` refuses
+one level down, committed one level up. So the output is a queue of **23 codes published open with
+no Besar row** (villa, homestay, youth hostel, kedai minuman, management consultancy, rumah pijat,
+hair salon, beauty care, sports facilities), each carrying two questions: does an actual
+reservation/cap apply, and can it in fact be run at Usaha Besar? Ledgered `operator[business]`. The
+safe interim treatment is a caveat on the page, never a re-label to closed.
+
+| locator (which instrument names it) | n       | OSS scale data (NOT a verdict) | n      |
+| ----------------------------------- | ------- | ------------------------------ | ------ |
+| `named-in-annex` (L-II / L-III)     | 270     | besar **observed**             | 1318   |
+| `priority-lampiran-i` (Pasal 3(1)a) | **175** | besar **absent**               | **24** |
+| `residual-besar-observed`           | 882     | besar **unobserved**           | 217    |
+| `residual-besar-unobserved`         | 214     |                                |        |
+| `residual-besar-absent`             | 14      |                                |        |
+| `body-tertutup` / `body-other-req.` | 2 / 2   |                                |        |
+
+**4. Lampiran I was omitted, and that cost 175 wrong citations** — the same review caught it. A code
+in `Daftar Bidang Usaha Prioritas` is **Pasal 3(1)(a)**, so "named by nothing" was quietly including
+category (a) and citing the residual article `3(1)(d)` for 175 codes. Priority _incentivises_ and
+restricts nobody, so no ownership verdict was wrong — the **locator** was, which is this module's
+entire product: the blanket-attribution defect reproduced one annex to the left.
+`parse_perpres_lampiran1.py` compiles the code set only (194 codes, 46/70 pages, page-1 sample
+guard); a restriction outranks a priority listing, so the 46 codes in both report as reserved.
+
+**Locator and scale are TWO AXES, and the first draft collapsed them.** As a partition the report
+found only 14 — because for the ten codes that are BOTH annex-named and Besar-less the scale question
+vanished into the winning bucket, and those ten are villa/homestay/salon/beauty, the daily questions.
+Same lesson as the enum: a third state is a separate axis or it is invisible.
+
+**The crosswalk is load-bearing**: the annexes speak KBLI 2020, so **102 codes** reach a restriction
+only through `bps_2020_ancestors` (`55203` Vila via `55193`). Joining on identity alone would have
+published all 102 as open — freedom the law does not grant. Declared and not laundered: every
+crosswalk block says `mechanical-only` / `not-adjudicated`, and 221 records have none at all.
+
+**Our own overlay already took this reading, and misapplies it in BOTH directions**: of the 39
+`l4_bali.status == CHIUSO_PMA_NO_BESAR`, **22 are corroborated** by observed scales, **17 close on an
+EMPTY `per_skala`** (a gap in our data reported as a bar in law), and **`93114` is left
+`APERTO_BALI_RISCHIO_ALTO`** on the evidence that closes the other 22. The rule is not the disease;
+the selector is (family #3). Ledgered.
+
+**Declared limits** (the body's own carve-outs, none of them visible in a KBLI record, so the module
+cannot decide them): **Pasal 8(1)** — Lampiran III does not apply inside a KEK, and 8(2) moves the
+Pasal 7 floor for tech start-ups there; **Pasal 6(4)** — the cap does not bind investments approved
+before the Perpres, nor investors with treaty privileges. It speaks for a NEW investment, general
+regime, outside a KEK.
+
+**And the rule that governs any application of all this**: a fourth `pma_status` value would render
+as **"Open"** on all 1,559 pages (`kbli-data.server.ts:365` returns `"open"` for anything but
+TERBATAS/TERTUTUP). Third states are separate axes, never new enum members. Corollary the reporter
+now enforces: "open" is read as _what the renderer calls open_, never as `== "TERBUKA"` — a null
+status renders open and a TERBUKA-only filter is blind to exactly the codes the page is most
+generous with.
 
 ### 5.4 F3 — the two decisions that survive, and they come AFTER F2
 

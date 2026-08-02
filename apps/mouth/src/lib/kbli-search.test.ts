@@ -21,6 +21,7 @@ function makeCode(
       capSpecial: false,
       capVerified: true,
       routeTo: null,
+      citation: null,
     },
     licensing: [
       {
@@ -77,6 +78,7 @@ const closedHotel = makeCode({
     capSpecial: false,
     capVerified: true,
     routeTo: null,
+    citation: null,
   },
   licensing: [
     {
