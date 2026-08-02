@@ -76,3 +76,34 @@ describe("Perpres citation on the KBLI page", () => {
     expect(parsed.codes).toBe(1559);
   });
 });
+
+describe("the page's own reader surfaces the citation", () => {
+  it("exposes it on kbli.pma.citation for the code the page requests", async () => {
+    // The artifact holding the data and the PAGE showing it are two different
+    // claims. `page.tsx` renders `kbli.pma.citation` from `getCode()` in
+    // kbli-data.ts — so this exercises that path rather than the file, which
+    // is the difference between "the data exists" and "the page can reach it".
+    const { getCode } = await import("./kbli-data");
+    const restaurant = getCode("56101");
+    expect(restaurant?.pma.citation).toContain("Pasal 3(1)(d)");
+    const villa = getCode("55203");
+    expect(villa?.pma.citation).toContain("via KBLI-2020 55193");
+  });
+
+  it("agrees between the two readers, on every code", async () => {
+    // The invariant is not "the server says X", it is that the two modules
+    // never diverge — the cap was once read in both with different defaults
+    // and rendered "0% Open" on a live page. Comparing them to each other is
+    // the property; comparing each to a hardcoded string is a copy of the
+    // answer, and two copies of a wrong answer still agree.
+    const { getCode } = await import("./kbli-data");
+    const { getCode: getServerCode } = await import("./kbli-data.server");
+    const codes = (rawData as { data: { kode_kbli_2025: string }[] }).data.map(
+      (r) => String(r.kode_kbli_2025),
+    );
+    const disagreements = codes.filter(
+      (c) => getCode(c)?.pma.citation !== getServerCode(c)?.pma.citation,
+    );
+    expect(disagreements).toEqual([]);
+  });
+});
