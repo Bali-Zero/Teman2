@@ -4,6 +4,8 @@ domain: wr3-design
 client_case: WR3 Video Production Room — Step 2 atomic verb decomposition + Agent/Tool classification
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + DeepSeek V4 Pro + NB-AGENTS bipolar) + my draft 103 verbs
 status: draft pending Antonello decision gate
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annotation added to this file: the Kim et al. 17.2x citation, RETRACTED[kim-2025-17x-error-amplification-as-cause], DO NOT RESTORE it — it measures Independent (parallel, no coordination), not peer-to-peer, and Table 4 gives p=0.658. This file does NOT assert the separate ranking claim registered as `kim-2025-ranking-supports-the-no-peer-rule`, so this key certifies no correction of it (narrowed 2026-08-02 after cross-family review caught the note claiming more than the body delivers). The dated body below was NOT re-reviewed and is not certified by this key."
 ---
 
 # WR3 Step 2 — Atomic Verb Decomposition
@@ -20,6 +22,12 @@ status: draft pending Antonello decision gate
 
 1. My draft: 103 verbs in 13 phases (parse → publish), grouped by phase
 2. NB-AGENTS bipolar query → 31KB response with MetaGPT/Voyager/Reflexion patterns + 17 citations to Kim 2025 (17.2× error amplification) + plugin-dev authority
+
+> _Nota 2026-08-02 — questa riga **descrive** che NB-AGENTS citò il 17.2×, non lo asserisce come causa;
+> resta com'è, ma la citazione è **RITIRATA**: quel numero misura `Independent` (nessun coordinamento),
+> non il peer-to-peer `Decentralized`, e il paper stesso non lo sostiene come meccanismo (Table 4,
+> p=0.658). La regola no-peer-to-peer non cambia — vedi `agent-library/03-lessons.md`. Non ripristinare
+> la citazione come motivazione._
 3. 4-LLM panel parallel: Gemini 3.1 Pro (6.8KB) + Codex GPT-5.5 (77KB) + DeepSeek V4 Pro (11.6KB) + NB-AGENTS (31.7KB)
 4. Synthesis (this doc)
 5. Decision gate Antonello
@@ -465,3 +473,27 @@ Step 2 dossier closed. Three options:
 - **C** — Pivot
 
 Step 3 will produce: `03-agent-roster.md` — final list of WR3 sub-agents with verb-ownership mapping, model selection (Sonnet/Opus/Haiku), tool restrictions, frontmatter specs.
+
+
+## Adversarial review
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh` — cross-family, and the author of the diff never graded it.
+**Scope**: the ONE retraction annotation added to this file — RETRACTED[kim-2025-17x-error-amplification-as-cause], the 17.2× citation. This file never
+asserted the replacement ranking claim, so no correction of it is certified here. The dated body is a
+record of what was believed on its date and was not re-reviewed.
+
+**Four rounds, all DO-NOT-SHIP until the last, and each one found something the previous had introduced.**
+
+1. Round 1 (7 objections) — "rejects" overstated `p=0.658`, which means UNSUPPORTED, not disproved; and
+   `Independent` was being equated with peer-to-peer when §3.1 defines it as parallel agents with
+   `Ω=synthesis_only`, i.e. no coordination at all. RETRACTED[kim-2025-17x-error-amplification-as-cause]
+2. Round 2 (8) — an annotation that follows an assertion does not unsay it; two files thought to be
+   archaeology turned out to be a live spec and its ground truth.
+3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]:
+   "Centralized best" contradicts Table 5 (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 >
+   Hybrid 0.452 > Independent 0.370`) and the paper's own *"no single architecture dominates"*.
+4. Round 4 (8) — the guard built to prevent a fourth generation could still be absolved by the
+   endorsement's own words; fixed by making `RETRACTED[<claim-id>]` the only thing that absolves.
+
+**Surviving objections: none.** Every one was verified before being accepted — by re-reading the source,
+or by executing the counterexample — and every accepted one was applied rather than waived.

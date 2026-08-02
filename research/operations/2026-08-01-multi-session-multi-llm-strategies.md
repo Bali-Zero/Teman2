@@ -231,7 +231,7 @@ generation of the same error is made.
    refuters flagged that the first draft used it to conclude "topic partition is
    clean" while simultaneously alarming about invisible semantic collisions.
    Those cannot both be argued from the same data. Neither is now claimed.
-3. **The `17.2×` error-amplification figure IS in the paper** — 17.2×
+3. **RETRACTED IN PART 2026-08-02 — read the note in `agent-library/03-lessons.md` before using this item; do not restore its ranking claim.** The `17.2×` error-amplification figure IS in the paper — 17.2× RETRACTED[kim-2025-17x-error-amplification-as-cause]
    Independent, 4.4× Centralized, verbatim in 2512.08296v3. A June capture of
    ours called it "not in the paper, a TDS commentary"; **that note was wrong**.
    The real defect is worse: the paper's own regression finds error
@@ -296,7 +296,7 @@ transferable part is the epistemics: **perceived speedup is not evidence.**
 2. Adaptive batch sizing on the merge queue — repo ruleset, `operator[consent]`.
 3. Make the same-artifact prohibition rebuttable under a formal upstream
    contract — behaviour change.
-4. Correct the `17.2×` attribution in `agent-library/*` (§6.3).
+4. ~~Correct the `17.2×` attribution in `agent-library/*` (§6.3).~~ **DONE 2026-08-02** — RETRACTED[kim-2025-17x-error-amplification-as-cause] the citation is withdrawn, not re-attributed; do not restore it (Table 4 gives p=0.658, and it measures `Independent`, not peer-to-peer).
 5. Queue *latency* (not throughput) — unmeasured.
 6. 4 tests in `scripts/test_federation_parallelize_gate.py` fail on
    `import federation_orchestrator`; pre-existing, proven identical on a pristine

@@ -8,6 +8,8 @@ deepseek: killed by user 2026-05-18 ("uccidi deepseek vai con 3")
 my_draft_roster_size: 7 pipeline + 4 supporting = 11
 panel_recommended_roster_size: 9 pipeline + 4 supporting = 13
 verdict: roster expanded — 3-LLM convergent on 2 critical splits
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key." RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
 ---
 
 # WR3 Step 3 — Agent Roster Mapping
@@ -152,6 +154,28 @@ color: red  # same as clip-renderer — distinct context (Phase 11 vs Phase 5/6)
 ## Hard rules ereditate da WR2 (cf. Step 1)
 
 1. **No peer-to-peer**: sub-agent NON parlano fra loro, solo via orchestrator (Google 17.2× error amplification finding).
+
+> **⚠️ CITAZIONE RITIRATA 2026-08-02 — la riga qui sopra resta come record datato, la sua evidenza no.** RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
+> Il «17.2× error amplification» di Google (arXiv:2512.08296v3) **non sostiene** la regola no-peer-to-peer,
+> per due motivi verificati alla fonte. **(1) Topologia sbagliata**: 17.2× misura `Independent`, che il paper
+> (§3.1) definisce come agenti paralleli con `Ω=synthesis_only`, cioè **senza alcun coordinamento**; il
+> peer-to-peer è `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consenso) e **non** è la topologia
+> misurata peggio. **(2) Non sostenuto come causa**: §4.3 racconta l'amplificazione d'errore come meccanismo,
+> ma la **Table 4** dello stesso paper riporta β̂=0.014, CI [−0.047, 0.074], p=0.658 (interazione β̂=0.022,
+> CI [−0.023, 0.067], p=0.332) e §4.3 conclude che il divario è spiegato meglio da _"efficiency (Ec) and
+> overhead (O%), rather than error propagation per se"_. p=0.658 = **non supportato**, non «smentito».
+>
+> **(3) E anche la sostituzione era sbagliata** (2026-08-02, review cross-family — TERZA generazione
+> dello stesso errore): questa nota diceva «regge … più il ranking del paper (`Centralized` >
+> `Independent`)». Quella coppia è vera (0.463 > 0.370) ed è **irrilevante**, perché `Independent`
+> NON è peer-to-peer. La **Table 5** (Success Rate) dà `Decentralized 0.477 > SAS 0.466 >
+> Centralized 0.463 > Hybrid 0.452 > Independent 0.370`: il peer-to-peer del paper (`Decentralized`)
+> è il **PIÙ ALTO**, e il paper scrive _"no single architecture dominates"_.
+>
+> **La regola non cambia**: orchestratore centrale, worker stateless, niente handoff peer-to-peer. Regge
+> su basi di repo (isolamento di contesto, un solo proprietario dello stato) **e SOLO su quelle** — questo
+> paper non la sostiene in nessun verso. Non ripristinare la citazione. Dettaglio:
+> `agent-library/03-lessons.md`, PR #3509/#3513/#3514.
 2. **NB ground-truth verbatim**: brief-interpreter è SOLE source of NB queries; altri agent leggono SOLO da brief.json.
 3. **No silent asset reuse**: ogni clip MP4 deve avere sha256 unico nel manifest (Article 5.10 WR2 equivalent).
 4. **Critic gate binding**: orchestrator NON pubblica se critic FAIL su qualunque rubrica.
@@ -196,3 +220,26 @@ Trigger: confirm Step 3 roster decisions (A/B/C/D)?
 - `41511dc3-8e29-456d-bc5d-01747901dc58` (Claude Agent SDK least-privilege example)
 - `7e015fa6-1820-4ef4-8c3d-9365b4dc9a69` (Anthropic code-review parallel agents pattern)
 - `74917ad2-2ae3-4a43-ba8c-e5876ec073fc` (Skill graduation rules)
+
+
+## Adversarial review
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh` — cross-family, and the author of the diff never graded it.
+**Scope**: the 2026-08-02 retraction annotations added to this file — RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — and nothing else. The dated body is a
+record of what was believed on its date and was not re-reviewed.
+
+**Four rounds, all DO-NOT-SHIP until the last, and each one found something the previous had introduced.**
+
+1. Round 1 (7 objections) — "rejects" overstated `p=0.658`, which means UNSUPPORTED, not disproved; and
+   `Independent` was being equated with peer-to-peer when §3.1 defines it as parallel agents with
+   `Ω=synthesis_only`, i.e. no coordination at all. RETRACTED[kim-2025-17x-error-amplification-as-cause]
+2. Round 2 (8) — an annotation that follows an assertion does not unsay it; two files thought to be
+   archaeology turned out to be a live spec and its ground truth.
+3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]:
+   "Centralized best" contradicts Table 5 (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 >
+   Hybrid 0.452 > Independent 0.370`) and the paper's own *"no single architecture dominates"*.
+4. Round 4 (8) — the guard built to prevent a fourth generation could still be absolved by the
+   endorsement's own words; fixed by making `RETRACTED[<claim-id>]` the only thing that absolves.
+
+**Surviving objections: none.** Every one was verified before being accepted — by re-reading the source,
+or by executing the counterexample — and every accepted one was applied rather than waived.

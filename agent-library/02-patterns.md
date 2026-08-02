@@ -251,9 +251,9 @@ Pre-publish artifact: `~/.claude/agents/devils-advocate.md` ("find the legal fla
 
 **Quando usarlo**: ≥2 task indipendenti senza shared state né dipendenze sequenziali. Orchestrator dispatcha N agent paralleli (cf. `superpowers:dispatching-parallel-agents`). Topology centralized (orchestrator-led) preferita — **ma NON per il motivo che citavamo**: vedi la nota qui sotto.
 
-> **Citazione corretta 2026-08-02 — non ripristinare la vecchia motivazione.** Fino a oggi questa riga
+> **Citazione corretta 2026-08-02 — non ripristinare la vecchia motivazione.** Fino a oggi questa riga RETRACTED[kim-2025-17x-error-amplification-as-cause]
 > diceva «centralized preferita: error amplification 4.4× vs independent 17.2× (Kim et al.
-> arxiv 2512.08296)». I due numeri **esistono davvero** nel paper — **§4.3**, verbatim: _"Independent
+> arxiv 2512.08296)». I due numeri **esistono davvero** nel paper — **§1 (Introduction)**, verbatim: _"Independent
 > systems amplify trace-level errors 17.2× through unchecked error propagation … Centralized
 > coordination, however, contains this to 4.4× by enforcing validation bottlenecks"_.
 >
@@ -271,14 +271,17 @@ Pre-publish artifact: `~/.claude/agents/devils-advocate.md` ("find the legal fla
 > Un CI così largo è compatibile anche con un effetto piccolo. Quindi: il 17.2× non è utilizzabile come
 > **causa**, ma non è "confutato".
 >
-> La preferenza per centralized **resta** — è la topologia che il paper misura come migliore sui suoi
-> benchmark — e il meccanismo che il paper stesso indica è **efficienza e overhead di coordinamento**.
+> **E anche la sostituzione era sbagliata** (trovata dalla review cross-family il 2026-08-02, terza
+> generazione dello stesso errore): la prima correzione scrisse «centralized è la topologia che il paper
+> misura come migliore». Falso — il paper non sostiene **nulla** sul peer-to-peer: la Table 5 (Success Rate) dà `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370`, il paper scrive _"no single architecture dominates"_, e `Decentralized` — che **è** il peer-to-peer — è il più alto. Regge solo che Independent è la più bassa. Quindi non citare questo paper per questa regola,
+> in nessun verso. La preferenza per centralized **resta** su basi di repo; il meccanismo che il paper
+> indica per il divario fra architetture è **efficienza e overhead di coordinamento**.
 >
 > Storia, corretta a sua volta: questo repo aveva ledgerizzato a giugno che «il 17.2× non è nel paper,
 > è un commento TDS». **Quella nota era il fantasma** — il numero c'è. Verificato alla fonte
 > 2026-08-02 su arXiv:2512.08296v3 (§4.3 + Table 4).
 
-**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); topologia **Independent** — che nel paper (§3.1) significa agenti paralleli con `Ω=synthesis_only`, cioè **nessun coordinamento** e nessuna cross-validation: è quella misurata peggio, per overhead ed efficienza di coordinamento; **non** citare il 17.2× come sua causa. ⚠️ Independent **non** è "peer-to-peer": il peer-to-peer è **Decentralized** (§3.1, `C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds + consenso), un'architettura diversa e non la peggiore misurata.
+**Anti-pattern** RETRACTED[kim-2025-17x-error-amplification-as-cause] _(la citazione 17.2× qui sotto è RITIRATA — non ripristinare la come motivazione; e `Independent` è "la più bassa sulla Table 5 aggregata", non "la peggiore" in generale — nessuna architettura domina su tutti i domini)_: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); topologia **Independent** — che nel paper (§3.1) significa agenti paralleli con `Ω=synthesis_only`, cioè **nessun coordinamento** e nessuna cross-validation: è quella misurata peggio~~ RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — è la più bassa **esclusivamente** sulla Success Rate aggregata di Table 5 (0.370), il che non dimostra nulla sulla policy no-peer e non autorizza una classifica generale (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452`, e il paper scrive _"no single architecture dominates"_); **non** citare il 17.2× come sua causa, né efficienza/overhead a sostegno della nostra scelta. ⚠️ Independent **non** è "peer-to-peer": il peer-to-peer è **Decentralized** (§3.1, `C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds + consenso), un'architettura diversa e non la peggiore misurata.
 
 **Esempio concreto**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_wave_pacing_design_rigor.md`
 

@@ -4,6 +4,8 @@ domain: wr3-design
 client_case: WR3 Video Production Room — Step 1 anatomy WR2 predecessor + agent-craft patterns NB-AGENTS + 4-LLM panel synthesis
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + NB-AGENTS query + my own codebase reading) + WR2 source files
 status: draft pending Antonello decision gate
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key." RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
 ---
 
 # WR3 Step 1 — Anatomy WR2 + Agent-craft Pattern Library
@@ -65,6 +67,28 @@ Output: structured KEY=value lines, parseable via `grep '^KEY='`. Exit 0 = PASS.
 ### A.5 Centralized state + anti-pattern enforcement
 
 - **No peer-to-peer between subagents** — Google's **17.2× error-amplification** finding. Workers stateless read shared files. Communicate via orchestrator only (orchestrator writes intermediate state to `apps/war-room/output/carousel/<slug>/`).
+
+> **⚠️ CITAZIONE RITIRATA 2026-08-02 — la riga qui sopra resta come record datato, la sua evidenza no.** RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
+> Il «17.2× error amplification» di Google (arXiv:2512.08296v3) **non sostiene** la regola no-peer-to-peer,
+> per due motivi verificati alla fonte. **(1) Topologia sbagliata**: 17.2× misura `Independent`, che il paper
+> (§3.1) definisce come agenti paralleli con `Ω=synthesis_only`, cioè **senza alcun coordinamento**; il
+> peer-to-peer è `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consenso) e **non** è la topologia
+> misurata peggio. **(2) Non sostenuto come causa**: §4.3 racconta l'amplificazione d'errore come meccanismo,
+> ma la **Table 4** dello stesso paper riporta β̂=0.014, CI [−0.047, 0.074], p=0.658 (interazione β̂=0.022,
+> CI [−0.023, 0.067], p=0.332) e §4.3 conclude che il divario è spiegato meglio da _"efficiency (Ec) and
+> overhead (O%), rather than error propagation per se"_. p=0.658 = **non supportato**, non «smentito».
+>
+> **(3) E anche la sostituzione era sbagliata** (2026-08-02, review cross-family — TERZA generazione
+> dello stesso errore): questa nota diceva «regge … più il ranking del paper (`Centralized` >
+> `Independent`)». Quella coppia è vera (0.463 > 0.370) ed è **irrilevante**, perché `Independent`
+> NON è peer-to-peer. La **Table 5** (Success Rate) dà `Decentralized 0.477 > SAS 0.466 >
+> Centralized 0.463 > Hybrid 0.452 > Independent 0.370`: il peer-to-peer del paper (`Decentralized`)
+> è il **PIÙ ALTO**, e il paper scrive _"no single architecture dominates"_.
+>
+> **La regola non cambia**: orchestratore centrale, worker stateless, niente handoff peer-to-peer. Regge
+> su basi di repo (isolamento di contesto, un solo proprietario dello stato) **e SOLO su quelle** — questo
+> paper non la sostiene in nessun verso. Non ripristinare la citazione. Dettaglio:
+> `agent-library/03-lessons.md`, PR #3509/#3513/#3514.
 - **Dual brief propagation (R3a)**: brief.json travels verbatim with every subagent call (storyboarder + layout-composer). Previous bug: orchestrator's prose synthesis lost voice_register + bilingual_lexicon + taboo_check → S6 mappazza + bilingual untranslated terms.
 - **Vision pre-pass (R3b)**: before invoking expensive Opus critic, run Haiku 4.5 binary vision check on every hero PNG ("does image semantically match brief topic+hook? PASS/FAIL"). Catches hallucination snowballing (arXiv 2509.21789) at $0.20 per slide.
 
@@ -278,3 +302,26 @@ Step 2 will produce: `02-verbi-atomici.md` — exhaustive list of all video-prod
 - `/tmp/wr3-step1/codex.txt` (148KB)
 - `/tmp/wr3-step1/nb-agents.txt` (49KB, 11 NB sources, 38 citations to Reflexion + Voyager + WR2 architect + cicatrici)
 - WR2 cicatrici from `.claude/rules/cicatrix-scars.md` + memory `lessons_*` files
+
+
+## Adversarial review
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh` — cross-family, and the author of the diff never graded it.
+**Scope**: the 2026-08-02 retraction annotations added to this file — RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — and nothing else. The dated body is a
+record of what was believed on its date and was not re-reviewed.
+
+**Four rounds, all DO-NOT-SHIP until the last, and each one found something the previous had introduced.**
+
+1. Round 1 (7 objections) — "rejects" overstated `p=0.658`, which means UNSUPPORTED, not disproved; and
+   `Independent` was being equated with peer-to-peer when §3.1 defines it as parallel agents with
+   `Ω=synthesis_only`, i.e. no coordination at all. RETRACTED[kim-2025-17x-error-amplification-as-cause]
+2. Round 2 (8) — an annotation that follows an assertion does not unsay it; two files thought to be
+   archaeology turned out to be a live spec and its ground truth.
+3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]:
+   "Centralized best" contradicts Table 5 (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 >
+   Hybrid 0.452 > Independent 0.370`) and the paper's own *"no single architecture dominates"*.
+4. Round 4 (8) — the guard built to prevent a fourth generation could still be absolved by the
+   endorsement's own words; fixed by making `RETRACTED[<claim-id>]` the only thing that absolves.
+
+**Surviving objections: none.** Every one was verified before being accepted — by re-reading the source,
+or by executing the counterexample — and every accepted one was applied rather than waived.
