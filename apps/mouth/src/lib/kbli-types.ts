@@ -179,6 +179,10 @@ export interface KBLIPmaInfo {
   capSpecial: boolean; // special-distribution (47221) → "special conditions", not "Closed 0%"
   capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
   routeTo: string | null; // sibling private code when a govt code is closed to PMA (86101→86103)
+  /** Which ARTICLE of the Perpres names this code — `source` is only the instrument.
+   *  Emitted by scripts/kbli_filiera/perpres_body_default_relation.py, never derived here.
+   *  null when the artifact is absent: a missing citation costs context, a stale one lies. */
+  citation: string | null;
 }
 
 // -----------------------------------------------------------------------------
