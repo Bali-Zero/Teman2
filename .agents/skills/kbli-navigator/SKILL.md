@@ -2122,6 +2122,32 @@ refutes**. Kept together here and NOT patched in this pass — the fix still edi
 on live pages, so it goes through the adversarial gate with the rest — but it should be ruled on
 first and separately, because no ruling on Pasal 7 makes that sentence true.
 
+**🔴 AND THERE IS A FIFTH SURFACE, WHICH ANSWERS THE OPPOSITE — 39 of 39 (2026-08-02).** The count
+of "four consuming surfaces" above is what `l4_bali` reaches. **The channels are a fifth, and they
+do not carry it at all.** Asked the single most common commercial question this agency receives —
+_"Can a foreigner open a villa rental business in Bali with a PT PMA? KBLI 55203"_ — `chat_kbli`
+(the WhatsApp/webchat path) answers on prod:
+
+> **"Yes, a foreigner can absolutely open a villa rental business in Bali using a PT PMA"** …
+> "KBLI 55203 is **TERBUKA (Open) to 100% foreign ownership**."
+
+The same product, same code, same "in Bali" question, **opposite verdicts**. And the channel is not
+ignoring Bali: it renders a whole "Bali Reality Check" section (zoning, banjar, PBG, nominee) — it
+considers Bali and says yes. Both sides even start from the SAME premise, `PT PMA = Usaha Besar by
+law`: the page turns it into a bar, the channel into a capital threshold.
+
+Structural, not one LLM sample — measured read-only on `kbli_documents`, the store `chat_kbli`
+injects verbatim, over all 39: **rows 39 · carrying `l4_bali` 0 · `pma_status = TERBUKA` 39 ·
+content mentioning any bar 0.** Innocence control, so the negative means something: the same store
+correctly carries `TERTUTUP` for `11010`/`11020`/`47222` and `TERBATAS` for `50111`. It is not blind
+to restriction in general — it is blind **specifically to the Bali layer**, at an agency whose whole
+market is Bali.
+
+Note the direction before "fixing" it: the page's verdict is the **refuted** reading, so the channel
+may be closer to the law — but it qualifies nothing, and answers "absolutely" on codes we
+internally treat as disputed. Two over-confident surfaces pointing opposite ways; the divergence is
+itself the signal. This is why (a) and (b) below cannot be ruled on by looking at the page alone.
+
 **Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
 **24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
 **`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
