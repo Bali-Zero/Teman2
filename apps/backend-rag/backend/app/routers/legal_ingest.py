@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from backend.app.dependencies import get_current_user
 from backend.app.models import TierLevel
 from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.ingest_paths import resolve_ingest_path
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.json_utils import to_jsonb
 from backend.core.legal_config import resolve_nb_target
@@ -99,11 +100,23 @@ async def ingest_legal_document(
     """
     _require_ingest_admin(current_user)
     try:
+        # Confine the caller-supplied path BEFORE it is touched or echoed. This route
+        # reads the file and uploads its bytes to the team Drive folder
+        # `BALI ZERO/PERATURAN`, so an unconfined path exfiltrates to a surface the whole
+        # team reads. Everything below uses `file_path`, never `request.file_path`.
+        try:
+            file_path = resolve_ingest_path(request.file_path)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
         # Validate file exists
-        if not Path(request.file_path).exists():
+        if not file_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"File not found: {request.file_path}",
+                detail=f"File not found: {file_path}",
             )
 
         # Parse tier override if provided
@@ -120,7 +133,7 @@ async def ingest_legal_document(
         # Get service and ingest
         service = get_legal_service()
         result = await service.ingest_legal_document(
-            file_path=request.file_path,
+            file_path=str(file_path),
             title=request.title,
             tier_override=tier_override,
             collection_name=request.collection_name,
