@@ -9,7 +9,7 @@ my_draft_size: 14804 bytes
 panel_convergence: 9/10 questions UNANIMOUS MODIFY, 1/10 UNANIMOUS KEEP
 critical_red_flag: Codex caught Veo Fast pricing error in my draft ($0.01/cr vs $0.10/sec API)
 adversarial_review: codex
-adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key."
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annotation added to this file: the Kim et al. 17.2x citation, RETRACTED[kim-2025-17x-error-amplification-as-cause], DO NOT RESTORE it — it measures Independent (parallel, no coordination), not peer-to-peer, and Table 4 gives p=0.658. This file does NOT assert the separate ranking claim registered as `kim-2025-ranking-supports-the-no-peer-rule`, so this key certifies no correction of it (narrowed 2026-08-02 after cross-family review caught the note claiming more than the body delivers). The dated body below was NOT re-reviewed and is not certified by this key."
 ---
 
 # WR3 Step 4 — Lifecycle per agente

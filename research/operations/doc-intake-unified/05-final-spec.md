@@ -23,7 +23,7 @@ sources:
   - research/operations/doc-intake-unified/05e-reusable-repos-infra.md
   - live: psql nuzantara_dev migrations_v2 (205 = highest, 206 free) + MODEL_TOPOLOGY.json (Pro, 2026-06-04)
 adversarial_review: codex
-adversarial_review_note: "Key added 2026-08-02. Scope = the 2026-08-02 RETRACTED 17.2x citation ONLY (see the Adversarial review section at the end) — 17.2x measures Independent (no coordination), not peer-to-peer, and Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370 with the paper stating no single architecture dominates. The 2026-06-04 body is a dated record and was NOT re-reviewed."
+adversarial_review_note: "Key added 2026-08-02. RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] Scope = the 2026-08-02 RETRACTED 17.2x citation and the false Centralized-best ranking that replaced it, ONLY (see the Adversarial review section at the end) — 17.2x measures Independent (no coordination), not peer-to-peer, and Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370 with the paper stating no single architecture dominates. The 2026-06-04 body is a dated record and was NOT re-reviewed."
 ---
 
 # FASE 5 — FINAL EXECUTABLE SPEC: Unified Document-Intake (Bali Zero)
@@ -295,7 +295,7 @@ che P3 propagherà come `source{}` (X6).
 | `mask_pii()` (log/Telegram/last_error) | **NUOVO** | regex NIK(16)/NPWP(16/15)/passport/phone/email → `<NIK>` ecc. C6. §6 di 04-2. |
 
 **Stadi = funzioni deterministiche in-process** (`STAGES=[classify, extract, validate, route]`),
-NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplification su peer-to-peer"~~ — **citazione RITIRATA 2026-08-02**: il 17.2× è di `Independent` (nessun coordinamento), non del peer-to-peer/`Decentralized`, e il paper non lo sostiene come causa — vedi `05c-nb-patterns.md` §1.4-nota. La scelta resta, su basi di repo).
+NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplification su peer-to-peer"~~ — **citazione RITIRATA 2026-08-02** RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× è di `Independent` (nessun coordinamento), non del peer-to-peer/`Decentralized`, e il paper non lo sostiene come causa — vedi `05c-nb-patterns.md` §1.4-nota. La scelta resta, su basi di repo).
 
 ### P3 — CLASSIFY → EXTRACT → VALIDATE  → modulo `backend/intake/stages/`
 
@@ -441,7 +441,7 @@ NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplificat
 
 ## 7. SINTESI (12 righe)
 
-1. UN sistema, 5 stadi (P1→P5), 1 orchestratore deterministico (no swarm — panel unanime; la vecchia citazione "NB 17.2×" è RITIRATA 2026-08-02: misura `Independent` (nessun coordinamento), non il peer-to-peer, e la Table 5 dà `Decentralized 0.477 > … > Independent 0.370` con "no single architecture dominates" — vedi `05c-nb-patterns.md` §1.4-nota. La decisione non cambia, ma regge su basi di repo, non sul paper).
+1. UN sistema, 5 stadi (P1→P5), 1 orchestratore deterministico (no swarm — panel unanime; la vecchia citazione "NB 17.2×" è RITIRATA 2026-08-02 RETRACTED[kim-2025-17x-error-amplification-as-cause]: misura `Independent` (nessun coordinamento), non il peer-to-peer, e la Table 5 dà `Decentralized 0.477 > … > Independent 0.370` con "no single architecture dominates" — vedi `05c-nb-patterns.md` §1.4-nota. La decisione non cambia, ma regge su basi di repo, non sul paper).
 2. Tutto LOCALE sul Pro `nuzantara_dev` (Law 2): coda, blob PII, worker, correzioni. Mai Fly/cloud/RAG/NotebookLM.
 3. Le 12 contraddizioni X1-X12 chiuse da una tabella canonica: `intake_queue`+`document_instances`, PK BIGSERIAL, `intake_key=sha256(source|source_ref|blob_hash|pipeline_version)`, source `whatsapp|drive|zoho`, pipeline_version `VARCHAR(32)='intake-v1'`, blob_hash hex64, needs_review_fields[].
 4. Panel C1-C7 recepiti: dedup composito+pipeline_version (C1), exactly-once SKIP LOCKED+lease+DLQ (C2), HITL per-campo (C3), entity-res link-only default (C4), versioning supersession (C5), no CoT grezzo (C6), verify=firma+diff (C7).

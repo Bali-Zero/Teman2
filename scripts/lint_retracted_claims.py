@@ -73,6 +73,22 @@ DIRECTIVE_RE = re.compile(r"^[A-Z][A-Z \-\[\]]{4,}$")
 PHRASE_MIN_WORDS = 3
 BANNED_DIRECTIVES = {"CORRECTED", "CORRECTION", "CORRETTA", "CORREZIONE", "INDEPENDENT"}
 
+# `NOT RETRACTED` means the opposite of `RETRACTED` and contains it. Checked on
+# the 24 characters before every directive match.
+_NEGATION_RE = re.compile(r"\b(not|non|mai|never|n[e\u00e8]|nor|isn'?t|wasn'?t)\b[\s,:;\-]*$", re.IGNORECASE)
+
+# An absolution token must be something that appears ONLY in a correction, never
+# in the endorsement being corrected. The first version of this file accepted
+# `no coordination` for the 17.2x claim -- a phrase that sits inside the very
+# endorsement ("Independent (no coordination) amplifies errors 17.2x, therefore
+# no peers"), so a retraction of a DIFFERENT claim nearby absolved the live one.
+# Same shape as the `Independent`-as-directive hole, one layer down. Statistics
+# and exact table values are strong; descriptive prose is not.
+_WEAK_ABSOLUTION_TOKENS = {
+    "no coordination", "nessun coordinamento", "synthesis_only", "independent",
+    "decentralized", "centralized", "peer-to-peer", "amplif", "retracted",
+}
+
 
 class Hit(NamedTuple):
     path: Path
@@ -167,6 +183,16 @@ def load_registry(path: Path) -> tuple[List[Claim], int, List[str]]:
             absol = re.compile(abs_raw, re.IGNORECASE) if abs_raw else None
         except re.error as exc:
             raise RegistryError(f"claim `{cid}` has an invalid absolution regex: {exc}") from exc
+        if abs_raw:
+            for alt in abs_raw.split("|"):
+                bare = alt.strip().strip("()").replace("\\", "").lower()
+                if bare and any(w in bare for w in _WEAK_ABSOLUTION_TOKENS):
+                    raise RegistryError(
+                        f"claim `{cid}` absolution alternative {alt!r} is WEAK: it can occur inside "
+                        "the endorsement this claim exists to catch, so it would absolve the very "
+                        "text it is meant to bind. Use a value that appears only in a correction "
+                        "(an exact statistic or table figure)."
+                    )
         claims.append(
             Claim(
                 id=cid,
@@ -232,6 +258,7 @@ def _has_directive(
     directives: Sequence[str],
     window: int,
     absolution: Optional[re.Pattern] = None,
+    claim_id: str = "",
 ) -> bool:
     """A retraction directive in the hit's own markdown BLOCK, or within
     `window` lines either side of it.
@@ -245,17 +272,39 @@ def _has_directive(
     """
     lo, hi = _block_bounds(lines, idx)
     haystack = "\n".join(lines[lo:hi + 1]) + "\n" + _window(lines, idx, window)
+
+    # STRONGEST FORM FIRST, and it needs no absolution pattern: an explicit
+    # claim-bound marker `RETRACTED[<claim-id>]` names what it retracts, so it
+    # cannot be borrowed by a neighbouring claim. Everything below is the
+    # unstructured fallback for ordinary prose.
+    if claim_id and f"RETRACTED[{claim_id}]" in haystack:
+        return True
+
     # Claim-bound absolution: a directive proves an act of retraction happened
     # here; this proves it is about THIS claim. Both, or the hit stands.
+    # The registry validates that these tokens are STRONG — see `load_registry`.
     if absolution is not None and not absolution.search(haystack):
         return False
+
+    # NEGATION GUARD. `NOT RETRACTED` / `NON RITIRATA` / `MAI RITIRATA` contain
+    # a directive token and mean its exact opposite; a substring test reads them
+    # as absolution and lets the endorsement stand. Superscar #3 (the guard
+    # decides on form, not meaning) applied to the guard's own escape hatch.
+    def _negated(text: str, at: int) -> bool:
+        prefix = text[max(0, at - 24):at]
+        return bool(_NEGATION_RE.search(prefix))
+
     lowered = haystack.lower()
     for d in directives:
         if d.startswith("~ci~"):
-            if d[4:].lower() in lowered:
-                return True
-        elif d in haystack:
-            return True
+            needle = d[4:].lower()
+            for mt in re.finditer(re.escape(needle), lowered):
+                if not _negated(lowered, mt.start()):
+                    return True
+        else:
+            for mt in re.finditer(re.escape(d), haystack):
+                if not _negated(haystack.lower(), mt.start()):
+                    return True
     return False
 
 
@@ -271,7 +320,7 @@ def scan_text(text: str, claims: Sequence[Claim], directives: Sequence[str], win
             # Require the claim's own subject matter nearby — entity, not form.
             if claim.context and not claim.context.search(_window(lines, i, claim.context_window)):
                 continue
-            if _has_directive(lines, i, directives, window, claim.absolution):
+            if _has_directive(lines, i, directives, window, claim.absolution, claim.id):
                 continue
             out.append((i + 1, line.strip(), claim.id))
     return out
@@ -437,7 +486,7 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                 "pattern": r"\b17[.,]2\s*[x×]",
                 "context_pattern": "error|peer",
                 "context_window": 2,
-                "absolution_pattern": r"synthesis_only|0\.658",
+                "absolution_pattern": r"0\.658|Table\s*4",
                 "why_retracted": ["wrong topology"],
             }],
         }
@@ -451,11 +500,11 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
         )
         expect(
             "GUILT the claim's own truth WITHOUT a directive does not absolve either",
-            len(scan_text("17.2x error\nnote: p=0.658 in Table 4\n", bclaims, bdirs, bwin)) == 1,
+            len(scan_text("17.2x error\nnote: p=0.658 in Table 4 (no directive)\n", bclaims, bdirs, bwin)) == 1,
         )
         expect(
             "INNOCENCE directive AND this claim's own correction -> clean",
-            scan_text("17.2x error\nRETRACTED — it measures synthesis_only agents\n", bclaims, bdirs, bwin) == [],
+            scan_text("17.2x error\nRETRACTED — Table 4 gives p=0.658\n", bclaims, bdirs, bwin) == [],
         )
         # DECLARED LIMIT, pinned: a claim with no absolution_pattern is still
         # absolved by any nearby directive. That is the documented fallback.
@@ -463,6 +512,80 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
             "known gap: a claim WITHOUT absolution_pattern is not claim-bound",
             scan("17.2x error\nRETRACTED — but this note is about a DIFFERENT claim\n") == [],
         )
+
+        # ---- CROSS-CLAIM OUTCOME, on TWO registered claims. The previous
+        #      version of this corpus used ONE claim and a fixture whose
+        #      absolution token did not appear in the guilt text, so it asserted
+        #      a PREREQUISITE and never the outcome. Cross-family review
+        #      (2026-08-02) showed the shipped registry cross-absolved anyway:
+        #      `no coordination` was claim 1's absolution token AND a phrase
+        #      inside the endorsement it exists to catch, so a retraction of
+        #      claim 2 standing next to a live claim-1 endorsement absolved it.
+        two_reg = {
+            "window_lines": 4,
+            "directives": ["RETRACTED"],
+            "claims": [
+                {"id": "c-num", "pattern": r"\b17[.,]2\s*[x×]", "context_pattern": "peer|error|coordinat",
+                 "context_window": 3, "absolution_pattern": r"0[.,]658|Table\s*4", "why_retracted": ["wrong topology"]},
+                {"id": "c-rank", "pattern": r"\bCentralized\b\s*>\s*\bIndependent\b|\bCentralized\b[^.\n]{0,40}\bbest\b",
+                 "context_pattern": "peer|rank|Independent", "context_window": 3,
+                 "absolution_pattern": r"0[.,]477|no single architecture dominates", "why_retracted": ["wrong ranking"]},
+            ],
+        }
+        trp = tmp / "two.json"
+        trp.write_text(json.dumps(two_reg), encoding="utf-8")
+        tclaims, twin, tdirs = load_registry(trp)
+        c_num = [c for c in tclaims if c.id == "c-num"][0]
+        c_rank = [c for c in tclaims if c.id == "c-rank"][0]
+
+        cross = ("Independent (no coordination) has 17.2x error amplification, therefore no peer-to-peer.\n"
+                 "> RETRACTED — the ranking: Table 5 gives Decentralized 0.477, no single architecture dominates.\n")
+        expect(
+            "GUILT cross-claim: a retraction of the OTHER claim does not absolve this one",
+            len(scan_text(cross, [c_num], tdirs, twin)) == 1,
+        )
+        expect(
+            "INNOCENCE the same text IS clean for the claim it actually retracts",
+            scan_text(cross, [c_rank], tdirs, twin) == [],
+        )
+        expect(
+            "GUILT a NEGATED directive does not absolve",
+            len(scan_text("17.2x error, our peer rule\n> NOT RETRACTED — Table 4 p=0.658 notwithstanding\n",
+                          [c_num], tdirs, twin)) == 1,
+        )
+        expect(
+            "INNOCENCE the structured claim-bound marker absolves with no other token",
+            scan_text("17.2x error peer\n> RETRACTED[c-num] see the registry\n", [c_num], tdirs, twin) == [],
+        )
+        expect(
+            "GUILT the structured marker for ANOTHER claim does not absolve",
+            len(scan_text("17.2x error peer\n> RETRACTED[c-rank] see the registry\n", [c_num], tdirs, twin)) == 1,
+        )
+        # The fourth-generation forms the first claim-2 regex missed entirely:
+        # a comparison or a superlative used as SUPPORT, with no "best" adjacent
+        # to "Centralized". Asserted on the PRODUCTION pattern further below.
+        expect(
+            "GUILT claim-2 catches the comparison-as-support form",
+            len(scan_text("Centralized > Independent confirms the no-peer rule\n", [c_rank], tdirs, twin)) == 1,
+        )
+        # DECLARED FRICTION, pinned so it is a choice and not a surprise: an
+        # accurate, neutral, non-causal mention still wants a directive. A
+        # scanner cannot tell description from appeal, and this claim's history
+        # is exactly a neutral quotation being re-derived into a reason.
+        expect(
+            "known friction: an accurate neutral mention is still flagged (by design)",
+            len(scan_text("Kim reports a descriptive 17.2x ratio for Independent; peer-to-peer is separate.\n",
+                          [c_num], tdirs, twin)) == 1,
+        )
+        # The registry must REFUSE a weak absolution token outright.
+        weak = tmp / "weak.json"
+        weak.write_text(json.dumps({"window_lines": 3, "directives": ["RETRACTED"], "claims": [
+            {"id": "w", "pattern": "x", "absolution_pattern": r"no coordination|0\.658"}]}), encoding="utf-8")
+        try:
+            load_registry(weak)
+            expect("GUILT registry refuses a WEAK absolution token", False)
+        except RegistryError:
+            expect("GUILT registry refuses a WEAK absolution token", True)
 
         expect("end-to-end guilt exits 1", report([Hit(Path("a.md"), 1, "x", "t")], claims, 1) == 1)
         expect("end-to-end innocence exits 0", report([], claims, 1) == 0)
@@ -478,10 +601,10 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                 probe, truth = {
                     "kim-2025-17x-error-amplification-as-cause": (
                         "the 17.2× error-amplification finding forbids peer-to-peer",
-                        "it measures Independent, Ω=synthesis_only, no coordination",
+                        "it measures Independent (no coordination); Table 4 gives p=0.658, so it is not the mechanism",
                     ),
                     "kim-2025-ranking-supports-the-no-peer-rule": (
-                        "no peer-to-peer: the paper ranks Centralized best among its topologies",
+                        "no peer-to-peer: Centralized > Independent confirms the rule (Kim et al.)",
                         "Table 5: Decentralized 0.477 > Centralized 0.463; no single architecture dominates",
                     ),
                 }.get(c.id, (None, None))

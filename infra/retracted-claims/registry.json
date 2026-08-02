@@ -24,7 +24,21 @@
     "about one would absolve a naked assertion of the other -- the gap this file pinned as",
     "known_gap on day one. A claim carrying `absolution_pattern` now also requires a token from",
     "its OWN correction in the window (for these two: the paper's real Table 5 numbers). A claim",
-    "WITHOUT one keeps the old any-directive behaviour: a declared limit, not an oversight."
+    "WITHOUT one keeps the old any-directive behaviour: a declared limit, not an oversight.",
+    "",
+    "TWO WAYS TO ABSOLVE, and the strong one is explicit. `RETRACTED[<claim-id>]` names the claim it",
+    "retracts and needs nothing else. The unstructured fallback (an ALL-CAPS directive PLUS this",
+    "claim's `absolution_pattern`) exists so ordinary prose corrections keep working -- but the",
+    "registry now REFUSES weak absolution tokens: a phrase that can occur inside the endorsement",
+    "(`no coordination`, `synthesis_only`, an architecture name) would absolve the very text it binds.",
+    "Directives are also negation-guarded: `NOT RETRACTED` contains `RETRACTED` and means its opposite.",
+    "",
+    "DELIBERATE, DECLARED FRICTION: the lint flags ANY topical mention of a retracted claim, including",
+    "an accurate neutral one, and asks for a directive. A scanner cannot tell 'quoting the ratio",
+    "descriptively' from 'appealing to it', and this claim's entire history is one reader quoting it",
+    "neutrally and the next one re-deriving it as a reason. The cost is one directive per mention; the",
+    "alternative -- requiring a causal connective -- under-matches every bare appeal to 'the 17.2x",
+    "finding'. Pinned by test_declared_friction_accurate_neutral_mention_still_wants_a_directive."
   ],
   "window_lines": 20,
   "directives": [
@@ -58,14 +72,14 @@
         ".claude/agents/wr2-design-architect.md"
       ],
       "known_gap": "CLOSED 2026-08-02 for the two registered claims by `absolution_pattern` (a directive must be accompanied by a token from this claim's own correction). Still open in general: a claim registered WITHOUT an absolution_pattern is absolved by any nearby directive. Pinned by test_known_gap_claim_without_absolution_is_not_bound.",
-      "absolution_pattern": "synthesis_only|0\\.658|no coordination|nessun coordinamento|0\\.477|no single architecture dominates"
+      "absolution_pattern": "0[.,]658|0[.,]014|Table\\s*4|Tabella\\s*4|ß̂|beta-?hat"
     },
     {
       "id": "kim-2025-ranking-supports-the-no-peer-rule",
-      "pattern": "\\bCentralized\\b[^.\\n]{0,40}\\b(best|migliore|highest|top-?ranked)\\b|\\b(best|migliore|highest)\\b[^.\\n]{0,25}\\bCentralized\\b|(pi[uù] il|plus the paper'?s?|the paper'?s?( own)?|benchmark|sui suoi benchmark)\\s*(own\\s+)?rank|rank(ing|s)?\\s+(del paper|of the paper)",
+      "pattern": "\\bCentralized\\b[^.\\n]{0,40}\\b(best|migliore|highest|top-?ranked)\\b|\\b(best|migliore|highest)\\b[^.\\n]{0,25}\\bCentralized\\b|(pi[uù] il|plus the paper'?s?|the paper'?s?( own)?|benchmark|sui suoi benchmark)\\s*(own\\s+)?rank|rank(ing|s)?\\s+(del paper|of the paper)|\\bCentralized\\b\\s*>\\s*\\bIndependent\\b|\\bIndependent\\b\\s*<\\s*\\bCentralized\\b|\\b(confirms?|conferma|supports?|sostiene|argues for|therefore|quindi|dunque|so use|hence)\\b[^.\\n]{0,60}\\bcentraliz|\\bcentraliz[^.\\n]{0,60}\\b(is (therefore|thus) )?(confirmed|supported|preferito|preferred)\\b",
       "context_pattern": "Independent|Decentralized|peer|topolog|Kim|2512\\.08296|17[.,]2",
-      "context_window": 4,
-      "absolution_pattern": "0\\.477|no single architecture dominates|nessuna (singola )?architettura domina",
+      "context_window": 5,
+      "absolution_pattern": "0[.,]477|no single architecture dominates|nessuna (singola )?architettura domina",
       "source": "arXiv:2512.08296v3 (Kim et al.), Table 5 Success Rate",
       "retracted": "2026-08-02",
       "prs": ["#3513", "#3514"],
@@ -74,7 +88,8 @@
         "CENTRALIZED IS NOT BEST. Table 5 Success Rate: Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370. Centralized is THIRD, below plain single-agent, and the paper states 'no single architecture dominates across all domains and vendors'.",
         "THE PAIR IS TRUE AND IRRELEVANT. Centralized > Independent (0.463 > 0.370) does hold. It supports nothing about peers, because Independent is not peer-to-peer -- it is parallel agents with Omega=synthesis_only. Citing it as residual support is a non-sequitur.",
         "IT POINTS THE WRONG WAY IF ANYTHING. The paper's peer-to-peer architecture is Decentralized, which scores HIGHEST on that metric.",
-        "THIRD GENERATION, SELF-INFLICTED. This claim was introduced by the sessions CORRECTING the 17.2x claim (#3513/#3514) and shipped to main. The lesson is not about one paper: a replacement assertion written while retracting another is unverified by default."
+        "THIRD GENERATION, SELF-INFLICTED. This claim was introduced by the sessions CORRECTING the 17.2x claim (#3513/#3514) and shipped to main. The lesson is not about one paper: a replacement assertion written while retracting another is unverified by default.",
+        "PATTERN LESSON (added after the cross-family round that caught this claim): the first regex matched only 'Centralized best' -- the exact wording I had written. It missed 'Centralized > Independent confirms the no-peer rule' and 'Independent is lowest, therefore use centralized state', which assert the same non-sequitur with no superlative in sight. A pattern written from the instance you found is a pattern that catches the instance you found."
       ],
       "what_still_stands": "The no-peer-to-peer rule, unchanged, on REPO GROUNDS ALONE (context isolation, one auditable state owner, no cross-worker contamination). Do not cite this paper for it in either direction.",
       "correction_lives_in": [

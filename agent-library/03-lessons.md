@@ -196,7 +196,7 @@ single file).
 
 ### 19. Multi-agent topology Kim 2025
 
-**Sintesi**: Kim et al. arXiv:2512.08296 (**Google Research + Google DeepMind + MIT**, dic 2025, v3 apr 2026). Studio controllato su **260 configurazioni**, 6 benchmark agentici, 5 architetture (SAS + Independent/Centralized/Decentralized/Hybrid), 3 famiglie LLM. **Centralized (orchestrator-led) preferito** per task indipendenti parallelizzabili.
+**Sintesi**: Kim et al. arXiv:2512.08296 (**Google Research + Google DeepMind + MIT**, dic 2025, v3 apr 2026). Studio controllato su **260 configurazioni**, 6 benchmark agentici, 5 architetture (SAS + Independent/Centralized/Decentralized/Hybrid), 3 famiglie LLM. **Centralized (orchestrator-led) è la nostra preferenza di repo** per task indipendenti parallelizzabili — RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] non è una conclusione del paper: sulla Table 5 aggregata `Centralized` (0.463) sta **sotto** il singolo agente (0.466) e il paper scrive _"no single architecture dominates across all domains and vendors"_. Una stesura precedente di questa riga attribuiva la preferenza a Kim et al.
 
 **⚠️ CITAZIONE RITIRATA 2026-08-02 — il MOTIVO che citavamo era sbagliato, e i numeri erano tre volte imprecisi. Non ripristinare la citazione.** Questa voce diceva «Google DeepMind+MIT, **180 configs**, Centralized=4.4× / Independent=17.2× **error amplification**» e usava quei due numeri come causa della preferenza. Verificato alla fonte su arXiv:2512.08296v3:
 
