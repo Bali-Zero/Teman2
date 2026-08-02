@@ -2148,6 +2148,22 @@ may be closer to the law — but it qualifies nothing, and answers "absolutely" 
 internally treat as disputed. Two over-confident surfaces pointing opposite ways; the divergence is
 itself the signal. This is why (a) and (b) below cannot be ruled on by looking at the page alone.
 
+**The channel does not merely LACK the verdict — it carries prose pushing the other way, and that
+is measured, not inferred.** The KG's rich `kbli` nodes key on `properties->>'kode'` (the
+`KBLI <code>`-named rows are empty skeletons — a first pass keyed on `name` read **0 of 39** and was
+measuring the dedup disease, not the data). Keyed correctly: **38 of 39** present, **all 38**
+`pma_status: TERBUKA`, **0** carrying `l4_bali`, and **13** carrying a `baliContext`. That field is
+**editorial market prose, not a legal verdict** — `55203` reads _"**🏝 The Bali Villa Market (Reality
+Check)** — Villas ARE Bali's tourism identity: Seminyak, Canggu, Ubud…"_, `93122` lists Bali's golf
+clubs. And it reaches the channel: `kbli_documents.content` contains both _"Reality Check"_ and
+_"tourism identity"_ verbatim. So the LLM answering on WhatsApp is handed an enthusiastic market
+description of exactly the activity the page marks 🚫, with no verdict beside it — which is why its
+answer has a "Bali Reality Check" section and still says **yes**.
+_(Correction to my own measurement, kept because it is the failure this corner exists to catch: I
+first counted "3 baliContext mentioning a bar" using `ILIKE '%Besar%' OR '%clos%' OR '%MSME%'` —
+those match ordinary words like "closest". Reading the 13 in full, **none** states a restriction.
+Family #3 in my own probe.)_
+
 **⚠️ The obvious cure is a trap: "sync `l4_bali` to the channels" would propagate the REFUTED
 reading onto a fifth surface.** Sequencing matters more than the wiring here — rule the verdict
 first, wire second, or the tidy-looking fix ships the error further. The wiring itself is
