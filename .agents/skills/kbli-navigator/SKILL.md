@@ -65,15 +65,28 @@ propagation order that actually reaches a client:
 - On a static file, a cache-busting query does NOT bust the Vercel edge cache, and neither does a
   client no-cache header. **Compare the `etag` against an md5 you computed yourself.**
 
-**🟡 STILL OPEN — the frontend half is merged but NOT SERVED (`operator[credential]`).** The cured
-`llms-kbli.txt` is on main and two production/READY deployments carry it, but `balizero.com` still
-serves the etag of the PRE-cure file, with 61 TERTUTUP rows still reading 100%. No Vercel credential
-on the fleet works (M5 token → 403 invalidToken; Pro's auth file is a placeholder with no token key;
-Mini has none; no repo secret, no workflow). The `mcp__vercel__*` tools have their own auth but expose
-no promote, and every `*.vercel.app` alias is SSO-protected — `balizero.com` is the only host this can
-be measured on. Unblocking needs an interactive `vercel` login. **Which of the three causes it is —
-stale alias, manual promotion, or edge cache — is NOT established**, only the symptom and the remedy
-family.
+**🟢 CLOSED — the frontend half is now SERVED, and the cause is no longer a family of suspects.**
+Zero ran the interactive `vercel login` (the one `operator[gui]` step); the session did the rest.
+The newest `production`/`READY` deployment already carried the cure and the custom domains were
+still serving the previous build — `POST /v10/projects/<id>/promote/<dpl>` → HTTP 201 published it.
+**Cause established by re-reading the deployment afterwards, not by elimination:** it now reports
+`readySubstate: PROMOTED`, i.e. it had been sitting `STAGED` — the mechanism already ledgered on
+2026-07-30, NOT a stale alias and NOT the edge cache. That distinction matters because only one of
+the three has a cure that generalises, and it is the one that turned out to be true.
+
+PROVEN LIVE on `balizero.com/llms-kbli.txt`, by etag against an md5 computed here (a cache-busting
+query and a client no-cache header both fail to reach origin on a static asset): `aa793fa029bd…`
+= the post-regeneration file, `age: 0`, and rows publishing a TERTUTUP code as `100%` foreign-open
+**61 → 0**. Read as content rather than as one number: `11010` TERTUTUP now `0%` (was `100%`),
+`47221` prints `special` instead of an invented percentage, 64 rows at `0%`, and the 217 codes with
+no risk classification say `Not classified` where they used to assert `LOW`. 1,570 lines — the file
+is whole, not truncated into agreement.
+
+**Declared gap, measured not assumed:** prod serves `1050e5c99` while `origin/main` is `ddd86a1ef`.
+`git diff --name-only 1050e5c99 origin/main -- apps/mouth/` is **empty** — the two commits in
+between are the backend sync tool and this corner, so the served frontend and the tip are identical
+where it renders. The recurrence question (nothing promotes unattended) is NOT re-opened here: it
+already has its own ledger line from 2026-07-30, and a second one would be a twin.
 
 **🟡 STILL OPEN — 14 codes deliberately unadjudicated.** 12 BROADER + 2 RENAMED, where the 2025 code
 is wider than the _bidang usaha_ the instrument restricts. A cap there is a per-code decision, not a
