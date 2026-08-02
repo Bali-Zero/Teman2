@@ -2148,6 +2148,18 @@ may be closer to the law — but it qualifies nothing, and answers "absolutely" 
 internally treat as disputed. Two over-confident surfaces pointing opposite ways; the divergence is
 itself the signal. This is why (a) and (b) below cannot be ruled on by looking at the page alone.
 
+**⚠️ The obvious cure is a trap: "sync `l4_bali` to the channels" would propagate the REFUTED
+reading onto a fifth surface.** Sequencing matters more than the wiring here — rule the verdict
+first, wire second, or the tidy-looking fix ships the error further. The wiring itself is
+understood and small (grounded this session, so nobody has to re-derive it): the router builds its
+LLM context on **two** branches and neither has a place for a Bali layer —
+`kbli_notebook_chat.py:388` emits only `code / title / description / pma_status / risk_category`,
+and the `full_content` branch above it passes the row's `content` verbatim, which is exactly the
+field measured at **0 of 39** mentions. Nor is the omission a policy choice: `kbli_documents` has no
+general populator at all (only the two `*_cure.py` scripts write to it), so the store was seeded
+before the Bali overlay existed and simply never re-synced. **The gap is mechanical, the fix is
+not** — do not let the ease of the wiring pull the decision forward.
+
 **Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
 **24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
 **`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
