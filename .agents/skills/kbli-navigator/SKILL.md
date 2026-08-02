@@ -2239,7 +2239,26 @@ Deliberately not asked now: asking now means deciding on the large population. F
 ### 5.5 F4 — root and upkeep
 
 - **KG generator** — it does not exist; edges are deleted by hand and the 68% dedup disease is still
-  at the root.
+  at the root. **Quantified read-only 2026-08-02, and the shape is a clean discriminator**: of
+  **13,633** `entity_type='kbli'` nodes only **1,558 carry any data** (11.4%) — and `entity_id`
+  predicts it perfectly: every `kbli:<code>` row is rich (1,558/1,558), every other form is empty
+  (`kbli_<code>` 5,950 · `kbli_kbli_<code>` **double-prefixed** 4,986 · other 1,139, all with zero
+  `pma_status`). **The 12,075 empty ones are not inert orphans: 9,882 of them are reachable by an
+  edge** (against 1,556 reachable rich nodes), so a traversal landing on one reads nothing and
+  degrades to `"Verify at OSS"` — honest, but the answer is lost. Extracting the code from the id
+  also yields **8,156 distinct entities against a 1,559-code catalogue**, of which 6,598 have no
+  rich node at all: 3,455 not numeric, 2,032 digits of the wrong length, and **1,111 well-formed
+  5-digit codes with no data anywhere** (the phantom-code family, an order of magnitude above the
+  77 already ledgered on the gold side).
+  _Two probe corrections worth keeping._ **(1)** A first pass keyed on `name` reported **0 of 39**
+  KBLI nodes carrying `pma_status`: the rich rows are named by their TITLE (`VILLA RENTAL (AKTIVITAS
+VILA)`), only the empty skeletons are named `KBLI <code>` — the probe was measuring the dedup
+  disease and calling it absence. Key on `properties->>'kode'`. **(2)** I suspected
+  `kbli_notebook_chat.py:1089` (`name ILIKE $1 OR entity_id ILIKE $1` … `LIMIT 5`, no `ORDER BY`)
+  could drop the rich node behind duplicates. **Measured and REFUTED**: max rows per code is **3**,
+  so no code exceeds the limit. Recorded as refuted rather than dropped, so nobody re-derives the
+  same suspicion — but any future `LIMIT` on that query is one duplicate-family away from becoming
+  real, and the free fix is to order by `entity_id LIKE 'kbli:%' DESC`.
 - **Refresh loop** OSS/JDIH: the 221 no-scope watchlist self-resolves when OSS publishes a scope, and
   the 217 declared gaps become verified values **with no human work**. This is the only path by which
   the "99 missing" close themselves.
