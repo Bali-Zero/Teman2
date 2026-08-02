@@ -2099,6 +2099,29 @@ withdraw a claim that is already being made, not whether to start making one. St
 the sequencing changes with it: this outranks the caveat wording, because a caveat added under a 🚫
 badge would qualify a verdict the same page states as HIGH-confidence fact.
 
+**The other 17 are worse, and the dataset says so itself.** Cross the 39 against the module's
+three-state `besar` and the split is **perfect, with no mixing**: the 22 at `HIGH` are `besar:
+absent` (OSS publishes scale rows, none of them Besar — a weak fact, but a fact); the 17 at `LOW`
+are `besar: unobserved` — **`per_skala: []`**, no scale rows at all. Two things follow, both
+measured on the rendering dataset and confirmed on prod:
+
+- **All 17 carry, in their own `reason` text, the phrase _"the verdict cannot currently be
+  re-derived"_** (the risk-tier rows it was read from were set aside as unverifiable for KBLI 2025).
+  The record states the verdict is unsupported **and the page still renders the categorical 🚫
+  badge**; the only difference from the 22 is the word `LOW` printed beside it. Checked live on
+  `70100` (Kantor Pusat — a code clients actually use) and `93121`.
+- **7 of them assert a POSITIVE fact the record cannot support**: _"OSS has no Usaha Besar scale row
+  **(only Mikro/Kecil/Menengah)**"_ — a claim about which rows OSS publishes — on codes whose
+  `per_skala` **and** `per_skala_legacy` are both empty. `52211` (Terminal Darat) and six `931xx`
+  sports clubs. Saying "only Mikro/Kecil/Menengah" is claiming to have read rows that are not in the
+  record: not a debatable reading of Pasal 7, a statement contradicted by our own data.
+
+That last group is a different kind of defect from the queue: the queue is a **legal reading** the
+codeowner must rule on (Legge 5), while "we saw only M/K/M" is a **factual assertion our data
+refutes**. Kept together here and NOT patched in this pass — the fix still edits client-facing text
+on live pages, so it goes through the adversarial gate with the rest — but it should be ruled on
+first and separately, because no ruling on Pasal 7 makes that sentence true.
+
 **Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
 **24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
 **`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
