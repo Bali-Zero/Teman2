@@ -101,6 +101,28 @@ def _set_settings_attr(monkeypatch, name: str, value: str) -> None:
     )
 
 
+def _escape_target(sink_dir: Path, sandbox: Path, marker: str, suffix: str) -> tuple[str, Path]:
+    """
+    Build a traversal id that lands EXACTLY one level above the sandbox, and return the
+    path it would resolve to.
+
+    Hand-writing `../../` and then asserting `not outside.exists()` is how a guilt test
+    goes vacuous: the sink appends its own suffix (`.json`, `{ext}`) and each sink sits
+    at a different depth under the sandbox, so the name you assert absent is one the code
+    could never have written — the assertion passes with the guard REMOVED. Found by the
+    live negative control, which reported "nothing written outside" for two sinks while
+    one of them had just written a file. Depth and suffix both come from the caller's
+    real values here, so the assertion names the file that would actually appear.
+    """
+    depth = len(sink_dir.resolve().relative_to(sandbox.resolve()).parts) + 1
+    item_id = "../" * depth + marker
+    target = sandbox.parent / f"{marker}{suffix}"
+    assert (sink_dir / f"{item_id}{suffix}").resolve() == target.resolve(), (
+        "the escape target this test asserts on is not where the sink would write"
+    )
+    return item_id, target
+
+
 def _redirect_pending_root(monkeypatch, tmp_path) -> None:
     """`get_intel_pending_path` is read at call time, so repointing settings suffices."""
     _set_settings_attr(monkeypatch, "get_intel_pending_path", str(tmp_path))
@@ -131,16 +153,15 @@ class TestCoverUploadRoute:
         self, tmp_path, monkeypatch
     ) -> None:
         _redirect_staging_root(monkeypatch, tmp_path)
-        outside = tmp_path.parent / "zz-cover-should-never-exist"
+        covers_dir = intel_mod.staging_service.get_staging_dir("news") / "covers"
+        item_id, target = _escape_target(covers_dir, tmp_path, "zz-cover-never-exists", ".jpg")
 
         body = intel_mod.CoverImageUploadRequest(cover_image_base64="", cover_image_filename=None)
         with pytest.raises(HTTPException) as exc:
-            await intel_mod.upload_cover_image(
-                type="news", item_id=f"../../{outside.name}", request=body
-            )
+            await intel_mod.upload_cover_image(type="news", item_id=item_id, request=body)
 
         assert exc.value.status_code == 400
-        assert not outside.exists()
+        assert not target.exists(), f"the guard let a write escape to {target}"
 
     @pytest.mark.asyncio
     async def test_guilt_a_hostile_extension_is_refused_even_with_a_valid_id(
@@ -228,12 +249,12 @@ class TestTelegramIntelCallback:
             "answer_callback_query",
             lambda *a, **k: answered.append((a, k)),
         )
-        outside = tmp_path.parent / "zz-webhook-should-never-exist.json"
+        item_id, target = _escape_target(tmp_path, tmp_path, "zz-webhook-never-exists", ".json")
 
-        handled = await webhook_mod.handle_intel_callback(self._callback(f"../../{outside.stem}"))
+        handled = await webhook_mod.handle_intel_callback(self._callback(item_id))
 
         assert handled is False
-        assert not outside.exists()
+        assert not target.exists(), f"the guard let a write escape to {target}"
         assert answered == []
 
     @pytest.mark.asyncio
@@ -420,12 +441,12 @@ class TestApprovalServiceVotingStatusWrite:
         _redirect_pending_root(monkeypatch, tmp_path)
         svc = IntelApprovalService()
         assert svc.pending_intel_path == Path(tmp_path)
-        outside = tmp_path.parent / "zz-voting-should-never-exist.json"
+        item_id, target = _escape_target(tmp_path, tmp_path, "zz-voting-never-exists", ".json")
 
         with pytest.raises(ValueError):
-            svc._save_voting_status(f"../../{outside.stem}", "news", {"title": "x"}, None, None)
+            svc._save_voting_status(item_id, "news", {"title": "x"}, None, None)
 
-        assert not outside.exists()
+        assert not target.exists(), f"the guard let a write escape to {target}"
 
     def test_innocence_a_legitimate_id_still_writes_its_status(self, tmp_path, monkeypatch) -> None:
         from backend.services.intel.intel_approval_service import IntelApprovalService
