@@ -38,14 +38,20 @@ matching alone):
 
 from __future__ import annotations
 
+import pytest
+
 from backend.scripts.kbli_documents_cure import (
     DocumentCurePlan,
     archive_params,
     build_cured_content,
     build_cured_metadata,
     build_perizinan_section,
+    fetch_conformance_report,
+    is_machine_template,
+    licensing_absent_codes,
     plan_cure,
     quarantined_codes,
+    rebuild_reason,
 )
 
 # Trimmed real canonical records (2026-07-19 dataset) — the two live-proof
@@ -398,3 +404,208 @@ def test_archive_params_handles_missing_metadata_gracefully():
     import json as _json
 
     assert _json.loads(params[3]) == {}
+
+
+# ---------------------------------------------------------------------------
+# STATE-BASED SCOPE (--all-licensing-absent, 2026-08-02)
+#
+# The marker selector above reaches 73 codes; 1,423 of the table's 1,563 rows
+# had never been touched by any cure because every run named its own --only
+# list ("the selector is the disease", this corner's own meta-pattern, landing
+# for the fourth time). This selector asks the conformance detector for STATE
+# instead, so no list is authored anywhere.
+#
+# The guilt/innocence pair here is not decorative. `licensing_divergent` is
+# SYMMETRIC — it reports both "canonical has rows, table has none" and its
+# mirror. Only the first is this script's business; curing the mirror would
+# rewrite a live row-set into a gap statement, i.e. destroy data while the run
+# report says "cured". The innocence test is that mirror.
+# ---------------------------------------------------------------------------
+
+
+def test_licensing_absent_selects_canonical_rows_with_empty_channel():
+    """GUILT: canonical holds verified rows, the channel serves none."""
+    report = {"licensing_divergent": [{"code": "82400", "canonical_rows": 7, "table_rows": 0}]}
+    assert licensing_absent_codes(report) == ["82400"]
+
+
+def test_licensing_absent_never_selects_the_mirror_direction():
+    """INNOCENCE — THE regression this selector exists to avoid.
+
+    A code whose canonical record has DETACHED its rows while the table still
+    serves them is the quarantine class. Selecting it here would flatten real
+    licensing rows into a gap statement and report it as a cure."""
+    report = {"licensing_divergent": [{"code": "50113", "canonical_rows": 0, "table_rows": 12}]}
+    assert licensing_absent_codes(report) == []
+
+
+def test_licensing_absent_keeps_only_its_own_direction_from_a_mixed_report():
+    """Both directions in one report: exactly one is this selector's business."""
+    report = {
+        "licensing_divergent": [
+            {"code": "50113", "canonical_rows": 0, "table_rows": 12},
+            {"code": "82400", "canonical_rows": 7, "table_rows": 0},
+            {"code": "01122", "canonical_rows": 8, "table_rows": 0},
+        ]
+    }
+    assert licensing_absent_codes(report) == ["01122", "82400"]
+
+
+def test_licensing_absent_on_a_clean_report_is_empty():
+    assert licensing_absent_codes({"licensing_divergent": []}) == []
+    assert licensing_absent_codes({}) == []
+
+
+class _Proc:
+    def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _pin_detector(monkeypatch, tmp_path, proc: _Proc):
+    """Give the module a real file to find, and a canned detector result."""
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# stand-in\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "backend.scripts.kbli_documents_cure.subprocess.run",
+        lambda *a, **k: proc,
+    )
+    return script
+
+
+def test_fetch_conformance_report_accepts_the_divergence_exit(monkeypatch, tmp_path):
+    """POSITIVE CONTROL — without this, every refusal below would also pass on
+    a guard that simply refuses everything. Exit 1 is the NORMAL path: the
+    detector exits 1 precisely when there is something to cure."""
+    body = '{"licensing_divergent": [{"code": "82400", "canonical_rows": 7, "table_rows": 0}]}'
+    script = _pin_detector(monkeypatch, tmp_path, _Proc(1, stdout=body))
+    report = fetch_conformance_report(script)
+    assert licensing_absent_codes(report) == ["82400"]
+
+
+def test_fetch_conformance_report_refuses_cannot_verify(monkeypatch, tmp_path):
+    """Exit 4 carries an EMPTY divergence list — byte-identical to a healthy
+    fleet. Reading it as 'nothing to cure' is how a cure becomes a silent
+    no-op (W84: absence of a reading is not alignment)."""
+    script = _pin_detector(monkeypatch, tmp_path, _Proc(4, stdout="CANNOT VERIFY: table snapshot unavailable"))
+    with pytest.raises(RuntimeError, match="CANNOT-VERIFY"):
+        fetch_conformance_report(script)
+
+
+def test_fetch_conformance_report_refuses_an_unknown_exit(monkeypatch, tmp_path):
+    """An exit outside the detector's declared vocabulary is not a verdict."""
+    script = _pin_detector(monkeypatch, tmp_path, _Proc(2, stderr="Traceback ..."))
+    with pytest.raises(RuntimeError, match="exited 2"):
+        fetch_conformance_report(script)
+
+
+def test_fetch_conformance_report_refuses_a_silent_success(monkeypatch, tmp_path):
+    """Exit 0 with no body: judged on the OUTPUT, not on having survived."""
+    script = _pin_detector(monkeypatch, tmp_path, _Proc(0, stdout="   "))
+    with pytest.raises(RuntimeError, match="printed nothing"):
+        fetch_conformance_report(script)
+
+
+def test_fetch_conformance_report_refuses_a_missing_detector(monkeypatch, tmp_path):
+    """No detector means no predicate — this script does not own one, and must
+    not fall back to inventing a second answer to the same question (W105)."""
+    monkeypatch.setattr(
+        "backend.scripts.kbli_documents_cure.subprocess.run",
+        lambda *a, **k: _Proc(0, stdout="{}"),
+    )
+    with pytest.raises(RuntimeError, match="not found"):
+        fetch_conformance_report(tmp_path / "absent.py")
+
+
+# ---------------------------------------------------------------------------
+# CONTENT-PRESERVATION GATE (2026-08-02)
+#
+# The 2026-02-18 seed left two document shapes in this table. One is machine-
+# derived from the same canonical fields the rebuild reads (replacing it loses
+# nothing); the other is hand-written client-facing prose — code disambiguation
+# and local-market guidance — that canonical cannot regenerate.
+#
+# Recognition is POSITIVE and whole-document. An earlier draft searched for the
+# known editorial headings, which judges FORM: prose under any other heading
+# would have been classified disposable and destroyed. A cross-family review
+# (Codex GPT-5.6, instructed to refute) named that and two more; the tests
+# below are those objections turned into red-on-regression.
+# ---------------------------------------------------------------------------
+
+_MACHINE_ROW = """# KBLI 01122 - PERTANIAN PADI INBRIDA
+
+## Informasi Umum
+- **Kode KBLI 2025**: 01122
+
+## Deskripsi Kegiatan Usaha
+Kelompok ini mencakup kegiatan pertanian padi inbrida.
+
+## Investasi Asing (PMA)
+- Status PMA: TERBUKA
+"""
+
+_EDITORIAL_ROW = (
+    "KBLI 86995: AKTIVITAS RUMAH PIJAT\n\nWHAT IT MEANS:\nMassage parlours — distinct from "
+    "medical massage (86991) and spa treatments (96230).\n\nBALI CONTEXT:\nUbud, Sanur and "
+    "Canggu all have thriving massage clusters."
+)
+
+
+def test_machine_template_recognised():
+    assert is_machine_template("01122", _MACHINE_ROW) is True
+
+
+def test_machine_template_rejects_a_hand_added_section():
+    """THE regression a head-only check would miss (review objection C): the
+    document opens machine-shaped and a human appended material below."""
+    tampered = _MACHINE_ROW + "\n## Catatan Tim\nKlien harus cek zonasi Bali dulu.\n"
+    assert is_machine_template("01122", tampered) is False
+
+
+def test_machine_template_rejects_editorial_prose():
+    assert is_machine_template("86995", _EDITORIAL_ROW) is False
+
+
+def test_machine_template_rejects_a_heading_naming_another_code():
+    """The heading must name THIS code — a row carrying another code's document
+    is not a row whose shape we have verified."""
+    assert is_machine_template("99999", _MACHINE_ROW) is False
+
+
+def test_machine_template_rejects_prose_under_unknown_headings():
+    """Valuable prose under headings nobody enumerated is REFUSED, not swept in
+    — the whole point of recognising positively instead of keyword-hunting."""
+    other = "# KBLI 01122 - X\n\n## Panduan Lokal\nCatatan tim tentang praktik di Bali.\n"
+    assert is_machine_template("01122", other) is False
+
+
+def test_rebuild_reason_machine_template():
+    assert rebuild_reason("01122", _MACHINE_ROW, 8) == "machine-template"
+
+
+def test_rebuild_reason_rebuilds_a_government_contradicted_claim():
+    """Review objection B, answered in the direction that costs prose: a row
+    telling a client licensing is minimal, on a code where canonical now holds
+    government rows, is rebuilt — a false regulatory instruction outranks the
+    market copy, which the archive keeps."""
+    stale = _EDITORIAL_ROW + "\nSince there's no PP28 data yet, licensing is currently minimal."
+    assert rebuild_reason("86995", stale, 2) == "contradicted-licensing-claim"
+
+
+def test_rebuild_reason_preserves_editorial_prose_without_a_false_claim():
+    """INNOCENCE: hand-written prose that contradicts nothing is kept. Without
+    this, the gate would be a rebuild-everything switch wearing a gate's name."""
+    assert rebuild_reason("86995", _EDITORIAL_ROW, 2) is None
+
+
+def test_rebuild_reason_does_not_fire_when_canonical_has_no_rows():
+    """The claim is only FALSE if canonical actually holds rows. With zero rows
+    'licensing is minimal' may well be true, and rebuilding would trade prose
+    for nothing."""
+    stale = _EDITORIAL_ROW + "\nSince there's no PP28 data yet, licensing is currently minimal."
+    assert rebuild_reason("86995", stale, 0) is None
+
+
+def test_rebuild_reason_refuses_an_absent_row():
+    assert rebuild_reason("01122", None, 8) is None

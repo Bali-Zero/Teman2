@@ -124,6 +124,8 @@ import asyncio
 import json
 import logging
 import os
+import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -140,6 +142,61 @@ DATASET_URL = f"{RAW_BASE}/data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 GAP_FALLBACK_TEXT = (
     "Regime perizinan untuk kode ini belum dapat diverifikasi dari sumber resmi yang "
     "kami miliki saat ini. Mohon konfirmasi persyaratan terkini dengan tim Bali Zero."
+)
+
+# --- state-based scope (2026-08-02) -----------------------------------------
+# The conformance detector is the SINGLE implementation of "does this code's
+# licensing presence agree between canonical and the channel table". This
+# script does not re-derive that predicate: it asks the detector and consumes
+# its verdict. Two tools that must agree on the same fact do not get to invent
+# two answers (W105) — and the detector is the one with the corpus that pins it.
+CONFORMANCE_SCRIPT = (
+    Path(__file__).resolve().parents[4] / "scripts" / "kbli_filiera" / "kbli_surface_conformance.py"
+)
+# Mirrors kbli_surface_conformance.py's own exit vocabulary. 4 is CANNOT-VERIFY
+# and it is NOT a clean bill: a detector that could not read the table reports
+# zero divergences, which is indistinguishable from a healthy fleet unless the
+# code refuses on it (W84 — absence of a reading is not alignment).
+CONFORMANCE_EXIT_OK = 0
+CONFORMANCE_EXIT_DIVERGENCE = 1
+CONFORMANCE_EXIT_CANNOT_VERIFY = 4
+
+# The 2026-02-18 seed produced TWO different document shapes, and only one of
+# them is safe to replace wholesale. The machine shape is derived from the same
+# canonical fields this script rebuilds from, so replacing it loses nothing. The
+# other shape carries HAND-WRITTEN client-facing prose (code disambiguation,
+# local-market guidance) that canonical cannot regenerate.
+#
+# Recognition is POSITIVE and whole-document, never a keyword search for the
+# prose: a search for known editorial headings judges the FORM, so prose under
+# any other heading would be silently classified disposable and destroyed
+# (superscar #3 — the guard that matches a string instead of an entity). Here
+# the default is REFUSE, and only a document whose every section belongs to the
+# machine template earns a rebuild. Measured 2026-08-02: all 50 machine-shaped
+# rows in the live divergent set carry exactly these three sections and nothing
+# else, so a row with a hand-added section is refused rather than overwritten.
+MACHINE_TEMPLATE_SECTIONS = frozenset(
+    {"Informasi Umum", "Deskripsi Kegiatan Usaha", "Investasi Asing (PMA)"}
+)
+_SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
+
+# A row whose prose asserts that no licensing data exists, on a code where
+# canonical now HOLDS government rows. Preserving that sentence keeps a
+# government-contradicted instruction in front of a client ("licensing is
+# currently minimal — get your NIB early") on an activity that in fact carries
+# a risk tier, which can drive a wrong filing decision. That harm outranks the
+# loss of market prose, so these rows are rebuilt even though they are
+# hand-written; the archive keeps the prose for a later editorial re-authoring.
+#
+# DECLARED LIMIT, deliberately not dressed up: this is a literal-phrase probe.
+# It finds the phrasings the 2026-02-18 seed actually used — it does NOT decide
+# in general whether prose contradicts data, which is a semantic judgment this
+# script cannot make. A row contradicting canonical in words not listed here is
+# NOT caught, and stays in the refused bucket.
+CONTRADICTED_LICENSING_CLAIM_RE = re.compile(
+    r"no PP28 data|licensing is currently minimal|no licensing data(?: yet)?"
+    r"|belum ada data (?:PP28|perizinan)",
+    re.I,
 )
 
 # One-shot forensic archive of the pre-cure fabricated row — created lazily
@@ -185,6 +242,89 @@ def quarantined_codes(dataset: list[dict]) -> list[str]:
         for r in dataset
         if any(k.startswith("per_skala_disputed_") for k in r)
     )
+
+
+def licensing_absent_codes(report: dict) -> list[str]:
+    """Pure. From a conformance report, the codes where **canonical HOLDS
+    verified licensing rows and the channel table serves NONE**.
+
+    ONE DIRECTION, deliberately. `licensing_divergent` is symmetric — it also
+    contains the mirror case (the table still holds rows that canonical has
+    since detached), which is the QUARANTINE class and belongs to
+    `--all-quarantined`. Curing that case from here would rewrite a real
+    row-set into a gap statement, i.e. destroy data while reporting a cure.
+    The asymmetry is the whole point of this selector, so it is asserted here
+    rather than left to the caller."""
+    return sorted(
+        str(d["code"])
+        for d in report.get("licensing_divergent", [])
+        if int(d.get("table_rows", 0)) == 0 and int(d.get("canonical_rows", 0)) > 0
+    )
+
+
+def is_machine_template(code: str, content: str | None) -> bool:
+    """Pure. True only if the WHOLE document is the 2026-02-18 machine seed:
+    the `# KBLI <code> - ` heading AND every `##` section drawn from
+    MACHINE_TEMPLATE_SECTIONS. Checking only the head would pass a row that
+    starts machine-shaped and has hand-written material appended lower down —
+    the exact content this predicate exists to protect."""
+    text = content or ""
+    if not re.match(rf"^#\s*KBLI\s+{re.escape(str(code))}\s*[-–—]", text):
+        return False
+    sections = {m.strip() for m in _SECTION_RE.findall(text)}
+    return bool(sections) and sections <= MACHINE_TEMPLATE_SECTIONS
+
+
+def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str | None:
+    """Pure. Why this row may be rebuilt wholesale — or None to refuse it.
+
+    Two admissible reasons, and no third:
+      - `machine-template`: nothing is lost, the text is derived from the same
+        canonical fields the rebuild reads.
+      - `contradicted-licensing-claim`: the prose tells a client there is no
+        licensing regime while canonical holds government rows. Rebuilding
+        costs hand-written prose (recoverable from the archive); NOT rebuilding
+        keeps a false regulatory instruction live. The second harm is larger,
+        so this case is rebuilt on purpose rather than parked in the safer-
+        looking bucket.
+    Anything else is REFUSED — the default is to keep human text."""
+    if is_machine_template(code, content):
+        return "machine-template"
+    if canonical_rows > 0 and CONTRADICTED_LICENSING_CLAIM_RE.search(content or ""):
+        return "contradicted-licensing-claim"
+    return None
+
+
+def fetch_conformance_report(script: Path) -> dict:
+    """I/O. Runs the detector and returns its JSON report.
+
+    Judged by EXIT CODE, never by "did it print something": exit 4 means the
+    detector could not read one of the two sides, and its report then carries
+    zero divergences — the exact shape of a healthy fleet. Consuming that as
+    "nothing to cure" is how a cure silently becomes a no-op (W84). Anything
+    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict."""
+    if not script.is_file():
+        raise RuntimeError(
+            f"conformance detector not found at {script} — refusing to guess scope from a "
+            "predicate this script does not own"
+        )
+    proc = subprocess.run(
+        [sys.executable, str(script), "--json"], capture_output=True, text=True, check=False
+    )
+    if proc.returncode == CONFORMANCE_EXIT_CANNOT_VERIFY:
+        raise RuntimeError(
+            "conformance detector returned CANNOT-VERIFY (exit 4) — it could not read canonical "
+            f"or the table, so an empty divergence list proves nothing: {proc.stdout.strip()[:300]}"
+        )
+    if proc.returncode not in (CONFORMANCE_EXIT_OK, CONFORMANCE_EXIT_DIVERGENCE):
+        raise RuntimeError(
+            f"conformance detector exited {proc.returncode} (expected 0/1/4): "
+            f"{(proc.stderr or proc.stdout).strip()[:300]}"
+        )
+    body = proc.stdout.strip()
+    if not body:
+        raise RuntimeError("conformance detector exited cleanly but printed nothing")
+    return json.loads(body)
 
 
 def _join(value: object) -> str:
@@ -380,13 +520,28 @@ async def main() -> None:
     ap.add_argument(
         "--only",
         default=None,
-        help="comma-separated list of 5-digit codes to process (mandatory unless --all-quarantined)",
+        help="comma-separated list of 5-digit codes to process "
+        "(mandatory unless --all-quarantined or --all-licensing-absent)",
     )
     ap.add_argument(
         "--all-quarantined",
         action="store_true",
         help="process every code with a per_skala_disputed_* marker in the canonical dataset "
-        "(73 as of 2026-07-19) — the ONLY sanctioned full-set sweep; never a bare table scan",
+        "(73 as of 2026-07-19) — a MARKER-selected sweep; never a bare table scan",
+    )
+    ap.add_argument(
+        "--all-licensing-absent",
+        action="store_true",
+        help="process every code the conformance detector reports as: canonical holds verified "
+        "licensing rows while the channel table serves NONE (80 codes / 687 rows as of "
+        "2026-08-02). STATE-selected, not marker-selected — this is the scope that reaches the "
+        "1,423 rows no --only list ever named. Refuses if the detector cannot verify.",
+    )
+    ap.add_argument(
+        "--conformance-script",
+        type=Path,
+        default=CONFORMANCE_SCRIPT,
+        help="path to kbli_surface_conformance.py (the sole owner of the divergence predicate)",
     )
     ap.add_argument(
         "--dataset",
@@ -398,14 +553,46 @@ async def main() -> None:
 
     dataset = await load_dataset(args.dataset)
 
+    canonical_rows_by_code: dict[str, int] = {}
+    if args.all_quarantined and args.all_licensing_absent:
+        logger.error(
+            "--all-quarantined and --all-licensing-absent are two DIFFERENT populations selected "
+            "two different ways (marker vs state) — refusing to union them, because the run "
+            "report could no longer say which scope acted. Run them separately."
+        )
+        return
+
     if args.all_quarantined:
         codes = quarantined_codes(dataset)
         if args.only:
             logger.warning("--only ignored: --all-quarantined takes precedence")
+    elif args.all_licensing_absent:
+        try:
+            report = fetch_conformance_report(args.conformance_script)
+        except (RuntimeError, OSError, json.JSONDecodeError) as exc:
+            logger.error("refusing to cure: %s", exc)
+            return
+        codes = licensing_absent_codes(report)
+        canonical_rows_by_code = {
+            str(d["code"]): int(d.get("canonical_rows", 0))
+            for d in report.get("licensing_divergent", [])
+        }
+        # Declare N of M — a scope printed without its denominator reads as
+        # "covered everything" (W97). The denominator here is every divergence
+        # the detector saw, including the mirror direction this selector skips.
+        logger.info(
+            "state-selected scope: %d code(s) with canonical rows and an empty channel row-set, "
+            "out of %d licensing divergence(s) the detector reported",
+            len(codes),
+            len(report.get("licensing_divergent", [])),
+        )
+        if args.only:
+            logger.warning("--only ignored: --all-licensing-absent takes precedence")
     else:
         if not args.only:
             logger.error(
-                "--only is MANDATORY unless --all-quarantined is passed — refusing to guess scope"
+                "--only is MANDATORY unless --all-quarantined or --all-licensing-absent is "
+                "passed — refusing to guess scope"
             )
             return
         codes = [c.strip() for c in args.only.split(",") if c.strip()]
@@ -429,6 +616,39 @@ async def main() -> None:
                 codes,
             )
         }
+
+        # Content-preservation gate — state-selected scope ONLY. The quarantine
+        # population is deliberately exempt: there the stored content is
+        # FABRICATED by definition (invented risk tiers, a capital figure from a
+        # revoked regulation), so "preserve what a human wrote" would preserve
+        # exactly what the cure exists to destroy. Same code, opposite duty,
+        # decided by which selector chose the row.
+        if args.all_licensing_absent:
+            keep, refused = [], []
+            for code in codes:
+                row = table_rows.get(code)
+                reason = rebuild_reason(
+                    code,
+                    row["content"] if row is not None else None,
+                    canonical_rows_by_code.get(code, 0),
+                )
+                (keep if reason else refused).append((code, reason))
+            logger.info(
+                "content-preservation gate: %d of %d row(s) rebuildable "
+                "(%d machine-template, %d contradicted-licensing-claim); %d REFUSED to protect "
+                "hand-written prose canonical cannot regenerate",
+                len(keep),
+                len(codes),
+                sum(1 for _, r in keep if r == "machine-template"),
+                sum(1 for _, r in keep if r == "contradicted-licensing-claim"),
+                len(refused),
+            )
+            for code, _ in refused:
+                logger.info("  REFUSED %s: hand-written content, not a machine-seed row", code)
+            codes = [c for c, _ in keep]
+            if not codes:
+                logger.warning("gate refused every selected row — nothing to do")
+                return
 
         plans: list[DocumentCurePlan] = []
         for code in codes:
