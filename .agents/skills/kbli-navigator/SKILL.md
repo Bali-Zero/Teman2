@@ -1981,6 +1981,30 @@ fetch command when the vault is absent.
 
 #### 🟢 F2 step 3 DONE — the negative locator, and what the BODY actually says
 
+**SHIPPED AND PROVEN LIVE 2026-08-02** (#3532 merged `223a8471`, #3536 the page-reader corpus;
+#3531 closed as content-on-main — main was AHEAD on 3 of its 7 files and the 4 "lost" lines were
+ones the later commit deliberately superseded, so merging it would have REGRESSED main; verified
+blob-per-file, never by ancestor or patch-id, W88).
+
+The citation is on the page. `/kbli/56101` reads `Basis: Perpres 10/2021 Pasal 3(1)(d) — no annex
+names this activity`; `/kbli/55203` reads `Perpres 49/2021 Lampiran II (Koperasi/UMKM) via
+KBLI-2020 55193`; `/kbli/11010` reads `Pasal 2(2)(b) (as amended by 49/2021) — closed by name`.
+65 distinct citations over 1,559 codes, 0 without one. Additive: no verdict, cap or label moved.
+
+**TWO consuming surfaces, not one — and the second was nearly missed.** `page.tsx:347` renders the
+visible line, but `api/kbli/gold/[code]/route.ts:31` serialises the whole `pma` object, so the field
+rides along into that JSON. Both were proven against a baseline recorded BEFORE the merge
+(`'Basis:'` = 0 with the code present 3× as the positive control; `pma` carrying 6 keys and no
+`citation`), and with a negative control per page (each carries **0** occurrences of `Pasal 6(3a)`,
+which belongs to `46333` — so it is not a blanket string).
+
+**Merging did not publish it.** The production deployment was `READY` for 25 minutes while
+`balizero.com` — and the project's own `mouth-git-main` alias — still served `1050e5c99`. Git-created
+production builds on this project land `readySubstate: STAGED` and never self-promote (ledgered
+2026-07-30); the session ran `POST /v10/projects/<id>/promote/<dpl>` → HTTP 201 and prod moved within
+15s. Read `/api/health`'s `.commit` (baked from `VERCEL_GIT_COMMIT_SHA`, recomputed per request) as
+the arbiter — a `?cb=` query does NOT bust the page cache on this route, so the header is not one.
+
 `perpres_body_default_relation.py --check`. This is the locator for the ~1,288 codes **no annex
 names** — the block that until now carried `pma_source: "Perpres 10/2021, 49/2021"` with no article
 behind it, i.e. a blanket attribution rather than a citation. Three corrections came out of reading
