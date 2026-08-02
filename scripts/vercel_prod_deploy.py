@@ -135,10 +135,42 @@ def _refresh_credential() -> bool:
     return True
 
 
+# An `expiresAt` in SECONDS cannot plausibly exceed this (year 5138); one in MILLISECONDS
+# always does (that is 1973 in ms). Anything above it is therefore ms, not a far-future token.
+_MS_CUTOFF = 1e11
+
+
+def _expiry_seconds(raw: object) -> float | None:
+    """Normalise `expiresAt` to seconds. `None` = unknown; any garbage = TREAT AS EXPIRED.
+
+    The docstring at the top of this file has warned since it was written that reading this
+    value as milliseconds "makes an expired token look valid until the year 58000" — and the
+    code enforced nothing, so the warning was decoration. Caught by an independent review
+    (GLM 5.2, which did not write this) and reproduced on disk before being believed: with
+    the plain `bool(x) and x < time.time()` test, `0` read as NOT expired (falsy swallows a
+    real epoch timestamp), a millisecond value read as NOT expired, and a numeric STRING
+    raised an uncaught `TypeError` comparing str to float. Writing the remedy down instead
+    of running it is the same defect this whole file was just fixed for.
+
+    Every ambiguous case resolves to EXPIRED on purpose. The cost of being wrong that way is
+    one extra ~1s refresh; the cost of the other way is handing out a dead token, i.e. the
+    403 that gets misread as "no credential on the fleet".
+    """
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return 0.0  # unreadable → expired, never "valid because we could not tell"
+    if value > _MS_CUTOFF:
+        value /= 1000.0
+    return value
+
+
 def _token() -> str:
     data = _read_auth()
-    expires_at = data.get("expiresAt")  # SECONDS, not milliseconds
-    expired = bool(expires_at) and expires_at < time.time()
+    expires_at = _expiry_seconds(data.get("expiresAt"))  # normalised to SECONDS
+    expired = expires_at is not None and expires_at < time.time()
     if expired or not data.get("token"):
         print("  Vercel token expired — refreshing via `vercel whoami`", file=sys.stderr)
         if not _refresh_credential():
@@ -147,7 +179,14 @@ def _token() -> str:
                 "on this machine (browser device-code flow, the one step a session cannot do)"
             )
         data = _read_auth()
-        still_expired = bool(data.get("expiresAt")) and data["expiresAt"] < time.time()
+        # Declared limit: this re-reads the EXPIRY, not the token VALUE. A `whoami` that
+        # moved the expiry forward while leaving the same access token in place would pass
+        # here. Comparing the value instead was considered and rejected — whether an OAuth
+        # refresh must mint a new access token is a guess about Vercel's server, and a cure
+        # anchored on a guess about a vendor is W106 verbatim. The file is the authority on
+        # its own validity; the API call that follows is what actually settles it.
+        refreshed_at = _expiry_seconds(data.get("expiresAt"))
+        still_expired = refreshed_at is not None and refreshed_at < time.time()
         if still_expired:
             sys.exit("`vercel whoami` returned 0 but the credential is still expired — run `vercel login`")
     token = data.get("token")

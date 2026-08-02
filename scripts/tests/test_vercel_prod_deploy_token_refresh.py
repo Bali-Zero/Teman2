@@ -129,3 +129,60 @@ def test_a_refresh_that_exits_zero_without_renewing_is_still_a_failure(auth, mon
     with pytest.raises(SystemExit) as exc:
         vpd._token()
     assert "still expired" in str(exc.value)
+
+
+# --- `expiresAt` normalisation -------------------------------------------------------------
+# Found by an independent review (GLM 5.2, which did not write the code) and reproduced on
+# disk before being believed. The file's own docstring had warned about the millisecond case
+# since it was written and the code enforced nothing — the warning was decoration, which is
+# the same shape as the defect the rest of this corpus covers.
+
+
+def test_epoch_zero_is_expired_not_falsy(auth, monkeypatch):
+    """`bool(0)` is False, so a plain truthiness guard reads 1970 as 'not expired'."""
+    _write(auth, STALE, 0)
+    fake, calls = _spy(rc=0, rewrite=(auth, FRESH, time.time() + 3600))
+    monkeypatch.setattr(subprocess, "run", fake)
+
+    assert vpd._token() == FRESH
+    assert len(calls) == 1, "epoch 0 is a real timestamp in the past, not a missing one"
+
+
+def test_a_millisecond_expiry_in_the_past_is_expired(auth, monkeypatch):
+    """The trap the docstring names: read as seconds, ms looks valid until the year 58000."""
+    _write(auth, STALE, (time.time() - 60) * 1000)
+    fake, calls = _spy(rc=0, rewrite=(auth, FRESH, time.time() + 3600))
+    monkeypatch.setattr(subprocess, "run", fake)
+
+    assert vpd._token() == FRESH
+    assert len(calls) == 1
+
+
+def test_a_millisecond_expiry_in_the_future_is_still_valid(auth, monkeypatch):
+    """Innocence for the same conversion — it must not declare every ms value expired."""
+    _write(auth, FRESH, (time.time() + 3600) * 1000)
+    fake, calls = _spy(rc=0)
+    monkeypatch.setattr(subprocess, "run", fake)
+
+    assert vpd._token() == FRESH
+    assert calls == []
+
+
+def test_a_numeric_string_expiry_does_not_raise(auth, monkeypatch):
+    """`"1785659937" < time.time()` is a TypeError, and nothing caught it."""
+    _write(auth, STALE, str(int(time.time() - 60)))
+    fake, calls = _spy(rc=0, rewrite=(auth, FRESH, time.time() + 3600))
+    monkeypatch.setattr(subprocess, "run", fake)
+
+    assert vpd._token() == FRESH
+    assert len(calls) == 1
+
+
+def test_an_unreadable_expiry_resolves_to_expired_not_to_valid(auth, monkeypatch):
+    """Fail-safe direction: an extra 1s refresh beats handing out a dead token."""
+    _write(auth, STALE, "not-a-timestamp")
+    fake, calls = _spy(rc=0, rewrite=(auth, FRESH, time.time() + 3600))
+    monkeypatch.setattr(subprocess, "run", fake)
+
+    assert vpd._token() == FRESH
+    assert len(calls) == 1
