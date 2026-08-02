@@ -28,7 +28,7 @@
     "",
     "TWO WAYS TO ABSOLVE, and the strong one is explicit. `RETRACTED[<claim-id>]` names the claim it",
     "retracts and needs nothing else. The unstructured fallback (an ALL-CAPS directive PLUS this",
-    "claim's `absolution_pattern`) exists so ordinary prose corrections keep working -- but the",
+    "claim's `absolution_pattern`) is NOT available to the two registered claims: both set",
     "registry now REFUSES weak absolution tokens: a phrase that can occur inside the endorsement",
     "(`no coordination`, `synthesis_only`, an architecture name) would absolve the very text it binds.",
     "Directives are also negation-guarded: `NOT RETRACTED` contains `RETRACTED` and means its opposite.",
@@ -38,7 +38,16 @@
     "descriptively' from 'appealing to it', and this claim's entire history is one reader quoting it",
     "neutrally and the next one re-deriving it as a reason. The cost is one directive per mention; the",
     "alternative -- requiring a causal connective -- under-matches every bare appeal to 'the 17.2x",
-    "finding'. Pinned by test_declared_friction_accurate_neutral_mention_still_wants_a_directive."
+    "finding'. Pinned by test_declared_friction_accurate_neutral_mention_still_wants_a_directive.",
+    "",
+    "MARKER-ONLY FOR REGISTERED CLAIMS (`require_bound_marker: true`, round 4). The unstructured",
+    "fallback is unsound and cannot be patched: the directive and the correction token are both",
+    "matched anywhere in the same window, so a naked endorsement can supply BOTH from its own words",
+    "(`Centralized > Independent confirms the rule; Table 5 reports Decentralized 0.477` sitting under",
+    "someone else's `RETRACTED`). Claim-specific correction evidence differs per claim anyway --",
+    "Table 4 STATISTICS for the causal claim, Table 5 VALUES for the ranking claim -- which is why the",
+    "readme's earlier 'both use the paper's real Table 5 numbers' was wrong. Only `RETRACTED[<id>]`",
+    "absolves a registered claim. The fallback remains for claims that do not opt in."
   ],
   "window_lines": 20,
   "directives": [
@@ -53,7 +62,7 @@
     {
       "id": "kim-2025-17x-error-amplification-as-cause",
       "pattern": "\\b17[.,]2\\s*(-|\\s)?\\s*[×x]|\\b4[.,]4\\s*(-|\\s)?\\s*[×x]",
-      "context_pattern": "error|amplif|peer|topolog|coordinat|Kim|2512\\.08296|Independent|Decentralized|swarm",
+      "context_pattern": "error|amplif|peer|topolog|coordinat|Kim|2512\\.08296|Independent|Decentralized|swarm|Google|sub-?agents?|agents?|talk|hand-?off|handoff|never",
       "context_window": 3,
       "source": "arXiv:2512.08296v3 (Kim et al., Towards a Science of Scaling Agent Systems)",
       "retracted": "2026-08-02",
@@ -72,11 +81,12 @@
         ".claude/agents/wr2-design-architect.md"
       ],
       "known_gap": "CLOSED 2026-08-02 for the two registered claims by `absolution_pattern` (a directive must be accompanied by a token from this claim's own correction). Still open in general: a claim registered WITHOUT an absolution_pattern is absolved by any nearby directive. Pinned by test_known_gap_claim_without_absolution_is_not_bound.",
-      "absolution_pattern": "0[.,]658|0[.,]014|Table\\s*4|Tabella\\s*4|ß̂|beta-?hat"
+      "absolution_pattern": "0[.,]658|0[.,]014|Table\\s*4|Tabella\\s*4|ß̂|beta-?hat",
+      "require_bound_marker": true
     },
     {
       "id": "kim-2025-ranking-supports-the-no-peer-rule",
-      "pattern": "\\bCentralized\\b[^.\\n]{0,40}\\b(best|migliore|highest|top-?ranked)\\b|\\b(best|migliore|highest)\\b[^.\\n]{0,25}\\bCentralized\\b|(pi[uù] il|plus the paper'?s?|the paper'?s?( own)?|benchmark|sui suoi benchmark)\\s*(own\\s+)?rank|rank(ing|s)?\\s+(del paper|of the paper)|\\bCentralized\\b\\s*>\\s*\\bIndependent\\b|\\bIndependent\\b\\s*<\\s*\\bCentralized\\b|\\b(confirms?|conferma|supports?|sostiene|argues for|therefore|quindi|dunque|so use|hence)\\b[^.\\n]{0,60}\\bcentraliz|\\bcentraliz[^.\\n]{0,60}\\b(is (therefore|thus) )?(confirmed|supported|preferito|preferred)\\b",
+      "pattern": "\\bCentralized\\b[^.\\n]{0,40}\\b(best|migliore|highest|top-?ranked)\\b|\\b(best|migliore|highest)\\b[^.\\n]{0,25}\\bCentralized\\b|(pi[uù] il|plus the paper'?s?|the paper'?s?( own)?|benchmark|sui suoi benchmark)\\s*(own\\s+)?rank|rank(ing|s)?\\s+(del paper|of the paper)|\\bCentralized\\b\\s*>\\s*\\bIndependent\\b|\\bIndependent\\b\\s*<\\s*\\bCentralized\\b|\\b(confirms?|conferma|supports?|sostiene|argues for|therefore|quindi|dunque|so use|hence)\\b[^.\\n]{0,60}\\bcentraliz|\\bcentraliz[^.\\n]{0,60}\\b(is (therefore|thus) )?(confirmed|supported|preferito|preferred)\\b|\\bCentralized\\b[^.\\n]{0,30}\\b(better than|outperform(s|ed)?|above|batte|superiore a)\\b[^.\\n]{0,20}\\bIndependent\\b|\\bIndependent\\b[^.\\n]{0,30}\\b(worse than|underperform(s|ed)?|below|peggio di|inferiore a)\\b[^.\\n]{0,20}\\bCentralized\\b",
       "context_pattern": "Independent|Decentralized|peer|topolog|Kim|2512\\.08296|17[.,]2",
       "context_window": 5,
       "absolution_pattern": "0[.,]477|no single architecture dominates|nessuna (singola )?architettura domina",
@@ -96,7 +106,8 @@
         ".claude/agents/wr2-design-architect.md",
         "agent-library/02-patterns.md",
         "research/marketing/2026-06-06-sota-carousel-automation.md"
-      ]
+      ],
+      "require_bound_marker": true
     }
   ],
   "phrase_directives": [

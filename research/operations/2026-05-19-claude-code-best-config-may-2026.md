@@ -4,7 +4,7 @@ domain: operations
 client_case: Claude Code best configuration May 2026 for Nuzantara-class stack
 sources: 14
 adversarial_review: codex
-adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key."
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key." RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
 ---
 
 # Claude Code best configuration — Maggio 2026
@@ -118,7 +118,7 @@ ssh -o ConnectTimeout=2 -o BatchMode=yes "$OTHER" 'echo "Peer: $(whoami)@$(hostn
 
 Quote ([NB-AGENTS source 10-11, 45-49]):
 
-> ⚠️ **CITAZIONE RITIRATA 2026-08-02 — la tabella qui sotto resta come record datato, la sua evidenza no.
+> ⚠️ **CITAZIONE RITIRATA 2026-08-02 — la tabella qui sotto resta come record datato, la sua evidenza no. RETRACTED[kim-2025-17x-error-amplification-as-cause]
 > Non ripristinare la come motivazione.** Il 17.2× misura `Independent` (§3.1: paralleli, `Ω=synthesis_only`,
 > **zero coordinamento**), non il peer-to-peer, che è `Decentralized`. E la Table 5 del paper (Success Rate)
 > dice: Decentralized 0.477 · SAS 0.466 · Centralized 0.463 · Hybrid 0.452 · Independent 0.370 — quindi
@@ -131,7 +131,7 @@ Quote ([NB-AGENTS source 10-11, 45-49]):
 | Topology                          | Error amplification vs single-agent baseline | Quando usarla                                         |
 | --------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
 | Single-agent (SAS)                | 1×                                           | Sequential pipelines (39-70% migliore di multi-agent) |
-| Centralized (orchestrator-led)    | 4.4×                                         | ~~Parallelizable tasks (+80.9% vs single-agent)~~ RITIRATA, vedi nota sotto         |
+| Centralized (orchestrator-led)    | 4.4×                                         | ~~Parallelizable tasks (+80.9% vs single-agent)~~ RITIRATA, vedi nota sotto         | RETRACTED[kim-2025-17x-error-amplification-as-cause]
 | Hybrid                            | intermediate                                 | Caso ibrido                                           |
 | Decentralized                     | high                                         | Evitare                                               |
 | **Independent (no coordination)** | **17.2×**                                    | **MAI**                                               |
@@ -139,8 +139,8 @@ Quote ([NB-AGENTS source 10-11, 45-49]):
 Translation per Nuzantara:
 
 - WR2 pipeline (brief → storyboard → layout → critic chain) = **single-agent** (catena sequenziale)
-- Deep research (4-LLM panel review) = **centralized** parallelizable — ~~+80.9% gain~~ **RITIRATA 2026-08-02** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]: il paper riporta un **range relativo** (+80.8% a −70.0%) attraverso le configurazioni, non un guadagno del centralized; sull'aggregato Table 5 `Centralized` 0.463 sta **sotto** il singolo agente 0.466. Non ripristinare la percentuale come guadagno.
-- _(citazione RITIRATA — non ripristinare la, vedi nota sopra)_ Mai spawnare 3 sessioni Claude parallele senza orchestrator coordinator (cicatrix `git stash` Branch Hijack ne è esempio: 17.2× pattern)
+- Deep research (4-LLM panel review) = **centralized** parallelizable — ~~+80.9% gain~~ **RITIRATA 2026-08-02** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]: il paper riporta un **range relativo** (+80.8% a −70.0%) attraverso le configurazioni, non un guadagno del centralized; sull'aggregato Table 5 `Centralized` 0.463 sta **sotto** il singolo agente 0.466. Non ripristinare la percentuale come guadagno. RETRACTED[kim-2025-17x-error-amplification-as-cause]
+- _(citazione RITIRATA — non ripristinare la, vedi nota sopra)_ Mai spawnare 3 sessioni Claude parallele senza orchestrator coordinator (cicatrix `git stash` Branch Hijack ne è esempio: 17.2× pattern) RETRACTED[kim-2025-17x-error-amplification-as-cause]
 
 Voyager + Reflexion patterns ([NB-AGENTS source 45-49]):
 
@@ -266,7 +266,7 @@ If you find yourself citing facts you "know" without a Read tool call → STOP a
 | Caveat                                                                                                                                                                                                                                                         | Mitigazione                                                                                                                             |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | WebSearch ha citato issue Anthropic #40614 con conferma "200-line limit hard-coded" ma anche con riferimento a `claude-mem/CHANGELOG.md` che NON è Anthropic ufficiale. La distinzione "hard-coded vs configurable" va riverificata leggendo source Anthropic. | Leggere `code.claude.com/docs/en/memory` direttamente prima di committare fix #1                                                        |
-| _(2026-08-02: RITIRATA — il numero È nel paper — §1 (Introduzione) per la frase, §4.3 per i valori `Aₑtrace` — ma misura `Independent` (parallelo, `Ω=synthesis_only`, **nessun coordinamento**), non il peer-to-peer, e Table 4 lo dà a p=0.658; la Table 5 dà `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370` e il paper scrive "no single architecture dominates". Non ripristinare né il numero né il ranking come motivazione.)_ NB-AGENTS cita Kim et al. 2025 arxiv 2512.08296 — paper esiste, ma "17.2× error amplification" specifico non l'ho verificato leggendo paper originale                                                                                                          | ~~Mitigazione: pattern già adottato da Nuzantara (centralized > independent), conferma rule corretta~~ **RITIRATA 2026-08-02** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — la coppia `centralized > independent` (0.463 > 0.370) è vera e **non conferma nulla** sul peer-to-peer: `Independent` non è peer-to-peer. La regola regge su basi di repo, e solo su quelle. |
+| _(2026-08-02: RITIRATA — il numero È nel paper — §1 (Introduzione) per la frase, §4.3 per i valori `Aₑtrace` — ma misura `Independent` (parallelo, `Ω=synthesis_only`, **nessun coordinamento**), non il peer-to-peer, e Table 4 lo dà a p=0.658; la Table 5 dà `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370` e il paper scrive "no single architecture dominates". Non ripristinare né il numero né il ranking come motivazione.)_ NB-AGENTS cita Kim et al. 2025 arxiv 2512.08296 — paper esiste, ma "17.2× error amplification" specifico non l'ho verificato leggendo paper originale                                                                                                          | ~~Mitigazione: pattern già adottato da Nuzantara (centralized > independent), conferma rule corretta~~ **RITIRATA 2026-08-02** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — la coppia `centralized > independent` (0.463 > 0.370) è vera e **non conferma nulla** sul peer-to-peer: `Independent` non è peer-to-peer. La regola regge su basi di repo, e solo su quelle. | RETRACTED[kim-2025-17x-error-amplification-as-cause]
 | Tool Search "v2.1.7" citato come release introduce-feature; nostra Pro è 2.1.144 quindi feature presente; Mini 2.1.140 → **verifica empirica** che ENABLE_TOOL_SEARCH funzioni anche lì                                                                        | Allineare Mini a 2.1.144 (item P1 #6)                                                                                                   |
 | 8 source web vs 49 source NotebookLM — confidenza alta perché tutte e 3 le sezioni più importanti (MEMORY.md limit, Tool Search, Skill 3-layer) sono confermate da ≥3 source convergenti                                                                       | Continua approccio 4/4 LLM panel per decisioni high-stakes                                                                              |
 
@@ -319,3 +319,26 @@ Empirical verification this session:
 
 - Exa MCP query (require user OAuth)
 - Direct paper read Kim et al. 2025 (would need WebFetch on arxiv.org full PDF)
+
+
+## Adversarial review
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh` — cross-family, and the author of the diff never graded it.
+**Scope**: the 2026-08-02 retraction annotations added to this file, and nothing else. The dated body is a
+record of what was believed on its date and was not re-reviewed.
+
+**Four rounds, all DO-NOT-SHIP until the last, and each one found something the previous had introduced.**
+
+1. Round 1 (7 objections) — "rejects" overstated `p=0.658`, which means UNSUPPORTED, not disproved; and
+   `Independent` was being equated with peer-to-peer when §3.1 defines it as parallel agents with
+   `Ω=synthesis_only`, i.e. no coordination at all.
+2. Round 2 (8) — an annotation that follows an assertion does not unsay it; two files thought to be
+   archaeology turned out to be a live spec and its ground truth.
+3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false**:
+   "Centralized best" contradicts Table 5 (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 >
+   Hybrid 0.452 > Independent 0.370`) and the paper's own *"no single architecture dominates"*.
+4. Round 4 (8) — the guard built to prevent a fourth generation could still be absolved by the
+   endorsement's own words; fixed by making `RETRACTED[<claim-id>]` the only thing that absolves.
+
+**Surviving objections: none.** Every one was verified before being accepted — by re-reading the source,
+or by executing the counterexample — and every accepted one was applied rather than waived.

@@ -473,3 +473,27 @@ Step 2 dossier closed. Three options:
 - **C** — Pivot
 
 Step 3 will produce: `03-agent-roster.md` — final list of WR3 sub-agents with verb-ownership mapping, model selection (Sonnet/Opus/Haiku), tool restrictions, frontmatter specs.
+
+
+## Adversarial review
+
+**Seat**: Codex `gpt-5.6-sol`, effort `xhigh` — cross-family, and the author of the diff never graded it.
+**Scope**: the ONE retraction annotation added to this file — the 17.2× citation. This file never
+asserted the replacement ranking claim, so no correction of it is certified here. The dated body is a
+record of what was believed on its date and was not re-reviewed.
+
+**Four rounds, all DO-NOT-SHIP until the last, and each one found something the previous had introduced.**
+
+1. Round 1 (7 objections) — "rejects" overstated `p=0.658`, which means UNSUPPORTED, not disproved; and
+   `Independent` was being equated with peer-to-peer when §3.1 defines it as parallel agents with
+   `Ω=synthesis_only`, i.e. no coordination at all.
+2. Round 2 (8) — an annotation that follows an assertion does not unsay it; two files thought to be
+   archaeology turned out to be a live spec and its ground truth.
+3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false**:
+   "Centralized best" contradicts Table 5 (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 >
+   Hybrid 0.452 > Independent 0.370`) and the paper's own *"no single architecture dominates"*.
+4. Round 4 (8) — the guard built to prevent a fourth generation could still be absolved by the
+   endorsement's own words; fixed by making `RETRACTED[<claim-id>]` the only thing that absolves.
+
+**Surviving objections: none.** Every one was verified before being accepted — by re-reading the source,
+or by executing the counterexample — and every accepted one was applied rather than waived.

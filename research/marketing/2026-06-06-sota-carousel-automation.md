@@ -220,7 +220,7 @@ When vendoring any MIT/Apache code, keep the attribution header + add to a `PROV
 
 ## 10. Source-honesty notes (anti-hallucination)
 
-> ⚠️ **RETRACTED in part 2026-08-02** — the arXiv:2512.08296 bullet below is false; do not restore it. See §1.
+> ⚠️ **RETRACTED in part 2026-08-02** — the arXiv:2512.08296 bullet below is false; do not restore it. See §1. RETRACTED[kim-2025-17x-error-amplification-as-cause]
 
 These were **verified by the orchestrator** (not just relayed from sub-lanes):
 
@@ -290,7 +290,7 @@ Questo conferma l'autopsy del 2026-06-04 ("A intelligente = dead-code, B che pub
 
 ### What the refuter caught that the author had not
 
-> All rows below quote a **RETRACTED** claim in order to correct it — do not restore any of them.
+> All rows below quote a **RETRACTED** claim in order to correct it — do not restore any of them. RETRACTED[kim-2025-17x-error-amplification-as-cause]
 
 | # | Objection | Status |
 |---|---|---|

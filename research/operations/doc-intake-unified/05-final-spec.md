@@ -476,7 +476,7 @@ NON agenti dialoganti (verdetto panel unanime; ~~NB 05c "17.2× error amplificat
 
 **How this file got here**: it was not in the original scope. The reviewer falsified the claim that only *live agent surfaces* still carried the citation, by pointing at `00-INDEX.md` — which calls `05-final-spec.md` a **"SPEC FINALE ESEGUIBILE"** a dev/agent builds from, and `05c-nb-patterns.md` its **ground truth**. Neither is archaeology, so both are corrected rather than ledgered.
 
-**What was wrong** — the claim is RETRACTED; do not restore it (verified at source on arXiv:2512.08296v3, §3.1 / §4.3 / Table 4):
+**What was wrong** — the claim is RETRACTED; do not restore it (verified at source on arXiv:2512.08296v3, §3.1 / §4.3 / Table 4): RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
 
 1. **Wrong topology.** 17.2× measures `Independent` (§3.1: parallel, `Ω=synthesis_only`, *no coordination*). Peer-to-peer is `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus) and is **not** ranked worst. `05c` asserted the number *of* Decentralized — the conflation in its purest form, and the route by which it became the spec's "no swarm" rationale.
 2. **Unsupported as a cause.** §4.3 narrates error propagation; Table 4 of the same paper reports β̂=0.014, CI [−0.047, 0.074], p=0.658 (interaction β̂=0.022, CI [−0.023, 0.067], p=0.332) and §4.3 concludes the gap is better explained by *"efficiency (Ec) and overhead (O%), rather than error propagation per se"*. **p=0.658 = unsupported, not disproved.**

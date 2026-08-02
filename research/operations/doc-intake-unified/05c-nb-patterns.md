@@ -4,7 +4,7 @@ domain: operations/agent-craft
 sources: NB-AGENTS (6d449787, 157 sources), proposed-agents spec files (worktree s13-guard)
 generated_by: nb-curator
 adversarial_review: codex
-adversarial_review_note: "Key added 2026-08-02. Scope = the 2026-08-02 RETRACTED 17.2x citation ONLY (see the Adversarial review section at the end). The 2026-06-04 body is a dated record and was NOT re-reviewed."
+adversarial_review_note: "Key added 2026-08-02, widened 2026-08-02 after round 4 caught the scope understating what was reviewed. Scope = BOTH registered claims — kim-2025-17x-error-amplification-as-cause AND kim-2025-ranking-supports-the-no-peer-rule — since this file corrects the replacement ranking too (see the Adversarial review section at the end). The 2026-06-04 body is a dated record and was NOT re-reviewed." RETRACTED[kim-2025-17x-error-amplification-as-cause]
 ---
 
 # NB Patterns — Document Intake Unified System
@@ -59,13 +59,13 @@ NB-AGENTS cita il pattern del sistema escalations (citazione 17) come riferiment
 
 | Anti-pattern | Evidenza NB-AGENTS | Impatto |
 |---|---|---|
-| **Peer-to-peer subagent handoff** | ~~"Never let subagents communicate directly peer-to-peer. Decentralized topologies amplify errors 17.2×" (cit. 2, 7, 8)~~ ⚠️ **CITAZIONE RITIRATA 2026-08-02** — vedi §1.4-nota | Pipeline rompe su ogni errore intermedio |
+| **Peer-to-peer subagent handoff** | ~~"Never let subagents communicate directly peer-to-peer. Decentralized topologies amplify errors 17.2×" (cit. 2, 7, 8)~~ ⚠️ **CITAZIONE RITIRATA 2026-08-02** — vedi §1.4-nota | Pipeline rompe su ogni errore intermedio | RETRACTED[kim-2025-17x-error-amplification-as-cause]
 | **Over-orchestration di pipeline sequenziale** | "Sequential tasks perform up to 70% worse when over-orchestrated" (cit. 1, 2) | Overhead senza beneficio se il flow è A→B→C lineare |
 | **Tool output hallucination** | "Agents fall into trap of remembering document contents from context window rather than invoking a read tool" (cit. 21, 22) | Estrazione basata su testo inventato, non OCR reale |
 | **Brief stale premise** | "Orchestrator must run mandatory empirical pre-brief sweep" (cit. 23-25) | 4 incidenti in 24h con halt — verificare stato reale prima di dispatch |
 | **Race condition su shared dir** | "Multiple agents in shared directory overwrite files" (cit. 26, 27) — worktree isolation fix | Intake JSON sovrascritto da run parallelo |
 
-> **§1.4-nota — CITAZIONE RITIRATA 2026-08-02 (l'anti-pattern resta, la sua evidenza no).** Verificato
+> **§1.4-nota — CITAZIONE RITIRATA 2026-08-02 (l'anti-pattern resta, la sua evidenza no).** Verificato RETRACTED[kim-2025-17x-error-amplification-as-cause]
 > alla fonte su arXiv:2512.08296v3: il **17.2× è di `Independent`**, che il paper (§3.1) definisce come
 > agenti paralleli con `Ω=synthesis_only`, cioè **senza alcun coordinamento**. Il peer-to-peer è
 > `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consenso) e **non** è la topologia misurata
@@ -165,13 +165,13 @@ Il rischio più alto identificato da NB-AGENTS per questo specifico sistema è i
 
 ## Adversarial review
 
-**Scope**: the **2026-08-02 retraction of the 17.2× citation only** (the §1.4 anti-pattern row and the §4 verdict line). The 2026-06-04 body is a dated record and was not re-reviewed — this key does not certify it.
+**Scope**: the 2026-08-02 retraction of **both** registered claims — `kim-2025-17x-error-amplification-as-cause` and `kim-2025-ranking-supports-the-no-peer-rule` (the §1.4 anti-pattern row, the §4 verdict line, and the ranking corrections; widened after round 4 observed the scope claimed less than the diff delivered — the mirror of the error in the wr3 notes, which claimed more). The 2026-06-04 body is a dated record and was not re-reviewed — this key does not certify it.
 
 **Seat**: Codex `gpt-5.6-sol`, effort `xhigh`, fresh context, read-only, cross-family (generator = Claude Opus 5; grader ≠ generator).
 
 **How this file got here**: it was not in the original scope. The reviewer falsified the claim that only *live agent surfaces* still carried the citation, by pointing at `00-INDEX.md` — which calls `05-final-spec.md` a **"SPEC FINALE ESEGUIBILE"** a dev/agent builds from, and `05c-nb-patterns.md` its **ground truth**. Neither is archaeology, so both are corrected rather than ledgered.
 
-**What was wrong** — the claim is RETRACTED; do not restore it (verified at source on arXiv:2512.08296v3, §3.1 / §4.3 / Table 4):
+**What was wrong** — the claim is RETRACTED; do not restore it (verified at source on arXiv:2512.08296v3, §3.1 / §4.3 / Table 4): RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
 
 1. **Wrong topology.** 17.2× measures `Independent` (§3.1: parallel, `Ω=synthesis_only`, *no coordination*). Peer-to-peer is `Decentralized` (`C={(aᵢ,aⱼ):∀i,j,i≠j}`, debate rounds, consensus) and is **not** ranked worst. `05c` asserted the number *of* Decentralized — the conflation in its purest form, and the route by which it became the spec's "no swarm" rationale.
 2. **Unsupported as a cause.** §4.3 narrates error propagation; Table 4 of the same paper reports β̂=0.014, CI [−0.047, 0.074], p=0.658 (interaction β̂=0.022, CI [−0.023, 0.067], p=0.332) and §4.3 concludes the gap is better explained by *"efficiency (Ec) and overhead (O%), rather than error propagation per se"*. **p=0.658 = unsupported, not disproved.**
