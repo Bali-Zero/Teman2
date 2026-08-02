@@ -17,6 +17,7 @@ on:
       - "scripts/kbli_filiera/**"
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/kbli-filiera/coverage-baseline.json"
+      - "apps/mouth/data/perpres-locators.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
   push:
     branches:
@@ -25,6 +26,7 @@ on:
       - "scripts/kbli_filiera/**"
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/kbli-filiera/coverage-baseline.json"
+      - "apps/mouth/data/perpres-locators.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
 
 permissions:
@@ -75,3 +77,21 @@ jobs:
           set -e
           echo "ratchet exit: ${RATCHET_RC}"
           exit "${RATCHET_RC}"
+
+      # The whole reason this join was allowed to become a file. `--emit` writes
+      # `apps/mouth/data/perpres-locators.json`, which puts a legal citation on
+      # 1,559 public pages; without this step it could drift from the vaulted
+      # instrument and nobody would see it, because the page renders whatever
+      # the file says. Recompute and compare — the artifact is only as
+      # trustworthy as the check that it still matches its source.
+      #
+      # Same captured-exit shape as the ratchet above, for the same reason.
+      - name: Perpres citations still match the instrument
+        run: |
+          set -uo pipefail
+          set +e
+          python scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact
+          LOCATORS_RC=$?
+          set -e
+          echo "locators exit: ${LOCATORS_RC}"
+          exit "${LOCATORS_RC}"

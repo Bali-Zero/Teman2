@@ -10,7 +10,8 @@
         "data/kbli-filiera",
         "data/kbli-filiera/**",
         "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
-        "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
+        "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json",
+        "apps/mouth/data/perpres-locators.json"
       ]
     },
     {

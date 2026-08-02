@@ -36,6 +36,8 @@ from perpres_body_default_relation import (  # noqa: E402
     priority_codes,
     load_canonical,
     locate,
+    locator_line,
+    locators,
     renders_as_open,
     overlay_reconciliation,
     report,
@@ -496,3 +498,64 @@ def test_pma_prioritas_disagrees_with_the_operative_annex_in_both_directions(can
     assert len(flagged & reached) == 6
     assert len(flagged - reached) == 12
     assert len(reached - flagged) == 219
+
+
+# --------------------------------------------------------------------------
+# THE EMITTED ARTIFACT — and proof that the gate guarding it bites
+# --------------------------------------------------------------------------
+
+def test_the_citation_names_an_article_for_every_code(rep):
+    """`pma_source` says "Perpres 10/2021, 49/2021" on all 1,559 records — the
+    instrument, never the article. A citation that did the same would be the
+    same blanket attribution wearing a new key.
+    """
+    built = locators(rep)
+    assert built["codes"] == 1559
+    cites = {v["cite"] for v in built["locators"].values()}
+    assert len(cites) > 1
+    assert all("Pasal" in c or "Lampiran" in c for c in cites)
+
+
+def test_the_citation_says_when_a_code_is_named_through_its_predecessor(rep):
+    """A reader who greps the annex for `55203` finds nothing — the annex names
+    `55193`. Without the "via" clause the citation looks invented."""
+    built = locators(rep)["locators"]
+    assert "via KBLI-2020 55193" in built["55203"]["cite"]
+    assert "via" not in built["01111"]["cite"]  # named under its own code
+
+
+def test_the_citation_never_carries_the_oss_scale_axis(rep):
+    """Pasal 7(1) conditions the INVESTOR, and an absent Besar row is licensing
+    data rather than a finding about the activity. Folding it into a citation
+    would print a bar the instrument does not state — the exact overreach an
+    independent review caught upstream of here.
+    """
+    built = locators(rep)["locators"]
+    absent = [c for c, v in built.items() if v["besar"] == "absent"]
+    assert len(absent) == 24
+    for code in absent:
+        assert "Besar" not in built[code]["cite"]
+        assert "Pasal 7" not in built[code]["cite"]
+
+
+def test_check_artifact_fails_on_a_drifted_file(tmp_path, monkeypatch, rep):
+    """MUTATION PROOF. A gate nobody has seen fail is decoration (W108).
+
+    Writes a correct artifact, mutates one citation, and requires the checker to
+    exit non-zero — because the page renders whatever this file says, so a
+    silent drift would put a wrong article on a public page.
+    """
+    import perpres_body_default_relation as mod
+    out = tmp_path / "perpres-locators.json"
+    monkeypatch.setattr(mod, "LOCATORS_OUT", out)
+
+    assert mod.main(["--emit"]) == 0
+    assert mod.main(["--check-artifact"]) == 0, "a freshly emitted artifact must pass"
+
+    payload = json.loads(out.read_text())
+    payload["locators"]["56101"]["cite"] = "Perpres 49/2021 Lampiran III"
+    out.write_text(json.dumps(payload, ensure_ascii=False))
+    assert mod.main(["--check-artifact"]) != 0, "a drifted artifact must fail"
+
+    out.unlink()
+    assert mod.main(["--check-artifact"]) != 0, "a missing artifact must fail, not pass"

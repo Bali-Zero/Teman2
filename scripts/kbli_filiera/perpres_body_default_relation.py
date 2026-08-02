@@ -90,9 +90,23 @@ rather than a new `pma_status` value: `apps/mouth/src/lib/kbli-data.server.ts`
 returns "open" for anything that is not TERBATAS/TERTUTUP, so inventing an enum
 member would render as "open" on all 1,559 pages.
 
-No output file either. This is a JOIN over two artifacts plus the catalogue;
-persisting it would create a fourth source of truth that goes stale the moment
-any input moves (W88/W106). It is recomputed on every run, from the files.
+THE ARTIFACT, AND WHY THIS FILE CHANGED ITS MIND ABOUT EMITTING ONE
+--------------------------------------------------------------------
+It first said "no output file either — persisting this join would create a
+fourth source of truth that goes stale the moment any input moves (W88/W106)".
+That objection was about STALENESS, and `--emit` answers it rather than ignores
+it: `--check-artifact` recomputes the join from the instrument and fails if the
+file on disk differs, so the artifact cannot drift in silence — the same shape
+`parse_perpres_lampiran1.py` uses for its own output.
+
+What forced the change is the rule against two writers of one field. The page
+must cite the article, and the alternative was re-deriving the precedence
+(body -> restricting annex -> priority -> residual) a second time in TypeScript.
+Two implementations of one rule diverge; one implementation plus a pinned
+artifact does not. So `apps/mouth/data/perpres-locators.json` is emitted here,
+by the module that owns the rule, and `apps/mouth` only reads it.
+
+The report itself still writes nothing: `--check` and `--json` are pure.
 
 DECLARED LIMITS — the regime this speaks for
 ---------------------------------------------
@@ -120,7 +134,7 @@ UMKM = REPO_ROOT / "data" / "kbli-filiera" / "perpres-umkm-reservation.json"
 CAPS = REPO_ROOT / "data" / "kbli-filiera" / "perpres-foreign-caps.json"
 PRIORITY = REPO_ROOT / "data" / "kbli-filiera" / "perpres-priority-codes.json"
 
-EXIT_OK, EXIT_CANNOT_VERIFY = 0, 4
+EXIT_OK, EXIT_DIFFERS, EXIT_CANNOT_VERIFY = 0, 1, 4
 
 INSTRUMENT = "Perpres 10/2021 as amended by Perpres 49/2021"
 
@@ -287,9 +301,15 @@ def classify(code: str, record: dict, umkm: set[str], caps: set[str],
     evidence["besar_basis"] = BESAR_BASIS
     evidence["scales"] = sorted(scales(record))
 
+    # `basis` is set on EVERY path. The two body branches used to return without
+    # it, which nothing noticed until a consumer read the field — the report
+    # printed bucket names and never touched it. A key that only some branches
+    # populate is a KeyError waiting for its first reader.
     if code in BODY_TERTUTUP:
+        evidence["basis"] = BODY_TERTUTUP[code]
         return "body-tertutup", evidence
     if code in BODY_OTHER_REQUIREMENT:
+        evidence["basis"] = BODY_OTHER_REQUIREMENT[code]
         return "body-other-requirement", evidence
     if evidence["lampiran_ii"] or evidence["lampiran_iii"]:
         evidence["basis"] = "Pasal 3 ayat (1) huruf b / huruf c"
@@ -438,11 +458,101 @@ def pasal7_review_flags(rep: dict) -> list[dict]:
     return sorted(out, key=lambda r: r["code"])
 
 
+# Emitted where the CONSUMER reads, not next to its inputs. `apps/mouth` has its
+# own `vercel.json`, so the Vercel build root IS the app directory and nothing
+# outside it is guaranteed to be in the build context; every data file the app
+# loads sits in `apps/mouth/data/` via `path.join(process.cwd(), "data", ...)`.
+# One file, at the reader, rather than a copy on each side: nothing to keep in
+# sync is nothing that can drift. It is registered in
+# `infra/claude-hooks/data-plane-registry.json` under the `kbli-filiera` entry,
+# so the same guard that protects the compiled annexes protects the citations
+# this file puts on public pages — leaving it outside the data plane just
+# because the path is convenient would be the weaker half of the trade.
+LOCATORS_OUT = REPO_ROOT / "apps" / "mouth" / "data" / "perpres-locators.json"
+
+# One sentence per bucket, written to be read by a client on a public page, not
+# by us. Each names the instrument, the article, and — where it applies — the
+# fact that the activity is named through its KBLI-2020 predecessor, because a
+# reader who greps the annex for the 2025 code and finds nothing deserves to
+# know why rather than to conclude we made it up.
+_LINE = {
+    "body-tertutup":
+        "Perpres 10/2021 Pasal 2(2)(b) (as amended by 49/2021) — closed by name",
+    "body-other-requirement":
+        "Perpres 10/2021 Pasal 6(3a) (as amended by 49/2021) — special requirements regime",
+    "priority-lampiran-i":
+        "Perpres 49/2021 Lampiran I — priority business field (Pasal 3(1)(a))",
+}
+
+
+def locator_line(bucket: str, evidence: dict) -> str:
+    """The citation as a page renders it. Total over the buckets by construction."""
+    if bucket in _LINE:
+        return _LINE[bucket]
+    if bucket == "named-in-annex":
+        annexes = []
+        if evidence["lampiran_ii"]:
+            annexes.append("Lampiran II (Koperasi/UMKM)")
+        if evidence["lampiran_iii"]:
+            annexes.append("Lampiran III (foreign ownership)")
+        named = sorted(set(evidence["lampiran_ii"]) | set(evidence["lampiran_iii"]))
+        via = f" via KBLI-2020 {', '.join(named)}" if evidence["via_ancestor_only"] else ""
+        return f"Perpres 49/2021 {' + '.join(annexes)}{via}"
+    # Residual, whatever the OSS scale axis says — the scale is not a locator.
+    return "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity"
+
+
+def locators(rep: dict) -> dict:
+    """`{code: {basis, cite, ...}}` for every code in the report.
+
+    Emitted so `apps/mouth` can cite the article without re-deriving the
+    precedence in TypeScript. Carries `besar` too, but as raw OSS scale data
+    under its own key — never folded into the citation, because Pasal 7(1)
+    conditions the investor and a scale row is not a locator.
+    """
+    out: dict[str, dict] = {}
+    for bucket, rows in rep["detail"].items():
+        for row in rows:
+            out[row["code"]] = {
+                "bucket": bucket,
+                "basis": row["basis"],
+                "cite": locator_line(bucket, row),
+                "besar": row["besar"],
+            }
+    if len(out) != rep["codes"]:
+        raise CannotVerify(f"locators cover {len(out)} of {rep['codes']} codes")
+    return {
+        "instrument": rep["instrument"],
+        "generated_by": "scripts/kbli_filiera/perpres_body_default_relation.py --emit",
+        "codes": len(out),
+        "locators": dict(sorted(out.items())),
+    }
+
+
+def _display(path: Path) -> str:
+    """Repo-relative when it can be, absolute otherwise.
+
+    `Path.relative_to` RAISES for anything outside the repo, so a bare call
+    turned every message on this path into a crash the moment the output moved
+    — found by the test that redirects it to a tmp dir, which is exactly the
+    shape a future caller would use. A progress message must never be the thing
+    that fails.
+    """
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true",
                     help="print the negative-locator report (the default action; accepted for symmetry with the sibling relations)")
     ap.add_argument("--json", action="store_true", help="machine-readable report on stdout")
+    ap.add_argument("--emit", action="store_true",
+                    help=f"write the per-code citations to {LOCATORS_OUT.name} (consumed by apps/mouth)")
+    ap.add_argument("--check-artifact", action="store_true",
+                    help="recompute the citations and fail if the emitted file differs")
     args = ap.parse_args(argv)
 
     try:
@@ -450,6 +560,40 @@ def main(argv: list[str] | None = None) -> int:
     except (CannotVerify, FileNotFoundError) as exc:
         print(f"CANNOT-VERIFY: {exc}", file=sys.stderr)
         return EXIT_CANNOT_VERIFY
+
+    if args.emit or args.check_artifact:
+        try:
+            built = locators(rep)
+        except CannotVerify as exc:
+            print(f"CANNOT-VERIFY: {exc}", file=sys.stderr)
+            return EXIT_CANNOT_VERIFY
+        if args.emit:
+            # One-time migration: the first draft emitted next to the INPUTS, in
+            # `data/kbli-filiera/`. It belongs at the reader instead (see
+            # LOCATORS_OUT). The compiler removes its own old output because it
+            # is the only writer the data-plane guard admits for that directory
+            # — reaching for DATA_PLANE_GUARD_OFF to tidy up would disarm a
+            # guard for convenience, which is how guards stop being guards.
+            legacy = REPO_ROOT / "data" / "kbli-filiera" / "perpres-locators.json"
+            if legacy.is_file():
+                legacy.unlink()
+                print(f"removed legacy {_display(legacy)}")
+            LOCATORS_OUT.write_text(json.dumps(built, ensure_ascii=False, indent=1) + "\n")
+            print(f"wrote {_display(LOCATORS_OUT)} ({built['codes']} codes)")
+            return EXIT_OK
+        if not LOCATORS_OUT.is_file():
+            print(f"{_display(LOCATORS_OUT)} missing — run with --emit", file=sys.stderr)
+            return EXIT_DIFFERS
+        on_disk = json.loads(LOCATORS_OUT.read_text())
+        if on_disk.get("locators") != built["locators"]:
+            disk, fresh = on_disk.get("locators") or {}, built["locators"]
+            moved = sorted(c for c in fresh.keys() & disk.keys() if fresh[c] != disk[c])
+            print(f"DIFFERS — {len(fresh.keys() - disk.keys())} added, "
+                  f"{len(disk.keys() - fresh.keys())} removed, {len(moved)} changed "
+                  f"(e.g. {moved[:5]}). Re-run with --emit.", file=sys.stderr)
+            return EXIT_DIFFERS
+        print(f"{_display(LOCATORS_OUT)} matches the instrument ({built['codes']} codes)")
+        return EXIT_OK
 
     if args.json:
         print(json.dumps(rep, ensure_ascii=False, indent=1))

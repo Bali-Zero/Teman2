@@ -336,6 +336,21 @@ export default async function KBLICodePage({
                 );
               })()}
 
+              {/* The ARTICLE behind the verdict above.
+                  Until 2026-08-02 every one of the 1,559 pages attributed its
+                  PMA verdict to "Perpres 10/2021, 49/2021" — the instrument,
+                  never the article — so a reader had no way to check it. The
+                  citation is computed once, in the compiler that owns the
+                  precedence rule, and only read here. Absent artifact → no
+                  line: a missing citation costs a reader context, a stale one
+                  would tell them the law says something it does not. */}
+              {kbli.pma.citation && (
+                <p className="mt-3 text-xs text-[var(--kbli-text-muted)]">
+                  Basis:{" "}
+                  <span className="font-medium">{kbli.pma.citation}</span>
+                </p>
+              )}
+
               {/* Badge strip */}
               <div className="mt-5 flex flex-wrap gap-2.5">
                 <PMABadge
