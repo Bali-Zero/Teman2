@@ -69,10 +69,16 @@ propagation order that actually reaches a client:
 Zero ran the interactive `vercel login` (the one `operator[gui]` step); the session did the rest.
 The newest `production`/`READY` deployment already carried the cure and the custom domains were
 still serving the previous build — `POST /v10/projects/<id>/promote/<dpl>` → HTTP 201 published it.
-**Cause established by re-reading the deployment afterwards, not by elimination:** it now reports
-`readySubstate: PROMOTED`, i.e. it had been sitting `STAGED` — the mechanism already ledgered on
-2026-07-30, NOT a stale alias and NOT the edge cache. That distinction matters because only one of
-the three has a cure that generalises, and it is the one that turned out to be true.
+**Cause established, and by a control that could have refuted it — not by elimination.** Reading
+the promoted deployment back gives `readySubstate: PROMOTED`, but that is the state AFTER the
+promote and proves nothing on its own. The evidence is the SIBLINGS: two other Git-created
+`production`/`READY` deployments from the same day — `9fcdc00a0` (PR #3515, 21:24) and `9a6a30a38`
+(17:52) — are **still `STAGED` right now**, hours later, having never been promoted by anything.
+Git-integration production builds on this project land staged and stay staged. So the cause is the
+staging mechanism already ledgered on 2026-07-30, NOT a stale alias and NOT the edge cache; had
+those two read `PROMOTED`, this paragraph would be wrong. **This also refutes a note written here
+on 2026-07-30** claiming a merge goes live on its own and the lag is CDN/deployment-creation rather
+than promotion: `9fcdc00a0` has been READY and unserved for ~14h. Nothing publishes unattended.
 
 PROVEN LIVE on `balizero.com/llms-kbli.txt`, by etag against an md5 computed here (a cache-busting
 query and a client no-cache header both fail to reach origin on a static asset): `aa793fa029bd…`
