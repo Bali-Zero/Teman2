@@ -32,6 +32,7 @@ from backend.services.intel import (
     IntelClassificationService,
     IntelStagingService,
 )
+from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 # Add scraper scripts to path for ClaudeValidator import
 scraper_scripts_path = (
@@ -59,6 +60,10 @@ INTEL_COLLECTIONS = IntelConstants.COLLECTIONS
 # Initialize services
 classification_service = IntelClassificationService()
 staging_service = IntelStagingService()
+
+# Cover uploads write `f"{item_id}{ext}"`. BOTH halves are caller-supplied, so both are
+# constrained: the id by the shared validator, the extension by this list.
+_ALLOWED_COVER_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp", ".gif"})
 approval_service = IntelApprovalService()
 analytics_service = IntelAnalyticsService(staging_service)
 
@@ -492,6 +497,17 @@ async def upload_cover_image(
     Saves image to data/staging/{type}/covers/{item_id}.{ext}
     Updates staging JSON with cover_image path.
     """
+    # This is a WRITE whose path, EXTENSION and CONTENT are all caller-supplied:
+    # item_id is a path param, ext is the suffix of a caller-named filename, and the
+    # bytes are base64 from the body. `assert_valid_item_id` is imported from the
+    # staging service rather than re-typed, so this and the other guarded sinks cannot
+    # drift apart. Found by class-audit, not by the scanner: CodeQL flags the Telegram
+    # cover handler (already guarded) and misses this HTTP twin entirely.
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     logger.info(
         "Cover image upload requested",
         extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/cover"},
@@ -519,9 +535,17 @@ async def upload_cover_image(
         )
         raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}") from e
 
-    # Determine file extension
+    # Determine file extension. A validated item_id alone is not enough: the extension
+    # is a SECOND caller-controlled component of the same filename, and `.suffix` of an
+    # arbitrary string is an arbitrary string — ".py", ".json", ".env" all pass through
+    # it. Allow-list, because this endpoint exists to store a cover IMAGE.
     filename = request.cover_image_filename or f"{item_id}.jpg"
-    ext = PathLib(filename).suffix or ".jpg"
+    ext = PathLib(filename).suffix.lower() or ".jpg"
+    if ext not in _ALLOWED_COVER_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported cover image extension: {ext}",
+        )
 
     # Save cover image
     covers_dir = staging_service.get_staging_dir(type) / "covers"

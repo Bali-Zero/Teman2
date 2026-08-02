@@ -24,19 +24,39 @@ from backend.services.intel.intel_staging_service import (
 
 def _redirect_staging_root(monkeypatch, tmp_path) -> None:
     """
-    Point the staging root at tmp_path BEFORE any service is constructed.
+    Point the staging root at tmp_path BEFORE any service is constructed — whichever
+    `settings` object this invocation actually has.
 
-    `get_intel_staging_base_dir` is a property on Settings, so it has to be replaced on
-    the class, not the instance — and it has to happen before `__init__`, whose
-    `_ensure_directories()` would otherwise mkdir the REAL staging tree from a unit test
-    (W96: tests must not write production state).
+    It has to happen before `__init__`, whose `_ensure_directories()` would otherwise
+    mkdir the REAL staging tree from a unit test (W96: tests must not write production
+    state).
+
+    Two worlds, because `backend/tests/unit/routers/conftest.py` installs a FAKE
+    `backend.app.core.config` (settings = MagicMock) whenever the real module is not
+    yet in `sys.modules`. Collect this file together with any routers test and settings
+    is that mock — where `type(settings)` is MagicMock and this helper's original
+    class-property patch raised `AttributeError`, taking 7 tests down with it. Collect
+    it alone or under the full sweep and settings is a real `Settings`, whose
+    `get_intel_staging_base_dir` is a read-only property that cannot be set on the
+    instance. A helper that knows only one world is green until someone runs a subset.
+
+    Twin of `_set_settings_attr` in
+    `backend/tests/unit/routers/test_intel_path_injection_guards.py`; deliberately
+    duplicated rather than hoisted into the root conftest, which is a hot zone.
     """
-    monkeypatch.setattr(
-        type(settings),
-        "get_intel_staging_base_dir",
-        property(lambda _self: str(tmp_path)),
-        raising=True,
+    if isinstance(getattr(type(settings), "get_intel_staging_base_dir", None), property):
+        monkeypatch.setattr(
+            type(settings),
+            "get_intel_staging_base_dir",
+            property(lambda _self: str(tmp_path)),
+            raising=True,
+        )
+    else:
+        monkeypatch.setattr(settings, "get_intel_staging_base_dir", str(tmp_path), raising=False)
+    assert settings.get_intel_staging_base_dir == str(tmp_path), (
+        "staging-root redirect did not take — the service would mkdir the real tree"
     )
+
 
 # Shapes that must keep working — `generate_item_id` emits `{type}_{ts}_{sha8}`.
 LEGITIMATE = [

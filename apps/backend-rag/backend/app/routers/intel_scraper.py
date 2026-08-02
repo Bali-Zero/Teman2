@@ -42,6 +42,7 @@ from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
 from backend.core.qdrant_db import QdrantClient
+from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 logger = get_logger(__name__)
 
@@ -735,6 +736,21 @@ async def _publish_staging_item(
     actor: str,
 ) -> dict[str, Any]:
     """Publish implementation. Callers are responsible for authorization."""
+    # Single funnel-in for both callers (the admin HTTP endpoint and the Telegram
+    # quorum), so the id is judged once for the whole publish path.
+    #
+    # Honest statement of what this changes: the `staging_dir / f"{item_id}.json"`
+    # write ~450 lines below is NOT reachable today with a malformed id, because
+    # `load_staging_item` (7 lines down) rejects one by returning None and this
+    # function 404s. That defense is real but REMOTE — it lives in another module and
+    # is a side effect of a read's not-found contract, not a statement about the
+    # write. This makes the invariant local and explicit; it is what a refactor of
+    # that contract would otherwise silently remove.
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     logger.info(
         "Publish request received",
         extra={
