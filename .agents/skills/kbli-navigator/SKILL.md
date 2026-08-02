@@ -2122,6 +2122,60 @@ refutes**. Kept together here and NOT patched in this pass — the fix still edi
 on live pages, so it goes through the adversarial gate with the rest — but it should be ruled on
 first and separately, because no ruling on Pasal 7 makes that sentence true.
 
+**🔴 AND THERE IS A FIFTH SURFACE, WHICH ANSWERS THE OPPOSITE — 39 of 39 (2026-08-02).** The count
+of "four consuming surfaces" above is what `l4_bali` reaches. **The channels are a fifth, and they
+do not carry it at all.** Asked the single most common commercial question this agency receives —
+_"Can a foreigner open a villa rental business in Bali with a PT PMA? KBLI 55203"_ — `chat_kbli`
+(the WhatsApp/webchat path) answers on prod:
+
+> **"Yes, a foreigner can absolutely open a villa rental business in Bali using a PT PMA"** …
+> "KBLI 55203 is **TERBUKA (Open) to 100% foreign ownership**."
+
+The same product, same code, same "in Bali" question, **opposite verdicts**. And the channel is not
+ignoring Bali: it renders a whole "Bali Reality Check" section (zoning, banjar, PBG, nominee) — it
+considers Bali and says yes. Both sides even start from the SAME premise, `PT PMA = Usaha Besar by
+law`: the page turns it into a bar, the channel into a capital threshold.
+
+Structural, not one LLM sample — measured read-only on `kbli_documents`, the store `chat_kbli`
+injects verbatim, over all 39: **rows 39 · carrying `l4_bali` 0 · `pma_status = TERBUKA` 39 ·
+content mentioning any bar 0.** Innocence control, so the negative means something: the same store
+correctly carries `TERTUTUP` for `11010`/`11020`/`47222` and `TERBATAS` for `50111`. It is not blind
+to restriction in general — it is blind **specifically to the Bali layer**, at an agency whose whole
+market is Bali.
+
+Note the direction before "fixing" it: the page's verdict is the **refuted** reading, so the channel
+may be closer to the law — but it qualifies nothing, and answers "absolutely" on codes we
+internally treat as disputed. Two over-confident surfaces pointing opposite ways; the divergence is
+itself the signal. This is why (a) and (b) below cannot be ruled on by looking at the page alone.
+
+**The channel does not merely LACK the verdict — it carries prose pushing the other way, and that
+is measured, not inferred.** The KG's rich `kbli` nodes key on `properties->>'kode'` (the
+`KBLI <code>`-named rows are empty skeletons — a first pass keyed on `name` read **0 of 39** and was
+measuring the dedup disease, not the data). Keyed correctly: **38 of 39** present, **all 38**
+`pma_status: TERBUKA`, **0** carrying `l4_bali`, and **13** carrying a `baliContext`. That field is
+**editorial market prose, not a legal verdict** — `55203` reads _"**🏝 The Bali Villa Market (Reality
+Check)** — Villas ARE Bali's tourism identity: Seminyak, Canggu, Ubud…"_, `93122` lists Bali's golf
+clubs. And it reaches the channel: `kbli_documents.content` contains both _"Reality Check"_ and
+_"tourism identity"_ verbatim. So the LLM answering on WhatsApp is handed an enthusiastic market
+description of exactly the activity the page marks 🚫, with no verdict beside it — which is why its
+answer has a "Bali Reality Check" section and still says **yes**.
+_(Correction to my own measurement, kept because it is the failure this corner exists to catch: I
+first counted "3 baliContext mentioning a bar" using `ILIKE '%Besar%' OR '%clos%' OR '%MSME%'` —
+those match ordinary words like "closest". Reading the 13 in full, **none** states a restriction.
+Family #3 in my own probe.)_
+
+**⚠️ The obvious cure is a trap: "sync `l4_bali` to the channels" would propagate the REFUTED
+reading onto a fifth surface.** Sequencing matters more than the wiring here — rule the verdict
+first, wire second, or the tidy-looking fix ships the error further. The wiring itself is
+understood and small (grounded this session, so nobody has to re-derive it): the router builds its
+LLM context on **two** branches and neither has a place for a Bali layer —
+`kbli_notebook_chat.py:388` emits only `code / title / description / pma_status / risk_category`,
+and the `full_content` branch above it passes the row's `content` verbatim, which is exactly the
+field measured at **0 of 39** mentions. Nor is the omission a policy choice: `kbli_documents` has no
+general populator at all (only the two `*_cure.py` scripts write to it), so the store was seeded
+before the Bali overlay existed and simply never re-synced. **The gap is mechanical, the fix is
+not** — do not let the ease of the wiring pull the decision forward.
+
 **Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
 **24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
 **`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
