@@ -38,14 +38,26 @@ Each divergent row is instead sorted by WHY it cannot simply be applied:
 * `segment-qualified` — the bidang usaha names a construction grade
   ("sederhana dan madya") or another sub-slice. The code stays partly open;
   only the named segment is reserved. Never a whole-code verdict.
-* `activity-unknown` — the code is certain but the annex's text wrapped to a
-  line the tick is not on, so WHICH bidang usaha is reserved is unreadable
-  here. Certain code, unusable row: it needs the page image, not a join.
+* `activity-unknown` — the code is certain but WHICH bidang usaha is reserved
+  is unreadable. **Currently EMPTY, and the reason is worth keeping**: it held
+  30 rows while the compiler read only the line each tick sits on. Reading the
+  whole multi-line cell emptied it. The branch stays because an empty bucket
+  that is still computed will speak again if the layout shifts, whereas a
+  deleted one turns the same failure into a silent misclassification.
 * `retired-2020-code` — the annex speaks KBLI 2020 and this code has no 2025
   descendant, so no live page renders it. Archaeology, not client-facing.
 * `whole-row` — a live code, a readable single activity, no segment qualifier,
   and the catalogue publishes it open. This is the bucket that is genuinely a
-  question for the owner, and it is the smallest of the four.
+  question for the owner, and it is the LARGEST of the divergent ones — which
+  is why it must not be reported as a single number.
+
+Known floor on `segment-qualified`, declared rather than silently absorbed: a
+grade qualifier can live in the numbered PARENT heading instead of the row
+("35. Konstruksi bangunan yang menggunakan teknologi sederhana dan madya:"
+governs `42911`/`42912`/`42913` below it). Those rows are left in `whole-row`
+on purpose. Inheriting a parent's qualifier would move rows OUT of the owner's
+list on an inference, and a question wrongly withdrawn is worse than a question
+wrongly asked.
 
 Usage:
     python scripts/kbli_filiera/perpres_umkm_reservation_relation.py --check [--json]
@@ -143,8 +155,8 @@ def report(relation: dict, canonical: dict[str, dict]) -> dict:
     return {
         "instrument": relation["instrument"],
         "source": relation["source"],
-        "rows_total": relation["counts"]["tick_rows"],
-        "rows_resolved": relation["counts"]["resolved"],
+        "ticks": relation["counts"]["ticks"],
+        "rows_emitted": relation["counts"]["rows_emitted"],
         "rows_unresolved": relation["counts"]["unresolved"],
         "buckets": {name: len(items) for name, items in sorted(buckets.items())},
         "detail": buckets,
@@ -167,8 +179,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(rep, ensure_ascii=False, indent=1))
         return EXIT_OK
 
-    print(f"{rep['instrument']} — {rep['rows_resolved']} of {rep['rows_total']} tick-rows "
-          f"({rep['rows_unresolved']} unresolved, declared in the relation file)")
+    print(f"{rep['instrument']} — {rep['rows_emitted']} rows from {rep['ticks']} ticks "
+          f"({rep['rows_unresolved']} unresolved)")
     for name, count in rep["buckets"].items():
         print(f"  {name:20} {count}")
     for row in rep["detail"].get("whole-row", []):

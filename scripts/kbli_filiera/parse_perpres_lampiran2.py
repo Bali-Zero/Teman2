@@ -43,15 +43,18 @@ the activity, not the whole code. A code -> reserved boolean join is therefore
 structurally wrong, and this module refuses to emit one: it emits ROWS, each
 carrying its own bidang usaha and page.
 
-WHAT IT DOES NOT KNOW — DECLARED, NOT HIDDEN
----------------------------------------------
-12 of the 180 tick-rows do not yield a code from the text layer (5 on page 7
-carry a tick with an empty KBLI cell; 4 decode to 5 digits matching no
-catalogue; 3 have no readable window). They are emitted in `unresolved` with
-their page, so the count reads "168 of 180" everywhere and never "all". 38
-resolved rows have a code but no readable bidang usaha (the text wrapped to a
-line the tick is not on) — flagged `text: null`, because a row whose activity
-is unknown cannot be adjudicated even though its code is certain.
+COUNTS: 181 ROWS FROM 180 TICKS, AND THE DIFFERENCE IS NOT AN ERROR
+--------------------------------------------------------------------
+Annex row 13 (page 4) carries TWO codes under a single tick, so `ticks` and
+`rows_emitted` are separate fields rather than one number: reading "181 of 180"
+as a tick count that grew would be a defect, and a single `tick_rows` field
+invited exactly that. `unresolved` is 0 — but the field stays, and an
+`unresolved` list is never omitted from the output, because the honest report
+of a gap is a gap that is printed and not a gap that leaves no trace.
+
+Five rows do not come from the text layer at all; they are in `IMAGE_READ`,
+carry `read_from: "page-image"`, and a stale override is a hard failure rather
+than four silently dropped rows.
 
 Usage:
     python scripts/kbli_filiera/parse_perpres_lampiran2.py [--vault-root PATH] [--write] [--json]
@@ -91,6 +94,45 @@ COLUMN_SPLIT_X = 105  # inside the empty 101..107 band between the two tick clus
 CODE_WINDOW = 45      # chars left of the tick that can hold the KBLI cell
 
 _WORD_RE = re.compile(r"[a-z]{4,}")
+# A numbered activity heading — "26", "27." — at the left margin of the bidang
+# usaha column. It is where one row ends and the next begins, and it is the only
+# structural marker the text layer preserves; continuation lines are indented far
+# past it. The bound is 12 chars so a deeply indented "5." INSIDE a cell (several
+# rows carry one) can never be read as the start of a new row.
+_ROW_START_RE = re.compile(r"^\s{0,12}\d{1,3}\.?\s+\S")
+# NOT a row boundary — this is written down because it looks like one.
+# A dash bullet can be a sibling ROW ("- mekanikal", "- pemasangan kaca") or a
+# sub-item INSIDE a single row: annex row 13 on page 4 lists four dashed
+# products (peci/kopiah, ikat kepala, ikat pinggang, mukena) under ONE tick.
+# Treating dashes as boundaries was tried and measured: it tidied one row's text
+# and cost `47971` its code, because the line carrying it was cut out of the
+# span. The layer cannot tell the two dashes apart, so the row span does not
+# try — a slightly over-long activity string is harmless, a lost code is not.
+
+# The four rows the text layer cannot yield, read from 150dpi renders of the
+# vaulted PDF (id 161564) and keyed by the exact junk the layer DID produce, so
+# a stale override cannot silently attach to a different row.
+#
+# Three are digit-to-digit corruption — a printed `1` coming through as `7` —
+# which the substitution table cannot invert BY CONSTRUCTION: it maps letters to
+# digits and never a digit to another digit, because a digit-to-digit rule would
+# make every surviving digit in every code a guess. The fourth is a shape the
+# one-tick-one-code model does not have: annex row 13 carries TWO codes under a
+# single tick, so it expands to two rows here.
+IMAGE_READ: dict[tuple[int, str], tuple[str, ...]] = {
+    # (page, the junk the layer produced) -> what the page image shows
+    (3, "70794"): ("10794",),     # p3 row 8 — Industri kerupuk, keripik, peyek
+    (9, "42973"): ("42913",),     # p9 row 35 — pelabuhan perikanan
+    (11, "43297"): ("43291",),    # p11 — mekanikal
+    (14, "47971"): ("47911",),    # p14 row 47 — komoditi makanan/minuman/farmasi (retired in 2025)
+    (4, ""): ("14111", "14131"),  # p4 row 13 — two codes under one tick, empty KBLI cell
+}
+# The row's own leading number is structure, not activity ("26  Konstruksi …").
+_LEADING_NUMBER_RE = re.compile(r"^\d{1,3}\.?\s+")
+# Page furniture below the table. Without this stop the downward walk swallows
+# the printing-office mark into the last row's activity — measured on `42201`,
+# whose text gained "SK No 054252C".
+_PAGE_FURNITURE_RE = re.compile(r"^\s*(SK\s*No|PRES\s*IDEN|REPUBLIK\s+INDONESIA)", re.IGNORECASE)
 # Words too generic to corroborate a code (they head hundreds of KBLI titles).
 _GENERIC = frozenset({
     "industri", "usaha", "aktivitas", "pertanian", "budidaya", "pengolahan",
@@ -118,42 +160,137 @@ def pdf_text(pdf: Path) -> str:
     return proc.stdout
 
 
+def code_at(line: str, tick_x: int) -> str:
+    """The KBLI cell immediately left of a tick, decoded. '' when unreadable."""
+    window = re.sub(r"\s+", "", decode(line[max(0, tick_x - CODE_WINDOW):tick_x]))
+    return window[-5:] if len(window) >= 5 and window[-5:].isdigit() else ""
+
+
+def cell_at(line: str, tick_x: int) -> str:
+    """The bidang usaha column of one line, cut where the KBLI cell begins.
+
+    Cutting at a fixed `tick_x - CODE_WINDOW` instead would slice mid-word:
+    the code column floats (a code can sit 10 or 40 chars left of its tick), so
+    a fixed margin is either too narrow to catch the code or wide enough to eat
+    the end of the activity — and the words it eats are the ones that decide the
+    bucket, e.g. "…teknologi sederhana | dan madya".
+    """
+    left = line[:tick_x]
+    # Walk back over the KBLI cell: whitespace, then its (possibly corrupted,
+    # possibly space-split) glyphs. Nothing else lives between the two columns.
+    cut = len(left.rstrip())
+    token = 0
+    while cut > 0 and token < 8 and (left[cut - 1].isalnum() or (token and left[cut - 1] == " ")):
+        cut -= 1
+        token += 1
+    if not re.fullmatch(r"\d{5}", decode(re.sub(r"\s", "", left[cut:]))):
+        cut = len(left)  # no KBLI cell on this line — the whole width is activity
+    return _LEADING_NUMBER_RE.sub("", left[:cut].strip(" -\t")).strip(" -\t")
+
+
+def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> list[int]:
+    """Which lines belong to the table row whose tick is on line `i`.
+
+    A row wraps over several lines and the tick sits on only one of them, so
+    reading the tick's own line alone truncates the activity — measured: the
+    grade qualifier "sederhana dan madya" wraps off the tick line on `42101`
+    and `42201`, which is exactly the text that decides whether a reservation
+    covers a whole code or one construction grade. Truncating it does not
+    produce a missing bucket, it produces a WRONG one, and in the dangerous
+    direction: a row wrongly called whole-code would be handed to the owner as
+    a question about an activity the annex never reserved.
+
+    Bounds, all three derived from the layout rather than guessed:
+    * never past an adjacent tick — measured, no line in this annex carries two
+      ticks, so one tick is exactly one row;
+    * never past a numbered row start (`26`, `27.`), which is where the next
+      activity begins;
+    * **never past a SECOND KBLI cell.** A row has exactly one, so a second code
+      line means the next row has begun. This is the bound that matters, because
+      the neighbouring row's code is close enough to be picked up as this row's:
+      on page 14 the `47911` row ran on and took `47912` from the row below it,
+      which is a silently WRONG code rather than a declared gap.
+      Dash bullets are NOT usable for this — see the note at `_ROW_START_RE`.
+    Upward is walked only when the tick line has no text of its own, since a
+    tick vertically centred in a tall cell can land below its first line; it
+    stops INCLUSIVE at the row's own code line, which is that row's top edge.
+    """
+    previous = max([t for t in ticks if t < i], default=-1)
+    following = min([t for t in ticks if t > i], default=len(lines))
+    has_code = lambda j: bool(code_at(lines[j], tick_x))
+
+    span = [i]
+    seen_code = has_code(i)
+    for j in range(i + 1, following):
+        if _ROW_START_RE.match(lines[j]) or _PAGE_FURNITURE_RE.match(lines[j]):
+            break
+        if has_code(j):
+            if seen_code:
+                break
+            seen_code = True
+        span.append(j)
+    if not cell_at(lines[i], tick_x):
+        for j in range(i - 1, previous, -1):
+            if _PAGE_FURNITURE_RE.match(lines[j]):
+                break
+            span.insert(0, j)
+            if _ROW_START_RE.match(lines[j]) or has_code(j):
+                break  # inclusive: that line IS the row's first
+    return span
+
+
 def parse(text: str, titles: dict[str, str], known: frozenset[str]) -> dict:
     rows: list[dict] = []
     unresolved: list[dict] = []
-    tick_x: dict[int, int] = {}
+    tick_histogram: dict[int, int] = {}
+    consumed: set[tuple[int, str]] = set()
 
     for page_no, page in enumerate(text.split("\f"), start=1):
-        for line in page.splitlines():
-            ticks = [m.start() for m in re.finditer(r"\bV\b", line)]
-            if not ticks:
-                continue
-            x = min(ticks)
-            tick_x[x] = tick_x.get(x, 0) + 1
-            window = re.sub(r"\s+", "", decode(line[max(0, x - CODE_WINDOW):x]))
-            code = window[-5:] if len(window) >= 5 and window[-5:].isdigit() else ""
-            text_cell = line[:max(0, x - CODE_WINDOW)].strip(" -\t") or None
+        lines = page.splitlines()
+        ticks = [n for n, line in enumerate(lines) if re.search(r"\bV\b", line)]
+        for i in ticks:
+            x = min(m.start() for m in re.finditer(r"\bV\b", lines[i]))
+            tick_histogram[x] = tick_histogram.get(x, 0) + 1
+            span = row_line_span(lines, i, ticks, x)
             column = "dialokasikan" if x < COLUMN_SPLIT_X else "kemitraan"
 
-            if not code or code not in known:
-                unresolved.append({"page": page_no, "column": column,
-                                   "window": window[-14:] or None, "text": text_cell})
-                continue
-            official = titles.get(code, "")
-            rows.append({
-                "code": code,
-                "column": column,
-                "page": page_no,
-                "text": text_cell,
-                # True only when the row's own words independently corroborate the
-                # decoded digits. A row without it is not wrong — it is single-witness.
-                "title_corroborated": bool(text_cell and content_words(text_cell) & content_words(official)),
-            })
+            code = next((c for c in (code_at(lines[j], x) for j in span) if c in known), "")
+            activity = " ".join(filter(None, (cell_at(lines[j], x) for j in span))).strip() or None
+
+            if code:
+                found, read_from = (code,), "text-layer"
+            else:
+                key = (page_no, code_at(lines[i], x))
+                found, read_from = IMAGE_READ.get(key, ()), "page-image"
+                if found:
+                    consumed.add(key)
+                else:
+                    unresolved.append({"page": page_no, "column": column,
+                                       "window": key[1] or None, "text": activity})
+                    continue
+
+            for one in found:
+                official = titles.get(one, "")
+                rows.append({
+                    "code": one,
+                    "column": column,
+                    "page": page_no,
+                    "text": activity,
+                    "read_from": read_from,
+                    # True only when the row's own words independently corroborate the
+                    # decoded digits. A row without it is not wrong — it is single-witness.
+                    "title_corroborated": bool(activity and content_words(activity) & content_words(official)),
+                })
 
     rows.sort(key=lambda r: (r["page"], r["code"], r["column"]))
     unresolved.sort(key=lambda r: (r["page"], r["window"] or ""))
-    return {"rows": rows, "unresolved": unresolved,
-            "tick_x_histogram": {str(k): v for k, v in sorted(tick_x.items())}}
+    return {"rows": rows, "unresolved": unresolved, "ticks": sum(tick_histogram.values()),
+            # Overrides that matched nothing. On a full-document parse that means
+            # the layer's output moved under them, so the hand-read code is now
+            # attached to a row that no longer exists — the caller must fail
+            # rather than publish 176 rows and quietly drop 4.
+            "image_read_unused": sorted(set(IMAGE_READ) - consumed),
+            "tick_x_histogram": {str(k): v for k, v in sorted(tick_histogram.items())}}
 
 
 def load_reference() -> tuple[dict[str, str], frozenset[str]]:
@@ -180,6 +317,12 @@ def build(vault_root: Path) -> dict:
         )
     titles, known = load_reference()
     parsed = parse(pdf_text(pdf), titles, known)
+    if parsed["image_read_unused"]:
+        raise RuntimeError(
+            "image-read overrides matched nothing on a full parse: "
+            f"{parsed['image_read_unused']} — the text layer moved under them; "
+            "re-read those pages before trusting this table"
+        )
     return {
         "instrument": INSTRUMENT,
         "vintage": "2021 (Perpres 49/2021, arts. 3-5 replaced all three annexes of 10/2021)",
@@ -198,8 +341,12 @@ def build(vault_root: Path) -> dict:
             "code_window_chars": CODE_WINDOW,
         },
         "counts": {
-            "tick_rows": len(parsed["rows"]) + len(parsed["unresolved"]),
-            "resolved": len(parsed["rows"]),
+            # `ticks` is the population; `resolved` can EXCEED a per-tick count
+            # because one tick may carry two codes (annex row 13). Keeping them
+            # as separate fields is why "180 of 181" cannot be read as a tick
+            # count that grew.
+            "ticks": parsed["ticks"],
+            "rows_emitted": len(parsed["rows"]),
             "unresolved": len(parsed["unresolved"]),
             "dialokasikan": sum(1 for r in parsed["rows"] if r["column"] == "dialokasikan"),
             "kemitraan": sum(1 for r in parsed["rows"] if r["column"] == "kemitraan"),
@@ -232,14 +379,16 @@ def main(argv: list[str] | None = None) -> int:
         OUTPUT.parent.mkdir(parents=True, exist_ok=True)
         OUTPUT.write_text(body)
         print(f"wrote {OUTPUT.relative_to(REPO_ROOT)}: "
-              f"{table['counts']['resolved']} of {table['counts']['tick_rows']} tick-rows", file=sys.stderr)
+              f"{table['counts']['rows_emitted']} rows from {table['counts']['ticks']} ticks, "
+              f"{table['counts']['unresolved']} unresolved", file=sys.stderr)
         return EXIT_OK
 
     if OUTPUT.is_file() and OUTPUT.read_text() != body:
         print(f"DIFFERS from {OUTPUT.relative_to(REPO_ROOT)} — re-run with --write", file=sys.stderr)
         return EXIT_DIFF
     if not args.json:
-        print(f"{table['counts']['resolved']} of {table['counts']['tick_rows']} tick-rows resolved "
+        print(f"{table['counts']['rows_emitted']} rows from {table['counts']['ticks']} ticks, "
+              f"{table['counts']['unresolved']} unresolved "
               f"({table['counts']['dialokasikan']} dialokasikan / {table['counts']['kemitraan']} kemitraan)",
               file=sys.stderr)
     return EXIT_OK

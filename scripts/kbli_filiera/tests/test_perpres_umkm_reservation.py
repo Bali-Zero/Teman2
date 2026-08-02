@@ -27,6 +27,7 @@ if _FILIERA_DIR not in sys.path:
 
 from parse_perpres_lampiran2 import (  # noqa: E402
     COLUMN_SPLIT_X,
+    IMAGE_READ,
     SUBSTITUTIONS,
     content_words,
     decode,
@@ -117,6 +118,157 @@ def test_a_line_with_no_tick_is_not_a_row():
     assert parse("        oLt22 appears in a heading\n", _TITLES, _KNOWN)["rows"] == []
 
 
+# --------------------------------------------------- multi-line table rows
+
+# The page-7 shape, verbatim in structure: a tall cell whose tick, code and text
+# land on three different lines.
+_TALL_ROW = [
+    "                gedung penginapan meliputi hostel dan losmen                                    V",
+    "                                                                                  4tot7",
+    "                lainnya",
+]
+
+
+def test_a_code_one_line_below_its_tick_is_still_the_rows_code():
+    """GUILT — reading only the tick's own line loses these. Five rows on page 7
+    (`41016`-`41020`) are shaped exactly like this and were reported unresolved
+    until the row span existed."""
+    out = parse("\n".join(_TALL_ROW), {"41017": "Konstruksi Gedung Penginapan"}, frozenset({"41017"}))
+    assert [r["code"] for r in out["rows"]] == ["41017"]
+
+
+def test_the_row_text_is_the_whole_cell_not_the_tick_line():
+    """The grade qualifier decides the bucket and it wraps: `42201` reads
+    '…menggunakan teknologi' on the tick line and 'sederhana dan madya' on the
+    next. Truncating does not lose a bucket, it produces the WRONG one."""
+    lines = [
+        "              - Konstruksi jaringan irigasi yang menggunakan teknologi            4220t         V",
+        "                 sederhana dan madya",
+    ]
+    out = parse("\n".join(lines), {"42201": "Konstruksi Jaringan Irigasi"}, frozenset({"42201"}))
+    assert "sederhana dan madya" in out["rows"][0]["text"]
+
+
+def test_the_span_stops_at_the_next_numbered_row():
+    """INNOCENCE — and the dangerous direction. Walking past the row boundary
+    would graft the NEXT activity's 'teknologi sederhana' onto this row and
+    bucket a whole-code reservation as grade-qualified, hiding it from the
+    owner's list."""
+    lines = [
+        "                jasa pekerjaan konstruksi prafabrikasi bangunan gedung             41020         V",
+        "                perakitan untuk bangunan gedung",
+        "      26     Konstruksi bangunan sipil jalan yang menggunakan teknologi sederhana",
+        "             dan madya",
+    ]
+    out = parse("\n".join(lines), {"41020": "Konstruksi Prafabrikasi"}, frozenset({"41020"}))
+    assert "sederhana" not in out["rows"][0]["text"]
+
+
+def test_the_span_walks_up_when_the_tick_line_has_no_text():
+    """`42101`'s tick sits on a line carrying only the code — its activity is
+    entirely ABOVE it. Downward-only would report an empty activity for a row
+    the annex describes in full."""
+    lines = [
+        "      26     Konstruksi bangunan sipil jalan meliputi pemeliharaan,",
+        "             bangunan jalan raya yang menggunakan teknologi sederhana",
+        "                                                                                  42tOt         V",
+        "             dan madya",
+    ]
+    out = parse("\n".join(lines), {"42101": "Konstruksi Jalan"}, frozenset({"42101"}))
+    text = out["rows"][0]["text"]
+    assert text.startswith("Konstruksi bangunan sipil jalan") and text.endswith("dan madya")
+
+
+def test_page_furniture_is_not_activity():
+    """INNOCENCE — the printing-office mark below the table is not part of the
+    last row; it was measured bleeding into `42201`."""
+    lines = [
+        "              - Konstruksi jaringan irigasi                                       4220t         V",
+        "                 sederhana dan madya",
+        "",
+        "SK No 054252C",
+    ]
+    out = parse("\n".join(lines), {"42201": "Konstruksi Jaringan Irigasi"}, frozenset({"42201"}))
+    assert "SK No" not in out["rows"][0]["text"]
+
+
+def test_the_activity_is_cut_where_the_kbli_cell_begins_not_at_a_fixed_margin():
+    """GUILT — the code column floats, so a fixed margin slices mid-word and the
+    words it eats are exactly the ones that decide the bucket."""
+    line = "                kursus, laboratorium dan bangunan penunjang pendidikan            41016         V"
+    out = parse(line, {"41016": "Konstruksi Gedung Pendidikan"}, frozenset({"41016"}))
+    assert out["rows"][0]["text"] == "kursus, laboratorium dan bangunan penunjang pendidikan"
+
+
+def test_a_line_with_no_kbli_cell_keeps_its_full_width():
+    """INNOCENCE for the same cut: on a continuation line there is no code to
+    walk back over, and trimming anyway would drop the final word."""
+    lines = [
+        "                gedung penginapan meliputi hostel                                 4tot7         V",
+        "                dan losmen sederhana",
+    ]
+    out = parse("\n".join(lines), {"41017": "Gedung Penginapan"}, frozenset({"41017"}))
+    assert out["rows"][0]["text"].endswith("dan losmen sederhana")
+
+
+def test_the_span_stops_at_a_second_kbli_cell():
+    """GUILT, and the worst failure this parser had. A row has exactly one KBLI
+    cell, so a second code line is the next row. Without this bound the `47911`
+    row ran on and took `47912` from the row below — not a missing code but a
+    WRONG one, which no `unresolved` list would have declared."""
+    lines = [
+        "                 minuman, tembakau, kimia, farmasi, kosmetik dan alat          479tt           V",
+        "                 laboratorium",
+        "             - Perdagangan eceran melalui media untuk komoditi tekstil,        47912",
+    ]
+    out = parse("\n".join(lines), {"47911": "Perdagangan Eceran Melalui Media"},
+                frozenset({"47911", "47912"}))
+    assert [r["code"] for r in out["rows"]] == ["47911"]
+    assert "tekstil" not in out["rows"][0]["text"]
+
+
+def test_a_dash_bullet_is_not_a_row_boundary():
+    """INNOCENCE — treating dashes as boundaries was tried and it COST a code:
+    annex row 13 lists four dashed products inside ONE cell, so the layer cannot
+    tell a sibling row's dash from a sub-item's."""
+    lines = [
+        "       13    Industri perlengkapan pakaian dari tekstil, yaitu:                 t4t3t           V",
+        "             - Industri peci/kopiah/songkok",
+        "             - Industri ikat kepala tradisional",
+    ]
+    out = parse("\n".join(lines), {"14131": "Industri Perlengkapan Pakaian"}, frozenset({"14131"}))
+    assert "kopiah" in out["rows"][0]["text"]
+
+
+def test_an_image_read_row_is_labelled_as_such():
+    """Every row says where it came from, so a reader can tell a parsed row from
+    a hand-read one without going back to the commit that added it."""
+    rows = load_relation()["rows"]
+    assert sorted(r["code"] for r in rows if r["read_from"] == "page-image") == \
+        ["10794", "14111", "14131", "42913", "43291", "47911"]
+    assert {r["read_from"] for r in rows} == {"text-layer", "page-image"}
+
+
+def test_a_stale_image_read_override_is_reported_not_silently_dropped():
+    """GUILT — if the layer's output moves, an override stops matching and its
+    hand-read code would vanish from a table still claiming 0 unresolved. The
+    parse reports the orphans; `build()` refuses on them."""
+    out = parse("        nothing here\n", {}, frozenset())
+    assert set(out["image_read_unused"]) == set(IMAGE_READ)
+
+
+def test_an_override_that_matches_is_not_reported_as_unused():
+    """INNOCENCE for the same guard — otherwise it would refuse every real run.
+    The two leading form feeds put the line on page 3, which is half the
+    override's key: an override is bound to a page, not to a junk string that
+    could recur elsewhere in a 22-page annex."""
+    line = "             - Industri kerupuk, keripik, peyek dan                            70794           V"
+    out = parse("\f\f" + line, {"10794": "Industri Kerupuk"}, frozenset({"10794"}))
+    assert [r["code"] for r in out["rows"]] == ["10794"]
+    assert out["rows"][0]["read_from"] == "page-image"
+    assert (3, "70794") not in out["image_read_unused"]
+
+
 def test_corroboration_ignores_words_that_head_hundreds_of_titles():
     """INNOCENCE for the second witness: sharing only 'industri' is not
     corroboration, or every industrial row would certify itself."""
@@ -184,13 +336,22 @@ def test_a_code_with_no_2025_descendant_is_archaeology():
 
 # ------------------------------------------------- pins on the shipped file
 
-def test_committed_relation_declares_what_it_could_not_read():
-    """No silent cap (W97): the file must state N of M, not just N."""
+def test_the_tick_population_is_reported_separately_from_the_rows_emitted():
+    """`rows_emitted` EXCEEDS `ticks` — annex row 13 carries two codes under one
+    tick. Folding them into a single `tick_rows` field made the output read
+    "181 of 180", i.e. a population that appeared to grow. Two fields, so the
+    excess is legible instead of alarming."""
+    counts = load_relation()["counts"]
+    assert counts["ticks"] == 180
+    assert counts["rows_emitted"] == 181 == counts["dialokasikan"] + counts["kemitraan"]
+
+
+def test_the_unresolved_list_is_reported_even_when_empty():
+    """No silent cap (W97). It is 0 today; the FIELD must still be there, since
+    a gap that leaves no trace in the output is indistinguishable from no gap."""
     rel = load_relation()
-    counts = rel["counts"]
-    assert counts["resolved"] + counts["unresolved"] == counts["tick_rows"]
-    assert counts["unresolved"] == len(rel["unresolved"]) > 0
-    assert counts["resolved"] == len(rel["rows"])
+    assert "unresolved" in rel and rel["counts"]["unresolved"] == len(rel["unresolved"])
+    assert rel["counts"]["rows_emitted"] == len(rel["rows"])
 
 
 def test_the_column_gap_that_justifies_the_split_is_still_empty():
@@ -216,7 +377,7 @@ def test_report_never_gates():
     canonical = {r["code"]: dict(_LIVE_OPEN) for r in rel["rows"]}
     out = report(rel, canonical)
     assert out["buckets"]["kemitraan-no-bar"] == sum(1 for r in rel["rows"] if r["column"] == "kemitraan")
-    assert sum(out["buckets"].values()) == out["rows_resolved"]
+    assert sum(out["buckets"].values()) == out["rows_emitted"]
 
 
 def test_relation_file_is_where_the_reader_expects_it():

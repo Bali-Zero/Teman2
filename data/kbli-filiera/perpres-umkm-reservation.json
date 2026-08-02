@@ -32,13 +32,13 @@
   "code_window_chars": 45
  },
  "counts": {
-  "tick_rows": 180,
-  "resolved": 168,
-  "unresolved": 12,
-  "dialokasikan": 111,
+  "ticks": 180,
+  "rows_emitted": 181,
+  "unresolved": 0,
+  "dialokasikan": 124,
   "kemitraan": 57,
-  "title_corroborated": 104,
-  "text_cell_missing": 38
+  "title_corroborated": 159,
+  "text_cell_missing": 0
  },
  "tick_x_histogram": {
   "90": 5,
@@ -61,6 +61,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Jagung",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -68,6 +69,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Kedelai",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -75,6 +77,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Kacang tanah",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -82,6 +85,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Kacang hijau",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -89,6 +93,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Padi hibrida",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -96,6 +101,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Padi inbrida",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -103,13 +109,15 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Getah pinus",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "02308",
    "column": "dialokasikan",
    "page": 1,
-   "text": "Bambu",
+   "text": "Bambu SK I.Jo 054161C",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -117,6 +125,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Rotan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -124,13 +133,15 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Daun kayu putih",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "02305",
    "column": "dialokasikan",
    "page": 2,
-   "text": "Kokon/kepompong ulat sutra (persu",
+   "text": "Kokon/kepompong ulat sutra (persutraan alam)",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -138,6 +149,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Damar",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -145,27 +157,31 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Madu",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "02309",
    "column": "dialokasikan",
    "page": 2,
-   "text": "kulit kayu lawang, kayu manis, ge",
+   "text": "kulit kayu lawang, kayu manis, getah-getahan lainya, sarang burung walet di alam dan perlebahan lain-lain",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10214",
    "column": "dialokasikan",
    "page": 2,
-   "text": null,
-   "title_corroborated": false
+   "text": "Industri pemindangan ikan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "10391",
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri tempe kedelai",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -173,76 +189,111 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri tahu kedelai",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10722",
    "column": "dialokasikan",
    "page": 2,
-   "text": "5.    Industri gula merah",
+   "text": "Industri gula merah",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10750",
    "column": "dialokasikan",
    "page": 2,
-   "text": "6.    Industri makanan dan masakan olahan:",
+   "text": "Industri makanan dan masakan olahan: Rendang",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10774",
    "column": "dialokasikan",
    "page": 2,
-   "text": "mendapatkan indikasi geografis:",
-   "title_corroborated": false
+   "text": "mendapatkan indikasi geografis: Garam Amed Bali",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "10794",
+   "column": "dialokasikan",
+   "page": 3,
+   "text": "Industri kerupuk, keripik, peyek dan seienisnya (pabrikan dan non pabrikan)",
+   "read_from": "page-image",
+   "title_corroborated": true
   },
   {
    "code": "13121",
    "column": "dialokasikan",
    "page": 3,
-   "text": "Industri pertenunan cual",
+   "text": "Industri pertenunan cual Industri pertenunan ulap doyo Industri pertenunan tenun grinsing Industri tenun tapis",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "13122",
    "column": "dialokasikan",
    "page": 3,
-   "text": "10    Industri kain tenun ikat",
+   "text": "Industri kain tenun ikat",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "13134",
    "column": "dialokasikan",
    "page": 3,
-   "text": "11    Industri batik:",
+   "text": "Industri batik: Industri batik tulis Industri batik kombinasi tulis dan cap l2    Industri kain sulaman/ bordir, yaitu: Industri kain karawo",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "13912",
    "column": "dialokasikan",
    "page": 3,
-   "text": "Industri kain karancang",
+   "text": "Industri kain karancang Industri kain sulam usus Industri kain sulaman/bordir lainnya yang dikerjakan tidak dengan mesin",
+   "read_from": "text-layer",
    "title_corroborated": true
+  },
+  {
+   "code": "14111",
+   "column": "dialokasikan",
+   "page": 4,
+   "text": "Industri ikat kepala tradisional Industri ikat pinggang tradisional Industri pembuatan mukena",
+   "read_from": "page-image",
+   "title_corroborated": false
+  },
+  {
+   "code": "14131",
+   "column": "dialokasikan",
+   "page": 4,
+   "text": "Industri ikat kepala tradisional Industri ikat pinggang tradisional Industri pembuatan mukena",
+   "read_from": "page-image",
+   "title_corroborated": false
   },
   {
    "code": "16291",
    "column": "dialokasikan",
    "page": 4,
-   "text": "Rotan dan bambu",
+   "text": "Rotan dan bambu Anyaman dari tanaman pandan, agel, mendong, ketak,",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "16292",
    "column": "dialokasikan",
    "page": 4,
-   "text": "purun, eceng gondok, keladi ai",
-   "title_corroborated": false
+   "text": "purun, eceng gondok, keladi air Industri alat-alat dapur dari kayu, rotan dan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "16293",
    "column": "dialokasikan",
    "page": 4,
-   "text": "15     Industri kerajinan ukiran dari kay",
+   "text": "Industri kerajinan ukiran dari kayu bukan mebeller ukiran kayu, relief, topeng, patung, wayang",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -250,125 +301,191 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "bambu",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "16299",
    "column": "dialokasikan",
    "page": 4,
-   "text": "lainnya YTDL",
+   "text": "lainnya YTDL t7     Usaha bidang obat tradisional (usaha kecil obat",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "21022",
    "column": "dialokasikan",
    "page": 4,
-   "text": "tradisional/UKoT dan usaha mikro o",
+   "text": "tradisional/UKoT dan usaha mikro obat tradisional/UMOT)",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "22121",
    "column": "dialokasikan",
    "page": 4,
-   "text": null,
-   "title_corroborated": false
+   "text": "Industri pengasapan karet",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "23932",
    "column": "dialokasikan",
    "page": 5,
-   "text": null,
-   "title_corroborated": false
+   "text": "5 DLALOI T'I No.                          BIDAI{G USAHA                                 I{BLI KOPERA TI t9    Industri perlengkapan rumah tangga dari tanah liat/keramik, berupa: Gerabah Keramik hias",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "25931",
    "column": "dialokasikan",
    "page": 5,
-   "text": "Bajak",
-   "title_corroborated": false
+   "text": "Bajak Garu Sabit Ani-ani Dodos Egreg Pisau sadap karet 2l    Industri alat potong dan perkakas tangan pertukangan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "25932",
    "column": "dialokasikan",
    "page": 5,
-   "text": "Perkakas tangan yang diproses secara",
+   "text": "Perkakas tangan yang diproses secara manual atau semi mekanik untuk pertukangan dan pemotongarn",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "25934",
    "column": "dialokasikan",
    "page": 5,
-   "text": "Keris",
+   "text": "Keris Rencong Mandau",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "32201",
    "column": "dialokasikan",
    "page": 6,
-   "text": "Dambus dari Bangka Belitung",
+   "text": "Dambus dari Bangka Belitung Kolintang dari Minahasa Gendang Beleq dari NTB Sasando dari NTT Tifa dari Papua",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "35111",
    "column": "dialokasikan",
    "page": 6,
-   "text": "24    Penyediaan tenaga listrik untuk",
+   "text": "Penyediaan tenaga listrik untuk pembangkit listrik < 1 MW",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "41011",
    "column": "dialokasikan",
    "page": 6,
-   "text": "madya:",
-   "title_corroborated": false
+   "text": "madya: geduns tempat tinegal gedung perbelanjaan meliputi toserba, toko, rumah toko (ruko) dan warung",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "41014",
    "column": "dialokasikan",
    "page": 6,
-   "text": null,
-   "title_corroborated": false
+   "text": "geduns tempat tinegal gedung perbelanjaan meliputi toserba, toko, rumah toko (ruko) dan warung gedung kesehatan meliputi puskesmas, balai pengobatan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "41015",
    "column": "dialokasikan",
    "page": 6,
-   "text": "dan gedung pelayanan kesehata",
+   "text": "dan gedung pelayanan kesehatan",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "41016",
+   "column": "dialokasikan",
+   "page": 7,
+   "text": "gedung pendidikan meliputi sarana pendidikan, tempat kursus, laboratorium dan bangunan penunjang pendidikan lainnya",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "41017",
+   "column": "dialokasikan",
+   "page": 7,
+   "text": "gedung penginapan meliputi hostel dan losmen",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "41018",
+   "column": "dialokasikan",
+   "page": 7,
+   "text": "gedung tempat hiburan dan olahraga meliputi bioskop, gedung kebudayaan/kesenian, gedung wisata dan rekreasi serta gedung olahraga",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "41019",
+   "column": "dialokasikan",
+   "page": 7,
+   "text": "gedung lainnya meliputi tempat ibadah, gedung balai pertemuan, gudang, gedung genset, rumah pompa, depo, gedung gardu listrik, dan gedung gardu sinyal",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "41020",
+   "column": "dialokasikan",
+   "page": 7,
+   "text": "jasa pekerjaan konstruksi prafabrikasi bangunan gedung meliputi pemasangan bahan hasil produksi pabrik seperti beton pracetak, baja, plastik, karet, dan hasil produksi pabrik lainnya dengan metode pabrikasi, erection, dan/atau perakitan untuk bangunan gedung",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "42101",
    "column": "dialokasikan",
    "page": 7,
-   "text": null,
-   "title_corroborated": false
+   "text": "Konstruksi bangunan sipil jalan meliputi pemeliharaan, bangunan jalan raya yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "42201",
    "column": "dialokasikan",
    "page": 7,
-   "text": "Konstruksi jaringan irigasi yang me",
+   "text": "Konstruksi jaringan irigasi yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "42202",
    "column": "dialokasikan",
    "page": 8,
-   "text": "bangunan pengolahan, penyaluran dan",
+   "text": "bangunan pengolahan, penyaluran dan penampungan air minum",
+   "read_from": "text-layer",
    "title_corroborated": false
+  },
+  {
+   "code": "42203",
+   "column": "dialokasikan",
+   "page": 8,
+   "text": "penampungan air limbah dan/atau risiko kecil dan sedang",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "42204",
    "column": "dialokasikan",
    "page": 8,
-   "text": "sederhana dan",
+   "text": "sederhana dan 3l( No 054181 C",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "42205",
    "column": "dialokasikan",
    "page": 8,
-   "text": "Konstruksi telekomunikasi navigas",
+   "text": "Konstruksi telekomunikasi navigasi udara yang menggunakan teknologi sederhana dan madya Konstruksi sinyal dan telekomunikasi kereta api yang mengglrnakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -376,6 +493,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "sederhana dan",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
@@ -383,41 +501,55 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "sederhana dan       'a",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "42209",
    "column": "dialokasikan",
    "page": 9,
-   "text": null,
-   "title_corroborated": false
+   "text": "Pemasangan bangunan prafabrikasi untuk konstruksi jaringan saluran irigasi, komunikasi dan limbah yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "42911",
    "column": "dialokasikan",
    "page": 9,
-   "text": null,
-   "title_corroborated": false
+   "text": "Konstruksi bangunan yang menggunakan teknologi sederhana dan madya: sumber daya air pelabuhan bukan perikanan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "42912",
    "column": "dialokasikan",
    "page": 9,
-   "text": null,
-   "title_corroborated": false
+   "text": "pelabuhan bukan perikanan pelabuhan perikanan",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "42913",
+   "column": "dialokasikan",
+   "page": 9,
+   "text": "pelabuhan perikanan",
+   "read_from": "page-image",
+   "title_corroborated": true
   },
   {
    "code": "42919",
    "column": "dialokasikan",
    "page": 9,
-   "text": null,
-   "title_corroborated": false
+   "text": "Pemasangan bangunan prafabrikasi untuk konstruksi bangunan sipil lainnya yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43110",
    "column": "dialokasikan",
    "page": 10,
    "text": "madya",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
@@ -425,181 +557,215 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "madya",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "43211",
    "column": "dialokasikan",
    "page": 10,
-   "text": "instalasi penyediaan tenaga listrik",
+   "text": "instalasi penyediaan tenaga listrik: Tegangan rendah/menengah",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "43212",
    "column": "dialokasikan",
    "page": 10,
-   "text": null,
-   "title_corroborated": false
+   "text": "Instalasi yang menggunakan teknologi sederhana dan madya: telekomunikasi sinyal dan telekomunikasi kereta api",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43213",
    "column": "dialokasikan",
    "page": 10,
-   "text": null,
-   "title_corroborated": false
+   "text": "elektronika saluran air Qtlambingl",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43215",
    "column": "dialokasikan",
    "page": 10,
-   "text": null,
-   "title_corroborated": false
+   "text": "sinyal dan telekomunikasi kereta api",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43216",
    "column": "dialokasikan",
    "page": 10,
-   "text": "sinyal dan rambu-rambu jalan ra",
+   "text": "sinyal dan rambu-rambu jalan raya elektronika",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "43221",
    "column": "dialokasikan",
    "page": 10,
-   "text": null,
-   "title_corroborated": false
+   "text": "saluran air Qtlambingl pemanas dan geotermal",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43222",
    "column": "dialokasikan",
    "page": 10,
-   "text": null,
-   "title_corroborated": false
+   "text": "pemanas dan geotermal",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43223",
    "column": "dialokasikan",
    "page": 11,
-   "text": null,
-   "title_corroborated": false
+   "text": "11 DIALO U I[o.                          BIDA!5G USNIA                                KBLI KOPER T minyak dan gas pendingin dan ventilasi udara",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43224",
    "column": "dialokasikan",
    "page": 11,
-   "text": null,
-   "title_corroborated": false
+   "text": "pendingin dan ventilasi udara mekanikal",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "43291",
+   "column": "dialokasikan",
+   "page": 11,
+   "text": "mekanikal konstruksi lainnya YTDL meliputi pemasangan dan pemeliharaan instalasi fasilitas pertambangan dan manufaktur seperti loading and discharging stations,",
+   "read_from": "page-image",
+   "title_corroborated": true
   },
   {
    "code": "43299",
    "column": "dialokasikan",
    "page": 11,
-   "text": "winding shafis, chemical plants,",
-   "title_corroborated": false
+   "text": "winding shafis, chemical plants, ironfoundaies, blast furnaces dan coke ouen; pemasangan instalasi sistem pengolahan dan peralatan pemurnian air laut, air payau, air tawar menjadi air murni pada pembangkit listrik",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43301",
    "column": "dialokasikan",
    "page": 11,
-   "text": null,
-   "title_corroborated": false
+   "text": "Pengerjaan yang menggunakan teknologi sederhana dan madya: pemasangan kaca dan aluminium lantai, dinding, peralatan saniter dan plafon",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43302",
    "column": "dialokasikan",
    "page": 11,
-   "text": null,
-   "title_corroborated": false
+   "text": "lantai, dinding, peralatan saniter dan plafon pengecatan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43303",
    "column": "dialokasikan",
    "page": 11,
-   "text": null,
-   "title_corroborated": false
+   "text": "pengecatan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43304",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Dekorasi yang menggunakan teknologi sederhana dan madya lnterior Eksterior",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43305",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Eksterior Penyelesaian konstruksi bangunan lainnya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43309",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Penyelesaian konstruksi bangunan lainnya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43901",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Pemasangan kontruksi yang menggunakan teknologi sederhana dan madya: Pemasangan pondasi dan tiang pancang Pemasangan perancah (steigefi",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43902",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Pemasangan perancah (steigefi Pemasangan atap I roof coueing",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43903",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Pemasangan atap I roof coueing Kerangka baja",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43904",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Kerangka baja Penyewaan alat konstruksi dengan operator yang",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43905",
    "column": "dialokasikan",
    "page": 12,
-   "text": null,
-   "title_corroborated": false
+   "text": "Penyewaan alat konstruksi dengan operator yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "43909",
    "column": "dialokasikan",
    "page": 12,
-   "text": "sederhana dan madya yang belum dikl",
+   "text": "sederhana dan madya yang belum diklasifikasikan dalam kelompok 43901 s.d.",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "45407",
    "column": "dialokasikan",
    "page": 13,
-   "text": "yang terintegrasi dengan bidang usaha",
-   "title_corroborated": false
+   "text": "yang terintegrasi dengan bidang usaha penjualan sepeda motor",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "47111",
    "column": "dialokasikan",
    "page": 13,
    "text": "Minimarket",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "47192",
    "column": "dialokasikan",
    "page": 13,
-   "text": "Bukan di toserba atau departement s",
+   "text": "Bukan di toserba atau departement store",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -607,6 +773,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Minuman tidak beralkohol",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -614,13 +781,15 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Beras",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "47242",
    "column": "dialokasikan",
    "page": 13,
-   "text": "Roti, kue kering, serta kue basah d",
+   "text": "Roti, kue kering, serta kue basah dan sejenisnya",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -628,6 +797,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Kopi, gula pasir dan gula merah",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -635,6 +805,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Tahu, tempe, tauco dan oncom",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -642,13 +813,15 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Daging dan ikan olahan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "47721",
    "column": "dialokasikan",
    "page": 13,
-   "text": "Barang dan obat farmasi untuk ma",
+   "text": "Barang dan obat farmasi untuk manusia di apotik",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -656,6 +829,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Makanan lainnya",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -663,20 +837,39 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Alas kaki",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "47722",
    "column": "dialokasikan",
    "page": 14,
-   "text": "'B\"rt\"t dan obat farmasi untuk manu",
+   "text": "'B\"rt\"t dan obat farmasi untuk manusia bukan di apotik",
+   "read_from": "text-layer",
+   "title_corroborated": true
+  },
+  {
+   "code": "47911",
+   "column": "dialokasikan",
+   "page": 14,
+   "text": "minuman, tembakau, kimia, farmasi, kosmetik dan alat laboratorium",
+   "read_from": "page-image",
+   "title_corroborated": true
+  },
+  {
+   "code": "47912",
+   "column": "dialokasikan",
+   "page": 14,
+   "text": "Perdagangan eceran melalui media untuk komoditi tekstil, pakaian, alas kaki, dan barang keperluan pribadi",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "47913",
    "column": "dialokasikan",
    "page": 14,
-   "text": "Perdagangan eceran melalui media un",
+   "text": "Perdagangan eceran melalui media untuk barang perlengkapan rumah tangga dan perlengkapan dapur",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -684,6 +877,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Hotel Bintang I",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -691,6 +885,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Hotel Melati",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -698,6 +893,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Pondok Wisata",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -705,6 +901,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Vila",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -712,6 +909,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Guest House",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
@@ -719,6 +917,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "sederhana dan madya",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
@@ -726,90 +925,103 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "madya",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "71102",
    "column": "dialokasikan",
    "page": 15,
-   "text": null,
-   "title_corroborated": false
+   "text": "Aktivitas keinsinyuran dan konsultansi teknis YBDI yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "71202",
    "column": "dialokasikan",
    "page": 15,
-   "text": null,
-   "title_corroborated": false
+   "text": "Jasa pengujian laboratorium yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "71204",
    "column": "dialokasikan",
    "page": 15,
-   "text": "penyediaan tenaga listrik atau pemanfaata",
+   "text": "penyediaan tenaga listrik atau pemanfaatan tenaga listrik: Tenaga listrik tegangan rendah/ menengah",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "71204",
    "column": "dialokasikan",
    "page": 16,
-   "text": null,
-   "title_corroborated": false
+   "text": "Jasa inspeksi teknik instalasi yang menggunakan teknologi sederhana dan madya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "79111",
    "column": "dialokasikan",
    "page": 16,
-   "text": "55       Aktivitas agen perialanan wisata",
+   "text": "Aktivitas agen perialanan wisata",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "79921",
    "column": "dialokasikan",
    "page": 16,
-   "text": "56       Jasa pramuwisata",
+   "text": "Jasa pramuwisata",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "82190",
    "column": "dialokasikan",
    "page": 16,
-   "text": null,
-   "title_corroborated": false
+   "text": "Aktivitas jasa Foto kopi, penyiapan dokumen dan jasa khusus penuniang kantor lainnya",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "86103",
    "column": "dialokasikan",
    "page": 16,
-   "text": "(residential health seruices) dan sarana",
+   "text": "(residential health seruices) dan sarana pelayanan kesehatan dasar",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "95220",
    "column": "dialokasikan",
    "page": 16,
-   "text": null,
-   "title_corroborated": false
+   "text": "Reparasi peralatan: Peralatan rumah tangga dan Peralatan rumah dan kebun",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "95291",
    "column": "dialokasikan",
    "page": 16,
    "text": "Vermak pakaian",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "95299",
    "column": "dialokasikan",
    "page": 16,
-   "text": null,
-   "title_corroborated": false
+   "text": "Industri reparasi barang rumah tangga dan pribadi lainnya St( No 054256 C",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "96111",
    "column": "dialokasikan",
    "page": 16,
    "text": "Pangkas rambut/ barber shop",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -817,6 +1029,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Salon kecantikan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -824,13 +1037,15 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Penatu",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "01461",
    "column": "kemitraan",
    "page": 17,
-   "text": "61      Budidaya ayarn ras pedaginC FS)",
+   "text": "Budidaya ayarn ras pedaginC FS)",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
@@ -838,6 +1053,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan laut",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -845,6 +1061,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan laut",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -852,6 +1069,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air tawar",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -859,6 +1077,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air tawar",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -866,6 +1085,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air payau",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -873,13 +1093,15 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air payau",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "08930",
    "column": "kemitraan",
    "page": 17,
-   "text": "64      Usaha produksi/ ekstraksi garam",
+   "text": "Usaha produksi/ ekstraksi garam",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -887,62 +1109,71 @@
    "column": "kemitraan",
    "page": 17,
    "text": "perairan lainnya",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "10212",
    "column": "kemitraan",
    "page": 17,
-   "text": "Pengasapan ikan dan biota perairan lainnya",
+   "text": "Pengasapan ikan dan biota perairan lainnya Peragian/fermentasi ikan dan produk masak lainnya (untuk",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10215",
    "column": "kemitraan",
    "page": 17,
-   "text": null,
-   "title_corroborated": false
+   "text": "Peragian/fermentasi ikan dan produk masak lainnya (untuk usaha ekstraksi dan ielly ikan) Industri berbasis daging lumatan dan surimi",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "10216",
    "column": "kemitraan",
    "page": 17,
-   "text": null,
-   "title_corroborated": false
+   "text": "usaha ekstraksi dan ielly ikan) Industri berbasis daging lumatan dan surimi",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "10221",
    "column": "kemitraan",
    "page": 18,
-   "text": "66.   Pengalengan ikan",
+   "text": "Pengalengan ikan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10311",
    "column": "kemitraan",
    "page": 18,
-   "text": "67     Industri             buah-buahan dan",
+   "text": "Industri             buah-buahan dan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10421",
    "column": "kemitraan",
    "page": 18,
-   "text": "68     Industri kopra",
+   "text": "Industri kopra",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10520",
    "column": "kemitraan",
    "page": 18,
-   "text": "69     Industri pengolahan suqu bubuk dan susu kental",
+   "text": "Industri pengolahan suqu bubuk dan susu kental",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "10721",
    "column": "kemitraan",
    "page": 18,
-   "text": "70     Industri",
+   "text": "Industri",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
@@ -950,6 +1181,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "7l     lnQustri kecap",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -957,27 +1189,31 @@
    "column": "kemitraan",
    "page": 18,
    "text": "kecgp, tempe dan tahu",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "16101",
    "column": "kemitraan",
    "page": 18,
-   "text": null,
-   "title_corroborated": false
+   "text": "Industri kayu gergajian dengan kapasitas produksi sampai {engan kurang dari 2OO0 m3 per tahun",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "16103",
    "column": "kemitraan",
    "page": 18,
    "text": "qqle4isnya",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "16104",
    "column": "kemitraan",
    "page": 18,
-   "text": "75.    Industri pengollrhan rotan",
+   "text": "Industri pengollrhan rotan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -985,41 +1221,47 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri               briket kela",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "20294",
    "column": "kemitraan",
    "page": 18,
-   "text": "77     Industri minyak atsiri",
+   "text": "Industri minyak atsiri",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "21015",
    "column": "kemitraan",
    "page": 18,
-   "text": "78.    Industri alat kesehatan kelas A",
+   "text": "Industri alat kesehatan kelas A",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "23921",
    "column": "kemitraan",
    "page": 18,
-   "text": "79     Industri batu bata dan tanah      keramik",
+   "text": "Industri batu bata dan tanah      keramik",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "23939",
    "column": "kemitraan",
    "page": 18,
-   "text": "80     Industri barang lainnya dari tanah liat/keramik",
+   "text": "Industri barang lainnya dari tanah liat/keramik",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "23942",
    "column": "kemitraan",
    "page": 18,
-   "text": "81     Industri kapur",
+   "text": "Industri kapur",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -1027,76 +1269,87 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri serat sabut kelapa",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "23951",
    "column": "kemitraan",
    "page": 19,
-   "text": "82    Industri barang-barang dari semen",
+   "text": "Industri barang-barang dari semen",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "23952",
    "column": "kemitraan",
    "page": 19,
-   "text": "83.   Industri barang-barang dari kapur",
+   "text": "Industri barang-barang dari kapur",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "23959",
    "column": "kemitraan",
    "page": 19,
-   "text": "84    Industri barang-barang dari semen dan kapur",
+   "text": "Industri barang-barang dari semen dan kapur lainnya",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "25952",
    "column": "kemitraan",
    "page": 19,
-   "text": "85    Industri paku, mur, dan baut",
+   "text": "Industri paku, mur, dan baut",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "28113",
    "column": "kemitraan",
    "page": 19,
-   "text": "86    Industri komponen dan suku cadang mesin dan turbin",
+   "text": "Industri komponen dan suku cadang mesin dan turbin",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "28130",
    "column": "kemitraan",
    "page": 19,
-   "text": "87.   Industri pompa lainnya, kompressor, kran, dan klep/k",
+   "text": "Industri pompa lainnya, kompressor, kran, dan klep/katup",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "29300",
    "column": "kemitraan",
    "page": 19,
-   "text": "dan kotak kemudi; suku cadang dan aksesori untuk bod",
+   "text": "dan kotak kemudi; suku cadang dan aksesori untuk bodi karoseri kendaraan bermotor, seperti sabuk pengaman, pintu, bamper, airbag; tempat duduk mobil; peralatan listrik kendaraan bermotor, seperti generator, alternator, bus| ignition wiing hnrnesses/ starter, sistem buka tutup pintu dan jendela otomatis, pemasangan argometer ke dalam panel instrumen, penRatur uoltase",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "30912",
    "column": "kemitraan",
    "page": 19,
-   "text": "89    Industri komponen dan perlengkapan",
+   "text": "Industri komponen dan perlengkapan kendaraan bermotor roda dua dan tiga",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "30113",
    "column": "kemitraan",
    "page": 20,
-   "text": null,
-   "title_corroborated": false
+   "text": "Industri peralatan dan perlengkapan kapal kayu untuk wisata bahari dan penangkapan ikan",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "32111",
    "column": "kemitraan",
    "page": 20,
-   "text": "94     Industri permata",
+   "text": "Industri permata",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -1104,76 +1357,87 @@
    "column": "kemitraan",
    "page": 20,
    "text": "dari logam mulia",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "32113",
    "column": "kemitraan",
    "page": 20,
-   "text": "92     Industri barang perhiasan berharga bukan untuk kep",
+   "text": "Industri barang perhiasan berharga bukan untuk keperluan pribadi dari losam mulia",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "32120",
    "column": "kemitraan",
    "page": 20,
-   "text": "93.    Industri perhiasan imitasi dan barang seienis",
+   "text": "Industri perhiasan imitasi dan barang seienis",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "32903",
    "column": "kemitraan",
    "page": 20,
-   "text": "95.    Industri kerajinan yang tidak diklasifikasikan di",
+   "text": "Industri kerajinan yang tidak diklasifikasikan di tempat lain",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "33151",
    "column": "kemitraan",
    "page": 20,
-   "text": "96.    Jasa reparasi kapal, perahu dan bangunan terapung",
+   "text": "Jasa reparasi kapal, perahu dan bangunan terapung",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "33159",
    "column": "kemitraan",
    "page": 20,
-   "text": "97.    Jasa reparasi alat angkutan lainnya, bukan kendara",
+   "text": "Jasa reparasi alat angkutan lainnya, bukan kendaraan bermotor",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "38302",
    "column": "kemitraan",
    "page": 20,
-   "text": "98     Industri daur ulang barang-barang bukan logam",
+   "text": "Industri daur ulang barang-barang bukan logam",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "41012",
    "column": "kemitraan",
    "page": 20,
-   "text": "gedung perkantoran",
+   "text": "gedung perkantoran gedung industri",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "41013",
    "column": "kemitraan",
    "page": 20,
-   "text": null,
-   "title_corroborated": false
+   "text": "gedung industri SK tJo 05,1024C",
+   "read_from": "text-layer",
+   "title_corroborated": true
   },
   {
    "code": "42102",
    "column": "kemitraan",
    "page": 21,
-   "text": "Konstruksi jembatan dan jalan layang yang mengguna",
+   "text": "Konstruksi jembatan dan jalan layang yang menggunakan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "46206",
    "column": "kemitraan",
    "page": 21,
-   "text": "101    dan ekspor hasil perikanan",
+   "text": "dan ekspor hasil perikanan",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -1181,20 +1445,23 @@
    "column": "kemitraan",
    "page": 21,
    "text": "ro2.   Aktivitas agen kurir",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "71102",
    "column": "kemitraan",
    "page": 21,
-   "text": "103.   Konsultasi di bidang instalasi tenaga listrik",
+   "text": "Konsultasi di bidang instalasi tenaga listrik",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "77311",
    "column": "kemitraan",
    "page": 21,
-   "text": "Alat transportasi darat (rental tuithaut operato",
+   "text": "Alat transportasi darat (rental tuithaut operatofl",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -1202,27 +1469,31 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Mesin pertanian dan peralatannya",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "77394",
    "column": "kemitraan",
    "page": 21,
-   "text": "Mesin kantor dan peralatannya",
+   "text": "Mesin kantor dan peralatannya Mesin lainnya dan peralatannya yang tidak diklasifikasikan di",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
    "code": "77399",
    "column": "kemitraan",
    "page": 21,
-   "text": "tempat lain (pembangkit tenaga listrik, tekstil,",
+   "text": "tempat lain (pembangkit tenaga listrik, tekstil, pengolahan/ pengerjaan logam/ kayu, percetakan, dan las listrik)",
+   "read_from": "text-layer",
    "title_corroborated": false
   },
   {
    "code": "86903",
    "column": "kemitraan",
    "page": 21,
-   "text": "105    Laboratorium kesehatan klinik",
+   "text": "Laboratorium kesehatan klinik",
+   "read_from": "text-layer",
    "title_corroborated": true
   },
   {
@@ -1230,81 +1501,9 @@
    "column": "dialokasikan",
    "page": 22,
    "text": "Peralatan komunikasi",
+   "read_from": "text-layer",
    "title_corroborated": true
   }
  ],
- "unresolved": [
-  {
-   "page": 3,
-   "column": "dialokasikan",
-   "window": "70794",
-   "text": "8     Industri kerupuk, keripik, peyek dan"
-  },
-  {
-   "page": 4,
-   "column": "dialokasikan",
-   "window": null,
-   "text": "Industri ikat kepala tradisional"
-  },
-  {
-   "page": 7,
-   "column": "dialokasikan",
-   "window": "11pu11b105k0p,",
-   "text": "gedung tempat hiburan dan olahraga"
-  },
-  {
-   "page": 7,
-   "column": "dialokasikan",
-   "window": "ah,gedungba1a1",
-   "text": "gedung lainnya meliputi tempat ibad"
-  },
-  {
-   "page": 7,
-   "column": "dialokasikan",
-   "window": "an105men",
-   "text": "gedung penginapan meliputi hostel d"
-  },
-  {
-   "page": 7,
-   "column": "dialokasikan",
-   "window": "bangunangedung",
-   "text": "jasa pekerjaan konstruksi prafabrik"
-  },
-  {
-   "page": 7,
-   "column": "dialokasikan",
-   "window": "d1d1kan,1empa1",
-   "text": "gedung pendidikan meliputi sarana p"
-  },
-  {
-   "page": 8,
-   "column": "dialokasikan",
-   "window": null,
-   "text": null
-  },
-  {
-   "page": 9,
-   "column": "dialokasikan",
-   "window": "42973",
-   "text": null
-  },
-  {
-   "page": 11,
-   "column": "dialokasikan",
-   "window": "43297",
-   "text": null
-  },
-  {
-   "page": 14,
-   "column": "dialokasikan",
-   "window": null,
-   "text": null
-  },
-  {
-   "page": 14,
-   "column": "dialokasikan",
-   "window": "1kdana1a147971",
-   "text": "minuman, tembakau, kimia, farmasi"
-  }
- ]
+ "unresolved": []
 }
