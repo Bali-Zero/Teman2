@@ -37,7 +37,14 @@ CREDENTIAL
 ----------
 Reads the Vercel CLI's OAuth token from its auth.json and never prints it. `expiresAt` in
 that file is in SECONDS, not milliseconds — treating it as ms makes an expired token look
-valid until the year 58000. Refresh with `vercel whoami`, which renews silently.
+valid until the year 58000.
+
+The token lives for hours, so an EXPIRED one is the ordinary state, not a broken machine:
+this script now redeems the `refreshToken` sitting next to it by running `vercel whoami`,
+instead of telling a human to. It used to print that instruction and exit — which is how a
+2026-08-02 census read `403 {"invalidToken": true}` as "no working credential exists
+anywhere on the fleet" and parked a merged frontend cure on an operator login that was not
+needed. `vercel login` is genuinely the entrance ONLY when the refresh fails.
 
 PROMOTE FIRST, BUILD ONLY IF YOU MUST (2026-07-30)
 --------------------------------------------------
@@ -84,15 +91,65 @@ BUILD_TIMEOUT_S = 600
 POLL_S = 20
 
 
-def _token() -> str:
+def _read_auth() -> dict:
     path = os.path.expanduser(AUTH_JSON)
     if not os.path.exists(path):
         sys.exit(f"no Vercel CLI credential at {AUTH_JSON} — run `vercel login` on this machine")
     with open(path) as fh:
-        data = json.load(fh)
-    expires_at = data.get("expiresAt")  # SECONDS
-    if expires_at and expires_at < time.time():
-        sys.exit("Vercel token expired — run `vercel whoami` to refresh it, then retry")
+        return json.load(fh)
+
+
+def _refresh_credential() -> bool:
+    """Redeem the `refreshToken` already in auth.json by running `vercel whoami`.
+
+    EXPIRY IS NOT ABSENCE, AND READING IT AS ABSENCE INVENTS AN OPERATOR STEP.
+    This token's lifetime is hours, so `403 {"invalidToken": true}` is the NORMAL
+    state a few hours after any login. On 2026-08-02 a credential census read that
+    403 on M5, plus a placeholder file on Pro and none on Mini, and concluded that
+    no working credential existed anywhere on the fleet — so a frontend cure sat
+    merged-but-not-served waiting for a human to log in again. The file had held a
+    `refreshToken` the whole time: `vercel whoami` redeemed it in one second and the
+    same session promoted with it. A human login is the entrance ONLY when the
+    refresh itself fails.
+
+    Shelling out to the CLI rather than calling the OAuth endpoint directly is
+    deliberate: the endpoint, the client id and the file layout are the CLI's
+    business and change without notice, and this script must not own three moving
+    parts to save one subprocess.
+    """
+    try:
+        proc = subprocess.run(
+            ["vercel", "whoami"], capture_output=True, text=True, timeout=60, check=False
+        )
+    except FileNotFoundError:
+        print("  vercel CLI not on PATH — cannot refresh the token here", file=sys.stderr)
+        return False
+    except subprocess.TimeoutExpired:
+        print("  `vercel whoami` timed out — token not refreshed", file=sys.stderr)
+        return False
+    if proc.returncode != 0:
+        # Never echo the CLI's stdout: it is the account identity, not a secret, but
+        # the failure path is where a token most often ends up quoted into a log.
+        print(f"  `vercel whoami` exited {proc.returncode} — token not refreshed", file=sys.stderr)
+        return False
+    return True
+
+
+def _token() -> str:
+    data = _read_auth()
+    expires_at = data.get("expiresAt")  # SECONDS, not milliseconds
+    expired = bool(expires_at) and expires_at < time.time()
+    if expired or not data.get("token"):
+        print("  Vercel token expired — refreshing via `vercel whoami`", file=sys.stderr)
+        if not _refresh_credential():
+            sys.exit(
+                "Vercel token expired and could not be refreshed — run `vercel login` "
+                "on this machine (browser device-code flow, the one step a session cannot do)"
+            )
+        data = _read_auth()
+        still_expired = bool(data.get("expiresAt")) and data["expiresAt"] < time.time()
+        if still_expired:
+            sys.exit("`vercel whoami` returned 0 but the credential is still expired — run `vercel login`")
     token = data.get("token")
     if not token:
         sys.exit(f"{AUTH_JSON} holds no token — run `vercel login` on this machine")
