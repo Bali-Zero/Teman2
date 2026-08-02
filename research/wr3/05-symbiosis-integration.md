@@ -246,7 +246,7 @@ Trigger: confirm Step 5 decisions (A/B/C/D)?
 ## Adversarial review
 
 **Seat**: Codex `gpt-5.6-sol`, effort `xhigh` — cross-family, and the author of the diff never graded it.
-**Scope**: the ONE retraction annotation added to this file — the 17.2× citation. This file never
+**Scope**: the ONE retraction annotation added to this file — RETRACTED[kim-2025-17x-error-amplification-as-cause], the 17.2× citation. This file never
 asserted the replacement ranking claim, so no correction of it is certified here. The dated body is a
 record of what was believed on its date and was not re-reviewed.
 
@@ -254,10 +254,10 @@ record of what was believed on its date and was not re-reviewed.
 
 1. Round 1 (7 objections) — "rejects" overstated `p=0.658`, which means UNSUPPORTED, not disproved; and
    `Independent` was being equated with peer-to-peer when §3.1 defines it as parallel agents with
-   `Ω=synthesis_only`, i.e. no coordination at all.
+   `Ω=synthesis_only`, i.e. no coordination at all. RETRACTED[kim-2025-17x-error-amplification-as-cause]
 2. Round 2 (8) — an annotation that follows an assertion does not unsay it; two files thought to be
    archaeology turned out to be a live spec and its ground truth.
-3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false**:
+3. Round 3 (8; 6 real, 2 artefacts of a two-dot review diff) — **the replacement claim was itself false** RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]:
    "Centralized best" contradicts Table 5 (`Decentralized 0.477 > SAS 0.466 > Centralized 0.463 >
    Hybrid 0.452 > Independent 0.370`) and the paper's own *"no single architecture dominates"*.
 4. Round 4 (8) — the guard built to prevent a fourth generation could still be absolved by the
