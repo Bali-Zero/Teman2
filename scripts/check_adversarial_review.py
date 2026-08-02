@@ -48,12 +48,26 @@ Exit codes:
     0   all in-scope files pass (including the "zero files in scope" case)
     1   >=1 in-scope file fails
     2   git failure in --diff mode, or a CLI argument error
+
+--diff measures COMMITTED WORK ONLY (`BASE...HEAD`). That is right for CI, whose
+tree is always clean, and it is a trap locally: run the gate on uncommitted edits
+and it reports on a scope that does not contain the files you are asking about —
+and a smaller scope always looks like a cleaner PASS. Since 2026-08-02 the gate
+SAYS SO on stderr whenever `research/**/*.md` is dirty (`warn_if_uncommitted`).
+The note never changes the exit code; a diagnostic that can fail a build is not
+a diagnostic. Lived: a local `PASS - 1 research file(s)` became `FAIL - 2 of 3`
+after nothing but a commit, and CI returned that same failure on the same tree.
+The verdict was true of what it measured and false of what was concluded from it
+— the local twin of W88/W102, where the ENUMERATION lies and the rule is fine.
 """
 
 from __future__ import annotations
 
 import argparse
+import io
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -240,6 +254,77 @@ def run_diff_mode(base_ref: str, repo_root: Optional[Path] = None) -> List[Path]
     return [root / f for f in files]
 
 
+def uncommitted_research_files(cwd: Optional[Path] = None) -> Optional[List[str]]:
+    """Paths under research/**/*.md carrying uncommitted changes (staged or not).
+
+    Returns None when git cannot answer. None is NOT the empty list: "I could
+    not check" and "nothing is dirty" are different facts and must not share a
+    channel (W106b — a probe that reports its own failure as a clean result
+    spends the reader's trust on a premise that was never established).
+
+    Same pathspec as _git_diff_files, deliberately: the whole point is to
+    describe the blind spot of THAT enumeration, so a divergence in scope
+    between the two would defeat the purpose.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--", "research/**/*.md"],
+            cwd=str(cwd) if cwd else None,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return None
+    # porcelain v1: 2 status chars + space + path (rename: "old -> new")
+    return [line[3:].strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def warn_if_uncommitted(base_ref: str, cwd: Optional[Path] = None, stream=None) -> None:
+    """Say out loud what `--diff` is NOT measuring. Never changes the exit code.
+
+    `--diff` enumerates `BASE...HEAD` — committed work only. That is correct for
+    CI, whose tree is always clean, and it is a trap locally: running the gate on
+    uncommitted edits measures a scope that does not contain the files under
+    review, and a smaller scope always looks like a cleaner PASS. Lived 2026-08-02:
+    a local `PASS - 1 research file(s)` became `FAIL - 2 of 3` after nothing but a
+    commit, and CI returned that failure on the exact same tree. The verdict was
+    true of what it measured and false of what was concluded from it.
+
+    This is the local twin of W88/W102: the ENUMERATION lies, not the rule.
+    """
+    stream = stream if stream is not None else sys.stderr
+    dirty = uncommitted_research_files(cwd=cwd)
+
+    if dirty is None:
+        print(
+            "check_adversarial_review: NOTE - could not check for uncommitted "
+            "research files (git status failed); this verdict covers committed "
+            f"work only ({base_ref}...HEAD)",
+            file=stream,
+        )
+        return
+
+    if not dirty:
+        return
+
+    shown = dirty[:10]
+    suffix = f" (showing {len(shown)} of {len(dirty)})" if len(dirty) > len(shown) else ""
+    print(
+        f"check_adversarial_review: NOTE - scope is {base_ref}...HEAD, i.e. COMMITTED "
+        f"WORK ONLY. {len(dirty)} uncommitted change(s) under research/**/*.md are NOT "
+        f"measured by this verdict{suffix}:",
+        file=stream,
+    )
+    for path in shown:
+        print(f"  ~ {path}", file=stream)
+    print(
+        "  -> commit them and re-run before trusting a PASS; CI enumerates the "
+        "same way and will see them once committed.",
+        file=stream,
+    )
+
+
 def run_check(files: Sequence[Path]) -> int:
     in_scope = [f for f in files if is_in_scope(f)]
 
@@ -267,6 +352,36 @@ def run_check(files: Sequence[Path]) -> int:
 # --------------------------------------------------------------------------- #
 # --selftest: guilt + innocence fixtures (superscar #3 discipline)
 # --------------------------------------------------------------------------- #
+
+def _try_make_repo() -> Optional[Path]:
+    """A real, throwaway git repo with one commit — or None if git is unusable.
+
+    Returns None rather than raising: a machine without git is a natural state
+    (Law 6), and the caller SKIPS loudly instead of reporting a false pass.
+    """
+    try:
+        root = Path(tempfile.mkdtemp(prefix="r1gate-selftest-"))
+        # Host git config is neutralised so a developer's hooks/templates/aliases
+        # cannot change what this corpus measures; HOME is still passed because
+        # git wants it even when told to read no global config.
+        env = {
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+            "GIT_CONFIG_SYSTEM": "/dev/null",
+            "GIT_TERMINAL_PROMPT": "0",
+            "PATH": os.environ.get("PATH", ""),
+            "HOME": os.environ.get("HOME", str(root)),
+        }
+        run = lambda *a: subprocess.run(  # noqa: E731
+            ["git", *a], cwd=str(root), capture_output=True, check=True, env=env
+        )
+        run("init", "-q")
+        (root / "seed.txt").write_text("seed\n", encoding="utf-8")
+        run("add", "-A")
+        run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed")
+        return root
+    except Exception:
+        return None
+
 
 def _write(tmp: Path, name: str, content: str) -> Path:
     p = tmp / name
@@ -405,6 +520,65 @@ def run_selftest() -> int:
         code = run_check([valid, valid_human, exempt])
         expect("end-to-end innocence run_check exits 0", code == 0)
 
+    # ---- uncommitted-scope warning: guilt + innocence, on a REAL git repo ----
+    # A fake would prove nothing here: the whole defect is that git's own
+    # BASE...HEAD enumeration cannot see the working tree, so the probe has to
+    # be exercised against a real index. Skipped (not silently passed) if git
+    # is unavailable — offline/toolless is a natural state, not a failure.
+    repo = _try_make_repo()
+    if repo is None:
+        # LOUD, not silent (W108): without this line the only trace of 8 skipped
+        # checks is the total dropping from 27 to 19, and nobody reads a count
+        # they have no baseline for. A degraded run must not look like a full one.
+        print(
+            "SELFTEST NOTE - git unavailable: SKIPPING the 8 uncommitted-scope "
+            "checks; this run proves the frontmatter contract only.",
+            file=sys.stderr,
+        )
+        expect("uncommitted-warning fixtures skipped loudly (git unavailable)", True)
+    else:
+        research = repo / "research" / "operations"
+        research.mkdir(parents=True, exist_ok=True)
+
+        # INNOCENCE: clean tree -> silent, and the probe returns [] not None
+        expect("INNOCENCE clean tree -> probe returns empty list", uncommitted_research_files(repo) == [])
+        buf = io.StringIO()
+        warn_if_uncommitted("HEAD", cwd=repo, stream=buf)
+        expect("INNOCENCE clean tree -> no warning printed", buf.getvalue() == "")
+
+        # GUILT: an uncommitted research file must be NAMED, not merely counted
+        dirty_file = research / "2026-08-02-uncommitted.md"
+        dirty_file.write_text("---\ndate: 2026-08-02\n---\n\n# Uncommitted\n", encoding="utf-8")
+        found = uncommitted_research_files(repo)
+        expect("GUILT untracked research file -> probe sees it", found is not None and len(found) == 1)
+        buf = io.StringIO()
+        warn_if_uncommitted("origin/main", cwd=repo, stream=buf)
+        out = buf.getvalue()
+        expect("GUILT -> warning is emitted", out != "")
+        expect("GUILT -> warning names the file", "2026-08-02-uncommitted.md" in out)
+        expect("GUILT -> warning says committed-only", "COMMITTED" in out)
+
+        # GUILT: staged-but-uncommitted is the exact shape that bit us — the
+        # file is in the index, invisible to BASE...HEAD, and reads as absent.
+        subprocess.run(["git", "add", "-A"], cwd=str(repo), capture_output=True, check=False)
+        staged = uncommitted_research_files(repo)
+        expect("GUILT staged-not-committed -> still seen", staged is not None and len(staged) == 1)
+
+        # INNOCENCE: once committed, the warning goes away by itself
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "add"],
+            cwd=str(repo), capture_output=True, check=False,
+        )
+        expect("INNOCENCE after commit -> probe clean again", uncommitted_research_files(repo) == [])
+
+        # The warning must NEVER move the verdict: same files, same exit code,
+        # dirty or clean. A diagnostic that can fail a build is not a diagnostic.
+        dirty_file.write_text("edited again\n", encoding="utf-8")
+        code_dirty = run_check([])
+        expect("INNOCENCE dirty tree does not change exit code", code_dirty == 0)
+
+        shutil.rmtree(repo, ignore_errors=True)
+
     if failures:
         print(f"SELFTEST FAILED — {len(failures)}/{checks} checks failed:")
         for f in failures:
@@ -467,6 +641,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         except FileNotFoundError:
             print("check_adversarial_review: git executable not found", file=sys.stderr)
             return 2
+        # Diagnostic only — must never influence the exit code (see docstring).
+        warn_if_uncommitted(args.diff)
         return run_check(files)
 
     if args.files:
