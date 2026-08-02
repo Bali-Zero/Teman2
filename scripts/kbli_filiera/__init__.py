@@ -23,4 +23,7 @@ Annex readers (join the vaulted instrument against the catalogue, report only):
   parse_perpres_lampiran2          — compiles the Koperasi/UMKM reservation table.
   perpres_umkm_reservation_relation — reports where that table and the catalogue differ.
   perpres_foreign_cap_relation      — the same for Lampiran III (percentage caps).
+  perpres_body_default_relation     — the NEGATIVE locator: what the BODY says about
+                                      the ~1,288 codes no annex names (Pasal 3(1)(d)
+                                      residual default, Pasal 7(1) Usaha Besar floor).
 """

@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""The NEGATIVE locator: what the Perpres body says about a code no annex names.
+
+WHAT THIS IS, AND WHY IT IS THE BIGGEST GAP ON THE PMA AXIS
+-----------------------------------------------------------
+Third and last reader of the Daftar Positif Investasi, after
+`perpres_umkm_reservation_relation.py` (Lampiran II) and
+`perpres_foreign_cap_relation.py` (Lampiran III). Those two speak for the codes
+an annex NAMES — 271 of 1,559 once the 2020->2025 crosswalk is honoured. This
+module speaks for the other ~1,288, which is the block that until now carried
+`pma_source: "Perpres 10/2021, 49/2021"` with **no article behind it**: a
+blanket attribution, not a locator. The navigator's north star is that every
+rendered PMA fact is either government-sourced with a citable locator or an
+honest declared gap. For most of the catalogue this file is that locator.
+
+THE BODY, READ RATHER THAN ASSUMED (vault 154474 + 161562)
+-----------------------------------------------------------
+`Perpres 10/2021` as amended by `49/2021`. What 49/2021 actually changes, read
+off its own Pasal I: item 1 = Pasal 2, item 2 = Pasal 6, items 3/4/5 = the three
+lampiran. **Pasal 3 and Pasal 7 are untouched**, which matters because both legs
+of this join hang off them:
+
+* **Pasal 3 ayat (1) huruf d + ayat (2)** — the residual category, "Bidang
+  Usaha yang tidak termasuk dalam huruf a, huruf b, dan huruf c", and it "dapat
+  diusahakan oleh semua Penanam Modal". THIS is the default that makes a
+  100%-open verdict lawful for an unnamed code. It is not folklore.
+* **Pasal 7 ayat (1)** — "Penanam Modal asing **hanya dapat** melakukan kegiatan
+  usaha pada **Usaha Besar** dengan nilai investasi lebih dari
+  Rp10.000.000.000,00 di luar nilai tanah dan bangunan." A foreign investor may
+  ONLY operate at Usaha Besar scale. So the default is not unconditional: a code
+  whose own `per_skala` names no Besar row is one the body's own text keeps a
+  PMA out of, whatever the annexes say. `no Besar => no PMA` is a citation, not
+  an inference from the capital threshold.
+
+TWO MORE OPERATIVE LISTS LIVE IN THE BODY, NOT IN AN ANNEX
+-----------------------------------------------------------
+"Absent from both annexes" is NOT the same as "residual", and reading it that
+way would hand six codes a default they do not have:
+
+* **Pasal 2 ayat (2) huruf b** (inserted by 49/2021): `11010`, `11020`, `11031`
+  — the three alcohol INDUSTRIES, tertutup by name, in the body.
+* **Pasal 6 ayat (3a)** (inserted by 49/2021): `46333`, `47221`, `47826` — the
+  alcohol TRADE codes under "persyaratan Penanaman Modal lainnya", a fourth
+  regime that is deliberately not a percentage and not in Lampiran III.
+
+They are hard-coded here with their article rather than regex-scraped, because
+the body's text layer carries the same deterministic corruption as the annexes
+(`KBLI a6333` for 46333, `KBLr 1 1031` for 11031) — a grep for the literal
+"KBLI" silently undercounts. The test suite pins them against the PDF instead.
+
+THE CROSSWALK IS LOAD-BEARING, AND IT IS ALSO NOT ADJUDICATED
+--------------------------------------------------------------
+The annexes speak KBLI 2020; the catalogue is KBLI 2025. Joining on identity
+alone finds 169 codes — the crosswalk finds **271**. The 102-code difference is
+entirely codes that would otherwise be declared residual-and-open while their
+2020 predecessor sits in a restriction annex, which is the dangerous direction:
+a missed restriction reads to a client as freedom the law does not grant.
+
+Declared, not laundered: every `bps_2020_ancestors` block says
+`adjudication_status: "mechanical-only"` / `inheritance_verdict:
+"not-adjudicated"`, and **221 records have no crosswalk at all**. A residual
+verdict reached through an unadjudicated crosswalk carries that provenance in
+its bucket name; it is not upgraded to certainty by passing through this file.
+
+IT REPORTS, IT DOES NOT DECIDE — AND IT WRITES NOTHING
+-------------------------------------------------------
+`--check` exits 0 while divergences exist, like both siblings. Whether a
+no-Besar row should re-label a live client-facing page is a legal reading
+reserved to the owner (Legge 5), and any third state must be a SEPARATE axis
+rather than a new `pma_status` value: `apps/mouth/src/lib/kbli-data.server.ts`
+returns "open" for anything that is not TERBATAS/TERTUTUP, so inventing an enum
+member would render as "open" on all 1,559 pages.
+
+No output file either. This is a JOIN over two artifacts plus the catalogue;
+persisting it would create a fourth source of truth that goes stale the moment
+any input moves (W88/W106). It is recomputed on every run, from the files.
+
+DECLARED LIMITS — the regime this speaks for
+---------------------------------------------
+A NEW investment, under the general regime, outside a KEK. The body itself
+carves out: **Pasal 8 ayat (1)** (Lampiran III does not apply inside a kawasan
+ekonomi khusus, and 8(2) lets tech start-ups there invest at or below 10 miliar,
+i.e. the Pasal 7 floor moves), and **Pasal 6 ayat (4)** (the foreign-cap
+requirement does not bind investments already approved before the Perpres, nor
+investors holding treaty privileges). None of those are visible in a KBLI record,
+so this module cannot and does not decide them.
+
+Usage:
+    python scripts/kbli_filiera/perpres_body_default_relation.py --check [--json]
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+UMKM = REPO_ROOT / "data" / "kbli-filiera" / "perpres-umkm-reservation.json"
+CAPS = REPO_ROOT / "data" / "kbli-filiera" / "perpres-foreign-caps.json"
+
+EXIT_OK, EXIT_CANNOT_VERIFY = 0, 4
+
+INSTRUMENT = "Perpres 10/2021 as amended by Perpres 49/2021"
+
+# Verbatim from the body. See the module docstring for why these are constants
+# and not a regex over a corrupted text layer.
+BODY_TERTUTUP: dict[str, str] = {
+    "11010": "Pasal 2 ayat (2) huruf b — Industri Minuman Keras Mengandung Alkohol",
+    "11020": "Pasal 2 ayat (2) huruf b — Industri Minuman Mengandung Alkohol: Anggur",
+    "11031": "Pasal 2 ayat (2) huruf b — Industri Minuman Mengandung Malt",
+}
+BODY_OTHER_REQUIREMENT: dict[str, str] = {
+    "46333": "Pasal 6 ayat (3a) huruf a — Perdagangan Besar Minuman Keras/Beralkohol",
+    "47221": "Pasal 6 ayat (3a) huruf b — Perdagangan Eceran Minuman Keras atau Beralkohol",
+    "47826": "Pasal 6 ayat (3a) huruf c — Perdagangan Eceran Kaki Lima Minuman Keras",
+}
+
+RESIDUAL_BASIS = "Pasal 3 ayat (1) huruf d + ayat (2)"
+BESAR_BASIS = "Pasal 7 ayat (1)"
+
+# The scale a foreign investor must reach, spelled as the catalogue spells it.
+BESAR = "Besar"
+
+
+class CannotVerify(Exception):
+    """An input is missing or empty. Never degrade to 'everything is residual'."""
+
+
+def load_canonical(path: Path = CANONICAL) -> dict[str, dict]:
+    records = json.loads(path.read_text())["data"]
+    if not records:
+        raise CannotVerify(f"{path} carries no records")
+    return {str(rec["kode_kbli_2025"]): rec for rec in records}
+
+
+def annex_codes(umkm_path: Path = UMKM, caps_path: Path = CAPS) -> tuple[set[str], set[str]]:
+    """The KBLI-2020 codes each operative annex names.
+
+    An EMPTY annex is a hard failure, not an empty set. This whole module asks
+    "is the code absent from the annexes?", so a missing input would make every
+    one of the 1,559 look residual and the report would read "all open by
+    default" — maximally wrong and maximally confident. The empty set disguises
+    itself as both everything and nothing; here it must speak.
+    """
+    for path in (umkm_path, caps_path):
+        if not path.is_file():
+            raise CannotVerify(
+                f"{path} missing — run: python scripts/kbli_filiera/parse_perpres_lampiran2.py --write"
+            )
+    umkm = {str(row["code"]) for row in json.loads(umkm_path.read_text())["rows"] if row.get("code")}
+    caps = {str(row["kbli_2020"]) for row in json.loads(caps_path.read_text())["rows"] if row.get("kbli_2020")}
+    if not umkm or not caps:
+        raise CannotVerify(f"an annex yielded no codes (Lampiran II: {len(umkm)}, Lampiran III: {len(caps)})")
+    return umkm, caps
+
+
+def ancestors(record: dict) -> set[str]:
+    """The record's KBLI-2020 predecessors, or an empty set when it has none.
+
+    `bps_2020_ancestors` is a DICT carrying a `codes` list plus provenance — not
+    a list of codes. Reading it as a list yields an empty set for every record
+    and the join silently finds nothing, which is how a probe measures its own
+    breakage and reports it as a clean catalogue.
+    """
+    block = record.get("bps_2020_ancestors") or {}
+    codes = block.get("codes") or []
+    if isinstance(codes, str):  # a bare string iterates into CHARACTERS, not codes
+        raise CannotVerify(f"bps_2020_ancestors.codes is a string, not a list: {codes!r}")
+    return {str(code) for code in codes if code}
+
+
+def has_crosswalk(record: dict) -> bool:
+    return bool(record.get("bps_2020_ancestors"))
+
+
+def scales(record: dict) -> set[str]:
+    """Every business scale named across the record's `per_skala` entries.
+
+    `skala_usaha` is a LIST on each entry (`["Mikro"]`), never a string.
+    """
+    out: set[str] = set()
+    for entry in record.get("per_skala") or []:
+        named = entry.get("skala_usaha") or []
+        if isinstance(named, str):  # ditto: "Besar" would become {"B","e","s","a","r"}
+            raise CannotVerify(f"skala_usaha is a string, not a list: {named!r}")
+        out.update(named)
+    return out
+
+
+def besar_state(record: dict) -> str:
+    """Pasal 7(1) eligibility, in THREE states — never two.
+
+    An ABSENT `per_skala` is not an observed absence of Besar: 216 records carry
+    no scale data at all (the OSS ruang-lingkup 404s), and collapsing them into
+    "no Besar" would report a gap in OUR data as a bar in the law. Reported as
+    its own axis because it is orthogonal to which locator names the code: a
+    code can be named in Lampiran II AND lack a Besar row, and a partition over
+    locators would silently drop the second fact for all ten codes where both
+    are true.
+    """
+    named = scales(record)
+    if not named:
+        return "unobserved"
+    return "observed" if BESAR in named else "absent"
+
+
+def locate(code: str, record: dict, umkm: set[str], caps: set[str]) -> dict:
+    """EVERY locator that names this code, not just the strongest one.
+
+    A code can be named twice — `47221` is under Pasal 6(3a) in the body and
+    reaches Lampiran II through its 2020 ancestor `47911`. Returning only the
+    winning locator would make the second invisible to whoever reads the row.
+    """
+    reach = {code} | ancestors(record)
+    return {
+        "body": BODY_TERTUTUP.get(code) or BODY_OTHER_REQUIREMENT.get(code),
+        "lampiran_ii": sorted(reach & umkm),
+        "lampiran_iii": sorted(reach & caps),
+        "via_ancestor_only": bool((reach & (umkm | caps)) and code not in (umkm | caps)),
+        "crosswalk": "absent" if not has_crosswalk(record) else "mechanical-only",
+    }
+
+
+def classify(code: str, record: dict, umkm: set[str], caps: set[str]) -> tuple[str, dict]:
+    """Locate one code against the instrument. Returns (bucket, evidence).
+
+    Order is load-bearing and reads the instrument's own precedence: the BODY
+    names a code before any annex does, and being NAMED anywhere excludes the
+    residual category by the plain words of Pasal 3 ayat (1) huruf d.
+    """
+    evidence = locate(code, record, umkm, caps)
+    evidence["besar"] = besar_state(record)
+    evidence["besar_basis"] = BESAR_BASIS
+    evidence["scales"] = sorted(scales(record))
+
+    if code in BODY_TERTUTUP:
+        return "body-tertutup", evidence
+    if code in BODY_OTHER_REQUIREMENT:
+        return "body-other-requirement", evidence
+    if evidence["lampiran_ii"] or evidence["lampiran_iii"]:
+        evidence["basis"] = "Pasal 3 ayat (1) huruf b / huruf c"
+        return "named-in-annex", evidence
+
+    # Residual by Pasal 3(1)(d)+(2), which is the only bucket the body's default
+    # actually covers — and the Pasal 7(1) precondition still applies on top.
+    evidence["basis"] = RESIDUAL_BASIS
+    return f"residual-besar-{evidence['besar']}", evidence
+
+
+def body_codes_absent_from_catalogue(canonical: dict[str, dict]) -> list[str]:
+    """Body-named codes the 2025 catalogue does not carry.
+
+    Measured: `11031` (Industri Minuman Mengandung Malt) and `47826`
+    (Perdagangan Eceran Kaki Lima Minuman Keras) are named by the body and are
+    NOT in the 1,559 — 47826 survives as a 2020 ancestor of `47221`. A
+    hard-coded list whose members quietly fail to exist is the phantom-code
+    class; this reports them instead of absorbing them.
+    """
+    return sorted(c for c in (BODY_TERTUTUP | BODY_OTHER_REQUIREMENT) if c not in canonical)
+
+
+OVERLAY_STATUS = "CHIUSO_PMA_NO_BESAR"
+
+
+def overlay_reconciliation(canonical: dict[str, dict]) -> dict:
+    """Where the Bali overlay's OWN Pasal 7(1) reading agrees with the evidence.
+
+    `l4_bali.status` already carries `CHIUSO_PMA_NO_BESAR` on 39 codes, so the
+    organism has taken this reading before — the question is whether it took it
+    on evidence. Measured, the same rule is misapplied in BOTH directions:
+
+    * **17 closures rest on an EMPTY `per_skala`** — a code with no scale data
+      is not a code observed to lack Besar, and closing on it turns a gap in our
+      data into a bar in the law.
+    * **`93114` (Fasilitas Lapangan) is left `APERTO`** while its own scale data
+      names no Besar row — the evidence the overlay accepts on 22 other codes.
+
+    The rule is not the disease; the selector is. Reported, never applied: which
+    way each of those moves is the owner's reading (Legge 5).
+    """
+    closed = {c for c, r in canonical.items() if (r.get("l4_bali") or {}).get("status") == OVERLAY_STATUS}
+    absent = {c for c, r in canonical.items() if besar_state(r) == "absent"}
+    unobserved = {c for c, r in canonical.items() if besar_state(r) == "unobserved"}
+    return {
+        "overlay_closed": len(closed),
+        "corroborated_by_scales": sorted(closed & absent),
+        "closed_on_empty_scales": sorted(closed & unobserved),
+        "closed_with_a_besar_row": sorted(closed - absent - unobserved),
+        "absent_besar_not_closed": [
+            {"code": c, "l4_bali": (canonical[c].get("l4_bali") or {}).get("status"),
+             "pma_status": canonical[c].get("pma_status")}
+            for c in sorted(absent - closed)
+        ],
+    }
+
+
+def published(record: dict) -> dict:
+    return {
+        "pma_status": record.get("pma_status"),
+        "pma_max_asing": record.get("pma_max_asing"),
+        "judul": record.get("judul"),
+    }
+
+
+def report(canonical: dict[str, dict], umkm: set[str], caps: set[str]) -> dict:
+    buckets: dict[str, list[dict]] = {}
+    for code, record in sorted(canonical.items()):
+        bucket, evidence = classify(code, record, umkm, caps)
+        buckets.setdefault(bucket, []).append({"code": code, **published(record), **evidence})
+
+    total = sum(len(rows) for rows in buckets.values())
+    if total != len(canonical):
+        raise CannotVerify(f"bucketing lost records: {total} of {len(canonical)}")
+
+    besar = {"observed": 0, "absent": 0, "unobserved": 0}
+    for rows in buckets.values():
+        for row in rows:
+            besar[row["besar"]] += 1
+
+    return {
+        "instrument": INSTRUMENT,
+        "codes": len(canonical),
+        "annex_codes": {"lampiran_ii": len(umkm), "lampiran_iii": len(caps)},
+        "body_codes_absent_from_catalogue": body_codes_absent_from_catalogue(canonical),
+        "buckets": {name: len(rows) for name, rows in sorted(buckets.items())},
+        "besar_axis": besar,
+        "overlay": overlay_reconciliation(canonical),
+        "detail": buckets,
+    }
+
+
+# What the PAGE calls open, copied from the renderer rather than guessed:
+# `apps/mouth/src/lib/kbli-data.server.ts::mapPmaStatus` returns "restricted"
+# for TERBATAS, "closed" for TERTUTUP, and **"open" for everything else** —
+# including a null or an unrecognised value. Asking `== "TERBUKA"` here would
+# make this detector blind to exactly the codes the page treats most generously,
+# which is the blind-spot class the rest of this module exists to close.
+RENDERS_AS_OPEN_UNLESS = frozenset({"TERBATAS", "TERTUTUP"})
+
+
+def renders_as_open(record_or_row: dict) -> bool:
+    return record_or_row.get("pma_status") not in RENDERS_AS_OPEN_UNLESS
+
+
+def foreign_barred_but_published_open(rep: dict) -> list[dict]:
+    """Rows where Pasal 7(1) keeps a foreign investor out and the page says open.
+
+    Read across EVERY bucket, deliberately. The ten codes where a Lampiran II
+    row and a missing Besar row are both true are the ones a locator-partition
+    would have hidden, and they are the questions this agency is asked daily
+    (villa, homestay, travel agent, hair salon).
+
+    "Open" is the RENDERER's definition, not the label's. Today no record has a
+    null `pma_status`, so the two readings coincide — the point is that they
+    will not the day one does, and the page would be the generous one.
+    """
+    out = [row for rows in rep["detail"].values() for row in rows
+           if row["besar"] == "absent" and renders_as_open(row)]
+    return sorted(out, key=lambda r: r["code"])
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--check", action="store_true",
+                    help="print the negative-locator report (the default action; accepted for symmetry with the sibling relations)")
+    ap.add_argument("--json", action="store_true", help="machine-readable report on stdout")
+    args = ap.parse_args(argv)
+
+    try:
+        rep = report(load_canonical(), *annex_codes())
+    except (CannotVerify, FileNotFoundError) as exc:
+        print(f"CANNOT-VERIFY: {exc}", file=sys.stderr)
+        return EXIT_CANNOT_VERIFY
+
+    if args.json:
+        print(json.dumps(rep, ensure_ascii=False, indent=1))
+        return EXIT_OK
+
+    print(f"{rep['instrument']} — negative locator over {rep['codes']} codes")
+    print(f"  annexes name: Lampiran II {rep['annex_codes']['lampiran_ii']} · "
+          f"Lampiran III {rep['annex_codes']['lampiran_iii']} (KBLI 2020)")
+    print("  LOCATOR — which instrument names the code")
+    for name, count in rep["buckets"].items():
+        print(f"    {name:30} {count}")
+    print(f"  {BESAR_BASIS} — scale eligibility, a SEPARATE axis")
+    for state, count in rep["besar_axis"].items():
+        print(f"    besar {state:24} {count}")
+    absent = rep["body_codes_absent_from_catalogue"]
+    if absent:
+        print(f"  body names {len(absent)} code(s) the 2025 catalogue does not carry: {', '.join(absent)}")
+
+    ov = rep["overlay"]
+    print(f"  the Bali overlay already reads {BESAR_BASIS} on {ov['overlay_closed']} codes — on what:")
+    print(f"    corroborated by observed scales   {len(ov['corroborated_by_scales'])}")
+    print(f"    closed on an EMPTY per_skala      {len(ov['closed_on_empty_scales'])}")
+    print(f"    closed despite a Besar row        {len(ov['closed_with_a_besar_row'])}")
+    for row in ov["absent_besar_not_closed"]:
+        print(f"    NOT closed though Besar is absent: {row['code']} "
+              f"({row['pma_status']}, l4_bali={row['l4_bali']})")
+
+    rows = foreign_barred_but_published_open(rep)
+    if rows:
+        print(f"\n  BARRED BY {BESAR_BASIS}, PUBLISHED TERBUKA — {len(rows)}"
+              "  (no Besar row, so a foreign investor may not operate it at all)")
+        for row in rows:
+            cap = row["pma_max_asing"]
+            where = "L-II " + ",".join(row["lampiran_ii"]) if row["lampiran_ii"] else "body default"
+            print(f"    {row['code']}  {cap if cap is not None else '-'}%  "
+                  f"{(row['judul'] or '')[:42]:42} {where:14} scales: {','.join(row['scales'])}")
+    # Reporter, never a gate: the re-label is a legal reading (Legge 5).
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    sys.exit(main())
