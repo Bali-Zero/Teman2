@@ -21,6 +21,7 @@ from backend.app.models import (
     TierLevel,
 )
 from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.ingest_paths import resolve_ingest_path, resolve_within_root
 from backend.core.qdrant_db import QdrantClient
 from backend.services.ingestion.ingestion_service import IngestionService
 
@@ -70,7 +71,19 @@ async def upload_and_ingest(
         temp_dir = Path("data/temp")
         temp_dir.mkdir(parents=True, exist_ok=True)
 
-        temp_path = temp_dir / file.filename
+        # `file.filename` is caller-controlled and starlette does not sanitise it (it
+        # decodes the Content-Disposition value and hands it over), so it can carry
+        # directory components. Two ways this escapes, and the extension check above stops
+        # neither because both still end in `.pdf`:
+        #   `../../../tmp/x.pdf`  -> walks out of data/temp
+        #   `/etc/cron.d/x.pdf`   -> pathlib REPLACES the whole path on an absolute operand
+        # Containment is judged on the RESOLVED result, under this one server-chosen
+        # directory — not against the ingest allow-list, which answers a different
+        # question.
+        try:
+            temp_path = resolve_within_root(temp_dir, file.filename)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         # Non-blocking file reading
         content = await file.read()
@@ -95,6 +108,11 @@ async def upload_and_ingest(
 
         return BookIngestionResponse(**result)
 
+    except HTTPException:
+        # Without this the 400 above is re-wrapped as a 500 by the handler below —
+        # still fail-closed, but it would report a server fault for a client error.
+        # `batch_ingest` in this file already does exactly this.
+        raise
     except Exception as e:
         logger.error("Upload ingestion error: %s", e)
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {e!s}") from e
@@ -114,15 +132,22 @@ async def ingest_local_file(
     - **tier_override**: Optional manual tier classification
     """
     _require_ingest_admin(current_user)
+    # Confine the caller-supplied path BEFORE it is touched or echoed. Everything below
+    # uses the returned value, never `request.file_path`.
+    try:
+        file_path = resolve_ingest_path(request.file_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     # Validate file exists
-    if not os.path.exists(request.file_path):
-        raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
     try:
         # Ingest
         service = IngestionService()
         result = await service.ingest_book(
-            file_path=request.file_path,
+            file_path=str(file_path),
             title=request.title,
             author=request.author,
             language=request.language,
@@ -153,22 +178,37 @@ async def batch_ingest(
     try:
         start_time = time.time()
 
-        directory = Path(request.directory_path)
+        try:
+            directory = resolve_ingest_path(request.directory_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
         if not directory.exists():
             raise HTTPException(
                 status_code=404,
-                detail=f"Directory not found: {request.directory_path}",
+                detail=f"Directory not found: {directory}",
             )
 
-        # Get all matching files
+        # Get all matching files. `file_patterns` is caller-supplied too, and a glob
+        # pattern escapes: `Path("data/raw_books").glob("../../*.pdf")` really does walk
+        # up (measured). So every MATCH is re-confined — judging the resolved file, not
+        # the shape of the pattern — and one escaping match fails the whole request
+        # rather than being dropped silently.
         book_files = []
         for pattern in request.file_patterns:
-            book_files.extend(directory.glob(pattern))
+            for candidate in directory.glob(pattern):
+                try:
+                    book_files.append(resolve_ingest_path(str(candidate)))
+                except ValueError as exc:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File pattern matched outside the allowed roots: {exc}",
+                    ) from exc
 
         if not book_files:
             raise HTTPException(
                 status_code=400,
-                detail=f"No books found in {request.directory_path}",
+                detail=f"No books found in {directory}",
             )
 
         logger.info(f"Found {len(book_files)} books to ingest")
