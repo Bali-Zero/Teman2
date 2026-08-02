@@ -28,6 +28,59 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-08-02 — keep current)
 
+**🟡 F1 — THE CHANNEL CURE NOW SELECTS BY STATE, AND REFUSES 25 OF 80 ON PURPOSE (2026-08-02, code
+shipped; the DB apply is a separate step and is NOT claimed here).**
+
+The detector's own numbers, re-measured this session rather than read off this file: **3**
+`pma_status` divergences (`02101`, `03110`, `03120` — all `canonical=TERBUKA table=TERBATAS`, i.e.
+the channel is MORE restrictive than canonical, the safe direction) and **80** codes where canonical
+holds verified OSS-2025 licensing rows and `kbli_documents` serves **none** (687 rows). The three
+sea-cabotage codes this section used to list among the divergences (`50122/50123/50126`) are
+**already cured** — `TERBATAS`, `updated_at 2026-08-01` — so the "8 divergences" above describes a
+pre-cure world; only these 3 remain, and 2 of them (`02101`, `03120`) carry
+`pma_cap_verified: false` on canonical itself, so syncing them would claim a truth fix nobody has.
+
+**What changed: the SELECTOR, not the renderer.** Every cure to date ran `--only <hand-written
+list>` — 140 rows total, so **1,423 of the table's 1,563 rows had never been touched by any cure**.
+`kbli_documents_cure.py --all-licensing-absent` now asks `kbli_surface_conformance.py --json` for
+STATE and consumes its verdict instead of re-deriving the predicate, so the two tools cannot
+disagree about the same fact (W105). Exit 4 (CANNOT-VERIFY) is a REFUSAL, not an empty finding —
+that report carries zero divergences, byte-identical to a healthy fleet (W84). One direction only:
+the mirror case belongs to `--all-quarantined`, and curing it here would rewrite a live row-set into
+a gap statement.
+
+**A CROSS-FAMILY REVIEW RETURNED "DEFECTIVE" ON THE FIRST DESIGN, AND TWO OF ITS FOUR POINTS CHANGED
+THE CODE.** (Codex GPT-5.6, instructed to refute; generator≠grader.)
+
+- The first draft found editorial prose by searching for the headings `WHAT IT MEANS` / `BALI
+CONTEXT` — a guard judging FORM, so prose under any other heading would have been classified
+  disposable and **destroyed** (superscar #3). Replaced by POSITIVE, whole-document recognition of
+  the 2026-02-18 machine seed: a row earns a rebuild only if its heading names this code AND every
+  `##` section belongs to that seed's three. Measured: all 50 machine-shaped rows carry exactly
+  `Informasi Umum` / `Deskripsi Kegiatan Usaha` / `Investasi Asing (PMA)` and nothing else, so a
+  hand-added section refuses the row. Head-only matching would have passed a row with material
+  appended below — pinned by a test.
+- **The uncomfortable call, taken in the direction the review argued.** 5 rows (`74191 85610 86910
+86995 96220`) say _"Since there's no PP28 data yet, licensing is currently minimal — get your NIB
+  early"_ on codes where canonical now holds government rows. A government-contradicted filing
+  instruction harms a client more than losing market copy, so those 5 are **rebuilt** even though
+  they are hand-written, and what is lost is stated: `86995`'s disambiguation from `86991` (medical
+  massage) and `96230` (spa) now lives only in `kbli_documents_archive`. Ledgered as an editorial
+  debt, not glossed.
+- Net: **80 selected → 55 rebuildable (50 machine-seed + 5 contradicted-claim), 25 REFUSED and
+  named.** The 25 keep hand-written prose AND keep serving `Perizinan: N/A` on WhatsApp/webchat —
+  refusal is the right default but is NOT a resolution, and closing them needs prose re-authored
+  around the new rows (Legge 5).
+- Two review points did NOT change the code and are recorded as measured limits: the archive is
+  ONE-SHOT per code (`ON CONFLICT DO NOTHING`), so a SECOND cure of the same row preserves nothing —
+  measured **0 of the 80** are already archived, so it does not bite this run and will bite the
+  editorial pass; and the literal-phrase probe that found the 5 is not a general judgment about
+  prose contradicting data.
+
+**NOT CLAIMED: nothing has been written to the database.** The apply needs a write DSN; the local
+Keychain holds `nuzantara-postgres-readonly` only, and on M5 the fly credentials are dead — so the
+apply runs from Pro, and until it does, the channel still serves `Perizinan: N/A` on all 80.
+
 **🟢 2026-08-02 — THE PERPRES CAP IS LIVE ON THE CHANNELS. Twenty codes cured, and the cure had to be
 chased through four stores before a client could see it.** #3515 (canonical) → #3517 (Qdrant sync
 tool) → #3518 (LLM corpus). What a client is told now, measured on prod rather than inferred:
@@ -815,9 +868,36 @@ disclosed count 57 → **152**.
 >    `no_oss_scope` suffix said _"(the scope endpoint returns 404)"_. `_l2_status = no_oss_risk` is
 >    written by `build_kbli_l2_oss_risk.py:163` for a MISSING dump line, ANY non-200, **or**
 >    `success:false` — asserting `404` inside the sentence whose whole job is honesty is the disease
->    itself (F12). Now: _"could not be retrieved from the OSS API when this dataset was built"_ —
->    independently corroborated by `KBLI_2025_OSS_GROUND_TRUTH.json` (`ruang_lingkup_no_scope: 221`,
->    `ruang_lingkup_errors: 0`, all 54 at `_rl_status: "no_scope"`).
+>    itself (F12). Now: _"could not be retrieved from the OSS API when this dataset was built"_.
+>    **CORROBORATION RE-SOURCED 2026-08-02 — the citation used here was not evidence.** This line used
+>    to cite `KBLI_2025_OSS_GROUND_TRUTH.json` `_meta` (`ruang_lingkup_no_scope: 221`,
+>    **`ruang_lingkup_errors: 0`**). That counter cannot corroborate anything: the per-record schema of
+>    that file has **11 keys and not one of them is an HTTP status**, and `_rl_status` has a vocabulary
+>    of exactly **two** values (`ok` 1338 / `no_scope` 221) — there is no slot in which an error could
+>    have been recorded, so "0 errors" is unfalsifiable by construction. Worse, the code that wrote
+>    those labels **does not exist in this repo** (`_rl_status` and `ruang_lingkup_errors` appear only
+>    in the data file and in this corner), and the raw dump its consumer reads is
+>    `RAW = Path("/tmp/oss_risk_raw.jsonl")` — **gone**. A frozen measurement whose producer nobody can
+>    re-run (#9/W106) cited as proof of what a government API said.
+>
+>    **The real evidence is the vault, and it is stronger than what this line claimed.**
+>    `scripts/kbli_filiera/vault_fetch_oss.py` records status per probe (its docstring states the
+>    contract: _"a 404 on ruang-lingkup … is a LEGIT no-scope signal … NEVER as an empty file
+>    pretending to be data"_). `~/nuzantara-vault/oss/absences.jsonl` holds **663 ruang_lingkup
+>    absences = 221 distinct codes × exactly 3 attempts each, every one HTTP 404**. And the two
+>    instruments agree **by MEMBERSHIP, not by count** — the old file's 221 `no_scope` set and the
+>    vault's 221 404 set are identical, `A−B` and `B−A` both empty (two same-size sets are not the same
+>    set; this is the fact the whole "the emptiness is observed" argument rests on, so it is proven).
+>    Independent schema, independent run, independent date.
+>
+>    **What that does and does not license.** It licenses saying the emptiness is OBSERVED at OSS
+>    rather than caused by us. It does **not** license the client-facing sentence naming a legal
+>    consequence: a 404 is SILENCE, not a statement that the activity cannot be licensed at Besar.
+>    And by this repo's own D0 discipline (≥3 attempts over ≥**72h**,
+>    `research/operations/2026-07-16-kbli-filiera-methodology.md`) the corroboration is **partial**:
+>    the three probes span `2026-07-16T16:52Z → 2026-07-17T15:48Z` ≈ **23 hours**, which rules out a
+>    transient blip, not a multi-day publishing outage. Declared, not rounded up.
+>
 > 3. **Wave 1's disclosure sentence narrated two JSON keys at clients — migrated catalogue-wide.** It
 >    read _"detached to `per_skala_disputed_pp28_collision` (see `_data_note`)"_, and `kbli-faq.ts:42`
 >    splices that verbatim into a published FAQ answer. Fixing only the new codes would have shipped a
