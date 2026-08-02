@@ -14,6 +14,7 @@ from backend.app.core.config import settings
 from backend.app.core.constants import IntelConstants
 from backend.app.core.intel_approvers import get_chat_ids, get_team_config
 from backend.services.integrations.telegram_bot_service import telegram_bot
+from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,13 @@ class IntelApprovalService:
             "enriched_data": enriched_data,
             "image_path": image_path,
         }
+
+        # This WRITE creates the very file `telegram_webhook.handle_intel_callback`
+        # later reads and rewrites from a Telegram callback. The endpoint that reaches
+        # here (`POST /api/intel/staging/approve/{type}/{item_id}`) is defended today
+        # only by `load_staging_item` returning None for a malformed id — remote, and a
+        # side effect of a READ's contract. The service that owns the path judges it.
+        assert_valid_item_id(item_id)
 
         status_file = self.pending_intel_path / f"{item_id}.json"
 

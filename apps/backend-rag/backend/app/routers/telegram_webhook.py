@@ -23,6 +23,7 @@ from backend.app.core.intel_approvers import get_required_votes
 from backend.app.dependencies import get_channel_router
 from backend.channels.router import ChannelRouter
 from backend.services.integrations.telegram_bot_service import telegram_bot
+from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,19 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
 
     if action not in ("approve", "reject"):
         logger.warning("Unknown intel callback action: %s", action)
+        return False
+
+    # `item_id` comes straight out of `callback_data.split(":")` and is joined into a
+    # path 15 lines below (`pending_path / f"{item_id}.json"`, then read AND written).
+    # Telegram callback_data passes through no URL decoder and this webhook declares no
+    # auth dependency of its own, so this is the least-protected of the three sinks that
+    # build a staging path. Same validator as the staging service and the cover handler,
+    # imported so the four surfaces cannot drift apart. The offending value is NOT
+    # echoed: it is attacker-chosen and this line goes to the logs.
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError:
+        logger.warning("Malformed intel callback item_id (action=%s)", action)
         return False
 
     logger.info(
