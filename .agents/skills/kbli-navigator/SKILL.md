@@ -2058,6 +2058,39 @@ not one**:
 All nine annex-named rows sit in the **`dialokasikan`** column (an actual reservation), none in
 `kemitraan` (a partnership duty, **not** a foreign-ownership bar — the distinction §L2.11 paid for).
 
+**🔴 AND THE REFUTED READING IS ALREADY LIVE — the caveat is not the open question (PROVEN on prod
+2026-08-02).** This section says "the safe interim treatment is a caveat on the page, never a
+re-label to closed", which presumes the page is currently neutral. **It is not.** `curl` on
+`balizero.com/kbli/55203` (Vila) returns, client-facing:
+
+> 🚫 **Reserved for MSME — closed to PT PMA** · "This activity is reserved for micro/small/medium
+> enterprises and closed to a PT PMA · **confidence HIGH**" · reason: _"OSS has no Usaha Besar scale
+> row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]"_ · prose:
+> _"In Bali, that path is closed today for a PT PMA."_
+
+That reason **is** `no Besar ⇒ no PMA` — verbatim the inference the cross-family legal review
+refuted two paragraphs above. It is not a dataset annotation: `l4_bali` reaches the client through
+the page body, the 🚫 badge, the **OG image** (`api/og/kbli/[code]/route.tsx:38`) and the blocked-%
+on the **index** (`kbli/page.tsx:36`).
+
+Measured on the rendering dataset (`KBLI_2025_FINAL_CLEAN.json` → `baliL4`): **39 codes** carry
+`CHIUSO_PMA_NO_BESAR`, all with `blocked: true`.
+
+- **22 of them ARE this queue**, every one at `confidence: HIGH` — villa, homestay, youth hostel,
+  kedai minuman, management consultancy, rumah pijat, salon, barber, laundry, tailoring.
+- **17 are the empty-`per_skala` codes**, all at `confidence: LOW` — 13 of them the `931xx`
+  sports-club family. The confidence field already separates the two, which is the one honest part.
+- **23 − 22 = 1**, and it is `93114` — exactly the code this section already flags as left
+  `APERTO_BALI_RISCHIO_ALTO` on the evidence that closes the other 22. The numbers close.
+
+**So the question put to the codeowner has the wrong shape.** It was asked as "does an actual
+reservation apply — should we add a caveat?"; the product **already answers it to clients in the
+affirmative, at HIGH confidence, on the daily-question codes**. The live options are keep / soften /
+withdraw a claim that is already being made, not whether to start making one. Still `operator[business]`
+(a re-label of client-facing pages is Legge 5) — but it is now a decision about a live assertion, and
+the sequencing changes with it: this outranks the caveat wording, because a caveat added under a 🚫
+badge would qualify a verdict the same page states as HIGH-confidence fact.
+
 **Reconciliation, because two numbers here differ by one and both are correct:** `besar absent` is
 **24** = 10 `named-in-annex` + 14 `residual-besar-absent`. The queue is **23** because the tenth,
 **`79110`** (Agen Perjalanan), is already `TERBATAS` — it is not "published open", so it never enters
