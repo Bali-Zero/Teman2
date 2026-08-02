@@ -6,12 +6,31 @@ WHAT THIS IS, AND WHY IT IS THE BIGGEST GAP ON THE PMA AXIS
 Third and last reader of the Daftar Positif Investasi, after
 `perpres_umkm_reservation_relation.py` (Lampiran II) and
 `perpres_foreign_cap_relation.py` (Lampiran III). Those two speak for the codes
-an annex NAMES — 271 of 1,559 once the 2020->2025 crosswalk is honoured. This
-module speaks for the other ~1,288, which is the block that until now carried
-`pma_source: "Perpres 10/2021, 49/2021"` with **no article behind it**: a
-blanket attribution, not a locator. The navigator's north star is that every
+a RESTRICTING annex names — 271 of 1,559 once the 2020->2025 crosswalk is
+honoured. This module speaks for the rest, which is the block that until now
+carried `pma_source: "Perpres 10/2021, 49/2021"` with **no article behind it**:
+a blanket attribution, not a locator. The navigator's north star is that every
 rendered PMA fact is either government-sourced with a citable locator or an
 honest declared gap. For most of the catalogue this file is that locator.
+
+Measured: 175 codes are `Bidang Usaha Prioritas` (Pasal 3(1)(a)), 274 are named
+by a restricting annex or the body, and **1,110 are genuinely residual**.
+
+TWO THINGS AN INDEPENDENT LEGAL REVIEW CORRECTED BEFORE THIS SHIPPED
+---------------------------------------------------------------------
+Both were caught by a cross-family reviewer reading the article text, not by
+any test here — recorded because the same two errors are easy to make again:
+
+1. **Lampiran I was omitted**, so "named by nothing" quietly included category
+   (a). 175 codes were being cited under **Pasal 3(1)(d)** — the residual
+   article — when they fall under **huruf a**. No ownership verdict was wrong
+   (priority incentivises, it never restricts), but the locator was, and the
+   locator is this module's whole product: reproducing the blanket-attribution
+   defect one annex to the left. `parse_perpres_lampiran1.py` closes it.
+2. **Pasal 7(1) is not a bar on the ACTIVITY.** See `pasal7_review_flags` — the
+   first version asserted that a code with no Besar row is one a PMA "may not
+   operate at all", which the article does not say and `per_skala` cannot
+   establish. It is a review queue, not a verdict.
 
 THE BODY, READ RATHER THAN ASSUMED (vault 154474 + 161562)
 -----------------------------------------------------------
@@ -26,11 +45,11 @@ of this join hang off them:
   100%-open verdict lawful for an unnamed code. It is not folklore.
 * **Pasal 7 ayat (1)** — "Penanam Modal asing **hanya dapat** melakukan kegiatan
   usaha pada **Usaha Besar** dengan nilai investasi lebih dari
-  Rp10.000.000.000,00 di luar nilai tanah dan bangunan." A foreign investor may
-  ONLY operate at Usaha Besar scale. So the default is not unconditional: a code
-  whose own `per_skala` names no Besar row is one the body's own text keeps a
-  PMA out of, whatever the annexes say. `no Besar => no PMA` is a citation, not
-  an inference from the capital threshold.
+  Rp10.000.000.000,00 di luar nilai tanah dan bangunan." This conditions the
+  INVESTOR and its project, not the activity: it can stop a particular PMA that
+  cannot qualify as large, but it does not make an activity closed to foreign
+  investment. Combined with our OSS scale data it yields a REVIEW QUEUE — 23
+  codes published open whose `per_skala` shows no Besar row — never a verdict.
 
 TWO MORE OPERATIVE LISTS LIVE IN THE BODY, NOT IN AN ANNEX
 -----------------------------------------------------------
@@ -99,6 +118,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 UMKM = REPO_ROOT / "data" / "kbli-filiera" / "perpres-umkm-reservation.json"
 CAPS = REPO_ROOT / "data" / "kbli-filiera" / "perpres-foreign-caps.json"
+PRIORITY = REPO_ROOT / "data" / "kbli-filiera" / "perpres-priority-codes.json"
 
 EXIT_OK, EXIT_CANNOT_VERIFY = 0, 4
 
@@ -118,6 +138,7 @@ BODY_OTHER_REQUIREMENT: dict[str, str] = {
 }
 
 RESIDUAL_BASIS = "Pasal 3 ayat (1) huruf d + ayat (2)"
+PRIORITY_BASIS = "Pasal 3 ayat (1) huruf a"
 BESAR_BASIS = "Pasal 7 ayat (1)"
 
 # The scale a foreign investor must reach, spelled as the catalogue spells it.
@@ -156,6 +177,26 @@ def annex_codes(umkm_path: Path = UMKM, caps_path: Path = CAPS) -> tuple[set[str
     return umkm, caps
 
 
+def priority_codes(path: Path = PRIORITY) -> set[str]:
+    """The Lampiran I codes — `Bidang Usaha Prioritas`, Pasal 3 ayat (1) huruf a.
+
+    Priority membership INCENTIVISES, it never restricts, so it changes no
+    ownership verdict. It is read here for one reason: a priority code is
+    category (a), so citing Pasal 3(1)(d) for it would attribute a code to an
+    article it does not fall under — the blanket-attribution defect this module
+    exists to close, reproduced one annex to the left. An independent
+    legal-reading review caught the omission before it shipped.
+    """
+    if not path.is_file():
+        raise CannotVerify(
+            f"{path} missing — run: python scripts/kbli_filiera/parse_perpres_lampiran1.py --write"
+        )
+    codes = {str(c) for c in json.loads(path.read_text()).get("codes") or []}
+    if not codes:
+        raise CannotVerify(f"{path} names no codes; the residual bucket would absorb category (a)")
+    return codes
+
+
 def ancestors(record: dict) -> set[str]:
     """The record's KBLI-2020 predecessors, or an empty set when it has none.
 
@@ -190,15 +231,19 @@ def scales(record: dict) -> set[str]:
 
 
 def besar_state(record: dict) -> str:
-    """Pasal 7(1) eligibility, in THREE states — never two.
+    """What the OSS licensing data says about this activity's scales — 3 states.
 
-    An ABSENT `per_skala` is not an observed absence of Besar: 216 records carry
-    no scale data at all (the OSS ruang-lingkup 404s), and collapsing them into
-    "no Besar" would report a gap in OUR data as a bar in the law. Reported as
-    its own axis because it is orthogonal to which locator names the code: a
-    code can be named in Lampiran II AND lack a Besar row, and a partition over
-    locators would silently drop the second fact for all ten codes where both
-    are true.
+    NOT a legal verdict, and the naming here is deliberate after an independent
+    legal-reading review (Codex, cross-family) refuted the first version.
+    `per_skala` is a risk-based LICENSING interface artifact: it records which
+    scale rows OSS publishes. "OSS publishes no Besar row" is not the same fact
+    as "this activity cannot lawfully be conducted at Besar scale", and only the
+    second would combine with Pasal 7(1) into a bar. See `pasal7_review_flags`.
+
+    THREE states, never two. An ABSENT `per_skala` is not an observed absence of
+    Besar: 217 records carry no scale data at all (the OSS ruang-lingkup 404s),
+    and collapsing them would report a gap in OUR data as a fact about the world
+    — which is exactly what 17 of the Bali overlay's closures already do.
     """
     named = scales(record)
     if not named:
@@ -206,7 +251,8 @@ def besar_state(record: dict) -> str:
     return "observed" if BESAR in named else "absent"
 
 
-def locate(code: str, record: dict, umkm: set[str], caps: set[str]) -> dict:
+def locate(code: str, record: dict, umkm: set[str], caps: set[str],
+           priority: set[str]) -> dict:
     """EVERY locator that names this code, not just the strongest one.
 
     A code can be named twice — `47221` is under Pasal 6(3a) in the body and
@@ -214,23 +260,29 @@ def locate(code: str, record: dict, umkm: set[str], caps: set[str]) -> dict:
     winning locator would make the second invisible to whoever reads the row.
     """
     reach = {code} | ancestors(record)
+    restricting = umkm | caps
     return {
         "body": BODY_TERTUTUP.get(code) or BODY_OTHER_REQUIREMENT.get(code),
+        "lampiran_i": sorted(reach & priority),
         "lampiran_ii": sorted(reach & umkm),
         "lampiran_iii": sorted(reach & caps),
-        "via_ancestor_only": bool((reach & (umkm | caps)) and code not in (umkm | caps)),
+        "via_ancestor_only": bool((reach & restricting) and code not in restricting),
         "crosswalk": "absent" if not has_crosswalk(record) else "mechanical-only",
     }
 
 
-def classify(code: str, record: dict, umkm: set[str], caps: set[str]) -> tuple[str, dict]:
+def classify(code: str, record: dict, umkm: set[str], caps: set[str],
+             priority: set[str]) -> tuple[str, dict]:
     """Locate one code against the instrument. Returns (bucket, evidence).
 
-    Order is load-bearing and reads the instrument's own precedence: the BODY
-    names a code before any annex does, and being NAMED anywhere excludes the
-    residual category by the plain words of Pasal 3 ayat (1) huruf d.
+    Order is load-bearing. The BODY names a code before any annex does; among
+    the annexes the RESTRICTING ones are read before the incentivising one, so a
+    code that is both priority and reserved reports as reserved. And being named
+    anywhere — including Lampiran I — excludes the residual category by the
+    plain words of Pasal 3 ayat (1) huruf d ("tidak termasuk dalam huruf a,
+    huruf b, dan huruf c").
     """
-    evidence = locate(code, record, umkm, caps)
+    evidence = locate(code, record, umkm, caps, priority)
     evidence["besar"] = besar_state(record)
     evidence["besar_basis"] = BESAR_BASIS
     evidence["scales"] = sorted(scales(record))
@@ -242,9 +294,15 @@ def classify(code: str, record: dict, umkm: set[str], caps: set[str]) -> tuple[s
     if evidence["lampiran_ii"] or evidence["lampiran_iii"]:
         evidence["basis"] = "Pasal 3 ayat (1) huruf b / huruf c"
         return "named-in-annex", evidence
+    if evidence["lampiran_i"]:
+        # Priority INCENTIVISES and restricts nothing, so no ownership verdict
+        # moves — but the code is category (a), and citing (d) for it would be
+        # the blanket attribution this module exists to end.
+        evidence["basis"] = PRIORITY_BASIS
+        return "priority-lampiran-i", evidence
 
-    # Residual by Pasal 3(1)(d)+(2), which is the only bucket the body's default
-    # actually covers — and the Pasal 7(1) precondition still applies on top.
+    # Residual by Pasal 3(1)(d)+(2) — genuinely residual only now that (a), (b)
+    # and (c) have all been asked.
     evidence["basis"] = RESIDUAL_BASIS
     return f"residual-besar-{evidence['besar']}", evidence
 
@@ -304,10 +362,11 @@ def published(record: dict) -> dict:
     }
 
 
-def report(canonical: dict[str, dict], umkm: set[str], caps: set[str]) -> dict:
+def report(canonical: dict[str, dict], umkm: set[str], caps: set[str],
+           priority: set[str]) -> dict:
     buckets: dict[str, list[dict]] = {}
     for code, record in sorted(canonical.items()):
-        bucket, evidence = classify(code, record, umkm, caps)
+        bucket, evidence = classify(code, record, umkm, caps, priority)
         buckets.setdefault(bucket, []).append({"code": code, **published(record), **evidence})
 
     total = sum(len(rows) for rows in buckets.values())
@@ -322,7 +381,8 @@ def report(canonical: dict[str, dict], umkm: set[str], caps: set[str]) -> dict:
     return {
         "instrument": INSTRUMENT,
         "codes": len(canonical),
-        "annex_codes": {"lampiran_ii": len(umkm), "lampiran_iii": len(caps)},
+        "annex_codes": {"lampiran_i": len(priority), "lampiran_ii": len(umkm),
+                        "lampiran_iii": len(caps)},
         "body_codes_absent_from_catalogue": body_codes_absent_from_catalogue(canonical),
         "buckets": {name: len(rows) for name, rows in sorted(buckets.items())},
         "besar_axis": besar,
@@ -344,13 +404,30 @@ def renders_as_open(record_or_row: dict) -> bool:
     return record_or_row.get("pma_status") not in RENDERS_AS_OPEN_UNLESS
 
 
-def foreign_barred_but_published_open(rep: dict) -> list[dict]:
-    """Rows where Pasal 7(1) keeps a foreign investor out and the page says open.
+def pasal7_review_flags(rep: dict) -> list[dict]:
+    """Codes the page publishes as open where a Pasal 7(1) question is unanswered.
 
-    Read across EVERY bucket, deliberately. The ten codes where a Lampiran II
-    row and a missing Besar row are both true are the ones a locator-partition
-    would have hidden, and they are the questions this agency is asked daily
-    (villa, homestay, travel agent, hair salon).
+    A REVIEW FLAG, and the name is the correction. The first version of this
+    function was called `foreign_barred_but_published_open` and the docstring
+    said Pasal 7(1) "keeps a foreign investor out" — an independent
+    legal-reading review refuted it, and the refutation is right on the text:
+
+    * **Pasal 7(1) conditions the INVESTOR, not the ACTIVITY.** "Penanam Modal
+      asing hanya dapat melakukan kegiatan usaha pada Usaha Besar" bars a
+      particular PMA project that cannot qualify as large; it does not convert
+      the underlying activity into one closed to foreign investment. Only a
+      reservation, a cap, or a rule making large-scale operation unavailable
+      does that — and those live in the annexes this module already reads.
+    * **`per_skala` is licensing data, not a legal determination.** "OSS
+      publishes no Besar row" is not "this activity cannot be conducted at Besar
+      scale". Reading one as the other is the same conflation the three-state
+      `besar_state` already refuses one level down, committed one level up.
+
+    So the honest output is a queue for verification, never a verdict: for each
+    of these, does an actual reservation/cap apply, and can the activity in fact
+    be run at Usaha Besar? Read across EVERY bucket deliberately — the ten codes
+    that are both annex-named and Besar-less are the ones a locator-partition
+    hid, and they are this agency's daily questions (villa, homestay, salon).
 
     "Open" is the RENDERER's definition, not the label's. Today no record has a
     null `pma_status`, so the two readings coincide — the point is that they
@@ -369,7 +446,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     try:
-        rep = report(load_canonical(), *annex_codes())
+        rep = report(load_canonical(), *annex_codes(), priority_codes())
     except (CannotVerify, FileNotFoundError) as exc:
         print(f"CANNOT-VERIFY: {exc}", file=sys.stderr)
         return EXIT_CANNOT_VERIFY
@@ -379,12 +456,13 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_OK
 
     print(f"{rep['instrument']} — negative locator over {rep['codes']} codes")
-    print(f"  annexes name: Lampiran II {rep['annex_codes']['lampiran_ii']} · "
-          f"Lampiran III {rep['annex_codes']['lampiran_iii']} (KBLI 2020)")
+    print(f"  annexes name: Lampiran I {rep['annex_codes']['lampiran_i']} · "
+          f"II {rep['annex_codes']['lampiran_ii']} · "
+          f"III {rep['annex_codes']['lampiran_iii']} (KBLI 2020)")
     print("  LOCATOR — which instrument names the code")
     for name, count in rep["buckets"].items():
         print(f"    {name:30} {count}")
-    print(f"  {BESAR_BASIS} — scale eligibility, a SEPARATE axis")
+    print(f"  OSS scale data — a SEPARATE axis, and NOT a legal verdict")
     for state, count in rep["besar_axis"].items():
         print(f"    besar {state:24} {count}")
     absent = rep["body_codes_absent_from_catalogue"]
@@ -400,10 +478,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    NOT closed though Besar is absent: {row['code']} "
               f"({row['pma_status']}, l4_bali={row['l4_bali']})")
 
-    rows = foreign_barred_but_published_open(rep)
+    rows = pasal7_review_flags(rep)
     if rows:
-        print(f"\n  BARRED BY {BESAR_BASIS}, PUBLISHED TERBUKA — {len(rows)}"
-              "  (no Besar row, so a foreign investor may not operate it at all)")
+        print(f"\n  {BESAR_BASIS} REVIEW QUEUE — {len(rows)} codes published open with no Besar row")
+        print("  NOT a bar: Pasal 7(1) conditions the INVESTOR, not the activity, and OSS")
+        print("  scale data is not a determination that the activity cannot be run at Besar.")
+        print("  Each needs: is there an actual reservation/cap, and can it run at Usaha Besar?")
         for row in rows:
             cap = row["pma_max_asing"]
             where = "L-II " + ",".join(row["lampiran_ii"]) if row["lampiran_ii"] else "body default"

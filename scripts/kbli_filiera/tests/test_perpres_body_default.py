@@ -32,7 +32,8 @@ from perpres_body_default_relation import (  # noqa: E402
     besar_state,
     body_codes_absent_from_catalogue,
     classify,
-    foreign_barred_but_published_open,
+    pasal7_review_flags,
+    priority_codes,
     load_canonical,
     locate,
     renders_as_open,
@@ -55,8 +56,13 @@ def annexes():
 
 
 @pytest.fixture(scope="module")
-def rep(canonical, annexes):
-    return report(canonical, *annexes)
+def prio():
+    return priority_codes()
+
+
+@pytest.fixture(scope="module")
+def rep(canonical, annexes, prio):
+    return report(canonical, *annexes, prio)
 
 
 # --------------------------------------------------------------------------
@@ -87,20 +93,20 @@ def test_scales_reads_the_list_valued_skala_usaha(canonical):
 # GUILT — the direction that publishes freedom the law does not grant
 # --------------------------------------------------------------------------
 
-def test_a_code_named_only_through_its_2020_ancestor_is_not_residual(canonical, annexes):
+def test_a_code_named_only_through_its_2020_ancestor_is_not_residual(canonical, annexes, prio):
     """`55203` (Aktivitas Vila) is absent from the annexes BY ITS OWN CODE; its
     2020 predecessor `55193` is in Lampiran II. Joining on identity alone would
     hand it the body's open default.
     """
     umkm, caps = annexes
     assert "55203" not in umkm and "55203" not in caps
-    bucket, ev = classify("55203", canonical["55203"], umkm, caps)
+    bucket, ev = classify("55203", canonical["55203"], umkm, caps, prio)
     assert bucket == "named-in-annex"
     assert ev["lampiran_ii"] == ["55193"]
     assert ev["via_ancestor_only"] is True
 
 
-def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexes):
+def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexes, prio):
     """Not one special case: measured, 102 codes reach an annex ONLY through the
     crosswalk. A regression that drops the join turns all of them open.
 
@@ -122,19 +128,19 @@ def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexe
     # `body-other-requirement` rather than `named-in-annex` because the body
     # outranks an annex — a stricter equality here would have failed on correct
     # precedence, i.e. asserted the wrong thing about the right behaviour.
-    routed = {code: classify(code, canonical[code], umkm, caps)[0] for code in via_ancestor_only}
+    routed = {code: classify(code, canonical[code], umkm, caps, prio)[0] for code in via_ancestor_only}
     assert not [c for c, b in routed.items() if b.startswith("residual")]
     assert set(routed.values()) == {"named-in-annex", "body-other-requirement"}
 
 
-def test_a_body_tertutup_code_is_located_by_the_body_not_by_absence(canonical, annexes):
+def test_a_body_tertutup_code_is_located_by_the_body_not_by_absence(canonical, annexes, prio):
     """The `BODY_TERTUTUP` branch, which nothing else in this file exercises.
     `11010`/`11020` are named tertutup by Pasal 2(2)(b) and are in no annex.
     """
     umkm, caps = annexes
     for code in ("11010", "11020"):
         assert code not in umkm and code not in caps
-        bucket, ev = classify(code, canonical[code], umkm, caps)
+        bucket, ev = classify(code, canonical[code], umkm, caps, prio)
         assert bucket == "body-tertutup"
         assert "Pasal 2 ayat (2) huruf b" in ev["body"]
 
@@ -150,14 +156,14 @@ def test_a_string_where_a_list_belongs_raises_instead_of_iterating_characters(ca
         scales({"per_skala": [{"skala_usaha": BESAR}]})
 
 
-def test_a_body_named_code_is_never_treated_as_residual(canonical, annexes):
+def test_a_body_named_code_is_never_treated_as_residual(canonical, annexes, prio):
     """`46333` and `47221` are named in the BODY (Pasal 6(3a)), not in an annex.
     Reading "absent from both annexes" as "residual" would give the alcohol
     trade the open default.
     """
     umkm, caps = annexes
     for code in ("46333", "47221"):
-        bucket, ev = classify(code, canonical[code], umkm, caps)
+        bucket, ev = classify(code, canonical[code], umkm, caps, prio)
         assert bucket == "body-other-requirement"
         assert ev["body"] and "Pasal 6 ayat (3a)" in ev["body"]
 
@@ -182,13 +188,13 @@ def test_an_empty_annex_is_cannot_verify_not_a_catalogue_of_open_codes(tmp_path)
 # INNOCENCE — a genuinely unnamed code keeps the body's default
 # --------------------------------------------------------------------------
 
-def test_a_genuinely_unnamed_code_with_a_besar_row_is_residual_and_open(canonical, annexes):
+def test_a_genuinely_unnamed_code_with_a_besar_row_is_residual_and_open(canonical, annexes, prio):
     """`56101` (restaurant) — the highest-traffic question this product gets.
     Named by nothing, and its scales include Besar, so Pasal 3(1)(d)+(2) leaves
     it open to all investors. The guard must not fire here.
     """
     umkm, caps = annexes
-    bucket, ev = classify("56101", canonical["56101"], umkm, caps)
+    bucket, ev = classify("56101", canonical["56101"], umkm, caps, prio)
     assert bucket == "residual-besar-observed"
     assert ev["lampiran_ii"] == [] and ev["lampiran_iii"] == [] and ev["body"] is None
     assert ev["besar"] == "observed"
@@ -196,7 +202,7 @@ def test_a_genuinely_unnamed_code_with_a_besar_row_is_residual_and_open(canonica
 
 def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
     """Innocence at population scale: if the locator over-fired, this collapses."""
-    assert rep["buckets"]["residual-besar-observed"] == 1055
+    assert rep["buckets"]["residual-besar-observed"] == 882
 
 
 # --------------------------------------------------------------------------
@@ -224,14 +230,14 @@ def test_the_besar_axis_partitions_every_record(rep):
 # THE TWO AXES ARE SEPARATE — the defect the first draft had
 # --------------------------------------------------------------------------
 
-def test_a_code_named_in_an_annex_still_reports_its_besar_state(canonical, annexes):
+def test_a_code_named_in_an_annex_still_reports_its_besar_state(canonical, annexes, prio):
     """The first draft made the locator a partition, so for the ten codes that
     are BOTH annex-named and Besar-less the scale question silently vanished —
     and those ten are villa, homestay, hair salon, beauty care: the questions
     this agency is asked daily. Locator and eligibility are two axes.
     """
     umkm, caps = annexes
-    _, ev = classify("55203", canonical["55203"], umkm, caps)
+    _, ev = classify("55203", canonical["55203"], umkm, caps, prio)
     assert ev["lampiran_ii"] == ["55193"] and ev["besar"] == "absent"
 
 
@@ -239,7 +245,7 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     """Measured: 23 codes publish TERBUKA while their own scale data names no
     Besar row. A locator-partitioned reading found only 14.
     """
-    rows = foreign_barred_but_published_open(rep)
+    rows = pasal7_review_flags(rep)
     assert len(rows) == 23
     codes = {r["code"] for r in rows}
     assert {"55203", "55201", "96210", "96220"} <= codes  # annex-named AND Besar-less
@@ -270,16 +276,16 @@ def test_a_null_status_with_no_besar_row_is_caught_not_skipped(rep):
         {"code": "99999", "pma_status": None, "pma_max_asing": None,
          "judul": "synthetic", "besar": "absent", "scales": ["Mikro"], "lampiran_ii": []}
     ]}
-    assert [r["code"] for r in foreign_barred_but_published_open(doctored)] == ["99999"]
+    assert [r["code"] for r in pasal7_review_flags(doctored)] == ["99999"]
 
 
-def test_a_code_can_carry_more_than_one_locator(canonical, annexes):
+def test_a_code_can_carry_more_than_one_locator(canonical, annexes, prio):
     """`47221` is under Pasal 6(3a) in the body AND reaches Lampiran II through
     its 2020 ancestor `47911`. Returning only the winning locator would hide the
     second from whoever reads the row.
     """
     umkm, caps = annexes
-    ev = locate("47221", canonical["47221"], umkm, caps)
+    ev = locate("47221", canonical["47221"], umkm, caps, prio)
     assert ev["body"] is not None
     assert ev["lampiran_ii"] == ["47911"]
 
@@ -392,3 +398,71 @@ def test_the_reporter_writes_nothing_and_exits_zero_while_divergences_stand(tmp_
     after = {p: p.stat().st_mtime_ns for p in (repo_root / "data" / "kbli-filiera").glob("*.json")}
     assert before == after, "the reporter touched a data file"
     assert not list(tmp_path.iterdir()), "the reporter left residue in its cwd"
+
+
+# --------------------------------------------------------------------------
+# LAMPIRAN I — the annex the first version omitted, and what that cost
+# --------------------------------------------------------------------------
+
+def test_a_priority_code_is_not_cited_under_the_residual_article(canonical, annexes, prio):
+    """`01271` (Pertanian Kopi) is a `Bidang Usaha Prioritas`, Pasal 3(1)(a).
+
+    The first version checked the body's lists, Lampiran II and Lampiran III and
+    called everything else residual — so it cited **Pasal 3(1)(d)** for 175
+    codes that are category (a). Priority restricts nobody, so no ownership
+    verdict was wrong; the LOCATOR was, and the locator is this module's entire
+    product. Caught by an independent cross-family legal review, not by a test.
+    """
+    umkm, caps = annexes
+    bucket, ev = classify("01271", canonical["01271"], umkm, caps, prio)
+    assert bucket == "priority-lampiran-i"
+    assert ev["basis"] == "Pasal 3 ayat (1) huruf a"
+    assert ev["lampiran_ii"] == [] and ev["lampiran_iii"] == []
+
+
+def test_a_restriction_outranks_a_priority_listing(canonical, annexes, prio):
+    """46 codes are in BOTH Lampiran I and Lampiran II — `01111` (jagung) among
+    them. An incentive never cancels a reservation, so the restricting annex
+    must win the locator; reporting it as merely "priority" would drop the bar.
+    """
+    umkm, caps = annexes
+    bucket, ev = classify("01111", canonical["01111"], umkm, caps, prio)
+    assert bucket == "named-in-annex"
+    assert ev["lampiran_i"] and ev["lampiran_ii"]  # both are still visible
+
+
+def test_the_priority_annex_moved_175_codes_out_of_the_residual_bucket(rep):
+    """The size of the omission, pinned. `residual-besar-observed` was 1055 and
+    is 882; a regression that drops the Lampiran I read restores the wrong 1055
+    and every one of those rows starts citing the wrong article again.
+    """
+    assert rep["buckets"]["priority-lampiran-i"] == 175
+    assert rep["annex_codes"]["lampiran_i"] == 194
+
+
+def test_a_missing_priority_artifact_is_cannot_verify_not_a_bigger_residual(tmp_path):
+    """Same shape as the empty-annex guard: silence here does not read as an
+    error, it reads as 175 more residual codes with a confident wrong citation.
+    """
+    with pytest.raises(CannotVerify):
+        priority_codes(path=tmp_path / "nope.json")
+    empty = tmp_path / "empty.json"
+    empty.write_text(json.dumps({"codes": []}))
+    with pytest.raises(CannotVerify):
+        priority_codes(path=empty)
+
+
+def test_pasal7_flags_are_a_review_queue_and_the_name_says_so():
+    """The rename is the correction, so it is pinned.
+
+    `pasal7_review_flags` replaced `foreign_barred_but_published_open`. Pasal
+    7(1) conditions the INVESTOR ("Penanam Modal asing hanya dapat melakukan
+    kegiatan usaha pada Usaha Besar"), not the activity, and `per_skala` is OSS
+    licensing data rather than a determination that the activity cannot be run
+    at Besar scale. A module-level function whose name asserts a bar would put
+    that assertion into every caller.
+    """
+    import perpres_body_default_relation as mod
+    assert not hasattr(mod, "foreign_barred_but_published_open")
+    assert "REVIEW FLAG" in mod.pasal7_review_flags.__doc__
+    assert "conditions the INVESTOR, not the ACTIVITY" in mod.pasal7_review_flags.__doc__

@@ -1999,19 +1999,37 @@ residual category "dapat diusahakan oleh semua Penanam Modal". 49/2021's Pasal I
 Pasal 6 and the three lampiran — **Pasal 3 and Pasal 7 are untouched**, verified in the amending
 instrument itself (W90: the ground truth ages too).
 
-**3. The default is not unconditional — and this is the finding.** **Pasal 7 ayat (1)**: "Penanam
-Modal asing **hanya dapat** melakukan kegiatan usaha pada **Usaha Besar**". So `no Besar ⇒ no PMA` is
-a citation, not an inference from the capital threshold. **23 codes publish "100% Open" while their
-own `per_skala` names no Besar row** — villa, homestay, youth hostel, kedai minuman, management
-consultancy, rumah pijat, hair salon, beauty care, sports facilities. Ledgered `operator[business]`.
+**3. Pasal 7(1) gives a REVIEW QUEUE, not a bar — and the first draft got this wrong.**
+**Pasal 7 ayat (1)**: "Penanam Modal asing **hanya dapat** melakukan kegiatan usaha pada **Usaha
+Besar**". I first read that as `no Besar ⇒ no PMA` and wrote it as a citation. **An independent
+cross-family legal review refuted it before ship, and the refutation is right on the text**: the
+article conditions the INVESTOR and its project — it can stop a PMA that cannot qualify as large —
+but it does not convert the activity into one closed to foreign investment; only a reservation, a
+cap, or a rule making large-scale operation unavailable does that. And `per_skala` is OSS
+**licensing** data: "OSS publishes no Besar row" is not the legal fact "this activity cannot be
+conducted at Besar scale" — the same conflation the module's own three-state `besar_state` refuses
+one level down, committed one level up. So the output is a queue of **23 codes published open with
+no Besar row** (villa, homestay, youth hostel, kedai minuman, management consultancy, rumah pijat,
+hair salon, beauty care, sports facilities), each carrying two questions: does an actual
+reservation/cap apply, and can it in fact be run at Usaha Besar? Ledgered `operator[business]`. The
+safe interim treatment is a caveat on the page, never a re-label to closed.
 
-| locator (which instrument names it) | n        | Pasal 7(1) scale axis | n      |
-| ----------------------------------- | -------- | --------------------- | ------ |
-| `named-in-annex`                    | 270      | besar **observed**    | 1318   |
-| `residual-besar-observed`           | **1055** | besar **absent**      | **24** |
-| `residual-besar-unobserved`         | 216      | besar **unobserved**  | 217    |
-| `residual-besar-absent`             | 14       |                       |        |
-| `body-tertutup` / `body-other-req.` | 2 / 2    |                       |        |
+| locator (which instrument names it) | n       | OSS scale data (NOT a verdict) | n      |
+| ----------------------------------- | ------- | ------------------------------ | ------ |
+| `named-in-annex` (L-II / L-III)     | 270     | besar **observed**             | 1318   |
+| `priority-lampiran-i` (Pasal 3(1)a) | **175** | besar **absent**               | **24** |
+| `residual-besar-observed`           | 882     | besar **unobserved**           | 217    |
+| `residual-besar-unobserved`         | 214     |                                |        |
+| `residual-besar-absent`             | 14      |                                |        |
+| `body-tertutup` / `body-other-req.` | 2 / 2   |                                |        |
+
+**4. Lampiran I was omitted, and that cost 175 wrong citations** — the same review caught it. A code
+in `Daftar Bidang Usaha Prioritas` is **Pasal 3(1)(a)**, so "named by nothing" was quietly including
+category (a) and citing the residual article `3(1)(d)` for 175 codes. Priority _incentivises_ and
+restricts nobody, so no ownership verdict was wrong — the **locator** was, which is this module's
+entire product: the blanket-attribution defect reproduced one annex to the left.
+`parse_perpres_lampiran1.py` compiles the code set only (194 codes, 46/70 pages, page-1 sample
+guard); a restriction outranks a priority listing, so the 46 codes in both report as reserved.
 
 **Locator and scale are TWO AXES, and the first draft collapsed them.** As a partition the report
 found only 14 — because for the ten codes that are BOTH annex-named and Besar-less the scale question
