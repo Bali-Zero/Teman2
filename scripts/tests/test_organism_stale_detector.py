@@ -104,6 +104,52 @@ def test_missing_dir_returns_empty(tmp_path):
     assert findings == []
 
 
+# ---------------------------------------------------------------------------
+# .worktrees/-sourced runtime-stamp exemption (sibling fix to
+# organism_digest.py::stale_heartbeats(), PR #3486 2026-07-30). That PR patched
+# only organism_digest.py; this detector reads the same ~/.organism/last_seen/
+# sidecars and had the identical bug — found live 2026-08-02 via proprioception
+# on Mini: wr2.html_apply.runtime flagged "stale 7.4d" from a reaped
+# .worktrees/docs-inventory-check-blocker2-surgical-0725 stamp while the
+# canonical Pro deploy-clone's own stamp was minutes old.
+# ---------------------------------------------------------------------------
+
+
+def test_innocence_worktree_sourced_stamp_not_flagged_stale(tmp_path):
+    """A wr2_runtime_stamp whose `checkout` is under .worktrees/ is a one-off
+    stamp from a reaped ephemeral agent sandbox — its mtime aging forever is
+    not a broken promise, so it must NOT be flagged stale."""
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(
+        d, "wr2.html_apply.runtime",
+        {
+            "ts": old,
+            "status": "ok",
+            "checkout": "/Users/nuzantara/nuzantara/.worktrees/some-reaped-lane",
+        },
+    )
+    findings = scan_sidecars(d, stale_days=7)
+    assert findings == [], f"worktree-sourced stamp wrongly flagged: {findings}"
+
+
+def test_guilt_canonical_checkout_stamp_still_flags_stale(tmp_path):
+    """Same organ, but stamped from a CANONICAL (non-worktree) checkout — e.g.
+    the real deploy-clone daemon — must still flag when stale. Proves the
+    exemption is scoped to .worktrees/, not to any file carrying a `checkout`
+    field."""
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(
+        d, "wr2.html_apply.runtime",
+        {"ts": old, "status": "ok", "checkout": "/Users/nuzantara/nuzantara-deploy"},
+    )
+    findings = scan_sidecars(d, stale_days=7)
+    assert len(findings) == 1
+    assert findings[0].organ_id == "wr2.html_apply.runtime"
+    assert findings[0].kind == "stale"
+
+
 def test_finding_is_serializable(tmp_path):
     d = str(tmp_path)
     _write(d, "pro.x", {"ts": time.time() - 30 * 86400, "status": "ok"})
