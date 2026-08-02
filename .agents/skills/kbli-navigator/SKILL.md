@@ -815,9 +815,36 @@ disclosed count 57 → **152**.
 >    `no_oss_scope` suffix said _"(the scope endpoint returns 404)"_. `_l2_status = no_oss_risk` is
 >    written by `build_kbli_l2_oss_risk.py:163` for a MISSING dump line, ANY non-200, **or**
 >    `success:false` — asserting `404` inside the sentence whose whole job is honesty is the disease
->    itself (F12). Now: _"could not be retrieved from the OSS API when this dataset was built"_ —
->    independently corroborated by `KBLI_2025_OSS_GROUND_TRUTH.json` (`ruang_lingkup_no_scope: 221`,
->    `ruang_lingkup_errors: 0`, all 54 at `_rl_status: "no_scope"`).
+>    itself (F12). Now: _"could not be retrieved from the OSS API when this dataset was built"_.
+>    **CORROBORATION RE-SOURCED 2026-08-02 — the citation used here was not evidence.** This line used
+>    to cite `KBLI_2025_OSS_GROUND_TRUTH.json` `_meta` (`ruang_lingkup_no_scope: 221`,
+>    **`ruang_lingkup_errors: 0`**). That counter cannot corroborate anything: the per-record schema of
+>    that file has **11 keys and not one of them is an HTTP status**, and `_rl_status` has a vocabulary
+>    of exactly **two** values (`ok` 1338 / `no_scope` 221) — there is no slot in which an error could
+>    have been recorded, so "0 errors" is unfalsifiable by construction. Worse, the code that wrote
+>    those labels **does not exist in this repo** (`_rl_status` and `ruang_lingkup_errors` appear only
+>    in the data file and in this corner), and the raw dump its consumer reads is
+>    `RAW = Path("/tmp/oss_risk_raw.jsonl")` — **gone**. A frozen measurement whose producer nobody can
+>    re-run (#9/W106) cited as proof of what a government API said.
+>
+>    **The real evidence is the vault, and it is stronger than what this line claimed.**
+>    `scripts/kbli_filiera/vault_fetch_oss.py` records status per probe (its docstring states the
+>    contract: _"a 404 on ruang-lingkup … is a LEGIT no-scope signal … NEVER as an empty file
+>    pretending to be data"_). `~/nuzantara-vault/oss/absences.jsonl` holds **663 ruang_lingkup
+>    absences = 221 distinct codes × exactly 3 attempts each, every one HTTP 404**. And the two
+>    instruments agree **by MEMBERSHIP, not by count** — the old file's 221 `no_scope` set and the
+>    vault's 221 404 set are identical, `A−B` and `B−A` both empty (two same-size sets are not the same
+>    set; this is the fact the whole "the emptiness is observed" argument rests on, so it is proven).
+>    Independent schema, independent run, independent date.
+>
+>    **What that does and does not license.** It licenses saying the emptiness is OBSERVED at OSS
+>    rather than caused by us. It does **not** license the client-facing sentence naming a legal
+>    consequence: a 404 is SILENCE, not a statement that the activity cannot be licensed at Besar.
+>    And by this repo's own D0 discipline (≥3 attempts over ≥**72h**,
+>    `research/operations/2026-07-16-kbli-filiera-methodology.md`) the corroboration is **partial**:
+>    the three probes span `2026-07-16T16:52Z → 2026-07-17T15:48Z` ≈ **23 hours**, which rules out a
+>    transient blip, not a multi-day publishing outage. Declared, not rounded up.
+>
 > 3. **Wave 1's disclosure sentence narrated two JSON keys at clients — migrated catalogue-wide.** It
 >    read _"detached to `per_skala_disputed_pp28_collision` (see `_data_note`)"_, and `kbli-faq.ts:42`
 >    splices that verbatim into a published FAQ answer. Fixing only the new codes would have shipped a
