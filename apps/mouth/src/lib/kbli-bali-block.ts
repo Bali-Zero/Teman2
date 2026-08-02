@@ -208,3 +208,59 @@ export function narratesUnverifiedRoute(
   if (!text) return false;
   return TIER_NAME_RE.test(text) && ROUTE_SPECIFIC_RE.test(text);
 }
+
+/**
+ * The "Blocked in Bali" trust-bar hint on /kbli.
+ *
+ * It used to be one hardcoded sentence attributing the whole percentage to the
+ * 13 May 2026 risk-tier moratorium: "low and medium-low-risk activities are
+ * treated as closed to foreign-owned companies (PT PMA)". That is the SAME
+ * over-attribution `isMoratoriumBasis` exists to prevent one surface away — the
+ * per-code page was cured on 2026-07-27 and this card was missed, so the index
+ * kept telling readers that the risk tier is why every blocked code is blocked.
+ *
+ * Two things were wrong with it, both measured on the served dataset:
+ *
+ *  - **Cause.** Of 518 blocked codes, 407 are moratorium-based
+ *    (BLOCCATO_CLASSE_RISCHIO 372 + CHIUSO_MORATORIA_BALI 35) and **111 are
+ *    not** — 68 TERTUTUP (an ownership restriction on the activity itself),
+ *    39 CHIUSO_PMA_NO_BESAR (no Usaha Besar scale row), 2 closed by their
+ *    sector's own regulator, 2 by Bali's announced sectoral closures. That 111
+ *    is the same figure this module's own comment already names.
+ *
+ *  - **Rule.** Read as a rule, "low and medium-low-risk activities are treated
+ *    as closed" is far wider than what we do: 405 codes carry only low or
+ *    medium-low risk and 22 of them render closed under the scale status.
+ *
+ * So the counts are DERIVED here rather than restated in prose, and the
+ * qualifier that made the old sentence honest — a working assessment, not a
+ * certified legal determination — is kept verbatim. Deriving them also means
+ * the sentence cannot go stale the next time the overlay moves, which is how
+ * the original became wrong.
+ */
+export function baliBlockedHint(
+  codes: ReadonlyArray<{
+    baliL4?: { status?: string | null; blocked?: boolean } | null;
+  }>,
+): string {
+  const blocked = codes.filter((c) => c.baliL4?.blocked);
+  const moratorium = blocked.filter((c) =>
+    MORATORIUM_STATUSES.has(c.baliL4?.status ?? ""),
+  ).length;
+  const other = blocked.length - moratorium;
+
+  const causes =
+    other > 0
+      ? `${moratorium} of them under Bali Zero's conservative reading of the 13 May 2026 provincial ` +
+        `risk-tier moratorium, pending clearer national guidance; the other ${other} for a different ` +
+        `reason entirely — an ownership restriction on the activity, no Usaha Besar scale row, or a ` +
+        `sector regulator's own closure.`
+      : `all of them under Bali Zero's conservative reading of the 13 May 2026 provincial risk-tier ` +
+        `moratorium, pending clearer national guidance.`;
+
+  return (
+    `${blocked.length} of ${codes.length} codes are treated as closed to a foreign-owned company ` +
+    `(PT PMA) in Bali — ${causes} A working assessment, not a certified legal determination. ` +
+    `Every code page states which of these applies to it.`
+  );
+}
