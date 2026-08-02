@@ -231,7 +231,7 @@ generation of the same error is made.
    refuters flagged that the first draft used it to conclude "topic partition is
    clean" while simultaneously alarming about invisible semantic collisions.
    Those cannot both be argued from the same data. Neither is now claimed.
-3. **The `17.2×` error-amplification figure IS in the paper** — 17.2×
+3. **RETRACTED IN PART 2026-08-02 — read the note in `agent-library/03-lessons.md` before using this item; do not restore its ranking claim.** The `17.2×` error-amplification figure IS in the paper — 17.2×
    Independent, 4.4× Centralized, verbatim in 2512.08296v3. A June capture of
    ours called it "not in the paper, a TDS commentary"; **that note was wrong**.
    The real defect is worse: the paper's own regression finds error

@@ -165,6 +165,8 @@ jobs:
               scripts/tests/test_ci_service_images_use_mirror.py|\
               scripts/tests/test_lint_workflow_errexit_decap.py|\
               scripts/lint_workflow_errexit_decap.py|\
+              scripts/lint_retracted_claims.py|\
+              infra/retracted-claims/registry.json|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -181,6 +183,23 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+
+      - name: Retracted-claims lint — prove the guard, then scan every markdown
+        # DELIBERATELY NOT gated on steps.paths.outputs.relevant. This guard's
+        # SUBJECT is every tracked markdown file, not its own source: gating it
+        # on "did an immune path change?" would leave unscanned the one PR shape
+        # it exists to catch — a docs/research PR re-asserting a retracted claim
+        # (W81, a guard armed against paths its subject never touches is armed
+        # to nothing). It is also why this lint was born: the claim below took
+        # THREE PRs to retract because each fix touched surfaces while a dated
+        # record kept re-seeding it.
+        #
+        # --selftest FIRST, always: "--all reports OK" is worth nothing until the
+        # guilt fixtures prove the scanner can still fail. The gate that only ever
+        # prints OK is indistinguishable from a gate that cannot see.
+        run: |
+          python scripts/lint_retracted_claims.py --selftest
+          python scripts/lint_retracted_claims.py --all
 
       - name: Unit tests (guilt + innocence per tool)
         if: steps.paths.outputs.relevant == 'true'

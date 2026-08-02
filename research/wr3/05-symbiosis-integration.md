@@ -8,6 +8,8 @@ deepseek: killed by user (Step 3 onwards)
 my_draft_size: ~26000 bytes
 panel_convergence: 7/10 UNANIMOUS, 3/10 split 2-vs-1 (all resolved)
 key_finding: Cartesia API fallback BANNED (3/3 reject) — Zantara voice degrades a no-VO+music+subtitles, not cloud TTS
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key."
 ---
 
 # WR3 Step 5 — Symbiosis 8 leggi → WR3 controls
@@ -230,6 +232,11 @@ Trigger: confirm Step 5 decisions (A/B/C/D)?
 | Codex GPT-5.5  | gpt-5.5 xhigh                   | 3094 (24KB inc. exec logs) | thorough + precedence chain insight (best Q9)            |
 | NB-AGENTS      | NotebookLM RAG                  | 3500 retry                 | 17.2× error finding cited + sustained pass-rate proposal |
 | DeepSeek       | KILLED by user (Step 3 onwards) | —                          | —                                                        |
+> _Nota 2026-08-02 — questa riga **descrive** che NB-AGENTS citò il 17.2×, non lo asserisce come causa;
+> resta com'è, ma la citazione è **RITIRATA**: quel numero misura `Independent` (nessun coordinamento),
+> non il peer-to-peer `Decentralized`, e il paper stesso non lo sostiene come meccanismo (Table 4,
+> p=0.658). La regola no-peer-to-peer non cambia — vedi `agent-library/03-lessons.md`. Non ripristinare
+> la citazione come motivazione._
 
 **Strongest convergence in Step 1-5 progression.** Q6 Cartesia ban = unanimous reject — clearest signal that Law 6 sovereignty is non-negotiable for Zantara voice identity.
 

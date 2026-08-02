@@ -3,6 +3,8 @@ date: 2026-05-19
 domain: operations
 client_case: Claude Code best configuration May 2026 for Nuzantara-class stack
 sources: 14
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key."
 ---
 
 # Claude Code best configuration — Maggio 2026
@@ -116,6 +118,16 @@ ssh -o ConnectTimeout=2 -o BatchMode=yes "$OTHER" 'echo "Peer: $(whoami)@$(hostn
 
 Quote ([NB-AGENTS source 10-11, 45-49]):
 
+> ⚠️ **CITAZIONE RITIRATA 2026-08-02 — la tabella qui sotto resta come record datato, la sua evidenza no.
+> Non ripristinare la come motivazione.** Il 17.2× misura `Independent` (§3.1: paralleli, `Ω=synthesis_only`,
+> **zero coordinamento**), non il peer-to-peer, che è `Decentralized`. E la Table 5 del paper (Success Rate)
+> dice: Decentralized 0.477 · SAS 0.466 · Centralized 0.463 · Hybrid 0.452 · Independent 0.370 — quindi
+> «centralized la migliore» è **falso** (è terza, sotto il single-agent), il paper scrive _"no single
+> architecture dominates"_, e il peer-to-peer è il **più alto** su quella metrica. Table 4 inoltre non trova
+> supporto significativo per l'amplificazione d'errore come causa (p=0.658 = non supportato, non smentito).
+> La regola «orchestratore centrale, niente peer-to-peer» **resta**, su basi di repo. Dettaglio:
+> `agent-library/03-lessons.md`.
+
 | Topology                          | Error amplification vs single-agent baseline | Quando usarla                                         |
 | --------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
 | Single-agent (SAS)                | 1×                                           | Sequential pipelines (39-70% migliore di multi-agent) |
@@ -128,7 +140,7 @@ Translation per Nuzantara:
 
 - WR2 pipeline (brief → storyboard → layout → critic chain) = **single-agent** (catena sequenziale)
 - Deep research (4-LLM panel review) = **centralized** parallelizable, +80.9% gain
-- Mai spawnare 3 sessioni Claude parallele senza orchestrator coordinator (cicatrix `git stash` Branch Hijack ne è esempio: 17.2× pattern)
+- _(citazione RITIRATA — non ripristinare la, vedi nota sopra)_ Mai spawnare 3 sessioni Claude parallele senza orchestrator coordinator (cicatrix `git stash` Branch Hijack ne è esempio: 17.2× pattern)
 
 Voyager + Reflexion patterns ([NB-AGENTS source 45-49]):
 
@@ -254,7 +266,7 @@ If you find yourself citing facts you "know" without a Read tool call → STOP a
 | Caveat                                                                                                                                                                                                                                                         | Mitigazione                                                                                                                             |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | WebSearch ha citato issue Anthropic #40614 con conferma "200-line limit hard-coded" ma anche con riferimento a `claude-mem/CHANGELOG.md` che NON è Anthropic ufficiale. La distinzione "hard-coded vs configurable" va riverificata leggendo source Anthropic. | Leggere `code.claude.com/docs/en/memory` direttamente prima di committare fix #1                                                        |
-| NB-AGENTS cita Kim et al. 2025 arxiv 2512.08296 — paper esiste, ma "17.2× error amplification" specifico non l'ho verificato leggendo paper originale                                                                                                          | Mitigazione: pattern già adottato da Nuzantara (centralized > independent), conferma rule corretta indipendentemente da numerica esatta |
+| _(2026-08-02: RITIRATA — il numero È nel paper — §1 (Introduzione) per la frase, §4.3 per i valori `Aₑtrace` — ma misura `Independent` (parallelo, `Ω=synthesis_only`, **nessun coordinamento**), non il peer-to-peer, e Table 4 lo dà a p=0.658; la Table 5 dà `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370` e il paper scrive "no single architecture dominates". Non ripristinare né il numero né il ranking come motivazione.)_ NB-AGENTS cita Kim et al. 2025 arxiv 2512.08296 — paper esiste, ma "17.2× error amplification" specifico non l'ho verificato leggendo paper originale                                                                                                          | Mitigazione: pattern già adottato da Nuzantara (centralized > independent), conferma rule corretta indipendentemente da numerica esatta |
 | Tool Search "v2.1.7" citato come release introduce-feature; nostra Pro è 2.1.144 quindi feature presente; Mini 2.1.140 → **verifica empirica** che ENABLE_TOOL_SEARCH funzioni anche lì                                                                        | Allineare Mini a 2.1.144 (item P1 #6)                                                                                                   |
 | 8 source web vs 49 source NotebookLM — confidenza alta perché tutte e 3 le sezioni più importanti (MEMORY.md limit, Tool Search, Skill 3-layer) sono confermate da ≥3 source convergenti                                                                       | Continua approccio 4/4 LLM panel per decisioni high-stakes                                                                              |
 

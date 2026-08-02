@@ -4,6 +4,8 @@ domain: wr3-design
 client_case: WR3 Video Production Room — Step 2 atomic verb decomposition + Agent/Tool classification
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + DeepSeek V4 Pro + NB-AGENTS bipolar) + my draft 103 verbs
 status: draft pending Antonello decision gate
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key."
 ---
 
 # WR3 Step 2 — Atomic Verb Decomposition
@@ -20,6 +22,12 @@ status: draft pending Antonello decision gate
 
 1. My draft: 103 verbs in 13 phases (parse → publish), grouped by phase
 2. NB-AGENTS bipolar query → 31KB response with MetaGPT/Voyager/Reflexion patterns + 17 citations to Kim 2025 (17.2× error amplification) + plugin-dev authority
+
+> _Nota 2026-08-02 — questa riga **descrive** che NB-AGENTS citò il 17.2×, non lo asserisce come causa;
+> resta com'è, ma la citazione è **RITIRATA**: quel numero misura `Independent` (nessun coordinamento),
+> non il peer-to-peer `Decentralized`, e il paper stesso non lo sostiene come meccanismo (Table 4,
+> p=0.658). La regola no-peer-to-peer non cambia — vedi `agent-library/03-lessons.md`. Non ripristinare
+> la citazione come motivazione._
 3. 4-LLM panel parallel: Gemini 3.1 Pro (6.8KB) + Codex GPT-5.5 (77KB) + DeepSeek V4 Pro (11.6KB) + NB-AGENTS (31.7KB)
 4. Synthesis (this doc)
 5. Decision gate Antonello

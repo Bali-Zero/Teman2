@@ -30,7 +30,7 @@ brief/ground-truth → narrative/copy (structured) → layout/render → hero-im
 
 Three findings reframe our position:
 
-1. ~~**Our no-peer-to-peer orchestrator topology is the academic SOTA recommendation**, not just an ops preference. (arXiv:2512.08296, Google, Dec 2025 — _qualitative_ claim verified; the "17.2× / 4.4×" multipliers are from secondary commentary, see §1.)~~ **RETRACTED 2026-08-02 — both halves are wrong.** The multipliers are the paper's own (§4.3, verbatim), not secondary commentary. And the paper's peer-to-peer architecture is `Decentralized`, which it does **not** rank worst — 17.2× belongs to `Independent` (parallel, `Ω=synthesis_only`, no coordination). So the 17.2× cannot support a no-peer rule; what the paper reports is that `Centralized` outperformed `Independent` **on its own benchmarks**. Our no-peer rule is an ops preference with good repo reasons, which is exactly what this line denied. See the correction block in §1.
+1. ~~**Our no-peer-to-peer orchestrator topology is the academic SOTA recommendation**, not just an ops preference. (arXiv:2512.08296, Google, Dec 2025 — _qualitative_ claim verified; the "17.2× / 4.4×" multipliers are from secondary commentary, see §1.)~~ **RETRACTED 2026-08-02 — both halves are wrong.** The multipliers are the paper's own (§4.3, verbatim), not secondary commentary. And the paper's peer-to-peer architecture is `Decentralized`, which it does **not** rank worst — 17.2× belongs to `Independent` (parallel, `Ω=synthesis_only`, no coordination). So the 17.2× cannot support a no-peer rule. ⚠️ Nor does anything else in the paper: an earlier version of THIS retraction fell back on "`Centralized` outperformed `Independent` on its own benchmarks" — true as a pair (0.463 > 0.370), irrelevant as support, because `Independent` is not peer-to-peer. Table 5 Success Rate: `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370`; peer-to-peer is `Decentralized`, the HIGHEST, and the paper says *"no single architecture dominates"*. Our no-peer rule is an ops preference with good repo reasons, which is exactly what this line denied. See the correction block in §1.
 2. **Our binary PASS/FAIL critic is the statistically correct design.** VLMs reliably _rank_ but cannot reliably _score_ on absolute scales for vision-heavy tasks (arXiv:2604.25235, verified). Scalar 1-5 rubrics are noise for palette/composition.
 3. **Our weakest brick is cross-slide visual consistency** (anchor-reuse + sha256 only prevents _exact_ reuse, not _coherent_ lighting/palette/framing across slides). This is the highest-value upgrade — and it's solvable with tools already inside our Google AI Ultra subscription (Nano Banana Pro, 14 reference images) or with FLUX.1 Kontext multi-turn.
 
@@ -53,7 +53,7 @@ Three findings reframe our position:
 | Durable-execution layer           | Temporal (used by Postiz)                   | Long-running multi-step workflow durability; heavyweight. **Study-pattern.**                                                                                                                  |
 
 **The academic anchor for our no-peer rule** — calibrated honestly:
-⚠️ **Framing RETRACTED 2026-08-02**: there is no academic anchor for a *no-peer* rule in this paper. It ranks `Centralized` above `Independent` (no coordination) on its own benchmarks; peer-to-peer is `Decentralized`, which it does not rank worst. Our no-peer rule is a repo policy. See the correction block below.
+⚠️ **Framing RETRACTED 2026-08-02**: there is no academic anchor for a *no-peer* rule in this paper, **in either direction**. Table 5 Success Rate: `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370` — peer-to-peer is `Decentralized`, the HIGHEST, `Independent` (no coordination, NOT peer-to-peer) is lowest, and the paper states *"no single architecture dominates"*. The `Centralized` > `Independent` pair is true and proves nothing about peers. Our no-peer rule is a repo policy. See the correction block below.
 
 - arXiv:2512.08296 "Towards a Science of Scaling Agent Systems" (Kim, Gu, Park et al., Google, Dec 2025) **is a real paper** (verified abstract). Its load-bearing claim: _"architectures without centralized verification tend to propagate errors more than those with centralized coordination"_; it evaluates 5 topologies (Single, Independent, Centralized, Decentralized, Hybrid) and finds coordination yields diminishing returns and mismatched coordination degrades performance (relative range +80.8% to −70.0%).
 - ⚠️ **The specific "17.2× unstructured / 4.4× orchestrator" multipliers are NOT in the paper's abstract** — ~~they come from secondary commentary ([Towards Data Science: "The 17x Error Trap"](https://towardsdatascience.com/why-your-multi-agent-system-is-failing-escaping-the-17x-error-trap-of-the-bag-of-agents/)). Cite the _paper_ for the qualitative finding; cite TDS for the numbers. (Our own brand-cortex/agent docs currently attribute "17.2×" to "Google" — worth softening to "centralized coordination contains error propagation (Google 2512.08296); a widely-cited secondary analysis puts unstructured amplification ~17×".)~~ **Everything struck through is FALSE — retracted 2026-08-02, left visible because it is what propagated.** The numbers are the paper's own (§4.3).
@@ -61,7 +61,7 @@ Three findings reframe our position:
   > **CORRECTION 2026-08-02 — this bullet contains one true observation and one false inference drawn from it, and the false half is what propagated.** Verified at source on **v3** (§4.3, §3.1, Table 4):
   >
   > - **True**: the multipliers are not in the abstract.
-  > - **False**: "they come from secondary commentary". They are the paper's own, verbatim in **§4.3** — _"Independent systems amplify trace-level errors 17.2× through unchecked error propagation … Centralized coordination, however, contains this to 4.4× by enforcing validation bottlenecks"_. Absent from the abstract ⇏ absent from the paper. That inference, made **here**, is the phantom; §10 then repeated it as a verified finding. Not a word lost in transmission — a conclusion overreached at the source and never re-checked.
+  > - **False**: "they come from secondary commentary". They are the paper's own, verbatim in **§1 (Introduction)** — re-verified at source 2026-08-02; an earlier draft of THIS correction said §4.3, which is wrong: §4.3 carries the per-architecture `Aₑtrace` values (`SAS 1.0 · Centralized 4.4 · Hybrid 5.1 · Decentralized 7.8 · Independent 17.2`), not that sentence — _"Independent systems amplify trace-level errors 17.2× through unchecked error propagation … Centralized coordination, however, contains this to 4.4× by enforcing validation bottlenecks"_. Absent from the abstract ⇏ absent from the paper. That inference, made **here**, is the phantom; §10 then repeated it as a verified finding. Not a word lost in transmission — a conclusion overreached at the source and never re-checked.
   >
   > **Two things this bullet could not have known, and they matter more than the provenance:**
   >
@@ -220,10 +220,12 @@ When vendoring any MIT/Apache code, keep the attribution header + add to a `PROV
 
 ## 10. Source-honesty notes (anti-hallucination)
 
+> ⚠️ **RETRACTED in part 2026-08-02** — the arXiv:2512.08296 bullet below is false; do not restore it. See §1.
+
 These were **verified by the orchestrator** (not just relayed from sub-lanes):
 
 - arXiv:2512.08296 — real; ~~but "17.2×/4.4×" are secondary-commentary numbers~~ **← FALSE, retracted 2026-08-02** (they are verbatim in §4.3), NOT in the abstract ← true. ~~Soften our internal attribution.~~ ← superseded, see §1.
-  > **CORRECTED 2026-08-02 — and this line is why a section titled _source-honesty_ is not itself a source.** It states as **orchestrator-verified** that the numbers are "secondary-commentary numbers". They are not: they are verbatim in **§4.3** of the paper. The false claim was not born here — §1 already drew it — but this line is what gave it the status of a *checked* fact, and that is what made it survive: everything downstream cited the honesty section, not the hedge. What is genuinely wrong is not provenance but **causality and architecture** — see the correction block in §1.
+  > **CORRECTED 2026-08-02 — and this line is why a section titled _source-honesty_ is not itself a source.** It states as **orchestrator-verified** that the numbers are "secondary-commentary numbers". They are not: they are verbatim in **§1 (Introduction)** of the paper. The false claim was not born here — §1 already drew it — but this line is what gave it the status of a *checked* fact, and that is what made it survive: everything downstream cited the honesty section, not the hedge. What is genuinely wrong is not provenance but **causality and architecture** — see the correction block in §1.
 - arXiv:2604.25235 — real (the `2604` prefix looked future-dated; it resolves; ranking-vs-scoring finding genuine).
 - `Hainrixz/open-carrusel` — real, MIT, 303★, `wrapSlideHtml()` confirmed present.
 
@@ -287,6 +289,8 @@ Questo conferma l'autopsy del 2026-06-04 ("A intelligente = dead-code, B che pub
 **Seat**: Codex `gpt-5.6-sol`, effort `xhigh`, fresh context, read-only sandbox, cross-family (generator = Claude Opus 5; grader ≠ generator). Two rounds, **both returned DO-NOT-SHIP**; this text ships after the third rework.
 
 ### What the refuter caught that the author had not
+
+> All rows below quote a **RETRACTED** claim in order to correct it — do not restore any of them.
 
 | # | Objection | Status |
 |---|---|---|

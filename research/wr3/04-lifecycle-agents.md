@@ -8,6 +8,8 @@ deepseek: killed by user (Step 3 onwards)
 my_draft_size: 14804 bytes
 panel_convergence: 9/10 questions UNANIMOUS MODIFY, 1/10 UNANIMOUS KEEP
 critical_red_flag: Codex caught Veo Fast pricing error in my draft ($0.01/cr vs $0.10/sec API)
+adversarial_review: codex
+adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key."
 ---
 
 # WR3 Step 4 — Lifecycle per agente
@@ -292,6 +294,11 @@ Trigger: confirm Step 4 decisions?
 | Codex GPT-5.5  | gpt-5.5 xhigh           | ~5000 (22KB inc. exec logs) | thorough + caught Veo cost-model error via web search      | 9/10 MODIFY + 1/10 KEEP    |
 | NB-AGENTS      | NotebookLM RAG          | 652 + 4500 retry            | NB-cited, 17.2× error finding referenced                   | 9/10 MODIFY + 1/10 KEEP    |
 | DeepSeek       | KILLED by user (Step 3) | —                           | —                                                          | —                          |
+> _Nota 2026-08-02 — questa riga **descrive** che NB-AGENTS citò il 17.2×, non lo asserisce come causa;
+> resta com'è, ma la citazione è **RITIRATA**: quel numero misura `Independent` (nessun coordinamento),
+> non il peer-to-peer `Decentralized`, e il paper stesso non lo sostiene come meccanismo (Table 4,
+> p=0.658). La regola no-peer-to-peer non cambia — vedi `agent-library/03-lessons.md`. Non ripristinare
+> la citazione come motivazione._
 
 **Panel agreement strength:** 30/30 votes on 10 questions = 9/10 MODIFY + 1/10 KEEP. Strongest convergence achieved in Step 1-4 progression.
 

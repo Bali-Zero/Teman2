@@ -1,0 +1,95 @@
+{
+  "_readme": [
+    "Claims this repo asserted, then RETRACTED at source. scripts/lint_retracted_claims.py fails",
+    "when one reappears in a markdown file without a retraction directive near it.",
+    "",
+    "WHY A REGISTRY: a retraction is not self-enforcing. The claim below was corrected in three",
+    "PRs across two days and kept coming back, because correcting a surface does not stop the",
+    "next session from reading a dated record and re-deriving the claim into a live one -- which",
+    "is exactly how it reached the live WR2 orchestrator.",
+    "",
+    "WHAT THIS LINT DOES NOT DO: it does not ban the tokens. Quoting a retracted claim in order",
+    "to correct it is the CURE. A hit is clean when a retraction DIRECTIVE sits within",
+    "`window_lines` of it. Deleting history is never the goal; a naked assertion is the target.",
+    "",
+    "DIRECTIVES ARE CASE-SENSITIVE AND ALL-CAPS, ON PURPOSE. The first draft of this file used",
+    "ordinary words as markers -- including `Independent`, which is the very word the endorsement",
+    "it was supposed to catch contains ('Independent (no coordination) | 17.2x | MAI'). The guard",
+    "was absolved by the text it existed to catch: superscar #3 in its purest form, built during",
+    "a session about superscar #3. Ordinary words, adjectives and numbers are BANNED as",
+    "directives; `CORRECTED` is banned too because it is a substring of `uncorrected`.",
+    "",
+    "CLAIM-BOUND ABSOLUTION (`absolution_pattern`). A directive proves that SOMETHING near this",
+    "line was retracted; it never says WHICH claim. With two claims registered, an annotation",
+    "about one would absolve a naked assertion of the other -- the gap this file pinned as",
+    "known_gap on day one. A claim carrying `absolution_pattern` now also requires a token from",
+    "its OWN correction in the window (for these two: the paper's real Table 5 numbers). A claim",
+    "WITHOUT one keeps the old any-directive behaviour: a declared limit, not an oversight."
+  ],
+  "window_lines": 20,
+  "directives": [
+    "RETRACTED",
+    "RETRACTION",
+    "RITIRATA",
+    "RITIRATO",
+    "DO NOT RESTORE",
+    "NON RIPRISTINARE"
+  ],
+  "claims": [
+    {
+      "id": "kim-2025-17x-error-amplification-as-cause",
+      "pattern": "\\b17[.,]2\\s*(-|\\s)?\\s*[×x]|\\b4[.,]4\\s*(-|\\s)?\\s*[×x]",
+      "context_pattern": "error|amplif|peer|topolog|coordinat|Kim|2512\\.08296|Independent|Decentralized|swarm",
+      "context_window": 3,
+      "source": "arXiv:2512.08296v3 (Kim et al., Towards a Science of Scaling Agent Systems)",
+      "retracted": "2026-08-02",
+      "prs": ["#3509", "#3513", "#3514"],
+      "what_was_claimed": "that Google's 17.2x error-amplification finding is WHY subagents must never talk peer-to-peer",
+      "why_retracted": [
+        "WRONG TOPOLOGY: 17.2x measures `Independent` -- S3.1 defines it as parallel agents with Omega=synthesis_only, i.e. NO coordination. Peer-to-peer is `Decentralized` (C={(ai,aj) for all i!=j}, debate rounds, consensus). The number never bore on the rule it was cited for.",
+        "UNSUPPORTED AS A CAUSE: S4.3 narrates error propagation as the mechanism, but Table 4 reports beta=0.014 CI[-0.047,0.074] p=0.658 and interaction beta=0.022 CI[-0.023,0.067] p=0.332; S4.3 concludes the gap is better explained by 'efficiency (Ec) and overhead (O%), rather than error propagation per se'.",
+        "PRECISION: p=0.658 means UNSUPPORTED, not disproved. The CIs straddle zero.",
+        "AND THE REPLACEMENT WAS WRONG TOO (found by cross-family review 2026-08-02, third generation of the same error): PRs #3513/#3514 replaced the causal claim with 'Independent worst, Centralized best'. Table 5 Success Rate says otherwise -- Decentralized 0.477, SAS 0.466, Centralized 0.463, Hybrid 0.452, Independent 0.370. Independent IS lowest, but Centralized is THIRD, below plain single-agent, and the paper states 'no single architecture dominates across all domains and vendors'. Worse for the rule this was cited for: `Decentralized` IS peer-to-peer and scores HIGHEST on that metric."
+      ],
+      "what_still_stands": "The no-peer-to-peer rule, unchanged -- but it rests on REPO GROUNDS ALONE (context isolation, one auditable state owner, no cross-worker contamination). This paper supports nothing about it in either direction, and on aggregate Success Rate its peer-to-peer architecture scores highest. Do not cite it for this rule at all.",
+      "correction_lives_in": [
+        "agent-library/03-lessons.md",
+        "agent-library/02-patterns.md",
+        ".claude/agents/wr2-design-architect.md"
+      ],
+      "known_gap": "CLOSED 2026-08-02 for the two registered claims by `absolution_pattern` (a directive must be accompanied by a token from this claim's own correction). Still open in general: a claim registered WITHOUT an absolution_pattern is absolved by any nearby directive. Pinned by test_known_gap_claim_without_absolution_is_not_bound.",
+      "absolution_pattern": "synthesis_only|0\\.658|no coordination|nessun coordinamento|0\\.477|no single architecture dominates"
+    },
+    {
+      "id": "kim-2025-ranking-supports-the-no-peer-rule",
+      "pattern": "\\bCentralized\\b[^.\\n]{0,40}\\b(best|migliore|highest|top-?ranked)\\b|\\b(best|migliore|highest)\\b[^.\\n]{0,25}\\bCentralized\\b|(pi[uù] il|plus the paper'?s?|the paper'?s?( own)?|benchmark|sui suoi benchmark)\\s*(own\\s+)?rank|rank(ing|s)?\\s+(del paper|of the paper)",
+      "context_pattern": "Independent|Decentralized|peer|topolog|Kim|2512\\.08296|17[.,]2",
+      "context_window": 4,
+      "absolution_pattern": "0\\.477|no single architecture dominates|nessuna (singola )?architettura domina",
+      "source": "arXiv:2512.08296v3 (Kim et al.), Table 5 Success Rate",
+      "retracted": "2026-08-02",
+      "prs": ["#3513", "#3514"],
+      "what_was_claimed": "that after withdrawing the 17.2x citation, the paper still SUPPORTS our no-peer-to-peer rule via its benchmark ranking -- phrased as 'Centralized best, Independent worst' or, in the weakened second draft, 'plus the paper's benchmark ranking (Centralized > Independent)'.",
+      "why_retracted": [
+        "CENTRALIZED IS NOT BEST. Table 5 Success Rate: Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370. Centralized is THIRD, below plain single-agent, and the paper states 'no single architecture dominates across all domains and vendors'.",
+        "THE PAIR IS TRUE AND IRRELEVANT. Centralized > Independent (0.463 > 0.370) does hold. It supports nothing about peers, because Independent is not peer-to-peer -- it is parallel agents with Omega=synthesis_only. Citing it as residual support is a non-sequitur.",
+        "IT POINTS THE WRONG WAY IF ANYTHING. The paper's peer-to-peer architecture is Decentralized, which scores HIGHEST on that metric.",
+        "THIRD GENERATION, SELF-INFLICTED. This claim was introduced by the sessions CORRECTING the 17.2x claim (#3513/#3514) and shipped to main. The lesson is not about one paper: a replacement assertion written while retracting another is unverified by default."
+      ],
+      "what_still_stands": "The no-peer-to-peer rule, unchanged, on REPO GROUNDS ALONE (context isolation, one auditable state owner, no cross-worker contamination). Do not cite this paper for it in either direction.",
+      "correction_lives_in": [
+        ".claude/agents/wr2-design-architect.md",
+        "agent-library/02-patterns.md",
+        "research/marketing/2026-06-06-sota-carousel-automation.md"
+      ]
+    }
+  ],
+  "phrase_directives": [
+    "do not restore",
+    "non ripristinare la",
+    "do not cite it",
+    "non citare come",
+    "claim is retracted",
+    "citazione e ritirata"
+  ]
+}
