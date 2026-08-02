@@ -25,6 +25,7 @@ nothing downstream would notice — the chunker would just emit fewer chunks.
 """
 
 import re
+import sys
 import time
 
 import pytest
@@ -505,11 +506,34 @@ SWEEP_N = 20_000
 # quadratic in one measurement; but a quadratic with a small coefficient can sit under any
 # ceiling at a fixed n and still be pathological further up the curve, so anything slow
 # enough to be measurable at all is also made to prove its GROWTH. Conversely a ratio
-# alone is pure noise at 0.4ms, which is why the floor gates it: a healthy pattern never
-# reaches the floor, never pays for the second measurement, and cannot flake on it.
+# alone is pure noise at 0.4ms, which is why the floor gates it.
+#
+# An earlier version of this comment claimed a healthy pattern "never reaches the floor,
+# never pays for the second measurement, and cannot flake on it". Measured 2026-08-02, one
+# full sweep per pattern, worst payload combination each:
+#
+#     PAGE_NUMBER_LINE   57.2 ms = 1429% of the floor   <- crosses on EVERY run
+#     BAB_PATTERN         6.5 ms =  162% of the floor   <- crosses on EVERY run
+#     PASAL_PATTERN       3.8 ms =   96% of the floor
+#     AYAT_PATTERN        3.7 ms =   93% of the floor
+#     AYAT_MARKER_PREFIX  3.2 ms =   80% of the floor
+#
+# So four of ten patterns are one load spike from the ratio branch, and the claim was
+# false. It cost two consecutive false reds on the required pre-push gate (2026-08-02:
+# `NOISE_PATTERNS[1]` at 0.0046s -> 0.0248s, then `AYAT_MARKER_PREFIX` at 0.0071s ->
+# 0.0279s) — and `NOISE_PATTERNS[1]`'s true worst case is 0.708 ms, 18% of the floor, so
+# it took roughly 6x load inflation to reach a gate it should never see.
+#
+# The floor is NOT raised here: raising it would blind the branch to exactly the
+# small-coefficient quadratic it exists for. Instead the single sample stays the TRIGGER
+# and a violation must RE-MEASURE before it becomes a verdict (`_confirm_ratio_violation`
+# below). Load noise only ever ADDS time, so a minimum over repeats is the estimator that
+# removes inflation and cannot remove real cost: a genuinely super-linear pattern is slow
+# on every sample, so its minimum is slow too and its doubled minimum still grows.
 SWEEP_CEILING_SECONDS = 0.25
 SWEEP_RATIO_FLOOR_SECONDS = 0.004
 SWEEP_MAX_RATIO = 3.0
+SWEEP_CONFIRM_SAMPLES = 3
 
 SWEEP_PREFIXES = (
     "",
@@ -541,6 +565,34 @@ _PRE_FIX_BAB = re.compile(
 )
 
 
+def _measure_min(rx: re.Pattern, text: str, samples: int = SWEEP_CONFIRM_SAMPLES) -> float:
+    """Smallest of `samples` timings — the estimator that survives a loaded machine."""
+    return min(_elapsed(rx, text) for _ in range(samples))
+
+
+def _confirm_ratio_violation(
+    measure,
+    text: str,
+    doubled_text: str,
+) -> tuple[float, float, float] | None:
+    """Re-measure both sizes and return `(base, doubled, ratio)` if the violation survives.
+
+    Pure, and the measurement is injected, so the decision this makes is testable without
+    depending on how busy the machine is — which would be a poor way to test the fix for a
+    defect whose whole cause is how busy the machine is.
+
+    BOTH conditions are re-checked, not just the ratio: the false red that produced this
+    function had a true base of 0.7 ms, so re-testing the floor is what rejects it. A
+    pattern whose robust base is under the floor was never eligible for this branch.
+    """
+    base = measure(text)
+    doubled = measure(doubled_text)
+    ratio = doubled / max(base, 1e-9)
+    if base > SWEEP_RATIO_FLOOR_SECONDS and ratio > SWEEP_MAX_RATIO:
+        return base, doubled, ratio
+    return None
+
+
 def _sweep_verdict(rx: re.Pattern) -> str | None:
     """Return a failure message for the first super-linear combination, or None.
 
@@ -561,14 +613,78 @@ def _sweep_verdict(rx: re.Pattern) -> str | None:
                         f"(ceiling {SWEEP_CEILING_SECONDS}s)"
                     )
                 if elapsed > SWEEP_RATIO_FLOOR_SECONDS:
-                    doubled = _elapsed(rx, prefix + pump * (SWEEP_N * 2) + suffix)
+                    doubled_text = prefix + pump * (SWEEP_N * 2) + suffix
+                    doubled = _elapsed(rx, doubled_text)
                     ratio = doubled / max(elapsed, 1e-9)
                     if ratio > SWEEP_MAX_RATIO:
+                        # TRIGGER, not verdict: confirm on re-measurement before failing.
+                        confirmed = _confirm_ratio_violation(
+                            lambda t: _measure_min(rx, t),
+                            text,
+                            doubled_text,
+                        )
+                        if confirmed is None:
+                            continue
+                        base_c, doubled_c, ratio_c = confirmed
                         return (
-                            f"{elapsed:.4f}s -> {doubled:.4f}s ({ratio:.1f}x for 2x input, "
-                            f"max {SWEEP_MAX_RATIO}x) on {where}"
+                            f"{base_c:.4f}s -> {doubled_c:.4f}s ({ratio_c:.1f}x for 2x "
+                            f"input, max {SWEEP_MAX_RATIO}x) on {where} "
+                            f"[confirmed as the min of {SWEEP_CONFIRM_SAMPLES} samples; "
+                            f"the triggering single read was {elapsed:.4f}s -> "
+                            f"{doubled:.4f}s]"
                         )
     return None
+
+
+class TestRatioConfirmation:
+    """The ratio branch's own guilt/innocence, with the clock taken out of the loop.
+
+    Testing an anti-load-noise fix by timing real regexes on a machine whose load is the
+    variable under test would prove nothing, so the measurement is injected.
+
+    What is NOT covered is stated plainly rather than implied: `TestPayloadSweep`'s
+    control fires on the CEILING branch (`_PRE_FIX_BAB` takes ~7.6s at n=20k, 30x the
+    ceiling), so no real regex in this file exercises the ratio branch end to end. That
+    gap predates this class — the branch that fires falsely was also the branch with no
+    proof it fires truly — and it is on the ledger. These tests cover the DECISION.
+    """
+
+    @staticmethod
+    def _scripted(values):
+        seq = list(values)
+        return lambda _text: seq.pop(0)
+
+    def test_a_real_superlinear_pattern_still_fails(self):
+        """Consistently slow and consistently growing: the verdict must survive."""
+        confirmed = _confirm_ratio_violation(self._scripted([0.020, 0.160]), "t", "d")
+        assert confirmed is not None
+        base, doubled, ratio = confirmed
+        assert (base, doubled) == (0.020, 0.160)
+        assert ratio == pytest.approx(8.0)
+
+    def test_the_load_spike_that_produced_this_function_is_rejected(self):
+        """`NOISE_PATTERNS[1]`: true base 0.708 ms, inflated to 4.6 ms by load.
+
+        Re-measured, the base is back under the floor, so the pattern was never eligible
+        for this branch and the ratio is not consulted.
+        """
+        assert _confirm_ratio_violation(self._scripted([0.000708, 0.00142]), "t", "d") is None
+
+    def test_a_base_above_the_floor_with_a_linear_ratio_is_rejected(self):
+        """`PAGE_NUMBER_LINE` lives above the floor permanently: slow, but honestly linear."""
+        assert _confirm_ratio_violation(self._scripted([0.057, 0.114]), "t", "d") is None
+
+    def test_the_floor_is_re_checked_and_not_only_the_ratio(self):
+        """A tiny base with a wild ratio is noise, not a finding — 0.1ms -> 1ms is 10x."""
+        assert _confirm_ratio_violation(self._scripted([0.0001, 0.001]), "t", "d") is None
+
+    def test_measure_min_takes_the_minimum_not_the_first_or_the_mean(self, monkeypatch):
+        """The estimator has to be the MIN: load only ever adds, so the min is the truth."""
+        samples = iter([0.100, 0.002, 0.050])
+        monkeypatch.setattr(
+            sys.modules[__name__], "_elapsed", lambda rx, text: next(samples),
+        )
+        assert _measure_min(re.compile("x"), "y", samples=3) == 0.002
 
 
 class TestPayloadSweep:
@@ -583,6 +699,51 @@ class TestPayloadSweep:
             "thresholds no longer discriminate — in both cases the clean results below "
             "mean nothing and must not be believed."
         )
+
+    @staticmethod
+    def _script_a_load_spike(monkeypatch):
+        """Make the FIRST swept combination look exactly like the false red of 2026-08-02.
+
+        First read 5 ms (over the 4 ms floor, under the 0.25 s ceiling), doubled read
+        30 ms (6x — a violation), then every confirmation sample 1 ms, i.e. the pattern's
+        honest cost, back under the floor. Scripted rather than timed on purpose: an
+        anti-load-noise fix verified by timing on a loaded machine is a coin flip, and
+        without this the "neuter the confirmation" test below is VACUOUS — a healthy sweep
+        returns None whether the confirmation is wired in or not.
+        """
+        calls = {"n": 0}
+
+        def fake_elapsed(_rx, _text):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return 0.005
+            if calls["n"] == 2:
+                return 0.030
+            return 0.001
+
+        monkeypatch.setattr(sys.modules[__name__], "_elapsed", fake_elapsed)
+        return calls
+
+    def test_a_scripted_load_spike_does_not_become_a_verdict(self, monkeypatch):
+        """The regression this whole change exists for, reproduced without a clock."""
+        calls = self._script_a_load_spike(monkeypatch)
+        assert _sweep_verdict(CURED["PASAL_PATTERN"]) is None
+        assert calls["n"] > 2, "the confirmation was never asked — the trigger never fired"
+
+    def test_the_confirmation_is_on_the_path_and_not_dead_code(self, monkeypatch):
+        """Same scripted spike, but with a confirmation that agrees: a verdict MUST come out.
+
+        Paired with the test above this brackets the branch: neither "always silent" nor
+        "always loud" can pass both.
+        """
+        self._script_a_load_spike(monkeypatch)
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "_confirm_ratio_violation",
+            lambda *_a, **_k: (0.005, 0.030, 6.0),
+        )
+        verdict = _sweep_verdict(CURED["PASAL_PATTERN"])
+        assert verdict is not None and "confirmed as the min of" in verdict, verdict
 
     @pytest.mark.parametrize("name", sorted(CURED))
     def test_no_cured_pattern_is_superlinear_on_any_swept_payload(self, name):
