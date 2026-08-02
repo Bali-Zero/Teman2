@@ -119,7 +119,15 @@ propagation order that actually reaches a client:
   client no-cache header. **Compare the `etag` against an md5 you computed yourself.**
 
 **🟢 CLOSED — the frontend half is now SERVED, and the cause is no longer a family of suspects.**
-Zero ran the interactive `vercel login` (the one `operator[gui]` step); the session did the rest.
+Zero ran the interactive `vercel login`; the session did the rest. **That login was called "the one
+`operator[gui]` step" and it is NOT one — corrected the same day by the next promote.** The credential
+`expiresAt` is measured in HOURS: the one minted that morning expired at 09:18:57Z mid-session, and
+`403 {"invalidToken": true}` is therefore the ORDINARY state of a healthy machine, not evidence that no
+credential exists. `auth.json` carries a `refreshToken`; `vercel whoami` redeems it in ~1s and the
+session promoted `223a8471` with the result (HTTP 201) with no human involved. **Do not re-open a
+"waiting for Zero to log in" lane on a 403** — run the refresh first; the login is the entrance only
+when the refresh fails. Armed in code so this cannot be re-derived by hand:
+`vercel_prod_deploy.py::_token()` now performs the refresh instead of instructing a human to.
 The newest `production`/`READY` deployment already carried the cure and the custom domains were
 still serving the previous build — `POST /v10/projects/<id>/promote/<dpl>` → HTTP 201 published it.
 **Cause established, and by a control that could have refuted it — not by elimination.** Reading

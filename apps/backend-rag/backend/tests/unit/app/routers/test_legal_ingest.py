@@ -52,6 +52,25 @@ def app():
     return app
 
 
+@pytest.fixture(autouse=True)
+def allowed_root(tmp_path, monkeypatch):
+    """A real, allow-listed directory holding a real document.
+
+    These tests used to `@patch("...legal_ingest.Path")` so that `.exists()` returned
+    True for a made-up `/test/document.pdf`. The router now confines the caller-supplied
+    path first (`resolve_ingest_path`) and calls `.exists()` on the RESOLVED value, so
+    patching the router's `Path` no longer intercepts anything — and `/test/...` is
+    outside every allowed root, which is exactly the refusal the guard exists for.
+    Using a real file instead keeps each test's intent and drops a mock that was
+    standing in for the filesystem.
+    """
+    root = tmp_path / "legal"
+    root.mkdir()
+    (root / "document.pdf").write_bytes(b"%PDF-1.4 test")
+    monkeypatch.setenv("INGEST_ALLOWED_ROOTS", str(root))
+    return root
+
+
 @pytest.fixture
 def client(app):
     """Create test client"""
@@ -62,10 +81,8 @@ class TestLegalIngestRouter:
     """Tests for legal_ingest router"""
 
     @patch("backend.app.routers.legal_ingest.get_legal_service")
-    @patch("backend.app.routers.legal_ingest.Path")
-    def test_ingest_legal_document_success(self, mock_path, mock_get_service, client):
+    def test_ingest_legal_document_success(self, mock_get_service, client, allowed_root):
         """Test ingesting legal document successfully"""
-        mock_path.return_value.exists.return_value = True
 
         # Mock the service returned by get_legal_service
         mock_service = MagicMock()
@@ -83,7 +100,7 @@ class TestLegalIngestRouter:
 
         response = client.post(
             "/api/legal/ingest",
-            json={"file_path": "/test/document.pdf", "title": "Test Document"},
+            json={"file_path": str(allowed_root / "document.pdf"), "title": "Test Document"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -91,19 +108,15 @@ class TestLegalIngestRouter:
         assert data["book_title"] == "Test Document"
         assert data["message"] == "Document ingested successfully"
 
-    @patch("backend.app.routers.legal_ingest.Path")
-    def test_ingest_legal_document_file_not_found(self, mock_path, client):
+    def test_ingest_legal_document_file_not_found(self, client, allowed_root):
         """Test ingesting legal document with file not found"""
-        mock_path.return_value.exists.return_value = False
 
-        response = client.post("/api/legal/ingest", json={"file_path": "/nonexistent/document.pdf"})
+        response = client.post("/api/legal/ingest", json={"file_path": str(allowed_root / "missing.pdf")})
         assert response.status_code == 404
 
     @patch("backend.app.routers.legal_ingest.get_legal_service")
-    @patch("backend.app.routers.legal_ingest.Path")
-    def test_ingest_legal_document_with_tier(self, mock_path, mock_get_service, client):
+    def test_ingest_legal_document_with_tier(self, mock_get_service, client, allowed_root):
         """Test ingesting legal document with tier override"""
-        mock_path.return_value.exists.return_value = True
 
         mock_service = MagicMock()
         mock_service.ingest_legal_document = AsyncMock(
@@ -120,26 +133,22 @@ class TestLegalIngestRouter:
 
         response = client.post(
             "/api/legal/ingest",
-            json={"file_path": "/test/document.pdf", "tier": "A"},
+            json={"file_path": str(allowed_root / "document.pdf"), "tier": "A"},
         )
         assert response.status_code == 200
 
-    @patch("backend.app.routers.legal_ingest.Path")
-    def test_ingest_legal_document_invalid_tier(self, mock_path, client):
+    def test_ingest_legal_document_invalid_tier(self, client, allowed_root):
         """Test ingesting legal document with invalid tier"""
-        mock_path.return_value.exists.return_value = True
 
         response = client.post(
             "/api/legal/ingest",
-            json={"file_path": "/test/document.pdf", "tier": "INVALID"},
+            json={"file_path": str(allowed_root / "document.pdf"), "tier": "INVALID"},
         )
         assert response.status_code == 400
 
     @patch("backend.app.routers.legal_ingest.get_legal_service")
-    @patch("backend.app.routers.legal_ingest.Path")
-    def test_ingest_legal_document_with_collection(self, mock_path, mock_get_service, client):
+    def test_ingest_legal_document_with_collection(self, mock_get_service, client, allowed_root):
         """Test ingesting legal document with collection override"""
-        mock_path.return_value.exists.return_value = True
 
         mock_service = MagicMock()
         mock_service.ingest_legal_document = AsyncMock(
@@ -156,22 +165,20 @@ class TestLegalIngestRouter:
 
         response = client.post(
             "/api/legal/ingest",
-            json={"file_path": "/test/document.pdf", "collection_name": "custom_collection"},
+            json={"file_path": str(allowed_root / "document.pdf"), "collection_name": "custom_collection"},
         )
         assert response.status_code == 200
 
     @patch("backend.app.routers.legal_ingest.get_legal_service")
-    @patch("backend.app.routers.legal_ingest.Path")
-    def test_ingest_legal_document_error(self, mock_path, mock_get_service, client):
+    def test_ingest_legal_document_error(self, mock_get_service, client, allowed_root):
         """Test ingesting legal document with service error"""
-        mock_path.return_value.exists.return_value = True
 
         mock_service = MagicMock()
         mock_service.ingest_legal_document = AsyncMock(side_effect=Exception("Service error"))
         mock_get_service.return_value = mock_service
 
         # The endpoint raises HTTPException on error which returns 500
-        response = client.post("/api/legal/ingest", json={"file_path": "/test/document.pdf"})
+        response = client.post("/api/legal/ingest", json={"file_path": str(allowed_root / "document.pdf")})
         # The router catches exceptions and returns 500
         assert response.status_code == 500
         data = response.json()

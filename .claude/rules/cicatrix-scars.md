@@ -829,3 +829,48 @@ Il punto non è il file: è che l'esenzione **non è una formalità, è un'ASSER
 **GOTCHA di misura:** contare i report da riparare con `head -1 | grep '^---$'` ne dava 10; il gate ne trova **11** — uno ha il frontmatter ma non la chiave. Il proxy (la prima riga) non è l'entità (la dichiarazione). E il verdetto va letto dallo strumento che decide, non da un'approssimazione comoda.
 
 **Reference:** `scripts/nb_curator_artifact_gate.py` (`DELIVERABLE_KEY_RE`) + `scripts/tests/test_nb_curator_artifact_gate.py` (guilt: la forma reale → exit 4, file byte-identico; innocence: uno snapshot normale è ancora riparato) + arming in `.github/workflows/immune-enforcement.yml` (loop guilt+innocence **e** sentinel paths, trigger-symmetry verde) — PR #3421, su #3418.
+
+---
+
+## W113 — la frase che scrivo MENTRE ritratto è un claim nuovo, e nessun round adversariale la guarda
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — questo record CITA entrambi i claim ritirati per correggerli; nessuna riga qui li asserisce. Non ripristinare né il `17.2×` come motivazione né il ranking come sostegno.
+
+_Discovered: 2026-08-02, chiudendo la lane di ritrattazione del `17.2×` (PR #3526). Severity: **P2** (nessun danno al cliente; il danno è alla base di conoscenza che gli agenti leggono) · Status: **CURED** + armato in CI._
+
+**Famiglia: superscar #6 (phantom citations).** Quarta generazione della linea: W65 «anche il refuter allucina» → W90 «anche il ground-truth invecchia» → W100 «anche l'accordo mente — e anche la firma» → **W113 «anche la CORREZIONE mente, e la si guarda meno di tutto il resto»**. Innesto su #2 (una guardia che gira solo sul disco dell'autore non è armata) e su #9 (una costante è una misura congelata).
+
+**TRAUMA.** Il repo asseriva da due mesi che il `17.2× error amplification` di Kim et al. (arXiv:2512.08296v3) fosse **il motivo** per cui i subagent non parlano peer-to-peer. Falso due volte: quel numero misura `Independent` (§3.1: agenti paralleli, `Ω=synthesis_only`, **zero coordinamento**), non il peer-to-peer, che è `Decentralized`; e come causa non regge nemmeno per `Independent` (Table 4: β̂=0.014, CI [−0.047, 0.074], **p=0.658** — non supportato, *non* smentito).
+
+Fin qui è una #6 ordinaria. **Il trauma è ciò che è successo correggendola.**
+
+Correggendo, ho scritto «`Centralized` la migliore, `Independent` la peggiore» — e l'ho **spedita su main in due PR**. È falsa: Table 5 (Success Rate) dà `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370`. `Centralized` è **terza**, sotto il singolo agente; il paper scrive *"no single architecture dominates across all domains and vendors"*; e `Decentralized`, che **È** il peer-to-peer, è il **più alto** — cioè il contrario della regola per cui la citavo. Colta solo al round 3.
+
+Al round 3 ho ripiegato su «…più il ranking del paper (`Centralized > Independent`)». Quella coppia è **vera** (0.463 > 0.370) ed è un non-sequitur: `Independent` non è peer-to-peer. **Un claim indebolito è ancora un claim.** Colto al round 4.
+
+E ri-verificando alla fonte *nello stesso turno* invece di fidarmi di quanto avevo già verificato: la frase che citavamo come «verbatim in §4.3» sta in **§1 (Introduzione)**; §4.3 porta i valori `Aₑtrace` (`SAS 1.0 · Centralized 4.4 · Hybrid 5.1 · **Decentralized 7.8** · Independent 17.2`), e quel **7.8** — il solo numero che riguardi davvero il peer-to-peer — non l'avevamo mai letto. Stessa tornata: pubblicavamo `+80,9%` come guadagno del centralized; il paper dice `+80,8%` ed è **un solo abbinamento task-architettura** («structured financial reasoning under centralized coordination»).
+
+**Perché è passata.** Ogni round adversariale era puntato sul **claim da ritirare**. Nessuno — refuter compreso — ha guardato **la frase che lo sostituiva**, perché una correzione si legge come la parte sicura del diff. Bilancio della lane: 4 round Codex cross-family, tutti DO-NOT-SHIP fino all'ultimo, **31 obiezioni, 29 reali, 0 derogate**.
+
+**E la malattia si è ripetuta DENTRO la cura, tre volte.** (a) Il primo lint accettava parole ordinarie come direttive — inclusa `Independent`, che è la parola dentro l'endorsement che doveva catturare: **assolveva il testo per cui esisteva**. (b) Il secondo legava l'assoluzione a un token per-claim, e il token scelto (`no coordination`) vive *dentro* l'endorsement: stessa buca, un piano sotto, nel fix di quella buca. (c) Il terzo bandiva i token deboli, ma direttiva e token si cercano ovunque nella stessa finestra, quindi **il testo colpevole può fornirsi da solo entrambi**:
+
+```
+> RETRACTED — the 17.2x citation is withdrawn.
+Centralized > Independent confirms the no-peer rule; Table 5 reports Decentralized 0.477.
+```
+
+<!-- RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] — il blocco qui sopra è l'ESEMPIO DELL'EXPLOIT, non un'asserzione. -->
+
+La seconda riga è un'asserzione viva, assolta dal proprio `0.477` sotto una direttiva che parlava di un altro claim. **Nessuna lista di token lo ripara.**
+
+**ANTIBODY.**
+
+1. **Tratta la tua frase di sostituzione come un claim nuovo, non verificato.** Ri-derivala dalla fonte *in quel turno*, e mettila davanti al refuter in modo esplicito: «caccia la frase che ho **scritto**, non quella che ho **tolto**».
+2. **Se il sostegno non è verificabile, cancellalo — non indebolirlo.** Qui la regola (niente handoff peer-to-peer) regge su basi di repo e non aveva bisogno di alcuna citazione, in nessun verso.
+3. **Solo un marcatore che NOMINA il claim può assolverlo.** `infra/retracted-claims/registry.json` + `scripts/lint_retracted_claims.py`: i claim registrati sono **marker-only** (`RETRACTED[<claim-id>]`); la via non strutturata resta solo per chi non opta, dichiarata e pinnata da un test.
+4. **Armalo dove passa la PR-tipo che deve prendere**: `immune-enforcement.yml` su OGNI `pull_request`, **fuori** dal path-filter di quel workflow — il soggetto della guardia è ogni markdown del repo (W81). `--selftest` **prima** di `--all`: «`--all` dice OK» non vale nulla finché le fixture di colpevolezza non provano che lo scanner sa ancora fallire.
+5. **Un pattern scritto dall'istanza che hai trovato cattura l'istanza che hai trovato.** La mia prima regex prendeva solo «Centralized best» — la formulazione esatta che avevo scritto io — e mancava «Centralized > Independent confirms the rule», «better than», «outperforms», «Independent is lowest, therefore use centralized state». Tutte e cinque sono ora guilt-test **contro il registry spedito**, non contro una fixture.
+
+**GOTCHA.** (1) La guardia ha morso **il proprio autore tre volte in un'ora** — le note R1, la chiusura del ledger, e le sezioni `## Adversarial review` che *narrano* i claim ritirati: registrato invece che zittito, perché è la prova migliore che è armata su prosa vera e non su fixture. (2) La mia sonda di PROVE-LIVE contava `grep -c 'Centralized best'` su main e trovava 1: **giudicava per forma** — letta in contesto, era la citazione *dentro* la retrattazione, cioè la cura (W107: la sonda che misura una malattia può averla). (3) Due obiezioni del round 3 dicevano che il branch cancellava una cura R1 mergiata: **artefatto del mio diff di review**, generato `git diff --cached origin/main` — **two-dot** contro un main avanzato (W102). Verificato con `merge-base --is-ancestor`, non liquidato. (4) Il ledger, chiudendo, citava «39 check» quando il conto misurato era **55**: un numero **ricordato** dentro la chiusura di una lezione su W88.
+
+**Cura collaterale, stessa giornata (PR #3535).** Il required pre-push mi ha bloccato con un test di linearità ReDoS il cui commento prometteva «un pattern sano non raggiunge mai il floor … e non può fare flake». Era una **misura congelata** (W106): con `mediaanalysisd` a ~188% CPU un pattern sano misurava 0.0059s (floor 0.004s) e il rapporto a campione singolo dava 4.2×, su un branch con **zero** file backend. Ciò che assolve la regex e condanna l'orologio: il **tetto assoluto passava nello stesso run** (0.0246s contro 0.25s). Cura sul solo **campionamento** — `min` di 3 sul ramo-rapporto, perché il rumore di timing è strettamente additivo e una quadratica è lenta in *ogni* ripetizione — nessuna soglia toccata, e il controllo che condanna la quadratica pre-fix continua a condannarla. Un required che fabbrica rossi sotto carico è un required che qualcuno prima o poi disarma: superscar #2 con l'orario.

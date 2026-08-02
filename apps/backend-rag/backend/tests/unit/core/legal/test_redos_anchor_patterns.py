@@ -25,6 +25,7 @@ nothing downstream would notice — the chunker would just emit fewer chunks.
 """
 
 import re
+import sys
 import time
 
 import pytest
@@ -531,6 +532,23 @@ SWEEP_N = 20_000
 # via `_elapsed_min` (see there for why min-of-k cannot hide a regression). A guard that
 # fabricates reds under load is a guard someone eventually disarms — superscar #2 waiting
 # to happen, and the reason this was fixed rather than merely tolerated.
+#
+# How exposed each pattern is, measured the same day — one full sweep each, worst payload
+# combination, against the 0.004s floor:
+#
+#     PAGE_NUMBER_LINE   57.2 ms = 1429% of the floor   <- crosses on EVERY run
+#     BAB_PATTERN         6.5 ms =  162% of the floor   <- crosses on EVERY run
+#     PASAL_PATTERN       3.8 ms =   96% of the floor
+#     AYAT_PATTERN        3.7 ms =   93% of the floor
+#     AYAT_MARKER_PREFIX  3.2 ms =   80% of the floor
+#
+# So it was never one unlucky pattern under one unlucky load: two cross the floor on EVERY
+# run and pay for the second measurement, and two more sit within 7% of it. Two consecutive
+# pre-push reds came out of that — `NOISE_PATTERNS[1]` (0.0046s -> 0.0248s) and then
+# `AYAT_MARKER_PREFIX` (0.0071s -> 0.0279s) — and `NOISE_PATTERNS[1]`'s honest worst case is
+# 0.708 ms, 18% of the floor, so roughly 6x inflation carried it to a gate it should never
+# see. Raising the floor is NOT the cure: it would blind the branch to exactly the
+# small-coefficient quadratic the branch exists for.
 SWEEP_CEILING_SECONDS = 0.25
 SWEEP_RATIO_FLOOR_SECONDS = 0.004
 SWEEP_MAX_RATIO = 3.0
@@ -600,6 +618,37 @@ def _sweep_verdict(rx: re.Pattern) -> str | None:
     return None
 
 
+class TestRatioConfirmation:
+    """The ratio branch's own guilt/innocence, with the clock taken OUT of the loop.
+
+    `_elapsed_min` is what the branch now trusts, so the cure is worth exactly two claims:
+    that the estimator really is the minimum, and that the re-measurement is consulted
+    before a verdict comes out. Timing real regexes would prove neither — an
+    anti-load-noise fix verified by timing on a machine whose load IS the variable under
+    test is a coin flip — so every measurement here and in the sweep bracket below is
+    scripted.
+
+    What is NOT covered is stated plainly rather than implied: `TestPayloadSweep`'s control
+    fires on the CEILING branch (`_PRE_FIX_BAB` takes ~7.6s at n=20k, 30x the ceiling), so
+    no REAL regex in this file exercises the ratio branch end to end. That gap predates
+    this change — the branch that fired falsely was also the branch with no proof it fires
+    truly — and it is on the ledger. These tests cover the DECISION.
+    """
+
+    def test_elapsed_min_takes_the_minimum_not_the_first_or_the_mean(self, monkeypatch):
+        """Load only ever ADDS time, so the minimum is the estimator — first and mean are not.
+
+        0.002 is the honest cost and the other two are load. `first` would answer 0.100 and
+        `mean` 0.0507: both report the machine, which is precisely what produced the two
+        false reds this branch cost.
+        """
+        samples = iter([0.100, 0.002, 0.050])
+        monkeypatch.setattr(
+            sys.modules[__name__], "_elapsed", lambda rx, text: next(samples),
+        )
+        assert _elapsed_min(re.compile("x"), "y", repeats=3) == 0.002
+
+
 class TestPayloadSweep:
     """Cross-product search, so the next quadratic is not found by the next scanner."""
 
@@ -612,6 +661,78 @@ class TestPayloadSweep:
             "thresholds no longer discriminate — in both cases the clean results below "
             "mean nothing and must not be believed."
         )
+
+    @staticmethod
+    def _script(monkeypatch, trigger, base_honest, doubled_first, doubled_honest):
+        """Drive the whole sweep on a scripted clock: reads answer by ROLE, not by ordinal.
+
+        The sweep's very first read is the single-sample TRIGGER and is the only one a
+        load spike is scripted into; every read after it is the pattern's honest cost,
+        told apart by payload length — anything longer than the first text is the doubled
+        side. `doubled_first` is separate so the doubled side's own inflation can be
+        scripted independently, which is what makes `_elapsed_min` on THAT side killable
+        rather than decorative.
+        """
+        state = {"n": 0, "base_len": None, "d": 0}
+
+        def fake_elapsed(_rx, text):
+            state["n"] += 1
+            if state["base_len"] is None:
+                state["base_len"] = len(text)
+                return trigger
+            if len(text) > state["base_len"]:
+                state["d"] += 1
+                return doubled_first if state["d"] == 1 else doubled_honest
+            return base_honest
+
+        monkeypatch.setattr(sys.modules[__name__], "_elapsed", fake_elapsed)
+        return state
+
+    def test_an_inflated_trigger_read_does_not_become_a_verdict(self, monkeypatch):
+        """The false red of 2026-08-02, reproduced without a clock.
+
+        Trigger read 5 ms — over the 4 ms floor, under the 0.25 s ceiling — but re-measured
+        the pattern costs 1 ms, back UNDER the floor: it was never eligible for this branch,
+        so its 20x ratio is never consulted. Mutation-checked both ways: drop the
+        `elapsed <= FLOOR` re-check and the 20x convicts; keep the single sample as the base
+        instead of re-measuring and 0.005 -> 0.020 convicts at 4x.
+        """
+        state = self._script(
+            monkeypatch, trigger=0.005, base_honest=0.001,
+            doubled_first=0.020, doubled_honest=0.020,
+        )
+        assert _sweep_verdict(CURED["PASAL_PATTERN"]) is None
+        assert state["n"] > 1, "the re-measurement was never asked — the trigger never fired"
+
+    def test_an_inflated_doubled_read_does_not_become_a_verdict(self, monkeypatch):
+        """The other half of the same spike: the base is honest, the DOUBLED read is not.
+
+        6 ms base sits legitimately above the floor (`BAB_PATTERN` and `PAGE_NUMBER_LINE`
+        live there permanently), so this branch is entered on every combination. One 50 ms
+        doubled read is 8.3x and would convict; re-measured it is 9 ms, an honest 1.5x.
+        Without `_elapsed_min` on the doubled side this test goes red — which is the only
+        reason that half of the change is not decoration.
+        """
+        self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.050, doubled_honest=0.009,
+        )
+        assert _sweep_verdict(CURED["PASAL_PATTERN"]) is None
+
+    def test_a_consistently_slow_and_growing_pattern_still_fails(self, monkeypatch):
+        """Honest numbers that DESERVE a verdict: one must come out.
+
+        Paired with the two above this brackets the branch — neither "always silent" nor
+        "always loud" passes all three — and it is what proves min-of-k cannot hide a real
+        regression: 6 ms doubling to 48 ms is slow in every sample, so its minimum is slow
+        too and its doubled minimum still grows.
+        """
+        self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.048, doubled_honest=0.048,
+        )
+        verdict = _sweep_verdict(CURED["PASAL_PATTERN"])
+        assert verdict is not None and "8.0x for 2x input" in verdict, verdict
 
     @pytest.mark.parametrize("name", sorted(CURED))
     def test_no_cured_pattern_is_superlinear_on_any_swept_payload(self, name):
