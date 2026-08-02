@@ -72,8 +72,10 @@ still serving the previous build — `POST /v10/projects/<id>/promote/<dpl>` →
 **Cause established, and by a control that could have refuted it — not by elimination.** Reading
 the promoted deployment back gives `readySubstate: PROMOTED`, but that is the state AFTER the
 promote and proves nothing on its own. The evidence is the SIBLINGS: two other Git-created
-`production`/`READY` deployments from the same day — `9fcdc00a0` (PR #3515, 21:24) and `9a6a30a38`
-(17:52) — are **still `STAGED` right now**, hours later, having never been promoted by anything.
+`production`/`READY` deployments from the same day — `9fcdc00a0` (PR #3515, mouth-touching, 21:24)
+and `9a6a30a38` (PR #3513, a docs PR, 17:52) — are **still `STAGED` right now**, hours later, having
+never been promoted by anything. The mouth-touching one is what makes this the test; the docs one
+shows the staging is not content-dependent.
 Git-integration production builds on this project land staged and stay staged. So the cause is the
 staging mechanism already ledgered on 2026-07-30, NOT a stale alias and NOT the edge cache; had
 those two read `PROMOTED`, this paragraph would be wrong. **This also refutes a note written here
