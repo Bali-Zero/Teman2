@@ -53,6 +53,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      # ARMED 2026-08-02 (W81). The header comment above has cited "--selftest"
+      # as this gate's proof since it was written, and NO workflow ran it — the
+      # guilt/innocence corpus existed and was never executed, which is the exact
+      # shape W108 describes: a corpus that runs nowhere required is where defects
+      # hide, because nothing ever contradicts the claim that it passes. It is
+      # stdlib-only and takes ~1s. It runs FIRST: if the guard cannot prove itself
+      # on its own fixtures, its verdict on real files is not worth reading.
+      - name: R1 gate — prove the guard on its own fixtures (guilt + innocence)
+        run: python scripts/check_adversarial_review.py --selftest
+
       - name: Fetch base ref
         env:
           # merge_group readiness (2026-07-27): github.base_ref is a branch
