@@ -69,6 +69,15 @@ OUT_PATH = REPO_ROOT / "data" / "kbli-filiera" / "perpres-foreign-caps.json"
 INSTRUMENT = "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu)"
 VINTAGE = "2021-05-25"
 
+# The artifact these 41 rows were read from. Until 2026-08-02 it was in NO vault
+# — 22 PDFs held, none naming either Perpres — so `transcribed_from` below named
+# a rendering of a file nobody could reach, and the docstring's promise that this
+# module gives the PMA axis "a checkable source" could not be honoured by anyone
+# who tried. `vault_fetch_perpres.py` pins it; naming the id here is what turns
+# the promise into something a reader can act on.
+VAULT_ID = 161565
+VAULT_REL = "perpres/161565__Perpres Nomor 49 Tahun 2021 - Lampiran III.pdf"
+
 # (entry, bidang_usaha, kbli_2020, foreign_cap_pct, condition)
 # Transcribed from the 4 rendered pages. `foreign_cap_pct` is the FOREIGN share:
 # "Modal dalam negeri 100%" (100% domestic capital) is therefore 0, not 100 —
@@ -238,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         OUT_PATH.write_text(json.dumps(
             {"instrument": INSTRUMENT, "vintage": VINTAGE,
              "transcribed_from": "page images rendered at 200dpi; the PDF text layer corrupts codes and percentages",
+             "source": {"vault_id": VAULT_ID, "vault_rel_path": VAULT_REL,
+                        "fetcher": "scripts/kbli_filiera/vault_fetch_perpres.py"},
              "unit": "(bidang usaha, KBLI-2020) pair — the cap does not attach to the code alone",
              "rows": rows}, indent=1, ensure_ascii=False) + "\n")
         print(f"\nwrote {OUT_PATH.relative_to(REPO_ROOT)}")

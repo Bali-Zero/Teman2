@@ -1852,6 +1852,62 @@ Zero** (the "unverified cap" qualifier, the 17 `CHIUSO_PMA_NO_BESAR` codes, the 
 on a disowned basis, the FATAL-2 re-label). Those questions exist because we have no locator. With a
 locator they are not decided — they are answered.
 
+#### 🟢 F2 LIVE STATE (2026-08-02) — step 1 DONE for both operative annexes
+
+**The instrument was in no vault, and step 1 above said "the vaulted Perpres" as if it were.** Measured
+2026-08-02: the vault held 22 PDFs (21 PP-28 lampiran + one BPS table) and **zero** naming either
+Perpres, while `perpres-foreign-caps.json` recorded `transcribed_from: "page images rendered at
+200dpi"` with no path, no URL, no sha256, and no `fetch-log.jsonl` line anywhere mentioned the
+instrument. So the module whose docstring promises the PMA axis "a checkable source" named a source
+nobody could reach. `vault_fetch_perpres.py` (PR #3529) pins all six BPK downloads —
+`161562`-`161565` (49/2021 body + its three replacement annexes) and `154474`/`154475` (10/2021, the
+annex zip marked `superseded`, arts. 3-5 replaced it) — with the declared role cross-checked against
+the filename the server actually returns.
+
+**Lampiran II (Koperasi/UMKM reservation) is COMPILED, not transcribed** —
+`parse_perpres_lampiran2.py` → `data/kbli-filiera/perpres-umkm-reservation.json`: **181 rows from 180
+ticks, 0 unresolved** (one tick carries two codes; `ticks` and `rows_emitted` are separate fields
+because folded into one the output read "181 of 180"). The text layer is corrupted _deterministically_
+and both halves of the inversion are derived from evidence, not assumed: the substitution table by
+unique-candidate resolution (consistent over 33 observations, `t`→`1` twenty times and never anything
+else), the DIALOKASIKAN/KEMITRAAN split inside a measured empty band (no tick between x=101 and 107).
+
+`perpres_umkm_reservation_relation.py --check` buckets it — **and the buckets are the product, a flat
+"N codes are wrong" would be the third defect this axis has produced**:
+
+| bucket              | n      | what it means                                                                                        |
+| ------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `whole-row`         | **67** | live code, one readable activity, no grade qualifier, published open → **Zero's question (Legge 5)** |
+| `segment-qualified` | 25     | reserves a construction grade, not the code                                                          |
+| `retired-2020-code` | 30     | no 2025 descendant, no live page renders it                                                          |
+| `kemitraan-no-bar`  | 57     | a partnership duty is **NOT** a foreign-ownership bar                                                |
+| `agree`             | 2      | `47111`, `47222` — the two `kbli_eye` already names reserved                                         |
+
+Those 2 in `agree` are the innocence control: the relation **corroborates what is already
+known-correct** before naming 67 divergences. `segment-qualified` is a declared FLOOR — a qualifier can
+live in the numbered parent heading (row 35 governs `42911`/`42912`/`42913`) and those rows are left in
+the owner's list on purpose, because withdrawing a question on an inference is worse than asking one
+too many.
+
+**Lampiran III's 41 transcribed caps are now CORROBORATED by a second instrument** (PR #3530). Its
+text layer is usable after all — same deterministic corruption, so invertible with the Lampiran II
+table — and it is a different reader on a different day, which is what W100 demands (same-family
+agreement certified 7 false-clean of 8 on this very programme). Result, asserted by MEMBERSHIP and not
+by count: **40/40 codes agree in both directions**, and **37/40 caps** are positionally reachable and
+all 37 match; the other three (`26513`, `30300`, `30400`) sit in a five-code stack and were read off
+page 1 directly, so they are NOT claimed as cross-instrument. Standing guard:
+`tests/test_perpres_l3_cross_instrument.py`, which SKIPS with an explicit CANNOT-VERIFY naming the
+fetch command when the vault is absent.
+
+**NEXT (step 3), and the correction that governs it**: the negative-locator join — "absent from both
+operative annexes ⇒ 100% by the body's default" — is **wrong for the 24 codes with a populated
+`per_skala` and no Besar row** ([[discovery_no_besar_scale_means_no_pma_and_17_of_those_verdicts_rest_on_an_empty_array_2026_08_02]]).
+Their honest verdict is neither 100% nor TERTUTUP: it is "a PMA cannot operate this at all", a third
+state — and a fourth `pma_status` value would render as **"Open"** on all 1,559 pages
+(`kbli-data.server.ts:365` returns `"open"` for anything but TERBATAS/TERTUTUP), so it must be a
+separate axis, never a new enum value. Any join must consult `per_skala` for a Besar row BEFORE
+writing a 100% default.
+
 ### 5.4 F3 — the two decisions that survive, and they come AFTER F2
 
 - **(a)** the **560** codes rendering two different predecessors side by side (official BPS vs the
