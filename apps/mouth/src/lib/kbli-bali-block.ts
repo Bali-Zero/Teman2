@@ -243,24 +243,43 @@ export function baliBlockedHint(
     baliL4?: { status?: string | null; blocked?: boolean } | null;
   }>,
 ): string {
+  if (codes.length === 0) return "";
+
   const blocked = codes.filter((c) => c.baliL4?.blocked);
   const moratorium = blocked.filter((c) =>
     MORATORIUM_STATUSES.has(c.baliL4?.status ?? ""),
   ).length;
   const other = blocked.length - moratorium;
 
+  // NOTE the deliberate absence of a cause LIST for the `other` group.
+  //
+  // The first version of this function enumerated them — "an ownership
+  // restriction on the activity, no Usaha Besar scale row, or a sector
+  // regulator's own closure" — which named three of the FIVE statuses that
+  // actually occur, silently dropping CHIUSO_BALI (70209) and
+  // CHIUSO_BALI_PROPOSTO (79110). An adversarial review caught it before ship.
+  //
+  // That is the same failure as the sentence being replaced, one turn later: a
+  // NEW claim written while correcting an old one, and never verified against
+  // the data (superscar #6 / W113). A hand-written enumeration is a claim with
+  // an expiry date — it silently becomes wrong the next time a status is added,
+  // which is exactly how the original text rotted. So the count is derived and
+  // the causes are not asserted here at all; `baliBlockClause` already states
+  // the right one per code, on the page that has the code in front of it.
+  //
+  // CHIUSO_BALI_PROPOSTO is the sharpest reason not to summarise: that closure
+  // is proposed and NOT in force, so listing it beside settled bars would be a
+  // third wrong statement, not a more complete one.
   const causes =
     other > 0
       ? `${moratorium} of them under Bali Zero's conservative reading of the 13 May 2026 provincial ` +
-        `risk-tier moratorium, pending clearer national guidance; the other ${other} for a different ` +
-        `reason entirely — an ownership restriction on the activity, no Usaha Besar scale row, or a ` +
-        `sector regulator's own closure.`
+        `risk-tier moratorium, pending clearer national guidance; the other ${other} for reasons that ` +
+        `have nothing to do with the risk tier, stated individually on each code's page.`
       : `all of them under Bali Zero's conservative reading of the 13 May 2026 provincial risk-tier ` +
         `moratorium, pending clearer national guidance.`;
 
   return (
     `${blocked.length} of ${codes.length} codes are treated as closed to a foreign-owned company ` +
-    `(PT PMA) in Bali — ${causes} A working assessment, not a certified legal determination. ` +
-    `Every code page states which of these applies to it.`
+    `(PT PMA) in Bali — ${causes} A working assessment, not a certified legal determination.`
   );
 }

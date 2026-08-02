@@ -480,6 +480,45 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     expect(b).toContain("21 of 100");
   });
 
+  it("never enumerates the non-moratorium causes, because an enumeration goes stale", () => {
+    // The defect an adversarial review caught before ship: the first version
+    // listed "an ownership restriction ... no Usaha Besar scale row, or a
+    // sector regulator's own closure" — three of the FIVE statuses that occur,
+    // silently dropping CHIUSO_BALI (70209) and CHIUSO_BALI_PROPOSTO (79110).
+    // A new claim written while correcting an old one, unverified (W113).
+    //
+    // Built from the REAL status census, not from one fabricated status, which
+    // is why the original test suite could not have caught it.
+    const census: Array<[string, number]> = [
+      ["BLOCCATO_CLASSE_RISCHIO", 372],
+      ["CHIUSO_MORATORIA_BALI", 35],
+      ["TERTUTUP", 68],
+      ["CHIUSO_PMA_NO_BESAR", 39],
+      ["CHIUSO_REGOLATORE_SETTORIALE", 2],
+      ["CHIUSO_BALI", 1],
+      ["CHIUSO_BALI_PROPOSTO", 1],
+    ];
+    const codes = census.flatMap(([status, n]) =>
+      Array.from({ length: n }, () => ({ baliL4: { status, blocked: true } })),
+    );
+    const hint = baliBlockedHint([...codes, ...open(1041)]);
+    expect(hint).toContain("518 of 1559");
+    expect(hint).toContain("407");
+    expect(hint).toContain("111");
+    // No partial cause list may appear — naming some causes implies the set is
+    // complete, and it never is for long.
+    expect(hint).not.toMatch(/ownership restriction/i);
+    expect(hint).not.toMatch(/Usaha Besar scale row/i);
+    expect(hint).not.toMatch(/sector regulator/i);
+  });
+
+  it("says nothing at all rather than '0 of 0' when handed no codes", () => {
+    // Also from the same review: an empty array rendered "0 of 0 codes are
+    // treated as closed ... all of them under the moratorium", which is not a
+    // degraded sentence but a false one.
+    expect(baliBlockedHint([])).toBe("");
+  });
+
   it("agrees with the served dataset — 518 blocked, 111 not by the moratorium", () => {
     // Anchors the two figures to the real records rather than to my arithmetic,
     // so a future overlay change fails here instead of silently making the
