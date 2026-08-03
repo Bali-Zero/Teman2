@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Daily Zoho mail loop.
+
+  StartCalendarInterval and NO KeepAlive, deliberately. This is a cron, not a
+  daemon: it runs once, exits, and is done. `KeepAlive=true` on a one-shot
+  payload reads every exit as death and produces a restart storm (superscar #7,
+  W67 — the wa-mirror reconnect storm was exactly this, ~22s per cycle).
+
+  Runs at 07:30 WITA, before the working day, so the drafts are already in the
+  Drafts folder when Zero opens his mailbox.
+
+  MAIL_LOOP_DRY_RUN is set to 1 here on purpose. The first days of this organ
+  must be observable without mutating a live mailbox; flip it to 0 (or drop the
+  key) once the routing has been read and the folder taxonomy is right.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.zoho-mail-loop.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/zoho-mail-loop.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>MAIL_LOOP_REPO_ROOT</key>
+        <string>/Users/nuzantara/Desktop/nuzantara</string>
+        <key>MAIL_LOOP_EMAIL</key>
+        <string>zero@balizero.com</string>
+        <key>MAIL_LOOP_DRY_RUN</key>
+        <string>1</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/zoho-mail-loop.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/zoho-mail-loop.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>5</integer>
+</dict>
+</plist>
