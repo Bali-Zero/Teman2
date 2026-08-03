@@ -76,9 +76,35 @@ LANGUAGE: the annexes still name KBLI-2020 codes and no investment instrument ha
 in KBLI-2025 numbering, so every 2025-numbered verdict runs through the BPS conversion table — a
 statistical artefact with **no legal force**. Say that out loud in any client-facing claim.
 
-**🟡 NOT DONE — NO CLIENT-FACING DATA HAS CHANGED.** The 39 badges still render; `chat_kbli` still
-answers `TERBUKA 100%` on the 7 genuinely reserved. Removing a badge and braking the channel are
-Legge-5 calls (with reaching back to already-advised clients). What IS shipped is evidence + tooling.
+**🟢 APPLIED 2026-08-03 — THE 39 ARE RE-DECIDED IN CANONICAL.** Zero's order: _"tu qua fai la
+sessione e porti /kbli-navigator … pronto per BKPM senza aspettare operatori"_. New sanctioned
+compiler `scripts/kbli_filiera/cure_l4bali_perpres_adjudication.py` + the adjudication as DATA at
+`data/kbli-filiera/kbli39-perpres-adjudication.json`. Ownership comes from the Perpres annexes, the
+Bali position from the risk tier — the two questions answered by the two things that answer them.
+
+`CHIUSO_PMA_NO_BESAR` **39 → 7** (the genuinely allocated; only the `reason` changed, from the OSS
+inference to the annex row) · `BLOCCATO_DIPENDE_SCOPE` **+2** (43110, 55209 — Pasal 5(5)) ·
+`CHIUSO_MORATORIA_BALI` **35 → 48** (still red, TRUE reason) · `NON_CLASSIFICABILE` **8 → 25**
+(no licensing rows held; we say so).
+
+National `pma_*` fields untouched — fingerprint asserted before/after, a change ABORTS. Corpus 13
+tests, mutation-verified 5/5 including the dangerous direction (opening a moratorium-blocked code).
+
+**Propagated:** `scripts/sync_kbli_dataset.sh` → apps/mouth/data, apps/backend-rag/backend/data,
+apps/kbli-navigator/data (+ the gitignored backend runtime copy); `kbli-dataset-version.json` bumped
+to `sha256:0bd006544c6f…` / 2026-08-03. `apps/kbli-navigator` resolves canonical directly — no copy.
+
+**STILL OPEN, named by the sync script's own notice — do not call this done:**
+
+- **Qdrant payload** — `inspect_kbli` reads `pma_status` from Qdrant FIRST; `l4_bali` rides the same
+  payload. Tool: `apps/backend-rag/scripts/patch_qdrant_bali_l4.py` (payload merge, NEVER a re-index
+  — the embedding model is FROZEN).
+- **The native macOS app fleet** (M5/Pro/Mini + team zip) — outside the repo, `check-fleet.sh` is the
+  only thing that speaks for it.
+- **`chat_kbli`** still answers on `kbli_documents.content`, which does not carry `l4_bali`; whether
+  the channel should now brake on the 7 is a separate cure.
+- **The 17 `NON_CLASSIFICABILE`** need licensing rows before they can say anything about Bali. Same
+  population as the channel-cure gap.
 
 **🟢 TOOLING (2026-08-03).** #3548 the channel cure was dead at import in the deployed image (a
 module-level `parents[4]`), taking `--only` with it — merged, live. #3550 `--only` bypasses the
