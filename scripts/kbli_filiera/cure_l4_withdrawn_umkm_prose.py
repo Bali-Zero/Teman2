@@ -56,6 +56,7 @@ import argparse
 import hashlib
 import json
 import logging
+import re
 import subprocess
 import sys
 from datetime import date
@@ -76,15 +77,45 @@ class CureError(RuntimeError):
     """A state the spec does not describe. Always fatal, never a guess."""
 
 
+_INDEXED = re.compile(r"^(?P<name>[^\[\]]+)\[(?P<idx>\d+)\]$")
+
+
+def _step(node: Any, part: str, dotted: str) -> Any:
+    """One segment of a field path. `name` indexes a dict; `name[i]` indexes a
+    dict then a list — the stat cards this cure has to reach live in a list, and
+    the position is NOT stable across records (73300 carries the Bali-status card
+    at a different index than the other twelve), so the spec always states the
+    index it measured rather than a constant."""
+    match = _INDEXED.match(part)
+    key = match.group("name") if match else part
+    if not isinstance(node, dict) or key not in node:
+        raise CureError(f"field path {dotted!r} does not exist (stopped at {part!r})")
+    node = node[key]
+    if match is None:
+        return node
+    idx = int(match.group("idx"))
+    if not isinstance(node, list):
+        raise CureError(
+            f"field path {dotted!r}: {key!r} holds {type(node).__name__}, not a list — "
+            "an index cannot be applied to it"
+        )
+    if idx >= len(node):
+        raise CureError(
+            f"field path {dotted!r}: index {idx} is out of range ({key!r} holds {len(node)} "
+            "entries). The list shrank since the spec was written; re-measure rather than "
+            "writing to whatever now sits at that position."
+        )
+    return node[idx]
+
+
 def _dig(container: dict[str, Any], dotted: str) -> tuple[dict[str, Any], str]:
-    """Resolve `a.b.c` to (owning dict, final key). Missing parents are an error,
-    not a silently-created path: this cure edits prose that already exists."""
+    """Resolve `a.b.c` (or `a.b[2].c`) to (owning dict, final key). Missing
+    parents are an error, not a silently-created path: this cure edits prose that
+    already exists."""
     parts = dotted.split(".")
     node: Any = container
     for part in parts[:-1]:
-        if not isinstance(node, dict) or part not in node:
-            raise CureError(f"field path {dotted!r} does not exist (stopped at {part!r})")
-        node = node[part]
+        node = _step(node, part, dotted)
     if not isinstance(node, dict):
         raise CureError(f"field path {dotted!r} does not resolve to an object")
     return node, parts[-1]
