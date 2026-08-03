@@ -594,7 +594,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/research/voice-concierge-open-source-plan-2026-06-17.md | LIVE | 2026-06-17 | 2026-09-15 | — | 0 | 0 | no | — | — |
 | docs/runbooks/2026-05-20-wr2-zombie-fix.md | LIVE | 2026-05-28 | 2026-08-26 | — | 1 | 0 | no | — | — |
 | docs/runbooks/2026-06-03-residual-ops-hub.md | LIVE | 2026-06-03 | 2026-09-01 | — | 1 | 0 | no | — | — |
-| docs/runbooks/README.md | LIVE | 2026-08-01 | 2026-10-30 | — | 54 | 0 | no | — | — |
+| docs/runbooks/README.md | LIVE | 2026-08-03 | 2026-11-01 | — | 54 | 0 | no | — | — |
 | docs/runbooks/agent-worktree-broker.md | LIVE | 2026-07-16 | 2026-10-14 | — | 4 | 0 | no | — | — |
 | docs/runbooks/arsenal-probe.md | LIVE | 2026-07-19 | 2026-10-17 | — | 2 | 0 | no | — | — |
 | docs/runbooks/auth-sentinel.md | LIVE | 2026-07-12 | 2026-10-10 | — | 1 | 0 | no | — | — |
