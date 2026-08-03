@@ -1,0 +1,195 @@
+{
+  "_meta": {
+    "spec": "l4_withdrawn_umkm_prose — NON_CLASSIFICABILE batch",
+    "date": "2026-08-04",
+    "why": "The verdict layer was cured on 2026-08-03 when Permeninves/BKPM 5/2025 Pasal 26(1) withdrew the no-Usaha-Besar inference. The EDITORIAL PROSE that explains each verdict was not. These 13 codes read NON_CLASSIFICABILE ('no Bali position can be stated') while their prose told the reader a PT PMA cannot register the activity — the expensive direction of the error, because it turns away business on an uncertainty of ours.",
+    "authored_by": "claude-opus-5",
+    "graded_by": "codex gpt-5.6-terra, 3 rounds (13 defective -> 4 -> CLEAR); generator != grader",
+    "grader_findings_that_changed_the_text": [
+      "7 replacements dropped 'cannot register' without stating the code is still treated as BLOCKED until verified — a reader would have concluded the opposite of the badge on the same page",
+      "'checked live on OSS' exceeded the record's own 'verify case by case'",
+      "91424 framed a NATIONAL instrument (UU 5/1990 / UU 32/2024 / PP 36/2010) as a Bali-specific finding",
+      "'Bali's rule turns on the risk tier' is true of the corpus but is not in these records' own reason"
+    ],
+    "rule": "EXACT substring, must appear exactly once in intel_2026.<field>; refuse if the record's l4_bali status/blocked moved away from the pinned premise",
+    "gold_surface": "NOT touched — apps/mouth/data/kbli-gold-all.json holds no editorial prose for these codes (measured: 0 hits, no `editorial` key; 7 of the 13 absent entirely)"
+  },
+  "codes": {
+    "47771": {
+      "judul": "Perdagangan Eceran Minyak Tanah",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The stated reason is structural: OSS has no Usaha Besar scale row, and the activity is reserved for UMKM.",
+          "new": "The block is a precaution, not a reservation: the requirement we located is a commercial one and nationality-neutral — Perpres 191/2014 Pasal 3(1), 8(1) and 9 make subsidised-fuel distribution an assignment to a Badan Usaha that already holds an Izin Usaha Niaga Umum plus storage and distribution facilities. We hold no verified licensing rows for this code, so its Bali risk tier is unknown and we will not state a Bali position; it is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "70100": {
+      "judul": "Aktivitas Kantor Pusat",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "In Bali, there is no Usaha Besar scale row for it, and the activity is therefore reserved for UMKM.",
+          "new": "We located no foreign-ownership restriction on this activity — not in the Perpres annexes, not in the closed list, not in any sectoral instrument we read. What we do not have is verified licensing rows for the code, so its Bali risk tier is unknown and no Bali position can be stated. It is therefore treated as blocked until verified case by case — a precaution about our own evidence, not a finding about the code."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "In Bali, the decisive fact is simple: a PT PMA is Usaha Besar, while this activity has no Usaha Besar scale row.",
+          "new": "The honest answer here is not yes and not no: it is that we will not state a position we cannot evidence."
+        }
+      ]
+    },
+    "91424": {
+      "judul": "Taman Wisata Alam",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "In Bali, the OSS record contains no Usaha Besar scale row, with the activity consequently reserved for UMKM.",
+          "new": "The obstacle we located is not an ownership rule and a PT PMA can satisfy it: UU 5/1990 Pasal 34, as replaced by UU 32/2024, makes managing a nature tourism park a State function, with private parties entering by permit or concession over the utilisation zone — and PP 36/2010 Pasal 8(3) names badan usaha among those who may hold one."
+        },
+        {
+          "field": "editorial.body",
+          "old": "With the activity reserved for UMKM and a PT PMA classified as Usaha Besar, the registration route is structurally closed.",
+          "new": "What is missing is our own evidence: we hold no verified licensing rows for the code, so its Bali risk tier is unknown and the position cannot be stated. It is treated as blocked until verified case by case — unproven rather than closed, and what a private party would actually hold is a permit or concession over the utilisation zone."
+        }
+      ]
+    },
+    "93115": {
+      "judul": "Fasilitas Olahraga Beladiri",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The obstacle is structural: OSS has no Usaha Besar, or large-enterprise, scale row for this activity, leaving it reserved for UMKM.",
+          "new": "The obstacle is our own evidence, not an ownership rule: we located no foreign-ownership restriction, and we hold no verified licensing rows for this code, so its Bali risk tier is unknown and no Bali position can be stated. It is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "93121": {
+      "judul": "Klub Sepak Bola",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "It says OSS has no Usaha Besar scale row for the activity, listing only Mikro, Kecil and Menengah.",
+          "new": "It records no foreign-ownership restriction for the activity, and no verified licensing rows either — so the Bali risk tier is unknown, the position cannot be stated, and the code is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "93125": {
+      "judul": "Klub Tinju",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The Bali record marks it Closed to PMA (no Besar scale) because the OSS system has no Usaha Besar scale row for the activity.",
+          "new": "The Bali record marks it unclassifiable and treats it as blocked until verified, because we hold no licensing rows for the activity and therefore cannot state its risk tier."
+        }
+      ]
+    },
+    "93126": {
+      "judul": "Klub Bela Diri",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The Bali reason says there is no Usaha Besar scale row in OSS for the activity; it records only Mikro, Kecil and Menengah.",
+          "new": "The Bali reason records no foreign-ownership restriction for the activity and no verified licensing rows, which is why the risk tier is unknown, the position is left unstated, and the code is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "93129": {
+      "judul": "Klub Olahraga Lainnya",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "That detail becomes decisive in Bali because OSS has no Usaha Besar scale row for this activity.",
+          "new": "That detail cannot be carried through to a Bali answer here, because we hold no verified licensing rows for this activity and its risk tier is therefore unknown."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali’s record therefore treats it as reserved for UMKM on structural grounds.",
+          "new": "Bali's record therefore states no position at all, and the code is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "93192": {
+      "judul": "Aktivitas Juri dan Wasit Profesional",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The Bali status is Closed to PMA (no Besar scale) because OSS has no Usaha Besar scale row; the activity is reserved for UMKM, while a PT PMA is Usaha Besar by law and cannot register.",
+          "new": "The Bali position is unstated rather than closed, and the code is treated as blocked until verified case by case. The requirement we located is a personal licence and not an equity rule — UU 11/2022 Pasal 69(1) and Pasal 71 with PP 46/2024 Pasal 103 require a foreign referee or judge to hold a competency certificate, a federation recommendation and a government permit — while the catalogue holds no licensing rows for the code, so its risk tier is unknown."
+        }
+      ]
+    },
+    "93194": {
+      "judul": "Badan Regulasi dan Liga Olahraga",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The local record identifies a structural reason: OSS has no **Usaha Besar** scale row for the activity, leaving it reserved for UMKM.",
+          "new": "The local record identifies a duty to partner, which does not bar foreign ownership: UU 11/2022 Pasal 54(3), hardened by Permenpora 9/2026 Pasal 73(1), obliges a foreign entity organising an international-level championship to partner with the national federation and/or a professional sport organisation. No licensing rows are held for the code, so its Bali risk tier is unknown, the position cannot be stated, and it is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "93195": {
+      "judul": "Aktivitas Olahraga Tradisional",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The Bali record marks the activity as closed to PMA because OSS contains no Usaha Besar scale row for it; it is therefore reserved for UMKM.",
+          "new": "The Bali record leaves the activity unclassified rather than closed, and treats it as blocked until verified case by case: the requirement we located is a mandatory business standard with no ownership term anywhere in it — Permenpora 9/2026 Lampiran I, eight cumulative persyaratan and a Sertifikat Standar — and we hold no licensing rows for the code, so its risk tier is unknown."
+        }
+      ]
+    },
+    "93197": {
+      "judul": "Aktivitas Olaharagawan/Atlet Independen",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "That matters because Bali’s recorded structural reason turns on what is absent: OSS has no Usaha Besar scale row for this activity.",
+          "new": "That matters because we hold no verified licensing rows for this activity, so its risk tier is unknown."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali consequently treats it as reserved for UMKM.",
+          "new": "Bali consequently states no position, and the code is treated as blocked until verified case by case."
+        }
+      ]
+    },
+    "93199": {
+      "judul": "Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "OSS has no **Usaha Besar** scale row for it, leaving the activity reserved for UMKM; a PT PMA is, by law, an **Usaha Besar** undertaking and therefore cannot be registered on that basis.",
+          "new": "We located no foreign-ownership restriction for this activity, and no verified licensing rows either — so the Bali risk tier is unknown, the position cannot be stated, and the code is treated as blocked until verified case by case."
+        }
+      ]
+    }
+  }
+}
