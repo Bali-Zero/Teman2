@@ -378,19 +378,29 @@ def test_a_split_activity_is_never_collapsed_onto_its_heirs():
     assert len(heirs) == 5
 
 
-def test_the_crosswalk_beats_number_identity_when_both_exist():
-    """A 2025 catalogue may REUSE a 2020 number for a different activity. The
-    conversion table is the only thing that knows which activity carried over,
-    so identity must not win over it."""
-    canon = {"11111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "reused number"},
-             "22222": {"pma_status": "TERBATAS", "pma_max_asing": 0, "judul": "real heir"}}
-    bucket, _rec, heirs = classify(
-        {"code": "11111", "column": "dialokasikan", "text": "X", "page": 1},
+def test_number_identity_beats_a_crosswalk_edge_when_both_exist():
+    """The corrected direction, and the reversal is the lesson.
+
+    This test first asserted the OPPOSITE — that the crosswalk must win, on the
+    hypothetical that a 2025 catalogue might reuse a 2020 number for a different
+    activity. Cross-family review measured the other risk and found it real: the
+    shipped edge file carries `14111 Industri Pakaian Jadi -> 17091 Industri
+    Kertas Tisu` next to the correct `14111 -> 14111`. Under crosswalk-wins that
+    single bad edge demoted a correctly-judged row into `split-heirs`, where
+    nothing evaluates it — 34 rows left the evaluated buckets that way.
+
+    A measured defect beats a hypothetical one. It is also the safer failure: a
+    reused number yields a wrong single record, printed for a human to catch; a
+    false split yields NO record at all."""
+    canon = {"14111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Pakaian Jadi"},
+             "17091": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Kertas Tisu"}}
+    bucket, rec, heirs = classify(
+        {"code": "14111", "column": "dialokasikan", "text": "Industri ikat kepala", "page": 4},
         canon,
-        {"11111": ["22222"]},
+        {"14111": ["14111", "17091"]},
     )
-    assert heirs == ["22222"]
-    assert bucket == "agree", "judged on the heir's cap, not on the reused number's"
+    assert heirs == ["14111"], "a spurious edge must not manufacture a split"
+    assert bucket == "whole-row" and rec is canon["14111"]
 
 
 def test_identity_is_the_fallback_when_the_crosswalk_is_silent():
@@ -499,3 +509,13 @@ def test_live_heirs_drops_edges_to_codes_the_catalogue_does_not_publish():
     manufacture a split out of a page nobody can open."""
     canon = {"55203": {"pma_status": "TERBUKA", "judul": "Vila"}}
     assert live_heirs("55193", canon, {"55193": ["55203", "99999"]}) == ["55203"]
+
+
+def test_the_command_the_operator_runs_exits_zero():
+    """The 43 tests above exercise helpers; none of them ran the CLI. Flipping
+    `main()`'s return to EXIT_CANNOT_VERIFY left every one of them green while
+    breaking the only command anybody types (cross-family review, 2026-08-03).
+    A reporter that starts refusing must fail a test, not a user."""
+    from perpres_umkm_reservation_relation import EXIT_OK, main  # noqa: PLC0415
+
+    assert main(["--check", "--json"]) == EXIT_OK

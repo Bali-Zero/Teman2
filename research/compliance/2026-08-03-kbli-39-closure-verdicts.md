@@ -2,7 +2,7 @@
 date: 2026-08-03
 domain: compliance
 client_case: none
-adversarial_review: cross-family refute pass
+adversarial_review: codex
 sources:
   # Investment list (the only instrument that can create a foreign-ownership reservation)
   - https://peraturan.bpk.go.id/Details/168534/perpres-no-49-tahun-2021
@@ -39,6 +39,45 @@ sources:
   - https://www.bps.go.id/id/publication/2026/04/22/909d503355d2b7664e43dea8/tabel-konversi-kbli-2020-kbli-2025.html
   - https://ppid.bps.go.id/upload/doc/Peraturan_Badan_Pusat_Statistik_No__2_Tahun_2020_Klasifikasi_Baku_Lapangan_Usaha_Indonesia_1658133734.pdf
 ---
+
+## Adversarial review — what it changed, and what it left standing
+
+Graded by **Codex GPT-5.6 (`terra`, high effort), 2026-08-03**, on fresh context, instructed to
+default to DEFECTIVE. Not the same family as the lanes that produced this document — which matters,
+because the eight refute lanes above were **Claude agents**, i.e. the same family as the research
+lanes they graded. An earlier draft of this frontmatter called that pass "cross-family"; it was not,
+and the label has been corrected to name the seat that actually did this review.
+
+**Overturned in the companion code artifact** (`perpres_umkm_reservation_relation.py`, same day):
+the fix originally let the BPS crosswalk override number-identity unconditionally. The review found
+a spurious edge in the shipped file — `14111 Industri Pakaian Jadi → 17091 Industri Kertas Tisu`,
+alongside the correct `14111 → 14111` — under which one bad edge demoted a correctly-judged row into
+a bucket nothing evaluates. **34 rows** had left the evaluated buckets that way. Corrected: identity
+wins where it exists, the crosswalk resolves only what identity cannot. It also caught a false
+summary claim — 66 live pages were described as "all published `TERBUKA/100%`" when **63** are:
+`47222` is `TERTUTUP/0%`, `47221` `TERBATAS/special`, `79110` `TERBATAS/100%`.
+
+**Three claims in THIS document it did not accept, recorded rather than argued away:**
+
+- **`86995` (massage) is counted among the 19 "no restriction anywhere".** The document itself
+  states that the decisive Permenkes 14/2021 annex is image-only and was not read. The defensible
+  claim is *"no PMA reservation found in the Perpres"*, not *"no restriction anywhere"* — and the
+  total of 19 inherits that weakness.
+- **`38110` (waste collection) is listed as "clean — publish as open".** No local instrument was
+  read for any code in this pass; the Perpres badge may be removable, but "publish as open" is past
+  the evidence.
+- **`95291` (tailoring) is `RESERVED` at high confidence.** The crosswalk the companion tool uses
+  maps `95291 → [95291, 95400]`, i.e. a split whose heirs are not automatically co-reserved.
+  Materially it may well be reserved; *high confidence* without adjudicating the heir is not earned.
+
+**What it confirmed by re-running:** 181 rows conserved, buckets sum correctly, `retired-2020-code`
+is genuinely 0, every `split-heirs` row genuinely has more than one heir, and the historical "30 of
+30 had a live heir" is reproducible by emulating the old number-identity lookup.
+
+The corrections above are applied to the code; the three verdict caveats are recorded here and are
+**not** silently rewritten in the tables below — a reader comparing this section with row `86995`,
+`38110` or `95291` should see the tension, because that tension is the honest state of the evidence.
+
 
 # The 39 codes we publish as "closed to PT PMA" — closure verdicts
 

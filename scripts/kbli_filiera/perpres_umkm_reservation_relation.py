@@ -52,8 +52,11 @@ Each divergent row is instead sorted by WHY it cannot simply be applied:
   vintage change. Every RENUMBERED code therefore landed here: `55193 Vila` ->
   `55203`, `96112 Salon kecantikan` -> `96220`, `96200 Penatu` -> `96100`.
   Measured before the fix: **30 of 30 rows in this bucket had a live heir; not
-  one was retired**, and between them they reach **66 live pages**, all
-  published `TERBUKA/100%`. Judging by form (the number) instead of entity (the
+  one was retired**, and between them they reach **66 live pages**, of which
+  **63** are published `TERBUKA/100%`. NOT all 66 — a first write-up said "all"
+  while the measurement it was summarising already showed otherwise: `47222` is
+  `TERTUTUP/0%`, `47221` is `TERBATAS/special`, `79110` is `TERBATAS/100%`.
+  Caught by cross-family review, not by re-reading. Judging by form (the number) instead of entity (the
   activity, via the BPS crosswalk) is superscar #3 — and it failed in the one
   direction that hides a reservation, because this bucket is the one declared
   not-client-facing. It is now resolved through
@@ -167,16 +170,25 @@ def load_crosswalk(path: Path = CROSSWALK) -> dict[str, list[str]]:
 def live_heirs(code: str, canonical: dict[str, dict], crosswalk: dict[str, list[str]]) -> list[str]:
     """The live 2025 pages this 2020 code reaches — by ENTITY, not by number.
 
-    The crosswalk wins over number-identity when both exist: a 2025 catalogue
-    can reuse a number for a different activity, and the conversion table is the
-    only thing that knows which activity carried over. Identity is the FALLBACK
-    for codes the crosswalk is silent about, so a gap in the edges degrades to
-    the old reading rather than erasing a live page.
+    IDENTITY WINS WHERE IT EXISTS; the crosswalk resolves the codes identity
+    cannot. A first draft had the crosswalk win unconditionally, on the
+    hypothetical that a 2025 catalogue might REUSE a number for a different
+    activity. Cross-family review measured the opposite risk and found it real:
+    the edge file carries `14111 Industri Pakaian Jadi -> 17091 Industri Kertas
+    Tisu` alongside the correct `14111 -> 14111`. Under crosswalk-wins that
+    spurious edge demoted a correctly-judged row to `split-heirs`, where nothing
+    evaluates it — 34 rows moved out of the evaluated buckets that way, 26 from
+    `whole-row` and 8 from `segment-qualified`. A measured defect beats a
+    hypothetical one, and the hypothetical is also the safer failure: a reused
+    number yields a wrong single record, which the report prints for a human,
+    while a false split yields NO record at all.
+
+    So the crosswalk is consulted only when the number is gone — which is
+    exactly the population the fix exists for.
     """
-    heirs = [h for h in dict.fromkeys(crosswalk.get(code, [])) if h in canonical]
-    if heirs:
-        return heirs
-    return [code] if code in canonical else []
+    if code in canonical:
+        return [code]
+    return [h for h in dict.fromkeys(crosswalk.get(code, [])) if h in canonical]
 
 
 def classify(
