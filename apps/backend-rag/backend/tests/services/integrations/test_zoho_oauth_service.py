@@ -40,6 +40,18 @@ class FakeConnection:
             return self.rows.pop(0)
         return None
 
+    async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
+        """Every matching row — `disconnect` revokes all of a user's tokens.
+
+        A user can own several rows (reconnecting inserts rather than replaces),
+        and the DELETE has always been unconditional across them; revoking only
+        the first one an unordered query returned left the rest live at Zoho and
+        unrevocable, because the only copy of each token was then deleted.
+        """
+        self.fetchrow_calls.append((sql, args))
+        rows, self.rows = [r for r in self.rows if r is not None], []
+        return rows
+
     async def execute(self, sql: str, *args: Any) -> str:
         self.execute_calls.append((sql, args))
         return "OK"

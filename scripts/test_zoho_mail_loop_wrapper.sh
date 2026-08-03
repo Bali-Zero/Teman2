@@ -72,19 +72,61 @@ gateway_absent() { rm -f "$ROOT/scripts/tg_notify.py"; }
 # free to pick an interpreter the target never uses is not a test of the target.
 INTERP="${MAIL_LOOP_TEST_BASH:-/bin/bash}"
 
+# Extra environment is a PARAMETER of run_wrapper, never a global the callee
+# clears.
+#
+# The first version used a `RUN_EXTRA` global that run_wrapper reset after
+# reading it. That cannot work, and this corpus caught it on the first run:
+# run_wrapper is invoked inside `$( )`, so the reset happens in a SUBSHELL and
+# never reaches the caller. The kill-switch setting from one check stayed applied
+# to the next, which then reported the organ as stopped while proving nothing.
+# (A reviewer reading the same code concluded it worked — it does not; the
+# difference is running it.) A fixture that leaks into the following check is the
+# same disease as a guard that leaks state.
+#
+# The lock lives inside the fake world, never at its real default under /tmp.
+# Otherwise a genuine 07:30 run holding the real lock would make every check here
+# exit 0 early and report all-green — a corpus passing because the thing it tests
+# never ran.
+HB_LOG="$ROOT/heartbeats.txt"
+
 run_wrapper() {
     # $1 = value for MAIL_LOOP_DRY_RUN; empty/absent leaves it UNSET, which is
     # the live shape (and the one that fails).
+    # $2 = extra KEY=VAL environment for this run only.
     : > "$ALERTS"
+    local extra="${2:-}"
     if [ -n "${1:-}" ]; then
-        MAIL_LOOP_REPO_ROOT="$ROOT" MAIL_LOOP_LOG_DIR="$ROOT/logs" HOME="$ROOT" \
-            MAIL_LOOP_DRY_RUN="$1" \
+        env MAIL_LOOP_REPO_ROOT="$ROOT" MAIL_LOOP_LOG_DIR="$ROOT/logs" HOME="$ROOT" \
+            MAIL_LOOP_LOCK_DIR="$ROOT/lock" HEARTBEAT_BIN="$ROOT/hb.sh" \
+            MAIL_LOOP_DRY_RUN="$1" $extra \
             "$INTERP" "$ROOT/scripts/zoho-mail-loop.sh" >/dev/null 2>&1
     else
-        MAIL_LOOP_REPO_ROOT="$ROOT" MAIL_LOOP_LOG_DIR="$ROOT/logs" HOME="$ROOT" \
+        env MAIL_LOOP_REPO_ROOT="$ROOT" MAIL_LOOP_LOG_DIR="$ROOT/logs" HOME="$ROOT" \
+            MAIL_LOOP_LOCK_DIR="$ROOT/lock" HEARTBEAT_BIN="$ROOT/hb.sh" \
+            $extra \
             "$INTERP" "$ROOT/scripts/zoho-mail-loop.sh" >/dev/null 2>&1
     fi
     echo $?
+}
+
+# A fake heartbeat binary: records "<state>" per call so the corpus can assert
+# the organ reported the SAME verdict it exited with.
+cat > "$ROOT/hb.sh" <<'HB'
+#!/bin/bash
+echo "$2" >> "$HB_LOG_TARGET"
+HB
+chmod +x "$ROOT/hb.sh"
+export HB_LOG_TARGET="$HB_LOG"
+
+# The dedup key of the first alert, as a WHOLE token.
+#
+# `grep -o mail-loop-venv` also matches inside `mail-loop-venv-broken`, so the
+# missing-venv check used to pass when the skeleton-venv alert fired instead —
+# a substring standing in for an entity, which is the exact shape of the
+# over-match family this repo keeps paying for.
+dedup_key() {
+    awk '{for (i = 1; i < NF; i++) if ($i == "--dedup-key") { print $(i + 1); exit }}' "$ALERTS"
 }
 
 check() {
@@ -120,13 +162,17 @@ done
 
 echo "== and with the gateway ABSENT: the messenger must not change the verdict =="
 gateway_absent
+# Truncate first and assert an EXACT count below. "at least one line somewhere in
+# the accumulated log" would still pass if 7 of the 8 alerts were silently
+# swallowed — a threshold standing in for a tally.
+: > "$ROOT/logs/zoho-mail-loop.log"
 for rc in 0 1 2 3; do
     fake_python "$rc"
     check "job rc=$rc, no gateway [live]" "$rc" "$(run_wrapper)"
     check "job rc=$rc, no gateway [DRY_RUN=1]" "$rc" "$(run_wrapper 1)"
 done
-check "undeliverable alarm is loud in the log" "yes" \
-    "$([ "$(grep -c 'ALARM UNDELIVERABLE' "$ROOT/logs/zoho-mail-loop.log")" -gt 0 ] && echo yes || echo no)"
+check "every undeliverable alarm is loud in the log (8 runs)" "8" \
+    "$(grep -c 'ALARM UNDELIVERABLE' "$ROOT/logs/zoho-mail-loop.log" | tr -d ' ')"
 
 echo "== alert tier: degraded and failed are p0, a clean run is not =="
 gateway_present
@@ -134,20 +180,52 @@ fake_python 0 && run_wrapper >/dev/null
 check "rc=0 -> tier log" "log" "$(awk '{print $2}' "$ALERTS" | head -1)"
 fake_python 1 && run_wrapper >/dev/null
 check "rc=1 -> tier p0" "p0" "$(awk '{print $2}' "$ALERTS" | head -1)"
-check "rc=1 -> dedup key degraded" "mail-loop-degraded" \
-    "$(grep -o 'mail-loop-degraded' "$ALERTS" | head -1)"
+check "rc=1 -> dedup key degraded" "mail-loop-degraded" "$(dedup_key)"
 
 echo "== a skeleton venv (interpreter present, site-packages gone) is caught =="
 fake_python 0 1   # the import probe fails
 check "skeleton venv -> rc=2" "2" "$(run_wrapper)"
-check "skeleton venv -> alerts" "mail-loop-venv-broken" \
-    "$(grep -o 'mail-loop-venv-broken' "$ALERTS" | head -1)"
+check "skeleton venv -> alerts" "mail-loop-venv-broken" "$(dedup_key)"
 
 echo "== a missing venv is caught before anything else =="
 rm -f "$ROOT/apps/backend-rag/.venv/bin/python"
 check "missing venv -> rc=2" "2" "$(run_wrapper)"
-check "missing venv -> alerts" "mail-loop-venv" \
-    "$(grep -o 'mail-loop-venv' "$ALERTS" | head -1)"
+check "missing venv -> alerts" "mail-loop-venv" "$(dedup_key)"
+
+echo "== G5 kill switch: it must stop the organ, and ONLY when asked =="
+gateway_present
+fake_python 3          # the job would fail loudly if it ever ran
+check "MAIL_LOOP_ENABLED=false -> rc 0" "0" "$(run_wrapper "" "MAIL_LOOP_ENABLED=false")"
+# innocence: the switch must not fire on its own, or the organ is dead and the
+# corpus above would still be green — the switch would be indistinguishable from
+# a broken loop.
+check "switch unset -> the job still runs" "3" "$(run_wrapper)"
+check "MAIL_LOOP_ENABLED=true -> the job still runs" "3" "$(run_wrapper "" "MAIL_LOOP_ENABLED=true")"
+
+echo "== G10 single instance: obey a LIVE lock, reclaim a dead one =="
+fake_python 3
+# a lock held by a process that is genuinely alive: use this shell's own pid.
+mkdir -p "$ROOT/lock" && echo $$ > "$ROOT/lock/pid"
+check "live lock -> skip, rc 0" "0" "$(run_wrapper)"
+check "live lock -> the lock survives" "yes" \
+    "$([ -d "$ROOT/lock" ] && echo yes || echo no)"
+# a lock left by a dead process must NOT silence the organ forever.
+rm -rf "$ROOT/lock"; mkdir -p "$ROOT/lock"
+# pid 99999 is not running here; if it ever were, the check would read as a live
+# lock and fail loudly rather than pass quietly.
+echo 99999 > "$ROOT/lock/pid"
+check "stale lock -> reclaimed, job runs" "3" "$(run_wrapper)"
+check "lock released on exit" "no" \
+    "$([ -d "$ROOT/lock" ] && echo yes || echo no)"
+
+echo "== G2 heartbeat: the organ reports the verdict it exited with =="
+for pair in "0:ok" "1:degraded" "2:error"; do
+    rc="${pair%%:*}"; want="${pair##*:}"
+    : > "$HB_LOG"
+    fake_python "$rc"
+    run_wrapper >/dev/null
+    check "rc=$rc -> heartbeat $want" "$want" "$(tail -1 "$HB_LOG" 2>/dev/null)"
+done
 
 echo
 if [ "$FAILURES" -eq 0 ]; then

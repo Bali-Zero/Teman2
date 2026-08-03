@@ -23,6 +23,32 @@ from backend.app.core.constants import HttpTimeoutConstants
 logger = logging.getLogger(__name__)
 
 
+# One user can own SEVERAL rows in `zoho_email_tokens`: reconnecting through
+# /admin/zoho/auth inserts a row rather than replacing one, and the live table
+# carries duplicate pairs for a single mailbox. Every read below used to be a
+# bare `WHERE user_id = $1` with no ORDER BY, so which row answered was
+# undefined — and worse, two reads could answer from two DIFFERENT rows,
+# pairing one row's account id with another row's access token.
+#
+# Not hypothetical: user 7dfe56b2 owns two rows for the same mailbox, and the
+# unusable one answered. Its `account_id` holds an e-mail address instead of the
+# numeric Zoho accountId, and its `api_domain` points at zohoapis.com instead of
+# the Mail API host, so every request built from it 404s with
+# URL_RULE_NOT_CONFIGURED — a failure that looks nothing like "you picked the
+# wrong row".
+#
+# Zoho only accepts a numeric accountId in the URL path, so a well-formed row
+# wins over a malformed one; recency breaks the next tie; `id` makes the order
+# total, so the SAME row answers every read. COALESCE keeps a NULL account_id
+# from sorting first (in Postgres, DESC means NULLS FIRST by default), which
+# would have re-created the bug with a different unusable row.
+_TOKEN_ROW_ORDER = (
+    "ORDER BY (COALESCE(account_id, '') ~ '^[0-9]+$') DESC, "
+    "updated_at DESC NULLS LAST, id DESC "
+    "LIMIT 1"
+)
+
+
 class ZohoOAuthService:
     """
     Manages Zoho OAuth 2.0 authentication flow and token lifecycle.
@@ -305,10 +331,11 @@ class ZohoOAuthService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                """
+                f"""
                 SELECT access_token, refresh_token, token_expires_at, account_id
                 FROM zoho_email_tokens
                 WHERE user_id = $1
+                {_TOKEN_ROW_ORDER}
                 """,
                 user_id,
             )
@@ -422,7 +449,8 @@ class ZohoOAuthService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT account_id FROM zoho_email_tokens WHERE user_id = $1",
+                f"SELECT account_id FROM zoho_email_tokens WHERE user_id = $1 "
+                f"{_TOKEN_ROW_ORDER}",
                 user_id,
             )
 
@@ -443,10 +471,11 @@ class ZohoOAuthService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                """
+                f"""
                 SELECT account_id, email_address, token_expires_at, api_domain
                 FROM zoho_email_tokens
                 WHERE user_id = $1
+                {_TOKEN_ROW_ORDER}
                 """,
                 user_id,
             )
@@ -480,14 +509,21 @@ class ZohoOAuthService:
             True if disconnected successfully
         """
         async with self.db_pool.acquire() as conn:
-            # Get refresh token to revoke
-            row = await conn.fetchrow(
-                "SELECT refresh_token FROM zoho_email_tokens WHERE user_id = $1",
+            # EVERY refresh token, not the first one an unordered query happened
+            # to return: the DELETE below is already unconditional across all of
+            # the user's rows, so revoking one of N left the other N-1 grants
+            # live at Zoho AND unrevocable, because the only copy of each token
+            # had just been deleted. Disconnect has to mean disconnected.
+            rows = await conn.fetch(
+                "SELECT refresh_token FROM zoho_email_tokens "
+                "WHERE user_id = $1 AND refresh_token IS NOT NULL",
                 user_id,
             )
 
-            if row and row["refresh_token"]:
-                # Attempt to revoke token (optional, may fail)
+            for row in rows:
+                # Best-effort, as before: a revoke that fails must not stop the
+                # local disconnect, or a Zoho outage would pin the user to an
+                # account they asked to leave.
                 try:
                     client = self._get_client()
                     await client.post(

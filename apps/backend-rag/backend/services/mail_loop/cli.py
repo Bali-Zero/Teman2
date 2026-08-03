@@ -56,6 +56,35 @@ def _configure_logging(verbose: bool) -> None:
     root.handlers = [out, err]
 
 
+# Failures that no retry can clear, because the fix is a human granting consent.
+#
+# A daily cron that answers "degraded" forever is the shape this repo keeps
+# paying for: green enough to ignore, broken enough to be useless. Exit 1 says
+# "some of it worked, try again tomorrow"; these say "nothing will work until
+# somebody re-authorises", which is exit 2 — dead, and loud.
+#
+# Matched as whole distinctive tokens, never as loose words: `INVALID_OAUTHSCOPE`
+# is Zoho's own error code, and the reconnect sentence is raised verbatim by
+# ZohoOAuthService. An ordinary degraded run (a folder that does not exist, a
+# draft that failed) must keep exit 1 — pinned by an innocence check in
+# test_preflight_and_env.py.
+_CONSENT_BLOCKERS = (
+    "INVALID_OAUTHSCOPE",
+    "OAUTH_SCOPE_MISMATCH",
+    "reconnect required",
+)
+
+
+def _consent_blocker(errors: list[str]) -> str | None:
+    """The first error that a re-consent — and only a re-consent — would clear."""
+    for error in errors:
+        lowered = error.lower()
+        for marker in _CONSENT_BLOCKERS:
+            if marker.lower() in lowered:
+                return error
+    return None
+
+
 async def _resolve_user_id(pool, email: str) -> str | None:
     """Look up the team_members row the Zoho token hangs off.
 
@@ -193,6 +222,19 @@ async def _amain(args: argparse.Namespace) -> int:
     # prefix and split it across the INFO/WARNING handlers configured above,
     # which is precisely what makes it stop being parseable.
     print(json.dumps(summary.as_dict(), indent=2, ensure_ascii=False))  # noqa: T201
+
+    blocking = _consent_blocker(summary.errors)
+    if blocking is not None:
+        logger.error(
+            "the stored Zoho grant does not cover folders — %s. The loop can read "
+            "the mailbox but cannot list the folders it routes into, so no amount "
+            "of retrying will help: this needs a re-consent, not another run. "
+            "Re-authorise at /admin/zoho/auth (the consent URL already requests "
+            "ZohoMail.folders.READ; the stored grant predates it and carries only "
+            "ZohoMail.messages.ALL + ZohoMail.accounts.READ).",
+            blocking,
+        )
+        return 2
 
     if summary.degraded:
         logger.warning(

@@ -36,6 +36,54 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
+def _decode_body(response: httpx.Response) -> Any:
+    """The error body as data, or as text when it is not JSON at all.
+
+    `response.json()` raises on a non-JSON body, and Zoho does send one: a
+    request to the wrong host answers `API endpoint not found` in plain text.
+    Letting that raise turns a diagnosable HTTP error into an unrelated
+    JSONDecodeError three frames away from the request that caused it.
+    """
+    if not response.content:
+        return {}
+    try:
+        return response.json()
+    except ValueError:
+        return response.text[:200]
+
+
+def zoho_error_code(payload: Any) -> str:
+    """The errorCode Zoho actually sent, whatever shape it arrived in.
+
+    Zoho is not consistent here, and the inconsistency is not cosmetic. An
+    authorization failure arrives as a LIST:
+
+        [2, {"msg": "Error while processing!", "errorCode": "INVALID_OAUTHSCOPE", ...}]
+
+    and the previous code coerced every non-dict body to `{}`, so the one reply
+    that says exactly what is wrong was reported as `API error: unknown`. That
+    cost a real diagnosis: a missing OAuth scope, a dead token, a malformed
+    account id and a wrong API host all printed `unknown`, which made them
+    indistinguishable from each other — the guardian that must diagnose was the
+    one lying.
+    """
+    if isinstance(payload, list):
+        payload = next((item for item in payload if isinstance(item, dict)), {})
+    if not isinstance(payload, dict):
+        return "unknown"
+
+    data = payload.get("data")
+    if isinstance(data, dict) and data.get("errorCode"):
+        return str(data["errorCode"])
+    if payload.get("errorCode"):
+        return str(payload["errorCode"])
+
+    status = payload.get("status")
+    if isinstance(status, dict) and status.get("description"):
+        return str(status["description"])
+    return "unknown"
+
+
 def sanitize_filename(filename: str, max_length: int = 200) -> str:
     r"""
     Sanitize filename for email attachment upload.
@@ -259,16 +307,12 @@ class ZohoEmailService:
         )
 
         if response.status_code >= 400:
-            error_data = response.json() if response.content else {}
-            # Zoho (or an intermediary proxy/gateway) can return a non-dict JSON
-            # body on error (e.g. a bare list or string) — never trust the shape.
-            if not isinstance(error_data, dict):
-                error_data = {}
+            error_data = _decode_body(response)
             logger.warning(
                 f"[Email API] Error: {method} {endpoint} user={user_id} "
                 f"status={response.status_code} error={error_data}",
             )
-            raise ValueError(f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}")
+            raise ValueError(f"API error: {zoho_error_code(error_data)}")
 
         logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
         response_data = response.json()

@@ -27,7 +27,15 @@
 
 set -uo pipefail
 
-REPO_ROOT="${MAIL_LOOP_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+# The repo root directly under $HOME, never the Desktop symlink that also points
+# at it. Both "work" from a shell, and that is the trap: launchd's access to the
+# Desktop directory is a TCC-protected surface it can lose WITHOUT any change to
+# code, plist or permissions — that is W84, where two LaunchAgents reported
+# LastExitStatus=0 while their logs said "Operation not permitted". The repo's
+# own antidote (`scripts/lint_tcc_desktop_paths.py`) lints for it, and it caught
+# this file. The literal path is deliberately not written out here: the lint is a
+# text scan, so spelling it even in a comment re-trips the gate.
+REPO_ROOT="${MAIL_LOOP_REPO_ROOT:-$HOME/nuzantara}"
 APP_DIR="$REPO_ROOT/apps/backend-rag"
 VENV_PY="$APP_DIR/.venv/bin/python"
 GATEWAY="$REPO_ROOT/scripts/tg_notify.py"
@@ -35,9 +43,72 @@ SYSTEM_PY="/usr/bin/python3"
 LOG_DIR="${MAIL_LOOP_LOG_DIR:-$HOME/logs}"
 LOG="$LOG_DIR/zoho-mail-loop.log"
 
+ORGAN_ID="pro.zoho_mail_loop"
+HB="${HEARTBEAT_BIN:-$REPO_ROOT/scripts/lib/heartbeat.sh}"
+LOCK_DIR="${MAIL_LOOP_LOCK_DIR:-/tmp/zoho-mail-loop.lock}"
+
 mkdir -p "$LOG_DIR"
 
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG"; }
+
+# G2 heartbeat. Like `alert`, it reports and never decides: a heartbeat that can
+# change the exit code turns the organ's own proof-of-life into a way to lose
+# the verdict.
+heartbeat() {
+    [ -x "$HB" ] && "$HB" "$ORGAN_ID" "$1" "${2:-}" >/dev/null 2>&1
+    return 0
+}
+
+# G5 kill switch. An organ nobody can stop without editing its code is one that
+# gets stopped by deleting the plist, and then nobody remembers it existed.
+if [ "${MAIL_LOOP_ENABLED:-true}" = "false" ]; then
+    log "disabled via MAIL_LOOP_ENABLED=false — intentional stop"
+    heartbeat ok "disabled via MAIL_LOOP_ENABLED=false — intentional stop"
+    exit 0
+fi
+
+# G10 single instance. Two overlapping runs would both draft into the same
+# mailbox and both learn from the same Sent folder. `mkdir` is the atomic test,
+# and a lock left by a dead process is RECLAIMED rather than obeyed — a stale
+# lock that silences the organ forever is the failure this repo names most often.
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    holder=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+        log "another run is live (pid=$holder) — exiting without touching the mailbox"
+        heartbeat ok "skipped: run already in progress (pid=$holder)"
+        exit 0
+    fi
+    if [ ! -d "$LOCK_DIR" ]; then
+        # mkdir failed for a reason that is NOT "already exists" — a permission
+        # problem, a full disk. Saying "stale lock, reclaiming" here would send
+        # the reader hunting a lock that was never the problem.
+        log "FATAL: cannot create the lock at $LOCK_DIR (not an existing lock)"
+        heartbeat error "cannot create lock at $LOCK_DIR"
+        exit 2
+    fi
+    log "stale lock at $LOCK_DIR (holder=${holder:-unknown} not alive) — reclaiming"
+    rm -rf "$LOCK_DIR"
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        log "FATAL: cannot take the lock at $LOCK_DIR"
+        heartbeat error "cannot take lock at $LOCK_DIR"
+        exit 2
+    fi
+fi
+echo $$ > "$LOCK_DIR/pid" 2>/dev/null
+# Read back what is actually in the lock before trusting it.
+#
+# `mkdir` is atomic but writing the pid is not, so there is a window in which a
+# second process finds the directory present and the pid file empty, reads
+# holder="" — which its liveness test treats as "nobody" — and reclaims a lock a
+# live process just took. Both would then run, both would draft into the same
+# mailbox. This does not close the race, it makes the LOSER notice: whoever does
+# not own the pid file stands down instead of proceeding.
+if [ "$(cat "$LOCK_DIR/pid" 2>/dev/null)" != "$$" ]; then
+    log "lost the lock race at $LOCK_DIR — standing down without touching the mailbox"
+    heartbeat ok "skipped: lost the lock race"
+    exit 0
+fi
+trap 'rm -rf "$LOCK_DIR"' EXIT
 
 # alert NEVER returns non-zero. It reports, it does not decide.
 #
@@ -114,6 +185,7 @@ log "env: DATABASE_URL=$([ -n "${DATABASE_URL:-}" ] && echo yes || echo NO)" \
 
 if [ ! -x "$VENV_PY" ]; then
     log "FATAL: venv interpreter missing at $VENV_PY"
+    heartbeat error "venv interpreter missing at $VENV_PY"
     alert p0 mail-loop-venv "zoho-mail-loop: venv missing at $VENV_PY, loop did not run"
     exit 2
 fi
@@ -123,12 +195,14 @@ fi
 # import instead of trusting the binary's existence.
 if ! "$VENV_PY" -c "import asyncpg" >/dev/null 2>&1; then
     log "FATAL: venv present but asyncpg missing (skeleton venv)"
+    heartbeat error "venv at $VENV_PY cannot import asyncpg"
     alert p0 mail-loop-venv-broken \
         "zoho-mail-loop: venv at $VENV_PY cannot import asyncpg -- reinstall requirements"
     exit 2
 fi
 
 log "start (dry_run=${MAIL_LOOP_DRY_RUN:-0})"
+heartbeat starting "mail loop starting (dry_run=${MAIL_LOOP_DRY_RUN:-0})"
 
 ARGS=()
 if [ "${MAIL_LOOP_DRY_RUN:-0}" = "1" ]; then
@@ -160,15 +234,18 @@ RC=$?
 case "$RC" in
     0)
         log "clean (rc=0)"
+        heartbeat ok "clean run (dry_run=${MAIL_LOOP_DRY_RUN:-0})"
         alert log mail-loop-ok "zoho-mail-loop: clean run"
         ;;
     1)
         log "DEGRADED (rc=1)"
+        heartbeat degraded "ran but did half its job — see $LOG"
         alert p0 mail-loop-degraded \
             "zoho-mail-loop DEGRADED: ran but did half its job (missing folder, or drafted nothing). See $LOG"
         ;;
     *)
         log "FAILED (rc=$RC)"
+        heartbeat error "could not run at all (rc=$RC) — see $LOG"
         alert p0 mail-loop-failed \
             "zoho-mail-loop FAILED rc=$RC: could not run at all. See $LOG"
         ;;

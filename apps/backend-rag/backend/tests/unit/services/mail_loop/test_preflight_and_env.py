@@ -261,3 +261,45 @@ def test_draft_reports_the_clis_real_error_when_it_fails(
     with pytest.raises(draft_module.DraftUnavailable) as excinfo:
         draft_module.generate(_request())
     assert "not logged in" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# A failure a re-consent would clear must be exit 2, not exit 1.
+#
+# Exit 1 means "some of it worked, try again tomorrow". A missing OAuth scope is
+# not that: the loop can read the mailbox but cannot list the folders it routes
+# into, so every future run fails identically. A daily cron answering "degraded"
+# forever is the exact shape this repo keeps paying for — green enough to
+# ignore, broken enough to be useless.
+# ---------------------------------------------------------------------------
+
+
+def test_missing_scope_is_a_blocker_not_a_degradation() -> None:
+    """GUILT: Zoho's own error code is recognised, whatever surrounds it."""
+    errors = ["list_folders failed: API error: INVALID_OAUTHSCOPE"]
+    assert cli_module._consent_blocker(errors) == errors[0]
+
+
+def test_the_reconnect_sentence_is_a_blocker() -> None:
+    """GUILT: raised verbatim by ZohoOAuthService when a token is invalidated."""
+    errors = ["Zoho token invalidated — reconnect required at /admin/zoho/auth"]
+    assert cli_module._consent_blocker(errors) is errors[0]
+
+
+def test_an_ordinary_degraded_run_is_not_a_blocker() -> None:
+    """INNOCENCE: without this, every degraded run would exit 2 and the check
+    would be indistinguishable from a broken loop."""
+    assert (
+        cli_module._consent_blocker(
+            [
+                "folder _Visa does not exist",
+                "draft failed for thread 42: claude CLI timed out",
+                "move_message failed: API error: URL_RULE_NOT_CONFIGURED",
+            ]
+        )
+        is None
+    )
+
+
+def test_no_errors_is_not_a_blocker() -> None:
+    assert cli_module._consent_blocker([]) is None

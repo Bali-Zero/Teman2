@@ -22,7 +22,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/zoho-mail-loop.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/zoho-mail-loop.sh</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -43,7 +43,7 @@
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>MAIL_LOOP_REPO_ROOT</key>
-        <string>/Users/nuzantara/Desktop/nuzantara</string>
+        <string>/Users/nuzantara/nuzantara</string>
         <key>MAIL_LOOP_EMAIL</key>
         <string>zero@balizero.com</string>
         <key>MAIL_LOOP_DRY_RUN</key>

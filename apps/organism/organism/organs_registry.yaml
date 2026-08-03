@@ -2163,3 +2163,28 @@ organs:
     path: ~/.organism/last_seen/pro.nb_curator_daily.json
     timestamp_field: ts
     status_field: status
+- id: pro.zoho_mail_loop
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/zoho-mail-loop.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.zoho-mail-loop.daily
+  severity_on_silence: warning
+  notes: Zoho inbox routing + reply drafting + Sent-diff learning, 07:30 WITA on Pro.
+    Never sends. The heartbeat carries the real verdict (ok / degraded = a folder is
+    missing or nothing was drafted while there was mail to answer / error = could not
+    run at all), never "reached the end". Kill switch MAIL_LOOP_ENABLED=false;
+    MAIL_LOOP_DRY_RUN=1 makes the run mutate nothing. Ships NOT loaded — the plist is
+    installed only once the Zoho client credentials are on the host, because a refresh
+    attempted without them makes the shared OAuth service invalidate the stored token
+    for every other consumer.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.zoho_mail_loop.json
+    timestamp_field: ts
+    status_field: status
