@@ -86,7 +86,7 @@ export function baliBlockClause(status?: string | null): string {
  * stamped on all 1,559 records ("Bali province blocks ALL Low + Medium-Low risk
  * KBLI for PMA"). The provenance panel cited it as the SOURCE of every Bali
  * verdict and described every one as "derived from the risk tier" — true for the
- * moratorium statuses, false for the 111 codes blocked by something else.
+ * moratorium statuses, false for the 98 codes blocked by something else.
  * Verified on prod 2026-07-27: `/kbli/38122` (radioactive-waste collection,
  * closed by its sector's own regulator) and `/kbli/11010` (alcohol distilling,
  * closed by an ownership restriction) both served exactly that attribution.
@@ -221,12 +221,21 @@ export function narratesUnverifiedRoute(
  *
  * Two things were wrong with it, both measured on the served dataset:
  *
- *  - **Cause.** Of 518 blocked codes, 407 are moratorium-based
- *    (BLOCCATO_CLASSE_RISCHIO 372 + CHIUSO_MORATORIA_BALI 35) and **111 are
+ *  - **Cause.** Of 518 blocked codes, 420 are moratorium-based
+ *    (BLOCCATO_CLASSE_RISCHIO 372 + CHIUSO_MORATORIA_BALI 48) and **98 are
  *    not** — 68 TERTUTUP (an ownership restriction on the activity itself),
- *    39 CHIUSO_PMA_NO_BESAR (no Usaha Besar scale row), 2 closed by their
- *    sector's own regulator, 2 by Bali's announced sectoral closures. That 111
- *    is the same figure this module's own comment already names.
+ *    17 NON_CLASSIFICABILE (we hold no licensing rows, so no Bali position can
+ *    be stated), 7 CHIUSO_PMA_NO_BESAR (genuinely allocated to Koperasi/UMKM
+ *    by Perpres 49/2021 Lampiran II), 2 closed by their sector's own regulator,
+ *    2 scope-dependent, 2 by Bali's announced sectoral closures. That 98 is the
+ *    same figure this module's own comment already names.
+ *
+ *    Was 407/111 with 39 CHIUSO_PMA_NO_BESAR until 2026-08-03. The old figure
+ *    counted an INFERENCE, not a reservation: 32 of the 39 were closed because
+ *    OSS holds no Usaha Besar scale row for them, which Permeninves/BKPM
+ *    5/2025 Pasal 26(1) inverts — a PT PMA is Usaha Besar as a CONSEQUENCE of
+ *    being foreign-owned, so the absence of that row says nothing about
+ *    foreign ownership. Each was adjudicated against the annex; seven survived.
  *
  *  - **Rule.** Read as a rule, "low and medium-low-risk activities are treated
  *    as closed" is far wider than what we do: 405 codes carry only low or
