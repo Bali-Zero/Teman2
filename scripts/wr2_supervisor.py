@@ -20,7 +20,8 @@ This daemon LISTENs via the local pg-proxy (port 15432). On every payload:
   5. `launchctl kickstart` the next plist — NEVER with `-k` (would kill
      a running stage; workers always drain via bulk SELECT, so a no-op
      kickstart on an already-running stage is fine)
-  6. Telegram-alert on rendered / fact_check_failed
+  6. Telegram-alert on rendered / fact_check_failed (the latter ONLY when
+     it's a genuine contradiction — see _is_genuine_contradiction, 2026-08-03)
 
 Reconciliation
 --------------
@@ -102,6 +103,8 @@ TRANSITIONS: dict[tuple[str | None, str], str | None] = {
 }
 
 ALERT_STATUSES = {"rendered", "fact_check_failed"}
+# 2026-08-03: a 'fact_check_failed' transition is only alerted for a REAL
+# contradiction — see _is_genuine_contradiction, invoked in _handle_payload.
 
 # Reconciliation map: which non-terminal statuses need a re-kick if stalled.
 # Sprint B B-bis: full chain restored. Each pre-canva-apply state has a
@@ -264,6 +267,42 @@ async def _current_status(conn: asyncpg.Connection, draft_id: str) -> str | None
         )
 
 
+async def _is_genuine_contradiction(conn: asyncpg.Connection, draft_id: str) -> bool:
+    """True only if a 'fact_check_failed' transition is a REAL contradiction.
+
+    2026-08-03: wr2_fact_checker.py Change 3 routes THREE outcomes to the
+    same `status='fact_check_failed'` — an active contradiction
+    (`fact_check_status='fail'`) AND the two "no corroborating source"
+    provenance holds (`source_absent` / `claim_unparseable`, which keep
+    `fact_check_status='degraded'` — additive design, see that file's
+    PROVENANCE_* constants). Only the first is alert-worthy; alerting on the
+    other two would be ~79/86 drafts of P0 Telegram noise (root-cause report
+    2026-07-18).
+
+    Fail-open toward ALERTING (not toward silence) on any read error or
+    unexpected value: missing a real contradiction alert is a worse failure
+    mode than an occasional spurious one, and the noise this guards against
+    is a known, narrow bucket, not the default assumption.
+    """
+    async with _get_conn_lock():
+        try:
+            fc_status = await conn.fetchval(
+                "SELECT fact_check_status FROM war_room_drafts WHERE id = $1::uuid",
+                draft_id,
+            )
+        except (
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT subclass
+            OSError,
+        ) as e:
+            logger.warning(
+                "draft %s: cannot read fact_check_status (%s) — alerting (fail-open)",
+                draft_id, e,
+            )
+            return True
+    return fc_status != "degraded"
+
+
 async def _ack_outbox_if_present(payload: dict[str, Any], conn: asyncpg.Connection) -> bool:
     """Ack durable wr2_status_change rows carried by live NOTIFY payloads."""
     raw_outbox_id = payload.get("_outbox_id")
@@ -334,7 +373,23 @@ async def _handle_payload(payload: dict[str, Any], conn: asyncpg.Connection) -> 
 
         # Telegram alerts
         if new in ALERT_STATUSES:
-            await _telegram(f"WR2 {new}\nDraft: {draft_id}\nFrom: {old}")
+            if new == "fact_check_failed" and not await _is_genuine_contradiction(
+                conn, draft_id
+            ):
+                # 2026-08-03 (wr2_fact_checker.py Change 3): 'fact_check_failed'
+                # is now ALSO the terminal status for source_absent /
+                # claim_unparseable provenance holds (no corroborating
+                # external source found — ~79/86 drafts historically), not
+                # only genuine contradictions. Alerting on every one of those
+                # would recreate the exact P0 Telegram-noise problem the
+                # checker's own fail-alert (wr2_fact_checker.py:~865) was
+                # designed to avoid for the old silent-'degraded' branch.
+                # Only a REAL contradiction (fact_check_status == 'fail') is
+                # alert-worthy here; the two "no source" holds stay silent,
+                # same as they were silent before as 'degraded'.
+                pass
+            else:
+                await _telegram(f"WR2 {new}\nDraft: {draft_id}\nFrom: {old}")
 
         # Resolve next stage
         target = _resolve_transition(old, new)

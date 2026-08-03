@@ -8,8 +8,31 @@ each claim previously extracted by `wr2_fact_extractor.py`, then sets:
                       = 'degraded'  → some unverifiable but no contradiction
                       = 'fail'      → at least one claim contradicts source
 
-    status            = 'drafts_imaged_checked'  (pass / degraded)
-                      = 'fact_check_failed'      (fail)
+    fact_check_json.provenance (2026-08-03, additive — see the
+    PROVENANCE_* module constants) classifies WHICH kind of truth (if any)
+    backed a 'pass'/'degraded' verdict:
+        supported_by_source_article   → verified against a real external
+                                         source (research_json/brief_json/
+                                         council_debate_json) — today's
+                                         healthy case, NOT the same as
+                                         independent corroboration
+        independently_corroborated    → never emitted today (deferred,
+                                         requires check-time oracle re-query)
+        source_absent                 → some claim genuinely has no
+                                         corroborating external source
+        claim_unparseable             → some claim's number/date was
+                                         expressed as a word ("Four"), so the
+                                         checker never got a token to compare
+
+    status            = 'drafts_imaged_checked'  (provenance ∈
+                            {supported_by_source_article,
+                             independently_corroborated})
+                      = 'fact_check_failed'      (fail — OR provenance ∈
+                            {source_absent, claim_unparseable}: held for
+                            manual review same as an active contradiction —
+                            2026-08-03 Change 3 closes the fail-open hole
+                            where 'degraded' silently reached canva-eligible
+                            status with zero independent truth behind it)
 
 This is a NET-NEW build — the original wr2_fact_checker.py was never
 written. Re-enables the chain so canva-apply only renders fact-checked
@@ -85,6 +108,35 @@ MAX_DRAFTS_PER_RUN = int(os.environ.get("WR2_FACT_CHECKER_BATCH", "3"))
 DEFAULT_MODEL = os.environ.get("WR2_FACT_CHECKER_MODEL", "claude-opus-4-7")
 DEFAULT_TIMEOUT_S = int(os.environ.get("WR2_FACT_CHECKER_TIMEOUT_S", "120"))
 TELEMETRY_PATH = Path.home() / "logs" / "wr2_fact_checker_telemetry.jsonl"
+
+# Provenance labels (2026-08-03 — root-cause report
+# research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md,
+# recommendation #2). Replace the false verified/degraded binary with an
+# honest label for WHICH kind of truth (if any) a draft's claims were
+# actually checked against. Stored ADDITIVELY in
+# `fact_check_json['provenance']` — `fact_check_status` itself keeps its 3
+# existing values (pass/degraded/fail) unchanged. Verified 2026-08-03: grepped
+# every consumer of `fact_check_status` in this repo (wr2_supervisor.py,
+# wr2_html_render_apply.py, wr2_daily_reconciler.py, wr2_carousel_import.py,
+# canva_renderer_v2/_pg.py) — none branches on the literal 'degraded' string
+# outside this file, so retiring it would have cost nothing either way;
+# additive was chosen because it is less schema drift (cicatrix #9 —
+# changing a shared format from only one side breaks readers who weren't
+# updated), not because retiring it was unsafe.
+PROVENANCE_INDEPENDENTLY_CORROBORATED = "independently_corroborated"
+PROVENANCE_SUPPORTED_BY_SOURCE_ARTICLE = "supported_by_source_article"
+PROVENANCE_SOURCE_ABSENT = "source_absent"
+PROVENANCE_CLAIM_UNPARSEABLE = "claim_unparseable"
+# PROVENANCE_INDEPENDENTLY_CORROBORATED is NOT reachable by any code path in
+# this file today — it requires re-querying an oracle/RAG per-claim at CHECK
+# time against a source the composer never saw (root-cause report
+# recommendation #1, explicitly deferred — RAG-data-plane work, out of scope
+# here). It is defined now for forward-compatibility, so that eventual fix
+# has a label to land on without another migration. Nothing in this module
+# emits it — do not fake it (e.g. by treating `has_external_truth` as
+# independent corroboration; it is not — see `_has_external_truth`'s own
+# docstring: brief_json is BOTH the corpus the composer wrote from AND what
+# this checker verifies against).
 
 # Law regexes — compiled once.
 # 2026-06-04 (WR2 autopsy P-5): added Permenkumham / Permenimipas / Permen* /
@@ -521,17 +573,32 @@ async def _persist_checked(
     draft_id: UUID,
     fact_check_json: dict[str, Any],
     fact_check_status: str,
+    provenance: str,
 ) -> None:
     """Record verdicts + advance status.
 
-    pass | degraded → status = 'drafts_imaged_checked' (canva-apply consumes)
-    fail            → status = 'fact_check_failed' (terminal — manual review)
+    fail                                             → 'fact_check_failed' (terminal — manual review)
+    provenance in {source_absent, claim_unparseable}  → 'fact_check_failed' (terminal — manual
+        review, SAME status as an active contradiction — closes the fail-open
+        hole where 'degraded' silently reached canva-eligible status with no
+        independent truth behind it; see root-cause report 2026-07-18 +
+        wr2_supervisor.py's alert-suppression for how these are told apart
+        downstream WITHOUT Telegram noise)
+    supported_by_source_article | independently_corroborated → 'drafts_imaged_checked'
+
+    `provenance` is REQUIRED (no default) — 2026-08-03, Change 3: the whole
+    point of this gate is that provenance decides eligibility independently
+    of fact_check_status for the old 'degraded' case, so a caller must always
+    compute and pass it deliberately rather than fall through to a silent
+    default.
     """
-    new_status = (
-        "fact_check_failed"
-        if fact_check_status == "fail"
-        else "drafts_imaged_checked"
-    )
+    if fact_check_status == "fail" or provenance in (
+        PROVENANCE_SOURCE_ABSENT,
+        PROVENANCE_CLAIM_UNPARSEABLE,
+    ):
+        new_status = "fact_check_failed"
+    else:
+        new_status = "drafts_imaged_checked"
     await conn.execute(
         """
         UPDATE war_room_drafts
@@ -552,6 +619,87 @@ async def _persist_checked(
 # ─────────────────────────────────────────────────────────────────────────
 # Per-draft pipeline
 # ─────────────────────────────────────────────────────────────────────────
+
+_UNPARSEABLE_NOTES = frozenset(
+    {
+        "no extractable number in claim",
+        "no extractable date in claim",
+    }
+)
+
+
+def _claim_defect_class(claim: dict[str, Any]) -> str:
+    """Classify an 'unverifiable' claim's defect for provenance labeling.
+
+    Only meaningful for claims whose verdict is 'unverifiable' — callers
+    check that first. Two buckets (2026-08-03, root-cause report
+    recommendation #2):
+
+    - PROVENANCE_CLAIM_UNPARSEABLE: the checker found no digit/date token to
+      compare AT ALL (the number/date was expressed as a word — "Four",
+      "double" — see the 2026-07-18 root-cause report). A REPRESENTATION
+      failure, not a truth failure: the claim was never given a fair chance
+      to match anything.
+    - PROVENANCE_SOURCE_ABSENT: every other unverifiable verdict (law
+      citation not found, quote not found, token overlap <60%, a partial
+      number/date match, "no external source" for a law claim). The claim
+      WAS parseable; nothing in the external source corroborates it — a
+      genuine non-corroboration.
+
+    Exact-string match on `note` (not substring/startswith) — this is a
+    guard classifying claims, and cicatrix family #3 (guard-over-match) is
+    exactly "substring instead of entity"; the two notes this must catch are
+    fixed literals emitted by `_verify_number_or_date_claim`.
+    """
+    note = str(claim.get("note", ""))
+    if note in _UNPARSEABLE_NOTES:
+        return PROVENANCE_CLAIM_UNPARSEABLE
+    return PROVENANCE_SOURCE_ABSENT
+
+
+def _aggregate_provenance(
+    verified_claims: list[dict[str, Any]], *, has_external_truth: bool = True
+) -> str:
+    """Classify draft-level evidentiary provenance (the 4 labels, additive).
+
+    Distinct from `_aggregate_status` (unchanged pass/degraded/fail — still
+    the value stored in `fact_check_status` and read by this file's own
+    Telegram fail-alert). This is the honest replacement for the old binary
+    collapse (root-cause report 2026-07-18, recommendation #2): instead of
+    every non-contradicted-but-imperfect draft reading as an undifferentiated
+    'degraded', it says WHICH kind of truth (if any) backed the check.
+
+    `PROVENANCE_INDEPENDENTLY_CORROBORATED` is never returned here — see the
+    module-level constant's docstring; it requires check-time re-querying an
+    oracle the composer never saw (deferred, RAG-data-plane work).
+    """
+    if not verified_claims:
+        # Vacuous pass (no claims to mis-verify) — the same "nothing to
+        # worry about" case _aggregate_status already treats as clean 'pass'.
+        return PROVENANCE_SUPPORTED_BY_SOURCE_ARTICLE
+
+    has_source_absent = False
+    has_claim_unparseable = False
+    for c in verified_claims:
+        verdict = str(c.get("verdict", "unverifiable")).lower()
+        if verdict != "unverifiable":
+            continue
+        if _claim_defect_class(c) == PROVENANCE_CLAIM_UNPARSEABLE:
+            has_claim_unparseable = True
+        else:
+            has_source_absent = True
+
+    if has_source_absent:
+        return PROVENANCE_SOURCE_ABSENT
+    if has_claim_unparseable:
+        return PROVENANCE_CLAIM_UNPARSEABLE
+    if not has_external_truth:
+        # All claims "verified", but only against the draft's own thin/absent
+        # source (self-reference — root-cause report layer 1). Same
+        # "not trusted" case _aggregate_status caps at 'degraded'.
+        return PROVENANCE_SOURCE_ABSENT
+    return PROVENANCE_SUPPORTED_BY_SOURCE_ARTICLE
+
 
 def _aggregate_status(
     verified_claims: list[dict[str, Any]], *, has_external_truth: bool = True
@@ -635,12 +783,14 @@ async def _process_one_draft(
     ) or []
 
     # brief_json is the corpus the production pipeline actually populates
-    # (research_json is probe/smoke-only), so it is threaded into every source
-    # extraction below — including the EXTERNAL view used for law matching and
-    # the external-truth gate, otherwise live drafts would have no corpus.
-    source_text = _extract_source_text(research, council, slides, brief_json=brief)
-    # Law citations are matched against the EXTERNAL source only (no slides),
-    # so a citation cannot self-verify just by appearing in the draft.
+    # (research_json is probe/smoke-only), so it is threaded into the EXTERNAL
+    # view below — used for law matching, the external-truth gate, AND (since
+    # 2026-08-03, Change 1) every other claim type's verification. Slides are
+    # EXCLUDED: a claim can never self-verify purely because it appears in the
+    # draft's own slides (root-cause report 2026-07-18, layer 2 — before this
+    # fix only law claims got this treatment; non-law claims were handed
+    # slide-inclusive `source_text` and didn't bite only because most had no
+    # digit/token to match).
     external_text = _extract_source_text(
         research, council, slides, brief_json=brief, include_slides=False
     )
@@ -660,20 +810,23 @@ async def _process_one_draft(
     for claim in claims_in:
         verified.append(
             _verify_claim(
-                claim, source_text, source_laws, has_external_truth=has_external_truth
+                claim, external_text, source_laws, has_external_truth=has_external_truth
             )
         )
 
     # Pass 2 (optional): LLM cross-check for any 'unverifiable' claims to
     # see if they're actually 'verified' (paraphrase) or 'contradicted'
     # (drift). Skipped when llm_enabled=False (fast deterministic path).
-    # 2026-06-05 (panel fix, defense-in-depth): feed the LLM the EXTERNAL
-    # source (slides excluded) so it cannot "verify" a claim by paraphrase-
-    # matching the draft's own slides — the same self-reference class the
-    # fail-closed cap guards against. With no external truth, external_text is
-    # thin and the LLM correctly returns 'unverifiable' (and the cap forces
-    # 'degraded' anyway).
-    llm_source = source_text if has_external_truth else external_text
+    # 2026-06-05 (panel fix, defense-in-depth); reaffirmed 2026-08-03 (Change
+    # 1): ALWAYS feed the LLM the EXTERNAL source (slides excluded),
+    # unconditionally — never the slide-inclusive view, regardless of
+    # has_external_truth. The old `source_text if has_external_truth else
+    # external_text` was BACKWARDS: when has_external_truth is True is
+    # exactly when a slide-inclusive rubber-stamp is most dangerous (there is
+    # real content to falsely "match" against). With no external truth,
+    # external_text is thin and the LLM correctly returns 'unverifiable' (and
+    # the cap forces 'degraded' anyway).
+    llm_source = external_text
     if llm_enabled:
         for c in verified:
             if c.get("verdict") != "unverifiable":
@@ -701,6 +854,7 @@ async def _process_one_draft(
 
     duration = time.time() - t0
     fact_check_status = _aggregate_status(verified, has_external_truth=has_external_truth)
+    provenance = _aggregate_provenance(verified, has_external_truth=has_external_truth)
 
     fact_check_payload = {
         "claims": verified,
@@ -708,18 +862,20 @@ async def _process_one_draft(
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "verifier": "wr2_fact_checker",
         "llm_enabled": llm_enabled,
+        "provenance": provenance,
     }
 
-    await _persist_checked(conn, draft_id, fact_check_payload, fact_check_status)
+    await _persist_checked(conn, draft_id, fact_check_payload, fact_check_status, provenance)
 
     logger.info(
-        "Draft %s checked — status=%s claims=%d duration=%.1fs",
-        draft_id, fact_check_status, len(verified), duration,
+        "Draft %s checked — status=%s provenance=%s claims=%d duration=%.1fs",
+        draft_id, fact_check_status, provenance, len(verified), duration,
     )
     _log_telemetry(
         {
             "draft_id": str(draft_id),
             "outcome": fact_check_status,
+            "provenance": provenance,
             "duration_s": round(duration, 1),
             "claims_count": len(verified),
             "llm_enabled": llm_enabled,
