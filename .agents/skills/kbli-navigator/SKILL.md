@@ -26,7 +26,72 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-08-02 — keep current)
+## 1. LIVE STATE (last update 2026-08-03 — keep current)
+
+**🔴 2026-08-03 — THE 39 "CLOSED TO PT PMA" BADGES ARE MOSTLY WRONG, AND THE REAL OBSTACLE IN BALI IS
+NOT THE PERPRES AT ALL.** Two research files shipped, both graded by Codex on fresh context (the seat
+is named in each frontmatter; the R1 gate rejects an unnamed one, correctly — an earlier draft said
+"cross-family refute pass" when the refute lanes were Claude agents, i.e. the SAME family, W100).
+
+- `research/compliance/2026-08-03-kbli-39-closure-verdicts.md` — primary sources. Of the 39 codes
+  rendering `CHIUSO_PMA_NO_BESAR`: **7 genuinely reserved** (55201 homestay · 55203 villa · 79903 tour
+  guide · 95291 tailoring · 96100 laundry · 96210 barber · 96220 salon), **2 partial** (55209 only the
+  _Guest House_ slice, 43110 only _simple/intermediate technology_ demolition — Perpres 10/2021
+  **Pasal 5(5)** scopes a Lampiran II reservation to the wording in the Bidang Usaha column),
+  **11 carry a non-ownership requirement a PT PMA can satisfy**, **19 carry nothing located**.
+- **ROOT CAUSE, one inference used as primary ground:** _"no Usaha Besar scale row → reserved for UMKM
+  → closed to PMA"_. **Permeninves/BKPM 5/2025 Pasal 26(1) inverts it** — Usaha Besar is a CONSEQUENCE
+  of PMA status, not a gate a licensing table can withhold. That inference is what produced all 39.
+- `research/compliance/2026-08-03-kbli-39-market-sources.md` — secondary sources, 9 lanes. Graded
+  DEFECTIVE by Codex; four claims withdrawn or narrowed IN PLACE. **The withdrawn one matters: the
+  "IDR 10bn leaves nothing in between" argument is dead** — `modal usaha` and `nilai investasi` are
+  different legal quantities and no cited provision makes them one. Do not reuse it.
+
+**🔴 THE GOVERNOR'S LETTER, READ AT SOURCE (2026-08-03) — the market quotes its background section.**
+`B.27.000/642/PM/DPMPTSP`, 28 Jan 2026, Koster → Menteri Investasi/BKPM. The scan (agency-hosted,
+`flado.id`) has a **zero-character text layer**; it was rendered at 200 dpi and read from the images.
+
+- **`Lampiran: -` — NO ANNEX.** Neither the "nine codes" nor the "eighteen" was ever attached.
+- **The operative request is BY RISK TIER, verbatim:** close on OSS _"1. PMA … dengan Tingkat Risiko
+  **Rendah dan Menengah Rendah** yang berada di Provinsi Bali; dan 2. PMA yang berlokasi usaha di
+  **virtual office**"_. Two categories, no code list.
+- The nine KBLI everyone publishes as "the blocked list" sit at background point 2 under _"sebagian
+  besar **mengajukan** dengan KBLI"_ — the codes PMAs most often APPLY FOR, cited as evidence of the
+  problem. Illustration, not scope.
+- Purpose (point 3, verbatim): the scheme is _"digunakan sebagai sarana memperoleh **izin tinggal**
+  bagi WNA … tanpa adanya kegiatan berusaha yang nyata"_. Immigration is on the 10-name copy list.
+- **The instrument nobody has cited:** it follows a **Nota Kesepakatan BKPM RI ↔ Bali**,
+  `KS.01.00/2.S/A.1/2026` + `B.36.100.3.7/2767/KS/B.PEMKESRA`, _tentang Pengendalian Pelaksanaan
+  Penanaman Modal di Provinsi Bali_. **NEXT DOCUMENT TO OBTAIN** — not held, not in the literature.
+- **Measured on canonical: 22 of the 39 carry only `Rendah`/`Menengah Rendah`** — exactly the tiers
+  named. The other 17 hold no licensing rows at all, so they cannot be classified (same missing
+  `per_skala` population the channel cure works through).
+- **Limits, stated:** it is a REQUEST; no implementing instrument located. The scan is internally
+  consistent but not authenticated by an official publisher.
+
+**🟢 STILL IN FORCE — verified this session by direct fetch of peraturan.bpk.go.id (HTTP 200), not by
+report.** `Details/161806` Perpres **10/2021 → Status `Berlaku`**, `Diubah dengan` Perpres 49/2021;
+`Details/168534` Perpres **49/2021 → Status `Berlaku`**. Neither is revoked. What died is the
+LANGUAGE: the annexes still name KBLI-2020 codes and no investment instrument has ever been re-issued
+in KBLI-2025 numbering, so every 2025-numbered verdict runs through the BPS conversion table — a
+statistical artefact with **no legal force**. Say that out loud in any client-facing claim.
+
+**🟡 NOT DONE — NO CLIENT-FACING DATA HAS CHANGED.** The 39 badges still render; `chat_kbli` still
+answers `TERBUKA 100%` on the 7 genuinely reserved. Removing a badge and braking the channel are
+Legge-5 calls (with reaching back to already-advised clients). What IS shipped is evidence + tooling.
+
+**🟢 TOOLING (2026-08-03).** #3548 the channel cure was dead at import in the deployed image (a
+module-level `parents[4]`), taking `--only` with it — merged, live. #3550 `--only` bypasses the
+content-preservation gate silently; now REPORTED — merged. #3551 (open) `perpres_umkm_reservation_relation.py`
+filed **30 live pages as "archaeology"**: the `retired-2020-code` bucket tested whether the same NUMBER
+survives the vintage change, so every RENUMBERED code landed in the one bucket declared
+not-client-facing — 30 of 30 had a live heir, reaching 66 pages, 63 of them `TERBUKA/100%`. This is
+why 7 of the 9 real reservations had to be re-derived by hand. **Identity wins where it exists; the
+crosswalk resolves only what identity cannot** — the first fix let the crosswalk win unconditionally
+and a spurious edge (`14111 Industri Pakaian Jadi → 17091 Industri Kertas Tisu`) demoted 34 rows into
+a bucket nothing evaluates. Still a REPORTER, exit 0 (Legge 5).
+
+---
 
 **🟡 F1 — THE CHANNEL CURE NOW SELECTS BY STATE, AND REFUSES 25 OF 80 ON PURPOSE (2026-08-02, code
 shipped; the DB apply is a separate step and is NOT claimed here).**
