@@ -7,7 +7,7 @@ sources:
   - research/operations/2026-08-03-verified-claim-reconciliation.md (megatopic 0, the shared vocabulary/schema these fixes reuse)
   - 5 parallel read-only investigative agents dispatched this session (2026-08-03), each independently re-verifying one row of the VCR §1 table with commands run live, not from memory
   - research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md (pre-existing, Codex-CADE'd, not yet implemented — reused here, not re-derived)
-adversarial_review: complete — 4-LLM panel (Gemini/Codex/Kimi) reviewed this plan pre-build; panel-codex-plan independently re-verified all 4 shipped fixes post-merge against the actual PRs and confirmed no open objections (all 7 of its original DO-NOT-SHIP conditions closed at the code level)
+adversarial_review: codex
 ---
 
 # Megatopics 1-5 — action plan (post-investigation, pre-build)
@@ -84,6 +84,22 @@ adversarial_review: complete — 4-LLM panel (Gemini/Codex/Kimi) reviewed this p
 **Test plan**: guilt (tool returns price X, answer shows Y or no price → must NOT get 0.85, must fall through) + innocence (answer correctly quotes tool's figure → still gets 0.85) + regression run of `test_abstain_threshold_convergence.py` / `test_abstain_policy_hardening.py` (must stay green — this build must not touch those files).
 
 **Prove-live**: this is the one domain where "prod" means the live WA/web bot — deploy behind existing test coverage, then run a small set of REAL known-answer queries (a price lookup with a deliberately-wrong-injected tool response, via a test harness, not real client traffic) against the deployed endpoint and confirm the evidence score now reflects actual relevance, not tool-call success alone.
+
+---
+
+## Outcome — shipped 2026-08-03/04
+
+All 4 items merged and prove-live confirmed: #3558 (PENDING-ARMS+E33), #3559 (KBLI
+citation-propagation, merged, live conformance run reproduced the expected
+445/414 counts), #3560 (WR2 fact-checker hard gate + kill-switch), #3561 (bot
+evidence-score relevance veto — deployed to `nuzantara-rag`, `/health` green,
+live machine `GH_SHA` confirmed matching the merge commit).
+
+Reviewed pre-build by a 4-LLM panel (Gemini/Codex/Kimi). Codex ran the
+substantive independent post-merge re-verification (`panel-codex-plan`),
+re-checking all 4 shipped fixes against the actual PRs and confirming no open
+objections — all 7 of its original DO-NOT-SHIP conditions closed at the code
+level.
 
 ---
 
