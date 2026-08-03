@@ -86,13 +86,20 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     expect(row.detail).toContain("Not classifiable until the true risk tier");
   });
 
-  it("pins the population: 111 codes are blocked by something other than the moratorium", () => {
+  it("pins the population: 98 codes are blocked by something other than the moratorium", () => {
     const misattributed = getAllCodes().filter(
       (c) =>
         c.baliL4?.blocked === true &&
         !isMoratoriumBasis(c.baliL4.blocked, c.baliL4.status),
     );
-    expect(misattributed).toHaveLength(111);
+    // 111 → 98 on 2026-08-03. Thirteen codes moved from CHIUSO_PMA_NO_BESAR to
+    // CHIUSO_MORATORIA_BALI when the "no Usaha Besar scale row ⇒ reserved for
+    // UMKM" inference was withdrawn (Permeninves/BKPM 5/2025 Pasal 26(1)
+    // inverts it) and each of the 39 affected codes was adjudicated against
+    // Perpres 49/2021 Lampiran II. They are still blocked — the row now
+    // attributes the block to the moratorium, which is the instrument that
+    // actually produces it, so they legitimately leave this population.
+    expect(misattributed).toHaveLength(98);
     // Every one of them must now name its own cause, never the risk tier.
     for (const c of misattributed) {
       const row = baliRow(c.code);
