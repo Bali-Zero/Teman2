@@ -101,6 +101,13 @@ re-checking all 4 shipped fixes against the actual PRs and confirming no open
 objections — all 7 of its original DO-NOT-SHIP conditions closed at the code
 level.
 
+## Adversarial review
+
+none survived, 7 raised — Codex (`panel-codex-plan`) raised 7 DO-NOT-SHIP
+conditions against the pre-build plan; all 7 were independently re-verified
+closed at the code level against the actual shipped PRs (#3558-#3561) in its
+post-merge pass, with no new objections raised on that pass.
+
 ---
 
 ## What this plan does NOT do
