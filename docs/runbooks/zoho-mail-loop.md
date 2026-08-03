@@ -95,9 +95,14 @@ bash ../../scripts/test_zoho_mail_loop_wrapper.sh
    degraded. Note the granted scope set is `folders.READ` — creating them over
    the API is not possible with this consent even once it works, so this stays a
    Zoho-UI action.
-3. **Install the plist** — the file is installed on the Pro but deliberately NOT
-   loaded, because step 1 blocks it. Loading it today would buy a `p0` every
-   morning saying what is already written here.
+3. **Install the plist** — deliberately NOT done, and the order matters. The
+   plist names `/Users/nuzantara/Desktop/nuzantara/scripts/zoho-mail-loop.sh`,
+   which exists on the Pro only after this branch merges and the checkout is
+   pulled. Dropping the plist into `~/Library/LaunchAgents` before that would
+   leave a job pointing at a file that is not there — armed to nothing, and
+   indistinguishable from armed correctly until the morning it does not run.
+   Install it after the pull, and only once step 1 is resolved: loading it today
+   would buy a `p0` every morning restating this paragraph.
 4. **Read a dry-run, then flip.** A dry-run was executed against the live
    mailbox and is reported in §5.
 
