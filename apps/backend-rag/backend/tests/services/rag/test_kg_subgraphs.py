@@ -125,13 +125,17 @@ async def test_check_pma_eligibility(mock_db_pool):
     """Test: Check PMA eligibility for KBLI codes."""
     pool, conn = mock_db_pool
 
-    # Mock database response
+    # Mock database response. `56101` really is filed under
+    # `entity_type='kbli_code'` in the live KG (measured 2026-08-03) — the mock
+    # says so rather than inventing a shape, and it carries every column the
+    # query selects, so a mock that drifts from the query fails loudly.
     conn.fetch = AsyncMock(
         return_value=[
             {
                 "entity_id": "kbli:56101",
+                "entity_type": "kbli_code",
                 "name": "Restoran",
-                "properties": {"pma_status": "allowed"},
+                "properties": {"pma_status": "TERBUKA"},
             },
         ],
     )

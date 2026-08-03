@@ -9,6 +9,7 @@ Date: 2026-02-09
 Reference: memory/langgraph-kg-evolution-plan.md (Phase 3)
 """
 
+import json
 import logging
 from typing import Any, TypedDict
 
@@ -46,6 +47,100 @@ class CompanyState(TypedDict, total=False):
     licensing_requirements: list[dict]  # NIB, OSS, sector licenses
     shareholders: list[dict]  # For PT PMA
     legal_structure_recommendations: list[dict]
+
+
+# ============================================================================
+# PMA eligibility vocabulary
+# ============================================================================
+#
+# Censused on the live KG 2026-08-03 (`kg_nodes`, ids matching `kbli:NNNNN`):
+#   TERBUKA 1464 · TERTUTUP 61 · TERBATAS 29 · "Verify at OSS" 4
+# Not ONE row speaks the English vocabulary this module used to test itself
+# against ("allowed" / "open" / "restricted"), so the old
+# `pma_status in ["allowed", "open"]` evaluated False for EVERY code in the
+# store — including all 1464 fully open ones. The English keys are kept below
+# because this module's own docstrings promise them and an older loader may
+# still write them; they are not what production speaks.
+#
+# `eligible` is deliberately TRI-STATE. TERBATAS means "open to foreign
+# ownership up to a CAP": answering False there is the L2.11 defect (denying a
+# lawful 49% stake), answering True hides the cap. This store carries no cap at
+# all — `pma_max_asing` / `pma_official_basis` / `pma_cap_verified` are absent
+# from all 13,633 kbli nodes (verified 2026-08-03) — so the cap has to come
+# from the canonical dataset via `backend/services/kbli_eye.py`. Undetermined
+# is the honest answer here, and it is also the fallback for any status this
+# table does not name: an unrecognised status NEVER yields a silent False.
+# The verdict is carried by a STRING state, and the tri-state bool is derived
+# from it in exactly one place. Two renderings of one fact, one writer.
+#
+# The bool exists because `eligible` is the field this node has always emitted
+# — but a bool cannot express "undetermined" safely: a consumer writing the
+# natural `if not detail["eligible"]` treats None exactly like False, which is
+# the L2.11 defect back again (denying a lawful capped stake) arriving through
+# a downstream truthiness test instead of through this table. Consumers should
+# branch on `eligibility_state`; the bool is for `is True` / `is False` /
+# `is None` only. This hazard was named by the adversarial review of this diff.
+PMA_STATE_OPEN = "open"
+PMA_STATE_CLOSED = "closed"
+PMA_STATE_UNDETERMINED = "undetermined"
+
+_ELIGIBLE_BY_STATE: dict[str, bool | None] = {
+    PMA_STATE_OPEN: True,
+    PMA_STATE_CLOSED: False,
+    PMA_STATE_UNDETERMINED: None,
+}
+
+_PMA_ELIGIBILITY: dict[str, tuple[str, str]] = {
+    "TERBUKA": (PMA_STATE_OPEN, "pma_status=TERBUKA — open to foreign ownership"),
+    "TERTUTUP": (PMA_STATE_CLOSED, "pma_status=TERTUTUP — closed to foreign ownership"),
+    "TERBATAS": (
+        PMA_STATE_UNDETERMINED,
+        "pma_status=TERBATAS — open to foreign ownership up to a cap; the KG "
+        "carries no cap field, read it from the canonical dataset "
+        "(backend/services/kbli_eye.py) before answering a client",
+    ),
+    "VERIFY AT OSS": (
+        PMA_STATE_UNDETERMINED,
+        "pma_status='Verify at OSS' — undetermined, check OSS",
+    ),
+    # Legacy English tokens named by this module's docstrings. Absent from the
+    # live store as of the census above.
+    "OPEN": (PMA_STATE_OPEN, "pma_status=open — open to foreign ownership"),
+    "ALLOWED": (PMA_STATE_OPEN, "pma_status=allowed — open to foreign ownership"),
+    "CLOSED": (PMA_STATE_CLOSED, "pma_status=closed — closed to foreign ownership"),
+    "RESTRICTED": (
+        PMA_STATE_UNDETERMINED,
+        "pma_status=restricted — capped, not closed; read the cap from the "
+        "canonical dataset (backend/services/kbli_eye.py)",
+    ),
+}
+
+
+def resolve_pma_eligibility(raw_status: object) -> tuple[str, bool | None, str]:
+    """
+    Map a raw KG ``pma_status`` to ``(state, eligible, basis)``.
+
+    ``state`` is the authoritative verdict (``open`` / ``closed`` /
+    ``undetermined``); ``eligible`` is derived from it here and nowhere else.
+
+    Anything the table above does not name — including a missing status —
+    resolves to ``undetermined``. Never ``closed`` by default: "we do not
+    know" and "closed to foreigners" are different answers, and this store is
+    only entitled to the first one when it is silent.
+    """
+    key = str(raw_status or "").strip().upper()
+    if not key:
+        state, basis = PMA_STATE_UNDETERMINED, "no pma_status on the KG node — undetermined"
+    else:
+        verdict = _PMA_ELIGIBILITY.get(key)
+        if verdict is None:
+            state, basis = (
+                PMA_STATE_UNDETERMINED,
+                f"pma_status={raw_status!r} not recognised — undetermined",
+            )
+        else:
+            state, basis = verdict
+    return (state, _ELIGIBLE_BY_STATE[state], basis)
 
 
 # ============================================================================
@@ -154,8 +249,12 @@ async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool)
     Check if business activity is eligible for foreign investment (PMA).
 
     Queries KG for:
-    - KBLI codes with pma_status = "allowed" or "restricted"
+    - KBLI codes with pma_status (TERBUKA / TERTUTUP / TERBATAS / Verify at OSS)
     - DNI (Daftar Negatif Investasi) restrictions
+
+    Every emitted detail carries a TRI-STATE ``eligible`` (True / False /
+    None) plus the ``eligibility_basis`` that produced it — see
+    ``resolve_pma_eligibility``. None means undetermined, never "closed".
 
     Args:
         state: Current CompanyState
@@ -180,28 +279,70 @@ async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool)
         return state
 
     async with db_pool.acquire() as conn:
-        # Query KBLI nodes for PMA status
+        # Query KBLI nodes for PMA status.
+        #
+        # Keyed on entity_id ALONE, deliberately. The caller already supplies
+        # exact ids (`kbli:NNNNN`) and that id IS the entity; the old
+        # `entity_type = 'kbli'` filter added no protection and silently
+        # dropped rows. Measured 2026-08-03: the `kbli:` id namespace holds
+        # 1,568 codes across TWO types — 1,558 as `kbli` and 10 filed as
+        # `kbli_code`, with zero overlap. Those 10 are 47721 / 55111 / 56101 /
+        # 62011 / 62021 / 68110 / 70201 / 73110 / 74100 / 79110 — i.e. the
+        # restaurant, hotel and travel-agency codes this product is asked
+        # about most, every one of them invisible to the old filter.
         results = await conn.fetch(
             """
-            SELECT entity_id, name, properties
+            SELECT entity_id, entity_type, name, properties
             FROM kg_nodes
             WHERE entity_id = ANY($1::text[])
-              AND entity_type = 'kbli'
             """,
             kbli_codes,
         )
 
         pma_info = []
+        answered: set[str] = set()
         for row in results:
-            props = row.get("properties", {})
-            pma_status = props.get("pma_status", "unknown")
+            props = row["properties"]
+            if isinstance(props, str):  # pool without a jsonb codec
+                try:
+                    props = json.loads(props)
+                except (TypeError, ValueError):
+                    props = {}
+            if not isinstance(props, dict):
+                props = {}
+
+            pma_status = props.get("pma_status")
+            state_str, eligible, basis = resolve_pma_eligibility(pma_status)
+            answered.add(row["entity_id"])
 
             pma_info.append(
                 {
                     "kbli_code": row["entity_id"],
                     "business_name": row["name"],
-                    "pma_status": pma_status,
-                    "eligible": pma_status in ["allowed", "open"],
+                    "pma_status": pma_status if pma_status else "unknown",
+                    # Branch on this. "open" / "closed" / "undetermined".
+                    "eligibility_state": state_str,
+                    # Tri-state: True open · False closed · None undetermined.
+                    # Compare with `is`, never with truthiness — None is not False.
+                    "eligible": eligible,
+                    "eligibility_basis": basis,
+                    "source_entity_type": row["entity_type"],
+                },
+            )
+
+        # A code the KG has never heard of must say so. Reporting nothing at
+        # all reads downstream as "no restrictions found", which is the same
+        # wrong answer as False with fewer places to catch it.
+        for missing in [c for c in kbli_codes if c not in answered]:
+            pma_info.append(
+                {
+                    "kbli_code": missing,
+                    "business_name": None,
+                    "pma_status": "unknown",
+                    "eligibility_state": PMA_STATE_UNDETERMINED,
+                    "eligible": None,
+                    "eligibility_basis": "no node in the KG for this code — undetermined",
+                    "source_entity_type": None,
                 },
             )
 
