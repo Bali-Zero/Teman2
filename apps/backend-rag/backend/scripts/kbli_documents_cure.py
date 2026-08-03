@@ -62,6 +62,15 @@ SCOPE DISCIPLINE (mirrors `kg_kbli_license_fix.py`): `--only` is MANDATORY
 unless `--all-quarantined` is passed explicitly — this script NEVER sweeps
 the full ~1,559-row table.
 
+`--only` DOES NOT GET THE CONTENT-PRESERVATION GATE. That gate is scoped to
+`--all-licensing-absent`, so passing the same population as a hand-written
+`--only` list cures every code the gate would have REFUSED — on 2026-08-02
+that was 25 of 80 rows of hand-written client-facing prose. `--only` is also
+the only selector that runs inside the deployed image, which is what makes the
+substitution tempting. It is not blocked (the Perpres-cap lane legitimately
+replaces prose) but it is now REPORTED: a run logs which rows it is about to
+overwrite. Read that line before `--apply`.
+
 WHAT `--only` ACTUALLY GATES ON (corrected 2026-08-01 — this paragraph used
 to claim the opposite, and a session relied on the path it denied). The
 `per_skala_disputed_*` marker selects the `--all-quarantined` population and
@@ -692,6 +701,40 @@ async def main() -> int | None:
             if not codes:
                 logger.warning("gate refused every selected row — nothing to do")
                 return
+        elif not args.all_quarantined:
+            # `--only` BYPASSES the gate above, and that is the trap this block
+            # exists to make loud. The gate cannot run here: a hand-written
+            # scope means the operator, not a predicate, chose these codes, and
+            # the legitimate `--only` lane (the Perpres-cap cures) exists
+            # precisely to replace prose. So this REPORTS and never refuses.
+            #
+            # It matters because `--only` is also the ONLY selector that runs
+            # inside the deployed image, which makes it the path most likely to
+            # be handed a state-selected list by hand — exactly how the 25 rows
+            # the gate protected on 2026-08-02 nearly went out anyway.
+            #
+            # canonical_rows is 0 on purpose: the detector's count does not
+            # exist on this path, and deriving a second one for the same fact is
+            # how two tools start disagreeing about it (W105). A
+            # contradicted-licensing-claim row therefore reports as plain
+            # hand-written — true, and the loud direction.
+            overwritten = []
+            for code in codes:
+                row = table_rows.get(code)
+                if row is None:
+                    continue  # nothing stored to overwrite
+                if rebuild_reason(code, row["content"], 0) is None:
+                    overwritten.append(code)
+            if overwritten:
+                logger.warning(
+                    "--only bypasses the content-preservation gate: %d of %d selected row(s) "
+                    "carry hand-written prose this run will OVERWRITE (%s). The pre-cure text "
+                    "goes to kbli_documents_archive, but ON CONFLICT DO NOTHING makes that "
+                    "ONE-SHOT per code — a second cure of the same row preserves nothing.",
+                    len(overwritten),
+                    len(codes),
+                    ", ".join(overwritten),
+                )
 
         plans: list[DocumentCurePlan] = []
         for code in codes:
