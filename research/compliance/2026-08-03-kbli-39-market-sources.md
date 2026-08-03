@@ -506,6 +506,69 @@ across agency pages is the signature of one text copied forward, not of corrobor
 **What the review found sound:** the exact comparison against the enumerated 18 codes; and the
 moratorium timeline's dates, which do not conflict with one another.
 
+
+## THE LETTER, READ AT SOURCE — and the market has been quoting the wrong paragraph
+
+Everything below §3 was written from secondary reporting because "nobody has published the letter".
+**It has now been read directly.** The scan hosted at `flado.id` was downloaded (HTTP 200, 461 kB, 2
+pages), carries a **zero-character text layer** on both pages — a pure scan, which is why every
+citation in the market is a paraphrase — and was rendered at 200 dpi and read from the images. The
+images are the authority.
+
+**What the letter is:** `Nomor B.27.000/642/PM/DPMPTSP`, Bali **28 Januari 2026**, `Sifat: Segera`,
+signed **Wayan Koster, Gubernur Bali**, addressed to the *Menteri Investasi dan Hilirisasi / Kepala
+BKPM RI*, copied to ten recipients including the Coordinating Minister for the Economy, Home Affairs,
+Trade, Law, Finance, Communications, **Immigration**, the Bali DPRD and every mayor/regent in Bali.
+
+**`Lampiran: -` — THERE IS NO ANNEX.** No list of nine codes, no list of eighteen, was ever attached
+to this letter. Any published "blocked list" citing it as the source is citing something that does not
+exist in it.
+
+**The operative request, verbatim (page 2):** *"kami mohon kepada Bapak Menteri untuk melakukan
+penutupan pada Sistem Online Single Submission (OSS) dengan **kategori**: 1. PMA yang menjalankan
+kegiatan usaha dengan **Tingkat Risiko Rendah dan Menengah Rendah** yang berada di Provinsi Bali; dan
+2. PMA yang berlokasi usaha di **virtual office** yang berada di Provinsi Bali."*
+
+**Two categories. By RISK TIER. Not a code list.**
+
+**Where the nine codes actually sit — and this is the misreading.** `68111 · 70209 · 77311 · 77100 ·
+79121 · 47711 · 47511 · 47249 · 47991` appear in the letter's **background** section, at point 2,
+introduced as *"Kegiatan usaha yang diajukan oleh PMA di Provinsi Bali pada Sistem OSS **sebagian besar
+mengajukan dengan** KBLI:"* — i.e. **the codes PMAs in Bali MOSTLY APPLY FOR**, offered as evidence of
+the pattern being complained about. They are an illustration of the problem, not the scope of the
+remedy. The market publishes them as "the nine blocked codes"; the letter does not say that.
+
+**This settles the head-on contradiction printed in §3.** Emerhub's reading — *"the implementation goes
+beyond these nine codes; any low-risk or medium-low-risk KBLI selected for a PMA entity with a Bali
+Province address will trigger the rejection"* — is what the letter's operative paragraph asks for. Any
+source presenting the nine as the boundary of the block is reading the wrong paragraph.
+
+**The stated purpose, point 3, verbatim:** *"Skema Perizinan Berusaha tersebut, digunakan sebagai
+sarana memperoleh izin tinggal bagi WNA (Warga Negara Asing) tanpa adanya kegiatan berusaha yang nyata
+maupun kontribusi terhadap realisasi investasi."* The target is the company opened to anchor a stay
+permit — which is why Immigration is on the copy list.
+
+**The legal hook nobody has cited.** The letter opens by following up a **Nota Kesepakatan between
+BKPM RI and the Bali provincial government — No. `KS.01.00/2.S/A.1/2026` and No.
+`B.36.100.3.7/2767/KS/B.PEMKESRA`, *tentang Pengendalian Pelaksanaan Penanaman Modal di Provinsi
+Bali*.** That MoU, not this letter, is the instrument the arrangement rests on, and it appears nowhere
+in the market literature. It is the next document to obtain.
+
+**What this does to our 39, measured on canonical:** **22 of the 39** carry *only* `Rendah` or
+`Menengah Rendah` licensing rows — precisely the two tiers the request names. The remaining **17 carry
+no licensing rows at all** in our dataset, so we cannot classify them; that gap is the same missing
+`per_skala` population the channel cure has been working through.
+
+`38110 · 43110 · 55201 · 55202 · 55203 · 55209 · 55300 · 56102 · 56304 · 56306 · 70201 · 73300 ·
+74199 · 79901 · 79902 · 79903 · 86995 · 93119 · 95291 · 96100 · 96210 · 96220`
+
+**Two limits, stated rather than buried.** First, this is a **request**: it asks the Minister to act.
+Whether, when and how BKPM implemented it is a separate question that the letter cannot answer, and no
+implementing instrument has been located. Second, the scan is **agency-hosted and not authenticated by
+an official publisher** — its content is internally consistent (letterhead, Balinese script, number,
+date, urgency marking, signature, seal, ten-item copy list), which is evidence of authenticity but not
+proof of it.
+
 ## 3. THE BALI MORATORIUM
 
 **This may override everything else in both documents, regardless of KBLI.** It is a separate legal
