@@ -1,6 +1,7 @@
 ---
 date: 2026-08-04
 domain: infra
+adversarial_review: codex
 build_session_model: claude-sonnet-5
 architect_spec: drafts/2026-08-03-vcr-pilot-v2.1-and-build-workflow.md (ops-vcr-pilot-spec worktree, Fable 5)
 merged_spec: research/operations/2026-08-03-verified-claim-reconciliation.md (#3552)
@@ -15,6 +16,26 @@ VERIFY (Codex GPT-5.6 red-team, GLM 5.2 blind re-derivation, agy traceability). 
 that returned found real, structural defects.** This document is the record of what was
 found, what was fixed, what was declared instead of fixed, and what still needs a Fable-tier
 gate before this can be armed to merge.
+
+## Adversarial review
+
+**Seats**: Codex GPT-5.6 (OpenAI, primary red-team — verdict DEFECTIVE, full findings in
+§3.1) and GLM 5.2 (Zhipu, blind re-derivation — §3.1), both cross-family from the author
+(Sonnet 5 / Anthropic) — generator≠grader. Full dispatch, per-finding disposition, and
+independent re-verification against the actual code (not accepted on either seat's say-so):
+§2-§3 below.
+
+**Surviving objections** — consciously declared, not fixed, per §3.3: materializer
+bootstrap-not-debounced (Codex MEDIUM, pre-existing documented design choice), unredacted
+`evidence` copied into the persistent log (Codex LOW, depends on upstream scrubbing out of
+this pilot's scope), `_read_report` conflating `PermissionError` with "file absent" (GLM
+MEDIUM, no live exploit path in this pilot's actual deployment topology), ignored probe
+subprocess return code in `get_state()` (GLM LOW, downstream freshness staleness catches it
+anyway), and `machine_label_fn` invoked multiple times per `findings` call (GLM, explicitly
+"not a correctness bug" — negligible cost, measured live at `duration_ms: 159` for 3 full
+`get_state()` calls). Every other finding from both seats was fixed and mutation-tested
+(§3.1-3.2, §4). The agy traceability lane failed outright (zero usable output, §2) — declared
+degraded, not silently absorbed as a third clean pass.
 
 ## 1. What was built
 
