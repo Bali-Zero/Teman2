@@ -274,6 +274,67 @@ def test_persist_checked_degraded_claim_unparseable_now_blocked(fc):
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# WR2_PROVENANCE_HARD_GATE_ENABLED — the emergency bypass kill-switch
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_hard_gate_enabled_by_default(fc):
+    assert fc.WR2_PROVENANCE_HARD_GATE_ENABLED is True
+
+
+def test_persist_checked_source_absent_bypassed_when_hard_gate_disabled(fc):
+    """With the kill-switch off, provenance=source_absent reverts to the
+    pre-Change-3 routing: it no longer blocks a 'degraded' draft from
+    reaching 'drafts_imaged_checked'."""
+    fc.WR2_PROVENANCE_HARD_GATE_ENABLED = False
+    draft_id = uuid.uuid4()
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    asyncio.run(
+        fc._persist_checked(
+            conn, draft_id, {"claims": [{"verdict": "unverifiable"}]}, "degraded",
+            fc.PROVENANCE_SOURCE_ABSENT,
+        )
+    )
+    args = conn.execute.call_args[0]
+    assert args[4] == "drafts_imaged_checked"
+    assert args[3] == "degraded"
+
+
+def test_persist_checked_claim_unparseable_bypassed_when_hard_gate_disabled(fc):
+    fc.WR2_PROVENANCE_HARD_GATE_ENABLED = False
+    draft_id = uuid.uuid4()
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    asyncio.run(
+        fc._persist_checked(
+            conn, draft_id, {"claims": [{"verdict": "unverifiable"}]}, "degraded",
+            fc.PROVENANCE_CLAIM_UNPARSEABLE,
+        )
+    )
+    args = conn.execute.call_args[0]
+    assert args[4] == "drafts_imaged_checked"
+    assert args[3] == "degraded"
+
+
+def test_persist_checked_fail_still_blocks_when_hard_gate_disabled(fc):
+    """The kill-switch only reverts the provenance-based block — an active
+    'fail' status must still terminate at fact_check_failed regardless."""
+    fc.WR2_PROVENANCE_HARD_GATE_ENABLED = False
+    draft_id = uuid.uuid4()
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    asyncio.run(
+        fc._persist_checked(
+            conn, draft_id, {"claims": [{"verdict": "contradicted"}]}, "fail",
+            fc.PROVENANCE_SOURCE_ABSENT,
+        )
+    )
+    args = conn.execute.call_args[0]
+    assert args[4] == "fact_check_failed"
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # End-to-end per-draft pipeline
 # ─────────────────────────────────────────────────────────────────────────
 

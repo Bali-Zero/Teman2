@@ -109,6 +109,21 @@ DEFAULT_MODEL = os.environ.get("WR2_FACT_CHECKER_MODEL", "claude-opus-4-7")
 DEFAULT_TIMEOUT_S = int(os.environ.get("WR2_FACT_CHECKER_TIMEOUT_S", "120"))
 TELEMETRY_PATH = Path.home() / "logs" / "wr2_fact_checker_telemetry.jsonl"
 
+# Emergency bypass for the 2026-08-03 Change 3 hard gate (provenance ∈
+# {source_absent, claim_unparseable} → fact_check_failed). Default ON — the
+# gate is the whole point of today's change. Flip to "false" only if the
+# gate turns out to be blocking a healthy pipeline at a rate operations
+# cannot tolerate (e.g. an upstream research_json regression starving every
+# draft of external truth) — it reverts _persist_checked to the PRE-Change-3
+# routing (only an active `fail` blocks; source_absent/claim_unparseable
+# fall through to 'drafts_imaged_checked' same as before today). Does NOT
+# affect what gets computed and recorded in fact_check_json.provenance —
+# only which status the draft advances to — so disabling it is a fast,
+# reversible operational lever, not a silent data loss.
+WR2_PROVENANCE_HARD_GATE_ENABLED = (
+    os.environ.get("WR2_PROVENANCE_HARD_GATE_ENABLED", "true").lower() != "false"
+)
+
 # Provenance labels (2026-08-03 — root-cause report
 # research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md,
 # recommendation #2). Replace the false verified/degraded binary with an
@@ -591,10 +606,16 @@ async def _persist_checked(
     of fact_check_status for the old 'degraded' case, so a caller must always
     compute and pass it deliberately rather than fall through to a silent
     default.
+
+    Emergency bypass: `WR2_PROVENANCE_HARD_GATE_ENABLED=false` reverts the
+    provenance-based block to the pre-Change-3 routing (only an active
+    `fail` blocks) — see the module-level constant's docstring. The
+    provenance label is still computed and persisted in fact_check_json
+    either way; only the STATUS the draft advances to is affected.
     """
-    if fact_check_status == "fail" or provenance in (
-        PROVENANCE_SOURCE_ABSENT,
-        PROVENANCE_CLAIM_UNPARSEABLE,
+    if fact_check_status == "fail" or (
+        WR2_PROVENANCE_HARD_GATE_ENABLED
+        and provenance in (PROVENANCE_SOURCE_ABSENT, PROVENANCE_CLAIM_UNPARSEABLE)
     ):
         new_status = "fact_check_failed"
     else:
