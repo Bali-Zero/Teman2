@@ -174,6 +174,94 @@ def _scale_specific_pma_context_note(code: str, query: str) -> str:
     return PMA_SCALE_CONTEXT_BY_CODE.get(code, "")
 
 
+async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
+    """Backfill the Bali verdict on any result that was not built from a Qdrant payload.
+
+    THIS IS THE CLASS FIX, and it is here rather than at the constructors on
+    purpose. Seven call sites in this module build a `KBLISearchResult`: two from
+    a Qdrant payload, the other five from `kbli_documents`, `kg_nodes` or a
+    hardcoded fallback — none of which carry the Bali layer (measured: 0 of 1,563
+    `kbli_documents` rows hold an `l4_bali` key). Curing only the constructors I
+    happened to look at would not reduce the risk, it would only move WHICH query
+    shape gets the wrong answer — a code typed directly still resolves through
+    the Postgres path.
+
+    So the fill happens once, at the choke point every answer passes through, and
+    every future constructor inherits it without knowing this exists.
+
+    Failure is SILENCE, never a guess: if Qdrant is unreachable or the point has
+    no verdict, `bali_blocked` stays None and the note helper says nothing. A
+    degraded answer that omits the Bali warning is bad; one that invents "open"
+    is the defect this whole lane exists to remove.
+    """
+    for result in results:
+        if result.bali_blocked is not None:
+            continue
+        try:
+            payload = await _get_kbli_payload_from_qdrant(result.code)
+        except Exception as exc:  # broad on purpose: degrade to silence, never to a claim
+            logger.warning("Bali verdict lookup failed for %s: %s", result.code, exc)
+            continue
+        if not payload:
+            continue
+        blocked = _payload_value(payload, "bali_blocked")
+        if blocked is None:
+            continue
+        result.bali_blocked = bool(blocked)
+        result.bali_status = _payload_value(payload, "bali_status")
+        result.bali_reason = _payload_value(payload, "bali_reason", default="") or ""
+        logger.info(
+            "🌴 Backfilled Bali verdict for %s: %s (blocked=%s)",
+            result.code,
+            result.bali_status,
+            result.bali_blocked,
+        )
+
+
+def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
+    """The Bali provincial verdict, as a line the model cannot miss.
+
+    DERIVED from the payload, never a hand-maintained table: the sibling note
+    above reads `PMA_SCALE_CONTEXT_BY_CODE`, which is fine for a handful of
+    special cases and hopeless for the 518 codes this covers.
+
+    Three deliberate choices, each one a way this could go wrong:
+
+    * **Silence when the payload says nothing.** `bali_blocked is None` means the
+      point predates the Bali layer, not that the activity is open. Inventing
+      "open" from an absent field is the exact inference this lane spent a week
+      withdrawing.
+    * **Not gated on the query.** `_scale_specific_pma_context_note` only fires
+      when the question mentions foreign investment; a Bali block is material
+      even when it does not ("how do I open a massage parlour in Bali?"), and
+      staying silent there is what produced the wrong answer.
+    * **The reason is passed through, never re-worded.** It is the sentence the
+      adjudication wrote, and it already names its own instrument — a summary
+      here would be a second opinion drifting away from the page.
+    """
+    if result.bali_blocked is None:
+        return ""
+    if not result.bali_blocked:
+        return (
+            "BALI: this activity is NOT blocked for a PT PMA by the Bali provincial "
+            "moratorium. National ownership rules still apply separately."
+        )
+    reason = (result.bali_reason or "").strip()
+    note = (
+        "BALI — BLOCKED FOR A FOREIGN-OWNED COMPANY (PT PMA). This is a PROVINCIAL "
+        "restriction and it is independent of the national PMA status above: an "
+        f"activity can be 100% open nationally and still be unregistrable in Bali. "
+        f"Verdict code: {result.bali_status}."
+    )
+    if reason:
+        note = f"{note} Stated cause: {reason}"
+    note = (
+        f"{note} You MUST say the activity is blocked in Bali and give this cause. "
+        "Do not answer that it can be registered in Bali."
+    )
+    return note
+
+
 _TRANSLATE_SYSTEM = (
     "You are an expert in KBLI (Klasifikasi Baku Lapangan Usaha Indonesia), the Indonesian Business Classification System.\n"
     "Your task: translate any business activity query (in any language) into the most accurate Indonesian KBLI search phrase.\n\n"
@@ -343,8 +431,12 @@ async def _generate_kbli_explanation_gemini(
 
 @cached(
     ttl=43200,
-    prefix="kbli_explain_v27",
-)  # Cache explanations for 12 hours (v27: 56101 PMA/Besar risk corrected to Menengah Tinggi)
+    prefix="kbli_explain_v28",
+)  # Cache explanations for 12 hours.
+# v28 (2026-08-03): the Bali provincial verdict now reaches the model. The bump is
+# NOT cosmetic — this cache is 12h deep and keyed on the prefix, so every answer
+# already stored under v27 was generated blind to the Bali block and would keep
+# being served for half a day after the deploy. A cure the cache hides is not live.
 async def _generate_kbli_explanation(
     query: str,
     results: list[KBLISearchResult],
@@ -363,6 +455,9 @@ async def _generate_kbli_explanation(
     lang = _detect_language(query)
     logger.info(f"🌐 Detected language: {lang} for query: '{query[:40]}'")
 
+    # Every answer passes here, whatever built its results — see _fill_bali_verdicts.
+    await _fill_bali_verdicts(results)
+
     context_parts = []
     for r in results:
         # Check if we have deep metadata from Postgres/Expert injection
@@ -374,6 +469,10 @@ async def _generate_kbli_explanation(
         scale_note = _scale_specific_pma_context_note(r.code, query)
         if scale_note:
             expert_info = f"{expert_info}\n  PMA/foreign-owned scale note: {scale_note}"
+
+        bali_note = _bali_verdict_context_note(r)
+        if bali_note:
+            expert_info = f"{expert_info}\n  {bali_note}"
 
         # Use full parent document content if available, otherwise fall back to truncated description
         if parent_docs and r.code in parent_docs:
@@ -1033,6 +1132,11 @@ async def chat_kbli(
                         score=round(r.get("score", 0.0), 4),
                         pma_status=_payload_value(p, "pma_status", default="Verify at OSS"),
                         risk_category=_payload_value(p, "kategori_risiko", default="Verify at OSS"),
+                        bali_status=_payload_value(p, "bali_status"),
+                        # No default: a missing field must stay None so the note
+                        # helper can tell "not blocked" from "we were not told".
+                        bali_blocked=_payload_value(p, "bali_blocked"),
+                        bali_reason=_payload_value(p, "bali_reason", default="") or "",
                     ),
                 )
                 if len(results) >= 5:
