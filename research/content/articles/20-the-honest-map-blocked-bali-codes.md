@@ -10,6 +10,8 @@ status: published-draft
 methodology: "Counted records where l4_bali.blocked == true across all 1,559 classified records; reported measured figure, not the editorial plan's earlier 945/39% estimate (which counted a larger 2,422-row OSS scope set)."
 ---
 
+> **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
+
 # The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA
 
 This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and counts them. How much of the Bali business map is actually walled off to foreign investment? Not as a slogan, but as a number you can audit.

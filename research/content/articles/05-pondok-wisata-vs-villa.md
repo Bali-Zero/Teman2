@@ -9,6 +9,8 @@ kbli_codes:
 status: published-draft
 ---
 
+> **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
+
 # Pondok Wisata vs Villa: Why Foreigners Can't Own the Cheap One
 
 Walk through any conversation about Bali accommodation and you'll hear the word *pondok wisata* tossed around as if it were the budget-friendly cousin of the villa — same idea, smaller, cheaper, lighter paperwork. That framing is half right and entirely dangerous. The pondok wisata is indeed the smaller, cheaper, more local model. It is also the one a foreigner is *most* completely shut out of. Understanding why is one of the cleanest lessons in how Bali property actually works.
