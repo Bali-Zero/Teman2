@@ -159,6 +159,21 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "recomputable integrity anchor, never a credential (open writer set, "
         "so content-keyed and restricted to translation files)",
     ),
+    # infra/vcr/expected_claims.yaml (VCR pilot, #3575): certified_hash is the
+    # sha256 of scripts/arsenal_probe.py at registry-authoring time — a public
+    # integrity anchor used to detect HOME-fork drift and unreviewed hand-edits
+    # of the prober (scar family #1), never a credential; recomputable by
+    # anyone with `hashlib.sha256(open('scripts/arsenal_probe.py','rb').read())`.
+    # Same shape-check discipline as the two rules above: value must be exactly
+    # 64 lowercase hex characters, end-anchored to the line, so a real secret
+    # pasted onto a certified_hash line would not match this rule.
+    (
+        re.compile(r"^infra/vcr/expected_claims\.yaml$"),
+        re.compile(r'^\s*certified_hash\s*:\s*"[0-9a-f]{64}"\s*$'),
+        "VCR pilot expected-claim registry: certified_hash is a public sha256 "
+        "integrity anchor of scripts/arsenal_probe.py (R5, scar family #1 "
+        "HOME-fork drift detection), not a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
