@@ -123,6 +123,44 @@ def test_the_surviving_perpres_closure_is_still_sayable():
         )
 
 
+def test_the_editorial_prose_backlog_can_only_shrink():
+    """A RATCHET, not a gate — and the difference is the point.
+
+    The verdict layer was cured on 2026-08-03; the EDITORIAL prose that
+    explains it was not. 36 codes still argue the withdrawn inference in
+    `intel_2026`, in fluent English, on pages that render live — and several
+    now contradict their own badge: 13 codes read NON_CLASSIFICABILE ("the
+    Bali position cannot be stated") while the prose tells the reader a PT PMA
+    "cannot register it", and 2 more are scope-dependent. That is the
+    expensive direction of the error: it turns away business we could take.
+
+    Curing it means re-authoring 45 passages of client-facing legal prose,
+    which is a NEW claim each time and belongs behind a cross-family grader
+    (W113: retracting one claim produced three false replacements, because
+    every adversarial round was pointed at the sentence being removed and none
+    at the sentence being written). Arming a hard gate on a live 36-code
+    backlog would only turn every unrelated PR red (W95).
+
+    So this asserts the only thing that is both true today and useful
+    tomorrow: the number may fall, never rise. A new page that re-imports the
+    argument fails here.
+    """
+    # 37 measured by THIS regex on 2026-08-03. A narrower hand-pattern gave 36 —
+    # the number a ratchet pins must be the one its own guard measures, or the
+    # ratchet is calibrated against a different question than it asks.
+    known_backlog = 37
+    offenders = sorted(
+        r["kode_kbli_2025"]
+        for r in _canonical_rows()
+        if WITHDRAWN_CLAIM.search(json.dumps(r.get("intel_2026") or {}, ensure_ascii=False))
+    )
+    assert len(offenders) <= known_backlog, (
+        f"{len(offenders)} canonical records now carry the withdrawn inference in editorial "
+        f"prose, up from the recorded {known_backlog}. New ones: this claim was withdrawn on "
+        f"2026-08-03 and may not re-enter the corpus. Offenders: {offenders}"
+    )
+
+
 @pytest.mark.parametrize(
     "sentence",
     [
