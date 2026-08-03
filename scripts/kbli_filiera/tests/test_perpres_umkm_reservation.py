@@ -36,6 +36,9 @@ from parse_perpres_lampiran2 import (  # noqa: E402
 from perpres_umkm_reservation_relation import (  # noqa: E402
     RELATION,
     classify,
+    live_heirs,
+    load_canonical,
+    load_crosswalk,
     foreign_can_take,
     load_relation,
     report,
@@ -283,15 +286,15 @@ _LIVE_OPEN = {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "X"}
 
 def test_a_kemitraan_row_is_never_a_divergence():
     """INNOCENCE — a partnership duty leaves foreign ownership intact."""
-    bucket, _ = classify({"code": "01122", "column": "kemitraan", "text": "Padi", "page": 1},
-                         {"01122": _LIVE_OPEN})
+    bucket, _, _heirs = classify({"code": "01122", "column": "kemitraan", "text": "Padi", "page": 1},
+                         {"01122": _LIVE_OPEN}, {})
     assert bucket == "kemitraan-no-bar"
 
 
 def test_an_open_reserved_row_is_the_owner_question():
     """GUILT — live code, readable single activity, catalogue publishes it open."""
-    bucket, _ = classify({"code": "01122", "column": "dialokasikan", "text": "Padi inbrida", "page": 1},
-                         {"01122": _LIVE_OPEN})
+    bucket, _, _heirs = classify({"code": "01122", "column": "dialokasikan", "text": "Padi inbrida", "page": 1},
+                         {"01122": _LIVE_OPEN}, {})
     assert bucket == "whole-row"
 
 
@@ -301,8 +304,8 @@ def test_a_zero_cap_terbatas_already_agrees():
     evidence that it is not."""
     rec = {"pma_status": "TERBATAS", "pma_max_asing": 0, "judul": "Minimarket"}
     assert foreign_can_take(rec) is False
-    bucket, _ = classify({"code": "47111", "column": "dialokasikan", "text": "Minimarket", "page": 13},
-                         {"47111": rec})
+    bucket, _, _heirs = classify({"code": "47111", "column": "dialokasikan", "text": "Minimarket", "page": 13},
+                         {"47111": rec}, {})
     assert bucket == "agree"
 
 
@@ -314,9 +317,9 @@ def test_an_absent_cap_is_not_a_zero_cap():
 
 def test_a_grade_qualified_row_is_not_a_whole_code_verdict():
     """'sederhana dan madya' reserves construction GRADES, not the activity."""
-    bucket, _ = classify(
+    bucket, _, _heirs = classify(
         {"code": "01122", "column": "dialokasikan", "text": "sederhana dan madya", "page": 12},
-        {"01122": _LIVE_OPEN})
+        {"01122": _LIVE_OPEN}, {})
     assert bucket == "segment-qualified"
 
 
@@ -324,14 +327,92 @@ def test_an_unreadable_activity_is_never_counted_as_a_contradiction():
     """Order matters: a row whose bidang usaha wrapped away is unusable, even
     though its code is certain. Judging it divergent would assert a bar on an
     activity nobody read."""
-    bucket, _ = classify({"code": "01122", "column": "dialokasikan", "text": None, "page": 9},
-                         {"01122": _LIVE_OPEN})
+    bucket, _, _heirs = classify({"code": "01122", "column": "dialokasikan", "text": None, "page": 9},
+                         {"01122": _LIVE_OPEN}, {})
     assert bucket == "activity-unknown"
 
 
 def test_a_code_with_no_2025_descendant_is_archaeology():
-    bucket, record = classify({"code": "99999", "column": "dialokasikan", "text": "X", "page": 1}, {})
+    bucket, record, _heirs = classify({"code": "99999", "column": "dialokasikan", "text": "X", "page": 1}, {}, {})
     assert bucket == "retired-2020-code" and record is None
+
+
+# --- the bucket must mean what its name says: RETIRED, not merely RENUMBERED ---
+#
+# The test above is the whole reason this defect lived: it proves the bucket
+# FIRES when there is genuinely no descendant, and nothing proved it does NOT
+# fire when there is one under a different number. Guilt without innocence.
+# Measured on the shipped data before the fix: 30 of 30 rows in this bucket had
+# a live heir, reaching 66 live pages, every one published TERBUKA/100%.
+
+_RENUMBERED = {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Aktivitas Vila"}
+
+
+def test_a_renumbered_code_is_not_archaeology():
+    """GUILT for the real regression. `55193 Vila` (2020) is `55203` (2025):
+    the number is gone, the page is live and published open. Classifying it as
+    retired files a live client-facing reservation under 'not client-facing' —
+    failure in the invisible direction."""
+    bucket, record, heirs = classify(
+        {"code": "55193", "column": "dialokasikan", "text": "Vila", "page": 15},
+        {"55203": _RENUMBERED},
+        {"55193": ["55203"]},
+    )
+    assert bucket == "whole-row"
+    assert heirs == ["55203"] and record is _RENUMBERED
+
+
+def test_a_split_activity_is_never_collapsed_onto_its_heirs():
+    """GUILT. `55110` is reserved as 'Hotel Bintang I' and the crosswalk sends
+    it to all five star ratings. Reporting that as a whole-row divergence would
+    manufacture a reservation on five-star hotels out of a conversion table."""
+    stars = {f"5510{i}": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": f"Hotel {i}"}
+             for i in range(1, 6)}
+    bucket, record, heirs = classify(
+        {"code": "55110", "column": "dialokasikan", "text": "Hotel Bintang I", "page": 14},
+        stars,
+        {"55110": list(stars)},
+    )
+    assert bucket == "split-heirs"
+    assert record is None, "a split row has no single record to judge"
+    assert len(heirs) == 5
+
+
+def test_the_crosswalk_beats_number_identity_when_both_exist():
+    """A 2025 catalogue may REUSE a 2020 number for a different activity. The
+    conversion table is the only thing that knows which activity carried over,
+    so identity must not win over it."""
+    canon = {"11111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "reused number"},
+             "22222": {"pma_status": "TERBATAS", "pma_max_asing": 0, "judul": "real heir"}}
+    bucket, _rec, heirs = classify(
+        {"code": "11111", "column": "dialokasikan", "text": "X", "page": 1},
+        canon,
+        {"11111": ["22222"]},
+    )
+    assert heirs == ["22222"]
+    assert bucket == "agree", "judged on the heir's cap, not on the reused number's"
+
+
+def test_identity_is_the_fallback_when_the_crosswalk_is_silent():
+    """INNOCENCE. A gap in the edges must degrade to the old reading, never
+    erase a live page: a missing edge is ignorance, not extinction."""
+    bucket, record, heirs = classify(
+        {"code": "01122", "column": "dialokasikan", "text": "Padi inbrida", "page": 1},
+        {"01122": _LIVE_OPEN},
+        {},
+    )
+    assert bucket == "whole-row" and heirs == ["01122"] and record is _LIVE_OPEN
+
+
+def test_a_missing_crosswalk_file_is_cannot_verify_not_a_clean_report():
+    """The annex speaks 2020 and the catalogue speaks 2025. With no crosswalk
+    the module cannot tell retired from renumbered, and a report that says
+    'nothing renumbered' is then indistinguishable from a healthy one (W84).
+    Exit 4, not 0."""
+    from pathlib import Path as _P
+    import pytest as _pytest
+    with _pytest.raises(FileNotFoundError):
+        load_crosswalk(_P("/nonexistent/edges-lampiran5.json"))
 
 
 # ------------------------------------------------- pins on the shipped file
@@ -375,11 +456,46 @@ def test_report_never_gates():
     """Deliberate: divergence here is a legal reading reserved to the owner."""
     rel = load_relation()
     canonical = {r["code"]: dict(_LIVE_OPEN) for r in rel["rows"]}
-    out = report(rel, canonical)
+    out = report(rel, canonical, {})
     assert out["buckets"]["kemitraan-no-bar"] == sum(1 for r in rel["rows"] if r["column"] == "kemitraan")
     assert sum(out["buckets"].values()) == out["rows_emitted"]
+
+
+def test_no_row_of_the_shipped_annex_is_actually_retired():
+    """The measurement that names the defect, run on the SHIPPED data rather
+    than a fixture — a fixture proves the branch, only the real annex proves the
+    world. Before the crosswalk, `retired-2020-code` held 30 rows and its own
+    docstring called them 'archaeology, not client-facing'; every one of the 30
+    had a live 2025 heir. If this bucket ever refills, the claim must be
+    re-measured before it is believed."""
+    out = report(load_relation(), load_canonical(), load_crosswalk())
+    assert out["buckets"].get("retired-2020-code", 0) == 0
+
+
+def test_every_split_row_names_more_than_one_live_heir():
+    """INNOCENCE for the new bucket: `split-heirs` must never hold a row that a
+    single page answers — that row belongs in the owner's main question list,
+    and parking it here would hide it exactly as `retired-2020-code` did."""
+    out = report(load_relation(), load_canonical(), load_crosswalk())
+    for row in out["detail"].get("split-heirs", []):
+        assert len(row["heirs_2025"]) > 1, row["code"]
 
 
 def test_relation_file_is_where_the_reader_expects_it():
     assert RELATION.name == "perpres-umkm-reservation.json"
     assert json.loads(RELATION.read_text())["instrument"].startswith("Perpres 49/2021")
+
+
+def test_live_heirs_deduplicates_repeated_edges():
+    """The crosswalk carries one edge per PDF row, so a 2020 code split across
+    pages repeats an heir. Counting duplicates would push a 1:1 carry-over into
+    `split-heirs` and hide it from the owner's main list."""
+    canon = {"55203": {"pma_status": "TERBUKA", "judul": "Vila"}}
+    assert live_heirs("55193", canon, {"55193": ["55203", "55203"]}) == ["55203"]
+
+
+def test_live_heirs_drops_edges_to_codes_the_catalogue_does_not_publish():
+    """An edge to a code with no live page is not an heir — counting it would
+    manufacture a split out of a page nobody can open."""
+    canon = {"55203": {"pma_status": "TERBUKA", "judul": "Vila"}}
+    assert live_heirs("55193", canon, {"55193": ["55203", "99999"]}) == ["55203"]
