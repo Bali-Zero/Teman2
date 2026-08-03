@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
 
 # CHAPTER: The Surf-Coliving
@@ -111,3 +115,7 @@ Finn came in wanting to own a building full of beds. The law says the beds, at t
 The principle Finn has to internalise is the one the island has been signalling all along: **stop trying to own the part that's reserved, and own the part that's yours.** The beds, at small scale, are Balinese by design — that is not negotiable and not worth fighting. But the surf, the school, the program, the table, the brand, the community — every magnetic thing that made his vision more than a guesthouse — those are all activities a PMA *can* legally hold, once each is cleared on its own terms. The durable version of the surf-coliving dream is not a foreigner quietly owning a compound full of rooms. It is a foreigner owning the *reason people come*, partnered with the locals who own the place they sleep. That is not a downgrade of the dream. It is the only version of it the island will let him keep — and the only one he can sleep soundly inside.
 
 *Before you sign anything, scan to check the live status of KBLI 55209 against the candidate open routes — 93297 (water tourism), 85510 (sport & recreation education), 79121 (travel agency) and 56101 (food service) — and confirm, for each, both the sector permits it demands and its live OSS risk grade and Bali scope conditions, on the Nuzantara platform.*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.

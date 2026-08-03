@@ -6,6 +6,7 @@ kbli_codes:
   - "86105 — Aktivitas Klinik Swasta (Private clinic) — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable)"
   - "96220 — Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya (Beauty care) — National: TERBUKA 100% — Bali: CHIUSO_PMA_NO_BESAR (blocked — no large-scale row, reserved for UMKM)"
 status: published-draft
+adversarial_review: codex
 ---
 
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
@@ -37,3 +38,7 @@ The strategic move for a foreign investor in this space is to build the business
 The wellness sector, in short, rewards the operator who builds the heavier, more clinical, more regulated version of the business — and quietly shuts out the lighter cosmetic one. Same customer, same glow, completely different legal fate.
 
 *Check 86105 and 96220 side by side on the Bali Zero KBLI Navigator at balizero.com — the two-branch national-vs-Bali view shows you the clinical-vs-cosmetic line that decides whether your wellness business is an open door or a hidden wall.*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.

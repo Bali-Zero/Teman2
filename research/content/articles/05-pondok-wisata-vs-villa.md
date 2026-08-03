@@ -7,6 +7,7 @@ kbli_codes:
   - "55203 — Aktivitas Vila — National: TERBUKA 100% — Bali: CHIUSO_PMA_NO_BESAR (blocked)"
   - "55204 — Aktivitas Apartemen Hotel — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable)"
 status: published-draft
+adversarial_review: codex
 ---
 
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
@@ -40,3 +41,7 @@ If you genuinely want to own and operate accommodation as a foreigner in Bali, t
 The mental model to carry away: in Bali accommodation, **legality scales with capital and risk class, not down.** The smaller and cheaper the model, the more likely it is reserved for locals. The foreigner's legitimate path is up-market — apart-hotel, intermediation, genuine commercial scale — not the cosy little homestay that looked like the easy way in.
 
 *See 55201, 55203, and 55204 mapped side by side — national status vs Bali status — on the Bali Zero KBLI Navigator at balizero.com, so you can tell the reserved-for-locals codes from the ones a foreigner can actually register before you fall for the "cheap one."*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.

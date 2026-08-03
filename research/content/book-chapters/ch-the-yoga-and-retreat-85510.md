@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
 
 # CHAPTER: The Yoga & Retreat Studio
@@ -117,3 +121,7 @@ Each adjacent code below reads as registrable for a foreign-owned PMA in Bali in
 The principle underneath all five routes is the seam itself: **own what travels, partner for what is rooted.** The program, the curriculum, the brand, the certificate, the package — these move with you and the island has, for now, left their doors open. The beds, the land, the lodging — these are rooted, finite, and reserved, and the way through is never to own them under your own blocked code but to source them from someone who holds the licence. The retreat founders who finish are the ones who built the open half with conviction and refused to staple the closed half to it. Keep the seam clean and confirm each door live, and it stays open; blur it once and the whole structure inherits the lock.
 
 *Before you sign anything, scan to check the live status of KBLI 85510 — and of the routes around it (79121, 82990, 56210, 56101, 85691, 85692) plus the blocked accommodation codes (55203, 55201, 55209) — on the Nuzantara platform, remembering that each registrable code carries its own OSS risk tier and sector permits to confirm at registration.*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.

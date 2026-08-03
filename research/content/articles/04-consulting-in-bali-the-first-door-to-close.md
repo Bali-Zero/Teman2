@@ -9,6 +9,7 @@ kbli_codes:
   - "62201 — Aktivitas Konsultansi dan Manajemen Keamanan Siber — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable)"
   - "62209 — Aktivitas Konsultansi Komputer dan Manajemen Fasilitas Komputer Lainnya — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable)"
 status: published-draft
+adversarial_review: codex
 ---
 
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
@@ -48,3 +49,7 @@ If your actual expertise has a genuine technology spine — security advisory, s
 The lesson of the consulting door is the lesson of the whole island: the simplest-looking business is rarely the easiest to register, and the route that survives is usually the one with more substance, not less.
 
 *Before you register any 7020x consulting code, check its live Bali status on the Bali Zero KBLI Navigator at balizero.com — and see the IT-consulting alternatives (62201, 62209) that survive the moratorium, mapped national-vs-Bali in the same two-branch view.*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.

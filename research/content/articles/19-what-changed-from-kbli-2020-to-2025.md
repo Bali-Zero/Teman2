@@ -8,6 +8,7 @@ kbli_codes:
   - "55203 — Aktivitas Vila — National: TERBUKA 100% — Bali: CHIUSO_PMA_NO_BESAR (blocked) — concrete renumbering example (CODICE_RINUMERATO from 55193)"
   - "55193 — RETIRED 2020 code (renumbered to 55203 in KBLI 2025) — does NOT exist as a 2025 code"
 status: published-draft
+adversarial_review: codex
 ---
 
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
@@ -51,3 +52,7 @@ A pre-2025 guide can be wrong about the code *and* wrong about the geography in 
 The fix is unglamorous and absolute: never trust a KBLI number you didn't confirm against current 2025 data, and never trust a national "open" status without checking the Bali risk-class verdict on top.
 
 *Check whether your code still exists in KBLI 2025 — and its live Bali status — on the Bali Zero KBLI Navigator at balizero.com, so a five-year-old number from a forum post doesn't send you to a notary with a code the system retired.*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.

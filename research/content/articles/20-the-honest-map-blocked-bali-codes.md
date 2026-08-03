@@ -8,6 +8,7 @@ kbli_codes:
   - "55203 (Aktivitas Vila) and 56303 (Kafe) used as illustrative blocked codes; 56301 (Bar) as a surviving sibling."
 status: published-draft
 methodology: "Counted records where l4_bali.blocked == true across all 1,559 classified records; reported measured figure, not the editorial plan's earlier 945/39% estimate (which counted a larger 2,422-row OSS scope set)."
+adversarial_review: codex
 ---
 
 > **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
@@ -60,3 +61,7 @@ The map is not "Bali is closed." It is "Bali is closed to the *easy, low-risk* v
 We will keep this count current as the OSS data and the moratorium evolve — and we will keep showing the arithmetic, because the moment a number can't be reproduced from the file, it stops being journalism and starts being a rumour.
 
 *Don't take the aggregate on faith — check your own exact code against the live count on the Bali Zero KBLI Navigator at balizero.com, where every code's national status and Bali verdict sit side by side, drawn from the same data this article counted.*
+
+## Adversarial review
+
+Codex reviewed the withdrawal and replacement wording over three rounds; no objections survived after its identified defects were corrected.
