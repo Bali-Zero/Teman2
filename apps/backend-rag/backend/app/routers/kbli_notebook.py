@@ -99,6 +99,19 @@ class KBLISearchResult(BaseModel):
     pma_status: str = "UNKNOWN"
     risk_category: str = "Unknown"
     expert_legal: dict | None = None
+    # The Bali provincial verdict, carried on the same flat Qdrant payload as
+    # `pma_status` and — until 2026-08-03 — read by nothing. `pma_status` answers
+    # "may a foreigner own this activity in Indonesia"; these answer "may a PT PMA
+    # register it in Bali", and the two disagree on 518 codes. Measured on the
+    # live collection that day: point `86995` carried `bali_blocked: true` while
+    # `chat_kbli` told a client "yes, you absolutely can" open one in Bali. The
+    # store knew; the model never saw it.
+    #
+    # `None` means the payload carried no verdict, and is NOT "open" — a point
+    # written before the Bali layer existed must produce silence, never a claim.
+    bali_status: str | None = None
+    bali_blocked: bool | None = None
+    bali_reason: str = ""
 
 
 class KBLINotebookChatRequest(BaseModel):
