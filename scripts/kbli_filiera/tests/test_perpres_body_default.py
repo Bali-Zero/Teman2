@@ -358,21 +358,22 @@ def test_the_body_lists_carry_their_article(canonical):
 # THE OVERLAY ALREADY TOOK THIS READING — on what evidence
 # --------------------------------------------------------------------------
 
-def test_the_overlay_closes_seventeen_codes_on_an_empty_per_skala(canonical):
+def test_the_overlay_closes_only_adjudicated_reservations(canonical):
     ov = overlay_reconciliation(canonical)
-    assert ov["overlay_closed"] == 39
-    assert len(ov["corroborated_by_scales"]) == 22
-    assert len(ov["closed_on_empty_scales"]) == 17
+    assert ov["overlay_closed"] == 7
+    assert len(ov["corroborated_by_scales"]) == 7
+    assert ov["closed_on_empty_scales"] == []
     assert ov["closed_with_a_besar_row"] == []
 
 
-def test_the_overlay_leaves_open_a_code_whose_scales_lack_besar(canonical):
-    """The same rule, misapplied in the OTHER direction: `93114` is published
-    APERTO on evidence the overlay treats as closing on 22 other codes.
-    """
+def test_the_overlay_reports_absent_besar_codes_not_closed_as_reservations(canonical):
     ov = overlay_reconciliation(canonical)
     not_closed = {r["code"]: r for r in ov["absent_besar_not_closed"]}
-    assert set(not_closed) == {"79110", "93114"}
+    assert set(not_closed) == {
+        "38110", "43110", "55202", "55209", "55300", "56102", "56304",
+        "56306", "70201", "73300", "74199", "79110", "79901", "79902",
+        "86995", "93114", "93119",
+    }
     assert not_closed["93114"]["l4_bali"] == "APERTO_BALI_RISCHIO_ALTO"
 
 
