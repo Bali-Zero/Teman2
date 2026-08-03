@@ -36,15 +36,28 @@ REPO = Path(__file__).resolve().parents[3]
 CANONICAL = REPO / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 OVERLAY = REPO / "data/kbli-app-overlay/kbli-overlay.json"
 
-# The inference is recognised by its LOAD-BEARING claims, each of which is the
-# argument itself rather than one phrasing of it. A single literal sentence
-# would be an under-match: the corpus already carried two wordings, and the one
-# that got away lived in a paragraph a narrower reader never looked at.
+# The inference is recognised by its ARGUMENT — never by its conclusion.
+#
+# The first version of this pattern (shipped 2026-08-03) also matched "cannot
+# register it anywhere in Indonesia", and that was an over-match with a twin.
+# That sentence is equally the conclusion of a TRUE closure: a code that is
+# TERTUTUP at 0% nationally genuinely cannot be registered by a PT PMA
+# anywhere, Bali included. Measured against the corpus, the shipped pattern
+# accused 8 innocent codes (59111, 84121, 84124, 84231, 85201, 85315, 91111,
+# 91211 — all TERTUTUP, all telling the reader the truth) while MISSING 5 real
+# ones (70201, 93115, 93119, 93194, 93199), whose prose says "reserved for
+# UMKM" without the word "nationwide" the pattern insisted on. Over-match and
+# under-match are the same defect at opposite signs, and this guard carried
+# both: it judged the FORM of the conclusion instead of the ENTITY of the
+# argument (superscar #3).
+#
+# What identifies the withdrawn claim is the reasoning — OSS publishes no
+# Usaha Besar scale row, therefore the activity is reserved for UMKM — not
+# whatever a paragraph concludes from it.
 WITHDRAWN_CLAIM = re.compile(
     r"no Usaha Besar scale row"
-    r"|reserved for UMKM nationwide"
-    r"|reserved for micro, small and medium enterprises \(UMKM\) nationwide"
-    r"|cannot register (?:it|this activity) anywhere in Indonesia",
+    r"|reserved for UMKM"
+    r"|reserved for micro, small and medium enterprises",
     re.IGNORECASE,
 )
 
@@ -127,28 +140,29 @@ def test_the_editorial_prose_backlog_can_only_shrink():
     """A RATCHET, not a gate — and the difference is the point.
 
     The verdict layer was cured on 2026-08-03; the EDITORIAL prose that
-    explains it was not. 36 codes still argue the withdrawn inference in
+    explains it was not. 34 codes still argue the withdrawn inference in
     `intel_2026`, in fluent English, on pages that render live — and several
     now contradict their own badge: 13 codes read NON_CLASSIFICABILE ("the
     Bali position cannot be stated") while the prose tells the reader a PT PMA
     "cannot register it", and 2 more are scope-dependent. That is the
     expensive direction of the error: it turns away business we could take.
 
-    Curing it means re-authoring 45 passages of client-facing legal prose,
+    Curing it means re-authoring 53 passages of client-facing legal prose,
     which is a NEW claim each time and belongs behind a cross-family grader
     (W113: retracting one claim produced three false replacements, because
     every adversarial round was pointed at the sentence being removed and none
-    at the sentence being written). Arming a hard gate on a live 36-code
+    at the sentence being written). Arming a hard gate on a live 34-code
     backlog would only turn every unrelated PR red (W95).
 
     So this asserts the only thing that is both true today and useful
     tomorrow: the number may fall, never rise. A new page that re-imports the
     argument fails here.
     """
-    # 37 measured by THIS regex on 2026-08-03. A narrower hand-pattern gave 36 —
-    # the number a ratchet pins must be the one its own guard measures, or the
-    # ratchet is calibrated against a different question than it asks.
-    known_backlog = 37
+    # 34, re-measured after the pattern was corrected to judge the ARGUMENT
+    # instead of its conclusion. The first pin said 37: it counted 8 TERTUTUP
+    # codes whose prose is TRUE and missed 5 real ones. A ratchet pinned to a
+    # mis-calibrated probe ratchets the wrong number.
+    known_backlog = 34
     offenders = sorted(
         r["kode_kbli_2025"]
         for r in _canonical_rows()
@@ -165,8 +179,16 @@ def test_the_editorial_prose_backlog_can_only_shrink():
     "sentence",
     [
         "OSS has no Usaha Besar scale row for this code — it is reserved for UMKM nationwide",
-        "a PT PMA cannot register it anywhere in Indonesia (PP 28/2025 scale-gating)",
+        # The FULL sentence, because guilt lives in the argument. The trailing
+        # clause on its own is in the innocence list below — it is what the
+        # first pattern latched onto, and it convicts true prose.
+        "OSS has no Usaha Besar scale row for this code, so a PT PMA cannot register it "
+        "anywhere in Indonesia (PP 28/2025 scale-gating)",
         "the code is reserved for micro, small and medium enterprises (UMKM) nationwide",
+        # The two wordings the first pattern let through, because it demanded
+        # the word "nationwide" that these do not use.
+        "In Bali, there is no Usaha Besar scale row for it, and the activity is therefore reserved for UMKM.",
+        "leaving the available registration space reserved for UMKM",
     ],
 )
 def test_guilt_every_historical_wording_is_caught(sentence: str):
@@ -182,6 +204,13 @@ def test_guilt_every_historical_wording_is_caught(sentence: str):
         "Blocked in Bali by the provincial PMA moratorium, independent of national opening.",
         "Reserved to Koperasi/UMKM only as to a NAMED sub-activity per Pasal 5(5).",
         "TERBUKA — 100%, and no instrument restricts it.",
+        # THE INNOCENCE THAT THE FIRST PATTERN FAILED. A code that is TERTUTUP
+        # nationally really cannot be registered by a PT PMA anywhere; saying
+        # so is correct, and a guard that reads it as the withdrawn claim
+        # accuses the corpus of telling the truth.
+        "Nationally this KBLI is TERTUTUP: 0% foreign ownership, so a PT PMA cannot register it "
+        "anywhere in Indonesia — Bali included.",
+        "a foreign-owned company cannot register this activity anywhere in Indonesia, including Bali",
     ],
 )
 def test_innocence_legitimate_verdicts_are_not_caught(sentence: str):
