@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WS3 Preview — Portal Day Edition (as implemented)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* WS3 PREVIEW — portal home + matters as implemented in PRs #3050/#3051.
+     Tokens = the real operative-light set used by the implementation. */
+  :root{
+    --paper:#f6f2e9; --card:#fffdf7; --well:#f0e9da;
+    --ink:#16213a; --ink-2:rgba(22,33,58,.64); --ink-3:rgba(22,33,58,.45);
+    --line:rgba(22,33,58,.1); --line-2:rgba(22,33,58,.18);
+    --copper:#b5633a; --copper-text:#9d5230; --sand:#d4b483;
+    --navy:#1e3863; --red:#c8102e;
+    --success:#147a3a; --warning:#ad4f08; --danger:#b91c1c; --info:#1d4ed8;
+    --sans:'Inter',system-ui,sans-serif; --serif:'Cormorant Garamond',Georgia,serif;
+    --mono:ui-monospace,'IBM Plex Mono',Menlo,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5;padding:28px 22px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .hdr{display:flex;align-items:baseline;gap:14px;margin-bottom:22px}
+  .hdr h1{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--navy)}
+  .hdr .tag{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--copper-text);border:1px solid rgba(181,99,58,.4);border-radius:999px;padding:3px 9px}
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tab{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:6px 14px;border-radius:8px;border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);cursor:pointer}
+  .tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .page{display:none}.page.on{display:block}
+
+  /* ---------- PORTAL HOME ---------- */
+  .mast{margin-bottom:18px}
+  .rule{width:56px;height:3px;background:var(--copper);border-radius:2px;margin-bottom:14px}
+  .kicker{font-family:var(--mono);font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+  .mast h2{font-family:var(--serif);font-size:32px;font-weight:600;color:var(--ink);line-height:1.1}
+  .mast h2 em{font-style:normal;color:var(--copper)}
+  .mast .sub{font-size:13px;color:var(--ink-2);margin-top:8px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 34px rgba(22,33,58,.07)}
+  .stat{padding:16px 18px 14px;position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--ac,var(--copper)),transparent 75%)}
+  .stat .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+  .stat .val{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:6px 0 3px;font-variant-numeric:tabular-nums}
+  .stat .val small{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .stat .meta{font-size:11px;color:var(--ink-3);display:flex;gap:8px;align-items:center}
+  .chip{font-family:var(--mono);font-size:10px;border-radius:999px;padding:2px 8px;white-space:nowrap}
+  .chip.ok{color:var(--success);background:color-mix(in srgb,var(--success) 10%,transparent)}
+  .chip.warn{color:var(--warning);background:color-mix(in srgb,var(--warning) 10%,transparent)}
+  .chip.err{color:#fff;background:var(--red)}
+  .row2{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+  .p-head{display:flex;align-items:center;gap:9px;padding:14px 16px 0}
+  .p-head h3{font-size:13px;font-weight:700}
+  .p-head .sub{font-size:11px;color:var(--ink-3)}
+  .tl{padding:8px 16px 14px}
+  .ti{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .ti:last-child{border:none}
+  .dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none;border:2px solid var(--paper)}
+  .d-ok{background:var(--success)} .d-warn{background:var(--warning)} .d-info{background:var(--info)} .d-crit{background:var(--red);box-shadow:0 0 8px rgba(200,16,46,.45)}
+  .ti b{font-size:12.5px;font-weight:600;display:block}
+  .ti small{font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
+  .ti .when{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--ink-2);text-align:right}
+  .ti .when b.crit{color:var(--danger);font-size:12px}
+  .link{font-family:var(--mono);font-size:10.5px;color:var(--copper-text)}
+  .link:hover{color:var(--ink)}
+  /* matters table */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:10px 16px 7px;border-bottom:1px solid var(--line)}
+  tbody td{padding:10px 16px;border-bottom:1px solid var(--line);color:var(--ink-2)}
+  tbody tr:hover{background:color-mix(in srgb,var(--sand) 14%,transparent)}
+  td .nm{color:var(--ink);font-weight:600;display:block}
+  td .em{font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
+  .pill{font-family:var(--mono);font-size:9.5px;padding:2px 9px;border-radius:999px;white-space:nowrap;font-weight:600}
+  .p-ok{color:var(--success);background:color-mix(in srgb,var(--success) 10%,transparent)}
+  .p-warn{color:var(--warning);background:color-mix(in srgb,var(--warning) 10%,transparent)}
+  .p-info{color:var(--info);background:color-mix(in srgb,var(--info) 10%,transparent)}
+  .p-crit{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}
+  .ring{font-family:var(--mono);font-size:11px;color:var(--copper);font-weight:600}
+  .num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:600}
+  .note{margin-top:20px;font-family:var(--mono);font-size:9.5px;color:var(--ink-3);text-align:center;letter-spacing:.06em}
+  @media(max-width:900px){.cards{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>Portal · Day Edition</h1>
+    <span class="tag">WS3 PREVIEW · AS IMPLEMENTED IN #3050 + #3051</span>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-p="home">PORTAL HOME</button>
+    <button class="tab" data-p="matters">MATTERS</button>
+    <button class="tab" data-p="billing">BILLING</button>
+    <button class="tab" data-p="process">PROCESS</button>
+  </div>
+
+  <!-- ================= HOME ================= -->
+  <div class="page on" id="p-home">
+    <div class="mast">
+      <div class="rule"></div>
+      <div class="kicker">Selamat datang · your Bali, in order</div>
+      <h2>Everything's on track, <em>Andreas</em> —<br>two things need your signature.</h2>
+      <div class="sub">Your PT PMA is active. KITAS renewal window opens in 6 days — the pack is ready for review.</div>
+    </div>
+    <div class="cards">
+      <div class="panel stat"><div class="lbl">Active practices</div><div class="val">3</div><div class="meta"><span class="chip ok">ON TRACK</span> 1 awaiting docs</div></div>
+      <div class="panel stat" style="--ac:var(--warning)"><div class="lbl">Next deadline</div><div class="val">6<small>d</small></div><div class="meta"><span class="chip warn">KITAS RENEWAL</span> pack ready</div></div>
+      <div class="panel stat" style="--ac:var(--info)"><div class="lbl">Documents in vault</div><div class="val">27</div><div class="meta"><span class="chip ok">SYNCED</span> drive + vault</div></div>
+    </div>
+    <div class="row2">
+      <div class="panel">
+        <div class="p-head"><h3>Process timeline</h3><span class="sub">KITAS Investor · CLI-2207</span></div>
+        <div class="tl">
+          <div class="ti"><span class="dot d-ok"></span><div><b>Application submitted</b><small>12 JUL · IMMIGRATION</small></div><div class="when"><span class="p-ok pill">DONE</span></div></div>
+          <div class="ti"><span class="dot d-ok"></span><div><b>Document verification</b><small>15 JUL · TEAM REVIEW</small></div><div class="when"><span class="p-ok pill">DONE</span></div></div>
+          <div class="ti"><span class="dot d-warn"></span><div><b>Sponsorship letter</b><small>AWAITING YOUR SIGNATURE</small></div><div class="when"><span class="p-warn pill">ACTION</span></div></div>
+          <div class="ti"><span class="dot d-info"></span><div><b>Biometric appointment</b><small>SCHEDULED · JIMBARAN</small></div><div class="when"><b class="crit" style="color:var(--info)">in 9d</b></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="p-head"><h3>Deadlines</h3><span class="sub">auto-tracked · 60/30/7d</span></div>
+        <div class="tl">
+          <div class="ti"><span class="dot d-crit"></span><div><b>KITAS expiry window opens</b><small>RENEWAL PACK READY</small></div><div class="when"><b class="crit">6d</b><br><small>left</small></div></div>
+          <div class="ti"><span class="dot d-warn"></span><div><b>LKPM Q3 filing</b><small>PT PMA · OSS PORTAL</small></div><div class="when"><b style="color:var(--warning)">41d</b><br><small>left</small></div></div>
+          <div class="ti"><span class="dot d-info"></span><div><b>Passport validity check</b><small>&gt; 6 MONTHS REQUIRED</small></div><div class="when"><b style="color:var(--info)">OK</b><br><small>&nbsp;</small></div></div>
+          <div class="ti" style="border:none"><a class="link" href="#" onclick="return false">View all in Matters →</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MATTERS ================= -->
+  <div class="page" id="p-matters">
+    <div class="mast">
+      <div class="rule"></div>
+      <div class="kicker">Matters · all practices</div>
+      <h2>Your <em>matters</em>, one glance.</h2>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Matter</th><th>Type</th><th>Status</th><th>Progress</th><th>Next step</th><th style="text-align:right">Due</th></tr></thead>
+        <tbody>
+          <tr><td><span class="nm">KITAS Investor renewal</span><span class="em">CLI-2207 · IMM-2026-1143</span></td><td>Visa</td><td><span class="pill p-warn">ACTION NEEDED</span></td><td><span class="ring">72%</span></td><td>Sign sponsorship letter</td><td class="num">6d</td></tr>
+          <tr><td><span class="nm">LKPM Q3 report</span><span class="em">PT PMA · OSS</span></td><td>Compliance</td><td><span class="pill p-info">PREPARING</span></td><td><span class="ring">40%</span></td><td>Revenue figures Q3</td><td class="num">41d</td></tr>
+          <tr><td><span class="nm">Restaurant NIB endorsement</span><span class="em">CLI-2244 · KBLI 56101</span></td><td>Licensing</td><td><span class="pill p-ok">ACTIVE</span></td><td><span class="ring">90%</span></td><td>Final OSS verification</td><td class="num">—</td></tr>
+          <tr><td><span class="nm">PT PMA annual update</span><span class="em">CORP-2026-021</span></td><td>Corporate</td><td><span class="pill p-info">SCHEDULED</span></td><td><span class="ring">15%</span></td><td>Shareholder resolution</td><td class="num">88d</td></tr>
+          <tr><td><span class="nm">KITAP conversion study</span><span class="em">CLI-2207 · FEASIBILITY</span></td><td>Visa</td><td><span class="pill p-crit">QUOTE SENT</span></td><td><span class="ring">5%</span></td><td>Awaiting your decision</td><td class="num">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= BILLING ================= -->
+  <div class="page" id="p-billing">
+    <div class="mast">
+      <div class="rule"></div>
+      <div class="kicker">Billing · invoices & payments</div>
+      <h2>Your <em>billing</em>, crystal clear.</h2>
+    </div>
+    <div class="cards">
+      <div class="panel stat"><div class="lbl">Paid this year</div><div class="val"><small>IDR</small> 96.4<small>M</small></div><div class="meta"><span class="chip ok">8 INVOICES</span></div></div>
+      <div class="panel stat" style="--ac:var(--warning)"><div class="lbl">Outstanding</div><div class="val"><small>IDR</small> 18.0<small>M</small></div><div class="meta"><span class="chip warn">1 PENDING</span> due in 12d</div></div>
+      <div class="panel stat" style="--ac:var(--danger)"><div class="lbl">Overdue</div><div class="val"><small>IDR</small> 0<small>M</small></div><div class="meta"><span class="chip ok">CLEAR</span> nothing overdue</div></div>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Invoice</th><th>Service</th><th>Issued</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>
+          <tr><td><span class="nm">INV-2026-0189</span><span class="em">DUE 04 AUG</span></td><td>KITAS Investor renewal</td><td>20 Jul 2026</td><td><span class="pill p-warn">PENDING</span></td><td class="num">IDR 18,000,000</td></tr>
+          <tr><td><span class="nm">INV-2026-0174</span><span class="em">PAID 11 JUL</span></td><td>LKPM Q2 filing</td><td>27 Jun 2026</td><td><span class="pill p-ok">PAID</span></td><td class="num">IDR 4,500,000</td></tr>
+          <tr><td><span class="nm">INV-2026-0161</span><span class="em">PAID 02 JUL</span></td><td>Restaurant NIB endorsement</td><td>18 Jun 2026</td><td><span class="pill p-ok">PAID</span></td><td class="num">IDR 12,400,000</td></tr>
+          <tr><td><span class="nm">INV-2026-0148</span><span class="em">PAID 19 JUN</span></td><td>PT PMA compliance retainer · Q2</td><td>05 Jun 2026</td><td><span class="pill p-ok">PAID</span></td><td class="num">IDR 7,900,000</td></tr>
+          <tr><td><span class="nm">INV-2026-0132</span><span class="em">PAID 30 MAY</span></td><td>Registered address · yearly</td><td>16 May 2026</td><td><span class="pill p-ok">PAID</span></td><td class="num">IDR 6,200,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= PROCESS ================= -->
+  <div class="page" id="p-process">
+    <div class="mast">
+      <div class="rule"></div>
+      <div class="kicker">Process · live tracking</div>
+      <h2>KITAS Investor — <em>step by step</em>.</h2>
+      <div class="sub">Practice IMM-2026-1143 · started 8 July · assigned to Ayu</div>
+    </div>
+    <div class="row2">
+      <div class="panel">
+        <div class="p-head"><h3>Timeline</h3><span class="sub">7 steps · 4 done</span></div>
+        <div class="tl">
+          <div class="ti"><span class="dot d-ok"></span><div><b>Eligibility & documents check</b><small>8 JUL · TEAM</small></div><div class="when"><span class="p-ok pill">DONE</span></div></div>
+          <div class="ti"><span class="dot d-ok"></span><div><b>Application drafted</b><small>10 JUL · TEAM</small></div><div class="when"><span class="p-ok pill">DONE</span></div></div>
+          <div class="ti"><span class="dot d-ok"></span><div><b>Submitted to Immigration</b><small>12 JUL · OSS/IMM</small></div><div class="when"><span class="p-ok pill">DONE</span></div></div>
+          <div class="ti"><span class="dot d-ok"></span><div><b>Document verification</b><small>15 JUL · IMMIGRATION</small></div><div class="when"><span class="p-ok pill">DONE</span></div></div>
+          <div class="ti"><span class="dot d-warn"></span><div><b>Sponsorship letter</b><small>CLIENT ACTION REQUIRED</small></div><div class="when"><span class="p-warn pill">WAITING ON YOU</span></div></div>
+          <div class="ti"><span class="dot d-info"></span><div><b>Biometrics</b><small>SCHEDULED · JIMBARAN</small></div><div class="when"><span class="p-info pill">IN 9D</span></div></div>
+          <div class="ti"><span class="dot d-info"></span><div><b>Approval & issuance</b><small>ESTIMATED</small></div><div class="when"><span class="p-info pill">~3 WKS</span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="p-head"><h3>Status</h3><span class="sub">live vocabulary</span></div>
+        <div class="tl">
+          <div class="ti"><b>Current stage</b><div class="when"><span class="p-warn pill">WAITING DOCUMENTS</span></div></div>
+          <div class="ti"><b>Government stage</b><div class="when"><span class="p-info pill">SUBMITTED TO GOV</span></div></div>
+          <div class="ti"><b>Payment</b><div class="when"><span class="p-warn pill">INVOICE PENDING</span></div></div>
+          <div class="ti"><b>Completion</b><div class="when"><span class="ring">72%</span></div></div>
+          <div class="ti" style="border:none"><b>Next action</b><div class="when"><span class="link">Sign the sponsorship letter →</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">WS3 DAY EDITION PREVIEW · TOKENS AS IMPLEMENTED · SAMPLE DATA · CONTRASTS ≥4.5:1 TEXT / ≥3:1 NON-TEXT</div>
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+    document.querySelectorAll('.page').forEach(function(x){x.classList.remove('on')});
+    t.classList.add('on');
+    document.getElementById('p-'+t.dataset.p).classList.add('on');
+  });
+});
+</script>
+</body>
+</html>
