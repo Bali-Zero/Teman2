@@ -629,6 +629,7 @@ def test_rebuild_reason_refuses_an_absent_row():
 # ---------------------------------------------------------------------------
 
 import asyncio as _asyncio
+import logging as _logging
 import sys as _sys
 from pathlib import Path as _Path
 
@@ -724,3 +725,129 @@ def test_importing_this_module_under_the_deployed_layout_does_not_crash():
         assert probe.CONFORMANCE_SCRIPT is None
     finally:
         _sys.modules.pop(name, None)
+
+
+# --- `--only` bypasses the content-preservation gate: report it, never silently act ---
+
+
+class _FakeConn:
+    """Minimal asyncpg stand-in: enough to reach the selector-scoped warning."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def execute(self, *_args, **_kwargs):
+        return "OK"
+
+    async def fetch(self, _sql, codes):
+        return [r for r in self._rows if r["kode_kbli"] in codes]
+
+    async def close(self):
+        return None
+
+
+def _row(code, content):
+    return {
+        "kode_kbli": code,
+        "judul": f"KBLI {code}",
+        "content": content,
+        "metadata": {},
+        "created_at": None,
+        "updated_at": None,
+    }
+
+
+_HAND_WRITTEN = (
+    "# KBLI 86995 - Aktivitas Pijat\n\n"
+    "## Informasi Umum\nmachine-shaped head...\n\n"
+    "## Bagaimana Membedakannya dari 86991\n"
+    "Hand-written disambiguation canonical cannot regenerate.\n"
+)
+_MACHINE_SEED = (
+    "# KBLI 74191 - Aktivitas Konsultasi\n\n"
+    "## Informasi Umum\nx\n\n"
+    "## Deskripsi Kegiatan Usaha\ny\n\n"
+    "## Investasi Asing (PMA)\nz\n"
+)
+
+
+def _drive_only(monkeypatch, argv, rows, dataset=()):
+    """Run main() with the DB faked, returning the log records it emitted.
+
+    `dataset` defaults to empty, which is fine for `--only` (the scope comes
+    from the flag). It is NOT fine for `--all-quarantined`, whose scope is
+    DERIVED from the dataset: with no canonical records main() returns at
+    "empty code list" long before the branch under test. That poverty let a
+    real mutation (`elif not args.all_quarantined` → `else`) survive."""
+    monkeypatch.setattr(_sys, "argv", argv)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+
+    async def _dataset(_source):
+        return list(dataset)
+
+    async def _connect(_dsn):
+        return _FakeConn(rows)
+
+    monkeypatch.setattr(_cure, "load_dataset", _dataset)
+    monkeypatch.setattr(_cure.asyncpg, "connect", _connect)
+    return _asyncio.run(_cure.main())
+
+
+def test_only_warns_that_it_will_overwrite_hand_written_prose(monkeypatch, caplog):
+    """GUILT. The gate lives under `--all-licensing-absent`; handing the SAME
+    population to `--only` cures every row the gate would have refused (25 of 80
+    on 2026-08-02). Not blocked — the Perpres-cap lane legitimately replaces
+    prose — but it must not be silent."""
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(monkeypatch, ["cure", "--only", "86995"], [_row("86995", _HAND_WRITTEN)])
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= _logging.WARNING]
+    assert any("bypasses the content-preservation gate" in m for m in warnings), warnings
+    assert any("86995" in m for m in warnings), warnings
+
+
+def test_only_is_silent_on_a_machine_seed_row(monkeypatch, caplog):
+    """INNOCENCE. A 2026-02-18 machine-seed row loses nothing on rebuild —
+    warning about it would train the reader to skip the line that matters."""
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(monkeypatch, ["cure", "--only", "74191"], [_row("74191", _MACHINE_SEED)])
+    assert not [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
+    ]
+
+
+def test_only_does_not_claim_to_overwrite_a_row_that_does_not_exist(monkeypatch, caplog):
+    """INNOCENCE. A code absent from `kbli_documents` has no stored prose, so
+    naming it would be a fabricated casualty — `content=None` alone fails the
+    machine-template predicate, which is why this needs its own branch."""
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(monkeypatch, ["cure", "--only", "99999"], [])
+    assert not [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
+    ]
+
+
+def test_quarantine_scope_is_exempt_from_the_overwrite_warning(monkeypatch, caplog):
+    """INNOCENCE. Under `--all-quarantined` the stored content is FABRICATED by
+    definition, so 'hand-written prose will be overwritten' would be a false
+    alarm about the very text the cure exists to destroy.
+
+    The dataset is REQUIRED here: `--all-quarantined` derives its scope from
+    the `per_skala_disputed_*` marker, so without a marked record the run ends
+    at "empty code list" and this test proves nothing (mutation-verified)."""
+    marked = [{"kode_kbli_2025": "86995", "per_skala_disputed_2026_02": True, "per_skala": []}]
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(
+            monkeypatch,
+            ["cure", "--all-quarantined"],
+            [_row("86995", _HAND_WRITTEN)],
+            dataset=marked,
+        )
+    assert not [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
+    ]
