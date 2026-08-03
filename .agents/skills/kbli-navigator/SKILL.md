@@ -28,6 +28,62 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-08-03 — keep current)
 
+**🟢 2026-08-03 (night) — THE CHAT CHANNEL NOW CARRIES THE BALI VERDICT, AND THE STORE ALWAYS KNEW.**
+Production was asked whether a PT PMA can open a massage parlour (86995) in Bali and answered _"Yes,
+you absolutely can!"_ with capital figures and next steps. The live Qdrant point for 86995 carried
+`bali_blocked: true` at that moment. **Not a data gap — a disconnected pipe, one field wide**:
+`KBLISearchResult` had nowhere to put the verdict, so nothing read it into the LLM context. It was
+never about one code: **518** activities carry a Bali block the channel could not state.
+
+- **Cured at the CHOKE POINT, not at the constructors** (#3557). Seven call sites build a
+  `KBLISearchResult` and only two see a Qdrant payload; the other five read Postgres/the KG, which
+  hold no Bali layer (measured: 0 rows of 1,563). Curing the two in view would not have cut the risk,
+  only moved which question gets the wrong answer (W107). The backfill sits in the one function every
+  answer passes through, and a test asserts that placement rather than trusting it.
+- **Absence is SILENCE, never "open."** A missing verdict produces no sentence at all. Reading absence
+  as permission is the exact inference this lane spent the week withdrawing from 32 codes.
+- The 12h explanation cache prefix moved with the change (`v27`→`v28`) — without it, answers generated
+  blind would have kept serving for half a day after the deploy.
+
+**🟢 QDRANT BALI LAYER SYNCED — 39/39, applied and read back.** `kbli_qdrant_pma_sync.py` is now
+one tool for both layers (#3555), and the separate `patch_qdrant_bali_l4.py` is DELETED: it keyed off
+a field name canonical does not use (`l4_bali.verdict`), defaulted the miss to `"OPEN"`, and would
+have published `OK_or_HIGHER_RISK` + "not blocked by moratorium" onto **118 currently-blocked codes**
+— on the store `inspect_kbli` reads FIRST. Two tools that must agree about one fact are now one
+(W105). Population derived from the canonical diff, not listed by hand: `--layer bali --codes <39>`,
+dry-run → apply → **re-read: 39/39 already agreed**, then `kbli_inspect_cache_bust` (2 of 39 had an
+entry; both evicted — one of them was the code this session had queried before the cure).
+
+**🔴 THE SEVENTH SURFACE: the macOS app's EDITORIAL OVERLAY — three files nothing in this repo had
+ever seen.** `check-fleet.sh` compared exactly ONE file (the machine dataset), found all four copies
+aligned, and printed _"fleet aligned with canonical"_ over three laptops whose PROSE was materially
+wrong. **The guard covered the file that cannot lie in prose and missed the three that do.** Measured
+whole-document against canonical: 9 of 322 entries state an ownership figure canonical contradicts,
+6 carry the withdrawn UMKM inference. Cured 8 (#3562) — per code, because the template written first
+was wrong in BOTH directions: it would have inverted 55203 Vila's TRUE closure (the Perpres annex
+really does allocate _Vila_ to Koperasi/UMKM) and dropped the Bali moratorium block from four others.
+**55202 (youth hostel) was found only because the cure REFUSED** — the first audit read only the
+paragraph naming PMA, and 55202 carries the sentence elsewhere: one miss in a family of six, inside
+the probe written to find them. 79122 said Umrah travel is "fully open, 100%" (annex: 0%); 86101
+handed the reader a 12–24 month roadmap to foreign-own a GOVERNMENT hospital.
+**NOT reconciled, on purpose (7):** 64992/65121/66191/66301 are OJK sectoral caps canonical does not
+model, 85102 encodes a Yayasan/SPK constraint, 73100 rests on a grep of a text-layer-dead PDF, 47221's
+canonical cap is literally `special`. Canonical is the doubtful side in each — aligning prose to it
+would manufacture agreement, not truth.
+
+**🟡 CORRECTION TO THIS FILE'S OWN LEDGER — the 80-code channel cure names the WRONG blocker.** It
+says the apply is parked because it "needs a write DSN" and "on M5 the fly credentials are dead."
+Measured tonight: `flyctl auth whoami` → rc=0, `zero@balizero.com`; the deployed image holds the
+write DSN and `kbli_documents_cure.py`. The real obstacle is different and does not move: the SAFE
+selector `--all-licensing-absent` needs the repo layout (`scripts/kbli_filiera/`) that the image does
+not ship, and it **cannot be substituted by `--only`** — the content-preservation gate runs _only_
+under the state-selector (deliberately, since `--only` serves the quarantine population where the
+stored text is fabricated by definition). So `--only` on this population would destroy the 25
+hand-written rows the reviewed design exists to protect. Detector re-run tonight: `licensing_divergent`
+is **25**, i.e. exactly the previously-REFUSED set — the 55 rebuildable are already written.
+Unblocking wants the writer to accept a report produced by the predicate's sole owner, not a second
+copy of the predicate.
+
 **🔴 2026-08-03 — THE 39 "CLOSED TO PT PMA" BADGES ARE MOSTLY WRONG, AND THE REAL OBSTACLE IN BALI IS
 NOT THE PERPRES AT ALL.** Two research files shipped, both graded by Codex on fresh context (the seat
 is named in each frontmatter; the R1 gate rejects an unnamed one, correctly — an earlier draft said

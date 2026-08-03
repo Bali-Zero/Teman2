@@ -1,0 +1,94 @@
+{
+  "OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium": {
+    "en": "OSS risk at the Besar (large) scale is Medium-High/High → not blocked by the Bali moratorium",
+    "id": "Risiko OSS pada skala Besar adalah Menengah-Tinggi/Tinggi → tidak terblokir oleh moratorium Bali"
+  },
+  "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26": {
+    "en": "OSS risk at the Besar (large) scale is Low/Medium-Low on every scope → blocked by the Bali moratorium (13 May 2026)",
+    "id": "Risiko OSS pada skala Besar adalah Rendah/Menengah-Rendah pada semua lingkup → terblokir oleh moratorium Bali (13/5/2026)"
+  },
+  "medium-high/high risk → not blocked by moratorium (verify per address)": {
+    "en": "Medium-High/High risk → not blocked by the moratorium (verify per address)",
+    "id": "Risiko Menengah-Tinggi/Tinggi → tidak terblokir oleh moratorium (verifikasi per alamat)"
+  },
+  "OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity": {
+    "en": "OSS risk at the Besar (large) scale is low on SOME scope(s) but higher on other(s): registrable as a PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live in OSS per exact activity",
+    "id": "Risiko OSS pada skala Besar rendah pada SEBAGIAN lingkup tetapi lebih tinggi pada lingkup lain: hanya dapat didaftarkan sebagai PMA di Bali dengan mendeklarasikan lingkup berisiko lebih tinggi (mis. PPMSE untuk kode perdagangan platform) — verifikasi langsung di OSS per kegiatan spesifik"
+  },
+  "no OSS-RBA scope (special/sectoral regime: OJK/BI/BPOM/etc.) — Bali registrability needs manual sectoral verification": {
+    "en": "No OSS-RBA scope (special/sectoral regime: OJK/BI/BPOM/etc.) — Bali registrability requires manual sectoral verification",
+    "id": "Tidak ada lingkup OSS-RBA (rezim khusus/sektoral: OJK/BI/BPOM/dll.) — kelayakan pendaftaran di Bali memerlukan verifikasi sektoral manual"
+  },
+  "OSS has no Usaha Besar scale row → activity reserved for UMKM (Perpres 49/2021 Annex II); a PT PMA (Besar by law) cannot register it": {
+    "en": "OSS has no Usaha Besar (large enterprise) scale row → activity reserved for MSMEs (Perpres 49/2021 Annex II); a PT PMA (large by law) cannot register it",
+    "id": "OSS tidak memiliki baris skala Usaha Besar → kegiatan dicadangkan untuk UMKM (Perpres 49/2021 Lampiran II); PT PMA (Besar menurut hukum) tidak dapat mendaftarkannya"
+  },
+  "real estate: proposto per chiusura PMA Bali": {
+    "en": "Real estate: proposed for closure to PMA in Bali",
+    "id": "Real estat: diusulkan untuk ditutup bagi PMA di Bali"
+  },
+  "minimarket/supermarket riservato WNI": {
+    "en": "Minimarket/supermarket reserved for Indonesian citizens (WNI)",
+    "id": "Minimarket/supermarket dicadangkan untuk WNI"
+  },
+  "agricoltura base riservata": {
+    "en": "Basic agriculture reserved (for Indonesian citizens)",
+    "id": "Pertanian dasar dicadangkan (untuk WNI)"
+  },
+  "PMA max 95% (kemitraan dengan masyarakat setempat). Bukan tertutup — merger 02111/02112/02113/02119/02121/02122 KBLI2020.": {
+    "en": "PMA max 95% (partnership with the local community required). Not closed — merger of KBLI-2020 codes 02111/02112/02113/02119/02121/02122.",
+    "id": "PMA maks. 95% (kemitraan dengan masyarakat setempat). Bukan tertutup — penggabungan kode KBLI-2020 02111/02112/02113/02119/02121/02122."
+  },
+  "PMA TERBUKA 100% (ex-02401 recoding Jasa Penggunaan Kawasan Hutan). Risk Menengah-Tinggi.": {
+    "en": "100% OPEN to PMA (recoded from ex-02401, Forest-Area Use Services). Risk: Medium-High.",
+    "id": "TERBUKA 100% untuk PMA (pengkodean ulang dari eks-02401, Jasa Penggunaan Kawasan Hutan). Risiko: Menengah-Tinggi."
+  },
+  "konstruksi gedung: max 67% WNA + partner locale + IUJK": {
+    "en": "Building construction: max 67% foreign ownership + local partner + IUJK (construction licence)",
+    "id": "Konstruksi gedung: maks. 67% WNA + mitra lokal + IUJK"
+  },
+  "cargo/freight forwarding: max 49% WNA": {
+    "en": "Cargo/freight forwarding: max 49% foreign ownership",
+    "id": "Cargo/freight forwarding: maks. 49% WNA"
+  },
+  "Riservato UMKM locali (daily rental): Positive Investment List Perpres 10/2021+49/2021; nominee criminalizzato Perda Bali 4/2026. Catalogo dice TERBUKA ma NSPK chiude.": {
+    "en": "Reserved for local MSMEs (daily rental): Positive Investment List Perpres 10/2021 + 49/2021; nominee arrangements criminalised by Bali Regional Regulation 4/2026. The catalogue says OPEN but the NSPK closes it.",
+    "id": "Dicadangkan untuk UMKM lokal (sewa harian): Daftar Positif Investasi Perpres 10/2021 + 49/2021; nominee dipidanakan oleh Perda Bali 4/2026. Katalog menyatakan TERBUKA tetapi NSPK menutupnya."
+  },
+  "Servizi legali riservati avvocati WNI iscritti (UU 18/2003 Advokat). Catalogo TERBUKA ma professione chiusa a WNA.": {
+    "en": "Legal services reserved for registered Indonesian-citizen advocates (UU 18/2003 on Advocates). The catalogue is OPEN but the profession is closed to foreigners.",
+    "id": "Jasa hukum dicadangkan untuk advokat WNI yang terdaftar (UU 18/2003 tentang Advokat). Katalog TERBUKA tetapi profesinya tertutup bagi WNA."
+  },
+  "Notaio/PPAT è ufficio personale e statale, solo WNI (UU 30/2004 mod. UU 2/2014). PMA impossibile.": {
+    "en": "Notary/PPAT is a personal and state office, Indonesian citizens only (UU 30/2004 as amended by UU 2/2014). PMA is not possible.",
+    "id": "Notaris/PPAT adalah jabatan pribadi dan kenegaraan, hanya WNI (UU 30/2004 jo. UU 2/2014). PMA tidak dimungkinkan."
+  },
+  "Akuntan Publik max 20% WNA in firma.": {
+    "en": "Public accountant: max 20% foreign ownership in the firm.",
+    "id": "Akuntan Publik: maks. 20% WNA dalam firma."
+  },
+  "consulenza mgmt: chiuso PMA Bali dal 28/1/2026 (primo dei 7)": {
+    "en": "Management consulting: closed to PMA in Bali from 28 Jan 2026 (the first of the 7)",
+    "id": "Konsultansi manajemen: tertutup bagi PMA di Bali sejak 28/1/2026 (yang pertama dari 7)"
+  },
+  "rental: proposto chiusura": {
+    "en": "Rental: closure proposed",
+    "id": "Sewa: diusulkan penutupan"
+  },
+  "travel agency: proposto chiusura": {
+    "en": "Travel agency: closure proposed",
+    "id": "Agen perjalanan: diusulkan penutupan"
+  },
+  "klinik: max 67% WNA": {
+    "en": "Clinic: max 67% foreign ownership",
+    "id": "Klinik: maks. 67% WNA"
+  },
+  "Pratica medica individuale solo WNI; WNA solo come direttore clinica PT (86105). ex-86904 TERTUTUP.": {
+    "en": "Individual medical practice is for Indonesian citizens only; foreigners only as the director of a PT clinic (86105). Ex-86904 is CLOSED.",
+    "id": "Praktik kedokteran perorangan hanya untuk WNI; WNA hanya sebagai direktur klinik PT (86105). Eks-86904 TERTUTUP."
+  },
+  "Idem 86201 per specialisti: pratica individuale chiusa WNA.": {
+    "en": "Same as 86201 for specialists: individual practice is closed to foreigners.",
+    "id": "Sama seperti 86201 untuk spesialis: praktik perorangan tertutup bagi WNA."
+  }
+}
