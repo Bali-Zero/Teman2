@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from backend.services.mail_loop import style as style_module
 from backend.services.mail_loop.learn import (
     MatchCandidate,
     extract_signals,
@@ -223,8 +224,6 @@ def test_store_drops_lesson_that_survives_redaction(tmp_path: Path) -> None:
     """
     store = ReplyStyleStore(tmp_path / "reply-style.md")
 
-    import backend.services.mail_loop.style as style_module
-
     original = style_module.redact
     style_module.redact = lambda text: text  # type: ignore[assignment]
     try:
@@ -261,8 +260,15 @@ def test_store_accepts_a_clean_style_lesson(tmp_path: Path) -> None:
 def test_duplicate_lesson_is_not_stored_twice(tmp_path: Path) -> None:
     store = ReplyStyleStore(tmp_path / "reply-style.md")
     lesson = Lesson(bucket="visa/en", text="you rewrote the opening line", observed_on="d1")
-    assert store.append(lesson) is True
-    assert store.append(Lesson(bucket="visa/en", text=lesson.text, observed_on="d2")) is False
+
+    # The appends are the mutation under test, so they happen OUTSIDE the assert:
+    # `python -O` strips assert statements, and an assert that also performs the
+    # write leaves a test that silently exercises nothing under optimisation.
+    first = store.append(lesson)
+    duplicate = store.append(Lesson(bucket="visa/en", text=lesson.text, observed_on="d2"))
+
+    assert first is True
+    assert duplicate is False
     assert store.path.read_text().count("rewrote the opening line") == 1
 
 

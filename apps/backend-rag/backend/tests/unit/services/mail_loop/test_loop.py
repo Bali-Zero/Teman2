@@ -25,6 +25,7 @@ from typing import Any
 import pytest
 
 from backend.services.mail_loop import draft as draft_module
+from backend.services.mail_loop import loop as loop_module
 from backend.services.mail_loop.loop import (
     DRAFT_MARKER,
     MailLoop,
@@ -123,7 +124,6 @@ def stub_model(monkeypatch: pytest.MonkeyPatch) -> None:
         "generate",
         lambda request, dry_run=False: f"Drafted reply about {request.intent}.",
     )
-    import backend.services.mail_loop.loop as loop_module
 
     monkeypatch.setattr(
         loop_module,
@@ -255,7 +255,6 @@ def test_dry_run_performs_zero_mutations(tmp_path: Path, stub_model: None) -> No
 
 def test_drafting_nothing_is_not_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Routing succeeds, every draft fails: the run must read as degraded."""
-    import backend.services.mail_loop.loop as loop_module
 
     def boom(request: Any, dry_run: bool = False) -> str:
         raise draft_module.DraftUnavailable("no model available")
@@ -335,7 +334,12 @@ def test_learning_pass_stores_a_lesson(tmp_path: Path, stub_model: None) -> None
     assert "12.500.000" not in text
     assert "passport scan" not in text
     # And the buffer entry is consumed, so the same send cannot be learned twice.
-    assert pending.take_all() == {}
+    # `take_all` DRAINS, so it is called outside the assert: `python -O` strips
+    # assert statements, and a draining call inside one leaves a check that
+    # exercises nothing under optimisation. Same class as the two CodeQL flagged
+    # in test_learn_and_style.py — a pattern fix is a class audit, not one line.
+    remaining = pending.take_all()
+    assert remaining == {}
 
 
 def test_learning_is_idempotent_across_runs(tmp_path: Path, stub_model: None) -> None:
