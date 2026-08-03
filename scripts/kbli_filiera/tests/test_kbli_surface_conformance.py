@@ -45,6 +45,22 @@ def store(*records) -> dict:
     return {r[B.CODE_FIELD]: r for r in records}
 
 
+def loc(bucket: str, cite: str = "some cite") -> dict:
+    return {"bucket": bucket, "basis": "Pasal 3 ayat (1)", "cite": cite, "besar": "observed"}
+
+
+def neutral_locators_file(tmp_path: Path) -> Path:
+    """A `--locators` fixture with zero SPECIFIC-bucket codes, so CLI-level
+    tests that don't care about citation-propagation stay hermetic — decoupled
+    from whatever `apps/mouth/data/perpres-locators.json` says about "01111"
+    on the day the suite runs (it does, live, carry `named-in-annex`)."""
+    path = tmp_path / "locators.json"
+    path.write_text(
+        json.dumps({"locators": {"00000": loc("residual-besar-observed")}}), encoding="utf-8"
+    )
+    return path
+
+
 # --------------------------------------------------------------------------
 # scope — the property that makes this tool different from every cure before it
 # --------------------------------------------------------------------------
@@ -189,7 +205,16 @@ def test_empty_snapshot_is_cannot_verify_never_clean(tmp_path, capsys):
     canonical.write_text(json.dumps({"data": [canon("01111")]}), encoding="utf-8")
     snap = tmp_path / "s.json"
     snap.write_text("[]", encoding="utf-8")
-    rc = C.main(["--canonical", str(canonical), "--table-json", str(snap)])
+    rc = C.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--locators",
+            str(neutral_locators_file(tmp_path)),
+            "--table-json",
+            str(snap),
+        ]
+    )
     assert rc == C.EXIT_CANNOT_VERIFY
     assert "not a clean bill" in capsys.readouterr().out
 
@@ -197,7 +222,16 @@ def test_empty_snapshot_is_cannot_verify_never_clean(tmp_path, capsys):
 def test_unreachable_database_is_cannot_verify_not_divergence(tmp_path, capsys):
     canonical = tmp_path / "c.json"
     canonical.write_text(json.dumps({"data": [canon("01111")]}), encoding="utf-8")
-    rc = C.main(["--canonical", str(canonical), "--psql-wrapper", str(tmp_path / "no-such-pg.sh")])
+    rc = C.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--locators",
+            str(neutral_locators_file(tmp_path)),
+            "--psql-wrapper",
+            str(tmp_path / "no-such-pg.sh"),
+        ]
+    )
     assert rc == C.EXIT_CANNOT_VERIFY
     assert "CANNOT VERIFY" in capsys.readouterr().out
 
@@ -207,7 +241,19 @@ def test_conformant_stores_exit_zero(tmp_path):
     canonical.write_text(json.dumps({"data": [canon("01111")]}), encoding="utf-8")
     snap = tmp_path / "s.json"
     snap.write_text(json.dumps([row("01111")]), encoding="utf-8")
-    assert C.main(["--canonical", str(canonical), "--table-json", str(snap)]) == C.EXIT_OK
+    assert (
+        C.main(
+            [
+                "--canonical",
+                str(canonical),
+                "--locators",
+                str(neutral_locators_file(tmp_path)),
+                "--table-json",
+                str(snap),
+            ]
+        )
+        == C.EXIT_OK
+    )
 
 
 def test_divergent_stores_exit_one(tmp_path):
@@ -215,4 +261,112 @@ def test_divergent_stores_exit_one(tmp_path):
     canonical.write_text(json.dumps({"data": [canon("01111", pma_status="TERTUTUP")]}), encoding="utf-8")
     snap = tmp_path / "s.json"
     snap.write_text(json.dumps([row("01111", pma_status="TERBUKA")]), encoding="utf-8")
-    assert C.main(["--canonical", str(canonical), "--table-json", str(snap)]) == C.EXIT_DIVERGENCE
+    assert (
+        C.main(
+            [
+                "--canonical",
+                str(canonical),
+                "--locators",
+                str(neutral_locators_file(tmp_path)),
+                "--table-json",
+                str(snap),
+            ]
+        )
+        == C.EXIT_DIVERGENCE
+    )
+
+
+# --------------------------------------------------------------------------
+# citation propagation — a THIRD surface (locators vs canonical only),
+# independent of the kbli_documents table checks above
+# --------------------------------------------------------------------------
+
+
+def test_guilt_named_in_annex_with_no_canonical_basis():
+    report = C.plan_citation_propagation(
+        store(canon("01111")),  # no pma_official_basis
+        {"01111": loc("named-in-annex")},
+    )
+    assert [d["code"] for d in report["citation_not_propagated"]] == ["01111"]
+    assert report["specific_citation_codes"] == 1
+
+
+def test_guilt_priority_lampiran_i_with_no_canonical_basis():
+    report = C.plan_citation_propagation(
+        store(canon("10211")),  # no pma_official_basis
+        {"10211": loc("priority-lampiran-i")},
+    )
+    assert [d["code"] for d in report["citation_not_propagated"]] == ["10211"]
+
+
+def test_innocence_generic_default_bucket_is_never_flagged():
+    """residual-besar-* is the generic Pasal 3(1)(d)+(2) fallback, not a
+    code-specific citation — flagging it would just restate the pre-existing
+    "no annex" default, not surface anything new."""
+    report = C.plan_citation_propagation(
+        store(canon("01112")),  # no pma_official_basis either
+        {"01112": loc("residual-besar-observed")},
+    )
+    assert report["citation_not_propagated"] == []
+    assert report["specific_citation_codes"] == 0
+
+
+def test_innocence_already_propagated_citation_is_not_flagged():
+    report = C.plan_citation_propagation(
+        store(canon("01111", pma_official_basis="Perpres 49/2021 Lampiran II")),
+        {"01111": loc("named-in-annex")},
+    )
+    assert report["citation_not_propagated"] == []
+    assert report["specific_citation_codes"] == 1
+
+
+def test_edge_locator_code_absent_from_canonical_does_not_crash():
+    """canonical is the 1,559-code universe of record; a locator code outside
+    it is a separate informational-only oddity — never crash, never flag."""
+    report = C.plan_citation_propagation(
+        store(canon("11111")),
+        {"99999": loc("named-in-annex")},
+    )
+    assert report["citation_not_propagated"] == []
+    assert report["specific_citation_codes"] == 1
+
+
+def test_malformed_locators_path_is_cannot_verify_not_a_crash(tmp_path, capsys):
+    canonical = tmp_path / "c.json"
+    canonical.write_text(json.dumps({"data": [canon("01111")]}), encoding="utf-8")
+    snap = tmp_path / "s.json"
+    snap.write_text(json.dumps([row("01111")]), encoding="utf-8")
+    rc = C.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--locators",
+            str(tmp_path / "no-such-locators.json"),
+            "--table-json",
+            str(snap),
+        ]
+    )
+    assert rc == C.EXIT_CANNOT_VERIFY
+    assert "CANNOT VERIFY" in capsys.readouterr().out
+
+
+def test_citation_not_propagated_folds_into_the_cli_exit_code(tmp_path):
+    """Wiring check: an otherwise-conformant kbli_documents snapshot must
+    still fail the gate if the citation-propagation check finds a gap."""
+    canonical = tmp_path / "c.json"
+    canonical.write_text(json.dumps({"data": [canon("01111")]}), encoding="utf-8")
+    snap = tmp_path / "s.json"
+    snap.write_text(json.dumps([row("01111")]), encoding="utf-8")
+    locators = tmp_path / "locators.json"
+    locators.write_text(json.dumps({"locators": {"01111": loc("named-in-annex")}}), encoding="utf-8")
+    rc = C.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--locators",
+            str(locators),
+            "--table-json",
+            str(snap),
+        ]
+    )
+    assert rc == C.EXIT_DIVERGENCE

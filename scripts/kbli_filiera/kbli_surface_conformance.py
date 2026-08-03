@@ -47,6 +47,10 @@ misread as "the surface is clean":
       NOT been neutralised as a retired KBLI-2020 phantom.
     - a row is marked `NOT_IN_KBLI_2025` while canonical DOES carry the code —
       a live activity advertised to clients as retired.
+    - a code the website cites from a NAMED Perpres annex (locator bucket
+      `named-in-annex`/`priority-lampiran-i`) has no canonical `pma_official_basis`
+      — the DB-backed channels (chat_kbli, WhatsApp, webchat) stay blind to a
+      citation the website already shows on `/kbli/<code>`.
 
   DECLARED ONLY (counted, never fails)
     - `judul` text differences. 1,423 rows still carry the original UPPERCASE
@@ -75,6 +79,7 @@ from _coverage_basis import CODE_FIELD  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CANONICAL = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 DEFAULT_PSQL_WRAPPER = REPO_ROOT / "scripts/pg.sh"
+DEFAULT_LOCATORS = REPO_ROOT / "apps" / "mouth" / "data" / "perpres-locators.json"
 
 EXIT_OK = 0
 EXIT_DIVERGENCE = 1
@@ -85,6 +90,14 @@ PRINT_SAMPLE = 20
 # Marker written by `kbli_documents_phantom_cure.py` onto rows for KBLI-2020
 # codes that 2025 retired. Such a row legitimately has no canonical record.
 PHANTOM_MARKER = "NOT_IN_KBLI_2025"
+
+# `perpres-locators.json` bucket names that carry a SPECIFIC, code-named
+# regulatory citation (a named Perpres annex entry). Every other bucket
+# (`residual-besar-*`, `body-*`) is a generic default-provision fallback
+# applied uniformly wherever no annex names the code — never flagged here,
+# because flagging it would just restate the pre-existing "no annex" default,
+# not surface new information.
+SPECIFIC_CITATION_BUCKETS = {"named-in-annex", "priority-lampiran-i"}
 
 SNAPSHOT_SQL = """
 SELECT coalesce(json_agg(json_build_object(
@@ -103,6 +116,18 @@ def load_canonical(path: Path) -> dict[str, dict[str, Any]]:
     if not isinstance(records, list) or not records:
         raise ValueError(f"{path}: expected a non-empty record list")
     return {str(r[CODE_FIELD]): r for r in records}
+
+
+def load_locators(path: Path) -> dict[str, dict[str, Any]]:
+    """Loads `perpres-locators.json` and unwraps its `locators` sub-dict — the
+    same shape `apps/mouth/src/app/kbli/[code]/page.tsx` reads to render the
+    "Basis: ..." citation. Raises loudly on anything malformed; the caller
+    turns that into CANNOT VERIFY rather than a silently skipped check."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    locators = payload["locators"] if isinstance(payload, dict) else payload
+    if not isinstance(locators, dict) or not locators:
+        raise ValueError(f"{path}: expected a non-empty 'locators' mapping")
+    return locators
 
 
 def fetch_table_snapshot(psql_wrapper: Path) -> list[dict[str, Any]]:
@@ -203,6 +228,54 @@ def plan_conformance(
     }
 
 
+def plan_citation_propagation(
+    canonical: dict[str, dict[str, Any]], locators: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    """Pure. A THIRD data source, judged independently of the Postgres table
+    this file otherwise checks: does the website's per-code Perpres citation
+    (`apps/mouth/data/perpres-locators.json`) propagate to canonical's
+    adjudicated `pma_official_basis` field?
+
+    Only the two SPECIFIC buckets carry code-named regulatory information
+    (`SPECIFIC_CITATION_BUCKETS`); every other bucket is a generic
+    default-provision fallback and is never flagged — see that constant's
+    docstring.
+
+    `locators` is already unwrapped (the caller passes `payload["locators"]`,
+    same as `load_locators` returns).
+    """
+    specific_citation_codes = 0
+    citation_not_propagated: list[dict[str, Any]] = []
+
+    for code, locator in locators.items():
+        bucket = locator.get("bucket")
+        if bucket not in SPECIFIC_CITATION_BUCKETS:
+            continue
+        specific_citation_codes += 1
+
+        record = canonical.get(code)
+        if record is None:
+            # Informational-only oddity — locators is meant to be a subset of
+            # the 1,559-code canonical universe of record. Never crash on it,
+            # just skip it from this check.
+            continue
+
+        if not record.get("pma_official_basis"):
+            citation_not_propagated.append(
+                {
+                    "code": code,
+                    "bucket": bucket,
+                    "cite": locator.get("cite"),
+                    "canonical_pma_status": record.get("pma_status"),
+                }
+            )
+
+    return {
+        "specific_citation_codes": specific_citation_codes,
+        "citation_not_propagated": sorted(citation_not_propagated, key=lambda d: d["code"]),
+    }
+
+
 def render(report: dict[str, Any]) -> str:
     lines = [
         "kbli_documents conformance vs canonical",
@@ -235,6 +308,21 @@ def render(report: dict[str, Any]) -> str:
                 lines.append(f"      {item}")
         if len(items) > PRINT_SAMPLE:
             lines.append(f"      ... showing {PRINT_SAMPLE} of {len(items)}")
+
+    citation = report.get("citation_propagation", {})
+    cnp = citation.get("citation_not_propagated", [])
+    lines.append(
+        f"  citation_not_propagated: {len(cnp)} "
+        f"(of {citation.get('specific_citation_codes', 0)} codes with a named-annex Perpres citation)"
+    )
+    for item in cnp[:PRINT_SAMPLE]:
+        lines.append(
+            f"      {item['code']}  bucket={item['bucket']} "
+            f"canonical_pma_status={item['canonical_pma_status']}"
+        )
+    if len(cnp) > PRINT_SAMPLE:
+        lines.append(f"      ... showing {PRINT_SAMPLE} of {len(cnp)}")
+
     declared = report["declared_only"]
     lines += [
         "",
@@ -250,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--canonical", type=Path, default=DEFAULT_CANONICAL)
+    parser.add_argument("--locators", type=Path, default=DEFAULT_LOCATORS)
     parser.add_argument("--psql-wrapper", type=Path, default=DEFAULT_PSQL_WRAPPER)
     parser.add_argument("--table-json", type=Path, default=None, help="use a snapshot file instead of the DB")
     parser.add_argument("--emit-sql", action="store_true", help="print the snapshot query and exit")
@@ -267,6 +356,12 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_CANNOT_VERIFY
 
     try:
+        locators = load_locators(args.locators)
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        print(f"CANNOT VERIFY: locators unreadable ({args.locators}): {exc}")
+        return EXIT_CANNOT_VERIFY
+
+    try:
         if args.table_json:
             table = json.loads(args.table_json.read_text(encoding="utf-8"))
         else:
@@ -280,8 +375,13 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_CANNOT_VERIFY
 
     report = plan_conformance(canonical, table)
+    citation_report = plan_citation_propagation(canonical, locators)
+    report["citation_propagation"] = citation_report
+
     print(json.dumps(report, indent=2, sort_keys=True) if args.json else render(report))
-    return EXIT_DIVERGENCE if report["enforced_divergences"] else EXIT_OK
+
+    total_enforced = report["enforced_divergences"] + len(citation_report["citation_not_propagated"])
+    return EXIT_DIVERGENCE if total_enforced else EXIT_OK
 
 
 if __name__ == "__main__":
