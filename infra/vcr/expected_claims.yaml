@@ -1,0 +1,45 @@
+# infra/vcr/expected_claims.yaml — the VCR pilot's expected-claim registry (R5/R8).
+#
+# Each entry declares ONE (seat, host, auth_context) pair this pilot tracks. A
+# query for a pair NOT in this list is a caller error (this pilot has no
+# opinion on it, by design — coverage_state is only meaningful against a
+# registered claim). certified_hash is the sha256 of scripts/arsenal_probe.py
+# at the time this registry was authored; a mismatch at read time flags
+# verifier_state: DRIFTED (catches HOME-fork copies and unreviewed hand-edits,
+# scar family #1). Regenerate after any arsenal_probe.py change with:
+#   python3 -c "import hashlib; print(hashlib.sha256(open('scripts/arsenal_probe.py','rb').read()).hexdigest())"
+# and update EVERY entry's certified_hash in the SAME commit (W86 — a hash
+# regenerated in a later commit leaves every read DRIFTED until it lands).
+#
+# Pilot scope (VCR spec §4, corrected per R8 — no phantom seats): 3 seats,
+# named contexts only. E33/PENDING-ARMS/KBLI claim_types are explicitly NOT
+# registered here (deferred, §6).
+
+claims:
+  - seat: claude
+    host: m5
+    auth_context: interactive
+    ttl_s: 3600
+    latency_budget_ms: 15000
+    certified_hash: "e1568ed956e99b828535938183ae9aef812fc0684136b673938f849473fd8e81"
+
+  - seat: claude
+    host: mini
+    auth_context: cron-token-1
+    ttl_s: 1200
+    latency_budget_ms: 15000
+    certified_hash: "e1568ed956e99b828535938183ae9aef812fc0684136b673938f849473fd8e81"
+
+  - seat: codex
+    host: m5
+    auth_context: interactive
+    ttl_s: 3600
+    latency_budget_ms: 20000
+    certified_hash: "e1568ed956e99b828535938183ae9aef812fc0684136b673938f849473fd8e81"
+
+  - seat: kimi
+    host: m5
+    auth_context: interactive
+    ttl_s: 3600
+    latency_budget_ms: 15000
+    certified_hash: "e1568ed956e99b828535938183ae9aef812fc0684136b673938f849473fd8e81"

@@ -556,6 +556,39 @@ DEFAULT_REGISTRY: list[dict] = [
                        "SHED", "QUOTA_DEAD", "TIMEOUT"],
         "fix_hint": "scripts/arsenal_probe.py --table for detail; AUTH/BALANCE dead = operator relogin/top-up (see docs/runbooks/arsenal-probe.md)",
     },
+    {
+        # ADDS m5 arsenal-seat coverage (the entry above is mini/pro only — m5
+        # has never had one). Deliberately a NEW entry, not a replacement of
+        # the one above: this pilot registers only 3 seats (VCR spec §4/R8),
+        # narrower than arsenal_probe's full 5-seat REQUIRED_SEATS["m5"] —
+        # swapping the existing entry's target here would silently shrink a
+        # P1 boundary that's out of this pilot's scope to touch. Routed
+        # through the VCR accessor (infra/vcr/), not a raw --read-last parse:
+        # hysteresis-debounced + verifier-hash-audited, cache-only (no live
+        # probe from inside proprioception's own budget loop).
+        "id": "arsenal_seats_vcr_m5", "type": "wrap",
+        "target": ["python3", "{repo}/infra/vcr/cli.py", "findings", "--json"],
+        "class": "seat<->armed",
+        "boundary": "AI-seat credential/quota <-> VCR-accessor materialized state (m5 pilot subset)",
+        "machines": ["m5"], "tags": ["fast", "arsenal", "vcr"], "timeout_sec": 15,
+        "severity": "P2", "parse": "findings_list", "unwrap_key": "findings",
+        # ok_values is deliberately EMPTY — unlike the sibling "arsenal_seats"
+        # entry above (which reads arsenal_probe's raw --read-last vocabulary
+        # and treats some raw statuses as "handled elsewhere, don't escalate"),
+        # cmd_findings() already filters to ONLY claims where
+        # MaterializedState.all_healthy() is False (verifier/coverage/
+        # freshness/truth-debounced) and reports an axis-derived reason
+        # string, never a raw arsenal_probe status. Any entry present here IS
+        # a real problem by construction — there is no secondary "ignore
+        # this subtype" concept for the VCR-routed consumer. Copying the
+        # sibling's ok_values list here was a same-shape-different-contract
+        # bug (Codex red-team, 2026-08-03): it would have silently absolved
+        # a verifier-DRIFTED claim whose last raw probe happened to read
+        # "LIVE" — exactly the failure mode this pilot exists to catch.
+        "verdict_key": "status",
+        "ok_values": [],
+        "fix_hint": "python3 infra/vcr/cli.py check --seat <s> --host m5 --auth-context interactive (drafts/2026-08-03-vcr-pilot-v2.1-and-build-workflow.md)",
+    },
 ]
 
 REQUIRED_KEYS = {"id", "type", "target", "class", "boundary", "machines", "severity", "fix_hint"}
