@@ -158,11 +158,23 @@ def test_the_editorial_prose_backlog_can_only_shrink():
     tomorrow: the number may fall, never rise. A new page that re-imports the
     argument fails here.
     """
-    # 34, re-measured after the pattern was corrected to judge the ARGUMENT
-    # instead of its conclusion. The first pin said 37: it counted 8 TERTUTUP
-    # codes whose prose is TRUE and missed 5 real ones. A ratchet pinned to a
-    # mis-calibrated probe ratchets the wrong number.
-    known_backlog = 34
+    # 8. The pin has moved twice and each move is worth keeping straight:
+    #   37 -> 34 when the pattern was corrected to judge the ARGUMENT instead of
+    #          its conclusion (the 37 counted 8 TERTUTUP codes whose prose is TRUE
+    #          and missed 5 real ones — a ratchet pinned to a mis-calibrated probe
+    #          ratchets the wrong number);
+    #   34 -> 21 when the 13 NON_CLASSIFICABILE records were re-authored;
+    #   21 ->  8 when the 13 CHIUSO_MORATORIA_BALI records were.
+    #
+    # All 8 that remain still argue the withdrawn mechanism. Six of them
+    # (55203 79903 95291 96100 96210 96220) are CHIUSO_PMA_NO_BESAR and reach a
+    # conclusion that IS right — they are genuinely allocated to Koperasi/UMKM by
+    # the Perpres 49/2021 Lampiran II `dialokasikan` column — but they say so on
+    # the retired reasoning ("OSS has no Usaha Besar scale row"), which is the
+    # more dangerous shape, not the safer one: a right answer defended by a
+    # withdrawn argument reads as confirmation that the argument still holds.
+    # The other two (43110 55209) are BLOCCATO_DIPENDE_SCOPE.
+    known_backlog = 8
     offenders = sorted(
         r["kode_kbli_2025"]
         for r in _canonical_rows()
