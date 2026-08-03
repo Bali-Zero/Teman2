@@ -8,7 +8,7 @@ sources:
   - GLM 5.2 (`claude-glm`, z.ai endpoint) — final adversarial pass
   - Internal: 5-fork Gear-3 GROUND survey of the Nuzantara organism, 2026-08-03 (this session), which independently surfaced the 6 instances in §1
   - research/operations/2026-08-01-multi-session-multi-llm-strategies.md §4 (salvaged principle: "where a deterministic arbiter exists, the arbiter wins and the panel is redundant")
-adversarial_review: codex+glm
+adversarial_review: glm-5.2
 adversarial_review_note: >-
   Sequential, not parallel: Codex GPT-5.6-sol (xhigh) red-teamed the first
   draft (a single universal "VCR" reconciler) and returned DO-NOT-SHIP with
