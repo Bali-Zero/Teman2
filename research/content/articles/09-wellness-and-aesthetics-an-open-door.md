@@ -8,8 +8,6 @@ kbli_codes:
 status: published-draft
 ---
 
-> **Retracted claim — 3 August 2026.** Where this draft explains a Bali block by "OSS has no Usaha Besar scale row, so the activity is reserved for UMKM", that inference is withdrawn: Permeninves/BKPM 5/2025 Pasal 26(1) makes being *Usaha Besar* a consequence of holding PMA status rather than a precondition for registering, so the absence of that row says nothing about foreign ownership. The published articles were corrected. This capture is left intact as a dated record — do not reuse its wording. The surviving basis for a reservation is an explicit allocation to Koperasi/UMKM in Perpres 10/2021 (as amended by 49/2021) Annex II.
-
 # Wellness & Aesthetics: One of the Open Doors — and a Hidden Wall (86105 vs 96220)
 
 After eight articles of walls, here is some relief: in the wellness and medical-aesthetics space, Bali still has a door that's genuinely open to foreign capital. But — because this is Bali, and nothing is allowed to be simple — the open door and the closed wall sit *right next to each other*, separated by what looks like a hair's breadth and is in fact a chasm. The clinic is open. The beauty salon is blocked. Knowing which side of the line your business lands on is the entire game.

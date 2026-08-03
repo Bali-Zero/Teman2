@@ -26,6 +26,23 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
+## 0bis. DO NOT REUSE THE WORDING IN `research/content/` — 5 drafts + 2 book chapters are retracted
+
+Seven captures under `research/content/` still argue the **withdrawn** no-Usaha-Besar inference:
+`articles/04-consulting-in-bali-the-first-door-to-close.md`, `05-pondok-wisata-vs-villa.md`,
+`09-wellness-and-aesthetics-an-open-door.md`, `19-what-changed-from-kbli-2020-to-2025.md`,
+`20-the-honest-map-blocked-bali-codes.md`, `book-chapters/ch-the-surf-coliving-55209.md`,
+`ch-the-yoga-and-retreat-85510.md`. Their PUBLISHED counterparts were corrected on 2026-08-03
+(PR #3579, en/it/id). The drafts are left intact **on purpose** — rewriting a dated capture
+falsifies a record — and the warning lives here instead of in a banner inside them, because a
+banner drags an untouched `research/**/*.md` into the R1 gate, and the only compliant values
+would be a review those bodies never had or an `exempt-` that is false for a file declaring
+`client_case:` (superscar #3 / W109: an exemption is an assertion about the document). A future
+session reads this corner; it does not browse `research/`.
+
+Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
+is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
+
 ## 1. LIVE STATE (last update 2026-08-03 — keep current)
 
 **🟢 2026-08-03 (night) — THE CHAT CHANNEL NOW CARRIES THE BALI VERDICT, AND THE STORE ALWAYS KNEW.**
