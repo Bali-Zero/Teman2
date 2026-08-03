@@ -609,3 +609,118 @@ def test_rebuild_reason_does_not_fire_when_canonical_has_no_rows():
 
 def test_rebuild_reason_refuses_an_absent_row():
     assert rebuild_reason("01122", None, 8) is None
+
+
+# ---------------------------------------------------------------------------
+# Deployment-layout tolerance (2026-08-03)
+#
+# Found by RUNNING the tool where it actually cures, not by reading it: on the
+# Fly machine this module died at IMPORT with `IndexError: 4`, because the
+# 2026-08-02 selector added a module-level `parents[4]`. The same file lives at
+# two depths — `apps/backend-rag/backend/scripts/` in the repo (4 levels under
+# the root) and `/app/backend/scripts/` in the image (2) — so no fixed index is
+# right in both. The blast radius was not the new selector: an import-time crash
+# took `--only` down too, i.e. the ONLY path that can run in the container and
+# the one the 2026-08-01 production cure actually used.
+#
+# Guilt = the real production layout resolves to None instead of raising.
+# Innocence = the repo layout still finds the real detector (a "fix" that
+# always returned None would silence the crash and disarm the selector).
+# ---------------------------------------------------------------------------
+
+import asyncio as _asyncio
+import sys as _sys
+from pathlib import Path as _Path
+
+from backend.scripts import kbli_documents_cure as _cure
+
+
+def test_repo_layout_resolves_to_the_real_detector():
+    """INNOCENCE: where the repo exists, the selector must still find its owner."""
+    found = _cure.find_conformance_script()
+    assert found is not None
+    assert found.is_file()
+    assert found.name == "kbli_surface_conformance.py"
+    assert found.parent.name == "kbli_filiera"
+
+
+def test_container_layout_resolves_to_none_instead_of_raising():
+    """GUILT: the exact path the deployed image uses. Must be a value, not a crash."""
+    assert _cure.find_conformance_script(_Path("/app/backend/scripts/kbli_documents_cure.py")) is None
+
+
+def test_a_fixed_parent_index_would_still_crash_on_the_container_layout():
+    """SCAR PIN: this is WHY the walk-up exists. If a future refactor goes back
+    to counting levels, this test states the cost in one line."""
+    container = _Path("/app/backend/scripts/kbli_documents_cure.py").resolve()
+    with pytest.raises(IndexError):
+        _ = container.parents[4]
+
+
+def test_module_level_constant_is_never_an_import_time_crash():
+    """The defect was at MODULE level: importing was enough to die. Re-running
+    the same resolution the module runs at import must be exception-free for
+    any depth, including a file sitting at the filesystem root."""
+    for probe in ("/x.py", "/a/b.py", "/app/backend/scripts/c.py"):
+        found = _cure.find_conformance_script(_Path(probe))
+        # Never a phantom path: either a detector that is really there, or None.
+        # A resolver that returned a plausible-but-absent path would push the
+        # failure down into fetch_conformance_report as a confusing "not found
+        # at <made-up path>" instead of the honest "no repo layout here".
+        assert found is None or found.is_file()
+
+
+def test_detector_absent_refusal_names_the_path_that_still_works():
+    """A refusal that does not say what to do instead reads as breakage."""
+    with pytest.raises(RuntimeError) as exc:
+        _cure.fetch_conformance_report(None)
+    assert "--only" in str(exc.value)
+
+
+def test_refusal_is_visible_to_a_caller_as_a_nonzero_exit(monkeypatch):
+    """GUILT for the W104 shape: the refusal branch used a bare `return`, so
+    `sys.exit(main())` exited 0 and 'I cured nothing' was indistinguishable
+    from 'I cured everything'. Driven through main(), not asserted on the
+    constant — a constant cannot regress, a branch can."""
+    monkeypatch.setattr(_sys, "argv", ["cure", "--all-licensing-absent"])
+
+    async def _no_network(_source):
+        return []
+
+    def _detector_down(_script):
+        raise RuntimeError("conformance detector not found")
+
+    monkeypatch.setattr(_cure, "load_dataset", _no_network)
+    monkeypatch.setattr(_cure, "fetch_conformance_report", _detector_down)
+
+    rc = _asyncio.run(_cure.main())
+    assert rc == _cure.EXIT_REFUSED
+    assert rc != 0
+
+
+def test_importing_this_module_under_the_deployed_layout_does_not_crash():
+    """The one test that actually kills the regression.
+
+    The three above exercise `find_conformance_script`; none of them binds the
+    MODULE to using it. Proof: reverting the module-level constant to
+    `parents[4]` left the whole suite green, because on a repo checkout that
+    index resolves — the corpus was measuring the layout it happened to run on,
+    not the property it claimed (W110: prove the binding took, not that the
+    helper works).
+
+    So execute this module's real source with `__file__` set to the deployed
+    path. Under the walk-up it yields None; under any fixed index it raises,
+    which is exactly how production died."""
+    import types as _types
+
+    source = _Path(_cure.__file__).read_text()
+    deployed = "/app/backend/scripts/kbli_documents_cure.py"
+    name = "kbli_documents_cure_container_probe"
+    probe = _types.ModuleType(name)
+    probe.__file__ = deployed
+    _sys.modules[name] = probe  # dataclass resolves sys.modules[cls.__module__]
+    try:
+        exec(compile(source, deployed, "exec"), probe.__dict__)  # noqa: S102
+        assert probe.CONFORMANCE_SCRIPT is None
+    finally:
+        _sys.modules.pop(name, None)

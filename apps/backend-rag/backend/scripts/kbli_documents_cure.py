@@ -150,9 +150,45 @@ GAP_FALLBACK_TEXT = (
 # script does not re-derive that predicate: it asks the detector and consumes
 # its verdict. Two tools that must agree on the same fact do not get to invent
 # two answers (W105) — and the detector is the one with the corpus that pins it.
-CONFORMANCE_SCRIPT = (
-    Path(__file__).resolve().parents[4] / "scripts" / "kbli_filiera" / "kbli_surface_conformance.py"
-)
+CONFORMANCE_MARKER = Path("scripts") / "kbli_filiera" / "kbli_surface_conformance.py"
+
+
+def find_conformance_script(start: Path | None = None) -> Path | None:
+    """Locate the detector by WALKING UP for its marker, never by a fixed index.
+
+    This file lives at two different depths: `apps/backend-rag/backend/scripts/`
+    in the repo (4 levels under the root) and `/app/backend/scripts/` in the
+    deployed image (2). A hardcoded `parents[4]` is therefore an IndexError in
+    production — raised at MODULE level, so the script could not even be
+    imported there, which killed `--only` too: the one path that can run inside
+    the container, and the path the 2026-08-01 prod cure actually used.
+
+    Returns None when no repo layout is found. That is the EXPECTED state inside
+    the image, which ships neither `scripts/kbli_filiera/` nor `pg.sh`, and it
+    must read as "no selector available here" — never as a crash, and never as
+    an empty scope (W84: absence of a reading is not a clean bill).
+    """
+    here = (start or Path(__file__)).resolve()
+    for ancestor in here.parents:
+        candidate = ancestor / CONFORMANCE_MARKER
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+CONFORMANCE_SCRIPT = find_conformance_script()
+
+# A refusal must be legible to a CALLER, not only to a human reading stderr.
+# The detector below is scrupulous about this ("judged by EXIT CODE, never by
+# did it print something") and this script used to drop that discipline on the
+# floor for its own caller: the refusal branch did a bare `return`, so
+# `sys.exit(main())` exited 0 and "I refused to cure anything" was
+# indistinguishable from "I cured everything" (the W104 shape).
+# 3, not 2: argparse spends exit 2 on a usage error, and the caller this
+# exists for — automation — would then read 'you passed bad flags' and
+# 'I refused to cure anything' as the same event. 0/1/4 belong to the
+# detector's own vocabulary and are left alone.
+EXIT_REFUSED = 3
 # Mirrors kbli_surface_conformance.py's own exit vocabulary. 4 is CANNOT-VERIFY
 # and it is NOT a clean bill: a detector that could not read the table reports
 # zero divergences, which is indistinguishable from a healthy fleet unless the
@@ -295,7 +331,7 @@ def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str |
     return None
 
 
-def fetch_conformance_report(script: Path) -> dict:
+def fetch_conformance_report(script: Path | None) -> dict:
     """I/O. Runs the detector and returns its JSON report.
 
     Judged by EXIT CODE, never by "did it print something": exit 4 means the
@@ -303,6 +339,13 @@ def fetch_conformance_report(script: Path) -> dict:
     zero divergences — the exact shape of a healthy fleet. Consuming that as
     "nothing to cure" is how a cure silently becomes a no-op (W84). Anything
     outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict."""
+    if script is None:
+        raise RuntimeError(
+            "conformance detector not found by walking up from this file — no repo layout "
+            "here. That is the expected state inside the deployed image, which ships neither "
+            "scripts/kbli_filiera/ nor pg.sh: --all-licensing-absent is a repo-side selector. "
+            "Run it where the repo is, or pass --only <codes> (which needs no detector)"
+        )
     if not script.is_file():
         raise RuntimeError(
             f"conformance detector not found at {script} — refusing to guess scope from a "
@@ -514,7 +557,7 @@ async def load_dataset(source: str) -> list[dict]:
         return r.json()["data"]
 
 
-async def main() -> None:
+async def main() -> int | None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
     ap.add_argument(
@@ -571,7 +614,7 @@ async def main() -> None:
             report = fetch_conformance_report(args.conformance_script)
         except (RuntimeError, OSError, json.JSONDecodeError) as exc:
             logger.error("refusing to cure: %s", exc)
-            return
+            return EXIT_REFUSED
         codes = licensing_absent_codes(report)
         canonical_rows_by_code = {
             str(d["code"]): int(d.get("canonical_rows", 0))
