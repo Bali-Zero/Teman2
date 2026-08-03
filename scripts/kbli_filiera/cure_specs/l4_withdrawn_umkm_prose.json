@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "spec": "l4_withdrawn_umkm_prose — NON_CLASSIFICABILE batch + CHIUSO_MORATORIA_BALI batch",
+    "spec": "l4_withdrawn_umkm_prose — NON_CLASSIFICABILE + CHIUSO_MORATORIA_BALI + parallel fan-out over the residue",
     "date": "2026-08-04",
     "why": "The verdict layer was cured on 2026-08-03 when Permeninves/BKPM 5/2025 Pasal 26(1) withdrew the no-Usaha-Besar inference. The EDITORIAL PROSE that explains each verdict was not. These 13 codes read NON_CLASSIFICABILE ('no Bali position can be stated') while their prose told the reader a PT PMA cannot register the activity — the expensive direction of the error, because it turns away business on an uncertainty of ours.",
     "authored_by": "claude-opus-5",
@@ -26,7 +26,15 @@
     "batch_2_verdicts_refuted_on_disk": [
       "7 objections to 'the Positive Investment List opens this KBLI to 100% foreign ownership' were artifacts of a review packet that carried only l4_bali.reason; the record's own pma_status/pma_max_asing/pma_source support the phrase, and round 2 was re-run with that evidence supplied",
       "'renumbered code' on 73300 was called unsupported; the record carries status_mapping=CODICE_RINUMERATO and bps_2020_ancestors.codes=['70203']"
-    ]
+    ],
+    "batch_3_why": "The first two batches were measured with the SHIPPED GUARD's narrow pattern and reported a backlog of 8. Re-measured with the wide sweep that batch 2 had already proven necessary, the real figure was 26 — 18 submerged, and 17 of them in records batch 1 had already 'cured'. The narrow pattern is right for a corpus ratchet and wrong as a completeness measure; using it as both is what hid them.",
+    "batch_3_method": "26 parallel lanes, one per code (Workflow fan-out, 52 agents, 0 errors): each lane swept EVERY intel_2026 string itself, authored against the true basis for its own l4_bali.status, then handed the draft to a separate integrator lane that graded it cross-family via Codex gpt-5.6-terra and revised until clear (1-4 rounds per code). 211 patches proposed.",
+    "batch_3_integrator_rejections": [
+      "17 patches carried an 'intel_2026.' path prefix the compiler does not take — corrected mechanically",
+      "5 passages narrated OUR retraction history to a client ('the earlier reasoning has been withdrawn', 'Pasal 26(1)'); trimmed after a separate editorial grading round, keeping the house style of DECLARING A DATA GAP (already live on 01287) and cutting the legal-reasoning commentary",
+      "1 of that grader's own trims was over-broad — it would have deleted 'treated as blocked until verified case by case', the one sentence the badge obliges — so only the trailing clause was cut"
+    ],
+    "batch_3_my_own_false_positives": "Three of my integrator checks fired on FORM and were wrong: an empty `new` (a deliberate sentence deletion) reads as 'already present' because every string contains the empty string; and two passages were accused of re-asserting the withdrawn claim when they NEGATE it ('not a claim that a PT PMA is Usaha Besar by law', and the Pasal 26(1) statement of the correct rule). The badge-obligation check was literal too, and failed 4 records that state their block in other words — it is now entity-based, with innocence asserted."
   },
   "codes": {
     "47771": {
@@ -38,6 +46,56 @@
           "field": "editorial.body",
           "old": "The stated reason is structural: OSS has no Usaha Besar scale row, and the activity is reserved for UMKM.",
           "new": "The block is a precaution, not a reservation: the requirement we located is a commercial one and nationality-neutral — Perpres 191/2014 Pasal 3(1), 8(1) and 9 make subsidised-fuel distribution an assignment to a Badan Usaha that already holds an Izin Usaha Niaga Umum plus storage and distribution facilities. We hold no verified licensing rows for this code, so its Bali risk tier is unknown and we will not state a Bali position; it is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "Retail Kerosene: Nationally Open, but Not Registrable by PMA in Bali",
+          "new": "Retail Kerosene: Nationally Open, Bali Registrability Not Yet Verified"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Retail kerosene trade is nationally open to full foreign ownership, yet Bali’s registration structure closes the activity to PT PMA.",
+          "new": "Retail kerosene trade is nationally open to full foreign ownership, yet Bali’s registration position for it has not yet been verified — pending case-by-case review, the activity is blocked."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The available operating scales are Mikro, Kecil, and Menengah. That scale listing gives the clearest view of the intended business population: operators undertaking this retail activity at those three sizes. It does not supply a separate Usaha Besar, or large-enterprise, row. For a founder, that is more consequential than a generic statement that an activity is open or closed, because the registration result is shaped both by the national investment setting and by the scale rows available in the system. The scope and scale need to be read together as one registration picture.",
+          "new": "This page currently carries no verified licensing rows for this activity:. That gap is more consequential than a generic statement that an activity is open or closed, because until the licensing rows are re-verified we cannot say which operating scales this activity is registered under, or whether a large-enterprise (Usaha Besar) tier exists for it. Treat any scale reference on this page as provisional until confirmed at oss.go.id."
+        },
+        {
+          "field": "editorial.body",
+          "old": "But that national signal does not translate into a PMA registration route in Bali. Bali’s status is closed to PMA because no large-enterprise scale is available. The block is a precaution, not a reservation: the requirement we located is a commercial one and nationality-neutral — Perpres 191/2014 Pasal 3(1), 8(1) and 9 make subsidised-fuel distribution an assignment to a Badan Usaha that already holds an Izin Usaha Niaga Umum plus storage and distribution facilities.",
+          "new": "But that national signal does not by itself establish a PMA registration route in Bali. The requirement we located is a commercial one and nationality-neutral — Perpres 191/2014 Pasal 3(1), 8(1) and 9 make subsidised-fuel distribution an assignment to a Badan Usaha that already holds an Izin Usaha Niaga Umum plus storage and distribution facilities."
+        },
+        {
+          "field": "editorial.body",
+          "old": " A PT PMA is, by law, an Usaha Besar, so it cannot register this activity there.",
+          "new": ""
+        },
+        {
+          "field": "editorial.body",
+          "old": "Its permanent, island-wide moratorium blocks all low- and medium-low-risk KBLI for PMA. Whatever the national 100% ceiling conveys, it does not remove the Bali-side structural barrier recorded for this activity. The practical reading is direct: a foreign investor may see a nationally open activity, yet cannot register it through a PT PMA in Bali today. For Bali, the decisive fact is not the national ceiling alone, but the absence of the required large-enterprise registration row.",
+          "new": "Its permanent, island-wide moratorium blocks all low- and medium-low-risk KBLI for PMA — but because this code currently carries no verified licensing rows, we cannot confirm which risk tier it falls under, or whether that moratorium applies to it. The practical reading is direct: a foreign investor may see a nationally open activity, yet the Bali registration position for it has not yet been established. For Bali, the decisive fact is not the national ceiling, but the unresolved licensing record: this activity is blocked pending case-by-case verification, not confirmed as closed."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "A nationally open activity can still be unavailable for PT PMA registration in Bali when the required large-enterprise row does not exist.",
+          "new": "A nationally open activity can still be blocked from PT PMA registration in Bali when its licensing record has not yet been verified."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open operating scales",
+          "new": "Operating scales"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Not verified — licensing rows removed pending review"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification (no verified licensing rows)"
         }
       ]
     },
@@ -55,6 +113,66 @@
           "field": "editorial.pullQuote",
           "old": "In Bali, the decisive fact is simple: a PT PMA is Usaha Besar, while this activity has no Usaha Besar scale row.",
           "new": "The honest answer here is not yes and not no: it is that we will not state a position we cannot evidence."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A foreigner cannot register this activity in Bali today. That conclusion matters because the national position initially appears straightforward: head-office activity is open to foreign investment, with foreign ownership permitted up to 100%. Bali, however, reaches a different registration outcome through its available business-scale structure. The result is not a minor local qualification; for a PT PMA seeking to register this activity in Bali, the record is clear that registration is blocked.",
+          "new": "Our records do not currently let us confirm that a PT PMA can register this activity in Bali. That gap matters because the national position initially appears straightforward: head-office activity is open to foreign investment, with foreign ownership permitted up to 100%. In Bali, though, we hold no verified licensing rows for this code, so its registration path there is unresolved. The result is not a minor local qualification; for a PT PMA seeking to register this activity in Bali, the record is clear that registration is blocked pending verification."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The national scale setting is also specific. The record opens the activity at Micro, Small, and Medium scale. We located no foreign-ownership restriction on this activity — not in the Perpres annexes, not in the closed list, not in any sectoral instrument we read. What we do not have is verified licensing rows for the code, so its Bali risk tier is unknown and no Bali position can be stated. It is therefore treated as blocked until verified case by case — a precaution about our own evidence, not a finding about the code. That is decisive for a PT PMA, which the record identifies as Usaha Besar by law: without an Usaha Besar row, it cannot register this activity in Bali. The wider provincial context is equally firm. Bali records an island-wide, permanent PMA block for low- and medium-low-risk activities, reinforcing a regulatory environment in which local registration must be read from Bali’s own structure, not inferred from the national foreign-ownership ceiling.",
+          "new": "The scale-and-risk picture is exactly where the record runs out: the licensing rows this code's classification once relied on could not be independently verified against our pinned sources, so they have been withdrawn rather than served as fact — no scale tier and no risk tier is currently established for this code. We located no foreign-ownership restriction on the activity itself — not in the Perpres annexes, not in the closed list, not in any sectoral instrument we read — but that is a separate question from whether a PT PMA can register it in Bali, and on that question we have no verified licensing rows to go on. It is therefore treated as blocked until verified case by case. Bali separately enforces an island-wide, permanent PMA block on Low- and Medium-Low-risk activities, but because this code's own risk tier is not currently verifiable, we cannot say whether that rule applies here; it is background context, not the reason this code is blocked."
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, the applicable scale structure prevents a PT PMA registration.",
+          "new": "In Bali, we cannot currently confirm a registration path for a PT PMA under this code — the position is unresolved and treated as blocked until it is verified case by case."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "Head-Office Activity: Open Nationally, Unregistrable for PMA in Bali",
+          "new": "Head-Office Activity: Open Nationally, Blocked Pending Verification in Bali"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Head-office work is nationally open to full foreign ownership, but Bali’s scale structure means a PT PMA cannot register it there today.",
+          "new": "Head-office work is nationally open to full foreign ownership, but we hold no verified Bali licensing rows for this code — until that gap is closed, a PT PMA's registration here is blocked pending case-by-case verification."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scale",
+          "new": "Verified Bali licensing rows"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro",
+          "new": "0"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].label",
+          "old": "Open scale",
+          "new": "Bali risk tier"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Kecil",
+          "new": "Not established"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].label",
+          "old": "Open scale",
+          "new": "PT PMA registration in Bali"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Menengah",
+          "new": "Blocked pending verification"
+        },
+        {
+          "field": "baliContext",
+          "old": "This is the sophisticated investor's code. If you own a restaurant under one PT PMA, a villa management company under another, and a consulting firm under a third — you set up a holding company under 70100 to sit on top of all three. Your equity in the subsidiaries counts toward investment realization, which is a major advantage. In Bali, this structure is increasingly common among serial entrepreneurs who've built multiple businesses. The holding company typically sits in Denpasar (where notaries and corporate lawyers are concentrated) even if the operating businesses are in Canggu or Ubud. One catch: the absence of a Large-scale entry is unusual but doesn't block operations — most holding companies comfortably fit within the Medium scale definition.",
+          "new": "This is the sophisticated investor's code: a holding company under 70100 lets you sit above a restaurant under one PT PMA, a villa management company under another, and a consulting firm under a third, with your equity in the subsidiaries counting toward investment realization — a real advantage where the structure can be registered. Serial entrepreneurs who've built multiple Bali businesses often want exactly this structure, with the holding company typically sitting in Denpasar (where notaries and corporate lawyers are concentrated) even if the operating businesses are in Canggu or Ubud. What we cannot currently confirm is whether a PT PMA can register that holding company under 70100 in Bali itself: our records hold no verified licensing rows for this code — not a Large-scale entry, not any scale tier — so the Bali registration position is unresolved and treated as blocked; verify it case by case with the Bali Zero team before committing to the structure."
         }
       ]
     },
@@ -72,6 +190,51 @@
           "field": "editorial.body",
           "old": "With the activity reserved for UMKM and a PT PMA classified as Usaha Besar, the registration route is structurally closed.",
           "new": "What is missing is our own evidence: we hold no verified licensing rows for the code, so its Bali risk tier is unknown and the position cannot be stated. It is treated as blocked until verified case by case — unproven rather than closed, and what a private party would actually hold is a permit or concession over the utilisation zone."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The activity is open at the Mikro, Kecil, and Menengah scales. Those scale categories are not incidental detail; they define the operating frame presented for this activity.",
+          "new": "This code's own scale categorisation is not established in our sources: the catalogue carries no confirmed licensing rows for it, so no scale-based requirement can be stated here."
+        },
+        {
+          "field": "editorial.body",
+          "old": "That local structural position becomes decisive for a foreign-investment company, because a PT PMA is treated by law as Usaha Besar.",
+          "new": "That local structural position does not by itself decide the outcome for a foreign-investment company: whether a PT PMA can register this activity in Bali is a separate question this record cannot settle, because the catalogue holds no licensing rows for this code at all."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A PT PMA cannot register this activity in Bali today, not because Bali sets a separate foreign-ownership percentage, but because the available OSS scale rows stop before Usaha Besar.",
+          "new": "This record cannot say which way that outcome goes — not because Bali sets a separate foreign-ownership percentage, but because the evidence needed to say either way is not something we have on file."
+        },
+        {
+          "field": "editorial.body",
+          "old": "For this activity, however, the stated Bali result is already unambiguous: national openness does not change the fact that a PT PMA cannot register it in Bali today.",
+          "new": "For this activity, national openness does not settle the Bali question — that stays blocked pending case-by-case verification, not resolved either way."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "A conservation-area tourism activity that is nationally open to full foreign ownership, yet structurally unavailable to a PT PMA in Bali.",
+          "new": "A conservation-area tourism activity that is nationally open to full foreign ownership, with its Bali position blocked pending case-by-case verification rather than settled either way."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "National openness does not change the fact that a PT PMA cannot register this activity in Bali today.",
+          "new": "National openness does not settle the Bali question here — that stays blocked pending case-by-case verification, not resolved either way."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open operating scales",
+          "new": "Operating scales"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Not established (no licensing rows on file)"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification (no rows on file)"
         }
       ]
     },
@@ -84,6 +247,46 @@
           "field": "editorial.body",
           "old": "The obstacle is structural: OSS has no Usaha Besar, or large-enterprise, scale row for this activity, leaving it reserved for UMKM.",
           "new": "The obstacle is our own evidence, not an ownership rule: we located no foreign-ownership restriction, and we hold no verified licensing rows for this code, so its Bali risk tier is unknown and no Bali position can be stated. It is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The activity is open to micro, small and medium enterprises. ",
+          "new": "No verified scale-based licensing rows are on file for this code, so which enterprise sizes it is open to cannot be confirmed here. "
+        },
+        {
+          "field": "editorial.body",
+          "old": "A foreign investor cannot register this activity in Bali today through a PMA company.",
+          "new": "A foreign investor cannot yet rely on a Bali registration pathway for this activity through a PMA company, pending case-by-case verification."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Since a PT PMA is treated by law as an Usaha Besar enterprise, it cannot register the activity there. The local status, `Closed to PMA (no Besar scale)`, reflects that absence of a large-enterprise registration route rather than a reduced foreign-ownership percentage.",
+          "new": "The local status here, `Blocked — pending verification`, records that same gap in the catalogue rather than a reduced foreign-ownership percentage."
+        },
+        {
+          "field": "editorial.body",
+          "old": "That rule is part of the Bali setting, but the immediate recorded reason for this activity's PMA closure is the missing Usaha Besar scale row. The national invitation to 100% foreign ownership is therefore real, yet it does not create a Bali registration pathway where the local scale structure excludes the PMA form.",
+          "new": "Whether that rule reaches this specific activity cannot be confirmed either, because no verified risk tier is on file for it; the recorded reason for today's block is the missing licensing record itself, not a determination under the moratorium. The national invitation to 100% foreign ownership is therefore real, yet it cannot open a Bali registration pathway until a verified licensing row is found and the case is reviewed."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "The national invitation to 100% foreign ownership is real, yet it does not create a Bali registration pathway where the local scale structure excludes the PMA form.",
+          "new": "The national invitation to 100% foreign ownership is real, yet it cannot open a Bali registration pathway until a verified licensing row is found and the case is reviewed."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scales",
+          "new": "Licensing scale status"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Unverified — no licensing rows on file"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked — pending verification"
         }
       ]
     },
@@ -96,6 +299,36 @@
           "field": "editorial.body",
           "old": "It says OSS has no Usaha Besar scale row for the activity, listing only Mikro, Kecil and Menengah.",
           "new": "It records no foreign-ownership restriction for the activity, and no verified licensing rows either — so the Bali risk tier is unknown, the position cannot be stated, and the code is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "This football-club activity is nationally open to full foreign ownership, yet Bali’s scale-gating leaves a PT PMA unable to register it there.",
+          "new": "This football-club activity is nationally open to full foreign ownership, yet Bali Zero holds no verified licensing rows for it and treats PMA registration there as blocked until one is confirmed, case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record opens this activity to Mikro and Kecil businesses. Those are the only scales named for it, and that limited listing matters in Bali. The local outcome turns on the scale rows present in the OSS system: a code whose listing does not reach Usaha Besar cannot accommodate a PT PMA, which is treated by law as a large business. That makes the scale list a substantive part of the registration position, not merely a descriptive detail.",
+          "new": "The record carries no verified scale or licensing rows for this activity: the one entry once linked to this code turned out, on review, to be an unrelated industrial quality-control row from a different sector, and it has since been detached. Under Permeninves/BKPM 5/2025 Pasal 26(1), Usaha Besar classification follows from PMA status rather than gating it, so a missing large-scale row says nothing on its own about foreign-ownership eligibility. What the gap does mean is narrower: without a verified row, no Bali risk tier or scale requirement can currently be confirmed for this code."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Because a PT PMA is large by law, the stated OSS-RBA scale-gating bars its registration. For a foreigner seeking to register this activity in Bali today, the honest answer is that it cannot be registered as PMA.",
+          "new": "For a foreigner asking about this activity in Bali today, the practical answer is the same: registration cannot be confirmed one way or the other until Bali Zero verifies a licensing row for this code."
+        },
+        {
+          "field": "editorial.body",
+          "old": "It does not need to be stretched into a separate explanation for this activity: the recorded scale gate already gives the direct reason for the Bali result.",
+          "new": "Whether that province-wide rule reaches this code cannot be confirmed either, since no risk tier is verified for it yet — the block recorded here rests on the absence of a checked licensing row, not on a confirmed scale gate or moratorium match."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil",
+          "new": "Not verified (disputed row)"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked — unverified, case by case"
         }
       ]
     },
@@ -108,6 +341,61 @@
           "field": "editorial.body",
           "old": "The Bali record marks it Closed to PMA (no Besar scale) because the OSS system has no Usaha Besar scale row for the activity.",
           "new": "The Bali record marks it unclassifiable and treats it as blocked until verified, because we hold no licensing rows for the activity and therefore cannot state its risk tier."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "A Boxing Club Is Open Nationally—But Not to PMA Registration in Bali",
+          "new": "A Boxing Club Is Open Nationally—Bali PMA Registration Is Blocked Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Boxing clubs may be nationally open to full foreign ownership, yet Bali’s OSS scale gate prevents PT PMA registration for this activity.",
+          "new": "Boxing clubs may be nationally open to full foreign ownership, yet Bali holds no verified licensing rows for this activity, so PT PMA registration here is blocked until it can be verified case by case."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "National openness and a 100% foreign-ownership ceiling do not create a PMA registration route in Bali.",
+          "new": "National openness and a 100% foreign-ownership ceiling do not settle Bali PMA registrability; until verified case by case, the record treats it as blocked."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Yet its ordinary business-scale opening is limited to Mikro and Kecil. For a founder, this establishes the formal national posture clearly: the activity may be organised around participation at those named scales, while the foreign-investment setting does not reduce the ownership ceiling below full foreign ownership.",
+          "new": "For a founder, this establishes the formal national posture clearly: the foreign-investment setting does not reduce the ownership ceiling below full foreign ownership. No verified business-scale rows are on file for this code, so no scale-based conclusion can be drawn at the national level either."
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, the answer is materially different and should be read without euphemism: a foreigner cannot register this activity through a PT PMA today. The Bali record marks it unclassifiable and treats it as blocked until verified, because we hold no licensing rows for the activity and therefore cannot state its risk tier. Its available scale rows are Mikro, Kecil and Menengah; a PT PMA is treated as Besar by law, so the OSS-RBA scale gate bars it. The recorded verification is from June 2026 and cites PP 28/2025, Article 127. The national 100% ceiling therefore does not create a Bali registration route for PMA.",
+          "new": "In Bali, the position is materially different: this record carries no verified licensing rows for the activity at all, so no Bali risk tier can be stated, and the code is treated as blocked until verified case by case — not because of a confirmed scale or ownership rule. The national 100% ceiling therefore does not by itself open a Bali registration route for PMA; that can only be confirmed once verified licensing rows for this code are on file."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The decisive point for this club activity is the absence of an Usaha Besar OSS row, which makes national openness unavailable to PT PMA registration in Bali.",
+          "new": "The decisive point for this club activity is that no verified licensing rows exist for it at all, so neither its risk tier nor a Bali registration route for PMA can be confirmed until that gap is resolved."
+        },
+        {
+          "field": "whoThisIsFor",
+          "old": "A foreign entrepreneur looking to open a boxing gym or club in Bali who is ready to handle a location-dependent, higher-risk licensing process.",
+          "new": "A foreign entrepreneur exploring a boxing gym or club in Bali, who should know this code currently carries no verified licensing rows and is treated as blocked pending case-by-case verification before any PMA registration can proceed."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open business scale",
+          "new": "Licensing rows on file"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro",
+          "new": "None (unverified for KBLI 2025)"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].label",
+          "old": "Open business scale",
+          "new": "Bali status"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Kecil",
+          "new": "Blocked pending verification"
         }
       ]
     },
@@ -120,6 +408,56 @@
           "field": "editorial.body",
           "old": "The Bali reason says there is no Usaha Besar scale row in OSS for the activity; it records only Mikro, Kecil and Menengah.",
           "new": "The Bali reason records no foreign-ownership restriction for the activity and no verified licensing rows, which is why the risk tier is unknown, the position is left unstated, and the code is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "Martial Arts Clubs: Nationally Open, Barred to PMA Registration in Bali",
+          "new": "Martial Arts Clubs: Nationally Open, Blocked in Bali Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "KBLI 93126 covers professional, semi-professional and amateur martial-arts clubs; it is nationally open to 100% foreign ownership but barred from PMA registration in Bali.",
+          "new": "KBLI 93126 covers professional, semi-professional and amateur martial-arts clubs; it is nationally open to 100% foreign ownership, but no licensing rows have been verified for it in Bali, so PMA registration there is blocked pending case-by-case verification."
+        },
+        {
+          "field": "editorial.body",
+          "old": "**For a foreign investor, the immediate Bali answer is no:** KBLI 93126 cannot be registered there through a PMA today, even though its national position is open.",
+          "new": "**For a foreign investor, Bali cannot yet confirm a path forward:** KBLI 93126 carries no verified licensing rows for Bali, so PMA registration there is blocked pending case-by-case verification, even though its national position is open."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali’s record marks the activity as blocked for PMA and assigns it the status `Closed to PMA (no Besar scale)`.",
+          "new": "Bali’s record marks the activity as blocked for PMA pending verification and assigns it the status `Blocked pending verification (no licensing rows in the catalogue)`."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The national scale entry is narrow and explicit: Mikro and Kecil are open to the activity. Those labels identify the scales supplied by this record; they do not erase the separate Bali treatment for a foreign-investment company. The national entry is therefore fully open on foreign ownership while still being specific about the scales it lists. A reader considering this activity needs both parts of the record in view: its permitted national ownership ceiling and its named open scales.",
+          "new": "The national scale entry cannot currently be shown here: the licensing rows this record once cited for scale have been withdrawn as unverifiable for KBLI 2025, so no scale-specific position can be stated at the moment. What remains verified is the ownership ceiling itself — 100% foreign ownership, per Perpres 10/2021 and 49/2021 — which is separate from any scale-based licensing requirement. A reader considering this activity should treat the scale question as open until a verified source is found, and confirm the current classification at oss.go.id before acting on it."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A PT PMA is stated to be Usaha Besar under Omnibus UU 6/2023. The stated consequence is that OSS-RBA scale-gating, under PP 28/2025 Pasal 127, bars its registration. The recorded verification is from June 2026. Separately, the Bali record notes a permanent, island-wide rule blocking PMA for all KBLI classified Low or Medium-Low risk, citing Gubernur letter B.27.000/642/PM/DPMPTSP. For this activity, the stated decisive barrier is the missing Usaha Besar OSS row: national foreign openness cannot overcome Bali’s PMA scale gate.",
+          "new": "A PT PMA is classified as Usaha Besar as a consequence of holding PMA status, not as a precondition for registering it (Permeninves/BKPM 5/2025 Pasal 26(1)). Separately, the Bali record notes a permanent, island-wide rule blocking PMA for all KBLI classified Low or Medium-Low risk, citing Gubernur letter B.27.000/642/PM/DPMPTSP; whether this code falls under that rule is not established here, since its risk tier is itself unverified. For this activity, the decisive barrier is narrower than either mechanism: no licensing row for KBLI 93126 has been verified against the current regulation, so the Bali position cannot yet be confirmed and the code stays blocked, case by case, until one is found."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "National foreign openness cannot overcome Bali’s PMA scale gate.",
+          "new": "No licensing row for this code has been verified in Bali — until one is, PMA registration stays blocked."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scales",
+          "new": "Scale rows"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil",
+          "new": "Not verified — withdrawn pending source"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification (no licensing rows in the catalogue)"
         }
       ]
     },
@@ -137,6 +475,71 @@
           "field": "editorial.body",
           "old": "Bali’s record therefore treats it as reserved for UMKM on structural grounds.",
           "new": "Bali's record therefore states no position at all, and the code is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "A Nationally Open Sports Club Activity That PMA Cannot Register in Bali",
+          "new": "A Nationally Open Sports Club Activity Blocked in Bali Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Other Sports Clubs can be fully foreign-owned nationally, yet Bali’s scale structure closes the registration path to a PT PMA.",
+          "new": "Other Sports Clubs can be fully foreign-owned nationally, yet in Bali the registration path is blocked pending verification of this activity's licensing data."
+        },
+        {
+          "field": "editorial.body",
+          "old": "**A foreign investor cannot register this activity in Bali today.**",
+          "new": "**In Bali, this activity's registration path for a foreign investor is blocked pending verification.**"
+        },
+        {
+          "field": "editorial.body",
+          "old": "The contrast is not a minor footnote: nationally, full foreign ownership is permitted; in Bali, the available registration structure prevents a PT PMA from taking this activity forward.",
+          "new": "The contrast is not a minor footnote: nationally, full foreign ownership is permitted; in Bali, the registration path is blocked pending verification of this activity's licensing data."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Registration is open at the Mikro, Kecil and Menengah scales. That detail cannot be carried through to a Bali answer here, because we hold no verified licensing rows for this activity and its risk tier is therefore unknown.",
+          "new": "Which scales this activity registers at, and at what risk tier, cannot be confirmed here — we hold no verified licensing rows for this activity."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A PT PMA is, by law, an Usaha Besar, and it consequently cannot register this activity there.",
+          "new": "The unresolved licensing gap is what currently blocks a PT PMA from registering this activity in Bali."
+        },
+        {
+          "field": "editorial.body",
+          "old": "For this activity, the stated conclusion remains direct: Bali is closed to PMA because no Usaha Besar scale is available.",
+          "new": "For this activity, the stated conclusion is narrower: the licensing gap leaves Bali's position unresolved, and the registration path stays blocked here until it is verified case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "in Bali, a foreign investor cannot register it through a PT PMA.",
+          "new": "in Bali, a PT PMA's registration remains blocked pending verification."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "Nationally, full foreign ownership is permitted; in Bali, the available registration structure prevents a PT PMA from taking this activity forward.",
+          "new": "Nationally, full foreign ownership is permitted; in Bali, the registration path is blocked pending verification of this activity's licensing data."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scales",
+          "new": "Licensing scales"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Unverified — no rows confirmed"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification (no licensing data)"
+        },
+        {
+          "field": "whoThisIsFor",
+          "old": "A foreign entrepreneur looking to run a niche or community-driven sports club (e-sport, chess, bridge, shooting) and willing to launch outside of Bali or wait for the moratorium to lift.",
+          "new": "A foreign entrepreneur looking to run a niche or community-driven sports club (e-sport, chess, bridge, shooting) nationally, for whom the Bali registration path needs case-by-case verification before proceeding."
         }
       ]
     },
@@ -149,6 +552,51 @@
           "field": "editorial.body",
           "old": "The Bali status is Closed to PMA (no Besar scale) because OSS has no Usaha Besar scale row; the activity is reserved for UMKM, while a PT PMA is Usaha Besar by law and cannot register.",
           "new": "The Bali position is unstated rather than closed, and the code is treated as blocked until verified case by case. The requirement we located is a personal licence and not an equity rule — UU 11/2022 Pasal 69(1) and Pasal 71 with PP 46/2024 Pasal 103 require a foreign referee or judge to hold a competency certificate, a federation recommendation and a government permit — while the catalogue holds no licensing rows for the code, so its risk tier is unknown."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "Professional Judges and Referees: Open Nationally, Closed to Bali PMA",
+          "new": "Professional Judges and Referees: Open Nationally, Bali Status Blocked Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Nationally, this individual professional activity permits full foreign ownership, yet Bali’s registration structure prevents a PT PMA from entering it today.",
+          "new": "Nationally, this individual professional activity permits full foreign ownership, yet no verified licensing route lets a PT PMA register it in Bali today — the position stays blocked until checked case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Scale is not a side note in this record; it defines the available registration range. The open scales are Mikro, Kecil, and Menengah. Put plainly, the listed route is for micro, small, and medium enterprises. The absence of an Usaha Besar scale row becomes consequential in Bali, but even before reaching the regional picture it signals that this is not presented as an unrestricted, all-scale activity. A founder should read the scale list alongside the scope: it is a tightly framed professional activity with access specified at the micro, small, and medium levels.",
+          "new": "Scale is meant to define the available registration range for this activity, but the licensing rows this record once carried have since been set aside as unverifiable against the current KBLI 2025 text, so no confirmed scale list can be stated here today. That gap is not a side detail: it is the same reason neither the risk tier nor the Bali position below can be settled from this record alone, and both need case-by-case verification before anyone acts on them."
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, a foreigner cannot register this activity through a PT PMA today.",
+          "new": "In Bali, this record carries no confirmed route today for a PT PMA to register this activity."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record also notes Bali’s permanent, island-wide moratorium blocking PMA registration for its stated low and medium-low risk categories. The conclusion needs no softening: 100% national foreign ownership remains the national position, yet it creates no Bali PT PMA registration route for this activity.",
+          "new": "Bali separately runs a permanent, island-wide moratorium blocking PMA registration for confirmed Low and Medium-Low risk activities, but this code’s own risk tier has not been verified, so whether that moratorium even reaches this activity is itself part of what remains unresolved. What is established: 100% national foreign ownership stands, while the Bali route stays blocked pending case-by-case verification — neither confirmed open nor confirmed closed for good."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali supplies the decisive qualification—and it is a hard one.",
+          "new": "Bali supplies the qualification — and it is an unresolved one, not a settled one."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "100% national foreign ownership remains the national position, yet it creates no Bali PT PMA registration route for this activity.",
+          "new": "100% national foreign ownership stands nationally — but in Bali the route stays blocked pending case-by-case verification, not settled either way."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Not confirmed — rows under review"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification (no confirmed risk tier)"
         }
       ]
     },
@@ -161,6 +609,61 @@
           "field": "editorial.body",
           "old": "The local record identifies a structural reason: OSS has no **Usaha Besar** scale row for the activity, leaving it reserved for UMKM.",
           "new": "The local record identifies a duty to partner, which does not bar foreign ownership: UU 11/2022 Pasal 54(3), hardened by Permenpora 9/2026 Pasal 73(1), obliges a foreign entity organising an international-level championship to partner with the national federation and/or a professional sport organisation. No licensing rows are held for the code, so its Bali risk tier is unknown, the position cannot be stated, and it is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Nationally, foreign ownership may reach 100%, but this framework for organised sport has no PMA registration route in Bali.",
+          "new": "Nationally, foreign ownership may reach 100%, but Bali holds no verified licensing record for this framework — registration here is blocked pending case-by-case confirmation."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "A 100% national foreign-ownership ceiling does not create a PMA registration route in Bali.",
+          "new": "A 100% national foreign-ownership ceiling does not verify a Bali PMA registration route — the Bali record here is unconfirmed."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The scale boundary is central to the record. This activity is open at **Mikro** and **Kecil** scale. Those labels sit alongside a scope that can encompass recurring and tiered competition involving a number of people, groups, or clubs. Read together, they establish both sides of the classification: what the organisation does, and the business scales at which the activity is available for registration.",
+          "new": "The scale boundary cannot be stated here: the licensing rows this classification's scale tiers were once read from have been removed until a verified source is found. No scale — Mikro, Kecil, or otherwise — is currently confirmed for this activity. Until re-verified, the record is limited to scope: what the organisation does, not the business size at which it may register."
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, the result is decisive: a PMA company cannot register this activity today.",
+          "new": "In Bali, no verified position can currently be given for this activity."
+        },
+        {
+          "field": "editorial.body",
+          "old": " Because a PT PMA is, by law, an Usaha Besar business, it cannot register under this code in Bali.",
+          "new": ""
+        },
+        {
+          "field": "editorial.body",
+          "old": "The honest reading is therefore straightforward: national openness and a 100% foreign-ownership ceiling do not create a Bali PMA registration path for this activity.",
+          "new": "The honest reading is therefore straightforward: pending verification, national openness and a 100% foreign-ownership ceiling do not currently confirm a Bali PMA registration path for this activity."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scale",
+          "new": "Scale record"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro",
+          "new": "Not verified"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].label",
+          "old": "Open scale",
+          "new": "Scale record"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Kecil",
+          "new": "Not verified"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending case-by-case verification"
         }
       ]
     },
@@ -173,6 +676,46 @@
           "field": "editorial.body",
           "old": "The Bali record marks the activity as closed to PMA because OSS contains no Usaha Besar scale row for it; it is therefore reserved for UMKM.",
           "new": "The Bali record leaves the activity unclassified rather than closed, and treats it as blocked until verified case by case: the requirement we located is a mandatory business standard with no ownership term anywhere in it — Permenpora 9/2026 Lampiran I, eight cumulative persyaratan and a Sertifikat Standar — and we hold no licensing rows for the code, so its risk tier is unknown."
+        },
+        {
+          "field": "editorial.body",
+          "old": "It is open at the Micro, Small and Medium scales, placing the code within a business landscape designed for operators working close to communities, practitioners and cultural traditions.",
+          "new": "The scale-based licensing detail once cited for this code could not be verified against the current regulation text and has since been set aside, so no confirmed scale profile can be stated here."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Since a PT PMA is, by law, an Usaha Besar, it cannot register this activity in Bali today.",
+          "new": "That gap in the licensing record — not a settled scale or ownership rule — is why Bali Zero holds a PT PMA filing for this activity as blocked pending case-by-case verification, not as a closed matter."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The provincial backdrop is equally firm:",
+          "new": "The provincial backdrop adds a separate layer:"
+        },
+        {
+          "field": "editorial.body",
+          "old": "For this activity, the decisive point is the structural registration barrier recorded in OSS, not the national foreign-ownership ceiling.",
+          "new": "For this activity, the decisive point is that no verified licensing row exists to confirm which risk category it falls into — not the national foreign-ownership ceiling, and not yet a confirmed moratorium hit either."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A founder can therefore read the national position as fully open while still recognising that Bali does not admit a PT PMA registration for this activity.",
+          "new": "A founder can therefore read the national position as fully open while recognising that Bali Zero cannot yet confirm this activity as admissible for a PT PMA registration in Bali."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scales",
+          "new": "Scale profile"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Not verified for this code"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification"
         }
       ]
     },
@@ -190,6 +733,51 @@
           "field": "editorial.body",
           "old": "Bali consequently treats it as reserved for UMKM.",
           "new": "Bali consequently states no position, and the code is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "Independent athletes, including individual e-sports competitors, are nationally open to full foreign ownership—but a PT PMA cannot register the activity in Bali today.",
+          "new": "Independent athletes, including individual e-sports competitors, are nationally open to full foreign ownership — but Bali carries no verified licensing rows for this code, so a PT PMA’s registration route there is blocked pending case-by-case verification."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A foreign investor cannot register KBLI 93197 in Bali today through a PT PMA.",
+          "new": "A foreign investor should not assume KBLI 93197 is currently registrable through a PT PMA in Bali — the record’s Bali position is unresolved, not a settled closure."
+        },
+        {
+          "field": "editorial.body",
+          "old": "At the registration level, the activity is open to Mikro, Kecil and Menengah scales. These are the only scales given in the record. That matters because we hold no verified licensing rows for this activity, so its risk tier is unknown. Bali consequently states no position, and the code is treated as blocked until verified case by case. For founders, that detail is more useful than a broad label: the permitted scale determines whether the activity can be recorded through a particular corporate form.",
+          "new": "At the registration level, this record carries no verified licensing rows for the activity — no confirmed scale eligibility and no confirmed risk tier. That gap is why Bali states no position here: the code is treated as blocked until verified case by case, not cleared and not ruled out. For founders, that is the practical takeaway — treat any scale or risk-tier claim for this code as unverified until the Bali Zero team confirms it activity by activity."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A PT PMA is Usaha Besar by law, and because no Usaha Besar row exists, it cannot register this activity there. The local status is Closed to PMA (no Besar scale): closed to PMA for the absence of a large-scale pathway, not because the national 100% ceiling has vanished.",
+          "new": "The same gap carries straight through to Bali: with no confirmed licensing pathway, there is nothing here to certify a PT PMA route, so the blocked, verify-case-by-case position above stands."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali also records a permanent, island-wide moratorium that blocks PMA registrations across the Low and Medium-Low risk band, under the Governor’s letter B.27.000/642/PM/DPMPTSP. The entry’s direct Bali conclusion remains unambiguous: national openness does not provide a PT PMA a registration route for this activity in Bali.",
+          "new": "Separately, Bali enforces a permanent, island-wide moratorium blocking PMA registrations across the Low and Medium-Low risk band, under the Governor’s letter B.27.000/642/PM/DPMPTSP — whether this code falls in that band is itself unverified. Until the licensing gap closes, the practical answer for a PT PMA stays what the record shows: blocked, not cleared, and not something to assume open."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "National openness does not provide a PT PMA a registration route for this activity in Bali.",
+          "new": "No verified licensing rows exist for this code in Bali — the position stays blocked until verified case by case, not cleared and not closed by default."
+        },
+        {
+          "field": "editorial.byTheNumbers[2].label",
+          "old": "Open scales",
+          "new": "Licensing rows"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "None verified for this code"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked — pending verification"
         }
       ]
     },
@@ -202,6 +790,41 @@
           "field": "editorial.body",
           "old": "OSS has no **Usaha Besar** scale row for it, leaving the activity reserved for UMKM; a PT PMA is, by law, an **Usaha Besar** undertaking and therefore cannot be registered on that basis.",
           "new": "We located no foreign-ownership restriction for this activity, and no verified licensing rows either — so the Bali risk tier is unknown, the position cannot be stated, and the code is treated as blocked until verified case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The category is open at the **Mikro**, **Kecil** and **Menengah** scales.",
+          "new": "This code’s licensing rows — including which business scales it opens at — have been removed until a verified source is found."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali’s status is **Closed to PMA (no Besar scale)**. The provincial setting is also restrictive, with an island-wide, permanent block on PMA registration for all Low and Medium-Low risk KBLI activities under the Governor’s letter.",
+          "new": "That block rests on missing licensing data, not a settled scale-based exclusion."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil, Menengah",
+          "new": "Unverified — no scale/licensing rows on file"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification"
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, the answer for a PT PMA is different and immediate: it cannot register this activity today.",
+          "new": "In Bali, the answer for a PT PMA is different and immediate."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "This broad sporting-activities category is nationally open to full foreign ownership, yet a foreign-owned company cannot register it in Bali today.",
+          "new": "This broad sporting-activities category is nationally open to full foreign ownership, yet in Bali a foreign-owned company’s registration is currently blocked pending verification."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "National openness is real, but in Bali a PT PMA cannot register this activity today.",
+          "new": "National openness is real, but in Bali a PT PMA’s registration is currently blocked pending verification."
         }
       ]
     },
@@ -583,6 +1206,537 @@
           "field": "editorial.byTheNumbers[3].value",
           "old": "Closed to PMA (no Besar scale)",
           "new": "Closed in Bali (2026 moratorium)"
+        }
+      ]
+    },
+    "43110": {
+      "judul": "Pembongkaran",
+      "expect_l4_status": "BLOCCATO_DIPENDE_SCOPE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "whatYouNeed",
+          "old": "But OSS lists no large-enterprise (Besar) scale for it — it is reserved for micro, small and medium Indonesian enterprises (Perpres 49/2021).",
+          "new": "But this code's scope is not uniformly open here: Perpres 10/2021's Lampiran II reserves one named sub-activity — demolition using simple and medium technology — for Koperasi/UMKM only, under Pasal 5(5), which scopes that reservation to the named activity rather than the whole code."
+        },
+        {
+          "field": "whatYouNeed",
+          "old": "A PT PMA is, by law, a large-scale (Besar) entity, so it cannot register against this code in Bali.",
+          "new": "PP 28/2025's Lampiran I.H entry 39 does publish a Besar-scale row for this code written for BUJK PMA, so a foreign-owned route exists for the parts of the scope that are not reserved."
+        },
+        {
+          "field": "whatYouNeed",
+          "old": "The realistic paths are a domestic structure or an adjacent code that does carry a Besar scale.",
+          "new": "Whether a given project falls inside the reserved slice depends on the exact sub-activity, so it needs checking case by case before assuming this code is closed or open."
+        },
+        {
+          "field": "whoThisIsFor",
+          "old": "Best suited to an Indonesian-owned (UMKM) operator; a foreign investor needs an adjacent code or a domestic partner structure.",
+          "new": "Suited to a Koperasi/UMKM operator for the reserved simple/medium-technology demolition slice; a foreign investor's route depends on which part of the scope the project falls into, so it needs checking case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The Bali status is **Closed to PMA (no Besar scale)**: the record states that OSS has no Usaha Besar scale row for this activity, leaving it reserved for UMKM. Because a PT PMA is Usaha Besar by law, it cannot register this activity in Bali. For a foreigner considering a Bali-based PMA structure, the honest answer is therefore clear: this activity cannot be registered there today.",
+          "new": "The Bali picture is **scope-dependent**: Perpres 10/2021's Lampiran II reserves one named sub-activity here — demolition using simple and medium technology — for Koperasi/UMKM only, while PP 28/2025's Lampiran I.H entry 39 publishes a Besar-scale row for this code written for BUJK PMA. For a foreigner considering a Bali-based PMA structure, the honest answer is that it depends on the exact sub-activity: the reserved slice is closed to foreign ownership, and the rest needs checking case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "National openness and Bali registration are different tests; on this activity, the Bali PMA registration result is closed.",
+          "new": "National openness and Bali registration are different tests; on this activity, whether a PMA can register turns on the specific sub-activity reserved under Perpres 10/2021 and, separately, on whether the province-wide moratorium above applies to that project's risk tier — not a single blanket verdict either way."
+        },
+        {
+          "field": "editorial.headline",
+          "old": "Demolition Has a National Green Light, but No Bali PMA Route",
+          "new": "Demolition Has a National Green Light, but Bali's PMA Route Depends on Scope"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Partly reserved — depends on scope"
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record presents this as a micro-scale activity, rather than offering a broader range of operating scales.",
+          "new": "The record presents this as a micro-scale activity in OSS's own per-scale table, though a separate instrument — PP 28/2025 — later publishes a Besar-scale row for this code aimed at BUJK PMA (a foreign-invested construction-services entity), a route not reflected in this per-scale table."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "This activity spans controlled and conventional dismantling, but national foreign openness does not create a PMA registration path in Bali.",
+          "new": "This activity spans controlled and conventional dismantling; national foreign openness sets the ceiling, but whether a PMA can register in Bali depends on the exact scope of the project."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "A 100% national foreign-ownership ceiling does not create a PMA registration route in Bali.",
+          "new": "A 100% national foreign-ownership ceiling does not, by itself, settle whether a PMA can register this scope in Bali."
+        }
+      ]
+    },
+    "52211": {
+      "judul": "Aktivitas Terminal Darat",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.headline",
+          "old": "Land Terminal Operations: Open Nationally, Closed to PMA in Bali",
+          "new": "Land Terminal Operations: Open Nationally, Bali Position Blocked Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "This activity covers the running of land terminals, yet Bali’s OSS scale gate prevents PT PMA registration despite a nationally open foreign-ownership setting.",
+          "new": "This activity covers the running of land terminals; nationally foreign ownership is open, but no verified OSS licensing rows exist for this code, so the Bali position is blocked pending case-by-case verification."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A foreign investor cannot register this activity in Bali today, even though its national foreign-investment setting is open.",
+          "new": "This code's Bali registration path is blocked pending verification — no reliable OSS licensing rows are currently on file for it — even though its national foreign-investment setting is open."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record lists Mikro and Kecil as the scales open to it. That makes the code a fit for an operator whose actual business is the operation of a land terminal and the services integral to that operation, rather than a loose description for any transport-related venture.",
+          "new": "No verified OSS licensing-scale rows are currently on file for this code, so which scales it opens to is undetermined pending verification. Independently of that gap, the official scope reads narrowly: the code is a fit for an operator whose actual business is the operation of a land terminal and the services integral to that operation, rather than a loose description for any transport-related venture."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali changes the registration outcome completely. Its status is recorded as Closed to PMA (no Besar scale), and the stated reason is OSS-RBA scale-gating: the activity has rows for Mikro, Kecil and Menengah, but no Usaha Besar row. A PT PMA is Usaha Besar by law, so the missing large-scale row bars its registration under PP 28/2025 Pasal 127. Nationally open to 100% foreign ownership does not create a Bali registration route when the OSS scale gate has no Usaha Besar row. The record also notes Bali’s island-wide, permanent PMA moratorium for Low and Medium-Low risk KBLI, cited to a Governor’s letter.",
+          "new": "Bali's position for this code cannot currently be stated. The catalogue holds no verified licensing rows for it — the scale data once shown here belonged to a different licensing regime entirely (a port cargo-tally agent block, not land-terminal operations) and has since been set aside — so its Bali risk tier is unknown and the code is treated as blocked until verified case by case. A nationally open foreign-ownership setting does not by itself establish a Bali registration route; what is missing is verification of this specific code's own licensing rows, not the national ownership ceiling. The record also notes Bali’s island-wide, permanent PMA moratorium for Low and Medium-Low risk KBLI, cited to a Governor’s letter — whether that moratorium reaches this code depends on a risk tier this record does not yet have."
+        },
+        {
+          "field": "editorial.body",
+          "old": "For a founder assessing a Bali setup, the decisive answer is direct: foreign registration is closed for this activity, notwithstanding its nationally open PMA status. The activity itself remains clearly defined by terminal operation and is nationally listed for Mikro and Kecil scales.",
+          "new": "For a founder assessing a Bali setup, the honest answer is that this code is blocked pending verification, not settled closed — confirm the current position case by case with Bali Zero before proceeding. The activity itself remains clearly defined by terminal operation; no verified scale data is currently on file for it."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "Nationally open to 100% foreign ownership does not create a Bali registration route when the OSS scale gate has no Usaha Besar row.",
+          "new": "Nationally open to 100% foreign ownership does not settle the Bali position — with no verified licensing rows on file, this code is blocked until verified case by case."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil",
+          "new": "Not yet verified"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification"
+        }
+      ]
+    },
+    "55201": {
+      "judul": "Aktivitas Rumah Tinggal Sewa (Homestay)",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "The Bali result comes from the registration structure: the available scale rows stop at Micro, Small and Medium, while a PT PMA is treated as a Large business for this purpose. With no Large-business row available in OSS-RBA, the PT PMA route is barred.",
+          "new": "The Bali result comes from a specific instrument, not a missing OSS business-scale row: Perpres 49/2021’s Lampiran II lists the *Pondok Wisata* sub-row — carrying the pre-2025 code KBLI 55130, now this activity’s 55201 — as *dialokasikan* (allocated) to Koperasi and UMKM. That allocation is what closes the bidang usaha to a PT PMA in Bali."
+        },
+        {
+          "field": "editorial.body",
+          "old": "That matters because those are the scales through which the activity is available in the system; they define the practical boundary behind Bali’s PMA outcome. A national foreign-ownership allowance is therefore not, by itself, a promise of a usable Bali registration path. Here, the national position and the island-level registration result point in different directions: open at the national level, but closed to PMA registration in Bali through the scale gate.",
+          "new": "Those scale rows describe the activity’s licensing track, not its ownership eligibility; they are not, on their own, what decides the Bali outcome. A national foreign-ownership allowance is therefore not, by itself, a promise of a usable Bali registration path. Here, the national position and the island-level registration result point in different directions: open at the national level, but closed to PMA registration in Bali because Perpres 49/2021’s Lampiran II allocates this bidang usaha to Koperasi/UMKM."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The relevant local fact is the recorded closure: no Large-business scale row is available, and that prevents a PT PMA from registering the activity in Bali.",
+          "new": "The relevant local fact is the recorded closure: Perpres 49/2021’s Lampiran II allocates this bidang usaha — via the *Pondok Wisata* sub-row for KBLI 55130 — to Koperasi/UMKM, and that allocation prevents a PT PMA from registering the activity in Bali."
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Closed to PMA (Koperasi/UMKM allocation)"
+        },
+        {
+          "field": "whatYouNeed",
+          "old": "Nationally, the KBLI 55201 is listed as open to 100% foreign ownership, but in Bali the provincial regulation (Perda 4/2026) and implementing norms (NSPK) explicitly close it to foreign-owned companies, reserving homestay operations exclusively for local micro and small enterprises. Any attempt to use a nominee arrangement is criminalized, so a PMA cannot legally register and run a homestay under this code in Bali.",
+          "new": "Nationally, KBLI 55201 is listed as open to 100% foreign ownership. But Perpres 49/2021’s Lampiran II separately allocates this activity — under the *Pondok Wisata* sub-row for the pre-2025 code KBLI 55130 — to Koperasi and UMKM, reserving it for that channel and closing the bidang usaha to a PT PMA. Bali’s own island-wide moratorium on Low- and Medium-Low-risk activities closes the route a second way, so a PMA cannot register and run a homestay under this code on the island."
+        }
+      ]
+    },
+    "55203": {
+      "judul": "Aktivitas Vila",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "whatYouNeed",
+          "old": "Nationally, the Positive Investment List opens this KBLI to 100% foreign ownership on paper — but OSS provides no Usaha Besar scale row for it: villa rental under 55203 is reserved for micro, small and medium enterprises (UMKM) nationwide. A PT PMA is legally an Usaha Besar, so it cannot register this KBLI anywhere in Indonesia (PP 28/2025 scale-gating) — not just in Bali.",
+          "new": "Nationally, the Positive Investment List (Perpres 10/2021, as amended by 49/2021) opens this KBLI to 100% foreign ownership. But Perpres 49/2021's Lampiran II carries an explicit allocation of this activity to Koperasi/UMKM — page 15, entry 48, sub-row *Vila*, under the old KBLI code 55193 — a named annex entry, not an inference from a missing OSS scale row, so a PT PMA cannot register under it."
+        },
+        {
+          "field": "zantaraOpener",
+          "old": "OSS reserves it for UMKM, so a standard PT PMA cannot register it at all.",
+          "new": "Perpres 49/2021's investment-list annex reserves this exact activity for Koperasi/UMKM, so a standard PT PMA cannot register it at all."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record gives a structural reason: OSS has no Usaha Besar scale row, so the activity is reserved for UMKM; a PT PMA, being Usaha Besar by law, cannot register.",
+          "new": "The record gives an explicit reason: Perpres 49/2021's Lampiran II allocates this activity to Koperasi/UMKM — page 15, entry 48, sub-row *Vila*, under the old KBLI code 55193 — a named annex entry, not an inference drawn from a missing OSS scale row, and a PT PMA cannot register under an allocation reserved for cooperatives and UMKM."
+        },
+        {
+          "field": "editorial.body",
+          "old": "where the scale structure prevents registration",
+          "new": "where an annex allocation to Koperasi/UMKM prevents registration"
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "A 100% national foreign-ownership ceiling does not produce a Bali PMA registration route where the scale structure prevents registration.",
+          "new": "A 100% national foreign-ownership ceiling does not produce a Bali PMA registration route where an annex allocation to Koperasi/UMKM prevents registration."
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Closed to PMA (Koperasi/UMKM annex)"
+        }
+      ]
+    },
+    "55209": {
+      "judul": "Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya",
+      "expect_l4_status": "BLOCCATO_DIPENDE_SCOPE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "whatYouNeed",
+          "old": "Nationally, the Positive Investment List opens this KBLI to 100% foreign ownership on paper — but OSS provides no Usaha Besar scale row for it: this short-term accommodation activity is reserved for micro, small and medium enterprises (UMKM) nationwide. A PT PMA is legally an Usaha Besar, so it cannot register this KBLI anywhere in Indonesia (PP 28/2025 scale-gating) — not just in Bali. In Bali the block is reinforced by the provincial moratorium on Low and Medium-Low-risk PMA registrations (effective from 13 May 2026).",
+          "new": "Nationally, the Positive Investment List opens this KBLI to 100% foreign ownership. The national carve-out here is scope-based, not scale-based: Perpres 10/2021 Pasal 5(5) reserves only the specifically named 'Guest House' sub-activity within this code to Koperasi/UMKM, not the whole KBLI — so whether a given concept falls inside that reserved slice depends on the exact activity and needs checking case by case. In Bali, a separate and self-sufficient block applies regardless of that scope question: the provincial moratorium closes all Low and Medium-Low-risk PMA registrations island-wide (effective from 13 May 2026), and this activity carries a Medium-Low risk classification."
+        },
+        {
+          "field": "baliContext",
+          "old": "For foreign investors the real wall is structural: OSS lists no Usaha Besar scale for 55209, so the code is effectively reserved for local UMKM — a PT PMA (large-scale by law) cannot register it directly.",
+          "new": "For foreign investors, the practical wall in Bali is the provincial moratorium: this Medium-Low risk classification is closed to PMA registration island-wide. Separately, the 'Guest House' sub-activity named within this code is reserved to Koperasi/UMKM by Perpres 10/2021 Pasal 5(5) — whether a given concept counts as Guest House needs checking case by case, but the rest of the code's scope is not reserved on that ground."
+        },
+        {
+          "field": "whoThisIsFor",
+          "old": "Creative hospitality entrepreneurs drawn to unique short-stay concepts—however, a foreigner cannot currently open a direct PT PMA for this in Bali due to the local UMKM reservation.",
+          "new": "Creative hospitality entrepreneurs drawn to unique short-stay concepts—though in Bali a PT PMA cannot register this activity today under the provincial moratorium on Medium-Low risk classifications, and even outside Bali the 'Guest House' slice of this code is reserved to Koperasi/UMKM and needs a case-by-case scope check."
+        },
+        {
+          "field": "editorial.body",
+          "old": "A PT PMA is treated as Usaha Besar by law, but Bali’s OSS structure has no Usaha Besar scale row for this activity. The result is structural: the activity is reserved for UMKM, so a foreign-owned PT PMA cannot register it in Bali today.",
+          "new": "Two separate rules narrow it there. Perpres 10/2021 Pasal 5(5) reserves only the specifically named 'Guest House' sub-activity within this code to Koperasi/UMKM, not the whole code — so whether a given concept falls inside that reserved slice depends on the exact activity and has to be checked case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali’s record also states a permanent, island-wide PMA block for low and medium-low risk classifications. Yet the decisive point for this activity is already clear from its own registration setting: no large-business row is available, while the PMA vehicle is legally large business.",
+          "new": "Separately, and more decisively for this activity, Bali’s provincial moratorium permanently blocks PMA registration for every Low and Medium-Low risk classification island-wide, and this activity sits at Medium-Low risk — so registration in Bali is closed today regardless of how the Guest House scope question resolves."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The national ceiling remains 100%, but in Bali the available scale structure closes the registration path to PMA.",
+          "new": "The national ceiling remains 100%, but in Bali the moratorium — not the national cap, and not the code's scale structure — is what currently closes the registration path."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "The national ceiling remains 100%, but in Bali the available scale structure closes the registration path to PMA.",
+          "new": "The national ceiling remains 100%, but in Bali the moratorium — not the national cap, and not the code's scale structure — is what currently closes the registration path."
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked — Bali moratorium (Medium-Low risk)"
+        }
+      ]
+    },
+    "79903": {
+      "judul": "Jasa Pramuwisata",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.standfirst",
+          "old": "Tour-guide services may be wholly foreign-owned nationally, but a PT PMA cannot register this activity in Bali under the available scale structure.",
+          "new": "Tour-guide services may be wholly foreign-owned nationally, but a PT PMA cannot register this activity in Bali — the bidang usaha is allocated to Koperasi/UMKM under the Perpres 49/2021 investment-list annex."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The obstacle is structural: OSS has no Usaha Besar scale row, leaving the available registration space reserved for UMKM. Because a PT PMA is Usaha Besar by law, it cannot register against this activity’s available scales in Bali. This conclusion follows from the stated scale structure, rather than from the nature of the service itself.",
+          "new": "The obstacle is a specific Perpres allocation, not a scale gap: Perpres 49/2021's Lampiran II lists this bidang usaha — under its former KBLI 2020 code, 79921 — in the *dialokasikan* column (p.16, entry 56), reserving it for Koperasi/UMKM, and a PT PMA is excluded from registering it on that basis. This conclusion follows from that explicit Perpres allocation, not from the nature of the service itself."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record does not provide a risk classification for this activity, so the stated basis for its Bali outcome remains the absent Usaha Besar row and the UMKM reservation.",
+          "new": "This activity is classified Low risk, which places it within that moratorium's scope as well — but independently of the moratorium, the Perpres 49/2021 Koperasi/UMKM allocation set out above is the basis recorded for its Bali outcome."
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Closed to PMA (Koperasi/UMKM allocation)"
+        }
+      ]
+    },
+    "93122": {
+      "judul": "Klub Golf",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.headline",
+          "old": "Foreign-Open Nationally, but Not Registrable in Bali",
+          "new": "Foreign-Open Nationally, Blocked in Bali Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "A golf-club activity can be wholly foreign-owned nationally, yet Bali’s OSS scale gate keeps a PT PMA from registering it there.",
+          "new": "A golf-club activity can be wholly foreign-owned nationally, yet no verified Bali licensing row exists for this code — until one is found, Bali Zero treats registration here as blocked and reviewed case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "For a foreign investor, a golf club cannot be registered in Bali today.",
+          "new": "For a foreign investor, this golf club’s Bali registration position could not be verified against the official 2025 regulation text, and until it is, Bali Zero treats it as blocked rather than open."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The distinction is not cosmetic: it determines whether a proposed club can enter the registration system on the island at all.",
+          "new": "The distinction is not cosmetic: it is exactly why this activity’s Bali registration currently sits blocked pending verification, rather than settled either way."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Nationally, the record opens the activity to Micro and Small scales. The named national investment source is Perpres 10/2021 and 49/2021, and the national position allows foreign ownership of up to 100%. Those are distinct parts of the picture and need to be read together. The available scale rows describe the operating scope presented for the activity, while the ownership ceiling states the national PMA position. One does not displace the other; both shape how the activity can be understood in practice.",
+          "new": "Nationally, the confirmed fact is the ownership ceiling: Perpres 10/2021 and 49/2021 name this activity as open to up to 100% foreign investment. A Mikro/Kecil scale row also surfaced during the KBLI 2025 crosswalk build, citing a PP 28/2025 lampiran — but an exhaustive check of that lampiran could not locate the row anywhere in it, so it has been set aside as unverifiable rather than treated as a confirmed OSS scale entry. That leaves the 100% ownership ceiling as the only nationally verified position for this activity; no scale-based operating detail can be stated with confidence until a genuine source row is found."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali’s restriction is explicit. The OSS record contains no Large-scale business row for this activity; it contains only Micro, Small and Medium rows. A PT PMA is treated as Large by law, so the OSS-RBA scale gate bars the foreign-investment company from registering this activity in Bali. The province also maintains a permanent, island-wide block on PMA across all low and medium-low risk activities. For this activity, however, the record already gives a direct registration-level reason for the closure: the missing Large scale row. A founder should read the national 100% ceiling as a national investment position—not as an assurance that Bali will accept the PMA registration.",
+          "new": "Bali’s position could not be confirmed. This record carries no verified OSS licensing rows for KBLI 93122, so its Bali risk tier and registration route are unknown rather than closed for a stated legal reason — the record marks it as blocked precisely because there is nothing verified here to register against, not because a specific rule has been found to bar it. Bali separately enforces an island-wide OSS block on PMA registrations for Low and Medium-Low risk activities, reported live since 13 May 2026, but because this code’s risk tier is unconfirmed we cannot say whether that block even reaches it. Until a verified source is found, this activity should be treated as blocked for PT PMA registration in Bali pending case-by-case review. A founder should read the national 100% ceiling as the national investment position only, and confirm the current Bali requirement directly with the Bali Zero team before proceeding."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scale",
+          "new": "OSS scale rows"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro",
+          "new": "None verified"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].label",
+          "old": "Open scale",
+          "new": "Bali risk tier"
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Kecil",
+          "new": "Unconfirmed"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification"
+        }
+      ]
+    },
+    "93123": {
+      "judul": "Klub Renang",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.headline",
+          "old": "Swimming Clubs: Nationally Open, but Not PMA-Registrable in Bali",
+          "new": "Swimming Clubs: Nationally Open, Bali Position Blocked Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "This code covers swimming clubs of every competitive level, yet Bali’s OSS scale gate prevents PT PMA registration despite national foreign-investment openness.",
+          "new": "This code covers swimming clubs of every competitive level; nationally foreign investment is open, but no verified licensing data exists for this code in Bali, so its position there is blocked pending case-by-case verification."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "National openness does not create a route around Bali’s OSS scale-gating outcome.",
+          "new": "National openness does not settle the Bali question — the licensing gap here has to be verified case by case."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The registration scales specified for this activity are Mikro and Kecil. At the national level, foreign investment is TERBUKA for this activity, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign investment is permitted at the stated ceiling. It does not alter the practical importance of the listed business scales, which frame this activity as one open to Micro and Small enterprises.",
+          "new": "At the national level, foreign investment is TERBUKA for this activity, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign investment is permitted at the stated ceiling. The licensing-scale rows and risk tier for this activity could not be verified against the current KBLI 2025 regulation text, so none is stated here."
+        },
+        {
+          "field": "editorial.body",
+          "old": "Bali is where the picture changes decisively. A foreigner cannot register this activity through a PT PMA in Bali at present. The record identifies no Usaha Besar row in OSS for the activity; the available rows are Mikro, Kecil and Menengah. Because a PT PMA is treated as Besar by law, the OSS-RBA scale gate bars its registration. The record marks this conclusion as verified under NB-3 on June 30, 2026. This is not a Bali-specific reduction of the national 100% foreign-ownership ceiling. It is a registration barrier arising from the absence of the required scale row.",
+          "new": "Bali is where the picture is unresolved, not decided. This record holds no verified licensing rows for the activity — the specific row it was previously read from could not be confirmed against the current regulation text and has been withdrawn. That data gap is why no Bali position can currently be stated for this code."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The provincial setting is stricter still: Bali blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. For a founder, the distinction is worth keeping exact. National openness describes the foreign-investment position for the activity; it does not create a route around Bali’s OSS scale-gating outcome. The honest reading is therefore straightforward: the activity is nationally open to full foreign ownership, but a PT PMA cannot be registered for it in Bali under the recorded Bali position.",
+          "new": "Bali separately blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis, effective 13 May 2026 — but this code's own risk tier has not been verified, so whether that rule even applies here is itself unconfirmed. For a founder, the honest reading is: nationally this activity is open to full foreign ownership, while its Bali position remains blocked until it is verified case by case."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].label",
+          "old": "Open scales",
+          "new": "Licensing scale"
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil",
+          "new": "Not verified"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].label",
+          "old": "Bali PMA status",
+          "new": "Bali licensing position"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked — pending verification"
+        }
+      ]
+    },
+    "93128": {
+      "judul": "Klub Boling",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.headline",
+          "old": "A Bowling Club Can Be Nationally Open—and Still Closed to PMA in Bali",
+          "new": "A Bowling Club Can Be Nationally Open—Blocked in Bali Pending Verification"
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "in Bali, a PT PMA cannot register the activity today.",
+          "new": "in Bali, this activity carries no verified licensing basis, so its registration status is treated as blocked pending case-by-case verification."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The record opens the activity at the **Mikro** and **Kecil** scales. That places the code in the world of small-format club organisation, where membership and participation sit at the centre of the activity.",
+          "new": "This code's licensing rows have been detached: an exhaustive search of the pinned PP28 regulatory corpus could not locate the row this code's scale classification was reportedly based on, so no scale tier can currently be confirmed. The activity itself remains club-based sporting organisation, where membership and participation sit at the centre."
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, a foreigner cannot register this activity through a PT PMA today. The stated reason is structural: OSS has no **Usaha Besar** scale row for this activity, listing only Mikro, Kecil, and Menengah. A PT PMA is treated as Usaha Besar by law under Omnibus UU 6/2023; under the OSS-RBA scale-gating cited in PP 28/2025 Pasal 127, the missing large-scale row bars the registration route. A national 100% ownership ceiling does not create a Bali registration route when the required large-scale OSS row is absent. Bali also has an island-wide, permanent PMA block for all low- and medium-low-risk KBLI activities, set out in the cited Gubernur letter; the direct Bali result recorded here, however, is the absence of the required large-scale OSS row.",
+          "new": "In Bali, this activity's registration status cannot currently be settled. This code holds no verified licensing rows: the same exhaustive search found no row to classify its risk tier against,. A national 100% ownership ceiling does not by itself establish a Bali registration route while this record carries no licensing basis to classify against. Bali Zero's working posture, pending that verification, is to treat KBLI 93128 as blocked in Bali; confirm the current position case by case with the Bali Zero team or directly at oss.go.id before proceeding."
+        },
+        {
+          "field": "editorial.pullQuote",
+          "old": "A national 100% ownership ceiling does not create a Bali registration route when the required large-scale OSS row is absent.",
+          "new": "A national 100% ownership ceiling does not establish a Bali registration route while this code's licensing basis remains unverified."
+        },
+        {
+          "field": "editorial.byTheNumbers[1].value",
+          "old": "Mikro, Kecil",
+          "new": "Not verified"
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Blocked pending verification (no licensing data)"
+        }
+      ]
+    },
+    "95291": {
+      "judul": "Aktivitas Vermak Pakaian",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "whatYouNeed",
+          "old": "Nationally, this activity is fully open (100%) to foreign-owned companies. However, Bali's current moratorium blocks PMA registration for low and medium-low risk activities, so a foreign company cannot currently obtain this license in Bali.",
+          "new": "Nationally, this activity is fully open (100%) to foreign-owned companies. In Bali, however, a PT PMA cannot register it: Perpres 49/2021's Lampiran II allocates this bidang usaha (KBLI 95291, entry 57, page 16) to Koperasi and UMKM, and Bali's separate, permanent moratorium on PMA registration for low and medium-low risk activities blocks it a second time over."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The Bali status is Closed to PMA (no Besar scale). The reason is structural: OSS provides no Usaha Besar scale row, leaving the activity reserved for UMKM; a PT PMA is, by law, Usaha Besar and therefore cannot register it.",
+          "new": "The Bali status is Closed to PMA. The reason is a specific allocation, not an inference from OSS's scale rows: Perpres 49/2021's Lampiran II lists this activity — page 16, entry 57, sub-row \"Vermak pakaian\", KBLI 95291 — in its *dialokasikan* column, reserving the bidang usaha for Koperasi and UMKM and barring a PT PMA from taking it. The code number is unchanged from 2020 to 2025, so that allocation carries straight through to the current KBLI."
+        }
+      ]
+    },
+    "96100": {
+      "judul": "Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "editorial.body",
+          "old": "A foreign-owned company cannot register this activity in Bali today because the OSS record has no Usaha Besar scale row for it; the activity is therefore reserved for UMKM, while a PT PMA is treated by law as Usaha Besar.",
+          "new": "A foreign-owned company cannot register this activity in Bali today because Perpres 10/2021, as amended by 49/2021, allocates this bidang usaha to Koperasi/UMKM in the Lampiran II *dialokasikan* column (p.16, entry 57, sub-row *Penatu*, listed there under the old KBLI code 96200) — a status that bars a PT PMA from taking it."
+        },
+        {
+          "field": "editorial.body",
+          "old": "The decisive point here, however, is already explicit: the absence of an Usaha Besar row prevents PMA registration.",
+          "new": "The decisive point here, however, is already explicit: the Perpres allocation of this activity to Koperasi/UMKM prevents PMA registration regardless of the moratorium."
+        },
+        {
+          "field": "baliContext",
+          "old": "operating a large-scale laundry PT PMA faces one massive, existential hurdle: water.",
+          "new": "operating a large-scale laundry business in Bali faces one massive, existential hurdle: water."
+        },
+        {
+          "field": "editorial.byTheNumbers[2].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Closed to PMA (UMKM-allocated)"
+        }
+      ]
+    },
+    "96210": {
+      "judul": "Aktivitas Penataan dan Pangkas Rambut",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "whatYouNeed",
+          "old": "The OSS system has no 'large business' scale option—only UMKM rows—and a foreign-owned company is legally treated as a large business, making it impossible to obtain this license.",
+          "new": "This activity is allocated to Koperasi/UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which is why the PT PMA route is unavailable here."
+        },
+        {
+          "field": "whoThisIsFor",
+          "old": "This activity is reserved for local micro, small, or medium enterprises (UMKM); a standard foreign-owned PT PMA cannot operate it directly.",
+          "new": "In Bali, this activity is allocated to Koperasi/UMKM operators under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column); a PT PMA cannot register it here as a result."
+        },
+        {
+          "field": "zantaraOpener",
+          "old": "Opening a salon or barbershop in Bali? 96210 is low risk and fully PMA-open — one of the simplest codes to work with.",
+          "new": "Opening a salon or barbershop in Bali? 96210 is low risk and nationally 100% PMA-open, but in Bali it's allocated to Koperasi/UMKM — a PT PMA cannot register it here."
+        },
+        {
+          "field": "baliContext",
+          "old": "Low risk classification makes this one of the simplest codes to get started with. Most foreign-owned salons in Bali operate with Indonesian stylists and a foreign owner-director handling branding and customer experience.",
+          "new": "Low-risk classification keeps registration straightforward for the Koperasi/UMKM operators this activity is reserved for in Bali; a PT PMA has no registration route here, regardless of risk classification."
+        },
+        {
+          "field": "editorial.standfirst",
+          "old": "under its current scale structure and provincewide restrictions",
+          "new": "because it is allocated to Koperasi/UMKM operators here, on top of Bali's separate provincewide PMA restrictions"
+        },
+        {
+          "field": "editorial.body",
+          "old": "The recorded reason is structural: OSS has no Usaha Besar scale row, leaving the route reserved for UMKM. Because a PT PMA is Usaha Besar by law, it cannot register under that structure.",
+          "new": "The recorded reason is a specific allocation: Perpres 10/2021, as amended by 49/2021, assigns this bidang usaha to Koperasi/UMKM in Lampiran II's *dialokasikan* column (p.16, entry 57, the *Pangkas rambut/barber shop* sub-row, listed there under KBLI 96111), placing it outside the activities a PT PMA may take up."
+        },
+        {
+          "field": "editorial.byTheNumbers[3].value",
+          "old": "Closed to PMA (no Besar scale)",
+          "new": "Closed to PMA (Koperasi/UMKM allocation)"
+        }
+      ]
+    },
+    "96220": {
+      "judul": "Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "patches": [
+        {
+          "field": "whatYouNeed",
+          "old": "Nationally this activity is 100% open to foreign ownership, but in Bali a PT PMA is automatically classified as a large-scale business. The OSS system has no large-scale entry for this KBLI, meaning it is reserved for UMKM (micro, small, and medium enterprises) under Indonesian regulations. A foreign-owned company therefore cannot register this activity in Bali – it is effectively blocked.",
+          "new": "Nationally this activity is 100% open to foreign ownership. In Bali, however, a PT PMA still cannot register it: Peraturan Presiden 10/2021, as amended by 49/2021, allocates this beauty-care activity to Koperasi and UMKM in its Lampiran II — the annex names it, under the old KBLI code 96112, \"Salon kecantikan,\" as dialokasikan — and a business field allocated that way is closed to PT PMA regardless of scale. That allocation is specific to this beauty-care line; it does not extend to spa (96230) or fitness activities."
+        },
+        {
+          "field": "whoThisIsFor",
+          "old": "Due to Bali’s local UMKM reservation, this KBLI is not accessible to any foreign entrepreneur seeking to set up a PT PMA on the island.",
+          "new": "Because Peraturan Presiden 10/2021 (as amended by 49/2021) allocates this specific beauty-care activity — not spa (96230) or fitness — to Koperasi and UMKM, a foreign entrepreneur cannot set up a PT PMA under this KBLI in Bali."
+        },
+        {
+          "field": "baliContext",
+          "old": "Since this is a brand-new code with no PP28 data yet, the licensing situation is in flux. Get your NIB and prepare for when specific requirements are published.",
+          "new": "This is a brand-new code in KBLI 2025, but the PMA closure here is not a wait-and-see gap: Peraturan Presiden 10/2021 (as amended by 49/2021) already allocates this specific beauty-care activity — not spa (96230) or fitness — to Koperasi and UMKM, so the block does not depend on OSS publishing more scale data."
+        },
+        {
+          "field": "editorial.body",
+          "old": "In Bali, however, OSS has no Usaha Besar scale row for it; the activity is therefore reserved for UMKM, while a PT PMA is Usaha Besar by law.",
+          "new": "In Bali, however, Peraturan Presiden 10/2021 (as amended by 49/2021) allocates this beauty-care activity to Koperasi and UMKM in its Lampiran II — naming it, under the old KBLI code 96112, \"Salon kecantikan,\" as dialokasikan — and a business field reserved that way is closed to PT PMA irrespective of scale, whether or not OSS lists a Besar-scale row for it. That reservation does not reach spa (96230) or fitness activities."
         }
       ]
     }

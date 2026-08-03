@@ -158,23 +158,34 @@ def test_the_editorial_prose_backlog_can_only_shrink():
     tomorrow: the number may fall, never rise. A new page that re-imports the
     argument fails here.
     """
-    # 8. The pin has moved twice and each move is worth keeping straight:
+    # 0 — the backlog is CLOSED, and this is now a floor rather than a ceiling
+    # that still has slack in it. The pin's history is worth keeping straight:
     #   37 -> 34 when the pattern was corrected to judge the ARGUMENT instead of
     #          its conclusion (the 37 counted 8 TERTUTUP codes whose prose is TRUE
     #          and missed 5 real ones — a ratchet pinned to a mis-calibrated probe
     #          ratchets the wrong number);
     #   34 -> 21 when the 13 NON_CLASSIFICABILE records were re-authored;
-    #   21 ->  8 when the 13 CHIUSO_MORATORIA_BALI records were.
+    #   21 ->  8 when the 13 CHIUSO_MORATORIA_BALI records were;
+    #    8 ->  0 when the remaining 26 (measured by a WIDE sweep, not by this
+    #           pattern) went through a parallel per-code re-authoring.
     #
-    # All 8 that remain still argue the withdrawn mechanism. Six of them
-    # (55203 79903 95291 96100 96210 96220) are CHIUSO_PMA_NO_BESAR and reach a
-    # conclusion that IS right — they are genuinely allocated to Koperasi/UMKM by
-    # the Perpres 49/2021 Lampiran II `dialokasikan` column — but they say so on
-    # the retired reasoning ("OSS has no Usaha Besar scale row"), which is the
-    # more dangerous shape, not the safer one: a right answer defended by a
-    # withdrawn argument reads as confirmation that the argument still holds.
-    # The other two (43110 55209) are BLOCCATO_DIPENDE_SCOPE.
-    known_backlog = 8
+    # WHY 8 WAS NOT 8. This pattern is deliberately narrow because it ratchets
+    # over 1,559 records and a false positive here accuses the corpus of telling
+    # the truth. That makes it the wrong instrument for asking "how much is
+    # left" — and it was used for both. A wide per-record sweep found 18 records
+    # whose prose argued the same withdrawn reasoning in wordings this pattern
+    # cannot see ("A PT PMA is legally an Usaha Besar, so it cannot register this
+    # KBLI anywhere in Indonesia"), and 17 of those were records an earlier batch
+    # had already reported as cured. A gate and a completeness measure are not
+    # the same tool; using one as both is what hid them.
+    #
+    # Pinned at 0 on purpose. The one surviving closure — an explicit Perpres
+    # 49/2021 Lampiran II allocation — now says so in its own vocabulary
+    # (`dialokasikan`, "allocated to Koperasi/UMKM", the annex locator), which
+    # this pattern does not match and the innocence test above pins. So there is
+    # no legitimate reason for editorial prose to carry these three phrasings
+    # again, and any reappearance is a regression.
+    known_backlog = 0
     offenders = sorted(
         r["kode_kbli_2025"]
         for r in _canonical_rows()
