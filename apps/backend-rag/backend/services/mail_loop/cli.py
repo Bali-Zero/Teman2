@@ -63,15 +63,27 @@ def _configure_logging(verbose: bool) -> None:
 # "some of it worked, try again tomorrow"; these say "nothing will work until
 # somebody re-authorises", which is exit 2 — dead, and loud.
 #
-# Matched as whole distinctive tokens, never as loose words: `INVALID_OAUTHSCOPE`
-# is Zoho's own error code, and the reconnect sentence is raised verbatim by
-# ZohoOAuthService. An ordinary degraded run (a folder that does not exist, a
-# draft that failed) must keep exit 1 — pinned by an innocence check in
-# test_preflight_and_env.py.
+# Matched on ENTITIES, never on prose. The first draft of this list contained
+# the phrase "reconnect required", and an independent review killed it: the
+# shared OAuth service raised that same sentence for FOUR different situations,
+# one of which was any non-200 from Zoho's token endpoint — a 429, a 502, a
+# proxy hiccup. A transient outage would have been reported as "the grant does
+# not cover folders, re-authorise", sending a human to re-run the consent flow,
+# which is the exact act that produced the duplicate token rows this loop now
+# has to order around. A guard that reads a mood instead of a fact is the
+# over-match family, and it had reappeared inside the cure written against it.
+#
+# So: `INVALID_OAUTHSCOPE` and `OAUTH_SCOPE_MISMATCH` are Zoho's own machine
+# error codes, and `/admin/zoho/auth` is the consent endpoint — the service now
+# names it in exactly those messages where re-consenting IS the remedy, and
+# deliberately does not name it for retryable faults or for a caller-side
+# `invalid_client`. An ordinary degraded run (a missing folder, a failed draft)
+# and a transient refresh failure must both keep exit 1 — pinned by innocence
+# checks in test_preflight_and_env.py.
 _CONSENT_BLOCKERS = (
     "INVALID_OAUTHSCOPE",
     "OAUTH_SCOPE_MISMATCH",
-    "reconnect required",
+    "/admin/zoho/auth",
 )
 
 

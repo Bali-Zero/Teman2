@@ -286,6 +286,44 @@ def test_the_reconnect_sentence_is_a_blocker() -> None:
     assert cli_module._consent_blocker(errors) is errors[0]
 
 
+def test_a_transient_refresh_failure_is_not_a_consent_problem() -> None:
+    """INNOCENCE, and the one an independent review had to point out.
+
+    The first version of the blocker matched the prose "reconnect required",
+    which the shared OAuth service raised for FOUR different situations — one of
+    them being any non-200 from Zoho's token endpoint. A 502 would have been
+    reported as "the grant does not cover folders, re-authorise", sending a
+    human to re-run the consent flow: the exact act that created the duplicate
+    token rows the row-ordering now has to work around. The service no longer
+    names the consent endpoint for retryable faults, and this pins it.
+    """
+    assert (
+        cli_module._consent_blocker(
+            [
+                "list_folders failed: Token refresh temporarily unavailable "
+                "(HTTP 502) — retryable, not a consent problem",
+            ]
+        )
+        is None
+    )
+
+
+def test_a_caller_side_credential_fault_is_not_a_consent_problem() -> None:
+    """INNOCENCE: `invalid_client` means OUR secrets are wrong, not the user's
+    grant. Re-consenting cannot fix it, so it must not be advertised as the
+    remedy."""
+    assert (
+        cli_module._consent_blocker(
+            [
+                "list_folders failed: Zoho rejected OUR client credentials "
+                "(invalid_client): ZOHO_CLIENT_ID/ZOHO_CLIENT_SECRET are wrong "
+                "or missing on this host. The stored token was left untouched.",
+            ]
+        )
+        is None
+    )
+
+
 def test_an_ordinary_degraded_run_is_not_a_blocker() -> None:
     """INNOCENCE: without this, every degraded run would exit 2 and the check
     would be indistinguishable from a broken loop."""

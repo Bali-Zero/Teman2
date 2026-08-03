@@ -377,7 +377,9 @@ class ZohoOAuthService:
             ValueError: If refresh fails
         """
         if not refresh_token:
-            raise ValueError("No refresh token available - reconnect required")
+            raise ValueError(
+                "No refresh token stored — reconnect required at /admin/zoho/auth"
+            )
 
         client = self._get_client()
         response = await client.post(
@@ -391,14 +393,46 @@ class ZohoOAuthService:
         )
 
         if response.status_code != 200:
+            # A transport-level failure, NOT a statement about this user's grant.
+            # 429, 502, 503 and a proxy hiccup all land here, and they are all
+            # retryable. Saying "reconnect required" for them sends whoever reads
+            # it to re-run the OAuth consent — which is the very act that created
+            # the duplicate rows this file now has to order around. The wording is
+            # load-bearing: `mail_loop.cli` decides between "retry tomorrow" and
+            # "only a human can fix this" by looking for the consent endpoint in
+            # the message, so a retryable fault must not name it.
             error_data = response.json() if response.content else {}
             logger.error(f"Token refresh failed: {response.status_code} - {error_data}")
-            raise ValueError("Failed to refresh token - reconnect required")
+            raise ValueError(
+                f"Token refresh temporarily unavailable (HTTP {response.status_code}) — "
+                "retryable, not a consent problem"
+            )
 
         token_data = response.json()
 
         if "error" in token_data:
+            # Zoho answers HTTP 200 with the error in the BODY, so the status code
+            # above proves nothing. Read the reply.
+            zoho_error = str(token_data.get("error") or "")
             logger.error("Token refresh error: %s", token_data)
+
+            # `invalid_client` is a statement about the CALLER — our client id and
+            # secret are wrong or missing on this host. It says nothing whatsoever
+            # about the user's token, so recording it as a dead user token
+            # invalidates a working grant for every OTHER consumer, including a
+            # host that is correctly configured.
+            #
+            # Measured, not reasoned: on 2026-08-04 three production rows for
+            # zero@balizero.com were stamped dead in a few minutes by a machine
+            # that merely lacked ZOHO_CLIENT_ID. They had to be restored by hand.
+            # A caller-side fault must never be written onto the user's row.
+            if zoho_error == "invalid_client":
+                raise ValueError(
+                    "Zoho rejected OUR client credentials (invalid_client): "
+                    "ZOHO_CLIENT_ID/ZOHO_CLIENT_SECRET are wrong or missing on "
+                    "this host. The stored token was left untouched."
+                )
+
             # Invalidate stored token so we stop retrying on every request
             async with self.db_pool.acquire() as conn:
                 await conn.execute(
@@ -411,7 +445,10 @@ class ZohoOAuthService:
                     user_id,
                     account_id,
                 )
-            raise ValueError(f"Refresh error: {token_data.get('error')} — reconnect required")
+            raise ValueError(
+                f"Zoho refused the refresh ({zoho_error}) — "
+                "reconnect required at /admin/zoho/auth"
+            )
 
         # Update stored token
         expires_at = datetime.now(timezone.utc) + timedelta(

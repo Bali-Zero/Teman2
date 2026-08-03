@@ -69,12 +69,15 @@ than by eye: all five methods and their defaults match
 > states for every exit code, and prints a loud note when the running bash is
 > ≥ 4 and therefore structurally unable to reproduce the fault.
 
-Current state: **97 + 11 pytest and 34 shell checks green, mutation-verified.**
-Every defence was measured by switching it off: the empty-array cure (16 shell
-red), the kill switch (1), the lock (26), the heartbeat (27), the alert key (1),
-the list-shaped error body, the plain-text body, the row ordering, its NULL
-guard, and the consent-blocker in both directions (2 red when it never fires, 1
-when it fires on everything — the innocence row).
+Current state: **133 pytest (99 mail_loop + 11 error-shape + 23 oauth) and 34
+shell checks green, mutation-verified.** Every defence was measured by switching
+it off: the empty-array cure (16 shell red), the kill switch (1), the lock (26),
+the heartbeat (27), the alert key (1), the list-shaped error body, the plain-text
+body, the row ordering, its NULL guard, the consent-blocker in both directions,
+the `invalid_client` guard (which reproduces the §5 production damage when
+removed), and the service↔loop wording contract — reverting **both** halves of
+the over-match in §5c turns it red, quoting back _"would demand a re-consent,
+which is wrong for this failure"_.
 
 ```bash
 cd apps/backend-rag
@@ -205,7 +208,41 @@ independent defects, each of which had been hiding the next:
 3. **The grant is too narrow** — §3.2. This was the real blocker, and it was
    invisible behind (1) and (2).
 
-### 5c. Found while fixing the above, not part of the mandate
+### 5c. The cure caught the disease it was written against
+
+The first version of the exit-2 rule matched the phrase **"reconnect required"**
+in the run's errors. An independent review refused to ship it, and was right:
+the shared OAuth service raised that same sentence for four different
+situations, one of them being **any** non-200 from Zoho's token endpoint. A 429,
+a 502 or a proxy hiccup would have been reported as _"the grant does not cover
+folders — re-authorise at /admin/zoho/auth"_, sending a human to re-run the
+consent flow. Re-consenting is precisely the act that inserts another row, which
+is the duplicate-row problem in §5b.2. A guard reading a mood instead of a fact,
+inside the cure written against exactly that.
+
+Fixed on both sides, because one side alone is not a fix:
+
+- the service stopped using one sentence for four meanings. A transient non-200
+  is now `Token refresh temporarily unavailable (HTTP <code>) — retryable, not a
+consent problem`, and only the three genuinely unrecoverable cases name
+  `/admin/zoho/auth`;
+- the guard matches that endpoint — an entity, the remedy itself — instead of
+  prose;
+- and `invalid_client` was split out entirely. It means OUR client id/secret are
+  wrong, so it is neither retryable nor a consent problem, **and it no longer
+  invalidates the user's token**. That is the §5 production damage cured at the
+  root rather than merely avoided by the loop's preflight.
+
+The test that pins it does **not** quote either side. A first attempt did, and a
+mutation run caught it being decorative: with the guard reverted to its
+over-matching form the hand-written strings still passed, because they had been
+written against the fixed guard. `test_exit_code_contract_with_the_mail_loop`
+drives the real refresh path for each of the four situations and classifies the
+exception it actually produced — reverting both halves to the original wording
+turns it red, quoting the failure back: _"would demand a re-consent, which is
+wrong for this failure"_.
+
+### 5d. Found while fixing the above, not part of the mandate
 
 `disconnect()` deleted **all** of a user's token rows but revoked only the first
 refresh token an unordered query returned. The other N-1 grants stayed live at
@@ -231,7 +268,11 @@ user to an account they asked to leave).
 | every read of `zoho_email_tokens` is ordered and total               | duplicate rows made the answer undefined — see §5b.2   |
 | `disconnect()` revokes every refresh token, not the first            | the rest stayed live at Zoho and unrevocable           |
 | `cli.py` exits 2 (not 1) when only a re-consent can help             | a cron answering "degraded" forever is cron theater    |
+| the blocker matches `/admin/zoho/auth`, not the prose                | see §5c — the first version over-matched               |
+| `invalid_client` no longer invalidates the user's token              | the §5 damage, cured at the root instead of avoided    |
+| a transient non-200 refresh no longer says "reconnect required"      | a 502 is retryable; saying so sends a human to consent |
 | `test_zoho_error_shapes.py` (11 checks, live payloads)               | all of the above was unpinned                          |
+| `test_exit_code_contract_with_the_mail_loop` (4 situations)          | the service's wording is an interface — see §5c        |
 
 ## 7. Declared limits
 
