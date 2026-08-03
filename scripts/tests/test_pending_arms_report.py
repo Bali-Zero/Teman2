@@ -1145,3 +1145,261 @@ def test_freshness_appears_in_json_payload(tmp_path, capsys):
     assert par.main(["--ledger", str(led), "--now", "2026-07-05", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["freshness"]["state"] in {"current", "stale", "unknown"}
+
+
+# -----------------------------------------------------------------------------
+# PR-ALREADY-MERGED (megatopics-1-5 action plan #1, 2026-08-03) — OPT-IN via
+# --check-pr-refs. gh is always mocked here (subprocess.run monkeypatched, the
+# established pattern in scripts/tests/test_arsenal_probe.py) — no test in
+# this file ever needs real network/gh auth.
+# -----------------------------------------------------------------------------
+
+
+class _FakeProc:
+    def __init__(self, returncode: int = 0, stdout: str = "", stderr: str = ""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_extract_pr_refs_finds_refs_across_all_three_fields(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | artifact PR #111 | step referencing PR #222 "
+        "| me | proof mentions PR #333 and PR #222 again",
+    )
+    assert par.extract_pr_refs(e) == ["111", "222", "333"]
+
+
+def test_extract_pr_refs_rejects_too_short_and_too_long_numbers(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | short PR #12 ref | long PR #123456789 ref | me | proof",
+    )
+    assert par.extract_pr_refs(e) == []
+
+
+def test_extract_pr_refs_empty_when_no_hash_present(entries):
+    e = _by_artifact(entries, "fresh me artifact")
+    assert par.extract_pr_refs(e) == []
+
+
+def test_extract_pr_refs_ignores_bare_hash_numbers_without_pr_prefix(tmp_path):
+    # Guilt-of-the-guard regression (measured live 2026-08-03 on the real
+    # ledger): CodeQL alert numbers cited next to a file:line list —
+    # "telegram_webhook.py:147,155,174 (#6860, #2837, #2836)" — are NOT pull
+    # requests. Without the `PR` anchor these were extracted and (because gh
+    # happens to report some coincidentally-numbered real PR as MERGED)
+    # falsely flagged the entry as PR-ALREADY-MERGED.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | telegram_webhook.py:147,155,174 (#6860, #2837, #2836) "
+        "| me | intel_scraper.py:1217,1218 (#7798, #7799)",
+    )
+    assert par.extract_pr_refs(e) == []
+
+
+def test_extract_pr_refs_accepts_lowercase_pr_prefix(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | artifact pr #444 | step | me | proof",
+    )
+    assert par.extract_pr_refs(e) == ["444"]
+
+
+def test_guilt_pr_ref_already_merged_is_flagged(tmp_path, monkeypatch):
+    seen_cmds = []
+
+    def fake_run(cmd, **kwargs):
+        seen_cmds.append(cmd)
+        assert cmd[:3] == ["gh", "pr", "view"]
+        assert cmd[3] == "3552"
+        return _FakeProc(0, '{"state":"MERGED","mergedAt":"2026-08-01T00:00:00Z"}', "")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-20 | stale pr ref artifact "
+        "| merge PR #3552 to unblock this | me | pending merge of #3552",
+    )
+    par.annotate_pr_refs([e])
+    assert e.pr_refs == ["3552"]
+    assert e.merged_pr_refs == ["3552"]
+    assert e.bucket == par.CLASS_PR_ALREADY_MERGED
+    assert len(seen_cmds) == 1  # deduplicated: #3552 appears in both fields
+
+
+def test_innocence_pr_ref_still_open_is_not_flagged(tmp_path, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        return _FakeProc(0, '{"state":"OPEN","mergedAt":null}', "")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-06-20 | genuinely open pr artifact "
+        "| merge PR #4001 to unblock | me | still under review",
+    )
+    par.annotate_pr_refs([e])
+    assert e.merged_pr_refs == []
+    assert e.bucket != par.CLASS_PR_ALREADY_MERGED
+    assert e.bucket == par.CLASS_TECH_DEBT + "-OVERDUE"
+
+
+def test_innocence_entry_with_no_pr_ref_is_unaffected(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeProc(0, '{"state":"MERGED"}', "")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-20 | no pr ref artifact | some step | me | some proof",
+    )
+    par.annotate_pr_refs([e])
+    assert calls == []  # never even called gh: nothing to check
+    assert e.merged_pr_refs == []
+    assert e.bucket != par.CLASS_PR_ALREADY_MERGED
+
+
+def test_guilt_gh_missing_degrades_to_cannot_verify_never_merged(tmp_path, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        raise FileNotFoundError("gh: command not found")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-20 | unverifiable pr artifact | merge PR #5005 | me | proof",
+    )
+    par.annotate_pr_refs([e])
+    assert e.merged_pr_refs == []  # NEVER silently treated as merged
+    assert e.bucket != par.CLASS_PR_ALREADY_MERGED
+
+
+def test_guilt_gh_non_zero_exit_degrades_to_cannot_verify(tmp_path, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        return _FakeProc(1, "", "gh: pull request not found\n")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-20 | notfound pr artifact | merge PR #9999 | me | proof",
+    )
+    par.annotate_pr_refs([e])
+    assert e.merged_pr_refs == []
+    assert e.bucket != par.CLASS_PR_ALREADY_MERGED
+
+
+def test_guilt_gh_unparseable_json_degrades_to_cannot_verify(tmp_path, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        return _FakeProc(0, "not json at all", "")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-20 | garbled pr artifact | merge PR #6006 | me | proof",
+    )
+    par.annotate_pr_refs([e])
+    assert e.merged_pr_refs == []
+
+
+def test_guilt_gh_timeout_degrades_to_cannot_verify(tmp_path, monkeypatch):
+    import subprocess as real_subprocess
+
+    def fake_run(cmd, **kwargs):
+        raise real_subprocess.TimeoutExpired(cmd, 15)
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-20 | timeout pr artifact | merge PR #7007 | me | proof",
+    )
+    par.annotate_pr_refs([e])
+    assert e.merged_pr_refs == []
+
+
+def test_default_off_check_pr_refs_never_calls_gh(ledger_path, monkeypatch, capsys):
+    """The core byte-for-byte-identical-when-off requirement: without
+    --check-pr-refs, annotate_pr_refs is never invoked at all (main() still
+    calls _ledger_freshness via `git` regardless — this only spies on the
+    gh-calling path, so it must not intercept that unrelated subprocess use)."""
+    calls = []
+    monkeypatch.setattr(par, "annotate_pr_refs", lambda entries, **kwargs: calls.append(entries))
+    code = par.main(["--ledger", str(ledger_path), "--now", NOW])
+    assert code == 0
+    assert calls == []
+
+
+def test_default_off_counts_dict_has_no_pr_already_merged_key(ledger_path):
+    now = par._parse_now(NOW)
+    entries = par.load_entries(ledger_path, now)
+    counts = par.compute_counts(entries)
+    assert "pr_already_merged" not in counts
+
+
+def test_default_off_json_entries_have_no_pr_ref_fields(ledger_path, capsys):
+    code = par.main(["--ledger", str(ledger_path), "--now", NOW, "--json"])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "pr_already_merged" not in payload["counts"]
+    for entry in payload["entries"]:
+        assert "pr_refs" not in entry
+        assert "merged_pr_refs" not in entry
+
+
+def test_default_off_report_has_no_pr_already_merged_section(ledger_path, capsys):
+    code = par.main(["--ledger", str(ledger_path), "--now", NOW])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "PR-ALREADY-MERGED" not in out
+
+
+def test_check_pr_refs_cli_end_to_end_flags_merged_pr(tmp_path, monkeypatch, capsys):
+    def fake_run(cmd, **kwargs):
+        return _FakeProc(0, '{"state":"MERGED","mergedAt":"2026-08-01T00:00:00Z"}', "")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    ledger = (
+        "- opened 2026-07-20 | cli merged pr artifact | merge PR #3552 | me | pending\n"
+        "\n## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+
+    code = par.main(["--ledger", str(p), "--now", NOW, "--check-pr-refs", "--json"])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["counts"]["pr_already_merged"] == 1
+    entry = payload["entries"][0]
+    assert entry["merged_pr_refs"] == ["3552"]
+
+
+def test_check_pr_refs_report_section_appears_and_lists_entry(tmp_path, monkeypatch, capsys):
+    def fake_run(cmd, **kwargs):
+        return _FakeProc(0, '{"state":"MERGED","mergedAt":"2026-08-01T00:00:00Z"}', "")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+
+    ledger = (
+        "- opened 2026-07-20 | report merged pr artifact | merge PR #3552 | me | pending\n"
+        "\n## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+
+    code = par.main(["--ledger", str(p), "--now", NOW, "--check-pr-refs"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "## PR-ALREADY-MERGED" in out
+    assert "report merged pr artifact" in out
+    assert out.index("## PHANTOM-OPERATOR") < out.index("## PR-ALREADY-MERGED")
+    assert out.index("## PR-ALREADY-MERGED") < out.index("## TECH-DEBT overdue")

@@ -56,6 +56,40 @@ conflict-marker-shaped line is also refused as a continuation (CONFLICT_MARKER_R
 rather than silently absorbed into whatever entry is being built, and is surfaced as
 its own MALFORMED entry instead of vanishing without a trace.
 
+PR-ALREADY-MERGED rule (added 2026-08-03, megatopics-1-5 action plan #1): an entry
+whose artifact/missing_step/proof cites a `PR #NNN` reference that `gh pr
+view` now reports as MERGED is a CANDIDATE for "its owner is still waiting on
+something that already landed" — but measured against the real 312-entry
+ledger the SAME day this shipped, this is a noisy, low-confidence signal, not
+a verdict, and the report/JSON label it as such. Two false-positive classes
+found live: (1) a bare `#NNN` token is not always a PR — `(#6860, #2837,
+#2836)` in one real entry are CodeQL ALERT numbers sitting next to an
+unrelated file:line list, so the regex requires a literal `PR` immediately
+before the hash (cuts the naive match count roughly 3x on this ledger); (2)
+even with that anchor, this ledger's own authoring convention is to cite a
+merged PR as historical/precedent context ("cured via PR #3524", "mirroring
+PR #2921's design") far more often than as a live blocker — of every
+PR-anchored hit manually reviewed against this ledger, none were a genuine
+"still waiting, and now it merged" case; every one was the author already
+knowing and stating the PR's status while the entry stays open for an
+UNRELATED reason. A reliable version of "is this specific entry's remaining
+work blocked on this specific PR" needs semantic judgment (Tier-2, explicitly
+out of scope for this Tier-1 signaler) or a git-blame correlation this file
+does not attempt. Treat this section as a skim list for a human's own
+judgment, never as an actionable alert — it is why `--strict`'s exit code
+never reads `merged_pr_refs`/CLASS_PR_ALREADY_MERGED, only entry.cls.
+
+This check is OPT-IN via --check-pr-refs (default off)
+because it needs network + `gh` auth, which the existing test suite and any
+offline/shallow-checkout run cannot assume; when the flag is not passed,
+every entry's merged_pr_refs stays empty and this rule never fires, so
+behavior is byte-for-byte unchanged from before this feature existed. A PR
+reference `gh` could not verify (missing binary, auth failure, timeout,
+non-zero exit, unparseable JSON) is NEVER treated as merged — same "judge the
+reply, never assume success" discipline as _ledger_freshness (W104): an
+unverifiable ref just doesn't count toward merged_pr_refs, it does not crash
+the report and it is not silently promoted to "merged" either.
+
 Usage:
     python3 scripts/pending_arms_report.py [--ledger PATH] [--now YYYY-MM-DD] [--json]
                                            [--strict] [--strict-phantom]
@@ -79,7 +113,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 # 48h at day-precision: the ledger records opened-dates, not timestamps, so "overdue"
 # is age_days >= 2 (i.e. the entry has survived at least one full day beyond the day
@@ -100,6 +134,11 @@ CLASS_NATURAL_WAIT = "NATURAL-WAIT"
 CLASS_OPERATOR_GATED = "OPERATOR-GATED"
 CLASS_TECH_DEBT = "TECH-DEBT"
 CLASS_PHANTOM_OPERATOR = "PHANTOM-OPERATOR"
+# Not a parse_entry() classification like the others above — this bucket is
+# derived AFTER parsing, only when --check-pr-refs ran annotate_pr_refs() and
+# found a cited #NNN PR reference that `gh pr view` reports MERGED. See
+# PR-ALREADY-MERGED rule in the module docstring.
+CLASS_PR_ALREADY_MERGED = "PR-ALREADY-MERGED"
 
 # The ONLY categories for which owner=operator is legitimate — actions a session
 # structurally cannot take (feedback_no_operator_lane_io_sono_te_2026_07_06). Anything
@@ -168,15 +207,29 @@ class Entry:
     age_days: Optional[int] = None
     overdue: bool = False
     cls: str = CLASS_TECH_DEBT
+    # Populated ONLY by annotate_pr_refs() (--check-pr-refs). Empty on every
+    # entry otherwise, so the bucket property below never fires this branch
+    # unless that opt-in check actually ran — the default path is unaffected.
+    pr_refs: List[str] = field(default_factory=list)
+    merged_pr_refs: List[str] = field(default_factory=list)
 
     @property
     def bucket(self) -> str:
-        """Report/JSON grouping key: MALFORMED > PHANTOM-OPERATOR > FIREBREAK > {cls}-OVERDUE > FRESH."""
+        """Report/JSON grouping key: MALFORMED > PHANTOM-OPERATOR > PR-ALREADY-MERGED
+        > FIREBREAK > NATURAL-WAIT > {cls}-OVERDUE > FRESH."""
         if self.cls == CLASS_MALFORMED:
             return CLASS_MALFORMED
         if self.cls == CLASS_PHANTOM_OPERATOR:
             # never FRESH: a phantom is wrong the moment it is written, not after 48h.
             return CLASS_PHANTOM_OPERATOR
+        if self.merged_pr_refs:
+            # Provably wrong RIGHT NOW (gh says the cited PR is already merged) —
+            # ranked with MALFORMED/PHANTOM-OPERATOR rather than merely aged
+            # debt, but below both: an unparseable/phantom ledger line is a
+            # worse defect than a stale-but-well-formed one. Only ever
+            # non-empty when --check-pr-refs ran annotate_pr_refs(); otherwise
+            # dead code and behavior is unchanged (empty list by default).
+            return CLASS_PR_ALREADY_MERGED
         if self.cls == CLASS_FIREBREAK:
             return CLASS_FIREBREAK
         if self.cls == CLASS_NATURAL_WAIT:
@@ -512,9 +565,108 @@ def load_entries(ledger_path: Path, now: date) -> List[Entry]:
     return [parse_entry(raw, now) for raw in extract_open_entries(text)]
 
 
-def compute_counts(entries: List[Entry]) -> Dict[str, int]:
+# -----------------------------------------------------------------------------
+# PR-ALREADY-MERGED (megatopics-1-5 action plan #1, added 2026-08-03) — OPT-IN,
+# only ever exercised behind --check-pr-refs. See the module docstring's
+# "PR-ALREADY-MERGED rule" for the full rationale.
+# -----------------------------------------------------------------------------
+
+# Requires a literal `PR` immediately before the hash — a bare `#NNN` in this
+# ledger is frequently NOT a pull request (measured live 2026-08-03: CodeQL
+# alert numbers cited next to a file:line list, e.g. "telegram_webhook.py:147
+# (#6860, #2837, #2836)" — none of those are PRs). `PR\s*#` anchors on the
+# entity a reader would call a PR, not on the digit shape. 3-5 digits with a
+# trailing word-boundary so a longer digit run fails to match rather than
+# silently truncating to its first 5 digits and citing the wrong PR.
+PR_REF_RE = re.compile(r"\bPR\s*#(\d{3,5})\b", re.IGNORECASE)
+
+
+def extract_pr_refs(entry: Entry) -> List[str]:
+    """`PR #123`-style references cited in an entry's artifact/missing_step/proof.
+
+    Order-preserving, deduplicated across all three fields. Even with the `PR`
+    anchor this is a noisy signal on this ledger — see the module docstring's
+    PR-ALREADY-MERGED rule for the measured false-positive rate before trusting
+    a hit here as anything more than a candidate for a human to skim.
+    """
+    seen: Dict[str, None] = {}
+    for text in (entry.artifact, entry.missing_step, entry.proof):
+        for m in PR_REF_RE.finditer(text or ""):
+            seen.setdefault(m.group(1), None)
+    return list(seen.keys())
+
+
+def _check_pr_merged(pr_number: str) -> Dict[str, Any]:
+    """Best-effort `gh pr view <n> --json state,mergedAt`. Never raises.
+
+    Returns {"checked": bool, "merged": bool, "detail": str}. "checked" False
+    means the call could not be trusted (gh missing, timeout, non-zero exit,
+    unparseable JSON) — the caller must NEVER treat that as "merged" (same
+    "judge the reply, never assume success" discipline as _ledger_freshness,
+    W104: a bare non-crash is not proof of anything either way).
+    """
+    try:
+        proc = subprocess.run(
+            ["gh", "pr", "view", pr_number, "--json", "state,mergedAt"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except FileNotFoundError:
+        return {"checked": False, "merged": False, "detail": "gh not on PATH"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {
+            "checked": False,
+            "merged": False,
+            "detail": f"gh invocation failed: {type(exc).__name__}",
+        }
+
+    if proc.returncode != 0:
+        reason = (proc.stderr or "").strip().splitlines()
+        return {
+            "checked": False,
+            "merged": False,
+            "detail": reason[-1] if reason else f"gh exited {proc.returncode}",
+        }
+
+    try:
+        payload = json.loads(proc.stdout or "")
+    except json.JSONDecodeError:
+        return {"checked": False, "merged": False, "detail": "unparseable gh output"}
+
+    if not isinstance(payload, dict):
+        return {"checked": False, "merged": False, "detail": "unexpected gh payload shape"}
+
+    state = payload.get("state")
+    return {"checked": True, "merged": state == "MERGED", "detail": state or "unknown state"}
+
+
+def annotate_pr_refs(
+    entries: List[Entry],
+    checker: Callable[[str], Dict[str, Any]] = _check_pr_merged,
+) -> None:
+    """Mutate each Entry in place: set .pr_refs and .merged_pr_refs.
+
+    Only ever called from main() behind --check-pr-refs — never on the
+    default path, so the rest of the report is unaffected unless this ran.
+    An unverifiable ref (checker returns checked=False) is left OUT of
+    merged_pr_refs — "cannot verify" is never silently "merged" (W104).
+    Never touches the ledger file; this remains a pure signaler.
+    """
+    for entry in entries:
+        refs = extract_pr_refs(entry)
+        entry.pr_refs = refs
+        merged: List[str] = []
+        for ref in refs:
+            result = checker(ref)
+            if result.get("checked") and result.get("merged"):
+                merged.append(ref)
+        entry.merged_pr_refs = merged
+
+
+def compute_counts(entries: List[Entry], check_pr_refs: bool = False) -> Dict[str, int]:
     buckets = [e.bucket for e in entries]
-    return {
+    counts = {
         "total": len(entries),
         "phantom_operator": buckets.count(CLASS_PHANTOM_OPERATOR),
         "tech_debt_overdue": buckets.count(f"{CLASS_TECH_DEBT}-OVERDUE"),
@@ -524,6 +676,12 @@ def compute_counts(entries: List[Entry]) -> Dict[str, int]:
         "fresh": buckets.count("FRESH"),
         "malformed": buckets.count(CLASS_MALFORMED),
     }
+    if check_pr_refs:
+        # Additive: only present when --check-pr-refs ran, so every default
+        # (offline) call site's dict shape stays byte-for-byte unchanged —
+        # required so the pre-existing exact-equality tests never break.
+        counts["pr_already_merged"] = buckets.count(CLASS_PR_ALREADY_MERGED)
+    return counts
 
 
 def _freshness_line(freshness: Optional[Dict[str, Any]]) -> str:
@@ -544,8 +702,9 @@ def render_report(
     now: date,
     entries: List[Entry],
     freshness: Optional[Dict[str, Any]] = None,
+    check_pr_refs: bool = False,
 ) -> str:
-    counts = compute_counts(entries)
+    counts = compute_counts(entries, check_pr_refs=check_pr_refs)
     lines: List[str] = []
     lines.append("# PENDING-ARMS reconciliation report")
     lines.append("")
@@ -555,12 +714,15 @@ def render_report(
         f"- now: {now.isoformat()} (day-precision dates; overdue = age_days >= "
         f"{OVERDUE_AGE_DAYS}, the closest day-precision proxy for >48h)"
     )
-    lines.append(
+    summary = (
         "- counts: total={total} phantom_operator={phantom_operator} "
         "tech_debt_overdue={tech_debt_overdue} "
         "operator_gated_overdue={operator_gated_overdue} firebreak={firebreak} "
-        "natural_wait={natural_wait} fresh={fresh} malformed={malformed}".format(**counts)
-    )
+        "natural_wait={natural_wait} fresh={fresh} malformed={malformed}"
+    ).format(**counts)
+    if check_pr_refs:
+        summary += " pr_already_merged={pr_already_merged}".format(**counts)
+    lines.append(summary)
     lines.append("")
 
     def fmt_entry(e: Entry) -> str:
@@ -595,6 +757,15 @@ def render_report(
         by_bucket.get(CLASS_PHANTOM_OPERATOR, []),
         fmt_entry,
     )
+    if check_pr_refs:
+        section(
+            "PR-ALREADY-MERGED — LOW CONFIDENCE, SKIM ONLY (cites a `PR #N` that `gh` "
+            "reports merged; measured live 2026-08-03 that most hits here are the entry "
+            "already knowing and stating that, staying open for an unrelated reason — "
+            "not proof of staleness, never gates --strict)",
+            by_bucket.get(CLASS_PR_ALREADY_MERGED, []),
+            fmt_entry,
+        )
     section(
         "TECH-DEBT overdue (>48h)",
         by_bucket.get(f"{CLASS_TECH_DEBT}-OVERDUE", []),
@@ -626,24 +797,31 @@ def build_json(
     now: date,
     entries: List[Entry],
     freshness: Optional[Dict[str, Any]] = None,
+    check_pr_refs: bool = False,
 ) -> Dict[str, Any]:
+    def _entry_dict(e: Entry) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "opened": e.opened_date.isoformat() if e.opened_date else None,
+            "age_days": e.age_days,
+            "artifact": e.artifact,
+            "owner": e.owner,
+            "class": e.cls,
+            "overdue": e.overdue,
+            "raw_head": e.raw[:80],
+        }
+        if check_pr_refs:
+            # Additive-only: absent unless --check-pr-refs ran, so the default
+            # entry schema stays byte-for-byte unchanged.
+            d["pr_refs"] = e.pr_refs
+            d["merged_pr_refs"] = e.merged_pr_refs
+        return d
+
     return {
         "now": now.isoformat(),
         "ledger": str(ledger_path),
         "freshness": freshness if freshness is not None else {"state": "unknown", "behind": None, "detail": "not checked"},
-        "counts": compute_counts(entries),
-        "entries": [
-            {
-                "opened": e.opened_date.isoformat() if e.opened_date else None,
-                "age_days": e.age_days,
-                "artifact": e.artifact,
-                "owner": e.owner,
-                "class": e.cls,
-                "overdue": e.overdue,
-                "raw_head": e.raw[:80],
-            }
-            for e in entries
-        ],
+        "counts": compute_counts(entries, check_pr_refs=check_pr_refs),
+        "entries": [_entry_dict(e) for e in entries],
     }
 
 
@@ -791,6 +969,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "for innocent PRs."
         ),
     )
+    parser.add_argument(
+        "--check-pr-refs",
+        action="store_true",
+        help=(
+            "Extract 'PR #NNN' references from every open entry's artifact/"
+            "missing_step/proof and check via `gh pr view` whether each is "
+            "already merged (network + gh auth required — best-effort, off by "
+            "default so the suite runs offline). Flags a PR-ALREADY-MERGED "
+            "bucket, LOW CONFIDENCE — measured live on this ledger's own prose, "
+            "most hits cite a merged PR as historical context, not a live "
+            "blocker; skim it, don't trust it, never gates --strict. Never "
+            "mutates the ledger."
+        ),
+    )
     return parser
 
 
@@ -817,12 +1009,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
     entries = load_entries(ledger_path, now)
+    if args.check_pr_refs:
+        annotate_pr_refs(entries)
     freshness = _ledger_freshness(ledger_path)
 
     if args.json:
-        print(json.dumps(build_json(ledger_path, now, entries, freshness), indent=2))
+        print(
+            json.dumps(
+                build_json(ledger_path, now, entries, freshness, check_pr_refs=args.check_pr_refs),
+                indent=2,
+            )
+        )
     else:
-        print(render_report(ledger_path, now, entries, freshness), end="")
+        print(
+            render_report(ledger_path, now, entries, freshness, check_pr_refs=args.check_pr_refs),
+            end="",
+        )
 
     has_phantom = any(e.cls == CLASS_PHANTOM_OPERATOR for e in entries)
     # --strict is the "I am about to rely on this verdict" mode, so a ledger that
