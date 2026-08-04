@@ -51,7 +51,7 @@ MERGED_PRS_TSV="$FIXTURE_TSV"
 # Case 1 (guilt): real ref + a PREFIX of the recorded full oid must match —
 # for-each-ref emits abbreviated shas, gh emits full 40-char oids.
 # ---------------------------------------------------------------------------
-out=$(pr_merged_match "feature/x" "0332a7829c9e"); rc=$?
+out=$(pr_merged_match "feature/x" "$(cut -f2 "$FIXTURE_TSV" | cut -c1-12)"); rc=$?
 if [ "$rc" -eq 0 ] && [ "$out" = "3582" ]; then
     note_pass "matching ref + oid-prefix returns the PR number (3582)"
 else
@@ -76,7 +76,7 @@ fi
 # Case 3 (innocence): a real oid under the WRONG ref name must NOT match —
 # guards against a coincidental oid-prefix collision across branches.
 # ---------------------------------------------------------------------------
-pr_merged_match "no-such-branch" "0332a7829c9e" >/dev/null 2>&1; rc=$?
+pr_merged_match "no-such-branch" "$(cut -f2 "$FIXTURE_TSV" | cut -c1-12)" >/dev/null 2>&1; rc=$?
 if [ "$rc" -ne 0 ]; then
     note_pass "real oid under the wrong ref does NOT match"
 else
@@ -89,7 +89,7 @@ fi
 # ---------------------------------------------------------------------------
 MERGED_PRS_TSV="/tmp/test_branch_graveyard_prmerged_absent.$$"
 rm -f "$MERGED_PRS_TSV"
-pr_merged_match "feature/x" "0332a7829c9e" >/dev/null 2>&1; rc=$?
+pr_merged_match "feature/x" "$(cut -f2 "$FIXTURE_TSV" | cut -c1-12)" >/dev/null 2>&1; rc=$?
 if [ "$rc" -ne 0 ]; then
     note_pass "absent gh-pr-list file degrades to no-match, not a crash"
 else
