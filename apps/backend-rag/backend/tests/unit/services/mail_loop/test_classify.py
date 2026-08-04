@@ -30,7 +30,9 @@ from __future__ import annotations
 import pytest
 
 from backend.services.mail_loop.classify import (
+    _DECISIVE,
     _MARKERS,
+    _WEAK,
     Intent,
     classify,
     detect_language,
@@ -221,13 +223,48 @@ NEGATIVE_CONTEXT: list[tuple[str, str, str, Intent]] = [
         "I have the akta kelahiran of my daughter, is that enough?",
         Intent.PT_PMA,
     ),
-    (
-        "villa-wifi-is-not-property-deal",
+]
+
+# `villa` is deliberately NOT in the list above, and the reason is worth keeping
+# because it looks like an omission.
+#
+# The rows above are VERDICT-level: they assert the lane loses, and the premise
+# check below proves the lane would otherwise have won — which is what stops a
+# row from passing for an unrelated reason. That construction needs the marker
+# to be strong enough to carry the lane on its own.
+#
+# `villa` is a WEAK marker (see `_WEAK`), so it can never carry a lane by
+# itself, suppressed or not. A verdict-level row for it would read UNKNOWN on
+# both sides: green forever, and green for a reason that has nothing to do with
+# suppression — the exact vacuity the premise check exists to catch. It caught
+# it, the day `villa` became weak.
+#
+# What the suppression still does for `villa` is remove it from the marker
+# list, which is what breaks ties and what a strong marker in the same lane is
+# added to. So it is tested THERE, at the level where it still bites.
+
+
+def test_villa_suppression_bites_at_the_marker_level() -> None:
+    """GUILT: housekeeping context strips `villa` out of the property lane."""
+    result = classify(
         "Wifi",
         "The villa wifi password does not work, can someone send the new one?",
-        Intent.PROPERTY,
-    ),
-]
+    )
+    assert "villa" not in result.markers.get("property", [])
+    assert result.intent is not Intent.PROPERTY
+
+
+def test_villa_survives_without_housekeeping_context() -> None:
+    """INNOCENCE: the same word, no housekeeping nearby, is still a marker.
+
+    Without this half, deleting the `villa` entry from `_MARKERS` altogether
+    would make the guilt test above pass, which is not what it claims to prove.
+    """
+    result = classify(
+        "Purchase",
+        "We are considering a villa and would like to understand the options.",
+    )
+    assert "villa" in result.markers.get("property", [])
 
 
 @pytest.mark.parametrize(
@@ -390,3 +427,120 @@ def test_normalize_keeps_accents_and_folds_quotes() -> None:
     assert "società" in out
     assert "'rinnovo'" in out
     assert "  " not in out
+
+
+# --------------------------------------------------------------------------- #
+# A lane that won on WEAK markers only does not route.                        #
+#                                                                             #
+# Measured, not imagined: before this rule, one live run routed 7 messages    #
+# and SIX of them rested on a single soft marker — five on `tax`, one on      #
+# `meeting` — with no decisive instrument anywhere. `tax` is the word every   #
+# invoice footer already contains, so "mentions tax" was filing a client's    #
+# mail on the strength of a vendor's small print.                             #
+#                                                                             #
+# Guilt AND innocence, per the superscar #3 antidote: a rule that only ever   #
+# refuses is not a router, and the innocence half is what stops the next      #
+# person from "fixing" a quiet lane by widening the weak set.                 #
+# --------------------------------------------------------------------------- #
+
+
+def test_weak_marker_alone_does_not_route() -> None:
+    """A vendor invoice mentioning tax is not a tax enquiry.
+
+    This is the exact live shape: `tax` hits, every other lane scores zero, and
+    the old count path routed on a landslide of one.
+    """
+    result = classify(
+        "Your monthly statement",
+        "Total due: 100 EUR, tax included. Thank you for your business.",
+    )
+    assert result.intent is Intent.UNKNOWN
+    assert result.folder is None
+    assert result.routable is False
+    # The evidence is still reported — refusing to act on a marker is not the
+    # same as pretending it was not there.
+    assert "tax" in result.markers.get("tax", [])
+
+
+def test_scheduling_language_alone_does_not_route() -> None:
+    """"Can we set a meeting?" inside a substantive email is not admin.
+
+    The sentence appears at the end of visa, tax and company questions alike.
+    Routing on it moves the real question out of sight.
+    """
+    result = classify("Quick question", "Could we set a meeting next week?")
+    assert result.intent is Intent.UNKNOWN
+    assert result.routable is False
+
+
+def test_weak_plus_strong_in_the_same_lane_still_routes() -> None:
+    """INNOCENCE: the rule refuses weak-ONLY, never weak-as-well."""
+    result = classify(
+        "Filing",
+        "Please prepare the annual return; the tax due is not yet clear to me.",
+    )
+    assert result.intent is Intent.TAX
+    assert result.routable is True
+    assert result.decisive is False
+
+
+def test_strong_marker_alone_still_routes() -> None:
+    """INNOCENCE: one non-weak marker is enough, as it always was.
+
+    Nobody writes "work permit" by accident, which is the whole distinction
+    this rule turns on.
+    """
+    result = classify("Question", "I need help with a work permit for my staff.")
+    assert result.intent is Intent.VISA
+    assert result.routable is True
+
+
+def test_decisive_instrument_is_never_blocked_by_the_weak_rule() -> None:
+    """INNOCENCE: the decisive path runs first and is untouched.
+
+    A message carrying NPWP and nothing else routes, even though `tax` — the
+    weak word — is absent. The rule must not have become a second gate in
+    front of the instruments.
+    """
+    result = classify("Registration", "Attached is the NPWP for the company.")
+    assert result.intent is Intent.TAX
+    assert result.decisive is True
+    assert result.routable is True
+
+
+def test_weak_markers_still_score() -> None:
+    """A weak marker is demoted, not deleted.
+
+    Two markers in one lane — one weak, one strong — must beat a single strong
+    marker in another. If weak hits stopped counting, this would tie and the
+    tie-breaker would refuse.
+    """
+    result = classify(
+        "Mixed",
+        "About the tax return, and separately please send the invoice.",
+    )
+    assert result.intent is Intent.TAX
+    assert result.routable is True
+
+
+def test_weak_set_contains_no_phantom_markers() -> None:
+    """Every weak token must be a marker that actually exists (W65).
+
+    A weak entry naming a token no lane carries is dead text: it looks like a
+    defence, defends nothing, and quietly survives a rename of the real marker.
+    """
+    known = {marker for markers in _MARKERS.values() for marker in markers}
+    phantom = sorted(_WEAK - known)
+    assert phantom == [], f"weak markers absent from _MARKERS: {phantom}"
+
+
+def test_no_marker_is_both_decisive_and_weak() -> None:
+    """The two sets make opposite claims about the same token.
+
+    `_DECISIVE` says "one hit settles it"; `_WEAK` says "one hit settles
+    nothing". A token in both would be a contradiction the decisive path wins
+    by accident of ordering, which is not a decision anybody made.
+    """
+    decisive = {token for tokens in _DECISIVE.values() for token in tokens}
+    both = sorted(decisive & _WEAK)
+    assert both == [], f"markers claimed as decisive AND weak: {both}"

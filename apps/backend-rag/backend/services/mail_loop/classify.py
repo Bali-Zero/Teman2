@@ -171,6 +171,58 @@ _DECISIVE: dict[Intent, frozenset[str]] = {
     ),
 }
 
+# Markers too common in ordinary business email to justify a route ON THEIR OWN.
+#
+# `_DECISIVE` above says an instrument is strong because it has "no
+# ordinary-language twin, so a single hit is not a coincidence". The
+# contrapositive was written in that comment and never enforced: a soft marker's
+# single hit CAN be a coincidence, and until 2026-08-05 the count path routed on
+# it anyway — one hit, runner-up zero, message moved out of the inbox.
+#
+# Measured on the live mailbox before this rule existed: of 7 routings in one
+# run, SIX rested on a single soft marker (five on `tax`, one on `meeting`) and
+# not one carried a decisive instrument. `tax` is boilerplate — it sits in the
+# footer of every invoice, receipt and SaaS bill on earth — so "mentions tax"
+# was filing a client's mail into _Tax on the strength of a vendor's small
+# print.
+#
+# Each entry below is listed WITH the ordinary-language twin that makes it
+# coincidence-grade. A weak marker still SCORES (it can win a lane, break a tie,
+# and confirm a strong one); it simply may not be the sole reason to move
+# somebody's mail. A lane whose every hit is weak yields UNKNOWN, which this
+# module already treats as a first-class answer: the message stays in the inbox
+# where a human sees it. That is the stated preference, now enforced.
+#
+# Deliberately NOT weak, and why: `visa` (the card-brand twin is already killed
+# by negative context, and no other boilerplate carries it), `invoice`/`receipt`
+# and their translations (these DO define their topic, and _Admin is the correct
+# home for a vendor invoice), `pajak`/`налог` (domain words, not footer
+# furniture). Extending this set is a measurement, not a hunch — add a token
+# only after seeing it decide a route it should not have.
+_WEAK: frozenset[str] = frozenset(
+    {
+        # TAX — every commercial email quotes a tax line.
+        "tax", "taxes", "vat", "iva",
+        # "codice fiscale" is an identity number; "anno fiscale" is a date range.
+        "fiscale",
+        # ADMIN — scheduling language lives INSIDE substantive mail. A visa
+        # question that ends "can we set a meeting?" is a visa question.
+        "meeting", "appointment", "calendar", "reschedule",
+        "jadwal", "pertemuan", "appuntamento", "встреча",
+        # PROPERTY — in Bali everyone lives in a villa; `bangunan` shows up in
+        # postal addresses. "villa" already has negative context for the
+        # housekeeping sense, which is a different (narrower) filter.
+        "villa", "bangunan",
+        # VISA — Italian "soggiorno" is also a living room and a plain stay.
+        # The instrument "permesso di soggiorno" is listed separately and stays
+        # strong.
+        "soggiorno",
+        # PT_PMA — three letters that also spell "open source software" and sit
+        # inside plenty of unrelated acronym soup.
+        "oss",
+    }
+)
+
 # Negative context: a marker is dropped when it sits next to one of these.
 # Keyed by marker, each value is a set of words that must NOT appear within
 # `_NEG_WINDOW` characters of the hit.
@@ -335,6 +387,9 @@ def classify(
          markers another lane collected.
       3. otherwise, the lane with the most distinct markers; a tie or a blank
          score is UNKNOWN, which the loop leaves in the inbox untouched.
+      4. and a lane that won on WEAK markers only is UNKNOWN too, however
+         lopsided the count: beating a runner-up of zero proves nothing when
+         the winning token is the word every invoice already contains.
 
     UNKNOWN is a first-class answer, not a failure: routing a message we do
     not understand is worse than leaving it where a human will see it.
@@ -381,6 +436,24 @@ def classify(
     top_intent, top_hits = ranked[0]
     if len(ranked) > 1 and len(ranked[1][1]) == len(top_hits):
         # Ambiguous on soft markers only: refuse to guess.
+        return Classification(
+            intent=Intent.UNKNOWN,
+            language=language,
+            folder=None,
+            bulk=False,
+            decisive=False,
+            markers={k.value: v for k, v in per_lane.items()},
+        )
+
+    if all(marker in _WEAK for marker in top_hits):
+        # The lane won, but on coincidence-grade evidence only. Winning a count
+        # against nothing is not the same as being right: `tax` beats a runner-up
+        # of zero in every invoice ever sent. Refuse, and let the human see it.
+        logger.debug(
+            "lane %s won on weak markers only (%s) — refusing to route",
+            top_intent.value,
+            top_hits,
+        )
         return Classification(
             intent=Intent.UNKNOWN,
             language=language,

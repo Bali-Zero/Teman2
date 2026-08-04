@@ -47,6 +47,7 @@ from backend.services.mail_loop.learn import (
     match_sent,
     phrase_lesson,
 )
+from backend.services.mail_loop.state_io import write_private
 from backend.services.mail_loop.style import (
     Lesson,
     ReplyStyleStore,
@@ -176,10 +177,9 @@ class PendingDrafts:
         return data if isinstance(data, dict) else {}
 
     def _save(self, data: dict[str, dict[str, Any]]) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        tmp.replace(self.path)
+        write_private(
+            self.path, json.dumps(data, indent=2, ensure_ascii=False), suffix=".tmp"
+        )
 
     def add(self, thread_id: str, *, text: str, bucket: str) -> None:
         if not thread_id:
@@ -544,14 +544,35 @@ class MailLoop:
             text = generate(request, dry_run=self.dry_run)
         except DraftUnavailable as exc:
             summary.draft_failures += 1
-            logger.warning("loop: no draft for %s: %s", subject[:40], exc)
+            # The subject is CLIENT DATA. It routinely carries a name, a
+            # passport number, a company — "KITAS renewal for <person>" is a
+            # normal subject line here. SYMBIOSIS Law 2 is absolute about logs
+            # (UU PDP Art. 67-68), and this log is world-readable on the Pro and
+            # tailed by other organs. Identify the message by its opaque id and
+            # its lane; that is everything a human debugging this needs, and it
+            # names nobody.
+            logger.warning(
+                "loop: no draft for %s (%s/%s): %s",
+                _message_id(full)[:12] or "?",
+                verdict.intent.value,
+                verdict.language,
+                exc,
+            )
             return
 
         reply_subject = subject if subject.lower().startswith("re:") else f"Re: {subject}"
         content = f"{DRAFT_MARKER}\n\n{text}"
 
         if self.dry_run:
-            logger.info("loop: DRY-RUN would save draft %r (%d chars)", reply_subject, len(content))
+            # Same rule as above: no subject in the log. Length and lane are the
+            # facts worth having; the subject is somebody's business.
+            logger.info(
+                "loop: DRY-RUN would save draft for %s (%s/%s, %d chars)",
+                _message_id(full)[:12] or "?",
+                verdict.intent.value,
+                verdict.language,
+                len(content),
+            )
         else:
             await self.backend.save_draft(
                 self.user_id,
