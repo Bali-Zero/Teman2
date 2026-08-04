@@ -358,22 +358,47 @@ def test_the_body_lists_carry_their_article(canonical):
 # THE OVERLAY ALREADY TOOK THIS READING — on what evidence
 # --------------------------------------------------------------------------
 
-def test_the_overlay_closes_seventeen_codes_on_an_empty_per_skala(canonical):
+def test_no_code_is_closed_on_licensing_data_we_do_not_hold(canonical):
+    """RE-PINNED 2026-08-03, and the movement IS the cure — do not read this as
+    a number bumped to green.
+
+    It used to assert `overlay_closed == 39` with `closed_on_empty_scales == 17`:
+    seventeen live pages telling clients an activity was reserved to MSMEs on the
+    strength of a licensing table that holds NOTHING for them. That inference —
+    "OSS publishes no Usaha Besar row, therefore a PT PMA cannot register" — is
+    what Permeninves/BKPM 5/2025 Pasal 26(1) inverts, and
+    `cure_l4bali_perpres_adjudication.py` withdrew it against the Perpres annexes.
+
+    The load-bearing assertion is the SECOND one: `closed_on_empty_scales == 0`.
+    A closure standing on absent evidence must never come back, whatever the
+    other totals do. `overlay_closed == 7` is the seven codes Lampiran II names
+    in its `dialokasikan` column, and every one of them is corroborated by scale
+    rows it actually has."""
     ov = overlay_reconciliation(canonical)
-    assert ov["overlay_closed"] == 39
-    assert len(ov["corroborated_by_scales"]) == 22
-    assert len(ov["closed_on_empty_scales"]) == 17
+    assert len(ov["closed_on_empty_scales"]) == 0
+    assert ov["overlay_closed"] == 7
+    assert len(ov["corroborated_by_scales"]) == 7
     assert ov["closed_with_a_besar_row"] == []
 
 
-def test_the_overlay_leaves_open_a_code_whose_scales_lack_besar(canonical):
-    """The same rule, misapplied in the OTHER direction: `93114` is published
-    APERTO on evidence the overlay treats as closing on 22 other codes.
-    """
+def test_a_missing_besar_row_no_longer_decides_anything_by_itself(canonical):
+    """The same rule read in the OTHER direction, and now the population is the
+    point rather than the exception.
+
+    This used to assert exactly two codes (`79110`, `93114`) lacked a Besar row
+    while NOT being closed — offered as evidence that the overlay applied its own
+    rule inconsistently. After the withdrawal there are seventeen, spread across
+    four different verdicts, because a missing Besar row is no longer a verdict
+    at all: what decides is the Perpres annex for ownership and the risk tier for
+    Bali. The two historical codes are still among them, which is how we know the
+    set grew rather than being replaced."""
     ov = overlay_reconciliation(canonical)
     not_closed = {r["code"]: r for r in ov["absent_besar_not_closed"]}
-    assert set(not_closed) == {"79110", "93114"}
+    assert {"79110", "93114"} <= set(not_closed)
     assert not_closed["93114"]["l4_bali"] == "APERTO_BALI_RISCHIO_ALTO"
+    assert len({r["l4_bali"] for r in not_closed.values()}) > 1, (
+        "a single verdict across this set would mean the missing row is still deciding"
+    )
 
 
 # --------------------------------------------------------------------------

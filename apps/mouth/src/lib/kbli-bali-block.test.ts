@@ -264,7 +264,7 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     expect(PAGE).toContain("baliBlockClause(kbli.baliL4?.status)");
   });
 
-  it("pins the population: 455 render the notice, only 39 are MSME-reserved", () => {
+  it("pins the population: 455 render the notice, only 7 are MSME-reserved", () => {
     // Mirrors the component's own guard: baliBlocked && !nationallyClosed.
     const nationallyClosed = (r: RawRecord) =>
       r.pma_cap_special !== true &&
@@ -284,11 +284,22 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // now, and the national layer says it. The other nineteen sit at 49%,
     // which is not 0, so they stay. A drop of one after patching twenty is
     // the expected shape here, not a rounding accident.
+    //
+    // 39 → 7 on 2026-08-03. The MSME-reserved count was never a count of
+    // reservations: 32 of the 39 earned that status from "OSS holds no Usaha
+    // Besar scale row, therefore reserved for UMKM", an inference Permeninves/
+    // BKPM 5/2025 Pasal 26(1) inverts — being Usaha Besar is a CONSEQUENCE of
+    // PMA status, not a precondition for it. Each of the 39 was adjudicated
+    // against Perpres 49/2021 Lampiran II directly; SEVEN are genuinely
+    // allocated to Koperasi/UMKM and keep the status, the other 32 moved to
+    // the cause that actually blocks them. The notice total does NOT move:
+    // they are all still Bali-blocked, so this is a re-attribution, not an
+    // opening. If a future change moves `notice` too, that is a different
+    // event and this test should fail rather than absorb it.
     expect(notice.length).toBe(455);
-    expect(msme.length).toBe(39);
-    // 416 pages were being told a cause that was not theirs — 5.8x the
-    // licensing-frame defect, and above the fold rather than deep in the page.
-    expect(notice.length - msme.length).toBe(416);
+    expect(msme.length).toBe(7);
+    // 448 pages carry the notice for a cause other than an MSME reservation.
+    expect(notice.length - msme.length).toBe(448);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -361,7 +372,7 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     expect(FAQ).toContain("shouldShowReason(code.baliL4?.status");
   });
 
-  it("pins the population: 455 answers, only 39 are MSME-reserved", () => {
+  it("pins the population: 454 answers, only 7 are MSME-reserved", () => {
     // Mirrors the builder's own guard: pma.status === "open" && baliL4.blocked,
     // where mapPmaStatus treats anything but TERBATAS/TERTUTUP as open.
     const openNationally = (r: RawRecord) => {
@@ -378,11 +389,17 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // reasons, one code; that they agree on this record is a coincidence of
     // the cure, not evidence the populations are the same. The test below
     // still proves they are not.
+    //
+    // 39 → 7 on 2026-08-03, for the reason given at the banner pin above: the
+    // no-Usaha-Besar-row inference was withdrawn and each of the 39 codes was
+    // adjudicated against the annex. This site reaches the SAME seven, by a
+    // different predicate — which is what makes it worth pinning separately.
     expect(answers.length).toBe(454);
-    expect(msme.length).toBe(39);
-    // 415 answers named a cause that was not theirs — in the visible Q&A and in
-    // the FAQPage JSON-LD, which is the copy that leaves the site.
-    expect(answers.length - msme.length).toBe(415);
+    expect(msme.length).toBe(7);
+    // 447 answers carry the block for a cause other than an MSME reservation —
+    // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
+    // site.
+    expect(answers.length - msme.length).toBe(447);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
@@ -519,10 +536,17 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     expect(baliBlockedHint([])).toBe("");
   });
 
-  it("agrees with the served dataset — 518 blocked, 111 not by the moratorium", () => {
+  it("agrees with the served dataset — 518 blocked, 98 not by the moratorium", () => {
     // Anchors the two figures to the real records rather than to my arithmetic,
     // so a future overlay change fails here instead of silently making the
     // card wrong again.
+    //
+    // 111 → 98 on 2026-08-03: thirteen of the codes that used to be blocked
+    // "because OSS holds no Usaha Besar row" turned out to be blocked by the
+    // moratorium instead, once each was adjudicated against Perpres 49/2021
+    // Lampiran II. The blocked TOTAL is unchanged at 518 — nothing opened, the
+    // causes were re-attributed — which is why that figure is asserted here
+    // too and not only the one that moved.
     const codes = (
       rawData as {
         data: Array<{ l4_bali?: { status?: string; blocked?: boolean } }>;
@@ -534,6 +558,10 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     }));
     const hint = baliBlockedHint(codes);
     expect(hint).toContain("518 of 1559");
-    expect(hint).toContain("111");
+    // Both halves of the split, each with the words around it: a bare "98"
+    // would also be satisfied by the digits of some unrelated figure the
+    // sentence might gain later, which is how a pin stops pinning.
+    expect(hint).toContain("420 of them");
+    expect(hint).toContain("the other 98");
   });
 });

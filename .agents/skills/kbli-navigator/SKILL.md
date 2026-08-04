@@ -26,7 +26,171 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-08-02 — keep current)
+## 0bis. DO NOT REUSE THE WORDING IN `research/content/` — 5 drafts + 2 book chapters are retracted
+
+Seven captures under `research/content/` still argue the **withdrawn** no-Usaha-Besar inference:
+`articles/04-consulting-in-bali-the-first-door-to-close.md`, `05-pondok-wisata-vs-villa.md`,
+`09-wellness-and-aesthetics-an-open-door.md`, `19-what-changed-from-kbli-2020-to-2025.md`,
+`20-the-honest-map-blocked-bali-codes.md`, `book-chapters/ch-the-surf-coliving-55209.md`,
+`ch-the-yoga-and-retreat-85510.md`. Their PUBLISHED counterparts were corrected on 2026-08-03
+(PR #3579, en/it/id). The drafts are left intact **on purpose** — rewriting a dated capture
+falsifies a record — and the warning lives here instead of in a banner inside them, because a
+banner drags an untouched `research/**/*.md` into the R1 gate, and the only compliant values
+would be a review those bodies never had or an `exempt-` that is false for a file declaring
+`client_case:` (superscar #3 / W109: an exemption is an assertion about the document). A future
+session reads this corner; it does not browse `research/`.
+
+Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
+is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
+
+## 1. LIVE STATE (last update 2026-08-03 — keep current)
+
+**🟢 2026-08-03 (night) — THE CHAT CHANNEL NOW CARRIES THE BALI VERDICT, AND THE STORE ALWAYS KNEW.**
+Production was asked whether a PT PMA can open a massage parlour (86995) in Bali and answered _"Yes,
+you absolutely can!"_ with capital figures and next steps. The live Qdrant point for 86995 carried
+`bali_blocked: true` at that moment. **Not a data gap — a disconnected pipe, one field wide**:
+`KBLISearchResult` had nowhere to put the verdict, so nothing read it into the LLM context. It was
+never about one code: **518** activities carry a Bali block the channel could not state.
+
+- **Cured at the CHOKE POINT, not at the constructors** (#3557). Seven call sites build a
+  `KBLISearchResult` and only two see a Qdrant payload; the other five read Postgres/the KG, which
+  hold no Bali layer (measured: 0 rows of 1,563). Curing the two in view would not have cut the risk,
+  only moved which question gets the wrong answer (W107). The backfill sits in the one function every
+  answer passes through, and a test asserts that placement rather than trusting it.
+- **Absence is SILENCE, never "open."** A missing verdict produces no sentence at all. Reading absence
+  as permission is the exact inference this lane spent the week withdrawing from 32 codes.
+- The 12h explanation cache prefix moved with the change (`v27`→`v28`) — without it, answers generated
+  blind would have kept serving for half a day after the deploy.
+
+**🟢 QDRANT BALI LAYER SYNCED — 39/39, applied and read back.** `kbli_qdrant_pma_sync.py` is now
+one tool for both layers (#3555), and the separate `patch_qdrant_bali_l4.py` is DELETED: it keyed off
+a field name canonical does not use (`l4_bali.verdict`), defaulted the miss to `"OPEN"`, and would
+have published `OK_or_HIGHER_RISK` + "not blocked by moratorium" onto **118 currently-blocked codes**
+— on the store `inspect_kbli` reads FIRST. Two tools that must agree about one fact are now one
+(W105). Population derived from the canonical diff, not listed by hand: `--layer bali --codes <39>`,
+dry-run → apply → **re-read: 39/39 already agreed**, then `kbli_inspect_cache_bust` (2 of 39 had an
+entry; both evicted — one of them was the code this session had queried before the cure).
+
+**🔴 THE SEVENTH SURFACE: the macOS app's EDITORIAL OVERLAY — three files nothing in this repo had
+ever seen.** `check-fleet.sh` compared exactly ONE file (the machine dataset), found all four copies
+aligned, and printed _"fleet aligned with canonical"_ over three laptops whose PROSE was materially
+wrong. **The guard covered the file that cannot lie in prose and missed the three that do.** Measured
+whole-document against canonical: 9 of 322 entries state an ownership figure canonical contradicts,
+6 carry the withdrawn UMKM inference. Cured 8 (#3562) — per code, because the template written first
+was wrong in BOTH directions: it would have inverted 55203 Vila's TRUE closure (the Perpres annex
+really does allocate _Vila_ to Koperasi/UMKM) and dropped the Bali moratorium block from four others.
+**55202 (youth hostel) was found only because the cure REFUSED** — the first audit read only the
+paragraph naming PMA, and 55202 carries the sentence elsewhere: one miss in a family of six, inside
+the probe written to find them. 79122 said Umrah travel is "fully open, 100%" (annex: 0%); 86101
+handed the reader a 12–24 month roadmap to foreign-own a GOVERNMENT hospital.
+**NOT reconciled, on purpose (7):** 64992/65121/66191/66301 are OJK sectoral caps canonical does not
+model, 85102 encodes a Yayasan/SPK constraint, 73100 rests on a grep of a text-layer-dead PDF, 47221's
+canonical cap is literally `special`. Canonical is the doubtful side in each — aligning prose to it
+would manufacture agreement, not truth.
+
+**🟡 CORRECTION TO THIS FILE'S OWN LEDGER — the 80-code channel cure names the WRONG blocker.** It
+says the apply is parked because it "needs a write DSN" and "on M5 the fly credentials are dead."
+Measured tonight: `flyctl auth whoami` → rc=0, `zero@balizero.com`; the deployed image holds the
+write DSN and `kbli_documents_cure.py`. The real obstacle is different and does not move: the SAFE
+selector `--all-licensing-absent` needs the repo layout (`scripts/kbli_filiera/`) that the image does
+not ship, and it **cannot be substituted by `--only`** — the content-preservation gate runs _only_
+under the state-selector (deliberately, since `--only` serves the quarantine population where the
+stored text is fabricated by definition). So `--only` on this population would destroy the 25
+hand-written rows the reviewed design exists to protect. Detector re-run tonight: `licensing_divergent`
+is **25**, i.e. exactly the previously-REFUSED set — the 55 rebuildable are already written.
+Unblocking wants the writer to accept a report produced by the predicate's sole owner, not a second
+copy of the predicate.
+
+**🔴 2026-08-03 — THE 39 "CLOSED TO PT PMA" BADGES ARE MOSTLY WRONG, AND THE REAL OBSTACLE IN BALI IS
+NOT THE PERPRES AT ALL.** Two research files shipped, both graded by Codex on fresh context (the seat
+is named in each frontmatter; the R1 gate rejects an unnamed one, correctly — an earlier draft said
+"cross-family refute pass" when the refute lanes were Claude agents, i.e. the SAME family, W100).
+
+- `research/compliance/2026-08-03-kbli-39-closure-verdicts.md` — primary sources. Of the 39 codes
+  rendering `CHIUSO_PMA_NO_BESAR`: **7 genuinely reserved** (55201 homestay · 55203 villa · 79903 tour
+  guide · 95291 tailoring · 96100 laundry · 96210 barber · 96220 salon), **2 partial** (55209 only the
+  _Guest House_ slice, 43110 only _simple/intermediate technology_ demolition — Perpres 10/2021
+  **Pasal 5(5)** scopes a Lampiran II reservation to the wording in the Bidang Usaha column),
+  **11 carry a non-ownership requirement a PT PMA can satisfy**, **19 carry nothing located**.
+- **ROOT CAUSE, one inference used as primary ground:** _"no Usaha Besar scale row → reserved for UMKM
+  → closed to PMA"_. **Permeninves/BKPM 5/2025 Pasal 26(1) inverts it** — Usaha Besar is a CONSEQUENCE
+  of PMA status, not a gate a licensing table can withhold. That inference is what produced all 39.
+- `research/compliance/2026-08-03-kbli-39-market-sources.md` — secondary sources, 9 lanes. Graded
+  DEFECTIVE by Codex; four claims withdrawn or narrowed IN PLACE. **The withdrawn one matters: the
+  "IDR 10bn leaves nothing in between" argument is dead** — `modal usaha` and `nilai investasi` are
+  different legal quantities and no cited provision makes them one. Do not reuse it.
+
+**🔴 THE GOVERNOR'S LETTER, READ AT SOURCE (2026-08-03) — the market quotes its background section.**
+`B.27.000/642/PM/DPMPTSP`, 28 Jan 2026, Koster → Menteri Investasi/BKPM. The scan (agency-hosted,
+`flado.id`) has a **zero-character text layer**; it was rendered at 200 dpi and read from the images.
+
+- **`Lampiran: -` — NO ANNEX.** Neither the "nine codes" nor the "eighteen" was ever attached.
+- **The operative request is BY RISK TIER, verbatim:** close on OSS _"1. PMA … dengan Tingkat Risiko
+  **Rendah dan Menengah Rendah** yang berada di Provinsi Bali; dan 2. PMA yang berlokasi usaha di
+  **virtual office**"_. Two categories, no code list.
+- The nine KBLI everyone publishes as "the blocked list" sit at background point 2 under _"sebagian
+  besar **mengajukan** dengan KBLI"_ — the codes PMAs most often APPLY FOR, cited as evidence of the
+  problem. Illustration, not scope.
+- Purpose (point 3, verbatim): the scheme is _"digunakan sebagai sarana memperoleh **izin tinggal**
+  bagi WNA … tanpa adanya kegiatan berusaha yang nyata"_. Immigration is on the 10-name copy list.
+- **The instrument nobody has cited:** it follows a **Nota Kesepakatan BKPM RI ↔ Bali**,
+  `KS.01.00/2.S/A.1/2026` + `B.36.100.3.7/2767/KS/B.PEMKESRA`, _tentang Pengendalian Pelaksanaan
+  Penanaman Modal di Provinsi Bali_. **NEXT DOCUMENT TO OBTAIN** — not held, not in the literature.
+- **Measured on canonical: 22 of the 39 carry only `Rendah`/`Menengah Rendah`** — exactly the tiers
+  named. The other 17 hold no licensing rows at all, so they cannot be classified (same missing
+  `per_skala` population the channel cure works through).
+- **Limits, stated:** it is a REQUEST; no implementing instrument located. The scan is internally
+  consistent but not authenticated by an official publisher.
+
+**🟢 STILL IN FORCE — verified this session by direct fetch of peraturan.bpk.go.id (HTTP 200), not by
+report.** `Details/161806` Perpres **10/2021 → Status `Berlaku`**, `Diubah dengan` Perpres 49/2021;
+`Details/168534` Perpres **49/2021 → Status `Berlaku`**. Neither is revoked. What died is the
+LANGUAGE: the annexes still name KBLI-2020 codes and no investment instrument has ever been re-issued
+in KBLI-2025 numbering, so every 2025-numbered verdict runs through the BPS conversion table — a
+statistical artefact with **no legal force**. Say that out loud in any client-facing claim.
+
+**🟢 APPLIED 2026-08-03 — THE 39 ARE RE-DECIDED IN CANONICAL.** Zero's order: _"tu qua fai la
+sessione e porti /kbli-navigator … pronto per BKPM senza aspettare operatori"_. New sanctioned
+compiler `scripts/kbli_filiera/cure_l4bali_perpres_adjudication.py` + the adjudication as DATA at
+`data/kbli-filiera/kbli39-perpres-adjudication.json`. Ownership comes from the Perpres annexes, the
+Bali position from the risk tier — the two questions answered by the two things that answer them.
+
+`CHIUSO_PMA_NO_BESAR` **39 → 7** (the genuinely allocated; only the `reason` changed, from the OSS
+inference to the annex row) · `BLOCCATO_DIPENDE_SCOPE` **+2** (43110, 55209 — Pasal 5(5)) ·
+`CHIUSO_MORATORIA_BALI` **35 → 48** (still red, TRUE reason) · `NON_CLASSIFICABILE` **8 → 25**
+(no licensing rows held; we say so).
+
+National `pma_*` fields untouched — fingerprint asserted before/after, a change ABORTS. Corpus 13
+tests, mutation-verified 5/5 including the dangerous direction (opening a moratorium-blocked code).
+
+**Propagated:** `scripts/sync_kbli_dataset.sh` → apps/mouth/data, apps/backend-rag/backend/data,
+apps/kbli-navigator/data (+ the gitignored backend runtime copy); `kbli-dataset-version.json` bumped
+to `sha256:0bd006544c6f…` / 2026-08-03. `apps/kbli-navigator` resolves canonical directly — no copy.
+
+**STILL OPEN, named by the sync script's own notice — do not call this done:**
+
+- **Qdrant payload** — `inspect_kbli` reads `pma_status` from Qdrant FIRST; `l4_bali` rides the same
+  payload. Tool: `apps/backend-rag/scripts/patch_qdrant_bali_l4.py` (payload merge, NEVER a re-index
+  — the embedding model is FROZEN).
+- **The native macOS app fleet** (M5/Pro/Mini + team zip) — outside the repo, `check-fleet.sh` is the
+  only thing that speaks for it.
+- **`chat_kbli`** still answers on `kbli_documents.content`, which does not carry `l4_bali`; whether
+  the channel should now brake on the 7 is a separate cure.
+- **The 17 `NON_CLASSIFICABILE`** need licensing rows before they can say anything about Bali. Same
+  population as the channel-cure gap.
+
+**🟢 TOOLING (2026-08-03).** #3548 the channel cure was dead at import in the deployed image (a
+module-level `parents[4]`), taking `--only` with it — merged, live. #3550 `--only` bypasses the
+content-preservation gate silently; now REPORTED — merged. #3551 (open) `perpres_umkm_reservation_relation.py`
+filed **30 live pages as "archaeology"**: the `retired-2020-code` bucket tested whether the same NUMBER
+survives the vintage change, so every RENUMBERED code landed in the one bucket declared
+not-client-facing — 30 of 30 had a live heir, reaching 66 pages, 63 of them `TERBUKA/100%`. This is
+why 7 of the 9 real reservations had to be re-derived by hand. **Identity wins where it exists; the
+crosswalk resolves only what identity cannot** — the first fix let the crosswalk win unconditionally
+and a spurious edge (`14111 Industri Pakaian Jadi → 17091 Industri Kertas Tisu`) demoted 34 rows into
+a bucket nothing evaluates. Still a REPORTER, exit 0 (Legge 5).
+
+---
 
 **🟡 F1 — THE CHANNEL CURE NOW SELECTS BY STATE, AND REFUSES 25 OF 80 ON PURPOSE (2026-08-02, code
 shipped; the DB apply is a separate step and is NOT claimed here).**

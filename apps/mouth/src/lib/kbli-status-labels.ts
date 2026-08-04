@@ -74,9 +74,16 @@ export const BALI_STATUS_CONFIG: Record<string, BaliStatusConfig> = {
     icon: "⚠️",
     tone: "warn",
   },
-  // No Usaha Besar scale row in OSS → activity reserved for cooperatives/MSME under
-  // Perpres 10/2021 (amended 49/2021), Lampiran II Pasal 5(1)(a). A PT PMA is Usaha
-  // Besar by law (UU 6/2023 + Permeninves 5/2025) and cannot register it.
+  // The activity is ALLOCATED to cooperatives/MSME by name in Perpres 10/2021 as
+  // amended by 49/2021, Lampiran II (the `dialokasikan` column) — a PT PMA cannot
+  // take that bidang usaha.
+  //
+  // Corrected 2026-08-03: this comment used to derive the status from "no Usaha
+  // Besar scale row in OSS", and 32 of the then-39 codes carried it on that basis
+  // alone. Permeninves/BKPM 5/2025 Pasal 26(1) inverts the inference — a PT PMA is
+  // Usaha Besar as a CONSEQUENCE of foreign ownership, so a missing Besar row is a
+  // licensing-data gap, never an ownership bar. The status now means only what the
+  // annex says, and reaches 7 codes.
   CHIUSO_PMA_NO_BESAR: {
     label: "Reserved for MSME — closed to PT PMA",
     icon: "🚫",

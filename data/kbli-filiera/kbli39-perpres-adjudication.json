@@ -1,0 +1,289 @@
+{
+ "_what": "Per-code adjudication of the 39 KBLI the catalogue published as CHIUSO_PMA_NO_BESAR.",
+ "_source_report": "research/compliance/2026-08-03-kbli-39-closure-verdicts.md",
+ "_method": "8 research lanes on primary sources + 8 refute lanes on fresh context, then graded by Codex GPT-5.6 (terra, high). Three verdicts the grader would not accept are recorded in the report's Adversarial review section and are NOT silently reconciled here: 86995 (decisive Permenkes annex image-only and unread), 38110 (no local Bali instrument read for any code), 95291 (crosswalk splits it; high confidence not earned).",
+ "_vintage": "Perpres 10/2021 as amended by 49/2021, both Berlaku (verified 2026-08-03 by direct fetch of peraturan.bpk.go.id Details/161806 and Details/168534, HTTP 200).",
+ "_declared_limit": "No investment instrument has ever been re-issued in KBLI-2025 numbering, so every 2025-numbered verdict here runs through the BPS conversion table — a statistical artefact with no legal force.",
+ "_verdicts": {
+  "RESERVED": "named in Perpres 49/2021 Lampiran II 'dialokasikan' column — a PT PMA cannot take it",
+  "PARTIAL": "reserved only as to a NAMED sub-activity (Perpres 10/2021 Pasal 5(5) scopes the reservation to the wording in the Bidang Usaha column); the rest of the code is not",
+  "REQUIREMENT": "a real located requirement that is NOT an ownership rule — a PT PMA can satisfy it",
+  "PARTNERSHIP": "a partnership duty, which does not bar foreign ownership",
+  "NONE": "no restriction located in Lampiran I/II/III, the closed list, or any sectoral instrument read in this pass"
+ },
+ "rows": [
+  {
+   "code": "38110",
+   "judul": "Pengumpulan Limbah atau Sampah Tidak Berbahaya",
+   "verdict": "NONE",
+   "instrument": "none — absent from all three annexes. The only 38xxx row in Lampiran II is 38302, and its tick is in **kemitraan**, not *dialokasikan*. UU 18/2008 Pasal 17(1) imposes a universal local permit on *any* operator",
+   "confidence": "high"
+  },
+  {
+   "code": "43110",
+   "judul": "Pembongkaran (demolition)",
+   "verdict": "PARTIAL",
+   "instrument": "Lampiran II p.10, entry 37 *\"Pembongkaran yang menggunakan teknologi sederhana dan madya\"*, KBLI 43110, *dialokasikan* — Pasal 5(5) scopes it to that segment. **PP 28/2025 Lampiran I.H entry 39 publishes a Besar row written expressly for \"BUJK PMA\"**",
+   "confidence": "high"
+  },
+  {
+   "code": "47771",
+   "judul": "Perdagangan Eceran Minyak Tanah (kerosene retail)",
+   "verdict": "REQUIREMENT",
+   "instrument": "Perpres 191/2014 Pasal 3(1), 8(1), 9 — subsidised-fuel distribution is an **assignment** to a Badan Usaha already holding an *Izin Usaha Niaga Umum* plus storage and distribution facilities. Commercial gate, nationality-neutral",
+   "confidence": "medium"
+  },
+  {
+   "code": "52211",
+   "judul": "Aktivitas Terminal Darat",
+   "verdict": "REQUIREMENT",
+   "instrument": "UU 22/2009 Pasal 35 (private parties may build *goods* terminals for own use); PP 30/2021 Pasal 39(2)/40(3) — public passenger terminals stay a government responsibility but may be **kerja-sama'd with swasta**. PP 28/2025 Lampiran II PB-UMKU *Sertifikat Penyelenggaraan Terminal Barang Untuk Kepentingan Sendiri*",
+   "confidence": "medium"
+  },
+  {
+   "code": "55201",
+   "judul": "Aktivitas Rumah Tinggal Sewa (Homestay)",
+   "verdict": "RESERVED",
+   "instrument": "Perpres 49/2021 Lampiran II p.15, entry 48 sub-row *Pondok Wisata*, KBLI 55130, tick in *dialokasikan*",
+   "confidence": "high"
+  },
+  {
+   "code": "55202",
+   "judul": "Aktivitas Hostel Remaja (Youth Hostel)",
+   "verdict": "NONE",
+   "instrument": "none — absent from Lampiran I/II/III; Permenpar 6/2025 KBLI 55191 standard has zero ownership conditions",
+   "confidence": "high"
+  },
+  {
+   "code": "55203",
+   "judul": "Aktivitas Vila",
+   "verdict": "RESERVED",
+   "instrument": "Perpres 49/2021 Lampiran II p.15, entry 48 sub-row *Vila*, KBLI 55193, *dialokasikan*",
+   "confidence": "unknown"
+  },
+  {
+   "code": "55209",
+   "judul": "Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya",
+   "verdict": "PARTIAL",
+   "instrument": "Lampiran II p.15, entry 48 sub-row *Guest House*, KBLI 55199 — scoped by Perpres 10/2021 **Pasal 5(5)** to \"Guest House\" only, not the residual code",
+   "confidence": "high"
+  },
+  {
+   "code": "55300",
+   "judul": "Aktivitas Penyediaan Bumi Perkemahan, Persinggahan Karavan dan Taman Karavan",
+   "verdict": "NONE",
+   "instrument": "none — 2020 code 55192 absent from all three annexes; Permenpar 6/2025 KBLI 55192 standard has zero ownership conditions",
+   "confidence": "high"
+  },
+  {
+   "code": "56102",
+   "judul": "Food stalls / itinerant food service (2020 ancestors 56103, 56104, 56109)",
+   "verdict": "REQUIREMENT",
+   "instrument": "Permenpar 6/2025 Lampiran, standards for 56103/56104/56109 — Sertifikat Standar + hygiene (HSP/SLHS). No 56xxx entry anywhere in Perpres 49/2021",
+   "confidence": "high"
+  },
+  {
+   "code": "56304",
+   "judul": "Aktivitas Kedai Minuman",
+   "verdict": "REQUIREMENT",
+   "instrument": "Permenpar 6/2025 Lampiran, \"KBLI (56304) KEDAI MINUMAN\", risk Menengah Rendah — Sertifikat Standar + HSP; *Penggolongan Usaha* is \"-\" (no scale gating)",
+   "confidence": "high"
+  },
+  {
+   "code": "56306",
+   "judul": "Aktivitas Penyediaan Minuman Keliling/Tempat Tidak Tetap",
+   "verdict": "REQUIREMENT",
+   "instrument": "Permenpar 6/2025 Lampiran p.170, \"KBLI (56306)\" — Sertifikat Standar + HSP; no scale gating",
+   "confidence": "high"
+  },
+  {
+   "code": "70100",
+   "judul": "Aktivitas Kantor Pusat",
+   "verdict": "NONE",
+   "instrument": "none — zero rows across **all 22** PP 28/2025 annex files and all three Perpres annexes; falls to Perpres 10/2021 Pasal 3(1)(d) + 3(2)",
+   "confidence": "high"
+  },
+  {
+   "code": "70201",
+   "judul": "Aktivitas Konsultansi Manajemen dan Bisnis Pariwisata",
+   "verdict": "NONE",
+   "instrument": "none — Lampiran II entry 49 is 70202 (transport consultancy), *not* 70201; PP 28/2025 I.L entry 27 has an empty *Persyaratan* column",
+   "confidence": "medium"
+  },
+  {
+   "code": "73300",
+   "judul": "Aktivitas Kehumasan",
+   "verdict": "REQUIREMENT",
+   "instrument": "Two instruments **conflict**: PP 28/2025 Lampiran I.P entry 9 (70203) gives Mikro/Kecil/Menengah, no Besar; Permen Ekraf 7/2025 Lampiran I entry 9 gives **UMKMB** (incl. Besar). No investment-annex entry either way",
+   "confidence": "medium"
+  },
+  {
+   "code": "74199",
+   "judul": "Aktivitas Desain Khusus Lainya YTDL",
+   "verdict": "REQUIREMENT",
+   "instrument": "PP 28/2025 Lampiran I.P entry 4 (74149) *Skala Usaha* = Mikro, Kecil only; Permen Ekraf 7/2025 Lampiran I entry 4 = **UMK** (the only 1 of its 16 codes so marked). Not a Pasal 5(1)(a) reservation",
+   "confidence": "medium"
+  },
+  {
+   "code": "79901",
+   "judul": "Jasa Informasi Pariwisata",
+   "verdict": "NONE",
+   "instrument": "none — 2020 code 79911 in no annex; PP 28/2025 I.L entry 32 *Persyaratan* = \"-\"",
+   "confidence": "medium"
+  },
+  {
+   "code": "79902",
+   "judul": "Jasa Informasi Daya Tarik Wisata",
+   "verdict": "NONE",
+   "instrument": "none — 2020 code 79912 in no annex; PP 28/2025 I.L entry 33 *Persyaratan* = \"-\"",
+   "confidence": "medium"
+  },
+  {
+   "code": "79903",
+   "judul": "Jasa Pramuwisata",
+   "verdict": "RESERVED",
+   "instrument": "Perpres 49/2021 Lampiran II p.16, entry 56 *Jasa pramuwisata*, KBLI 79921, tick in *dialokasikan*",
+   "confidence": "high"
+  },
+  {
+   "code": "86995",
+   "judul": "Aktivitas Rumah Pijat",
+   "verdict": "NONE",
+   "instrument": "none located — 2020 code 96121 absent from all three annexes; OSS requires only *Sertifikat Laik Sehat*",
+   "confidence": "medium"
+  },
+  {
+   "code": "91424",
+   "judul": "Taman Wisata Alam (2020: 91034)",
+   "verdict": "REQUIREMENT",
+   "instrument": "UU 5/1990 Pasal 34 as replaced by UU 32/2024 Pasal I angka 15 — TWA management is a **State** function; private parties enter by permit/concession over the utilisation zone (PP 36/2010 Pasal 8(3): *perorangan, badan usaha, koperasi*; Penjelasan includes *badan usaha swasta*)",
+   "confidence": "high"
+  },
+  {
+   "code": "93115",
+   "judul": "Fasilitas Olahraga Beladiri",
+   "verdict": "NONE",
+   "instrument": "none — no 93xxx in any Perpres annex; Permenpora 9/2026 §F standard has zero ownership terms, and its Pasal 80(2)(a) expressly supervises *\"usaha sektor Keolahragaan PMA\"*",
+   "confidence": "high"
+  },
+  {
+   "code": "93119",
+   "judul": "Pengelolaan Fasilitas Olahraga Lainnya",
+   "verdict": "NONE",
+   "instrument": "none — as 93115. PP 28/2025 I.L entry 50 omits Menengah *and* Besar, which is a licensing-scale row, not a restriction",
+   "confidence": "high"
+  },
+  {
+   "code": "93121",
+   "judul": "Klub Sepak Bola",
+   "verdict": "NONE",
+   "instrument": "none — no 9312x code in any Perpres annex or in PP 28/2025 at all; Permenpora 9/2026 issues no club standards",
+   "confidence": "high"
+  },
+  {
+   "code": "93122",
+   "judul": "Klub Golf",
+   "verdict": "NONE",
+   "instrument": "none — every golf reference attaches to a *facility* code (93114 \"Lapangan Golf\", which PP 28/2025 licenses at **Menengah/Besar**), never to the club code",
+   "confidence": "high"
+  },
+  {
+   "code": "93123",
+   "judul": "Klub Renang",
+   "verdict": "NONE",
+   "instrument": "none — as 93121; swimming *facilities* are 93113, a separate code",
+   "confidence": "high"
+  },
+  {
+   "code": "93125",
+   "judul": "Klub Tinju",
+   "verdict": "NONE",
+   "instrument": "none — as 93121; boxing *sasana* is 93115, a separate code",
+   "confidence": "high"
+  },
+  {
+   "code": "93126",
+   "judul": "Klub Bela Diri",
+   "verdict": "NONE",
+   "instrument": "none — as 93121; martial-arts *facility* is 93115",
+   "confidence": "high"
+  },
+  {
+   "code": "93128",
+   "judul": "Klub Boling",
+   "verdict": "NONE",
+   "instrument": "none — as 93121; the bowling *venue* is 93113 (Permenpora 9/2026 §C carries a dedicated \"Usaha Bowling\" sub-standard)",
+   "confidence": "high"
+  },
+  {
+   "code": "93129",
+   "judul": "Klub Olahraga Lainnya",
+   "verdict": "NONE",
+   "instrument": "none — as 93121. Note KBLI 2025 **added e-sport clubs** to this code (BPS change note)",
+   "confidence": "high"
+  },
+  {
+   "code": "93192",
+   "judul": "Aktivitas Juri dan Wasit Profesional",
+   "verdict": "REQUIREMENT",
+   "instrument": "UU 11/2022 Pasal 69(1) + **Pasal 71**; PP 46/2024 Pasal 103 — a foreign referee/judge needs competency certificate, federation recommendation and a government permit. A **personal** licence, not an equity rule",
+   "confidence": "high"
+  },
+  {
+   "code": "93194",
+   "judul": "Badan Regulasi dan Liga Olahraga",
+   "verdict": "PARTNERSHIP",
+   "instrument": "UU 11/2022 Pasal 54(3) (*dapat*) hardened by **Permenpora 9/2026 Pasal 73(1)**: a foreign entity organising an **international-level** championship **wajib** partner with the national federation and/or a professional sport organisation",
+   "confidence": "high"
+  },
+  {
+   "code": "93195",
+   "judul": "Aktivitas Olahraga Tradisional",
+   "verdict": "REQUIREMENT",
+   "instrument": "Permenpora 9/2026 Lampiran I §I, mandatory Standar Kegiatan Usaha (risk Rendah): 8 cumulative *persyaratan*, Sertifikat Standar (Pasal 78), sanctions to revocation (Pasal 84). No ownership term anywhere",
+   "confidence": "high"
+  },
+  {
+   "code": "93197",
+   "judul": "Aktivitas Olahragawan/Atlet Independen",
+   "verdict": "NONE",
+   "instrument": "none — athletes are *not* within the Pasal 69(1) *Tenaga Keolahragaan* list, which is precisely why 93192 attracts a permit and 93197 does not",
+   "confidence": "high"
+  },
+  {
+   "code": "93199",
+   "judul": "Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL",
+   "verdict": "NONE",
+   "instrument": "none — neither 2020 predecessor (93199, **51106**) appears in any annex; critically the 49% aviation cap in Lampiran III covers only 51101/51102/51109, **not** 51106",
+   "confidence": "medium"
+  },
+  {
+   "code": "95291",
+   "judul": "Aktivitas Vermak Pakaian",
+   "verdict": "RESERVED",
+   "instrument": "Perpres 49/2021 Lampiran II p.16, entry 57 sub-row *Vermak pakaian*, KBLI 95291, *dialokasikan*. Code number **unchanged** 2020→2025",
+   "confidence": "high"
+  },
+  {
+   "code": "96100",
+   "judul": "Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu",
+   "verdict": "RESERVED",
+   "instrument": "Lampiran II p.16, entry 57 sub-row *Penatu*, KBLI 96200, *dialokasikan*",
+   "confidence": "high"
+  },
+  {
+   "code": "96210",
+   "judul": "Aktivitas Penataan dan Pangkas Rambut",
+   "verdict": "RESERVED",
+   "instrument": "Lampiran II p.16, entry 57 sub-row *Pangkas rambut/barber shop*, KBLI 96111, *dialokasikan*",
+   "confidence": "high"
+  },
+  {
+   "code": "96220",
+   "judul": "Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya",
+   "verdict": "RESERVED",
+   "instrument": "Lampiran II p.16, entry 57 sub-row *Salon kecantikan*, KBLI 96112, *dialokasikan*. **Does not reach SPA (96230) or fitness**",
+   "confidence": "high"
+  }
+ ]
+}

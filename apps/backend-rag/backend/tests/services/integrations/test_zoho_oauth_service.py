@@ -40,6 +40,18 @@ class FakeConnection:
             return self.rows.pop(0)
         return None
 
+    async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
+        """Every matching row — `disconnect` revokes all of a user's tokens.
+
+        A user can own several rows (reconnecting inserts rather than replaces),
+        and the DELETE has always been unconditional across them; revoking only
+        the first one an unordered query returned left the rest live at Zoho and
+        unrevocable, because the only copy of each token was then deleted.
+        """
+        self.fetchrow_calls.append((sql, args))
+        rows, self.rows = [r for r in self.rows if r is not None], []
+        return rows
+
     async def execute(self, sql: str, *args: Any) -> str:
         self.execute_calls.append((sql, args))
         return "OK"
@@ -344,7 +356,11 @@ async def test_refresh_token_invalidates_stored_token_on_oauth_error() -> None:
     client = FakeClient(post_responses=[FakeResponse({"error": "invalid_code"})])
     service = make_service(connection=connection, client=client)
 
-    with pytest.raises(ValueError, match="Refresh error: invalid_code"):
+    # The wording changed (it now names the consent endpoint, which is how
+    # mail_loop.cli tells "a human must re-authorise" from "retry tomorrow"),
+    # but the behaviour asserted below — invalidate on a genuine refusal — did
+    # not.
+    with pytest.raises(ValueError, match="Zoho refused the refresh \\(invalid_code\\)"):
         await service._refresh_token("user-1", "account-1", "refresh-1")
 
     assert "SET token_expires_at" in connection.execute_calls[0][0]
@@ -415,3 +431,151 @@ async def test_close_closes_http_client() -> None:
     await service.close()
 
     assert client.is_closed is True
+
+
+# ---------------------------------------------------------------------------
+# A caller-side fault must never be written onto the user's row.
+#
+# `invalid_client` means OUR client id/secret are wrong or absent — it says
+# nothing about this user's grant. The refresh path used to record ANY error as
+# a dead user token, so on 2026-08-04 a machine that merely lacked
+# ZOHO_CLIENT_ID stamped three live production rows
+# `token_expires_at = NOW() - INTERVAL '1 year'` in a few minutes, breaking them
+# for every correctly-configured consumer. They were restored by hand.
+#
+# Zoho answers HTTP 200 with the error in the BODY, so nothing upstream sees a
+# failure status — which is why these fakes return 200.
+# ---------------------------------------------------------------------------
+
+INVALIDATING_UPDATE = "SET token_expires_at = NOW() - INTERVAL '1 year'"
+
+
+def _executed_invalidation(connection: FakeConnection) -> bool:
+    return any(INVALIDATING_UPDATE in sql for sql, _ in connection.execute_calls)
+
+
+@pytest.mark.asyncio
+async def test_invalid_client_does_not_invalidate_the_users_token() -> None:
+    """GUILT: the row must be untouched, and the message must blame the caller."""
+    connection = FakeConnection()
+    client = FakeClient(post_responses=[FakeResponse({"error": "invalid_client"})])
+    service = make_service(connection=connection, client=client)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service._refresh_token("user-1", "account-1", "refresh-1")
+
+    assert not _executed_invalidation(connection), (
+        "a caller-side fault was written onto the user's row — this is the "
+        "2026-08-04 production damage, reproduced"
+    )
+    assert "invalid_client" in str(excinfo.value)
+    # It must NOT read as a consent problem: mail_loop.cli escalates to a dead
+    # run naming the consent endpoint, and re-consenting cannot fix our secrets.
+    assert "/admin/zoho/auth" not in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_a_genuinely_refused_grant_still_invalidates() -> None:
+    """INNOCENCE: without this, the guard above would be indistinguishable from
+    having removed the invalidation altogether."""
+    connection = FakeConnection()
+    client = FakeClient(post_responses=[FakeResponse({"error": "invalid_grant"})])
+    service = make_service(connection=connection, client=client)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service._refresh_token("user-1", "account-1", "refresh-1")
+
+    assert _executed_invalidation(connection)
+    assert "/admin/zoho/auth" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_a_transient_non_200_is_not_reported_as_a_consent_problem() -> None:
+    """A 502 is retryable. Naming the consent endpoint here would send a human to
+    re-run the OAuth flow — the exact act that produced the duplicate rows the
+    row-ordering above has to work around."""
+    connection = FakeConnection()
+    client = FakeClient(post_responses=[FakeResponse({}, status_code=502)])
+    service = make_service(connection=connection, client=client)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service._refresh_token("user-1", "account-1", "refresh-1")
+
+    assert not _executed_invalidation(connection)
+    assert "/admin/zoho/auth" not in str(excinfo.value)
+    assert "502" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_no_stored_refresh_token_is_a_consent_problem() -> None:
+    """GUILT: this one genuinely needs a human, so it must name the endpoint."""
+    service = make_service()
+    with pytest.raises(ValueError) as excinfo:
+        await service._refresh_token("user-1", "account-1", "")
+    assert "/admin/zoho/auth" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# The CONTRACT between this service's wording and the loop's exit code.
+#
+# `mail_loop.cli` decides between "retry tomorrow" (exit 1) and "only a human
+# can fix this" (exit 2) by reading the message this service raises. That makes
+# the wording an interface, not a nicety — and an interface with no test is one
+# refactor away from silently inverting.
+#
+# The messages below are NOT copied here as literals. An earlier version of this
+# corpus did exactly that, and a mutation run caught it being decorative: with
+# the guard reverted to its old, over-matching form the hand-written strings
+# still passed, because they had been written against the NEW guard. A test that
+# quotes both sides of a contract tests neither. So each case drives the real
+# code path and classifies the exception it actually produced.
+# ---------------------------------------------------------------------------
+
+
+async def _message_from(situation: str) -> str:
+    """The message this service really raises for `situation`."""
+    connection = FakeConnection()
+    if situation == "transient":
+        client = FakeClient(post_responses=[FakeResponse({}, status_code=502)])
+    elif situation == "caller_credentials":
+        client = FakeClient(post_responses=[FakeResponse({"error": "invalid_client"})])
+    elif situation == "grant_refused":
+        client = FakeClient(post_responses=[FakeResponse({"error": "invalid_grant"})])
+    elif situation == "no_refresh_token":
+        client = FakeClient()
+    else:  # pragma: no cover - a typo in a parametrisation must be loud
+        raise AssertionError(f"unknown situation {situation!r}")
+
+    service = make_service(connection=connection, client=client)
+    token = "" if situation == "no_refresh_token" else "refresh-1"
+    with pytest.raises(ValueError) as excinfo:
+        await service._refresh_token("user-1", "account-1", token)
+    return str(excinfo.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("situation", "needs_a_human"),
+    [
+        # Retryable: a 502 today says nothing about tomorrow.
+        ("transient", False),
+        # Our secrets are wrong. A human is needed, but re-consenting is the
+        # WRONG remedy, so this must not be advertised as one.
+        ("caller_credentials", False),
+        # The grant itself is gone: only a re-consent brings it back.
+        ("grant_refused", True),
+        ("no_refresh_token", True),
+    ],
+)
+async def test_exit_code_contract_with_the_mail_loop(
+    situation: str, needs_a_human: bool
+) -> None:
+    from backend.services.mail_loop.cli import _consent_blocker
+
+    message = await _message_from(situation)
+    classified = _consent_blocker([f"list_folders failed: {message}"]) is not None
+    assert classified is needs_a_human, (
+        f"{situation}: the loop would "
+        f"{'demand a re-consent' if classified else 'retry tomorrow'}, "
+        f"which is wrong for this failure.\nmessage was: {message}"
+    )

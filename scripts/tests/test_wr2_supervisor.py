@@ -261,6 +261,67 @@ async def test_telegram_alert_on_rendered(sup):
 
 
 @pytest.mark.asyncio
+async def test_telegram_alert_on_genuine_contradiction(sup):
+    """GUILT: 2026-08-03 — 'fact_check_failed' is now ALSO reached by
+    source_absent/claim_unparseable provenance holds (wr2_fact_checker.py
+    Change 3), not only genuine contradictions. A REAL contradiction
+    (fact_check_status='fail') must still fire the Telegram alert."""
+    conn = MagicMock()
+
+    async def fake_fetchval(query, *_args):
+        if "fact_check_status" in query:
+            return "fail"
+        return "fact_check_failed"  # the plain `status` re-read
+
+    conn.fetchval = AsyncMock(side_effect=fake_fetchval)
+
+    with patch.object(sup, "_telegram", new=AsyncMock()) as mock_tg:
+        with patch.object(sup, "_kickstart"):
+            await sup._handle_payload(
+                {"draft_id": "77777777-7777-7777-7777-777777777777",
+                 "old_status": "drafts_imaged_facted", "new_status": "fact_check_failed"},
+                conn,
+            )
+    assert mock_tg.call_count >= 1
+
+
+@pytest.mark.asyncio
+async def test_telegram_alert_suppressed_for_source_absent_hold(sup):
+    """INNOCENCE: a source_absent/claim_unparseable hold — fact_check_status
+    stays 'degraded' (additive design, wr2_fact_checker.py) — must NOT fire
+    the Telegram alert. Reusing 'fact_check_failed' for this WITHOUT this
+    suppression would be ~79/86 drafts of P0 Telegram noise historically
+    (root-cause report 2026-07-18), the exact regression the checker's own
+    fail-alert avoids for the old silent-'degraded' branch."""
+    conn = MagicMock()
+
+    async def fake_fetchval(query, *_args):
+        if "fact_check_status" in query:
+            return "degraded"
+        return "fact_check_failed"  # the plain `status` re-read
+
+    conn.fetchval = AsyncMock(side_effect=fake_fetchval)
+
+    with patch.object(sup, "_telegram", new=AsyncMock()) as mock_tg:
+        with patch.object(sup, "_kickstart"):
+            await sup._handle_payload(
+                {"draft_id": "66666666-6666-6666-6666-666666666666",
+                 "old_status": "drafts_imaged_facted", "new_status": "fact_check_failed"},
+                conn,
+            )
+    assert mock_tg.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_is_genuine_contradiction_fails_open_on_read_error(sup):
+    """Fail-open toward ALERTING (not silence) on a DB read error — missing
+    a real contradiction alert is worse than an occasional spurious one."""
+    conn = MagicMock()
+    conn.fetchval = AsyncMock(side_effect=OSError("boom"))
+    assert await sup._is_genuine_contradiction(conn, "dummy-id") is True
+
+
+@pytest.mark.asyncio
 async def test_malformed_payload_skipped(sup):
     conn = MagicMock()
     with patch.object(sup, "_kickstart") as mock_ks:

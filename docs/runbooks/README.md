@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 49 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 50 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -58,4 +58,5 @@
 | [`wr2-ig-feedback-loop.md`](wr2-ig-feedback-loop.md) | Runbook — WR2 IG-metrics feedback loop (Damar → published) |
 | [`wr2-orchestrator-pdf-render-runbook.md`](wr2-orchestrator-pdf-render-runbook.md) | WR2 Orchestrator PDF Render — Production Runbook |
 | [`wr2-perfect-prod.md`](wr2-perfect-prod.md) | Runbook — WR2 carousel pipeline (operatore non-dev) |
+| [`zoho-mail-loop.md`](zoho-mail-loop.md) | Zoho mail loop — runbook (born as the M5 -> Pro handoff) |
 <!-- DOCSYNC:RUNBOOKS_INDEX_END -->
