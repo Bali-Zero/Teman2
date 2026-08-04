@@ -25,12 +25,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import stat
 from pathlib import Path
 
 import pytest
 
 from backend.services.mail_loop import draft as draft_module
+from backend.services.mail_loop import state_io as state_io_module
 from backend.services.mail_loop.loop import MailLoop, PendingDrafts
 from backend.services.mail_loop.state_io import DIR_MODE, FILE_MODE, write_private
 from backend.services.mail_loop.style import Lesson, ReplyStyleStore, today
@@ -273,3 +275,116 @@ def test_folders_fixture_is_reused_not_redefined() -> None:
     the thing it stands in for).
     """
     assert any(f.get("folder_name") == "_Visa" for f in FOLDERS)
+
+
+# --------------------------------------------------------------------------- #
+# The temp file, not just the destination.                                     #
+#                                                                             #
+# The first version of write_private chmod'd AFTER writing, and its docstring  #
+# claimed the bytes were never observable at a wider mode. Adversarial review  #
+# measured that and it was false. These tests measure the claim instead of     #
+# reading it.                                                                 #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_temp_file_holds_the_content_at_owner_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GUILT: intercept the rename and look at what is on disk right then.
+
+    This is the only moment the intermediate file exists, so it is the only
+    place the "never at a wider mode" claim can be checked. A version that
+    writes first and tightens afterwards fails here.
+    """
+    observed: dict[str, int] = {}
+    original = Path.replace
+
+    def spy(self: Path, target):  # type: ignore[no-untyped-def]
+        observed["mode"] = stat.S_IMODE(self.stat().st_mode)
+        observed["bytes"] = self.stat().st_size
+        return original(self, target)
+
+    monkeypatch.setattr(Path, "replace", spy)
+    write_private(tmp_path / "deep" / "state.json", json.dumps({"secret": "x" * 50}))
+
+    assert observed["bytes"] > 0, "premise: the content must already be written"
+    assert observed["mode"] == FILE_MODE
+
+
+def test_every_created_directory_level_is_owner_only(tmp_path: Path) -> None:
+    """GUILT: a 0700 leaf inside a 0755 parent still publishes the leaf's name.
+
+    `mkdir(mode=...)` only applies to levels this call creates, and umask masks
+    it, so each one is tightened explicitly. Both existing mode tests create a
+    single level; this is the multi-level case they could not reach.
+    """
+    write_private(tmp_path / "a" / "b" / "c" / "state.json", "{}")
+
+    for level in ("a", "a/b", "a/b/c"):
+        path = tmp_path / level
+        assert stat.S_IMODE(path.stat().st_mode) == DIR_MODE, level
+
+
+def test_write_private_refuses_to_chmod_your_home_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GUILT: writing one state file must not tighten $HOME machine-wide.
+
+    Reachable by pointing --state-dir or MAIL_LOOP_STATE_DIR at the home
+    directory itself. Nothing in this repo does, which is exactly why it would
+    go unnoticed.
+    """
+    fake_home = tmp_path / "home"
+    fake_home.mkdir(mode=0o755)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+    with pytest.raises(ValueError, match="home directory"):
+        write_private(fake_home / "state.json", "{}")
+
+    assert stat.S_IMODE(fake_home.stat().st_mode) == 0o755, "HOME was modified anyway"
+
+
+def test_a_subdirectory_of_home_is_still_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INNOCENCE: the real default lives under $HOME and must keep working.
+
+    `~/.nuzantara/mail-loop/` is where this actually writes. A refusal that
+    caught the normal case would disable the organ, not protect it.
+    """
+    fake_home = tmp_path / "home"
+    fake_home.mkdir(mode=0o755)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+    write_private(fake_home / ".nuzantara" / "mail-loop" / "state.json", "{}")
+
+    target = fake_home / ".nuzantara" / "mail-loop" / "state.json"
+    assert stat.S_IMODE(target.stat().st_mode) == FILE_MODE
+    assert stat.S_IMODE(fake_home.stat().st_mode) == 0o755, "HOME must be untouched"
+
+
+def test_a_failed_write_leaves_no_temp_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INNOCENCE: a crash mid-write must not litter a private file behind.
+
+    A leftover temp is not just untidy — it is a second copy of the content
+    nobody will ever look at again.
+    """
+    target = tmp_path / "state.json"
+
+    class _Boom(Exception):
+        pass
+
+    real_chmod = os.chmod
+
+    def exploding_chmod(path, mode):  # type: ignore[no-untyped-def]
+        if str(path).endswith(".tmp"):
+            raise _Boom("disk full")
+        return real_chmod(path, mode)
+
+    monkeypatch.setattr(state_io_module.os, "chmod", exploding_chmod)
+    with pytest.raises(_Boom):
+        write_private(target, "{}")
+
+    assert list(tmp_path.iterdir()) == [], "a temp file survived the failure"

@@ -32,6 +32,7 @@ import pytest
 from backend.services.mail_loop.classify import (
     _DECISIVE,
     _MARKERS,
+    _NEEDS_CORROBORATION,
     _WEAK,
     Intent,
     classify,
@@ -336,8 +337,18 @@ def test_ambiguous_soft_markers_refuse_to_guess() -> None:
     """A soft tie is UNKNOWN, and UNKNOWN is left in the inbox.
 
     Routing a message we do not understand is worse than leaving it visible.
+
+    Both lanes must be tied on NON-weak markers for this to be the property it
+    claims. The original example paired `immigration` against `taxes`, and once
+    weak-only lanes began stepping aside it stopped being a tie at all — the tax
+    lane withdrew and `immigration` decided, correctly. The property survived;
+    only the example had quietly stopped exercising it.
     """
-    result = classify("Hello", "A question about immigration and about taxes.")
+    result = classify("Hello", "A question about immigration and about a leasehold.")
+    assert result.markers == {"visa": ["immigration"], "property": ["leasehold"]}, (
+        "premise: this must be a 1-1 tie between two lanes that both carry a "
+        "non-weak marker, or the test is measuring something else"
+    )
     assert result.intent is Intent.UNKNOWN
     assert result.folder is None
     assert result.routable is False
@@ -544,3 +555,152 @@ def test_no_marker_is_both_decisive_and_weak() -> None:
     decisive = {token for tokens in _DECISIVE.values() for token in tokens}
     both = sorted(decisive & _WEAK)
     assert both == [], f"markers claimed as decisive AND weak: {both}"
+
+
+# --------------------------------------------------------------------------- #
+# A weak-only lane steps ASIDE. It does not poison the message.               #
+#                                                                             #
+# All of the following were found by adversarial review of the first version  #
+# of this rule, each with a measured case. The defect was placement: the check #
+# ran AFTER the winner was chosen, so a lane made entirely of coincidence      #
+# could win the count and then collapse the whole verdict to UNKNOWN — taking  #
+# a strong marker in a losing lane down with it.                              #
+# --------------------------------------------------------------------------- #
+
+
+def test_a_weak_lane_does_not_drag_down_a_strong_one() -> None:
+    """The case the first version got wrong, verbatim.
+
+    ADMIN wins the raw count 2-1 on `appointment` + `meeting`, both weak. VISA
+    holds `work permit`, which is not. Withdrawing ADMIN must leave VISA, not
+    UNKNOWN — anything else discards the one marker that was actually right.
+    """
+    result = classify(
+        "Question",
+        "I need help with a work permit for my staff. Could we set a meeting "
+        "or an appointment next week?",
+    )
+    assert result.markers["admin"] == ["appointment", "meeting"], "premise: admin wins the count"
+    assert result.intent is Intent.VISA
+    assert result.routable is True
+
+
+def test_two_weak_lanes_and_one_strong_still_resolves() -> None:
+    """Withdrawal is not a tie-breaker of last resort — it applies per lane."""
+    result = classify(
+        "Mixed",
+        "About the leasehold on the land. Also the tax, and let us set a meeting.",
+    )
+    assert result.intent is Intent.PROPERTY
+    assert result.routable is True
+
+
+def test_everything_weak_is_still_unknown() -> None:
+    """GUILT survives the reorder: nothing non-weak anywhere means UNKNOWN."""
+    result = classify(
+        "Statement",
+        "Total due: 100 EUR, tax included. Shall we set a meeting to discuss?",
+    )
+    assert result.intent is Intent.UNKNOWN
+    assert result.routable is False
+
+
+# --------------------------------------------------------------------------- #
+# Short decisive codes need a second opinion.                                 #
+# --------------------------------------------------------------------------- #
+
+
+def test_a_permit_index_inside_an_address_does_not_decide_a_lane() -> None:
+    """GUILT: `C2` is a visa index AND how this island writes an address.
+
+    The decisive path returns before every other check, so an uncorroborated
+    two-character hit moved mail with nothing to appeal to.
+    """
+    result = classify(
+        "Delivery",
+        "Please deliver the documents to Villa C2, Jalan Raya, before Friday.",
+    )
+    assert result.intent is not Intent.VISA
+    assert result.decisive is False
+
+
+def test_a_corroborated_permit_index_still_decides() -> None:
+    """INNOCENCE, and the reason this costs nothing.
+
+    Measured over 106 live messages: `c1` fired 15 times and never once alone.
+    Real visa mail names the index beside something else, so corroboration
+    removes the address case without losing a routing.
+    """
+    result = classify(
+        "Application",
+        "We are applying for a C1 visa and need the sponsor letter.",
+    )
+    assert result.intent is Intent.VISA
+    assert result.decisive is True
+
+
+def test_long_instruments_never_need_corroboration() -> None:
+    """INNOCENCE: nobody writes `kitas` or `npwp` by accident.
+
+    Without this, widening `_NEEDS_CORROBORATION` to the whole decisive set
+    would pass the guilt case above while gutting the lane.
+    """
+    assert classify("X", "About my KITAS.").decisive is True
+    assert classify("X", "Attached is the NPWP.").decisive is True
+
+
+def test_corroboration_set_is_a_subset_of_decisive() -> None:
+    """A corroboration rule naming a non-decisive token guards nothing (W65)."""
+    decisive = {token for tokens in _DECISIVE.values() for token in tokens}
+    phantom = sorted(_NEEDS_CORROBORATION - decisive)
+    assert phantom == [], f"corroboration named for non-decisive tokens: {phantom}"
+
+
+# --------------------------------------------------------------------------- #
+# Homographs: the marker IS the ordinary word, not a substring of it.         #
+#                                                                             #
+# The generated landmine corpus at the top of this file cannot reach these.   #
+# `_landmines()` keeps pairs where `marker in low and marker != low`, a STRICT #
+# substring — so a marker that equals a whole ordinary word is structurally    #
+# outside the sweep. That is exactly the class `_WEAK` exists for, which is    #
+# why these are written by hand.                                              #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("case_id", "body", "forbidden"),
+    [
+        ("ho-visto-means-i-saw", "Buongiorno, ho visto il vostro sito e vorrei informazioni.", Intent.VISA),
+        ("ci-siamo-visti-means-we-met", "Ci siamo visti la settimana scorsa in ufficio.", Intent.VISA),
+        ("tanah-lot-is-a-landmark", "Company outing to Tanah Lot next month, who is coming?", Intent.PROPERTY),
+        ("direktur-is-a-signature", "Salam,\nBudi Santoso\nDirektur Utama", Intent.PT_PMA),
+        ("imposte-are-also-shutters", "Le imposte delle finestre sono rotte, chi le ripara?", Intent.TAX),
+        ("fiscal-year-is-boilerplate", "Summary for the fiscal year ending 31 December.", Intent.TAX),
+        ("a-call-link-is-furniture", "Here is my zoom link for later, talk soon.", Intent.ADMIN),
+    ],
+    ids=lambda v: v if isinstance(v, str) else "",
+)
+def test_homograph_does_not_route(case_id: str, body: str, forbidden: Intent) -> None:
+    result = classify("", body)
+    assert result.intent is not forbidden, (
+        f"{case_id}: routed to {forbidden.value} on a homograph "
+        f"(markers={result.markers})"
+    )
+
+
+def test_the_recall_cost_of_the_weak_set_is_visible() -> None:
+    """The bill for all of the above, written down where it cannot be ignored.
+
+    These are real enquiries that USED to route and now sit in the inbox. That
+    is the deliberate trade — a message left visible costs a human one glance,
+    a message filed wrongly costs them the message. Anyone widening `_WEAK`
+    further should have to update this list and see what they are buying.
+    """
+    stays_in_inbox = [
+        "We are looking to buy a villa in Ubud, what are the options?",
+        "Vorrei informazioni su come ottenere un visto.",
+        "Domanda sul soggiorno a Bali.",
+        "Question about the OSS system.",
+    ]
+    for body in stays_in_inbox:
+        assert classify("", body).routable is False, body

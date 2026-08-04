@@ -177,9 +177,7 @@ class PendingDrafts:
         return data if isinstance(data, dict) else {}
 
     def _save(self, data: dict[str, dict[str, Any]]) -> None:
-        write_private(
-            self.path, json.dumps(data, indent=2, ensure_ascii=False), suffix=".tmp"
-        )
+        write_private(self.path, json.dumps(data, indent=2, ensure_ascii=False))
 
     def add(self, thread_id: str, *, text: str, bucket: str) -> None:
         if not thread_id:
