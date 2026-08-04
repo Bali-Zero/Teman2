@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GARUDA OS — Bali Zero Brand Palette · Concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     GARUDA OS · BALI-ZERO-BRAND PALETTE VARIANT
+     Tokens from skills/bali-zero-brand/tokens.json (closed
+     namespace): antracite #373D42 · black #000000 · white ·
+     muted #9CA3AF · accent yellow #F4C430 · status red #C8102E.
+     Single family Montserrat 700/800 · IBM Plex Mono for codes.
+     Banned hues (green/blue/purple/pastel) NOT used anywhere.
+     35mm film grain retained (on-brand). Yellow = "verifiable
+     facts" family (badges, citations, key numbers, KBLI codes).
+     ============================================================ */
+  :root{
+    --antracite:#373D42;
+    --black:#000000;
+    --white:#FFFFFF;
+    --muted:#9CA3AF;
+    --yellow:#F4C430;
+    --red:#C8102E;
+    /* derived steps (shades of the two bg tokens only) */
+    --panel:#000000;
+    --well:rgba(0,0,0,.55);
+    --raise:rgba(255,255,255,.045);
+    --raise-2:rgba(255,255,255,.08);
+    --line:rgba(255,255,255,.09);
+    --line-2:rgba(255,255,255,.16);
+    --t1:#FFFFFF;
+    --t2:rgba(255,255,255,.66);
+    --t3:var(--muted);
+    --t4:rgba(156,163,175,.55);
+    --sans:'Montserrat',Inter,'Poppins',sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --r-sm:4px; --r-md:10px; --r-lg:16px; --r-full:9999px;
+    --m1:150ms; --m2:250ms; --m3:400ms;
+    --ease:cubic-bezier(.4,0,.2,1);
+    --ease-em:cubic-bezier(.2,0,0,1);
+    --sidebar-w:216px; --header-h:54px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{
+    font-family:var(--sans);
+    font-weight:700;
+    background:var(--antracite);
+    color:var(--t1);
+    font-size:14px;
+    line-height:1.4;
+    overflow-x:hidden;
+    min-height:100vh;
+  }
+  /* chiaroscuro: directional light + black vignette (black = bg token) */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(1000px 520px at 88% -12%, rgba(244,196,48,.07), transparent 58%),
+      radial-gradient(1200px 800px at 50% 118%, rgba(0,0,0,.55), transparent 62%),
+      radial-gradient(700px 400px at -8% 8%, rgba(0,0,0,.35), transparent 60%);
+  }
+  /* 35mm film grain — visible, on-brand */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.6;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.032 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  ::selection{background:rgba(244,196,48,.4);color:#000}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#000;border-radius:8px;border:2px solid var(--antracite)}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  .app{position:relative;z-index:1;display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh}
+
+  /* ---------------- Sidebar ---------------- */
+  .side{
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
+    background:rgba(0,0,0,.88);
+    backdrop-filter:blur(18px);
+    border-right:1px solid var(--line);
+    padding:18px 12px 14px;
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:2px 8px 16px;border-bottom:1px solid var(--line)}
+  /* official logo logic: black circle, red 3, om detail */
+  .mark{
+    width:34px;height:34px;border-radius:50%;flex:none;position:relative;
+    background:#000;border:1.5px solid rgba(255,255,255,.85);
+    display:grid;place-items:center;
+  }
+  .mark b{color:var(--red);font-weight:800;font-size:17px;transform:translateY(-1px)}
+  .mark i{position:absolute;right:-2px;bottom:-3px;font-style:normal;font-size:8px;color:var(--white);opacity:.9}
+  .brand h1{font-size:13px;font-weight:800;letter-spacing:.14em}
+  .brand small{display:block;font-family:var(--mono);font-weight:400;font-size:8.5px;letter-spacing:.18em;color:var(--yellow);margin-top:3px;text-transform:uppercase}
+  .nav{margin-top:14px;display:flex;flex-direction:column;gap:2px;flex:1}
+  .nav-label{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.22em;color:var(--t4);text-transform:uppercase;padding:14px 10px 6px}
+  .nav a{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);
+    color:var(--t2);text-decoration:none;font-size:12.5px;font-weight:700;
+    transition:all var(--m1) var(--ease);position:relative;
+  }
+  .nav a svg{width:15px;height:15px;flex:none;opacity:.75}
+  .nav a:hover{color:var(--t1);background:var(--raise)}
+  /* active = regulation-badge logic: yellow bg + black text (AAA 12.79:1) */
+  .nav a.on{
+    color:#000;background:var(--yellow);font-weight:800;
+    box-shadow:0 4px 18px rgba(244,196,48,.28);
+  }
+  .nav a.on svg{opacity:1}
+  .nav a .tag{margin-left:auto;font-family:var(--mono);font-weight:400;font-size:9px;padding:1px 6px;border-radius:var(--r-full);background:rgba(244,196,48,.14);color:var(--yellow)}
+  .nav a.on .tag{background:rgba(0,0,0,.85);color:var(--yellow)}
+  .side-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;align-items:center;gap:9px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:#000;border:1px solid var(--line-2);display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--yellow)}
+  .side-foot b{font-size:12px;display:block}
+  .side-foot i{font-style:normal;font-family:var(--mono);font-size:9px;color:var(--t3)}
+
+  /* ---------------- Main ---------------- */
+  .main{min-width:0;display:flex;flex-direction:column}
+  .top{
+    position:sticky;top:0;z-index:20;height:var(--header-h);
+    display:flex;align-items:center;gap:14px;padding:0 22px;
+    background:rgba(0,0,0,.72);backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--line);
+  }
+  .crumbs{font-size:12.5px;color:var(--t3);font-weight:600}
+  .crumbs b{color:var(--t1);font-weight:800}
+  .crumbs .sep{margin:0 7px;color:var(--t4)}
+  .concept{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:#000;background:var(--yellow);border-radius:var(--r-sm);padding:2px 8px;margin-left:6px;font-weight:500}
+  .search{
+    margin-left:auto;display:flex;align-items:center;gap:8px;width:min(300px,32vw);
+    background:var(--well);border:1px solid var(--line);border-radius:var(--r-md);
+    padding:6px 11px;color:var(--t3);font-size:12px;font-weight:600;cursor:text;transition:border var(--m1);
+  }
+  .search:hover{border-color:var(--line-2)}
+  .search kbd{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--raise);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .status{
+    display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+    color:var(--yellow);border:1px solid rgba(244,196,48,.3);background:rgba(244,196,48,.06);
+    border-radius:var(--r-full);padding:4px 11px;white-space:nowrap;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--yellow);box-shadow:0 0 8px var(--yellow);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .wrap{padding:22px;max-width:1480px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+  /* masthead — statement discipline: red rule, tight 1.05, tracking .02em */
+  .mast{padding:6px 2px 4px}
+  .mast .rule{width:56px;height:3px;background:var(--red);margin-bottom:14px}
+  .mast .kicker{font-family:var(--mono);font-size:9.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+  .mast h2{font-size:clamp(26px,2.9vw,38px);font-weight:800;line-height:1.05;letter-spacing:.02em;text-transform:uppercase}
+  .mast h2 em{font-style:normal;color:var(--yellow)}
+  .mast .row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+  .mast .date{font-family:var(--mono);font-size:11px;color:var(--t3);text-align:right;line-height:1.7;font-weight:400}
+  .mast .date b{color:var(--t2);font-weight:500}
+
+  /* generic panel — black on antracite */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--r-lg);
+    box-shadow:0 18px 44px rgba(0,0,0,.45);
+    animation:rise var(--m3) var(--ease-em) both;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .p-head{display:flex;align-items:center;gap:10px;padding:15px 18px 0}
+  .p-head h3{font-size:13px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+  .p-head .sub{font-size:11px;color:var(--t3);margin-left:2px;font-weight:600}
+  .p-head .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+  /* KPI grid */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .kpi{padding:16px 18px 14px;position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--yellow)}
+  .kpi.alert::before{background:var(--red)}
+  .kpi .lbl{font-family:var(--mono);font-weight:400;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--t3);display:flex;align-items:center;gap:7px}
+  .kpi .val{font-size:30px;font-weight:800;letter-spacing:0;margin:7px 0 2px;font-variant-numeric:tabular-nums}
+  .kpi .val small{font-size:14px;font-weight:700;color:var(--t2)}
+  .kpi .meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t3);font-weight:600}
+  .chip{font-family:var(--mono);font-weight:500;font-size:10px;border-radius:var(--r-sm);padding:2px 8px;white-space:nowrap}
+  .chip.up{color:var(--yellow);background:rgba(244,196,48,.12)}
+  .chip.down{color:#fff;background:var(--red)}
+  .chip.warn{color:var(--t2);background:var(--raise-2)}
+  .kpi .spark{position:absolute;right:10px;bottom:10px;opacity:.95}
+
+  /* main grid rows */
+  .row{display:grid;gap:16px}
+  .row-1{grid-template-columns:1.9fr 1fr}
+  .row-2{grid-template-columns:1fr 1.55fr}
+  .row-3{grid-template-columns:1.55fr 1fr}
+
+  /* revenue chart */
+  .chart{padding:8px 14px 12px;position:relative}
+  .ct{position:absolute;background:#000;border:1px solid var(--line-2);border-radius:var(--r-sm);padding:6px 10px;font-family:var(--mono);font-size:10.5px;color:var(--t2);pointer-events:none;opacity:0;transition:opacity var(--m1);z-index:5;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+  .ct b{color:var(--yellow);font-size:12px;font-weight:500}
+  .legend{display:flex;gap:14px;font-family:var(--mono);font-weight:400;font-size:9.5px;color:var(--t3)}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
+  .sw{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+  /* system pulse */
+  .pulse{padding:6px 18px 16px;display:flex;flex-direction:column}
+  .svc{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .svc:last-child{border:none}
+  .svc .ic{width:28px;height:28px;border-radius:var(--r-sm);background:var(--raise);border:1px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:9px;color:var(--yellow);flex:none;font-weight:500}
+  .svc b{font-size:12px;font-weight:700;display:block}
+  .svc small{font-family:var(--mono);font-size:9.5px;color:var(--t3);font-weight:400}
+  .svc .lat{margin-left:auto;text-align:right}
+  .svc .lat b{font-family:var(--mono);font-size:12px;color:var(--white);font-weight:500}
+  .bar{width:64px;height:3px;border-radius:2px;background:rgba(255,255,255,.09);margin-top:4px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:2px;background:var(--yellow)}
+
+  /* pipeline */
+  .pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:14px 18px 16px}
+  .col{background:var(--well);border:1px solid var(--line);border-radius:var(--r-md);padding:10px;min-height:118px}
+  .col h5{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--t3);display:flex;justify-content:space-between;margin-bottom:9px}
+  .col h5 b{color:var(--yellow);font-size:11px;font-weight:500}
+  .mini{background:var(--raise);border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 9px;margin-bottom:6px;font-size:11px;transition:transform var(--m1) var(--ease)}
+  .mini:hover{transform:translateY(-1px);border-color:var(--line-2)}
+  .mini b{display:block;font-weight:700;font-size:11.5px}
+  .mini span{font-family:var(--mono);font-size:9px;color:var(--t3);font-weight:400}
+  .mini .ft{margin-top:5px;display:flex;gap:5px}
+  /* fact-tag family: yellow = verifiable fact; outline = process tag */
+  .ftag{font-family:var(--mono);font-weight:500;font-size:8.5px;letter-spacing:.06em;padding:1px 6px;border-radius:var(--r-sm)}
+  .ft-fact{background:var(--yellow);color:#000}
+  .ft-proc{background:transparent;color:var(--t2);border:1px solid var(--line-2)}
+
+  /* compliance */
+  .alerts{padding:6px 18px 14px;display:flex;flex-direction:column}
+  .al{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .al:last-child{border:none}
+  .sev{width:8px;height:8px;border-radius:50%;flex:none}
+  .sev.crit{background:var(--red);box-shadow:0 0 9px var(--red);animation:pulse 1.6s infinite}
+  .sev.urg{background:var(--yellow)} .sev.wrn{background:var(--white)} .sev.inf{background:var(--muted)}
+  .al b{font-size:12px;font-weight:700;display:block}
+  .al small{font-family:var(--mono);font-size:9.5px;color:var(--t3);font-weight:400}
+  .al .when{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t2);text-align:right;font-weight:400}
+  .al .when b{color:var(--red);font-size:12px;font-weight:500}
+  .al .when b.y{color:var(--yellow)}
+
+  /* clients table */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--t3);text-align:left;padding:11px 18px 8px;border-bottom:1px solid var(--line)}
+  tbody td{padding:10px 18px;border-bottom:1px solid var(--line);color:var(--t2);font-weight:600}
+  tbody tr{transition:background var(--m1)}
+  tbody tr:hover{background:var(--raise)}
+  tbody tr:last-child td{border:none}
+  td .nm{color:var(--t1);font-weight:700;display:block}
+  td .em{font-family:var(--mono);font-size:9.5px;color:var(--t4);font-weight:400}
+  .pill{font-family:var(--mono);font-weight:500;font-size:9.5px;padding:2px 9px;border-radius:var(--r-sm);white-space:nowrap}
+  .p-act{background:var(--yellow);color:#000}
+  .p-doc{background:transparent;color:var(--yellow);border:1px solid rgba(244,196,48,.45)}
+  .p-sub{background:var(--raise-2);color:var(--t1)}
+  .p-rev{background:transparent;color:var(--t2);border:1px solid var(--line-2)}
+  .p-quo{background:transparent;color:var(--t3);border:1px solid var(--line)}
+  .num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--t1);font-weight:500}
+
+  /* zantara dock — purple banned: black/white/yellow */
+  .dock{display:flex;flex-direction:column;overflow:hidden}
+  .dock .z-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(244,196,48,.08),transparent)}
+  .lotus{width:28px;height:28px;border-radius:50%;background:#000;border:1.5px solid var(--yellow);display:grid;place-items:center;font-size:12px;flex:none}
+  .z-head b{font-size:12.5px;letter-spacing:.1em;font-weight:800}
+  .z-head small{display:block;font-family:var(--mono);font-size:9px;color:var(--yellow);font-weight:400}
+  .z-body{padding:14px 18px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .msg{max-width:92%;border-radius:12px;padding:9px 13px;font-size:12.5px;line-height:1.5;animation:rise var(--m3) var(--ease-em) both}
+  .msg.u{align-self:flex-end;background:var(--raise-2);border:1px solid var(--line-2);border-bottom-right-radius:3px;color:var(--t1)}
+  .msg.z{align-self:flex-start;background:var(--raise);border:1px solid var(--line);border-bottom-left-radius:3px;color:var(--t1)}
+  .msg.z b{color:var(--yellow)}
+  .cites{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  /* regulation_badge spec: yellow bg, black mono text, 4px radius */
+  .cite{font-family:var(--mono);font-weight:500;font-size:9px;padding:3px 8px;border-radius:var(--r-sm);background:var(--yellow);color:#000}
+  .conf{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t3);font-weight:400}
+  .z-in{display:flex;align-items:center;gap:9px;margin:0 18px 16px;background:var(--well);border:1px solid var(--line);border-radius:var(--r-md);padding:9px 13px;color:var(--t4);font-size:12px;font-weight:600}
+  .z-in .send{margin-left:auto;width:24px;height:24px;border-radius:var(--r-sm);background:var(--yellow);display:grid;place-items:center;color:#000;font-size:11px;font-weight:800}
+
+  /* token strip */
+  .strip{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 20px}
+  .strip .t{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--t3)}
+  .sws{display:flex;gap:7px}
+  .sw2{width:22px;height:22px;border-radius:var(--r-sm);border:1px solid rgba(255,255,255,.14);position:relative;cursor:pointer;transition:transform var(--m1) var(--ease)}
+  .sw2:hover{transform:translateY(-2px)}
+  .sw2:hover::after{content:attr(data-h);position:absolute;bottom:130%;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--line-2);color:var(--t2);font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;white-space:nowrap;z-index:5}
+  .strip .note{margin-left:auto;font-size:11px;color:var(--t3);font-weight:600}
+  .strip .note b{color:var(--yellow);font-weight:800}
+
+  .foot{text-align:center;font-family:var(--mono);font-weight:400;font-size:9.5px;color:var(--t4);padding:6px 0 18px;letter-spacing:.08em}
+
+  @media (max-width:1180px){.kpis{grid-template-columns:repeat(2,1fr)}.row-1,.row-2,.row-3{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.pipe{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="mark"><b>3</b><i>ॐ</i></div>
+      <div>
+        <h1>GARUDA OS</h1>
+        <small>Bali Zero Brand · v2</small>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Operate</div>
+      <a href="#" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Command</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><path d="M16 8.5a3 3 0 1 1 3 3"/><path d="M17.5 15.2c2 .5 3.5 1.9 4 4.3"/></svg>Clients<span class="tag">142</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7a2 2 0 0 1 2-2h4l2 2.5h6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>Practices<span class="tag">67</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="3.5"/></svg>Compliance</a>
+      <div class="nav-label">Intelligence</div>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 6.2L21 9l-5 4.4L17.5 21 12 17.3 6.5 21 8 13.4 3 9l6.6-.8z"/></svg>Zantara AI</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>KBLI Navigator</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Revenue</a>
+      <div class="nav-label">System</div>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5v6c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-6"/><path d="M4 11.5v6c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-6"/></svg>Lab Console</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 4.6-3.2 8-8 9-4.8-1-8-4.4-8-9V7z"/><path d="M9 12l2 2 4-4.5"/></svg>Portal · my.</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg>Settings</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">Z</div>
+      <div><b>Zero</b><i>OWNER · FULL ACCESS</i></div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="top">
+      <div class="crumbs">Nuzantara<span class="sep">/</span><b>Command Center</b><span class="concept">BRAND PALETTE</span></div>
+      <div class="search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        Search clients, practices, KBLI…
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="status"><span class="dot"></span>ALL SYSTEMS NOMINAL</div>
+    </header>
+
+    <div class="wrap">
+
+      <div class="mast">
+        <div class="rule"></div>
+        <div class="kicker">One shell · every surface · palette: skills/bali-zero-brand</div>
+        <div class="row">
+          <h2>Selamat pagi, Zero.<br>The island is quiet — <em>your operation isn't.</em></h2>
+          <div class="date"><b>Sunday · 19 July 2026</b><br>Denpasar WITA · UTC+8</div>
+        </div>
+      </div>
+
+      <!-- KPI ROW -->
+      <section class="kpis">
+        <div class="panel kpi">
+          <div class="lbl">Active Clients</div>
+          <div class="val" data-count="142">0</div>
+          <div class="meta"><span class="chip up">+6 · 30d</span> 3 silent &gt;30d</div>
+          <svg class="spark" width="86" height="30" viewBox="0 0 86 30"><path d="M2 24 L14 21 L26 22 L38 16 L50 17 L62 10 L74 8 L84 4" fill="none" stroke="#F4C430" stroke-width="1.8" stroke-linecap="round"/><path d="M2 24 L14 21 L26 22 L38 16 L50 17 L62 10 L74 8 L84 4 V30 H2 Z" fill="url(#gk1)" opacity=".3"/><defs><linearGradient id="gk1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4C430"/><stop offset="1" stop-color="#F4C430" stop-opacity="0"/></linearGradient></defs></svg>
+        </div>
+        <div class="panel kpi">
+          <div class="lbl">Active Practices</div>
+          <div class="val" data-count="67">0</div>
+          <div class="meta"><span class="chip warn">12 awaiting docs</span></div>
+          <svg class="spark" width="86" height="30" viewBox="0 0 86 30"><path d="M2 20 L14 22 L26 15 L38 18 L50 12 L62 14 L74 9 L84 11" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" opacity=".85"/><path d="M2 20 L14 22 L26 15 L38 18 L50 12 L62 14 L74 9 L84 11 V30 H2 Z" fill="url(#gk2)" opacity=".22"/><defs><linearGradient id="gk2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs></svg>
+        </div>
+        <div class="panel kpi">
+          <div class="lbl">Revenue · July MTD</div>
+          <div class="val"><small>IDR</small> <span data-count="412.6" data-dec="1">0</span><small>M</small></div>
+          <div class="meta"><span class="chip up">+18.2%</span> vs June</div>
+          <svg class="spark" width="86" height="30" viewBox="0 0 86 30"><path d="M2 26 L14 23 L26 24 L38 18 L50 19 L62 13 L74 12 L84 5" fill="none" stroke="#F4C430" stroke-width="1.8" stroke-linecap="round"/><path d="M2 26 L14 23 L26 24 L38 18 L50 19 L62 13 L74 12 L84 5 V30 H2 Z" fill="url(#gk3)" opacity=".3"/><defs><linearGradient id="gk3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4C430"/><stop offset="1" stop-color="#F4C430" stop-opacity="0"/></linearGradient></defs></svg>
+        </div>
+        <div class="panel kpi alert">
+          <div class="lbl">Compliance Health</div>
+          <div class="val"><span data-count="94">0</span><small>/100</small></div>
+          <div class="meta"><span class="chip down">2 CRITICAL</span> next 7 days</div>
+          <svg class="spark" width="34" height="34" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="#F4C430" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="87.9" stroke-dashoffset="5.3" transform="rotate(-90 18 18)"/></svg>
+        </div>
+      </section>
+
+      <!-- REVENUE + PULSE -->
+      <section class="row row-1">
+        <div class="panel">
+          <div class="p-head">
+            <h3>Revenue Intelligence</h3><span class="sub">daily gross · IDR millions · trailing 30 days</span>
+            <div class="right legend">
+              <i><span class="sw" style="background:#F4C430"></span>ACTUAL</i>
+              <i><span class="sw" style="background:#9CA3AF"></span>FORECAST</i>
+            </div>
+          </div>
+          <div class="chart" id="chartBox">
+            <svg id="revChart" width="100%" height="218" viewBox="0 0 640 218" preserveAspectRatio="none"></svg>
+            <div class="ct" id="ctip"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="p-head"><h3>System Pulse</h3><span class="sub">live stack</span>
+            <div class="right"><span class="chip up">UPTIME 99.98%</span></div>
+          </div>
+          <div class="pulse">
+            <div class="svc"><div class="ic">PG</div><div><b>PostgreSQL · Fly.io</b><small>prod · ap-southeast</small></div><div class="lat"><b>12ms</b><div class="bar"><i style="width:22%"></i></div></div></div>
+            <div class="svc"><div class="ic">QD</div><div><b>Qdrant</b><small>11 collections · 104,154 vectors</small></div><div class="lat"><b>8ms</b><div class="bar"><i style="width:15%"></i></div></div></div>
+            <div class="svc"><div class="ic">KG</div><div><b>Knowledge Graph</b><small>108,068 nodes · 242,827 edges</small></div><div class="lat"><b>OK</b><div class="bar"><i style="width:31%"></i></div></div></div>
+            <div class="svc"><div class="ic">RD</div><div><b>Redis</b><small>cache + queues</small></div><div class="lat"><b>3ms</b><div class="bar"><i style="width:8%"></i></div></div></div>
+            <div class="svc"><div class="ic">AI</div><div><b>MCP Server v2.1</b><small>115 tools · 8 chains · 10 prompts</small></div><div class="lat"><b>OK</b><div class="bar"><i style="width:19%"></i></div></div></div>
+            <div class="svc"><div class="ic">OL</div><div><b>Ollama · Pro/Mini</b><small>local inference standby</small></div><div class="lat"><b style="color:var(--t3)">IDLE</b><div class="bar"><i style="width:4%"></i></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PIPELINE + ZANTARA -->
+      <section class="row row-3">
+        <div class="panel">
+          <div class="p-head"><h3>Practice Pipeline</h3><span class="sub">lifecycle · drag to reassign</span>
+            <div class="right"><span class="chip up">COMPLETION 87%</span></div>
+          </div>
+          <div class="pipe">
+            <div class="col"><h5>New Inquiry <b>8</b></h5>
+              <div class="mini"><b>Villa rental PT PMA</b><span>CLI-2318 · A. Ricci</span><div class="ft"><span class="ftag ft-proc">PT PMA</span></div></div>
+              <div class="mini"><b>Retirement KITAS</b><span>CLI-2321 · H. Sørensen</span><div class="ft"><span class="ftag ft-proc">VISA</span></div></div>
+            </div>
+            <div class="col"><h5>Docs Pending <b>12</b></h5>
+              <div class="mini"><b>KITAS Investor</b><span>CLI-2207 · S. Weber</span><div class="ft"><span class="ftag ft-proc">VISA</span></div></div>
+              <div class="mini"><b>Restaurant NIB</b><span>CLI-2244 · L. Dubois</span><div class="ft"><span class="ftag ft-fact">56101</span></div></div>
+            </div>
+            <div class="col"><h5>In Preparation <b>9</b></h5>
+              <div class="mini"><b>PT PMA · beach club</b><span>CLI-2190 · M. Tanaka</span><div class="ft"><span class="ftag ft-proc">PT PMA</span><span class="ftag ft-fact">56301</span></div></div>
+              <div class="mini"><b>LKPM Q2</b><span>CLI-1143 · PT Sunrise</span><div class="ft"><span class="ftag ft-proc">LKPM</span></div></div>
+            </div>
+            <div class="col"><h5>Submitted <b>14</b></h5>
+              <div class="mini"><b>KITAP conversion</b><span>CLI-1932 · J. Novak</span><div class="ft"><span class="ftag ft-proc">VISA</span></div></div>
+              <div class="mini"><b>IMTA renewal</b><span>CLI-2089 · PT Ombak</span><div class="ft"><span class="ftag ft-proc">IMTA</span></div></div>
+            </div>
+            <div class="col"><h5>Completed · MTD <b>24</b></h5>
+              <div class="mini"><b>E-VOA extension</b><span>CLI-2298 · K. Meyer</span><div class="ft"><span class="ftag ft-proc">VISA</span></div></div>
+              <div class="mini"><b>NPWP registration</b><span>CLI-2301 · PT Kita</span><div class="ft"><span class="ftag ft-proc">TAX</span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel dock">
+          <div class="z-head">
+            <div class="lotus">🪷</div>
+            <div><b>ZANTARA</b><small>RAG · GROUNDED · ONLINE</small></div>
+          </div>
+          <div class="z-body">
+            <div class="msg u">Can a PT PMA run a beach club in Canggu?</div>
+            <div class="msg z">Yes — under <b>KBLI 56301</b> (bars/beach clubs) with 100% PMA ownership allowed. The Berawa strip sits in RDTR zone <b>K-3</b> (tourism commercial), so the activity is zoning-compatible. BKPM 5/2025 (Art. 26): total investment &gt; <b>IDR 10B</b>, with minimum paid-up capital of <b>IDR 2.5B</b>.
+              <div class="cites"><span class="cite">KBLI 56301</span><span class="cite">RDTR K-3</span><span class="cite">BKPM 5/2025</span><span class="conf">CONF 0.82 · NORMAL</span></div>
+            </div>
+          </div>
+          <div class="z-in">Ask across law, zoning, pricing…<span class="send">➤</span></div>
+        </div>
+      </section>
+
+      <!-- COMPLIANCE + CLIENTS -->
+      <section class="row row-2">
+        <div class="panel">
+          <div class="p-head"><h3>Compliance Radar</h3><span class="sub">auto-tracked · 60/30/7d</span>
+            <div class="right"><span class="chip down">2 CRITICAL</span></div>
+          </div>
+          <div class="alerts">
+            <div class="al"><span class="sev crit"></span><div><b>KITAS expiry &lt; 30 days</b><small>CLI-2207 · renewal pack ready</small></div><div class="when"><b>6d</b><br><small>left</small></div></div>
+            <div class="al"><span class="sev crit"></span><div><b>LKPM Q2 filing window</b><small>CLI-1143 · draft compiled</small></div><div class="when"><b>9d</b><br><small>left</small></div></div>
+            <div class="al"><span class="sev urg"></span><div><b>Passport validity &lt; 6 months</b><small>CLI-2089 · blocks KITAP filing</small></div><div class="when"><b class="y">21d</b><br><small>left</small></div></div>
+            <div class="al"><span class="sev wrn"></span><div><b>IMTA renewal window opens</b><small>CLI-1932 · docs checklist sent</small></div><div class="when"><b class="y">34d</b><br><small>left</small></div></div>
+            <div class="al"><span class="sev inf"></span><div><b>PP 28/2025 OSS update</b><small>regulatory watch · 3 practices affected</small></div><div class="when"><b class="y">INFO</b><br><small>&nbsp;</small></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="p-head"><h3>Clients · recent activity</h3><span class="sub">sample data — concept preview</span>
+            <div class="right"><span class="chip up">LTV Rp 1.9B</span></div>
+          </div>
+          <table>
+            <thead><tr><th>Client</th><th>Practice</th><th>KBLI</th><th>Status</th><th style="text-align:right">Value</th></tr></thead>
+            <tbody>
+              <tr><td><span class="nm">A. Ricci</span><span class="em">CLI-2318 · IT</span></td><td>PT PMA setup</td><td><span class="ftag ft-fact">70209</span></td><td><span class="pill p-quo">QUOTATION</span></td><td class="num">Rp 28.5M</td></tr>
+              <tr><td><span class="nm">S. Weber</span><span class="em">CLI-2207 · DE</span></td><td>KITAS Investor</td><td><span class="ftag ft-fact">—</span></td><td><span class="pill p-doc">DOCS PENDING</span></td><td class="num">Rp 18.0M</td></tr>
+              <tr><td><span class="nm">M. Tanaka</span><span class="em">CLI-2190 · JP</span></td><td>PT PMA · beach club</td><td><span class="ftag ft-fact">56301</span></td><td><span class="pill p-rev">IN REVIEW</span></td><td class="num">Rp 42.0M</td></tr>
+              <tr><td><span class="nm">L. Dubois</span><span class="em">CLI-2244 · FR</span></td><td>Restaurant NIB</td><td><span class="ftag ft-fact">56101</span></td><td><span class="pill p-act">ACTIVE</span></td><td class="num">Rp 12.4M</td></tr>
+              <tr><td><span class="nm">J. Novak</span><span class="em">CLI-1932 · CZ</span></td><td>KITAP conversion</td><td><span class="ftag ft-fact">—</span></td><td><span class="pill p-sub">SUBMITTED</span></td><td class="num">Rp 9.8M</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TOKEN STRIP -->
+      <section class="panel strip">
+        <span class="t">bali-zero-brand · closed namespace</span>
+        <div class="sws">
+          <span class="sw2" data-h="antracite #373D42" style="background:#373D42"></span>
+          <span class="sw2" data-h="black #000000" style="background:#000000"></span>
+          <span class="sw2" data-h="yellow #F4C430" style="background:#F4C430"></span>
+          <span class="sw2" data-h="red #C8102E" style="background:#C8102E"></span>
+          <span class="sw2" data-h="white #FFFFFF" style="background:#FFFFFF"></span>
+          <span class="sw2" data-h="muted #9CA3AF" style="background:#9CA3AF"></span>
+        </div>
+        <span class="t">Montserrat 700/800 · IBM Plex Mono · grain 35mm</span>
+        <span class="note">Yellow = <b>verifiable facts.</b> Red = criticals only.</span>
+      </section>
+
+      <div class="foot">GARUDA OS · BALI-ZERO-BRAND PALETTE VARIANT · SAMPLE DATA · JULY 2026 · PREPARED FOR REVIEW — NOT FOR PRODUCTION</div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ---- count-up KPIs ---- */
+  var els=document.querySelectorAll('[data-count]');
+  els.forEach(function(el,i){
+    var target=parseFloat(el.getAttribute('data-count'));
+    var dec=parseInt(el.getAttribute('data-dec')||'0',10);
+    var t0=null,dur=1100+i*160;
+    function step(ts){
+      if(!t0)t0=ts;
+      var p=Math.min((ts-t0)/dur,1);
+      var e=1-Math.pow(1-p,3);
+      el.textContent=(target*e).toFixed(dec);
+      if(p<1)requestAnimationFrame(step);
+    }
+    setTimeout(function(){requestAnimationFrame(step)},180+i*120);
+  });
+
+  /* ---- revenue chart ---- */
+  var data=[9.2,11.4,8.1,13.6,12.2,15.8,14.1,10.9,16.4,18.2,13.3,12.6,17.9,19.4,16.1,14.8,20.3,18.7,15.2,21.6,19.9,17.4,22.8,20.1,18.6,23.4,21.2,19.8,24.1,22.6];
+  var fc=[23.8,25.1,24.6,26.2,25.8,27.4,26.9];
+  var W=640,H=218,PL=38,PR=14,PT=16,PB=26;
+  var all=data.concat(fc);
+  var max=Math.max.apply(null,all)*1.12;
+  function X(i){return PL+(W-PL-PR)*i/(data.length+fc.length-1)}
+  function Y(v){return PT+(H-PT-PB)*(1-v/max)}
+  var svg=document.getElementById('revChart');
+  var ns='http://www.w3.org/2000/svg';
+  function el(n,at){var e=document.createElementNS(ns,n);for(var k in at)e.setAttribute(k,at[k]);return e}
+
+  var defs=el('defs',{});
+  var g=el('linearGradient',{id:'rg',x1:0,y1:0,x2:0,y2:1});
+  g.appendChild(el('stop',{offset:'0','stop-color':'#F4C430','stop-opacity':'.3'}));
+  g.appendChild(el('stop',{offset:'1','stop-color':'#F4C430','stop-opacity':'0'}));
+  defs.appendChild(g);
+  svg.appendChild(defs);
+
+  for(var i=0;i<=4;i++){
+    var yy=PT+(H-PT-PB)*i/4;
+    svg.appendChild(el('line',{x1:PL,y1:yy,x2:W-PR,y2:yy,stroke:'rgba(255,255,255,.06)','stroke-width':1}));
+    var lbl=el('text',{x:PL-8,y:yy+3.5,fill:'rgba(156,163,175,.6)','font-size':9,'font-family':'IBM Plex Mono,monospace','text-anchor':'end'});
+    lbl.textContent=Math.round(max*(1-i/4))+'M';
+    svg.appendChild(lbl);
+  }
+
+  function path(arr,off,close){
+    var d='';
+    arr.forEach(function(v,i){d+=(i===0?'M':'L')+X(off+i).toFixed(1)+' '+Y(v).toFixed(1)+' ';});
+    if(close)d+='L'+X(off+arr.length-1).toFixed(1)+' '+(H-PB)+' L'+X(off).toFixed(1)+' '+(H-PB)+' Z';
+    return d;
+  }
+
+  svg.appendChild(el('path',{d:path([data[data.length-1]].concat(fc),data.length-1,false),fill:'none',stroke:'#9CA3AF','stroke-width':1.6,'stroke-dasharray':'5 5','stroke-linecap':'round'}));
+  svg.appendChild(el('path',{d:path(data,0,true),fill:'url(#rg)'}));
+  var line=el('path',{d:path(data,0,false),fill:'none',stroke:'#F4C430','stroke-width':2.2,'stroke-linecap':'round','stroke-linejoin':'round'});
+  svg.appendChild(line);
+  var len=line.getTotalLength();
+  line.style.strokeDasharray=len;line.style.strokeDashoffset=len;
+  line.style.transition='stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)';
+  setTimeout(function(){line.style.strokeDashoffset=0},250);
+
+  ['Jun 20','Jun 27','Jul 4','Jul 11','Jul 18','wk +1'].forEach(function(t,i){
+    var x=PL+(W-PL-PR)*i/5;
+    var lbl=el('text',{x:x,y:H-7,fill:'rgba(156,163,175,.6)','font-size':9,'font-family':'IBM Plex Mono,monospace','text-anchor':i===5?'end':'middle'});
+    lbl.textContent=t;svg.appendChild(lbl);
+  });
+
+  var dot=el('circle',{r:4,fill:'#F4C430',stroke:'#000','stroke-width':2,opacity:0});
+  svg.appendChild(dot);
+  var vline=el('line',{y1:PT,y2:H-PB,stroke:'rgba(244,196,48,.45)','stroke-width':1,'stroke-dasharray':'3 3',opacity:0});
+  svg.appendChild(vline);
+  var tip=document.getElementById('ctip');
+  svg.addEventListener('mousemove',function(ev){
+    var r=svg.getBoundingClientRect();
+    var mx=(ev.clientX-r.left)*(W/r.width);
+    var idx=Math.round((mx-PL)/(W-PL-PR)*(data.length+fc.length-1));
+    if(idx<0)idx=0; if(idx>data.length+fc.length-1)idx=data.length+fc.length-1;
+    var isFc=idx>=data.length;
+    var v=isFc?fc[idx-data.length]:data[idx];
+    var cx=X(idx),cy=Y(v);
+    dot.setAttribute('cx',cx);dot.setAttribute('cy',cy);dot.setAttribute('opacity',1);
+    dot.setAttribute('fill',isFc?'#9CA3AF':'#F4C430');
+    vline.setAttribute('x1',cx);vline.setAttribute('x2',cx);vline.setAttribute('opacity',1);
+    tip.style.opacity=1;
+    var d=new Date(2026,5,20+idx);
+    tip.innerHTML=(isFc?'FORECAST · ':'')+'<b>Rp '+v.toFixed(1)+'M</b><br>'+(isFc?'wk '+(idx-data.length+1):d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    var bx=r.width*cx/W;
+    tip.style.left=Math.min(Math.max(bx-50,4),r.width-110)+'px';
+    tip.style.top=(r.height*cy/H-58)+'px';
+  });
+  svg.addEventListener('mouseleave',function(){dot.setAttribute('opacity',0);vline.setAttribute('opacity',0);tip.style.opacity=0});
+})();
+</script>
+</body>
+</html>

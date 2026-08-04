@@ -40,6 +40,7 @@ from backend.app.utils.tracing import (
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic._reasoning_evidence import (
     compute_evidence_score,
+    detect_quotable_relevance_veto,
     detect_substantial_context,
     detect_trusted_context_markers,
     detect_trusted_tool_usage,
@@ -599,7 +600,16 @@ class ReasoningEngine:
         # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM).
         trusted_tools_used = getattr(
             state, "trusted_tools_used", False
-        ) or detect_trusted_tool_usage(state.steps, _TRUSTED_TOOL_NAMES)
+        ) or detect_trusted_tool_usage(
+            state.steps, _TRUSTED_TOOL_NAMES, final_answer=state.final_answer
+        )
+        # Hard veto: a quotable tool's own output going unreflected in
+        # final_answer must survive `apply_shared_trusted_flippers` below —
+        # those flippers have no per-tool literal-overlap visibility (see
+        # detect_quotable_relevance_veto docstring).
+        relevance_veto = detect_quotable_relevance_veto(
+            state.steps, final_answer=state.final_answer
+        )
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
         # 🔍 TRACING: Evidence score calculation
@@ -651,6 +661,12 @@ class ReasoningEngine:
             final_answer=state.final_answer,
             llm_gateway=llm_gateway,
         )
+        if relevance_veto:
+            # A confirmed quotable-tool/final_answer mismatch outweighs the
+            # flippers' generic heuristics — force the low-evidence path
+            # below to actually run rather than being skipped on a
+            # re-granted (and unearned) trust flag.
+            trusted_tools_used = False
 
         state.trusted_tools_used = trusted_tools_used
 
@@ -1302,12 +1318,27 @@ Make it feel natural and helpful, not forced.
         # ==================== TRUSTED TOOLS CHECK (BEFORE EVIDENCE) ====================
         # Tool success = high evidence (RAG-native). Also honour
         # state.trusted_tools_used set by early-exit paths (e.g. CRM).
+        # NOTE: state.final_answer may still be None here for the crm_query
+        # streaming early-exit above (~line 1278-1282), which `break`s the
+        # ReAct loop before final_answer generation runs — this is a known,
+        # accepted architectural limit (final_answer text doesn't exist yet
+        # to check against). detect_trusted_tool_usage's final_answer=None
+        # path preserves unconditional trust for that case by design.
         trusted_tools_used = getattr(
             state, "trusted_tools_used", False
         ) or detect_trusted_tool_usage(
             state.steps,
             _TRUSTED_TOOL_NAMES,
             log_prefix="Trusted Tools - Stream",
+            final_answer=state.final_answer,
+        )
+        # Hard veto (mirrors the sync pipeline) — see detect_quotable_relevance_veto
+        # docstring. Computed once here and enforced below, AFTER every
+        # trust-widening step in this pipeline (stream-only pre-flippers +
+        # shared flippers), so none of them can silently undo a confirmed
+        # quotable-tool/final_answer mismatch.
+        relevance_veto = detect_quotable_relevance_veto(
+            state.steps, final_answer=state.final_answer, log_prefix="Trusted Tools - Stream"
         )
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
@@ -1368,6 +1399,10 @@ Make it feel natural and helpful, not forced.
             final_answer=state.final_answer,
             llm_gateway=llm_gateway,
         )
+        if relevance_veto:
+            # A confirmed quotable-tool/final_answer mismatch outweighs every
+            # widening step above (stream-only pre-flippers included).
+            trusted_tools_used = False
 
         state.trusted_tools_used = trusted_tools_used
 

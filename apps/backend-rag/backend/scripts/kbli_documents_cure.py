@@ -62,6 +62,15 @@ SCOPE DISCIPLINE (mirrors `kg_kbli_license_fix.py`): `--only` is MANDATORY
 unless `--all-quarantined` is passed explicitly — this script NEVER sweeps
 the full ~1,559-row table.
 
+`--only` DOES NOT GET THE CONTENT-PRESERVATION GATE. That gate is scoped to
+`--all-licensing-absent`, so passing the same population as a hand-written
+`--only` list cures every code the gate would have REFUSED — on 2026-08-02
+that was 25 of 80 rows of hand-written client-facing prose. `--only` is also
+the only selector that runs inside the deployed image, which is what makes the
+substitution tempting. It is not blocked (the Perpres-cap lane legitimately
+replaces prose) but it is now REPORTED: a run logs which rows it is about to
+overwrite. Read that line before `--apply`.
+
 WHAT `--only` ACTUALLY GATES ON (corrected 2026-08-01 — this paragraph used
 to claim the opposite, and a session relied on the path it denied). The
 `per_skala_disputed_*` marker selects the `--all-quarantined` population and
@@ -128,6 +137,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import asyncpg
@@ -150,9 +160,45 @@ GAP_FALLBACK_TEXT = (
 # script does not re-derive that predicate: it asks the detector and consumes
 # its verdict. Two tools that must agree on the same fact do not get to invent
 # two answers (W105) — and the detector is the one with the corpus that pins it.
-CONFORMANCE_SCRIPT = (
-    Path(__file__).resolve().parents[4] / "scripts" / "kbli_filiera" / "kbli_surface_conformance.py"
-)
+CONFORMANCE_MARKER = Path("scripts") / "kbli_filiera" / "kbli_surface_conformance.py"
+
+
+def find_conformance_script(start: Path | None = None) -> Path | None:
+    """Locate the detector by WALKING UP for its marker, never by a fixed index.
+
+    This file lives at two different depths: `apps/backend-rag/backend/scripts/`
+    in the repo (4 levels under the root) and `/app/backend/scripts/` in the
+    deployed image (2). A hardcoded `parents[4]` is therefore an IndexError in
+    production — raised at MODULE level, so the script could not even be
+    imported there, which killed `--only` too: the one path that can run inside
+    the container, and the path the 2026-08-01 prod cure actually used.
+
+    Returns None when no repo layout is found. That is the EXPECTED state inside
+    the image, which ships neither `scripts/kbli_filiera/` nor `pg.sh`, and it
+    must read as "no selector available here" — never as a crash, and never as
+    an empty scope (W84: absence of a reading is not a clean bill).
+    """
+    here = (start or Path(__file__)).resolve()
+    for ancestor in here.parents:
+        candidate = ancestor / CONFORMANCE_MARKER
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+CONFORMANCE_SCRIPT = find_conformance_script()
+
+# A refusal must be legible to a CALLER, not only to a human reading stderr.
+# The detector below is scrupulous about this ("judged by EXIT CODE, never by
+# did it print something") and this script used to drop that discipline on the
+# floor for its own caller: the refusal branch did a bare `return`, so
+# `sys.exit(main())` exited 0 and "I refused to cure anything" was
+# indistinguishable from "I cured everything" (the W104 shape).
+# 3, not 2: argparse spends exit 2 on a usage error, and the caller this
+# exists for — automation — would then read 'you passed bad flags' and
+# 'I refused to cure anything' as the same event. 0/1/4 belong to the
+# detector's own vocabulary and are left alone.
+EXIT_REFUSED = 3
 # Mirrors kbli_surface_conformance.py's own exit vocabulary. 4 is CANNOT-VERIFY
 # and it is NOT a clean bill: a detector that could not read the table reports
 # zero divergences, which is indistinguishable from a healthy fleet unless the
@@ -295,22 +341,86 @@ def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str |
     return None
 
 
-def fetch_conformance_report(script: Path) -> dict:
+SNAPSHOT_MAX_AGE_MINUTES = 60
+
+
+def _check_snapshot_freshness(captured_at: str | None) -> None:
+    """A supplied snapshot is a MEASUREMENT OF THE WORLD, and a measurement
+    frozen into a file goes stale silently (W106). The caller must say when it
+    was taken; a value older than an hour is refused rather than trusted.
+
+    Deliberately an assertion by the caller rather than the file's mtime: `scp`
+    without `-p` restamps mtime, so an mtime check would read every shipped
+    snapshot as fresh — a guard that cannot fail is worse than none."""
+    if captured_at is None:
+        raise RuntimeError(
+            "--conformance-table-json requires --snapshot-captured-at <ISO8601>: a snapshot "
+            "with no stated capture time cannot be distinguished from one taken last week"
+        )
+    try:
+        taken = datetime.fromisoformat(captured_at)
+    except ValueError as exc:
+        raise RuntimeError(f"--snapshot-captured-at is not ISO8601: {captured_at!r} ({exc})") from exc
+    if taken.tzinfo is None:
+        taken = taken.replace(tzinfo=timezone.utc)
+    age = (datetime.now(timezone.utc) - taken).total_seconds() / 60
+    if age > SNAPSHOT_MAX_AGE_MINUTES:
+        raise RuntimeError(
+            f"snapshot was captured {age:.0f} minutes ago (limit {SNAPSHOT_MAX_AGE_MINUTES}) — "
+            "re-capture it. Curing against a stale reading of the table is how a cure writes "
+            "over rows it never actually looked at."
+        )
+    if age < -5:
+        raise RuntimeError(
+            f"--snapshot-captured-at is {-age:.0f} minutes in the FUTURE — refusing rather than "
+            "accepting a timestamp that cannot be true"
+        )
+
+
+def fetch_conformance_report(
+    script: Path | None,
+    table_json: Path | None = None,
+    snapshot_captured_at: str | None = None,
+) -> dict:
     """I/O. Runs the detector and returns its JSON report.
 
     Judged by EXIT CODE, never by "did it print something": exit 4 means the
     detector could not read one of the two sides, and its report then carries
     zero divergences — the exact shape of a healthy fleet. Consuming that as
     "nothing to cure" is how a cure silently becomes a no-op (W84). Anything
-    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict."""
+    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict.
+
+    WHY `table_json` EXISTS. Reading the live table needs a Keychain password,
+    and reading THAT needs an interactive session: over ssh the same lookup
+    returns `errSecInteractionNotAllowed` (rc 36) — the entry is present and
+    simply unreadable, which is not the same as absent. The write DSN lives on
+    a different machine than the readable Keychain, so no single non-interactive
+    run holds both halves. This lets the snapshot be captured where the table
+    can be read and carried to where the write can happen.
+
+    What it does NOT do: hand the cure a verdict. The detector still derives the
+    divergence itself from canonical plus the snapshot, and still owns the
+    predicate — passing a hand-written REPORT would let anything drive a write."""
+    if table_json is not None:
+        _check_snapshot_freshness(snapshot_captured_at)
+        if not table_json.is_file():
+            raise RuntimeError(f"--conformance-table-json not found at {table_json}")
+    if script is None:
+        raise RuntimeError(
+            "conformance detector not found by walking up from this file — no repo layout "
+            "here. That is the expected state inside the deployed image, which ships neither "
+            "scripts/kbli_filiera/ nor pg.sh: --all-licensing-absent is a repo-side selector. "
+            "Run it where the repo is, or pass --only <codes> (which needs no detector)"
+        )
     if not script.is_file():
         raise RuntimeError(
             f"conformance detector not found at {script} — refusing to guess scope from a "
             "predicate this script does not own"
         )
-    proc = subprocess.run(
-        [sys.executable, str(script), "--json"], capture_output=True, text=True, check=False
-    )
+    cmd = [sys.executable, str(script), "--json"]
+    if table_json is not None:
+        cmd += ["--table-json", str(table_json)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode == CONFORMANCE_EXIT_CANNOT_VERIFY:
         raise RuntimeError(
             "conformance detector returned CANNOT-VERIFY (exit 4) — it could not read canonical "
@@ -514,7 +624,7 @@ async def load_dataset(source: str) -> list[dict]:
         return r.json()["data"]
 
 
-async def main() -> None:
+async def main() -> int | None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
     ap.add_argument(
@@ -544,6 +654,25 @@ async def main() -> None:
         help="path to kbli_surface_conformance.py (the sole owner of the divergence predicate)",
     )
     ap.add_argument(
+        "--conformance-table-json",
+        type=Path,
+        default=None,
+        help=(
+            "table snapshot for the detector to read INSTEAD of querying the DB, for when the "
+            "readable Keychain and the write DSN are on different machines. The detector still "
+            "derives the verdict itself. Requires --snapshot-captured-at"
+        ),
+    )
+    ap.add_argument(
+        "--snapshot-captured-at",
+        default=None,
+        metavar="ISO8601",
+        help=(
+            f"when --conformance-table-json was captured; refused if older than "
+            f"{SNAPSHOT_MAX_AGE_MINUTES} minutes"
+        ),
+    )
+    ap.add_argument(
         "--dataset",
         default=DATASET_URL,
         help="canonical dataset: local file path (read directly) or URL (httpx fetch). "
@@ -568,10 +697,14 @@ async def main() -> None:
             logger.warning("--only ignored: --all-quarantined takes precedence")
     elif args.all_licensing_absent:
         try:
-            report = fetch_conformance_report(args.conformance_script)
+            report = fetch_conformance_report(
+                args.conformance_script,
+                table_json=args.conformance_table_json,
+                snapshot_captured_at=args.snapshot_captured_at,
+            )
         except (RuntimeError, OSError, json.JSONDecodeError) as exc:
             logger.error("refusing to cure: %s", exc)
-            return
+            return EXIT_REFUSED
         codes = licensing_absent_codes(report)
         canonical_rows_by_code = {
             str(d["code"]): int(d.get("canonical_rows", 0))
@@ -649,6 +782,40 @@ async def main() -> None:
             if not codes:
                 logger.warning("gate refused every selected row — nothing to do")
                 return
+        elif not args.all_quarantined:
+            # `--only` BYPASSES the gate above, and that is the trap this block
+            # exists to make loud. The gate cannot run here: a hand-written
+            # scope means the operator, not a predicate, chose these codes, and
+            # the legitimate `--only` lane (the Perpres-cap cures) exists
+            # precisely to replace prose. So this REPORTS and never refuses.
+            #
+            # It matters because `--only` is also the ONLY selector that runs
+            # inside the deployed image, which makes it the path most likely to
+            # be handed a state-selected list by hand — exactly how the 25 rows
+            # the gate protected on 2026-08-02 nearly went out anyway.
+            #
+            # canonical_rows is 0 on purpose: the detector's count does not
+            # exist on this path, and deriving a second one for the same fact is
+            # how two tools start disagreeing about it (W105). A
+            # contradicted-licensing-claim row therefore reports as plain
+            # hand-written — true, and the loud direction.
+            overwritten = []
+            for code in codes:
+                row = table_rows.get(code)
+                if row is None:
+                    continue  # nothing stored to overwrite
+                if rebuild_reason(code, row["content"], 0) is None:
+                    overwritten.append(code)
+            if overwritten:
+                logger.warning(
+                    "--only bypasses the content-preservation gate: %d of %d selected row(s) "
+                    "carry hand-written prose this run will OVERWRITE (%s). The pre-cure text "
+                    "goes to kbli_documents_archive, but ON CONFLICT DO NOTHING makes that "
+                    "ONE-SHOT per code — a second cure of the same row preserves nothing.",
+                    len(overwritten),
+                    len(codes),
+                    ", ".join(overwritten),
+                )
 
         plans: list[DocumentCurePlan] = []
         for code in codes:

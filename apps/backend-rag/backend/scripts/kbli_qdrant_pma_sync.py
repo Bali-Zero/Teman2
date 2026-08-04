@@ -1,6 +1,28 @@
 """
-kbli_qdrant_pma_sync.py — sync the `pma_status` / `pma_max_asing` Qdrant payload
-fields of KBLI points from the canonical dataset.
+kbli_qdrant_pma_sync.py — sync a named LAYER of the KBLI Qdrant payload from the
+canonical dataset. `--layer pma` (default) owns `pma_status` / `pma_max_asing`;
+`--layer bali` owns `bali_status` / `bali_blocked` / `bali_reason` /
+`has_bali_l4`.
+
+WHY THE BALI LAYER LIVES HERE AND NOT IN ITS OWN TOOL (2026-08-03): there WAS a
+second tool, `apps/backend-rag/scripts/patch_qdrant_bali_l4.py`, and it is
+deleted in the same commit that adds this layer. It did not read the canonical
+verdict — it RE-DERIVED one from `l4_bali.verdict`, a parallel field that has
+drifted away from `l4_bali.status`, the field every rendering surface actually
+reads. Measured on the canonical the day it was removed:
+
+  * 237 records carry NO `l4_bali.verdict` at all, and **118 of those are
+    currently blocked**. The tool's `verdicts.get(kode, "OPEN")` default would
+    have written `OK_or_HIGHER_RISK` + "not blocked by moratorium" onto all
+    118 — publishing 118 blocked activities as registrable, on the store
+    `inspect_kbli` reads FIRST.
+  * 15 more carry a `verdict` that disagrees with their `status`.
+
+Two tools deciding the same client-facing fact will disagree exactly when it
+matters (W105). So the rule is one tool, and the tool COPIES the canonical
+verdict — it never recomputes one. `l4_bali.status` is what the website, the
+LLM corpus and the macOS app render; anything else is a second opinion nobody
+asked for.
 
 WHY THIS EXISTS, AND WHY THE KG-SIDE CURE WAS NOT ENOUGH (2026-08-02, found
 during the prove-live of the Perpres 49/2021 Lampiran III cure, #3515):
@@ -20,11 +42,17 @@ TERBATAS on all twenty codes and `inspect_kbli 51101` still answered TERBUKA,
 because the Qdrant payload still read `TERBUKA / 100`. A cure that stops at the
 KG is a cure the channel never sees.
 
-WHAT IT WRITES: exactly two flat keys, `pma_status` and `pma_max_asing`, via
-`set_payload` — a payload MERGE that touches nothing else. Never
-`overwrite_payload`, never `delete_payload`, never a vector. **The embedding
-model is FROZEN** (`text-embedding-3-small`, 93k+ vectors — CLAUDE.md §9); a
-re-index to change two scalars would put that invariant at risk for no reason.
+WHAT IT WRITES: exactly the keys of the SELECTED layer, via `set_payload` — a
+payload MERGE that touches nothing else. Never `overwrite_payload`, never
+`delete_payload`, never a vector. **The embedding model is FROZEN**
+(`text-embedding-3-small`, 93k+ vectors — CLAUDE.md §9); a re-index to change a
+few scalars would put that invariant at risk for no reason.
+
+The layers are deliberately separate runs. National ownership (`pma_*`) and the
+Bali provincial verdict (`bali_*`) answer different questions from different
+instruments, and the one confusion this lane keeps paying for is treating them
+as one answer. A run that could move both at once would make "did this cure
+touch the national fields?" unanswerable from the command line.
 
 SCOPE DISCIPLINE (mirrors `kbli_qdrant_risk_clear.py` and
 `kg_kbli_license_fix.py`): `--codes` is MANDATORY. No code is ever
@@ -49,6 +77,9 @@ USAGE (dry-run is the default; nothing is written without --apply):
 
     cd /app && python backend/scripts/kbli_qdrant_pma_sync.py \\
         --collection kbli_2025_final_hybrid --codes 51101,25200 --apply
+
+    cd /app && python backend/scripts/kbli_qdrant_pma_sync.py --layer bali \\
+        --collection kbli_2025_final_hybrid --codes 86995,96220 --apply
 
 Deliberately import-free of `backend.*`: the two cure tools that already run in
 this image (`kbli_documents_cure.py`, `kg_kbli_resync.py`) read their config
@@ -89,13 +120,22 @@ CODE_KEY = "kode_kbli"
 _SCROLL_PAGE_LIMIT = 256
 
 
+LAYERS = ("pma", "bali")
+
+
 @dataclass(frozen=True)
 class Target:
-    """What the canonical says this code's PMA fields should be."""
+    """What the canonical says this code's payload should be, for one layer.
+
+    `fields` maps a Qdrant payload key to the canonical value. Keeping it a
+    mapping rather than named attributes is what lets one comparison, one
+    diff-log and one `set_payload` body serve both layers — a second copy of
+    that logic is a second place for the two to drift apart.
+    """
 
     code: str
-    pma_status: str
-    pma_max_asing: Any
+    layer: str
+    fields: dict[str, Any]
 
 
 @dataclass
@@ -112,38 +152,74 @@ class CodePlan:
         return bool(self.point_ids)
 
     def stale_points(self) -> list[Any]:
-        """Point ids whose payload disagrees with the canonical on either field."""
+        """Point ids whose payload disagrees with the canonical on ANY field of
+        the layer. Judging on one field would leave the others uncured — that is
+        how a point ends up reading TERBATAS at 100%."""
         out = []
         for pid in self.point_ids:
             cur = self.current.get(pid, {})
-            if (
-                cur.get("pma_status") != self.target.pma_status
-                or cur.get("pma_max_asing") != self.target.pma_max_asing
-            ):
+            if any(cur.get(key) != value for key, value in self.target.fields.items()):
                 out.append(pid)
         return out
 
 
-def build_targets(records: list[dict], codes: list[str]) -> tuple[dict[str, Target], list[str]]:
+def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
+    status = rec.get("pma_status")
+    if not status:
+        return None, "canonical record carries no pma_status — nothing authoritative to sync"
+    return {"pma_status": str(status), "pma_max_asing": rec.get("pma_max_asing")}, None
+
+
+def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
+    """The Bali layer, copied from `l4_bali.status` — never recomputed.
+
+    Mirrors `reindex_kbli_2025_final.py::build_payload` key for key, so a payload
+    written here and a payload written by a full re-index say the same thing.
+    `l4_bali.verdict` is deliberately NOT read: see the module docstring for the
+    118-code measurement that removed the tool which did.
+    """
+    l4 = rec.get("l4_bali") or {}
+    status = l4.get("status")
+    if not status:
+        return None, "canonical record carries no l4_bali.status — no Bali verdict to publish"
+    return {
+        "bali_status": str(status),
+        "bali_blocked": bool(l4.get("blocked")),
+        "bali_reason": str(l4.get("reason") or ""),
+        "has_bali_l4": bool(status),
+    }, None
+
+
+_LAYER_READERS = {"pma": _pma_fields, "bali": _bali_fields}
+
+
+def build_targets(
+    records: list[dict], codes: list[str], layer: str = "pma"
+) -> tuple[dict[str, Target], list[str]]:
     """Read the canonical verdict for each requested code.
 
     A code the canonical does not carry is a REFUSAL, not a skip: writing a
-    guessed or inherited PMA figure onto a client-facing store is the whole
-    class of defect this lane exists to remove.
+    guessed or inherited verdict onto a client-facing store is the whole class of
+    defect this lane exists to remove.
     """
+    if layer not in _LAYER_READERS:
+        raise ValueError(f"unknown layer {layer!r} — expected one of {LAYERS}")
+    read = _LAYER_READERS[layer]
     by_code = {str(r.get("kode_kbli_2025")): r for r in records}
     targets: dict[str, Target] = {}
     refusals: list[str] = []
     for code in codes:
         rec = by_code.get(code)
         if rec is None:
-            refusals.append(f"{code}: absent from the canonical dataset — refusing to write a PMA figure for it")
+            refusals.append(
+                f"{code}: absent from the canonical dataset — refusing to write a {layer} verdict for it"
+            )
             continue
-        status = rec.get("pma_status")
-        if not status:
-            refusals.append(f"{code}: canonical record carries no pma_status — nothing authoritative to sync")
+        fields, why = read(rec)
+        if fields is None:
+            refusals.append(f"{code}: {why}")
             continue
-        targets[code] = Target(code=code, pma_status=str(status), pma_max_asing=rec.get("pma_max_asing"))
+        targets[code] = Target(code=code, layer=layer, fields=fields)
     return targets, refusals
 
 
@@ -196,16 +272,21 @@ def find_points_for_code(
 
 
 def build_plan(code: str, target: Target, points: list[dict]) -> CodePlan:
-    """Turn scrolled points into a plan — pure, no I/O."""
+    """Turn scrolled points into a plan — pure, no I/O.
+
+    Only the layer's own keys are read off the existing payload, so the plan can
+    never carry — and therefore never re-write — a field this run does not own.
+    """
     ids = [p["id"] for p in points]
     current = {
-        p["id"]: {
-            "pma_status": (p.get("payload") or {}).get("pma_status"),
-            "pma_max_asing": (p.get("payload") or {}).get("pma_max_asing"),
-        }
+        p["id"]: {key: (p.get("payload") or {}).get(key) for key in target.fields}
         for p in points
     }
     return CodePlan(code=code, target=target, point_ids=ids, current=current)
+
+
+def _describe(values: dict[str, Any]) -> str:
+    return " / ".join(f"{v!r}" for v in values.values())
 
 
 def apply_plan(
@@ -224,14 +305,12 @@ def apply_plan(
     stale = plan.stale_points()
     if not stale:
         logger.info(
-            "  %s: already agrees with canonical (%s / %s)",
-            plan.code,
-            plan.target.pma_status,
-            plan.target.pma_max_asing,
+            "  %s: already agrees with canonical (%s)", plan.code, _describe(plan.target.fields)
         )
         return 0
 
-    if not isinstance(plan.target.pma_max_asing, int):
+    cap = plan.target.fields.get("pma_max_asing", 0)
+    if "pma_max_asing" in plan.target.fields and not isinstance(cap, int):
         # 47221 carries the string "special" — a non-percentage regime. Passed
         # through verbatim rather than coerced, but said out loud: a payload
         # field that changes type is exactly what a downstream reader does not
@@ -239,20 +318,18 @@ def apply_plan(
         logger.warning(
             "  %s: canonical cap is %r (%s), not an int — writing it verbatim",
             plan.code,
-            plan.target.pma_max_asing,
-            type(plan.target.pma_max_asing).__name__,
+            cap,
+            type(cap).__name__,
         )
 
     for pid in stale:
         cur = plan.current.get(pid, {})
         logger.info(
-            "  %s: point %s  %s/%s -> %s/%s%s",
+            "  %s: point %s  %s -> %s%s",
             plan.code,
             pid,
-            cur.get("pma_status"),
-            cur.get("pma_max_asing"),
-            plan.target.pma_status,
-            plan.target.pma_max_asing,
+            _describe({k: cur.get(k) for k in plan.target.fields}),
+            _describe(plan.target.fields),
             "" if apply else "  (dry-run, not written)",
         )
 
@@ -262,13 +339,7 @@ def apply_plan(
     resp = http.post(
         f"{url_base}/collections/{collection}/points/payload",
         headers=headers,
-        json={
-            "payload": {
-                "pma_status": plan.target.pma_status,
-                "pma_max_asing": plan.target.pma_max_asing,
-            },
-            "points": stale,
-        },
+        json={"payload": dict(plan.target.fields), "points": stale},
     )
     resp.raise_for_status()
     return len(stale)
@@ -289,6 +360,15 @@ def main() -> int:
         "purpose: a default here would freeze a measure of the world into a constant.",
     )
     ap.add_argument("--dataset", default=DATASET_URL, help="canonical dataset: local path or URL")
+    ap.add_argument(
+        "--layer",
+        choices=LAYERS,
+        default="pma",
+        help="which payload layer to sync: 'pma' (national ownership: pma_status, "
+        "pma_max_asing) or 'bali' (provincial verdict: bali_status, bali_blocked, "
+        "bali_reason, has_bali_l4). One layer per run, on purpose — the two answer "
+        "different questions from different instruments.",
+    )
     args = ap.parse_args()
 
     codes = [c.strip() for c in args.codes.split(",") if c.strip()]
@@ -296,7 +376,8 @@ def main() -> int:
         logger.error("--codes produced an empty list, nothing to do")
         return 2
 
-    targets, refusals = build_targets(load_dataset(args.dataset), codes)
+    logger.info("layer: %s", args.layer)
+    targets, refusals = build_targets(load_dataset(args.dataset), codes, args.layer)
     if refusals:
         for r in refusals:
             logger.error("REFUSED %s", r)
@@ -335,7 +416,7 @@ def main() -> int:
                     agreed += 1
             written += apply_plan(http, url_base, headers, args.collection, plan, args.apply)
 
-    verb = "APPLIED" if args.apply else "DRY-RUN"
+    verb = f"{'APPLIED' if args.apply else 'DRY-RUN'} [{args.layer}]"
     logger.info(
         "%s: %d/%d code(s) found | %d already agreed | %d point(s) %s",
         verb,

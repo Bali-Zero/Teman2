@@ -38,9 +38,12 @@ matching alone):
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from backend.scripts.kbli_documents_cure import (
+    SNAPSHOT_MAX_AGE_MINUTES,
     DocumentCurePlan,
     archive_params,
     build_cured_content,
@@ -609,3 +612,378 @@ def test_rebuild_reason_does_not_fire_when_canonical_has_no_rows():
 
 def test_rebuild_reason_refuses_an_absent_row():
     assert rebuild_reason("01122", None, 8) is None
+
+
+# ---------------------------------------------------------------------------
+# Deployment-layout tolerance (2026-08-03)
+#
+# Found by RUNNING the tool where it actually cures, not by reading it: on the
+# Fly machine this module died at IMPORT with `IndexError: 4`, because the
+# 2026-08-02 selector added a module-level `parents[4]`. The same file lives at
+# two depths — `apps/backend-rag/backend/scripts/` in the repo (4 levels under
+# the root) and `/app/backend/scripts/` in the image (2) — so no fixed index is
+# right in both. The blast radius was not the new selector: an import-time crash
+# took `--only` down too, i.e. the ONLY path that can run in the container and
+# the one the 2026-08-01 production cure actually used.
+#
+# Guilt = the real production layout resolves to None instead of raising.
+# Innocence = the repo layout still finds the real detector (a "fix" that
+# always returned None would silence the crash and disarm the selector).
+# ---------------------------------------------------------------------------
+
+import asyncio as _asyncio
+import logging as _logging
+import sys as _sys
+from pathlib import Path as _Path
+
+from backend.scripts import kbli_documents_cure as _cure
+
+
+def test_repo_layout_resolves_to_the_real_detector():
+    """INNOCENCE: where the repo exists, the selector must still find its owner."""
+    found = _cure.find_conformance_script()
+    assert found is not None
+    assert found.is_file()
+    assert found.name == "kbli_surface_conformance.py"
+    assert found.parent.name == "kbli_filiera"
+
+
+def test_container_layout_resolves_to_none_instead_of_raising():
+    """GUILT: the exact path the deployed image uses. Must be a value, not a crash."""
+    assert _cure.find_conformance_script(_Path("/app/backend/scripts/kbli_documents_cure.py")) is None
+
+
+def test_a_fixed_parent_index_would_still_crash_on_the_container_layout():
+    """SCAR PIN: this is WHY the walk-up exists. If a future refactor goes back
+    to counting levels, this test states the cost in one line."""
+    container = _Path("/app/backend/scripts/kbli_documents_cure.py").resolve()
+    with pytest.raises(IndexError):
+        _ = container.parents[4]
+
+
+def test_module_level_constant_is_never_an_import_time_crash():
+    """The defect was at MODULE level: importing was enough to die. Re-running
+    the same resolution the module runs at import must be exception-free for
+    any depth, including a file sitting at the filesystem root."""
+    for probe in ("/x.py", "/a/b.py", "/app/backend/scripts/c.py"):
+        found = _cure.find_conformance_script(_Path(probe))
+        # Never a phantom path: either a detector that is really there, or None.
+        # A resolver that returned a plausible-but-absent path would push the
+        # failure down into fetch_conformance_report as a confusing "not found
+        # at <made-up path>" instead of the honest "no repo layout here".
+        assert found is None or found.is_file()
+
+
+def test_detector_absent_refusal_names_the_path_that_still_works():
+    """A refusal that does not say what to do instead reads as breakage."""
+    with pytest.raises(RuntimeError) as exc:
+        _cure.fetch_conformance_report(None)
+    assert "--only" in str(exc.value)
+
+
+def test_refusal_is_visible_to_a_caller_as_a_nonzero_exit(monkeypatch):
+    """GUILT for the W104 shape: the refusal branch used a bare `return`, so
+    `sys.exit(main())` exited 0 and 'I cured nothing' was indistinguishable
+    from 'I cured everything'. Driven through main(), not asserted on the
+    constant — a constant cannot regress, a branch can."""
+    monkeypatch.setattr(_sys, "argv", ["cure", "--all-licensing-absent"])
+
+    async def _no_network(_source):
+        return []
+
+    def _detector_down(_script, **_kwargs):
+        raise RuntimeError("conformance detector not found")
+
+    monkeypatch.setattr(_cure, "load_dataset", _no_network)
+    monkeypatch.setattr(_cure, "fetch_conformance_report", _detector_down)
+
+    rc = _asyncio.run(_cure.main())
+    assert rc == _cure.EXIT_REFUSED
+    assert rc != 0
+
+
+def test_importing_this_module_under_the_deployed_layout_does_not_crash():
+    """The one test that actually kills the regression.
+
+    The three above exercise `find_conformance_script`; none of them binds the
+    MODULE to using it. Proof: reverting the module-level constant to
+    `parents[4]` left the whole suite green, because on a repo checkout that
+    index resolves — the corpus was measuring the layout it happened to run on,
+    not the property it claimed (W110: prove the binding took, not that the
+    helper works).
+
+    So execute this module's real source with `__file__` set to the deployed
+    path. Under the walk-up it yields None; under any fixed index it raises,
+    which is exactly how production died."""
+    import types as _types
+
+    source = _Path(_cure.__file__).read_text()
+    deployed = "/app/backend/scripts/kbli_documents_cure.py"
+    name = "kbli_documents_cure_container_probe"
+    probe = _types.ModuleType(name)
+    probe.__file__ = deployed
+    _sys.modules[name] = probe  # dataclass resolves sys.modules[cls.__module__]
+    try:
+        exec(compile(source, deployed, "exec"), probe.__dict__)  # noqa: S102
+        assert probe.CONFORMANCE_SCRIPT is None
+    finally:
+        _sys.modules.pop(name, None)
+
+
+# --- `--only` bypasses the content-preservation gate: report it, never silently act ---
+
+
+class _FakeConn:
+    """Minimal asyncpg stand-in: enough to reach the selector-scoped warning."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def execute(self, *_args, **_kwargs):
+        return "OK"
+
+    async def fetch(self, _sql, codes):
+        return [r for r in self._rows if r["kode_kbli"] in codes]
+
+    async def close(self):
+        return None
+
+
+def _row(code, content):
+    return {
+        "kode_kbli": code,
+        "judul": f"KBLI {code}",
+        "content": content,
+        "metadata": {},
+        "created_at": None,
+        "updated_at": None,
+    }
+
+
+_HAND_WRITTEN = (
+    "# KBLI 86995 - Aktivitas Pijat\n\n"
+    "## Informasi Umum\nmachine-shaped head...\n\n"
+    "## Bagaimana Membedakannya dari 86991\n"
+    "Hand-written disambiguation canonical cannot regenerate.\n"
+)
+_MACHINE_SEED = (
+    "# KBLI 74191 - Aktivitas Konsultasi\n\n"
+    "## Informasi Umum\nx\n\n"
+    "## Deskripsi Kegiatan Usaha\ny\n\n"
+    "## Investasi Asing (PMA)\nz\n"
+)
+
+
+def _drive_only(monkeypatch, argv, rows, dataset=()):
+    """Run main() with the DB faked, returning the log records it emitted.
+
+    `dataset` defaults to empty, which is fine for `--only` (the scope comes
+    from the flag). It is NOT fine for `--all-quarantined`, whose scope is
+    DERIVED from the dataset: with no canonical records main() returns at
+    "empty code list" long before the branch under test. That poverty let a
+    real mutation (`elif not args.all_quarantined` → `else`) survive."""
+    monkeypatch.setattr(_sys, "argv", argv)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+
+    async def _dataset(_source):
+        return list(dataset)
+
+    async def _connect(_dsn):
+        return _FakeConn(rows)
+
+    monkeypatch.setattr(_cure, "load_dataset", _dataset)
+    monkeypatch.setattr(_cure.asyncpg, "connect", _connect)
+    return _asyncio.run(_cure.main())
+
+
+def test_only_warns_that_it_will_overwrite_hand_written_prose(monkeypatch, caplog):
+    """GUILT. The gate lives under `--all-licensing-absent`; handing the SAME
+    population to `--only` cures every row the gate would have refused (25 of 80
+    on 2026-08-02). Not blocked — the Perpres-cap lane legitimately replaces
+    prose — but it must not be silent."""
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(monkeypatch, ["cure", "--only", "86995"], [_row("86995", _HAND_WRITTEN)])
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= _logging.WARNING]
+    assert any("bypasses the content-preservation gate" in m for m in warnings), warnings
+    assert any("86995" in m for m in warnings), warnings
+
+
+def test_only_is_silent_on_a_machine_seed_row(monkeypatch, caplog):
+    """INNOCENCE. A 2026-02-18 machine-seed row loses nothing on rebuild —
+    warning about it would train the reader to skip the line that matters."""
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(monkeypatch, ["cure", "--only", "74191"], [_row("74191", _MACHINE_SEED)])
+    assert not [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
+    ]
+
+
+def test_only_does_not_claim_to_overwrite_a_row_that_does_not_exist(monkeypatch, caplog):
+    """INNOCENCE. A code absent from `kbli_documents` has no stored prose, so
+    naming it would be a fabricated casualty — `content=None` alone fails the
+    machine-template predicate, which is why this needs its own branch."""
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(monkeypatch, ["cure", "--only", "99999"], [])
+    assert not [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
+    ]
+
+
+def test_quarantine_scope_is_exempt_from_the_overwrite_warning(monkeypatch, caplog):
+    """INNOCENCE. Under `--all-quarantined` the stored content is FABRICATED by
+    definition, so 'hand-written prose will be overwritten' would be a false
+    alarm about the very text the cure exists to destroy.
+
+    The dataset is REQUIRED here: `--all-quarantined` derives its scope from
+    the `per_skala_disputed_*` marker, so without a marked record the run ends
+    at "empty code list" and this test proves nothing (mutation-verified)."""
+    marked = [{"kode_kbli_2025": "86995", "per_skala_disputed_2026_02": True, "per_skala": []}]
+    with caplog.at_level(_logging.WARNING, logger=_cure.logger.name):
+        _drive_only(
+            monkeypatch,
+            ["cure", "--all-quarantined"],
+            [_row("86995", _HAND_WRITTEN)],
+            dataset=marked,
+        )
+    assert not [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
+    ]
+
+
+# ── the snapshot pass-through ───────────────────────────────────────────────────
+#
+# Why it exists at all: reading the live table needs a Keychain password, and
+# reading THAT needs an interactive session — over ssh the same lookup returns
+# `errSecInteractionNotAllowed` (rc 36), i.e. the entry is PRESENT and merely
+# unreadable, which is not the same as absent. The write DSN lives on a different
+# machine than the readable Keychain, so no single non-interactive run holds both
+# halves. The snapshot is captured where the table can be read and carried to
+# where the write can happen.
+#
+# The risk it introduces is W106: a measurement of the world frozen into a file,
+# still being trusted after the world moved. Hence a declared capture time.
+
+
+def test_the_snapshot_path_is_handed_to_the_detector(monkeypatch, tmp_path):
+    """POSITIVE CONTROL. Without this, the refusals below would all pass on a
+    pass-through that quietly dropped the flag and queried the DB anyway."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    seen: dict = {}
+    body = '{"licensing_divergent": [{"code": "82400", "canonical_rows": 7, "table_rows": 0}]}'
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+
+    def _run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return _Proc(1, stdout=body)
+
+    monkeypatch.setattr("backend.scripts.kbli_documents_cure.subprocess.run", _run)
+    now = datetime.now(timezone.utc).isoformat()
+    report = fetch_conformance_report(script, table_json=snap, snapshot_captured_at=now)
+    assert licensing_absent_codes(report) == ["82400"]
+    assert "--table-json" in seen["cmd"] and str(snap) in seen["cmd"], (
+        f"the snapshot never reached the detector: {seen['cmd']}"
+    )
+
+
+def test_the_detector_still_owns_the_verdict(monkeypatch, tmp_path):
+    """The pass-through supplies DATA, never a verdict. Exit 4 must still refuse
+    even when a snapshot was handed in — otherwise 'I gave it a file' would read
+    as 'therefore it could verify'."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+    monkeypatch.setattr(
+        "backend.scripts.kbli_documents_cure.subprocess.run",
+        lambda *a, **k: _Proc(4, stdout="CANNOT VERIFY: canonical unreadable"),
+    )
+    with pytest.raises(RuntimeError, match="CANNOT-VERIFY"):
+        fetch_conformance_report(
+            script, table_json=snap, snapshot_captured_at=datetime.now(timezone.utc).isoformat()
+        )
+
+
+def test_refuses_a_snapshot_with_no_stated_capture_time(tmp_path):
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="requires --snapshot-captured-at"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at=None)
+
+
+def test_refuses_a_stale_snapshot(tmp_path):
+    """A snapshot from hours ago is a reading of a table that may have moved.
+    The threshold is deliberately short: this drives a WRITE."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    old = (datetime.now(timezone.utc) - timedelta(minutes=SNAPSHOT_MAX_AGE_MINUTES + 5)).isoformat()
+    with pytest.raises(RuntimeError, match="minutes ago"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at=old)
+
+
+def test_accepts_a_snapshot_captured_just_now(monkeypatch, tmp_path):
+    """INNOCENCE for the freshness guard — a guard that refuses everything is
+    indistinguishable from a broken pass-through."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+    monkeypatch.setattr(
+        "backend.scripts.kbli_documents_cure.subprocess.run",
+        lambda *a, **k: _Proc(0, stdout='{"licensing_divergent": []}'),
+    )
+    fresh = (datetime.now(timezone.utc) - timedelta(minutes=SNAPSHOT_MAX_AGE_MINUTES - 5)).isoformat()
+    assert fetch_conformance_report(script, table_json=snap, snapshot_captured_at=fresh) == {
+        "licensing_divergent": []
+    }
+
+
+def test_refuses_a_capture_time_in_the_future(tmp_path):
+    """A clock that reads ahead is not evidence of freshness. Refusing beats
+    accepting a timestamp that cannot be true."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    ahead = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    with pytest.raises(RuntimeError, match="FUTURE"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at=ahead)
+
+
+def test_refuses_an_unparseable_capture_time(tmp_path):
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="not ISO8601"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at="yesterday")
+
+
+def test_refuses_a_snapshot_file_that_is_not_there(tmp_path):
+    """Named but absent: the detector would fall back to querying the DB, which
+    is exactly the thing that cannot work where this flag gets used."""
+    with pytest.raises(RuntimeError, match="not found at"):
+        fetch_conformance_report(
+            tmp_path / "d.py",
+            table_json=tmp_path / "absent.json",
+            snapshot_captured_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+
+def test_no_snapshot_means_the_detector_queries_the_db_as_before(monkeypatch, tmp_path):
+    """INNOCENCE for the whole feature: the default path must be untouched, with
+    no --table-json appended and no capture time demanded."""
+    seen: dict = {}
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+
+    def _run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return _Proc(0, stdout='{"licensing_divergent": []}')
+
+    monkeypatch.setattr("backend.scripts.kbli_documents_cure.subprocess.run", _run)
+    fetch_conformance_report(script)
+    assert "--table-json" not in seen["cmd"]

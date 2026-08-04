@@ -210,6 +210,7 @@ class TestCheckPMAEligibility:
             return_value=[
                 {
                     "entity_id": "kbli:47111",
+                    "entity_type": "kbli",
                     "name": "Perdagangan Eceran",
                     "properties": {"pma_status": "allowed"},
                 }
@@ -227,12 +228,21 @@ class TestCheckPMAEligibility:
         assert req["details"][0]["eligible"] is True
 
     @pytest.mark.asyncio
-    async def test_kbli_restricted(self, mock_db_pool):
+    async def test_kbli_restricted_is_undetermined_not_closed(self, mock_db_pool):
+        """
+        "restricted" (the English of TERBATAS) means capped, NOT closed.
+
+        This assertion used to read ``is False`` — it PINNED the L2.11 defect:
+        a capped code answered as ineligible denies a lawful foreign stake
+        (the sea-cabotage codes allow 49%). The KG carries no cap field, so
+        the honest answer from this store is "undetermined, go read the cap".
+        """
         conn = mock_db_pool._mock_conn
         conn.fetch = AsyncMock(
             return_value=[
                 {
                     "entity_id": "kbli:01111",
+                    "entity_type": "kbli",
                     "name": "Pertanian Padi",
                     "properties": {"pma_status": "restricted"},
                 }
@@ -245,7 +255,230 @@ class TestCheckPMAEligibility:
         )
         result = await check_pma_eligibility_node(state, mock_db_pool)
         pma_detail = result["licensing_requirements"][-1]["details"][0]
-        assert pma_detail["eligible"] is False
+        assert pma_detail["eligible"] is None
+        assert "cap" in pma_detail["eligibility_basis"]
+
+
+class TestPmaEligibilityVocabulary:
+    """
+    The store speaks Indonesian; the old code tested itself in English.
+
+    Censused on the live KG 2026-08-03: TERBUKA 1464 · TERTUTUP 61 ·
+    TERBATAS 29 · "Verify at OSS" 4, and ZERO rows carrying "allowed" /
+    "open" / "restricted". The old ``pma_status in ["allowed", "open"]``
+    therefore answered False for every code in production, including all
+    1,464 fully open ones — and both existing tests passed, because they
+    invented a vocabulary to be right about.
+    """
+
+    @pytest.mark.parametrize(
+        ("status", "expected"),
+        [
+            ("TERBUKA", True),
+            ("TERTUTUP", False),
+            ("TERBATAS", None),
+            ("Verify at OSS", None),
+            ("terbuka", True),  # case/whitespace must not decide a verdict
+            ("  TERBUKA  ", True),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_live_vocabulary(self, mock_db_pool, status, expected):
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "kbli:56101",
+                    "entity_type": "kbli_code",
+                    "name": "Restaurant",
+                    "properties": {"pma_status": status},
+                }
+            ]
+        )
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:56101"])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        assert result["licensing_requirements"][-1]["details"][0]["eligible"] is expected
+
+    @pytest.mark.parametrize("status", ["", None, "OPEN-ISH", "TERBUK", 42])
+    @pytest.mark.asyncio
+    async def test_unknown_status_is_never_a_silent_false(self, mock_db_pool, status):
+        """An unrecognised or missing status is undetermined, never "closed"."""
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "kbli:56101",
+                    "entity_type": "kbli",
+                    "name": "Restaurant",
+                    "properties": {"pma_status": status},
+                }
+            ]
+        )
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:56101"])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        assert result["licensing_requirements"][-1]["details"][0]["eligible"] is None
+
+    @pytest.mark.parametrize(
+        "code", ["kbli:55111", "kbli:62011", "kbli:62021", "kbli:68110", "kbli:73110", "kbli:74100"]
+    )
+    @pytest.mark.asyncio
+    async def test_reachable_node_without_pma_layer_is_undetermined(self, mock_db_pool, code):
+        """
+        These six are REAL rows this query now reaches and cannot answer.
+
+        Measured 2026-08-03: of the 1,568 ids matching `kbli:NNNNN`, 1,562
+        carry a `pma_status` and SIX do not — 55111 / 62011 / 62021 / 68110 /
+        73110 / 74100, all filed as `kbli_code`. They are exactly the rows the
+        old `entity_type = 'kbli'` filter dropped, so widening the query makes
+        them reachable for the first time; each must answer "undetermined".
+
+        (An earlier version of this test justified itself with the 12,075
+        kbli nodes that carry no PMA layer — true, but IRRELEVANT: their ids
+        are `kbli_kbli_NNNNN`-shaped and this query can never reach them. Real
+        test, wrong reason.)
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": code,
+                    "entity_type": "kbli_code",
+                    "name": f"KBLI {code.split(':')[1]}",
+                    "properties": {},
+                }
+            ]
+        )
+        state = _base_state(is_foreign_investor=True, kbli_codes=[code])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        detail = result["licensing_requirements"][-1]["details"][0]
+        assert detail["eligible"] is None
+        assert detail["eligibility_state"] == "undetermined"
+        assert detail["pma_status"] == "unknown"
+
+    @pytest.mark.parametrize(
+        ("status", "expected_state"),
+        [
+            ("TERBUKA", "open"),
+            ("TERTUTUP", "closed"),
+            ("TERBATAS", "undetermined"),
+            ("Verify at OSS", "undetermined"),
+            ("wat", "undetermined"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_state_string_and_bool_can_never_disagree(
+        self, mock_db_pool, status, expected_state
+    ):
+        """
+        One writer, two renderings.
+
+        `eligible` is derived from `eligibility_state` in a single place; this
+        pins that they cannot drift apart, and that a consumer branching on
+        the string gets the same verdict as one comparing the bool with `is`.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "kbli:56101",
+                    "entity_type": "kbli_code",
+                    "name": "Restaurant",
+                    "properties": {"pma_status": status},
+                }
+            ]
+        )
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:56101"])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        detail = result["licensing_requirements"][-1]["details"][0]
+        assert detail["eligibility_state"] == expected_state
+        assert detail["eligible"] is {"open": True, "closed": False, "undetermined": None}[
+            expected_state
+        ]
+
+    @pytest.mark.asyncio
+    async def test_truthiness_hazard_is_documented_by_a_failing_consumer(self, mock_db_pool):
+        """
+        A consumer writing `if not detail["eligible"]` denies a CAPPED code.
+
+        This is the L2.11 defect arriving through a downstream truthiness test
+        rather than through this module's table, and it is why the string
+        state exists. The test pins BOTH halves: the naive read is wrong, and
+        the state string gives the consumer a way to be right.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "kbli:79110",  # TERBATAS on the live KG
+                    "entity_type": "kbli_code",
+                    "name": "Travel Agency",
+                    "properties": {"pma_status": "TERBATAS"},
+                }
+            ]
+        )
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:79110"])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        detail = result["licensing_requirements"][-1]["details"][0]
+
+        # The naive consumer would deny a lawful capped stake...
+        assert not detail["eligible"]
+        # ...while the honest verdict is "we do not know the cap from here".
+        assert detail["eligible"] is not False
+        assert detail["eligibility_state"] == "undetermined"
+
+    @pytest.mark.asyncio
+    async def test_jsonb_returned_as_string_still_reads(self, mock_db_pool):
+        """A pool without a jsonb codec hands back str — must not crash."""
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "kbli:56101",
+                    "entity_type": "kbli",
+                    "name": "Restaurant",
+                    "properties": '{"pma_status": "TERTUTUP"}',
+                }
+            ]
+        )
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:56101"])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        assert result["licensing_requirements"][-1]["details"][0]["eligible"] is False
+
+    @pytest.mark.asyncio
+    async def test_code_absent_from_kg_is_reported_not_dropped(self, mock_db_pool):
+        """
+        Silence reads downstream as "no restriction found".
+
+        A requested code the KG has no row for must come back as an explicit
+        undetermined entry, not as an absent one.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(return_value=[])
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:99999"])
+        result = await check_pma_eligibility_node(state, mock_db_pool)
+        details = result["licensing_requirements"][-1]["details"]
+        assert len(details) == 1
+        assert details[0]["kbli_code"] == "kbli:99999"
+        assert details[0]["eligible"] is None
+        assert "no node in the KG" in details[0]["eligibility_basis"]
+
+    @pytest.mark.asyncio
+    async def test_query_is_not_filtered_by_entity_type(self, mock_db_pool):
+        """
+        The 10 highest-traffic codes are filed as `kbli_code`, not `kbli`.
+
+        Measured 2026-08-03: 47721 / 55111 / 56101 / 62011 / 62021 / 68110 /
+        70201 / 73110 / 74100 / 79110 live ONLY under `entity_type='kbli_code'`
+        (zero overlap with the 1,558 filed as `kbli`), so the old
+        `AND entity_type = 'kbli'` made the restaurant code invisible.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetch = AsyncMock(return_value=[])
+        state = _base_state(is_foreign_investor=True, kbli_codes=["kbli:56101"])
+        await check_pma_eligibility_node(state, mock_db_pool)
+        sql = conn.fetch.await_args.args[0]
+        assert "entity_type = 'kbli'" not in sql
+        assert "entity_id = ANY" in sql
 
     @pytest.mark.asyncio
     async def test_extract_kbli_from_entities(self, mock_db_pool):
