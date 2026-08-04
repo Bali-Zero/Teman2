@@ -6,9 +6,13 @@ import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
-  title: "Idoneità Immobile",
+  title:
+    "Property Eligibility Check — Bali Zoning & Legal Structure | Bali Zero",
   description:
-    "Zoning, struttura legale, tassazione e punteggio di rischio per immobili a Bali.",
+    "Check if a Bali property is eligible for foreign ownership. Get zoning analysis, legal structure (Hak Pakai / HGB via PMA), tax implications, and risk score.",
+  alternates: {
+    canonical: "https://balizero.com/property/eligibility",
+  },
 };
 
 export default function PropertyLayout({
