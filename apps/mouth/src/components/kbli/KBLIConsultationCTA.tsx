@@ -3,7 +3,7 @@ import Link from "next/link";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { getKbliCtaPrices } from "@/lib/bali-zero-prices";
 
-const WHATSAPP_BASE = "https://wa.me/6282230102328";
+const WHATSAPP_BASE = "https://wa.me/628213454721";
 
 interface KBLIConsultationCTAProps {
   code: string;

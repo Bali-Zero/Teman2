@@ -17,7 +17,7 @@ describe("AppWhatsAppCTA", () => {
       ok: true,
       json: async () => ({
         lead_intent_id: "li_1",
-        whatsapp_url: "https://wa.me/6282230102328?text=hi",
+        whatsapp_url: "https://wa.me/628213454721?text=hi",
       }),
     })) as any;
     // jsdom has no IntersectionObserver — stub it
@@ -71,7 +71,7 @@ describe("AppWhatsAppCTA", () => {
     await waitFor(() => {
       expect(onCaptured).toHaveBeenCalledWith({
         leadIntentId: "li_1",
-        whatsappUrl: "https://wa.me/6282230102328?text=hi",
+        whatsappUrl: "https://wa.me/628213454721?text=hi",
       });
     });
   });
@@ -109,6 +109,6 @@ describe("AppWhatsAppCTA", () => {
         "could not open WhatsApp",
       ),
     );
-    expect(window.location.href).toBe("https://wa.me/6282230102328");
+    expect(window.location.href).toBe("https://wa.me/628213454721");
   });
 });
