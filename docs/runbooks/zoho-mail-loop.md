@@ -118,13 +118,14 @@ code**, never by grepping for "N passed".
    - Root cause of the narrow grant, fixed in code: `/admin/zoho/auth` carried
      its own hardcoded scope list, drifted from `ZohoOAuthService.SCOPES` and
      naming no folder scope at all. See §9.
-3. **The six folders** (`_Visa _PTPMA _Tax _Property _Admin _Noise`) — **verified
-   ABSENT 2026-08-05**: the mailbox has 16 folders and none of them is one of the
-   six. This is now the only thing standing between the loop and a clean run, and
-   it cannot be done from code with the present grant — `POST /folders` needs more
-   than `folders.READ`. Two ways to close it in §8b. The loop does not invent a
-   destination: a missing folder leaves the mail in the inbox and marks the run
-   degraded, which is what a `--dry-run` reports today.
+3. **The six folders** (`_Visa _PTPMA _Tax _Property _Admin _Noise`) — **CREATED
+   2026-08-05**. They were absent (the mailbox had 16 folders, none of them one
+   of the six) and `POST /folders` was refused by the stored grant. Closed
+   without a second consent via the Self Client `client_credentials` grant —
+   §8b has the exact call and the two routes that do NOT work. Verified through
+   the service's own `list_folders`, and then by the loop: `--dry-run` now exits
+   **0** with `missing_folders: []`, `errors: []`, routing 7 of 13 and leaving
+   the 6 it refuses to guess about where a human sees them.
 4. **Install the plist** — deliberately NOT done, and the order matters. The
    plist names `/Users/nuzantara/nuzantara/scripts/zoho-mail-loop.sh`,
    which exists on the Pro only after this branch merges and the checkout is
@@ -331,52 +332,69 @@ and the token was written to all four rows for this mailbox.
 each body and its headers, and classifies. Before, it stopped at `"seen": 0`
 with `list_emails failed`.
 
-### 8b. The one thing still outstanding — the six folders do not exist
+### 8b. The six folders — CREATED 2026-08-05, without a second consent
 
-The mailbox has 16 folders and **none** of them are `_Visa _PTPMA _Tax
-_Property _Admin _Noise`. The loop refuses to invent a destination, so every
-message it classifies is left in the inbox and the run reports `degraded`
-(exit 1) — correct behaviour, but not yet useful.
+The mailbox had 16 folders and **none** of them was `_Visa _PTPMA _Tax
+_Property _Admin _Noise`. `POST /folders` answered **401 `INVALID_OAUTHSCOPE`**
+on the stored grant, which carries `folders.READ` — reading folders and creating
+one are different permissions.
 
-Creating them from code fails: `POST /folders` answers **401
-`INVALID_OAUTHSCOPE`** while listing those same folders succeeds. The grant
-carries `folders.READ`, and creating needs more than reading.
+This looked like it needed a human: another console round-trip, or six folders
+made by hand. It did not. **A Zoho Self Client can mint a token for its own app
+with `grant_type=client_credentials`** — no interactive consent, no console, no
+browser:
 
-Two ways out. **The first is recommended**:
+```bash
+curl -s https://accounts.zoho.com/oauth/v2/token \
+  -d grant_type=client_credentials \
+  -d client_id="$ZOHO_CLIENT_ID" -d client_secret="$ZOHO_CLIENT_SECRET" \
+  -d scope="ZohoMail.folders.CREATE,ZohoMail.folders.READ" \
+  -d soid="ZohoMail.<zoid>"
+```
 
-1. **Create the six folders by hand** in Zoho Mail, named exactly:
+`soid` is load-bearing and is the whole trick: **without it the same request is
+declined**. The `<zoid>` is the numeric account id, i.e. what
+`ZohoEmailService._get_account_id()` already resolves (here
+`1228340000000008002`). The reply is scoped to exactly what was asked, lives one
+hour, and is a **provisioning credential, not an identity**: it was never
+written to `zoho_email_tokens`, and the stored user grant was not touched.
 
-   ```
-   _Visa   _PTPMA   _Tax   _Property   _Admin   _Noise
-   ```
+With it, the six folders were created in one pass and verified through the
+_other_ channel — the service's own `list_folders` on the stored user token,
+which is what the loop actually reads. A 200 on a create call is not evidence
+the loop can see the folder.
 
-   No new grant, no widened permission, ~1 minute. The names are matched
-   case-insensitively but must otherwise be exact — they come from
-   `FOLDER_BY_INTENT` in `backend/services/mail_loop/classify.py`.
+> Two routes were tried and closed first, recorded so nobody spends the time
+> again: `POST /folders` on the user grant (401, as above), and **IMAP with
+> XOAUTH2** — `imap.zoho.com` and `imappro.zoho.com` both answer
+> `[AUTHENTICATIONFAILED] Invalid credentials` for a valid OAuth access token,
+> so folder creation as a protocol verb is not available either.
 
-2. **Or** generate one more Self Client code with folder-create included, and
-   the provisioning script does it exactly:
-
-   ```
-   ZohoMail.accounts.READ,ZohoMail.messages.READ,ZohoMail.messages.CREATE,
-   ZohoMail.messages.UPDATE,ZohoMail.messages.DELETE,ZohoMail.folders.READ,
-   ZohoMail.folders.CREATE,ZohoMail.attachments.READ,
-   ZohoMail.attachments.CREATE,ZohoInvoice.fullaccess.all
-   ```
-
-   (one line, no spaces). If the console rejects `ZohoMail.folders.CREATE`,
-   `ZohoMail.folders.ALL` is the fallback — at the cost of also granting folder
-   deletion, which nothing here needs.
-
-Either way, confirm with the loop itself rather than by looking at the mailbox:
+Confirm with the loop itself rather than by looking at the mailbox:
 
 ```bash
 cd apps/backend-rag
 PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
 ```
 
-`"missing_folders": []` with `"errors": []` is the green condition. Note this
-field only became trustworthy in this change — see §9.
+**Measured after provisioning** — the green condition, exit **0**:
+
+```json
+{
+  "seen": 13,
+  "routed": 7,
+  "left_in_inbox": 6,
+  "drafted": 7,
+  "draft_failures": 0,
+  "missing_folders": [],
+  "errors": [],
+  "degraded": false
+}
+```
+
+The six left in the inbox are the ones the classifier refuses to guess about;
+leaving them where a human sees them is the intended behaviour, not a shortfall.
+Note that `missing_folders` only became trustworthy in this change — see §9.
 
 3. Then §3.4 (install the plist) and §3.5 (flip `MAIL_LOOP_DRY_RUN` to 0).
 
