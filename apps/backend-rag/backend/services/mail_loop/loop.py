@@ -28,12 +28,14 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass, field
+from html import unescape
 from pathlib import Path
 from typing import Any, Protocol
 
-from backend.services.mail_loop.classify import Intent, classify
+from backend.services.mail_loop.classify import FOLDER_BY_INTENT, Intent, classify
 from backend.services.mail_loop.draft import (
     DraftRequest,
     DraftUnavailable,
@@ -84,9 +86,13 @@ class MailBackend(Protocol):
         is_unread: bool | None = None,
     ) -> dict[str, Any]: ...
 
-    async def get_email(
-        self, user_id: str, message_id: str, folder_id: str | None = None
-    ) -> dict[str, Any]: ...
+    async def get_message_content(
+        self, user_id: str, folder_id: str, message_id: str
+    ) -> str: ...
+
+    async def get_message_headers(
+        self, user_id: str, folder_id: str, message_id: str
+    ) -> dict[str, str]: ...
 
     async def move_to_folder(
         self, user_id: str, message_ids: list[str], folder_id: str
@@ -199,19 +205,124 @@ class PendingDrafts:
             self._save(data)
 
 
+# --------------------------------------------------------------------------- #
+# Shape normalisation.
+#
+# Two vocabularies meet here and they are NOT the same. Zoho's wire format is
+# camelCase (`folderId`, `messageId`, `fromAddress`); `ZohoEmailService`
+# deliberately translates it into the snake_case shape its other ten consumers
+# — the webmail router included — are written against (`folder_id`,
+# `message_id`, `from: {address, name}`).
+#
+# This module was originally written against the WIRE names while being wired to
+# the SERVICE, so every lookup silently missed: folders never resolved (which is
+# how the inbox id degraded into the literal string "inbox" and Zoho answered
+# UNABLE_TO_PARSE_DATA_TYPE), every message read as "arrived without an id", and
+# every draft would have gone out with an empty recipient. Nine read sites, one
+# cause. The test suite stayed green throughout because its fake spoke the wire
+# names too — a fixture agreeing with the code about a shape neither shares with
+# production.
+#
+# So the translation lives HERE, in one place, and everything downstream reads
+# canonical names. Both spellings are accepted on purpose: they denote the same
+# entity, and a reader that only understood one is exactly what broke. The
+# contract test in test_backend_contract.py pins this against the REAL service
+# transform rather than against another hand-written fake.
+# --------------------------------------------------------------------------- #
+
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _first(mapping: dict[str, Any], *keys: str) -> Any:
+    """First key that is present and not empty. Order is preference, not luck."""
+    for key in keys:
+        value = mapping.get(key)
+        if value not in (None, "", [], {}):
+            return value
+    return None
+
+
 def _folder_id(folders: list[dict[str, Any]], name: str) -> str | None:
     """Resolve a folder name to its Zoho id, case-insensitively."""
     want = name.strip().lower()
     for folder in folders:
-        candidate = str(folder.get("folderName") or folder.get("name") or "")
+        candidate = str(_first(folder, "folder_name", "folderName", "name") or "")
         if candidate.strip().lower() == want:
-            fid = folder.get("folderId") or folder.get("id")
+            fid = _first(folder, "folder_id", "folderId", "id")
             return str(fid) if fid is not None else None
     return None
 
 
+def _folder_names(folders: list[dict[str, Any]]) -> list[str]:
+    return [str(_first(f, "folder_name", "folderName", "name") or "") for f in folders]
+
+
+def _message_id(item: dict[str, Any]) -> str:
+    return str(_first(item, "message_id", "messageId", "id") or "")
+
+
+def _thread_id(item: dict[str, Any]) -> str:
+    return str(_first(item, "thread_id", "threadId") or "")
+
+
+def _folder_of(item: dict[str, Any]) -> str:
+    return str(_first(item, "folder_id", "folderId") or "")
+
+
+def _subject_of(item: dict[str, Any]) -> str:
+    return str(_first(item, "subject") or "")
+
+
+def _sender_of(item: dict[str, Any]) -> str:
+    """The reply address, from either vocabulary.
+
+    The service nests it (`from: {address, name}`); the wire keeps it flat
+    (`fromAddress`, with `sender` as the display name). An address is wanted
+    here, so the display name is only a last resort.
+    """
+    origin = item.get("from")
+    if isinstance(origin, dict):
+        address = origin.get("address") or origin.get("name")
+        if address:
+            return str(address)
+    if isinstance(origin, str) and origin:
+        return origin
+    return str(_first(item, "fromAddress", "sender") or "")
+
+
+def _html_to_text(content: str) -> str:
+    """Flatten Zoho's HTML body enough for the classifier to read it.
+
+    The classifier matches word-boundary markers, so tags left in place would
+    both hide words behind markup and offer `<a href=...>` as false matches.
+    This is not a renderer and does not try to be one.
+    """
+    if not content or "<" not in content:
+        return content
+    text = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", content)
+    text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>", "\n", text)
+    text = _TAG_RE.sub(" ", text)
+    text = unescape(text)
+    return re.sub(r"[ \t]{2,}", " ", text).strip()
+
+
 def _plain_body(email: dict[str, Any]) -> str:
-    for key in ("content", "body", "summary", "snippet"):
+    """Best available text for a message.
+
+    `text_content` / `html_content` are what the service produces; `content` /
+    `body` are the wire names; `snippet` and `summary` are a truncated preview
+    and therefore the LAST resort — classifying on a preview means classifying
+    on the first two lines of a mail, which is how a visa enquiry that mentions
+    KITAS in its third paragraph ends up unrouted.
+    """
+    for key in ("text_content", "content", "body"):
+        value = email.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    html = email.get("html_content")
+    if isinstance(html, str) and html.strip():
+        return _html_to_text(html)
+    for key in ("snippet", "summary"):
         value = email.get(key)
         if isinstance(value, str) and value.strip():
             return value
@@ -245,6 +356,26 @@ class MailLoop:
             summary.errors.append(f"list_folders failed: {exc}")
             return summary
 
+        # Check the routing targets NOW, against the listing we already hold.
+        #
+        # This used to happen lazily, one message at a time, only when a message
+        # actually classified into a folder. That made an empty `missing_folders`
+        # ambiguous in the worst way: it reads as "all six are there" when it can
+        # equally mean "the check never ran" — which is precisely what happened
+        # while list_emails was failing upstream and the run reported no missing
+        # folders for a mailbox that had none of them.
+        for folder_name in sorted(set(FOLDER_BY_INTENT.values())):
+            if _folder_id(folders, folder_name) is None:
+                summary.missing_folders.append(folder_name)
+        if summary.missing_folders:
+            logger.warning(
+                "loop: %d routing folder(s) absent from the mailbox: %s — mail that "
+                "classifies into them will be left in the inbox rather than moved "
+                "somewhere arbitrary",
+                len(summary.missing_folders),
+                ", ".join(summary.missing_folders),
+            )
+
         # Learning first: yesterday's verdict shapes today's drafts.
         try:
             summary.lessons_learned = await self._learn(folders)
@@ -259,7 +390,20 @@ class MailLoop:
     async def _route_and_draft(
         self, folders: list[dict[str, Any]], summary: RunSummary
     ) -> None:
-        inbox_id = _folder_id(folders, "inbox") or "inbox"
+        # No fallback to the literal "inbox" here, and that is deliberate. Zoho
+        # wants a numeric folder id; handing it a word produces
+        # UNABLE_TO_PARSE_DATA_TYPE, so the old `or "inbox"` did not rescue an
+        # unresolvable inbox — it converted a clear "I could not find the inbox"
+        # into an opaque parser error from a remote API. If the inbox is not in
+        # the listing, say so.
+        inbox_id = _folder_id(folders, "inbox")
+        if inbox_id is None:
+            summary.errors.append(
+                "no Inbox in the folder listing (saw: "
+                f"{', '.join(sorted(n for n in _folder_names(folders) if n)) or 'nothing'})"
+            )
+            return
+
         try:
             listing = await self.backend.list_emails(
                 self.user_id,
@@ -275,12 +419,12 @@ class MailLoop:
         summary.seen = len(messages)
 
         for message in messages:
-            message_id = str(message.get("messageId") or message.get("id") or "")
+            message_id = _message_id(message)
             if not message_id:
                 summary.errors.append("a message arrived without an id, skipped")
                 continue
             try:
-                await self._handle_one(message_id, message, folders, summary)
+                await self._handle_one(message_id, message, folders, summary, inbox_id)
             except Exception as exc:  # broad on purpose: one bad message must not
                 # abort the run: the remaining mail still deserves routing.
                 summary.errors.append(f"message {message_id[:12]}: {exc}")
@@ -291,13 +435,51 @@ class MailLoop:
         listed: dict[str, Any],
         folders: list[dict[str, Any]],
         summary: RunSummary,
+        inbox_id: str,
     ) -> None:
-        full = await self.backend.get_email(self.user_id, message_id)
-        subject = str(full.get("subject") or listed.get("subject") or "")
-        body = _plain_body(full) or _plain_body(listed)
-        headers = full.get("headers") if isinstance(full.get("headers"), dict) else None
+        # Read the body without disturbing the mailbox.
+        #
+        # The obvious call here is `get_email`, and it is the wrong one: it marks
+        # the message read as a side effect. This loop selects on `is_unread`, so
+        # a --dry-run — which promises to mutate nothing — would have marked the
+        # entire unread inbox as read, and the next real run would have been
+        # blind to exactly the mail it was supposed to file. It also re-lists
+        # fifty messages per fetch to rebuild metadata `listed` already carries.
+        folder_id = _folder_of(listed) or inbox_id
+        raw_body = await self.backend.get_message_content(
+            self.user_id, folder_id, message_id
+        )
 
-        verdict = classify(subject, body, headers=headers)
+        # Headers are evidence, not a requirement: `is_bulk` treats their absence
+        # as "no evidence of bulk", never as "not bulk". So a header fetch that
+        # fails must not cost us the message — it costs us one signal.
+        headers: dict[str, str] = {}
+        try:
+            headers = await self.backend.get_message_headers(
+                self.user_id, folder_id, message_id
+            )
+        except Exception as exc:
+            logger.warning(
+                "loop: no headers for %s (%s) — classifying without the bulk signal",
+                message_id[:12],
+                exc,
+            )
+
+        # `subject` comes from the listing; the header blob is the fallback,
+        # because the content endpoint returns a body and nothing else.
+        subject = _subject_of(listed) or str(headers.get("Subject") or "")
+        body = _html_to_text(raw_body) or _plain_body(listed)
+
+        full: dict[str, Any] = {
+            "message_id": message_id,
+            "folder_id": folder_id,
+            "thread_id": _thread_id(listed),
+            "subject": subject,
+            "text_content": body,
+            "from": {"address": _sender_of(listed)},
+        }
+
+        verdict = classify(subject, body, headers=headers or None)
 
         if not verdict.routable:
             summary.left_in_inbox += 1
@@ -345,10 +527,8 @@ class MailLoop:
         verdict: Any,
         summary: RunSummary,
     ) -> None:
-        sender = str(
-            full.get("fromAddress") or listed.get("sender") or listed.get("from") or ""
-        )
-        subject = str(full.get("subject") or "")
+        sender = _sender_of(full) or _sender_of(listed)
+        subject = _subject_of(full)
         bucket = bucket_for(verdict.intent.value, verdict.language)
 
         request = DraftRequest(
@@ -379,7 +559,7 @@ class MailLoop:
                 subject=reply_subject,
                 content=content,
             )
-            thread_id = str(full.get("threadId") or listed.get("threadId") or "")
+            thread_id = _thread_id(full) or _thread_id(listed)
             self.pending.add(thread_id, text=text, bucket=bucket)
 
         summary.drafted += 1
@@ -403,17 +583,25 @@ class MailLoop:
 
         candidates: list[MatchCandidate] = []
         for item in sent_messages:
-            mid = str(item.get("messageId") or item.get("id") or "")
+            mid = _message_id(item)
             if not mid:
                 continue
-            full = await self.backend.get_email(self.user_id, mid)
+            # Same reasoning as _handle_one: read the body, do not mark our own
+            # Sent mail read, and do not re-list the folder once per message.
+            try:
+                raw_body = await self.backend.get_message_content(
+                    self.user_id, _folder_of(item) or sent_id, mid
+                )
+            except Exception as exc:
+                logger.warning("learn: could not read sent message %s: %s", mid[:12], exc)
+                continue
             candidates.append(
                 MatchCandidate(
                     message_id=mid,
-                    thread_id=str(full.get("threadId") or item.get("threadId") or "") or None,
-                    subject=str(full.get("subject") or ""),
+                    thread_id=_thread_id(item) or None,
+                    subject=_subject_of(item),
                     to=(),
-                    body=_plain_body(full),
+                    body=_html_to_text(raw_body) or _plain_body(item),
                 )
             )
 

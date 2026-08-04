@@ -18,6 +18,7 @@ Features:
 import logging
 import re
 import time
+from email.parser import HeaderParser
 from typing import Any
 
 import asyncpg
@@ -368,6 +369,36 @@ class ZohoEmailService:
         }
         return type_map.get(folder_type, "custom")
 
+    async def create_folder(
+        self,
+        user_id: str,
+        folder_name: str,
+        parent_folder_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a mail folder.
+
+        Additive by design: Zoho rejects a duplicate name itself, so this does
+        not pre-check — a caller that wants idempotence reads `list_folders`
+        first. Returns the raw `data` block, which carries the new folderId.
+
+        Args:
+            user_id: User ID
+            folder_name: Name of the folder to create
+            parent_folder_id: Optional parent, for a nested folder
+
+        Returns:
+            The created folder as Zoho reports it
+        """
+        logger.info("[Email] Creating folder %r for user=%s", folder_name, user_id)
+        payload: dict[str, Any] = {"folderName": folder_name}
+        if parent_folder_id:
+            payload["parentFolderId"] = parent_folder_id
+
+        response = await self._request(user_id, "POST", "/folders", json_data=payload)
+        data = response.get("data")
+        return data if isinstance(data, dict) else {}
+
     # ═══════════════════════════════════════════
     # EMAIL OPERATIONS
     # ═══════════════════════════════════════════
@@ -551,6 +582,91 @@ class ZohoEmailService:
             "date": email.get("receivedTime") or email.get("sentDateInGMT"),
             "attachments": self._parse_attachments(email.get("attachments", [])),
         }
+
+    async def get_message_content(
+        self,
+        user_id: str,
+        folder_id: str,
+        message_id: str,
+    ) -> str:
+        """
+        Fetch one message body. Reads only — nothing is mutated, nothing re-listed.
+
+        `get_email` above cannot serve a reader that must not disturb the
+        mailbox, for two reasons that are easy to miss:
+
+          * it calls `mark_read` on every fetch. For the web UI that is right —
+            a human opened the mail. For a batch pass it is not: the mail loop
+            selects on `is_unread`, so a --dry-run (which promises to mutate
+            nothing) would silently mark the whole unread inbox as read, and the
+            next real run would be blind to exactly the mail it was meant to file.
+          * it re-lists 50 messages to recover metadata the caller already holds,
+            making a pass over N messages cost N listings plus N fetches.
+
+        Returns the body as Zoho stores it — usually HTML. Callers that need
+        plain text strip it themselves; this method does not guess.
+
+        Args:
+            user_id: User ID
+            folder_id: Folder the message lives in (Zoho requires it in the path)
+            message_id: Message ID
+
+        Returns:
+            The message content, or "" when Zoho reports none
+        """
+        response = await self._request(
+            user_id,
+            "GET",
+            f"/folders/{folder_id}/messages/{message_id}/content",
+        )
+        data = response.get("data")
+        if not isinstance(data, dict):
+            return ""
+        return str(data.get("content") or "")
+
+    async def get_message_headers(
+        self,
+        user_id: str,
+        folder_id: str,
+        message_id: str,
+    ) -> dict[str, str]:
+        """
+        Fetch a message's RFC-822 headers as a dict.
+
+        Only the folder-scoped path exists: `/messages/{id}/header` answers 404
+        `URL_RULE_NOT_CONFIGURED` (measured against the live API, not inferred).
+        Zoho returns the headers as one raw blob under `headerContent`, so it is
+        parsed with the stdlib parser rather than split by hand — headers fold
+        across lines and repeat, and a naive `split(":")` gets both wrong.
+
+        Best-effort: an unparseable or absent blob yields `{}`. The caller uses
+        these for bulk/auto-submitted detection, where a missing header means
+        "no evidence", never "not bulk".
+
+        Args:
+            user_id: User ID
+            folder_id: Folder the message lives in
+            message_id: Message ID
+
+        Returns:
+            Header name -> value, last occurrence winning
+        """
+        response = await self._request(
+            user_id,
+            "GET",
+            f"/folders/{folder_id}/messages/{message_id}/header",
+        )
+        data = response.get("data")
+        blob = ""
+        if isinstance(data, dict):
+            blob = str(data.get("headerContent") or "")
+        elif isinstance(data, str):
+            blob = data
+        if not blob.strip():
+            return {}
+
+        parsed = HeaderParser().parsestr(blob)
+        return {key: str(value) for key, value in parsed.items()}
 
     def _parse_attachments(self, attachments: list) -> list[dict]:
         """Parse attachment metadata to match frontend EmailAttachment format."""
