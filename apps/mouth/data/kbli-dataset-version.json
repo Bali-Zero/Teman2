@@ -1,5 +1,5 @@
 {
-  "lastModified": "2026-08-04",
-  "datasetSha256": "sha256:692e570dfa9b7684c0a34534f2edbc0977829c8f747d50f302cac508304c0d46",
+  "lastModified": "2026-08-05",
+  "datasetSha256": "sha256:7be447759965d27c87f12eb31c8b6d70e6e3cf10f43bb83aaee55fdc22e48365",
   "note": "Last real content change of KBLI_2025_FINAL_CLEAN.json (git commit date). File mtime is NOT usable as SEO lastmod: git/Vercel checkouts stamp clone time, so every deploy would claim all 1,559 /kbli pages 'modified today' (red-team finding 2026-07-05). A vitest guard fails when the dataset hash changes without bumping this file. The hash carries a 'sha256:' prefix so secret scanners do not flag it as a bare high-entropy hex string."
 }
