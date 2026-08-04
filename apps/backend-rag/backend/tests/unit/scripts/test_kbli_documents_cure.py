@@ -38,9 +38,12 @@ matching alone):
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from backend.scripts.kbli_documents_cure import (
+    SNAPSHOT_MAX_AGE_MINUTES,
     DocumentCurePlan,
     archive_params,
     build_cured_content,
@@ -688,7 +691,7 @@ def test_refusal_is_visible_to_a_caller_as_a_nonzero_exit(monkeypatch):
     async def _no_network(_source):
         return []
 
-    def _detector_down(_script):
+    def _detector_down(_script, **_kwargs):
         raise RuntimeError("conformance detector not found")
 
     monkeypatch.setattr(_cure, "load_dataset", _no_network)
@@ -851,3 +854,136 @@ def test_quarantine_scope_is_exempt_from_the_overwrite_warning(monkeypatch, capl
         for r in caplog.records
         if r.levelno >= _logging.WARNING and "content-preservation gate" in r.getMessage()
     ]
+
+
+# ── the snapshot pass-through ───────────────────────────────────────────────────
+#
+# Why it exists at all: reading the live table needs a Keychain password, and
+# reading THAT needs an interactive session — over ssh the same lookup returns
+# `errSecInteractionNotAllowed` (rc 36), i.e. the entry is PRESENT and merely
+# unreadable, which is not the same as absent. The write DSN lives on a different
+# machine than the readable Keychain, so no single non-interactive run holds both
+# halves. The snapshot is captured where the table can be read and carried to
+# where the write can happen.
+#
+# The risk it introduces is W106: a measurement of the world frozen into a file,
+# still being trusted after the world moved. Hence a declared capture time.
+
+
+def test_the_snapshot_path_is_handed_to_the_detector(monkeypatch, tmp_path):
+    """POSITIVE CONTROL. Without this, the refusals below would all pass on a
+    pass-through that quietly dropped the flag and queried the DB anyway."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    seen: dict = {}
+    body = '{"licensing_divergent": [{"code": "82400", "canonical_rows": 7, "table_rows": 0}]}'
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+
+    def _run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return _Proc(1, stdout=body)
+
+    monkeypatch.setattr("backend.scripts.kbli_documents_cure.subprocess.run", _run)
+    now = datetime.now(timezone.utc).isoformat()
+    report = fetch_conformance_report(script, table_json=snap, snapshot_captured_at=now)
+    assert licensing_absent_codes(report) == ["82400"]
+    assert "--table-json" in seen["cmd"] and str(snap) in seen["cmd"], (
+        f"the snapshot never reached the detector: {seen['cmd']}"
+    )
+
+
+def test_the_detector_still_owns_the_verdict(monkeypatch, tmp_path):
+    """The pass-through supplies DATA, never a verdict. Exit 4 must still refuse
+    even when a snapshot was handed in — otherwise 'I gave it a file' would read
+    as 'therefore it could verify'."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+    monkeypatch.setattr(
+        "backend.scripts.kbli_documents_cure.subprocess.run",
+        lambda *a, **k: _Proc(4, stdout="CANNOT VERIFY: canonical unreadable"),
+    )
+    with pytest.raises(RuntimeError, match="CANNOT-VERIFY"):
+        fetch_conformance_report(
+            script, table_json=snap, snapshot_captured_at=datetime.now(timezone.utc).isoformat()
+        )
+
+
+def test_refuses_a_snapshot_with_no_stated_capture_time(tmp_path):
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="requires --snapshot-captured-at"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at=None)
+
+
+def test_refuses_a_stale_snapshot(tmp_path):
+    """A snapshot from hours ago is a reading of a table that may have moved.
+    The threshold is deliberately short: this drives a WRITE."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    old = (datetime.now(timezone.utc) - timedelta(minutes=SNAPSHOT_MAX_AGE_MINUTES + 5)).isoformat()
+    with pytest.raises(RuntimeError, match="minutes ago"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at=old)
+
+
+def test_accepts_a_snapshot_captured_just_now(monkeypatch, tmp_path):
+    """INNOCENCE for the freshness guard — a guard that refuses everything is
+    indistinguishable from a broken pass-through."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+    monkeypatch.setattr(
+        "backend.scripts.kbli_documents_cure.subprocess.run",
+        lambda *a, **k: _Proc(0, stdout='{"licensing_divergent": []}'),
+    )
+    fresh = (datetime.now(timezone.utc) - timedelta(minutes=SNAPSHOT_MAX_AGE_MINUTES - 5)).isoformat()
+    assert fetch_conformance_report(script, table_json=snap, snapshot_captured_at=fresh) == {
+        "licensing_divergent": []
+    }
+
+
+def test_refuses_a_capture_time_in_the_future(tmp_path):
+    """A clock that reads ahead is not evidence of freshness. Refusing beats
+    accepting a timestamp that cannot be true."""
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    ahead = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    with pytest.raises(RuntimeError, match="FUTURE"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at=ahead)
+
+
+def test_refuses_an_unparseable_capture_time(tmp_path):
+    snap = tmp_path / "snap.json"
+    snap.write_text("[]", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="not ISO8601"):
+        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at="yesterday")
+
+
+def test_refuses_a_snapshot_file_that_is_not_there(tmp_path):
+    """Named but absent: the detector would fall back to querying the DB, which
+    is exactly the thing that cannot work where this flag gets used."""
+    with pytest.raises(RuntimeError, match="not found at"):
+        fetch_conformance_report(
+            tmp_path / "d.py",
+            table_json=tmp_path / "absent.json",
+            snapshot_captured_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+
+def test_no_snapshot_means_the_detector_queries_the_db_as_before(monkeypatch, tmp_path):
+    """INNOCENCE for the whole feature: the default path must be untouched, with
+    no --table-json appended and no capture time demanded."""
+    seen: dict = {}
+    script = tmp_path / "kbli_surface_conformance.py"
+    script.write_text("# detector", encoding="utf-8")
+
+    def _run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return _Proc(0, stdout='{"licensing_divergent": []}')
+
+    monkeypatch.setattr("backend.scripts.kbli_documents_cure.subprocess.run", _run)
+    fetch_conformance_report(script)
+    assert "--table-json" not in seen["cmd"]
