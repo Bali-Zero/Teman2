@@ -84,7 +84,20 @@ class _FakeService:
 
     async def list_folders(self, _user_id: str) -> list[dict[str, Any]]:
         self.calls.append("list_folders")
-        return []
+        # A provisioned mailbox, in the shape ZohoEmailService actually returns.
+        # This used to be `[]`, which the loop read as a clean run — an empty
+        # folder list is not an inbox with nothing in it, it is a mailbox we
+        # could not see, and the two must not share an exit code.
+        return [
+            {"folder_id": "F-INBOX", "folder_name": "Inbox"},
+            {"folder_id": "F-SENT", "folder_name": "Sent"},
+            {"folder_id": "F-VISA", "folder_name": "_Visa"},
+            {"folder_id": "F-PTPMA", "folder_name": "_PTPMA"},
+            {"folder_id": "F-TAX", "folder_name": "_Tax"},
+            {"folder_id": "F-PROPERTY", "folder_name": "_Property"},
+            {"folder_id": "F-ADMIN", "folder_name": "_Admin"},
+            {"folder_id": "F-NOISE", "folder_name": "_Noise"},
+        ]
 
     async def list_emails(self, *_a: Any, **_k: Any) -> dict[str, Any]:
         self.calls.append("list_emails")

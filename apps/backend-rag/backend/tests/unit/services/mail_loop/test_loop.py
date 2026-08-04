@@ -33,12 +33,24 @@ from backend.services.mail_loop.loop import (
 )
 from backend.services.mail_loop.style import ReplyStyleStore
 
+# The fixtures speak the shape `ZohoEmailService` PRODUCES (snake_case,
+# `from: {address}`), not the camelCase Zoho puts on the wire.
+#
+# They used to speak the wire shape, and that is how this suite stayed green over
+# a loop that could not resolve a single folder, could not read a single message
+# id, and would have sent every draft to an empty recipient: the fake agreed with
+# the code about a vocabulary neither of them shared with the real backend. A
+# fixture is only evidence if it is shaped like the thing it stands in for —
+# which is what test_backend_contract.py now checks against the real transform.
 FOLDERS = [
-    {"folderId": "F-INBOX", "folderName": "Inbox"},
-    {"folderId": "F-SENT", "folderName": "Sent"},
-    {"folderId": "F-VISA", "folderName": "_Visa"},
-    {"folderId": "F-TAX", "folderName": "_Tax"},
-    {"folderId": "F-NOISE", "folderName": "_Noise"},
+    {"folder_id": "F-INBOX", "folder_name": "Inbox"},
+    {"folder_id": "F-SENT", "folder_name": "Sent"},
+    {"folder_id": "F-VISA", "folder_name": "_Visa"},
+    {"folder_id": "F-TAX", "folder_name": "_Tax"},
+    {"folder_id": "F-PTPMA", "folder_name": "_PTPMA"},
+    {"folder_id": "F-PROPERTY", "folder_name": "_Property"},
+    {"folder_id": "F-ADMIN", "folder_name": "_Admin"},
+    {"folder_id": "F-NOISE", "folder_name": "_Noise"},
 ]
 
 
@@ -50,16 +62,19 @@ class FakeBackend:
     def __init__(
         self,
         inbox: list[dict[str, Any]],
-        bodies: dict[str, dict[str, Any]],
+        bodies: dict[str, str],
         sent: list[dict[str, Any]] | None = None,
         folders: list[dict[str, Any]] | None = None,
+        headers: dict[str, dict[str, str]] | None = None,
     ) -> None:
         self.inbox = inbox
         self.bodies = bodies
         self.sent = sent or []
         self.folders = folders if folders is not None else FOLDERS
+        self.headers = headers or {}
         self.moves: list[tuple[list[str], str]] = []
         self.drafts: list[dict[str, Any]] = []
+        self.reads: list[str] = []
 
     async def list_folders(self, user_id: str) -> list[dict[str, Any]]:
         return self.folders
@@ -77,10 +92,16 @@ class FakeBackend:
             return {"emails": self.sent}
         return {"emails": self.inbox}
 
-    async def get_email(
-        self, user_id: str, message_id: str, folder_id: str | None = None
-    ) -> dict[str, Any]:
+    async def get_message_content(
+        self, user_id: str, folder_id: str, message_id: str
+    ) -> str:
+        self.reads.append(message_id)
         return self.bodies[message_id]
+
+    async def get_message_headers(
+        self, user_id: str, folder_id: str, message_id: str
+    ) -> dict[str, str]:
+        return self.headers.get(message_id, {})
 
     async def move_to_folder(
         self, user_id: str, message_ids: list[str], folder_id: str
@@ -99,20 +120,29 @@ class FakeBackend:
         attachments: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         self.drafts.append({"to": to, "subject": subject, "content": content})
-        return {"messageId": f"D-{len(self.drafts)}"}
+        return {"message_id": f"D-{len(self.drafts)}"}
 
 
 def _msg(mid: str, subject: str, sender: str, thread: str = "") -> dict[str, Any]:
-    return {"messageId": mid, "subject": subject, "sender": sender, "threadId": thread}
-
-
-def _body(mid: str, subject: str, content: str, sender: str, thread: str = "") -> dict[str, Any]:
+    """One entry as `ZohoEmailService.list_emails` transforms it."""
     return {
-        "messageId": mid,
+        "message_id": mid,
+        "folder_id": "F-INBOX",
+        "thread_id": thread,
         "subject": subject,
-        "content": content,
-        "fromAddress": sender,
-        "threadId": thread,
+        "from": {"address": sender, "name": ""},
+        "snippet": "",
+    }
+
+
+def _sent(mid: str, subject: str, thread: str) -> dict[str, Any]:
+    """One entry from the Sent folder, same transform, different folder."""
+    return {
+        "message_id": mid,
+        "folder_id": "F-SENT",
+        "thread_id": thread,
+        "subject": subject,
+        "from": {"address": "zero@balizero.com", "name": "Zero"},
     }
 
 
@@ -145,15 +175,7 @@ def _loop(backend: FakeBackend, tmp_path: Path, *, dry_run: bool = False) -> Mai
 def test_routes_and_drafts(tmp_path: Path, stub_model: None) -> None:
     backend = FakeBackend(
         inbox=[_msg("m1", "KITAS renewal", "sofia@x.example", "T1")],
-        bodies={
-            "m1": _body(
-                "m1",
-                "KITAS renewal",
-                "My KITAS expires next month, what do you need?",
-                "sofia@x.example",
-                "T1",
-            )
-        },
+        bodies={"m1": "My KITAS expires next month, what do you need?"},
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
 
@@ -174,7 +196,7 @@ def test_draft_carries_a_visible_marker(tmp_path: Path, stub_model: None) -> Non
     """
     backend = FakeBackend(
         inbox=[_msg("m1", "SPT question", "a@x.example")],
-        bodies={"m1": _body("m1", "SPT question", "How do I file my SPT?", "a@x.example")},
+        bodies={"m1": "How do I file my SPT?"},
     )
     asyncio.run(_loop(backend, tmp_path).run())
     content = backend.drafts[0]["content"]
@@ -188,10 +210,10 @@ def test_missing_folder_leaves_mail_in_inbox_and_degrades(
     """No destination folder: do not move, do not pretend it worked."""
     backend = FakeBackend(
         inbox=[_msg("m1", "KITAS renewal", "a@x.example")],
-        bodies={"m1": _body("m1", "KITAS renewal", "About my KITAS extension.", "a@x.example")},
+        bodies={"m1": "About my KITAS extension."},
         folders=[
-            {"folderId": "F-INBOX", "folderName": "Inbox"},
-            {"folderId": "F-SENT", "folderName": "Sent"},
+            {"folder_id": "F-INBOX", "folder_name": "Inbox"},
+            {"folder_id": "F-SENT", "folder_name": "Sent"},
         ],
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
@@ -207,7 +229,7 @@ def test_unknown_stays_in_inbox(tmp_path: Path, stub_model: None) -> None:
     """Refusing to guess is a feature: a human still sees it."""
     backend = FakeBackend(
         inbox=[_msg("m1", "Hello", "a@x.example")],
-        bodies={"m1": _body("m1", "Hello", "Just saying hi, hope you are well.", "a@x.example")},
+        bodies={"m1": "Just saying hi, hope you are well."},
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
     assert backend.moves == []
@@ -218,15 +240,10 @@ def test_unknown_stays_in_inbox(tmp_path: Path, stub_model: None) -> None:
 def test_noise_is_filed_but_never_answered(tmp_path: Path, stub_model: None) -> None:
     backend = FakeBackend(
         inbox=[_msg("m1", "Immigration newsletter", "news@x.example")],
-        bodies={
-            "m1": {
-                "messageId": "m1",
-                "subject": "Immigration newsletter",
-                "content": "Our monthly roundup on KITAS rules.",
-                "fromAddress": "news@x.example",
-                "headers": {"List-Unsubscribe": "<mailto:u@x.example>"},
-            }
-        },
+        bodies={"m1": "Our monthly roundup on KITAS rules."},
+        # Headers arrive from their own endpoint now, not folded into the body
+        # payload — which is also the only place Zoho actually exposes them.
+        headers={"m1": {"List-Unsubscribe": "<mailto:u@x.example>"}},
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
     assert backend.moves == [(["m1"], "F-NOISE")]
@@ -242,7 +259,7 @@ def test_dry_run_performs_zero_mutations(tmp_path: Path, stub_model: None) -> No
     """
     backend = FakeBackend(
         inbox=[_msg("m1", "KITAS renewal", "a@x.example", "T1")],
-        bodies={"m1": _body("m1", "KITAS renewal", "About my KITAS.", "a@x.example", "T1")},
+        bodies={"m1": "About my KITAS."},
     )
     summary = asyncio.run(_loop(backend, tmp_path, dry_run=True).run())
 
@@ -263,7 +280,7 @@ def test_drafting_nothing_is_not_success(tmp_path: Path, monkeypatch: pytest.Mon
 
     backend = FakeBackend(
         inbox=[_msg("m1", "KITAS renewal", "a@x.example")],
-        bodies={"m1": _body("m1", "KITAS renewal", "About my KITAS.", "a@x.example")},
+        bodies={"m1": "About my KITAS."},
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
 
@@ -277,7 +294,7 @@ def test_one_bad_message_does_not_abort_the_run(tmp_path: Path, stub_model: None
     """The rest of the mail still deserves routing."""
     backend = FakeBackend(
         inbox=[_msg("bad", "x", "a@x.example"), _msg("m2", "KITAS renewal", "b@x.example")],
-        bodies={"m2": _body("m2", "KITAS renewal", "About my KITAS.", "b@x.example")},
+        bodies={"m2": "About my KITAS."},
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
 
@@ -301,20 +318,14 @@ def test_learning_pass_stores_a_lesson(tmp_path: Path, stub_model: None) -> None
         bucket="visa/en",
     )
 
-    sent_body = _body(
-        "s1",
-        "Re: KITAS renewal",
-        (
-            "Dear client, thanks for writing. For the KITAS renewal our team will "
-            "send the official quotation shortly. Could you send the passport scan?"
-        ),
-        "zero@balizero.com",
-        "T-42",
+    sent_body = (
+        "Dear client, thanks for writing. For the KITAS renewal our team will "
+        "send the official quotation shortly. Could you send the passport scan?"
     )
     backend = FakeBackend(
         inbox=[],
         bodies={"s1": sent_body},
-        sent=[{"messageId": "s1", "threadId": "T-42", "subject": "Re: KITAS renewal"}],
+        sent=[_sent("s1", "Re: KITAS renewal", "T-42")],
     )
 
     loop = MailLoop(
@@ -356,19 +367,13 @@ def test_learning_is_idempotent_across_runs(tmp_path: Path, stub_model: None) ->
         ),
         bucket="tax/en",
     )
-    sent_body = _body(
-        "s1",
-        "Re: fee",
-        (
-            "Dear client, thanks for writing. Our team will send the official "
-            "quotation and we can start once you confirm."
-        ),
-        "zero@balizero.com",
-        "T-1",
+    sent_body = (
+        "Dear client, thanks for writing. Our team will send the official "
+        "quotation and we can start once you confirm."
     )
     backend = FakeBackend(
         inbox=[], bodies={"s1": sent_body},
-        sent=[{"messageId": "s1", "threadId": "T-1", "subject": "Re: fee"}],
+        sent=[_sent("s1", "Re: fee", "T-1")],
     )
     style = ReplyStyleStore(tmp_path / "reply-style.md")
 
@@ -391,15 +396,7 @@ def test_pending_buffer_holds_no_client_identifiers(tmp_path: Path, stub_model: 
     """
     backend = FakeBackend(
         inbox=[_msg("m1", "KITAS for Sofia Mueller", "sofia.mueller@client.example", "T9")],
-        bodies={
-            "m1": _body(
-                "m1",
-                "KITAS for Sofia Mueller",
-                "About my KITAS, my number is +62 812 3456 7890.",
-                "sofia.mueller@client.example",
-                "T9",
-            )
-        },
+        bodies={"m1": "About my KITAS, my number is +62 812 3456 7890."},
     )
     asyncio.run(_loop(backend, tmp_path).run())
 
@@ -417,7 +414,7 @@ def test_corrupt_pending_buffer_does_not_break_routing(
     (tmp_path / "pending.json").write_text("{ this is not json", encoding="utf-8")
     backend = FakeBackend(
         inbox=[_msg("m1", "KITAS renewal", "a@x.example")],
-        bodies={"m1": _body("m1", "KITAS renewal", "About my KITAS.", "a@x.example")},
+        bodies={"m1": "About my KITAS."},
     )
     summary = asyncio.run(_loop(backend, tmp_path).run())
     assert summary.routed == 1

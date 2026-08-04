@@ -104,24 +104,27 @@ code**, never by grepping for "N passed".
    value is readable from **inside** a running machine
    (`fly ssh console -C printenv`), which is where it was read. Installed on the
    Pro; **3/3 refresh tokens now refresh** (probed without writing).
-2. **Folder access — THE BLOCKER, and it needs a re-consent.** Measured on all
-   four token rows of the mailbox: every stored grant is
-   `ZohoMail.messages.ALL ZohoMail.accounts.READ`. So `GET /messages/view`
-   answers **200** — the loop can read the inbox — while
-   `GET /accounts/<id>/folders` answers **401 `INVALID_OAUTHSCOPE`**. The loop
-   can read the mail but cannot see the folders it is supposed to route into,
-   and no retry will change that.
+2. **Folder access — RESOLVED 2026-08-05.** It was the blocker: every stored
+   grant was `ZohoMail.messages.ALL ZohoMail.accounts.READ`, so
+   `GET /messages/view` answered **200** while
+   `GET /accounts/<id>/folders` answered **401 `INVALID_OAUTHSCOPE`** — the loop
+   could read the mail and not see the folders it routes into.
    - The `accounts.READ` payload was checked for a folder list as a way around
      it: it has none (`emailAddress` and `sendMailDetails` are its only nested
-     lists), so there is no path to a folder id with the present grant.
-   - `get_authorization_url` **already requests `ZohoMail.folders.READ`** — the
-     stored grant simply predates it. One re-consent fixes it permanently.
-   - That re-consent is a Zoho web login as the mailbox owner plus an Accept:
-     the one category this session cannot do for you. Steps are in §8.
-3. **The six folders** (`_Visa _PTPMA _Tax _Property _Admin _Noise`) — still
-   **NOT verified**, and cannot be until step 2 is done: listing them is exactly
-   the call that 401s. The loop does not create them; a missing folder leaves the
-   mail in the inbox and marks the run degraded.
+     lists), so there was no path to a folder id with that grant.
+   - Fixed by a Self Client re-consent (§8), **not** by the redirect flow this
+     runbook originally prescribed — that flow cannot work for this client at
+     all. The grant now carries `ZohoMail.folders.READ` and listing succeeds.
+   - Root cause of the narrow grant, fixed in code: `/admin/zoho/auth` carried
+     its own hardcoded scope list, drifted from `ZohoOAuthService.SCOPES` and
+     naming no folder scope at all. See §9.
+3. **The six folders** (`_Visa _PTPMA _Tax _Property _Admin _Noise`) — **verified
+   ABSENT 2026-08-05**: the mailbox has 16 folders and none of them is one of the
+   six. This is now the only thing standing between the loop and a clean run, and
+   it cannot be done from code with the present grant — `POST /folders` needs more
+   than `folders.READ`. Two ways to close it in §8b. The loop does not invent a
+   destination: a missing folder leaves the mail in the inbox and marks the run
+   degraded, which is what a `--dry-run` reports today.
 4. **Install the plist** — deliberately NOT done, and the order matters. The
    plist names `/Users/nuzantara/nuzantara/scripts/zoho-mail-loop.sh`,
    which exists on the Pro only after this branch merges and the checkout is
@@ -292,39 +295,135 @@ user to an account they asked to leave).
   (id 25). Deleting production data is not this branch's business, and the
   ordering makes it harmless. Someone should still clean it up.
 
-## 8. The one action this session cannot do — the re-consent
+## 8. The re-consent — DONE 2026-08-05, and it was not the flow this said
 
-Everything else is done. This is a Zoho login plus an Accept, which is a consent
-only the mailbox owner holds.
+> CORRECTION. This section described a browser-redirect flow: fetch a URL from
+> `/admin/zoho/auth`, open it, accept, get redirected to the callback. That flow
+> **cannot work for this client**, and following it costs an hour before the
+> reason appears.
+>
+> The Zoho client is a **Self Client**. A Self Client has no redirect URI —
+> there is no field for one in the API console — so the authorize URL answers
+> _"Invalid Redirect Uri"_ before any consent screen is ever shown. Zoho hands
+> the grant code straight to the operator in the console instead.
+>
+> Worth recording how long that stayed hidden: `curl` on the authorize URL
+> returned the sign-in page, which reads like success. Zoho validates
+> `redirect_uri` only **after** login, so an unauthenticated request can never
+> see the error. The check was structurally incapable of failing.
 
-1. Ask the backend for the consent URL. `/admin/zoho/auth` is **not** a page: it
-   is a JSON endpoint guarded by a header, and it returns the URL.
+**What was actually done** (2026-08-05): the operator generated a grant code in
+the API console (Generate Code tab, no redirect URI involved), and it was
+exchanged server-side with **no `redirect_uri` parameter**. The exchange is
+single-use and expires in minutes, so it is done in one pass, not dry-run first.
+Granted scope, read back from the exchange reply rather than assumed:
 
-   ```bash
-   curl -s -H "X-Admin-Secret: $ADMIN_SECRET_KEY" \
-     https://nuzantara-rag.fly.dev/admin/zoho/auth
+```
+ZohoInvoice.fullaccess.all ZohoMail.accounts.READ ZohoMail.messages.ALL
+ZohoMail.folders.READ ZohoMail.attachments.READ ZohoMail.attachments.CREATE
+```
+
+`ZohoMail.folders.READ` is present — the thing the whole exercise was about —
+and the token was written to all four rows for this mailbox.
+
+**Proof it took**, measured, not inferred: `--dry-run` now reports
+`"seen": 13, "errors": []`. It lists the folders, lists the unread mail, fetches
+each body and its headers, and classifies. Before, it stopped at `"seen": 0`
+with `list_emails failed`.
+
+### 8b. The one thing still outstanding — the six folders do not exist
+
+The mailbox has 16 folders and **none** of them are `_Visa _PTPMA _Tax
+_Property _Admin _Noise`. The loop refuses to invent a destination, so every
+message it classifies is left in the inbox and the run reports `degraded`
+(exit 1) — correct behaviour, but not yet useful.
+
+Creating them from code fails: `POST /folders` answers **401
+`INVALID_OAUTHSCOPE`** while listing those same folders succeeds. The grant
+carries `folders.READ`, and creating needs more than reading.
+
+Two ways out. **The first is recommended**:
+
+1. **Create the six folders by hand** in Zoho Mail, named exactly:
+
+   ```
+   _Visa   _PTPMA   _Tax   _Property   _Admin   _Noise
    ```
 
-2. Open the URL it returns in a browser signed in as `zero@balizero.com`. The
-   consent screen must list **`ZohoMail.folders.READ`** — verified locally: the
-   URL requests `accounts.READ`, `messages.READ/CREATE/UPDATE/DELETE`,
-   `folders.READ` and both attachment scopes, with `access_type=offline` and
-   `prompt=consent`. Accept.
-3. Zoho redirects to `https://nuzantara-rag.fly.dev/api/integrations/zoho/callback`,
-   which exchanges the code and stores the numeric accountId against
-   `https://mail.zoho.com` — so the row it writes is a usable one, and
-   `ON CONFLICT (user_id, account_id)` updates the existing good row in place
-   rather than adding a third.
-4. Confirm the grant actually widened. The honest check is the API, **not** the
-   `scopes` column — that column records what was _asked for_ at connect time
-   and is not updated on conflict, so it can read wider than the real grant:
+   No new grant, no widened permission, ~1 minute. The names are matched
+   case-insensitively but must otherwise be exact — they come from
+   `FOLDER_BY_INTENT` in `backend/services/mail_loop/classify.py`.
 
-   ```bash
-   cd apps/backend-rag
-   PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
+2. **Or** generate one more Self Client code with folder-create included, and
+   the provisioning script does it exactly:
+
+   ```
+   ZohoMail.accounts.READ,ZohoMail.messages.READ,ZohoMail.messages.CREATE,
+   ZohoMail.messages.UPDATE,ZohoMail.messages.DELETE,ZohoMail.folders.READ,
+   ZohoMail.folders.CREATE,ZohoMail.attachments.READ,
+   ZohoMail.attachments.CREATE,ZohoInvoice.fullaccess.all
    ```
 
-   Exit **2** with `INVALID_OAUTHSCOPE` means the consent did not take. Exit 0 or
-   1 means it did, and the JSON summary lists which of the six folders exist.
+   (one line, no spaces). If the console rejects `ZohoMail.folders.CREATE`,
+   `ZohoMail.folders.ALL` is the fallback — at the cost of also granting folder
+   deletion, which nothing here needs.
 
-5. Then §3.4 (install the plist) and §3.5 (flip `MAIL_LOOP_DRY_RUN` to 0).
+Either way, confirm with the loop itself rather than by looking at the mailbox:
+
+```bash
+cd apps/backend-rag
+PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
+```
+
+`"missing_folders": []` with `"errors": []` is the green condition. Note this
+field only became trustworthy in this change — see §9.
+
+3. Then §3.4 (install the plist) and §3.5 (flip `MAIL_LOOP_DRY_RUN` to 0).
+
+## 9. The loop had never been run against the real backend
+
+The package was written against an _imagined_ `ZohoEmailService`. Nine read
+sites, one cause: Zoho puts camelCase on the wire (`folderId`, `messageId`,
+`fromAddress`), the service deliberately translates that into the snake_case
+shape its ten other consumers use (`folder_id`, `message_id`,
+`from: {address}`), and the loop read the wire names while being wired to the
+service. Everything missed, silently:
+
+| what the loop read        | what it got           | consequence                                                                                                                                                                 |
+| ------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `folderName` / `folderId` | nothing               | **no folder ever resolved.** The inbox id degraded to the literal string `"inbox"`, and Zoho answered `UNABLE_TO_PARSE_DATA_TYPE` — an error that points at them, not at us |
+| `messageId` (2 sites)     | nothing               | every message would have read as _"arrived without an id, skipped"_                                                                                                         |
+| `threadId`                | nothing               | the learning pass could never match a sent reply                                                                                                                            |
+| `fromAddress` / `sender`  | nothing               | **every draft addressed to nobody**                                                                                                                                         |
+| `content` / `body`        | nothing               | classification fell back to the 100-char preview — a KITAS question in paragraph three is invisible                                                                         |
+| `headers`                 | never returned at all | `is_bulk` permanently false; no newsletter could ever be detected as bulk                                                                                                   |
+
+Two more, found in the same pass:
+
+- `get_email` **requires** a `folder_id` and the loop called it without one, so
+  every message would have raised `ValueError` anyway;
+- `get_email` **marks the message read**. The loop selects on `is_unread`, so a
+  `--dry-run` — which promises to mutate nothing — would have marked the entire
+  unread inbox as read, and the next real run would have been blind to exactly
+  the mail it was meant to file. It also re-listed 50 messages per fetch.
+
+**Why 20 green tests never saw any of it:** the fake spoke the wire names too. A
+fixture agreeing with the code about a vocabulary neither shares with production
+is not evidence. The fixtures now speak the shape the service produces, and
+`test_backend_contract.py` puts the fake at the **HTTP boundary** instead, so
+everything above it is the real transform. It is mutation-verified: reverting
+the folder lookup turns 17 tests red, deleting the sender branch 2, and adding
+a `mark_read` back into the read path 1.
+
+**Also cured, same class:** `missing_folders` was computed lazily, one message
+at a time, only when a message happened to classify into a folder. An empty list
+therefore meant _either_ "all six are present" _or_ "the check never ran" — and
+during the failure above it read empty for a mailbox that had none of them. It
+is now checked up front against the listing the run already holds.
+
+And the reason the grant was narrow in the first place: `/admin/zoho/auth`
+carried its **own hardcoded copy** of the scope list
+(`ZohoInvoice.fullaccess.all,ZohoMail.messages.ALL` — no folders at all) that
+had drifted from `ZohoOAuthService.SCOPES`. That endpoint is the one humans are
+sent to; the mail loop names it verbatim in its own error message. It now builds
+the scope from the service's list, pinned by `test_zoho_consent_scope.py`.
