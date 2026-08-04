@@ -237,13 +237,20 @@ async def _amain(args: argparse.Namespace) -> int:
 
     blocking = _consent_blocker(summary.errors)
     if blocking is not None:
+        # Deliberately does NOT recite which scopes the stored grant holds.
+        # An earlier version did, and it went stale the moment the grant was
+        # widened: it kept telling a reader the token carried only
+        # `messages.ALL + accounts.READ` long after that stopped being true.
+        # A message that inventories mutable state is a message that will lie.
+        # Say what failed, and where the procedure is written down.
         logger.error(
-            "the stored Zoho grant does not cover folders — %s. The loop can read "
-            "the mailbox but cannot list the folders it routes into, so no amount "
-            "of retrying will help: this needs a re-consent, not another run. "
-            "Re-authorise at /admin/zoho/auth (the consent URL already requests "
-            "ZohoMail.folders.READ; the stored grant predates it and carries only "
-            "ZohoMail.messages.ALL + ZohoMail.accounts.READ).",
+            "the stored Zoho grant does not cover what this run needed — %s. No "
+            "amount of retrying will help: a grant is widened by re-consenting, "
+            "not by asking again. GET /admin/zoho/auth returns the exact scope "
+            "string and the procedure; note that this client is a Self Client, "
+            "so the browser-redirect flow does NOT apply to it — the code comes "
+            "from the API console's Generate Code tab. Full runbook: "
+            "docs/runbooks/zoho-mail-loop.md §8.",
             blocking,
         )
         return 2
