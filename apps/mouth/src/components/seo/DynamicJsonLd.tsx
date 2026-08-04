@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { SERVICES_DATA } from "@/data/services_data";
+import { WA_NUMBER } from "@/lib/whatsapp-utm";
 import { useEffect, useState } from "react";
 
 interface PageSchema {
@@ -39,7 +40,7 @@ export function DynamicJsonLd() {
           logo: `${baseUrl}/assets/logo/balizero-logo.png`,
           contactPoint: {
             "@type": "ContactPoint",
-            telephone: "+62-859-0436-9574",
+            telephone: `+${WA_NUMBER}`,
             contactType: "customer service",
             availableLanguage: ["English", "Indonesian"],
           },
@@ -121,7 +122,7 @@ export function DynamicJsonLd() {
           contactPoint: [
             {
               "@type": "ContactPoint",
-              telephone: "+62-859-0436-9574",
+              telephone: `+${WA_NUMBER}`,
               contactType: "customer service",
               availableLanguage: ["English", "Indonesian"],
               areaServed: "ID",
