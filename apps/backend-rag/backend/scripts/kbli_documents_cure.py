@@ -137,6 +137,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import asyncpg
@@ -340,14 +341,70 @@ def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str |
     return None
 
 
-def fetch_conformance_report(script: Path | None) -> dict:
+SNAPSHOT_MAX_AGE_MINUTES = 60
+
+
+def _check_snapshot_freshness(captured_at: str | None) -> None:
+    """A supplied snapshot is a MEASUREMENT OF THE WORLD, and a measurement
+    frozen into a file goes stale silently (W106). The caller must say when it
+    was taken; a value older than an hour is refused rather than trusted.
+
+    Deliberately an assertion by the caller rather than the file's mtime: `scp`
+    without `-p` restamps mtime, so an mtime check would read every shipped
+    snapshot as fresh — a guard that cannot fail is worse than none."""
+    if captured_at is None:
+        raise RuntimeError(
+            "--conformance-table-json requires --snapshot-captured-at <ISO8601>: a snapshot "
+            "with no stated capture time cannot be distinguished from one taken last week"
+        )
+    try:
+        taken = datetime.fromisoformat(captured_at)
+    except ValueError as exc:
+        raise RuntimeError(f"--snapshot-captured-at is not ISO8601: {captured_at!r} ({exc})") from exc
+    if taken.tzinfo is None:
+        taken = taken.replace(tzinfo=timezone.utc)
+    age = (datetime.now(timezone.utc) - taken).total_seconds() / 60
+    if age > SNAPSHOT_MAX_AGE_MINUTES:
+        raise RuntimeError(
+            f"snapshot was captured {age:.0f} minutes ago (limit {SNAPSHOT_MAX_AGE_MINUTES}) — "
+            "re-capture it. Curing against a stale reading of the table is how a cure writes "
+            "over rows it never actually looked at."
+        )
+    if age < -5:
+        raise RuntimeError(
+            f"--snapshot-captured-at is {-age:.0f} minutes in the FUTURE — refusing rather than "
+            "accepting a timestamp that cannot be true"
+        )
+
+
+def fetch_conformance_report(
+    script: Path | None,
+    table_json: Path | None = None,
+    snapshot_captured_at: str | None = None,
+) -> dict:
     """I/O. Runs the detector and returns its JSON report.
 
     Judged by EXIT CODE, never by "did it print something": exit 4 means the
     detector could not read one of the two sides, and its report then carries
     zero divergences — the exact shape of a healthy fleet. Consuming that as
     "nothing to cure" is how a cure silently becomes a no-op (W84). Anything
-    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict."""
+    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict.
+
+    WHY `table_json` EXISTS. Reading the live table needs a Keychain password,
+    and reading THAT needs an interactive session: over ssh the same lookup
+    returns `errSecInteractionNotAllowed` (rc 36) — the entry is present and
+    simply unreadable, which is not the same as absent. The write DSN lives on
+    a different machine than the readable Keychain, so no single non-interactive
+    run holds both halves. This lets the snapshot be captured where the table
+    can be read and carried to where the write can happen.
+
+    What it does NOT do: hand the cure a verdict. The detector still derives the
+    divergence itself from canonical plus the snapshot, and still owns the
+    predicate — passing a hand-written REPORT would let anything drive a write."""
+    if table_json is not None:
+        _check_snapshot_freshness(snapshot_captured_at)
+        if not table_json.is_file():
+            raise RuntimeError(f"--conformance-table-json not found at {table_json}")
     if script is None:
         raise RuntimeError(
             "conformance detector not found by walking up from this file — no repo layout "
@@ -360,9 +417,10 @@ def fetch_conformance_report(script: Path | None) -> dict:
             f"conformance detector not found at {script} — refusing to guess scope from a "
             "predicate this script does not own"
         )
-    proc = subprocess.run(
-        [sys.executable, str(script), "--json"], capture_output=True, text=True, check=False
-    )
+    cmd = [sys.executable, str(script), "--json"]
+    if table_json is not None:
+        cmd += ["--table-json", str(table_json)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode == CONFORMANCE_EXIT_CANNOT_VERIFY:
         raise RuntimeError(
             "conformance detector returned CANNOT-VERIFY (exit 4) — it could not read canonical "
@@ -596,6 +654,25 @@ async def main() -> int | None:
         help="path to kbli_surface_conformance.py (the sole owner of the divergence predicate)",
     )
     ap.add_argument(
+        "--conformance-table-json",
+        type=Path,
+        default=None,
+        help=(
+            "table snapshot for the detector to read INSTEAD of querying the DB, for when the "
+            "readable Keychain and the write DSN are on different machines. The detector still "
+            "derives the verdict itself. Requires --snapshot-captured-at"
+        ),
+    )
+    ap.add_argument(
+        "--snapshot-captured-at",
+        default=None,
+        metavar="ISO8601",
+        help=(
+            f"when --conformance-table-json was captured; refused if older than "
+            f"{SNAPSHOT_MAX_AGE_MINUTES} minutes"
+        ),
+    )
+    ap.add_argument(
         "--dataset",
         default=DATASET_URL,
         help="canonical dataset: local file path (read directly) or URL (httpx fetch). "
@@ -620,7 +697,11 @@ async def main() -> int | None:
             logger.warning("--only ignored: --all-quarantined takes precedence")
     elif args.all_licensing_absent:
         try:
-            report = fetch_conformance_report(args.conformance_script)
+            report = fetch_conformance_report(
+                args.conformance_script,
+                table_json=args.conformance_table_json,
+                snapshot_captured_at=args.snapshot_captured_at,
+            )
         except (RuntimeError, OSError, json.JSONDecodeError) as exc:
             logger.error("refusing to cure: %s", exc)
             return EXIT_REFUSED
