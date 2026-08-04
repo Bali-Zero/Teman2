@@ -179,6 +179,7 @@ Full list: see `.github/CODEOWNERS`.
      on top of its predecessors. Speculation does not weaken the property C3 exists to verify: entry
      2 is still built on entry 1's merge result, and if entry 1 is ejected, entries built on it are
      rebuilt rather than merged. What changes is only how many are in flight while you watch.
+
 5. **Gradual re-open.** Widen from canary-only PRs to the general `gh pr merge --auto --squash`
    population per the whitelist (§3) and manual arms alike. Watch `merge-queue-watch.yml` and
    `Main-push Failure Watch` (see below) closely through this window — they are the two automated
@@ -448,6 +449,34 @@ Two traps while measuring this:
 - **The PR body is truncated on large group PRs.** A group titled "32 updates" listed only 13
   `from X to Y` pairs, so a major-version scan over the body silently covered under half of them.
   Read the **diff**, not the narration.
+
+---
+
+## 6quinquies. Ledger PRs (`.claude/skills/modus/PENDING-ARMS.md`): `mergeable: false` is a lie
+
+`.gitattributes` declares `.claude/skills/modus/PENDING-ARMS.md merge=union` — a built-in git driver
+that resolves by keeping both sides' lines, exactly right for an append-only registry. **GitHub's
+mergeability computation does not apply `.gitattributes` merge drivers**: it runs a plain three-way
+merge and reports `mergeable: false` / `mergeStateStatus: DIRTY` on a PR that touches this file even
+when both sides are perfectly union-mergeable. Measured on PR #3527 (same base `04b3eb38e`, same head
+`aa7d97029`): GitHub said `dirty`, `git merge --no-commit` succeeded cleanly in **both** directions.
+
+**The documented server-side fix does not work here either** — `gh pr update-branch` fails with
+`"Cannot update PR branch due to conflicts"` on exactly this class of PR.
+
+**A `dirty`/`false` reading on a ledger-touching PR is expected, not a real conflict.** The only path:
+
+```bash
+git -C <worktree> merge origin/main    # local merge, NOT gh pr update-branch
+git -C <worktree> push
+```
+
+Two things NOT to do when you see this:
+
+- Do not hunt for a conflict that does not exist — burns a cycle for nothing.
+- Do not hand-edit the ledger to "resolve" it. That drops the other side's open rows — precisely the
+  loss `merge=union` exists to prevent. Verify after any ledger merge that the open-row count did not
+  drop: `python3 scripts/pending_arms_report.py --json` before and after, compare `counts.total`.
 
 ---
 
