@@ -62,6 +62,13 @@ class ZohoOAuthService:
         "ZohoMail.messages.UPDATE",
         "ZohoMail.messages.DELETE",
         "ZohoMail.folders.READ",
+        # Provisioning the mail loop's routing folders (_Visa, _Tax, ...) needs
+        # more than READ: with READ alone `POST /folders` answers 401
+        # INVALID_OAUTHSCOPE while listing the very same folders succeeds —
+        # measured, not inferred. CREATE and not ALL on purpose: nothing in this
+        # system has any business deleting a folder, and a grant is the wrong
+        # place to be generous.
+        "ZohoMail.folders.CREATE",
         "ZohoMail.attachments.READ",
         "ZohoMail.attachments.CREATE",
     ]
