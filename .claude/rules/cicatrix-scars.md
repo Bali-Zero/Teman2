@@ -911,3 +911,41 @@ Più due, trovati nella stessa passata: `get_email` **pretende** un `folder_id` 
 **GOTCHA di consegna, tre in fila.** (1) Il gate pre-push ha rifiutato un push perché **avevo committato mentre un push era in volo**: la suite aveva giudicato un albero e git ne stava spedendo un altro, col log che avrebbe confermato lo SHA vecchio. (2) Una notifica di background «exit code 0» era l'exit del mio `echo` finale, non del `git push` sotto, che era stato bocciato (W97 nel mezzo di una sessione che curava W97). (3) A merge avvenuto GitHub **cancella il branch**, e il push successivo muore con `cannot lock ref … unable to resolve reference`: i commit rimasti vanno su un branch nuovo **derivato da `origin/main`**, non sul vecchio — altrimenti lo squash del merge fa ri-comparire tutto nel diff (W88).
 
 **Reference:** `backend/services/mail_loop/loop.py` (blocco «Shape normalisation» + `_first`/accessori canonici) · `backend/services/integrations/zoho_email_service.py` (`get_message_content` / `get_message_headers`, non mutanti, + `create_folder`) · corpus `backend/tests/unit/services/mail_loop/test_backend_contract.py` (fake al confine HTTP, mutation-verified 17/2/1) · `backend/tests/unit/services/integrations/test_zoho_consent_scope.py` (una lista di permessi, non due) · runbook `docs/runbooks/zoho-mail-loop.md` §8b/§9 — PR #3598 + #3600.
+
+---
+
+## W115 — la regola era scritta nel commento e non applicata; poi la cura, messa DOPO la scelta del vincitore, non filtrava: metteva il veto — 2026-08-05
+
+_Discovered: 2026-08-05, chiedendo al `mail_loop` non «instradi?» ma «su cosa?». Severity: **P2** (nessun dato perso: l'organo era in dry-run; ma è la classe che decide se il dry-run può essere spento) · Status: **CURED**, PR #3603._
+
+**Famiglia: superscar #3 (guard over/under-match), con un innesto di #2.** Tre difetti in fila, ognuno figlio della cura del precedente.
+
+**TRAUMA — il primo.** Il router instradava **7 messaggi su 13, e 6 poggiavano su un solo marcatore debole** (cinque su `tax`, uno su `meeting`), zero strumenti decisivi. `tax` sta nel piè di pagina di ogni fattura del pianeta: la posta di un cliente finiva in `_Tax` per il testo in piccolo di un fornitore. Il **tasso** di instradamento diceva che l'organo funzionava; la **base** diceva che tirava a indovinare — e nessuno l'aveva mai guardata, perché un contatore è comodo e una motivazione no.
+
+La regola contro questo era **già scritta nel codice**: `_DECISIVE` definisce uno strumento forte come quello «senza gemello nel linguaggio ordinario, quindi un colpo solo non è coincidenza». Il contrapposto sta nella stessa frase e non è mai stato armato. **Un commento che enuncia un invariante non lo applica** — è la #2 travestita da documentazione.
+
+**TRAUMA — il secondo, ed è il vero insegnamento.** La cura, prima stesura: dopo aver scelto il vincitore, se i suoi colpi sono tutti deboli → UNKNOWN. Sembra la stessa cosa. Non lo è. La review avversariale l'ha rotta con un caso misurato:
+
+> *«I need help with a work permit for my staff. Could we set a meeting or an appointment next week?»*
+
+ADMIN vince il conteggio 2-1 con `appointment` + `meeting`, **entrambi deboli**; VISA ha `work permit`, che debole non è. Controllare dopo faceva collassare **l'intero verdetto** a UNKNOWN, buttando via l'unico marcatore giusto. Su `origin/main` quel messaggio andava (male) in `admin`; sul branch andava in **niente**.
+
+**Un filtro che gira dopo la selezione non filtra: mette il veto.** La corsia debole doveva **farsi da parte**, non avvelenare il messaggio. E il commento sopra `_WEAK` prometteva letteralmente il comportamento giusto («una domanda visa che finisce con "ci vediamo?" è una domanda visa») mentre il codice faceva l'opposto: la cura scritta contro i commenti che mentono ne conteneva uno.
+
+**TRAUMA — il terzo: chiudere un buco lo SPOSTA.** Nel set decisivo vivono `c1 c2 c7 c12 d12`, due-tre caratteri che a Bali sono anche un indirizzo («Villa C2, Jalan Raya»). Ho preteso corroborazione sul percorso decisivo — e il token, respinto lì, **ha semplicemente vinto dal percorso a conteggio**: una corsia di un token da due caratteri che batte una rivale appena fattasi da parte. Il test l'ha colto subito (`decisive=False` ma `intent=VISA`). **Due percorsi che decidono la stessa cosa devono porre la stessa domanda**, o la cura di uno è la fuga dell'altro.
+
+**ANTIBODY.** Un solo predicato, `_lane_is_credible(hits)`, interrogato da entrambi i percorsi: un marcatore conta se non è prosa da coincidenza (`_WEAK`) e non è un indice-permesso corto che sta da solo (`_NEEDS_CORROBORATION`). Le corsie non credibili escono **prima** del ranking. UNKNOWN capita quando non sopravvive niente di forte da nessuna parte — che è ciò che la regola aveva sempre dichiarato.
+
+Misurato, non ragionato: su 106 messaggi vivi (Inbox + Inviati) instradano **71**, contro i 68 della prima stesura — **la correzione ha alzato il recall mentre chiudeva i buchi**, perché una corsia che si fa da parte lascia in piedi quella forte invece di trascinarla giù. E la corroborazione non costa: `c1` in quei 106 è comparso **15 volte, mai una da solo**.
+
+**GOTCHA — il mutation testing non poteva trovarlo, per costruzione.** Avevo mutato ogni difesa e ognuna mordeva. Ma **una mutation prova che il TUO corpus si accorge se il TUO codice cambia; non può dirti che la regola è nel posto sbagliato.** Il difetto non era una difesa assente: era una difesa *collocata dopo la decisione*. Serviva un seat esterno con l'ordine di refutare (generator ≠ grader), e ha portato un caso, non un'opinione.
+
+**GOTCHA — due righe del corpus sono diventate vacue e l'hanno DETTO.** Rendere `villa` debole ha fatto fallire `test_negative_context_premise_holds`: con la soppressione spenta il verdetto era UNKNOWN, non PROPERTY, quindi la riga non testava più la soppressione. E `test_ambiguous_soft_markers_refuse_to_guess` aveva smesso di essere un pareggio. Nessuno dei due è stato indebolito: la soppressione di `villa` è scesa al livello dove morde ancora (la lista dei marcatori), il pareggio è stato ricostruito con due corsie non-deboli. **Il check-di-premessa — "senza la guardia, la corsia avrebbe davvero vinto?" — è ciò che ha reso visibile la vacuità invece di lasciarla verde.**
+
+**GOTCHA — il corpus generato è cieco agli OMOGRAFI, strutturalmente.** `_landmines()` tiene le coppie dove `marker in parola and marker != parola`: una **sotto-stringa stretta**. Un marcatore che *è* una parola ordinaria intera — `visto` («ho visto»), `tanah` (Tanah Lot), `imposte` (anche le persiane) — è fuori dalla scansione per costruzione, ed è esattamente la classe per cui `_WEAK` esiste. Righe scritte a mano, con il perché accanto.
+
+**GOTCHA — la falla di Legge 2 più grossa non era un log.** Mentre curavo due righe che stampavano l'oggetto dell'email, `draft.py` passava il prompt come `claude -p <prompt>`: il messaggio **intero** del cliente — nome, indirizzo, corpo — sulla **riga di comando del processo**, che su macOS è leggibile da chiunque (`ps -A -ww -o args` restituiva l'argv di **299 processi di altri utenti** su questa macchina). Stesso modello di minaccia dei log che stavo curando, payload molto più grande. Ora entra da **stdin**, verificato dal vivo che `claude -p` lo legga lì. Corollario: **quando curi una classe, chiedi dove ALTRO passa lo stesso dato — non solo dove passa nello stesso modo.**
+
+**GOTCHA di consegna.** `gh pr merge --disable-auto` **non** toglie una PR dalla merge queue (dice «is already queued» ed esce 0); serve la mutation GraphQL `dequeuePullRequest(input:{id:$prNodeId})` — e il campo si chiama `id`, non `pullRequestId`. Finché è in coda il branch è protetto e ogni push è rifiutato: se la review arriva dopo l'accodamento, si merge la versione **col difetto**.
+
+**Reference:** `backend/services/mail_loop/classify.py` (`_WEAK`, `_NEEDS_CORROBORATION`, `_lane_is_credible`) · `backend/services/mail_loop/draft.py` (prompt su stdin) · `backend/services/mail_loop/state_io.py` (0600 alla creazione) · corpus `test_classify.py` (omografi + costo del recall dichiarato) e `test_state_privacy.py` · runbook `docs/runbooks/zoho-mail-loop.md` §10 — PR #3603.
