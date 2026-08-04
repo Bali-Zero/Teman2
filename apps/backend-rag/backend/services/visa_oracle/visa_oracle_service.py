@@ -128,7 +128,7 @@ SCORE_DURATION_FIT = 1.5
 SCORE_FAMILY_MATCH = 1.0
 
 WHATSAPP_NUMBER = "+62 821 3465 159"
-WHATSAPP_BASE_URL = "https://wa.me/6282230102328"
+WHATSAPP_BASE_URL = "https://wa.me/628213454721"
 
 # PR0 hardening (Codex red-team P1 #4, Markdown injection): the 4 chars
 # Telegram's LEGACY Markdown parse_mode (`send_message(..., parse_mode=

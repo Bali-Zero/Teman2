@@ -576,7 +576,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/plans/2026-07-19-mini-regia-conoscenza.md | LIVE | 2026-07-19 | 2026-10-17 | — | 0 | 0 | no | — | — |
 | docs/plans/2026-07-19-mini-regia-motori.md | LIVE | 2026-07-19 | 2026-10-17 | — | 0 | 0 | no | — | — |
 | docs/plans/2026-07-27-crm-portal-live-reliability-design.md | LIVE | 2026-07-27 | 2026-10-25 | — | 0 | 0 | no | — | — |
-| docs/pricing/Bali_Zero_Price_List_2026.md | LIVE | 2026-07-14 | 2026-10-12 | — | 2 | 0 | no | — | — |
+| docs/pricing/Bali_Zero_Price_List_2026.md | LIVE | 2026-08-04 | 2026-11-02 | — | 2 | 0 | no | — | — |
 | docs/prompts/codex-my-balizero-client-ready.md | LIVE | 2026-06-25 | 2026-09-23 | — | 0 | 0 | no | — | — |
 | docs/prompts/nuzantara-rebrand-brainstorm.md | LIVE | 2026-03-08 | 2026-06-06 | — | 1 | 0 | no | — | — |
 | docs/research/2026-03-27-nb9-results.md | LIVE | 2026-03-26 | 2026-06-24 | — | 1 | 0 | no | — | — |
@@ -615,7 +615,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/intel-lake-perfect-prod.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/runbooks/jules-dispatch.md | LIVE | 2026-07-06 | 2026-10-04 | — | 1 | 0 | no | — | — |
 | docs/runbooks/l5-2-phase2b-auto-trigger.md | LIVE | 2026-05-26 | 2026-08-24 | — | 1 | 0 | no | — | — |
-| docs/runbooks/lead-intent-matcher.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
+| docs/runbooks/lead-intent-matcher.md | LIVE | 2026-08-04 | 2026-11-02 | — | 1 | 0 | no | — | — |
 | docs/runbooks/m5-local-postgres.md | LIVE | 2026-06-11 | 2026-09-09 | — | 1 | 0 | no | — | — |
 | docs/runbooks/merge-queue-discipline.md | LIVE | 2026-08-04 | 2026-11-02 | — | 1 | 0 | no | — | — |
 | docs/runbooks/my-balizero-first-client-onboarding.md | LIVE | 2026-06-25 | 2026-09-23 | — | 2 | 0 | no | — | — |

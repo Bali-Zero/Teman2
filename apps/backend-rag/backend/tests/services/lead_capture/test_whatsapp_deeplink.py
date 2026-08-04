@@ -21,10 +21,10 @@ class TestDeeplinkBuilder:
             context_lines=[("Visa", "E33G"), ("Expiry", "1 Dec 2026")],
             result_hash="abcdef",
             lead_intent_id="li_xyz",
-            wa_number="6282230102328",
+            wa_number="628213454721",
             public_host="https://balizero.com",
         )
-        assert url.startswith("https://wa.me/6282230102328?text=")
+        assert url.startswith("https://wa.me/628213454721?text=")
 
     def test_body_contains_app_name(self):
         url = build_whatsapp_url(
@@ -86,9 +86,9 @@ class TestDeeplinkBuilder:
             context_lines=[],
             result_hash=None,
             lead_intent_id="li_xyz",
-            wa_number="+62 822 3010 2328",
+            wa_number="+62 821 3454 721",
         )
-        assert url.startswith("https://wa.me/6282230102328?")
+        assert url.startswith("https://wa.me/628213454721?")
 
 
 class TestContentFunnelSources:
