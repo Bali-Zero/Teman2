@@ -212,11 +212,28 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
     expect(narratesUnverifiedRoute(0, undefined)).toBe(false);
   });
 
-  it("pins the live population: 8 of the 44 zero-row gold pages", () => {
+  it("pins the live population: 1 of the 44 zero-row gold pages", () => {
     // (see the PMA-verdict-banner block below for the second render site)
-    // Measured on the canonical + gold of 2026-07-27. Pinned so that widening
-    // or narrowing the frame is a visible, deliberate change rather than a
-    // silent one — the same discipline as the untraceable-PMA pin.
+    // Measured on the canonical + gold of 2026-07-27, re-measured 2026-08-05.
+    // Pinned so that widening or narrowing the frame is a visible, deliberate
+    // change rather than a silent one — the same discipline as the
+    // untraceable-PMA pin.
+    //
+    // 8 -> 1 on 2026-08-05, and the pin earned its keep by making that visible.
+    // `cure_prose_unverifiable_tier.py` removed the narrated route from seven of
+    // the eight (72101, 75001, 75002, 75009, 86109, 86203, 91222): each is in
+    // that cure's spec, each carried gold prose walking a client through a
+    // licensing path the same page declared unverifiable.
+    //
+    // 86202 survives ON PURPOSE and is not an oversight. It is OUTSIDE that
+    // cure's structural population — it carries no `_l3_gap_disclosure` marker,
+    // because its Bali verdict is not risk-derived at all: it reads TERTUTUP
+    // with a named sectoral basis ("TERTUTUP to WNA under Kemenkes health law —
+    // a foreign specialist cannot open a solo practice"). It belongs to the
+    // separate, still-open family where a NATIONAL closure is recorded in the
+    // Bali field while `pma_status` stays TERBUKA at 100% — the same family as
+    // 64110 (Bank Sentral). Curing it means deciding what the national ceiling
+    // should say, which is not this cure's business.
     const goldMap = GOLD as Record<
       string,
       { whatYouNeed?: string } | undefined
@@ -230,16 +247,7 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
       narratesUnverifiedRoute(0, goldMap[r.kode_kbli_2025]?.whatYouNeed),
     );
     expect(zeroRow.length).toBe(44);
-    expect(framed.map((r) => r.kode_kbli_2025).sort()).toEqual([
-      "72101",
-      "75001",
-      "75002",
-      "75009",
-      "86109",
-      "86202",
-      "86203",
-      "91222",
-    ]);
+    expect(framed.map((r) => r.kode_kbli_2025).sort()).toEqual(["86202"]);
   });
 });
 
