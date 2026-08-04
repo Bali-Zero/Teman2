@@ -248,9 +248,15 @@ def test_style_file_lands_owner_only(tmp_path: Path) -> None:
     (W107 — the cure went to one wrapper out of five).
     """
     store = ReplyStyleStore(tmp_path / "deep" / "reply-style.md")
-    assert store.append(
+    # The call is deliberately OUTSIDE the assert. `python -O` strips assert
+    # statements, so a write hidden inside one simply would not happen, and
+    # everything below would fail for a reason that has nothing to do with the
+    # file mode. CodeQL flags exactly this (py/side-effect-in-assert) and it is
+    # right to.
+    stored = store.append(
         Lesson(bucket="visa/en", text="Keeps replies short.", observed_on=today())
-    ), "premise: the lesson must survive redaction, or nothing gets written"
+    )
+    assert stored, "premise: the lesson must survive redaction, or nothing gets written"
 
     path = tmp_path / "deep" / "reply-style.md"
     assert path.exists()
