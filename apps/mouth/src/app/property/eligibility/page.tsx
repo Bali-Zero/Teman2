@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { FunnelFrame } from "@balizero/core";
 import { PropertyEligibilityBody } from "@/components/funnel/PropertyEligibilityBody";
+
+export const metadata: Metadata = {
+  title: "Property Eligibility Check — Bali Zoning & Legal Structure",
+};
 
 export default function PropertyPage() {
   return (
