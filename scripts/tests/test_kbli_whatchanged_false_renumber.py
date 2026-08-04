@@ -28,11 +28,14 @@ from scripts.kbli_filiera import cure_whatchanged_false_renumber as cure
 from scripts.kbli_filiera.cure_whatchanged_false_renumber import (
     PASS_CONTRADICTED_PREDECESSOR,
     PASS_FALSE_CLAIM,
+    PASS_FALSE_CONTINUITY,
     PASS_TRUNCATED,
     WhatChangedError,
+    claims_ambiguous_continuity,
     contradicted_predecessors,
     has_no_recorded_predecessor,
     is_truncated_midword,
+    number_is_discontinuous,
     plan_text,
     recorded_predecessors,
     trim_to_last_complete_sentence,
@@ -242,6 +245,121 @@ def test_recorded_predecessors_reads_all_three_layer_shapes():
 
 
 # ---------------------------------------------------------------------------
+# PASS D — "your number is unchanged" where the crosswalk says it changed
+# ---------------------------------------------------------------------------
+#
+# The client-facing shape of this one: a business reads "Unchanged from KBLI
+# 2020 — direct match" on /kbli/90130 and concludes its existing NIB number
+# still classifies it. Our own crosswalk records 90021/90029/90030/90090 as that
+# code's 2020 origin — the number did NOT carry over, and "no action needed" is
+# the wrong inference to hand someone. Measured on the shipped catalogue
+# 2026-08-05: 17 (code, surface) pairs across 14 codes.
+
+CONTINUITY_TEXT = "Unchanged from KBLI 2020 — direct match."
+
+
+def _discontinuous(what_changed=CONTINUITY_TEXT):
+    """A record whose own code (99999) is in NO layer — the number changed."""
+    return _record(what_changed=what_changed, bps_2020_ancestors={"codes": ["11111", "22222"]})
+
+
+def test_d_fires_when_the_records_own_code_is_in_no_layer():
+    assert _passes(_discontinuous()) == [PASS_FALSE_CONTINUITY]
+
+
+def test_d_does_not_fire_when_the_code_carried_over_for_real():
+    # The innocence case that carries the pass: a record whose 2020 origin IS
+    # itself. Most "unchanged" sentences in the catalogue are TRUE, and a cure
+    # that deleted them would destroy correct prose on the majority to fix 14.
+    rec = _record(what_changed=CONTINUITY_TEXT, bps_2020_ancestors={"codes": ["99999", "11111"]})
+    assert _passes(rec) == []
+    assert number_is_discontinuous(rec) is False
+
+
+def test_d_does_not_fire_on_a_text_that_claims_no_continuity():
+    rec = _discontinuous(what_changed="Split from a broader 2020 activity. Verify your NIB.")
+    assert _passes(rec) == []
+
+
+def test_d_refuses_when_no_layer_holds_anything():
+    # Nothing on file cannot contradict anything. Pass A owns the "no
+    # predecessor recorded" statement; convicting here would delete prose
+    # against zero evidence.
+    rec = _record(what_changed=CONTINUITY_TEXT)
+    assert _passes(rec) == []
+    assert number_is_discontinuous(rec) is False
+
+
+def test_d_refuses_when_the_layer_rows_are_unreadable():
+    # Rows on file that yield no code: UNDECIDABLE, which is not CLEAN. Same
+    # standing rule as pass C — this pass has no basis to delete.
+    rec = _record(what_changed=CONTINUITY_TEXT, bps_2020_ancestors={"note": "locator only"})
+    assert _passes(rec) == []
+    assert number_is_discontinuous(rec) is False
+
+
+def test_d_names_no_2020_code_at_all():
+    # The strongest constraint on this pass, and the one that cost the most to
+    # learn: an earlier draft enumerated the record's recorded predecessors, and
+    # on 4 of the 14 live codes that enumeration contradicted the BPS crosswalk
+    # (91212's record says 91012, BPS says 91022). Those records hold only the
+    # weaker layer, so the function could not see the disagreement. The negative
+    # — this number is not its own 2020 predecessor — is what survives an
+    # independent check, so it is all the sentence may assert.
+    rec = _discontinuous()
+    out, passes = plan_text(CONTINUITY_TEXT, rec)
+    assert passes == [PASS_FALSE_CONTINUITY]
+    # No carve-out on this assertion: the replacement must not contain the
+    # trigger phrase at all. An earlier version subtracted "carrying over
+    # unchanged from KBLI 2020" before checking — working around the collision
+    # instead of seeing it, which is exactly how the non-idempotence shipped.
+    assert "unchanged from KBLI 2020" not in out.lower()
+    assert "11111" not in out and "22222" not in out
+    assert "99999" in out  # the code being described, never a substitute for it
+    assert "unconfirmed" in out
+
+
+def test_d_leaves_the_ambiguous_wording_alone_when_it_stands_by_itself():
+    # "Direct match from KBLI 2020" can mean the same NUMBER or a clean 1:1
+    # ACTIVITY mapping onto a different one — 49213's own prose resolves it the
+    # second way. Alone, it is not evidence of the defect and is never cured.
+    rec = _discontinuous(what_changed="Direct match from KBLI 2020. Verify your NIB.")
+    assert _passes(rec) == []
+    assert claims_ambiguous_continuity(str(rec["intel_2026"]["whatChanged"])) is True
+
+
+def test_d_removes_the_ambiguous_wording_once_the_narrow_pattern_convicts():
+    # 96210, measured: "Direct match from KBLI 2020. Same code, same scope. …"
+    # Leaving sentence one behind publishes the overturned rationale next to the
+    # correction, in one breath. Guilt is decided narrow; removal takes both.
+    text = "Direct match from KBLI 2020. Same code, same scope. Hair salons are stable."
+    rec = _discontinuous(what_changed=text)
+    out, passes = plan_text(text, rec)
+    assert passes == [PASS_FALSE_CONTINUITY]
+    assert "Direct match from KBLI 2020" not in out
+    assert "Same code, same scope" not in out
+    assert out.endswith("Hair salons are stable.")  # unrelated prose survives verbatim
+
+
+def test_d_and_c_compose_when_one_sentence_carries_both_claims():
+    # Pass C takes the sentence first; pass D must then find nothing and say so
+    # by not claiming a pass, instead of raising on a text that is now correct.
+    text = "KBLI 2020: 46415 — unchanged from KBLI 2020."
+    rec = _record(what_changed=text, bps_2020_ancestors={"codes": ["11111"]})
+    out, passes = plan_text(text, rec)
+    assert PASS_CONTRADICTED_PREDECESSOR in passes
+    assert PASS_FALSE_CONTINUITY not in passes
+    assert "unchanged from KBLI 2020" not in out.lower()
+
+
+def test_d_replacement_speaks_about_our_records_not_about_the_regulator():
+    out, _ = plan_text(CONTINUITY_TEXT, _discontinuous())
+    assert "Our records do not support" in out
+    for forbidden in ("was renumbered to", "is now", "BPS abolished", "you must re-register"):
+        assert forbidden.lower() not in out.lower()
+
+
+# ---------------------------------------------------------------------------
 # COMPOSITION — passes must survive each other
 # ---------------------------------------------------------------------------
 
@@ -269,9 +387,19 @@ def test_detection_uses_the_original_length_not_the_rewritten_one():
 
 
 def test_plan_text_is_idempotent_on_every_shape():
+    # Pass D was added to this list AFTER it shipped a replacement sentence that
+    # contained its own trigger phrase ("…carrying over unchanged from KBLI
+    # 2020"). The cure re-convicted its own output, so a successful `--apply`
+    # left the live-file organs red — the only visible symptom, because every
+    # unit test still passed. A pass whose cured text is not in this loop is a
+    # pass that can quietly do that again.
     for text, rec in (
         (NAMED_TEXT, _record(what_changed=NAMED_TEXT, kbli_2020_source="46694")),
         (cure.FALSE_CLAIM + " body.", _record(what_changed=cure.FALSE_CLAIM + " body.")),
+        (CONTINUITY_TEXT, _discontinuous()),
+        ("Direct match from KBLI 2020. Same code, same scope.", _discontinuous(
+            what_changed="Direct match from KBLI 2020. Same code, same scope."
+        )),
     ):
         once, first_passes = plan_text(text, rec)
         assert first_passes  # it fired
@@ -362,6 +490,49 @@ def _canonical_records():
 
 def _gold():
     return cure.gold_entries(json.loads(GOLD.read_text(encoding="utf-8")))
+
+
+BPS_EDGES = [
+    REPO_ROOT / "data" / "kbli-filiera" / "bps-crosswalk" / "edges-lampiran5.json",
+    REPO_ROOT / "data" / "kbli-filiera" / "bps-crosswalk" / "edges-lampiran10.json",
+]
+
+
+def _bps_self_edges() -> set[str]:
+    """Codes the government crosswalk maps to THEMSELVES — the ones that really did
+    carry over. Not "codes present on the 2020 side": a first version of this organ
+    used that and failed on 4 records, correctly. A 2020 code can be re-used as a
+    2025 code for a different activity while its own 2025 heir is a new number —
+    a shuffle, where "unchanged" is still false. The only edge that refutes the
+    verdict is X(2020) → X(2025)."""
+    self_edges: set[str] = set()
+    for path in BPS_EDGES:
+        for row in json.loads(path.read_text(encoding="utf-8")):
+            old, new = row.get("kbli_2020"), row.get("kbli_2025")
+            if old and new and str(old) == str(new):
+                self_edges.add(str(old))
+    return self_edges
+
+
+def test_pass_d_never_convicts_a_code_the_government_crosswalk_maps_to_itself():
+    # The innocence organ for pass D, and the only check here that asks a source
+    # OTHER than the record's own fields. The pass reads the record, so a
+    # record-derived check would only agree with itself (W100); these edge files
+    # are the transcription of Peraturan BPS 7/2025 lampiran 5 + 10. Measured
+    # 2026-08-05: 908 codes carry a self-edge, 454 records are marked
+    # discontinuous, and the intersection is EMPTY — the verdict is corroborated
+    # for the whole population, not only the 14 this cure rewrites.
+    self_edges = _bps_self_edges()
+    assert len(self_edges) > 500, "the edge files did not load — a blind pass is not a clean one"
+
+    records = _canonical_records()
+    guilty = {str(r[cure.CODE_FIELD]) for r in records if number_is_discontinuous(r)}
+    assert guilty, "no record is discontinuous — the predicate is inert, not innocent"
+    overlap = sorted(guilty & self_edges)
+    assert overlap == [], (
+        f"{len(overlap)} code(s) are marked discontinuous by their own record yet the BPS "
+        f"crosswalk maps them to themselves: {overlap[:10]} — pass D would delete a TRUE sentence"
+    )
 
 
 def test_no_canonical_record_still_carries_any_of_the_three_defects():

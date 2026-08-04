@@ -66,9 +66,15 @@ from typing import Any
 
 PASS_FALSE_CLAIM = "false_renumbering_claim"
 PASS_CONTRADICTED_PREDECESSOR = "contradicted_predecessor"
+PASS_FALSE_CONTINUITY = "false_continuity_claim"
 PASS_TRUNCATED = "midword_truncation"
 
-ALL_PASSES = (PASS_FALSE_CLAIM, PASS_CONTRADICTED_PREDECESSOR, PASS_TRUNCATED)
+ALL_PASSES = (
+    PASS_FALSE_CLAIM,
+    PASS_CONTRADICTED_PREDECESSOR,
+    PASS_FALSE_CONTINUITY,
+    PASS_TRUNCATED,
+)
 
 FALSE_CLAIM = "Renumbered/adjusted from KBLI 2020."
 HONEST_CLAIM = "No KBLI-2020 predecessor is recorded for this code."
@@ -78,6 +84,25 @@ TRUNCATION_LENGTH = 216
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
 _NAMED_PREDECESSOR = re.compile(r"KBLI 2020:\s*(\d{5})")
 _ENDS_COMPLETE = re.compile(r"[.!?]\s*$")
+
+# Pass D fires only on wordings that assert the NUMBER carried over. "Direct
+# match from KBLI 2020" is deliberately NOT here: it is ambiguous between "the
+# same number" and "a clean 1:1 activity mapping", and 49213's own sentence
+# resolves it the second way ("this is the same urban-transport activity carried
+# forward"). Deleting on ambiguity would remove possibly-true prose.
+#
+# MEASURED COST OF THAT CHOICE, so it is a declared limit and not a silent one
+# (2026-08-05, canonical + gold, union of all three crosswalk layers): the broad
+# pattern reaches 27 (code, surface) pairs across 21 codes, this narrow one
+# reaches 17 across 14. The 10 uncovered pairs are reported by `--census` under
+# `ambiguous_continuity`, never cured.
+_CONTINUITY = re.compile(
+    r"unchanged from KBLI 2020"
+    r"|same code, same scope"
+    r"|the code and scope remain unchanged",
+    re.IGNORECASE,
+)
+_CONTINUITY_AMBIGUOUS = re.compile(r"direct match from KBLI 2020", re.IGNORECASE)
 
 
 class WhatChangedError(RuntimeError):
@@ -170,6 +195,52 @@ def claims_a_renumbering(text: str) -> bool:
     return text.startswith(FALSE_CLAIM)
 
 
+def claims_number_unchanged(text: str) -> bool:
+    """The prose asserts THIS code's NUMBER is what it was in KBLI 2020."""
+    return bool(_CONTINUITY.search(text))
+
+
+def claims_ambiguous_continuity(text: str) -> bool:
+    """Census-only. "Direct match from KBLI 2020" can mean the same NUMBER or a
+    clean 1:1 ACTIVITY mapping onto a different one, and nothing in the sentence
+    settles it. Reported, never cured — see the note on `_CONTINUITY`."""
+    return bool(_CONTINUITY_AMBIGUOUS.search(text))
+
+
+def number_is_discontinuous(record: dict[str, Any]) -> bool:
+    """The record's OWN code is in none of the crosswalk layers that name a 2020 origin.
+
+    Two refusals, each one a case where "the number changed" is not something we
+    know: NOTHING readable on file (which covers both "no rows at all" — pass A
+    owns that sentence — and "rows on file that no layer could parse", the
+    UNDECIDABLE case pass C also refuses; `recorded_predecessors` is by
+    construction a subset of the readable rows, so one test answers both); and a
+    record with no code of its own to compare against.
+
+    An explicit `has_unreadable_layer_rows` branch stood here first and no
+    mutation could kill it — it is wholly contained in the emptiness test below.
+    A guard that cannot fire is an antibody in name only, so it is gone; the test
+    that pins the UNDECIDABLE behaviour stays, because it asserts the outcome and
+    does not care which line delivers it.
+
+    ONE decision function, shared by the cure and by the census that reports what
+    the cure deliberately leaves alone — so the two can never disagree about the
+    same fact (W105).
+    """
+    recorded = recorded_predecessors(record)
+    if not recorded:
+        return False
+    code = str(record.get("kode_kbli_2025") or "")
+    if not code:
+        return False
+    return code not in recorded
+
+
+def contradicted_continuity(text: str, record: dict[str, Any]) -> bool:
+    """The prose claims the number carried over; the crosswalk names other codes."""
+    return claims_number_unchanged(text) and number_is_discontinuous(record)
+
+
 def is_truncated_midword(text: str) -> bool:
     """The signature: exactly 216 chars AND no terminal punctuation.
 
@@ -233,6 +304,16 @@ def drop_contradicted_predecessor(text: str, record: dict[str, Any]) -> str:
         raise WhatChangedError("contradicted predecessor matched no sentence span")
 
     replacement = unconfirmed_crosswalk_sentence(contradicted, recorded_predecessors(record))
+    return _replace_spans(text, spans, replacement)
+
+
+def _replace_spans(text: str, spans: list[tuple[int, int]], replacement: str) -> str:
+    """Write ONE honest sentence where the first offending span was; delete the rest.
+
+    Shared by passes C and D so the two cures cannot drift apart in how they
+    edit — the only thing that differs between them is WHICH spans are guilty
+    and WHAT the honest sentence says.
+    """
     out, cursor, written = [], 0, False
     for start, end in spans:
         out.append(text[cursor:start])
@@ -244,6 +325,64 @@ def drop_contradicted_predecessor(text: str, record: dict[str, Any]) -> str:
         cursor = end
     out.append(text[cursor:])
     return re.sub(r"  +", " ", "".join(out)).strip()
+
+
+def unconfirmed_continuity_sentence(code: str) -> str:
+    """The replacement for a false continuity claim. It NAMES NO 2020 CODE, on purpose.
+
+    A first draft enumerated the record's recorded predecessors ("the crosswalk
+    sources on file record 91012 as the 2020 origin of 91212"). Checked against
+    the BPS edge files — an independent source, not the record's own field — that
+    enumeration was WRONG on 4 of the 14 codes this pass cures: BPS puts 91212's
+    origin at 91022, 91222's at 91024/91029, 91424's at 91034, 91425's at 91033,
+    while the records' `pp28_sources` say 91012 / 91022 / 91024 / 91025. Those
+    four records carry no `bps_2020_ancestors` at all, so the weaker layer was
+    the only one this function could see — and it would have published that
+    layer's answer AS the answer on four client-facing pages.
+
+    What survives independent checking is the NEGATIVE: none of the 14 exists on
+    the 2020 side of the crosswalk at all. So that is all this sentence asserts.
+    Replacing a false claim with a shakier one is how a correction becomes the
+    next defect; when the support is not verifiable, drop it rather than soften
+    it. (The 4 layer disagreements are a finding of their own, ledgered — this
+    cure neither hides nor adjudicates them.)
+    """
+    # NOTE the wording "carrying over FROM KBLI 2020", not "…unchanged from KBLI
+    # 2020": the first draft said "unchanged" and thereby contained `_CONTINUITY`
+    # verbatim, so the cure re-convicted its own output and the live organs stayed
+    # red after a successful apply. A guard whose replacement text matches its own
+    # trigger is the over-match family biting the remedy (superscar #3).
+    return (
+        f"Our records do not support this code number carrying over from "
+        f"KBLI 2020: no crosswalk source we hold records {code} as its own KBLI-2020 "
+        f"predecessor, so a 2020 registration under this number should not be assumed "
+        f"to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending "
+        f"re-verification (GARUDA-FILIERA)."
+    )
+
+
+def drop_false_continuity(text: str, record: dict[str, Any]) -> str:
+    """Replace the sentence claiming the number is unchanged. Never renumber it."""
+    if not contradicted_continuity(text, record):
+        raise WhatChangedError("no contradicted continuity claim in this text — nothing to drop")
+
+    # Guilt is decided by the NARROW pattern; once decided, the removal takes the
+    # ambiguous wording in the same text too. "Direct match from KBLI 2020" is
+    # ambiguous only in isolation — in a passage that also says "same code, same
+    # scope" the whole passage is asserting number continuity. Leaving it behind
+    # would publish "Direct match from KBLI 2020. Our records do not support this
+    # code number carrying over…" in one breath (measured on 96210), and a verdict
+    # that keeps the rationale it just overturned invites its own reversal.
+    spans = [
+        (start, end)
+        for start, end in _sentence_spans(text)
+        if _CONTINUITY.search(text[start:end]) or _CONTINUITY_AMBIGUOUS.search(text[start:end])
+    ]
+    if not spans:  # pragma: no cover - a match outside every span is structurally impossible
+        raise WhatChangedError("continuity claim matched no sentence span")
+
+    replacement = unconfirmed_continuity_sentence(str(record.get("kode_kbli_2025")))
+    return _replace_spans(text, spans, replacement)
 
 
 def trim_to_last_complete_sentence(text: str) -> str | None:
@@ -284,6 +423,13 @@ def plan_text(text: str, record: dict[str, Any]) -> tuple[str, list[str]]:
     if do_contradicted:
         cured = drop_contradicted_predecessor(cured, record)
         applied.append(PASS_CONTRADICTED_PREDECESSOR)
+    # Pass D is the ONE pass re-detected on the partly-cured text, on purpose: a
+    # single sentence can carry both an unsupported predecessor number and the
+    # continuity phrase, and pass C will already have taken it. Detecting on the
+    # original and applying here would raise on a text that is now correct.
+    if contradicted_continuity(cured, record):
+        cured = drop_false_continuity(cured, record)
+        applied.append(PASS_FALSE_CONTINUITY)
     if do_trim:
         trimmed = trim_to_last_complete_sentence(cured)
         if trimmed is None:  # pragma: no cover - guarded by do_trim
