@@ -67,12 +67,14 @@ from typing import Any
 PASS_FALSE_CLAIM = "false_renumbering_claim"
 PASS_CONTRADICTED_PREDECESSOR = "contradicted_predecessor"
 PASS_FALSE_CONTINUITY = "false_continuity_claim"
+PASS_RESIDUAL_CONTINUITY = "residual_continuity_claim"
 PASS_TRUNCATED = "midword_truncation"
 
 ALL_PASSES = (
     PASS_FALSE_CLAIM,
     PASS_CONTRADICTED_PREDECESSOR,
     PASS_FALSE_CONTINUITY,
+    PASS_RESIDUAL_CONTINUITY,
     PASS_TRUNCATED,
 )
 
@@ -134,10 +136,48 @@ _CONTINUITY_WEAK = re.compile(
     re.IGNORECASE,
 )
 _CONTINUITY_AMBIGUOUS = re.compile(r"direct (?:1:1 )?match from KBLI 2020", re.IGNORECASE)
+# A THIRD PHRASING OF THE SAME ASSERTION, AND THE REMOVAL DID NOT KNOW IT (2026-08-05).
+#
+# "No structural changes" says, in different words, exactly what "code and scope
+# unchanged" says. It was in neither half of the removal pattern, so on the two
+# records that phrased it this way the wide removal took the sentences it knew
+# and left this one standing — next to the honest replacement that denies it.
+# Measured live the same day, on the website and in the KG: `63900` read "…the
+# 2020-to-2025 mapping for this code is unconfirmed pending re-verification.
+# No structural changes." and `47401` the same with "…to the retail
+# classification." A cure that leaves the claim standing beside its own
+# retraction has not cured anything; it has published a contradiction.
+#
+# This is the disease #3610 was written to fix, one level down: a pattern
+# written from the phrasings its author had looked at catches the phrasings its
+# author had looked at. It is REMOVAL-ONLY on purpose — conviction still runs on
+# STRONG / WEAK+AMBIGUOUS (`claims_number_unchanged`), because "no structural
+# changes" alone asserts nothing about the NUMBER and would convict the six
+# records whose own crosswalk agrees they are continuous (47112, 47242, 47751,
+# 47761, 47774, 47782 — measured, all innocent).
+#
+# AND THE FIRST DRAFT OF *THIS* PATTERN REPEATED THE DISEASE A GENERATION LOWER.
+# It said only `no structural changes`, written from the two records that had
+# bitten. Pulling the KG's own vintage of all sixteen cured texts then produced a
+# THIRD: `96210` reads "…(GARUDA-FILIERA). Hair salons have been consistently
+# classified across both KBLI versions." — same assertion, a wording neither the
+# removal nor this pattern had ever seen. So the alternation below is exactly the
+# phrasings MEASURED across canonical, gold, the navigator copy and the KG, and
+# nothing invented on top; what makes that honest rather than lucky is the organ
+# beside it (`test_e_no_cured_text_carries_an_unreviewed_tail`): pass D's
+# replacement ENDS at "(GARUDA-FILIERA).", so any text that carries the marker and
+# does not end there has something the cure never considered. A fourth phrasing
+# turns that test red instead of reaching a client — the pattern cures what we can
+# name, the organ refuses to let what we cannot name pass quietly.
+_CONTINUITY_RESIDUAL = re.compile(
+    r"no structural changes" r"|consistently classified across both KBLI versions",
+    re.IGNORECASE,
+)
 # Kept as the removal pattern: once guilt is established, every span that carries
-# either half of the claim goes, so no residue contradicts the replacement.
+# any phrasing of the claim goes, so no residue contradicts the replacement.
 _CONTINUITY = re.compile(
-    f"{_CONTINUITY_STRONG.pattern}|{_CONTINUITY_WEAK.pattern}", re.IGNORECASE
+    f"{_CONTINUITY_STRONG.pattern}|{_CONTINUITY_WEAK.pattern}|{_CONTINUITY_RESIDUAL.pattern}",
+    re.IGNORECASE,
 )
 
 # A QUOTATION OF THE CLAIM IS NOT AN ASSERTION OF IT (2026-08-05).
@@ -529,6 +569,59 @@ def drop_false_continuity(text: str, record: dict[str, Any]) -> str:
     return _replace_spans(text, spans, replacement)
 
 
+# The stable, code-independent fragment of `unconfirmed_continuity_sentence`.
+CURED_CONTINUITY_MARKER = "do not support this code number carrying over from KBLI 2020"
+
+
+def contradicts_own_correction(text: str) -> bool:
+    """The text ALREADY carries the honest replacement AND still asserts continuity.
+
+    Deliberately record-free: this is an INTERNAL contradiction, provable from
+    the sentence pair alone. It needs no crosswalk and cannot be wrong about one.
+    That also makes it a genuinely different predicate from conviction, rather
+    than a second implementation of it — the two can never disagree about a
+    record because only one of them reads a record.
+
+    Written because widening the removal pattern alone would have cured NOTHING:
+    a record whose STRONG/WEAK/AMBIGUOUS wording was already taken is no longer
+    convicted, so `drop_false_continuity` refuses it. The two live defects
+    (47401, 63900) sit exactly in that gap. A guard that protects a population
+    of zero is decorative; this pass is the half that changes what a client reads.
+    """
+    if CURED_CONTINUITY_MARKER not in text:
+        return False
+    return _outside_quotes(_CONTINUITY_RESIDUAL, text)
+
+
+def drop_residual_continuity(text: str) -> str:
+    """Delete the continuity sentence left standing beside its own retraction.
+
+    Pure deletion, no replacement: the honest sentence is already in the text —
+    that is the precondition. Writing a second one would say it twice.
+    """
+    if not contradicts_own_correction(text):
+        raise WhatChangedError("no residual continuity claim in this text — nothing to drop")
+
+    quoted = _quoted_regions(text)
+    spans = [
+        (start, end)
+        for start, end in _sentence_spans(text)
+        if any(
+            not any(qs <= m.start() and m.end() <= qe for qs, qe in quoted)
+            for m in _CONTINUITY_RESIDUAL.finditer(text, start, end)
+        )
+    ]
+    if not spans:  # pragma: no cover - guarded by contradicts_own_correction
+        raise WhatChangedError("residual continuity claim matched no sentence span")
+
+    cured = _replace_spans(text, spans, "")
+    if CURED_CONTINUITY_MARKER not in cured:
+        raise WhatChangedError(
+            "deleting the residue also took the honest sentence — refusing to publish"
+        )
+    return cured
+
+
 def trim_to_last_complete_sentence(text: str) -> str | None:
     """Drop the trailing fragment. None when there is no complete sentence to keep."""
     ends = [m.end() for m in _SENTENCE_END.finditer(text)]
@@ -574,6 +667,14 @@ def plan_text(text: str, record: dict[str, Any]) -> tuple[str, list[str]]:
     if contradicted_continuity(cured, record):
         cured = drop_false_continuity(cured, record)
         applied.append(PASS_FALSE_CONTINUITY)
+    # Pass E is re-detected on the partly-cured text for the same reason as D,
+    # and it is the ONLY pass that can fire on a text some EARLIER run already
+    # cured — that is its entire purpose. On a text pass D just rewrote it is a
+    # no-op, because D's removal now takes the residual phrasing too; it earns
+    # its keep on the records D cured before that widening existed.
+    if contradicts_own_correction(cured):
+        cured = drop_residual_continuity(cured)
+        applied.append(PASS_RESIDUAL_CONTINUITY)
     if do_trim:
         trimmed = trim_to_last_complete_sentence(cured)
         if trimmed is None:  # pragma: no cover - guarded by do_trim
