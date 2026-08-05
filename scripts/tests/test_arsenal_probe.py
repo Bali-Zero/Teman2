@@ -536,6 +536,37 @@ def test_probe_claude_timeout_classifies_timeout(monkeypatch):
     assert status == ap.TIMEOUT
 
 
+def test_probe_claude_not_logged_in_classifies_auth_dead(monkeypatch):
+    # guilt: real exemplar captured in ~/.organism/arsenal/last.json on Mini
+    # (2026-08-05T04:53:56Z) — the claude CLI's unauthenticated shape has no
+    # 401/oauth-token marker, only this short prose, and previously fell
+    # through classify_generic() to a bare UNKNOWN_ERR. Same shape as kimi's
+    # "No providers configured" (probe_kimi) — mirrored locally here so the
+    # shared _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(1, "", "Not logged in · Please run /login"),
+    )
+    status, ev, latency = ap.probe_claude(timeout=5)
+    assert status == ap.AUTH_DEAD
+
+
+def test_probe_claude_pong_mentioning_login_stays_live(monkeypatch):
+    # innocence: a LIVE answer that happens to mention login in prose must
+    # never be reclassified as a credential death (mirrors
+    # test_probe_kimi_pong_with_provider_prose_stays_live).
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(0, "PONG (session resumed, not logged in again today)\n", ""),
+    )
+    status, ev, latency = ap.probe_claude(timeout=5)
+    assert status == ap.LIVE
+
+
 def test_probe_glm_cred_unavailable_when_keychain_locked(monkeypatch):
     monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: (None, "keychain locked"))
     status, ev, latency = ap.probe_glm(timeout=5)
@@ -716,6 +747,45 @@ def test_probe_nlm_missing_binary_not_installed(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
     status, ev, latency = ap.probe_nlm(timeout=5)
     assert status == ap.NOT_INSTALLED
+
+
+def test_probe_nlm_login_to_reauthenticate_classifies_auth_dead(monkeypatch):
+    # guilt: real exemplar (tail-truncated, the substring is genuine) captured
+    # in ~/.organism/arsenal/last.json on Mini (2026-08-05T04:53:56Z) — nlm's
+    # expired-credential shape carries no 401/oauth-token marker, only
+    # "Run nlm login to re-authenticate", and previously fell through
+    # classify_generic() to a bare UNKNOWN_ERR despite docs/runbooks/
+    # arsenal-probe.md documenting "nlm AUTH_DEAD -> `nlm login` on Pro" as
+    # the expected cure. Mirrored locally (kimi/claude pattern) so the shared
+    # _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/nlm")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(
+            1,
+            "",
+            "Your credentials have expired. Please run `nlm login` in a terminal to "
+            "re-authenticate.  MCP users: the server should auto-detect the new credentials; "
+            "if not, call the refresh_auth tool.  → Run nlm login to re-authenticate",
+        ),
+    )
+    status, ev, latency = ap.probe_nlm(timeout=5)
+    assert status == ap.AUTH_DEAD
+
+
+def test_probe_nlm_valid_json_mentioning_login_stays_live(monkeypatch):
+    # innocence: a LIVE answer (valid JSON notebook list) that happens to
+    # mention "login" inside a notebook title must never be reclassified as a
+    # credential death.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/nlm")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(0, '[{"id": "nb1", "title": "nlm login flow research"}]', ""),
+    )
+    status, ev, latency = ap.probe_nlm(timeout=5)
+    assert status == ap.LIVE
 
 
 # ---------------------------------------------------------------------------
