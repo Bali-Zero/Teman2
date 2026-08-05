@@ -31,6 +31,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from enum import Enum
 from html import unescape
 from pathlib import Path
 from typing import Any, Protocol
@@ -109,6 +110,20 @@ class MailBackend(Protocol):
     ) -> dict[str, Any]: ...
 
 
+class _Ending(Enum):
+    """How one message finished. Raising out of `_handle_one` is the third.
+
+    Deliberately NOT exhaustive over "everything that can happen to a message":
+    a draft that fails after the move does not get a member here, because the
+    message's ending was settled when it moved. Endings are what the
+    conservation law counts; failures downstream of an ending are reported
+    separately and must not be counted twice.
+    """
+
+    ROUTED = "routed"
+    LEFT_IN_INBOX = "left_in_inbox"
+
+
 @dataclass
 class RunSummary:
     """What one run actually accomplished. Read by the wrapper, not by a human."""
@@ -127,12 +142,29 @@ class RunSummary:
 
     @property
     def unaccounted(self) -> int:
-        """Seen messages that reached no recorded outcome. Must always be 0.
+        """Seen messages that reached no recorded ending. Zero on a healthy run.
 
         Every message the run picks up ends in exactly one place: it moved
         (`routed`), it stayed on purpose (`left_in_inbox` — declined by the
         classifier, or its folder was missing), or handling it raised
         (`message_errors`). Nothing else is a legal ending.
+
+        "Exactly one" is enforced structurally, not by care: those three
+        counters are incremented in a single `if/elif` in `_route_and_draft`,
+        driven by what `_handle_one` returns. `_handle_one` itself never
+        touches them.
+
+        That was not true when this property was written, and adversarial
+        review measured it: `routed` was incremented inside `_handle_one`
+        BEFORE drafting, and a drafting crash (Zoho refusing to save, the
+        pending buffer failing to write) then propagated to the caller's
+        per-message handler, which added `message_errors` for a message it had
+        already counted as routed — a live path, reproduced, giving
+        `unaccounted == -1`. A negative value is truthy, so the run still read
+        degraded; the real damage is that a sum can CANCEL, so that -1 would
+        have silently absorbed a genuine +1 elsewhere in the same run and
+        reported balanced. A conservation law that can net out is not a
+        conservation law.
         """
         return self.seen - self.routed - self.left_in_inbox - self.message_errors
 
@@ -161,11 +193,14 @@ class RunSummary:
         something that looks armed and is not.
 
         What that branch was really reaching for is a conservation law, and
-        that is what stands here instead. `unaccounted` is reachable, it is
-        zero on every path this code has today, and it turns non-zero the day
-        someone adds a fourth way for a message to end — the silent
-        `return` that would otherwise let a half-run report success. It costs
-        one counter and it cannot go dead the way its predecessor did.
+        that is what stands here instead. `unaccounted` is reachable, and it
+        turns non-zero the day someone adds a fourth way for a message to end —
+        the silent `return` that would otherwise let a half-run report success.
+        It costs one counter and it cannot go dead the way its predecessor did.
+
+        A first version of it could also read NEGATIVE, which is worse than
+        dead: see `unaccounted`. The cure was not a bigger check but a smaller
+        surface — one increment site per counter, in the caller.
         """
         if self.errors or self.missing_folders:
             return True
@@ -458,12 +493,29 @@ class MailLoop:
                 summary.message_errors += 1
                 summary.errors.append("a message arrived without an id, skipped")
                 continue
+            # The ONLY place the law's three counters are incremented. Keeping
+            # them here — rather than scattered through `_handle_one` — is what
+            # makes "exactly one ending per message" structural instead of a
+            # property somebody has to keep remembering.
             try:
-                await self._handle_one(message_id, message, folders, summary, inbox_id)
+                ending = await self._handle_one(
+                    message_id, message, folders, summary, inbox_id
+                )
             except Exception as exc:  # broad on purpose: one bad message must not
                 # abort the run: the remaining mail still deserves routing.
                 summary.message_errors += 1
                 summary.errors.append(f"message {message_id[:12]}: {exc}")
+                continue
+
+            if ending is _Ending.ROUTED:
+                summary.routed += 1
+            elif ending is _Ending.LEFT_IN_INBOX:
+                summary.left_in_inbox += 1
+            # No `else`. An ending nobody mapped — a new member of `_Ending`, or
+            # the silent `return None` of a guard added in a hurry — falls
+            # through to no counter at all, which is precisely what
+            # `unaccounted` exists to notice. An `else` here would swallow the
+            # thing the law is for.
 
     async def _handle_one(
         self,
@@ -472,7 +524,16 @@ class MailLoop:
         folders: list[dict[str, Any]],
         summary: RunSummary,
         inbox_id: str,
-    ) -> None:
+    ) -> _Ending | None:
+        """Decide what happens to one message. RAISING is the third ending.
+
+        This function does not touch `routed`, `left_in_inbox` or
+        `message_errors` — its caller does, in one place, from the value
+        returned here. That separation is the whole point: the counters that
+        the conservation law subtracts must have exactly one increment site
+        each, or the law can be fed two endings for one message and read
+        balanced.
+        """
         # Read the body without disturbing the mailbox.
         #
         # The obvious call here is `get_email`, and it is the wrong one: it marks
@@ -514,27 +575,28 @@ class MailLoop:
         verdict = classify(subject, body, headers=headers or None)
 
         if not verdict.routable:
+            # `unroutable` is a REASON, not an ending: it explains a quiet day
+            # in the log and takes no part in the conservation law, so counting
+            # it here cannot unbalance anything.
             summary.unroutable += 1
-            summary.left_in_inbox += 1
             logger.info(
                 "loop: message %s is %s — left in inbox for a human",
                 message_id[:12],
                 verdict.intent.value,
             )
-            return
+            return _Ending.LEFT_IN_INBOX
 
         folder_name = verdict.folder or ""
         target = _folder_id(folders, folder_name)
         if target is None:
             if folder_name not in summary.missing_folders:
                 summary.missing_folders.append(folder_name)
-            summary.left_in_inbox += 1
             logger.warning(
                 "loop: folder %r does not exist in Zoho — message left in inbox "
                 "rather than moved somewhere arbitrary",
                 folder_name,
             )
-            return
+            return _Ending.LEFT_IN_INBOX
 
         if self.dry_run:
             logger.info(
@@ -546,12 +608,33 @@ class MailLoop:
             )
         else:
             await self.backend.move_to_folder(self.user_id, [message_id], target)
-        summary.routed += 1
 
+        # From here the message's ending is settled: it moved. Anything that
+        # goes wrong below is a DRAFTING failure, and drafting is downstream of
+        # the ending — a message does not become un-routed because Zoho refused
+        # to store the reply, or because the pending buffer could not be
+        # written. Letting those propagate is what made `unaccounted` reach -1:
+        # the caller recorded an error for a message it had already recorded as
+        # routed, and the law read balanced while hiding two facts.
         if verdict.intent is Intent.NOISE:
-            return  # nothing to answer
+            return _Ending.ROUTED  # nothing to answer
 
-        await self._draft_reply(full, listed, verdict, summary)
+        try:
+            await self._draft_reply(full, listed, verdict, summary)
+        except Exception as exc:
+            # `_draft_reply` handles `DraftUnavailable` itself, so anything
+            # arriving here is the mailbox or the disk failing, not the model.
+            summary.draft_failures += 1
+            summary.errors.append(f"draft for {message_id[:12]}: {exc}")
+            logger.warning(
+                "loop: draft step failed for %s (%s/%s) after the message was "
+                "already moved: %s",
+                message_id[:12],
+                verdict.intent.value,
+                verdict.language,
+                exc,
+            )
+        return _Ending.ROUTED
 
     async def _draft_reply(
         self,

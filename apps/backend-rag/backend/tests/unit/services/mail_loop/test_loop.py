@@ -570,3 +570,78 @@ def test_unroutable_is_reported_so_a_quiet_day_is_explicable(
     reported = summary.as_dict()
     assert reported["unroutable"] == 1
     assert reported["unaccounted"] == 0
+
+
+def test_a_draft_that_crashes_after_the_move_does_not_unbalance_the_law(
+    tmp_path: Path, stub_model: None
+) -> None:
+    """GUILT: the shape that made `unaccounted` read -1, reproduced.
+
+    The message moves, then Zoho refuses to store the reply. Before the fix
+    `routed` was incremented inside `_handle_one` and the crash propagated to
+    the caller's per-message handler, which added `message_errors` on top —
+    two endings for one message, `unaccounted == -1`.
+
+    A negative value is truthy, so the run still read degraded and the defect
+    was invisible. What it really costs is cancellation: a `-1` here silently
+    absorbs a genuine `+1` elsewhere in the same run, and the law reports
+    balanced while hiding both.
+    """
+
+    class RefusesToSaveDrafts(FakeBackend):
+        async def save_draft(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("Zoho API 500 while saving draft")
+
+    backend = RefusesToSaveDrafts(
+        inbox=[_msg("m1", "KITAS renewal", "a@x.example", "T1")],
+        bodies={"m1": "My KITAS expires next month, what do you need?"},
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+
+    assert backend.moves == [(["m1"], "F-VISA")], "premise: the message DID move"
+    assert summary.errors, "premise: the draft step DID fail"
+    assert summary.routed == 1
+    assert summary.message_errors == 0, "a moved message is not also an error-ending"
+    assert summary.unaccounted == 0
+    assert summary.draft_failures == 1
+    assert summary.degraded is True  # via errors + drafted==0, not via the law
+
+
+def test_the_law_cannot_net_out(tmp_path: Path, stub_model: None) -> None:
+    """Two messages, one crashing after its move and one silently skipped.
+
+    This is the run the cancellation would hide: before the fix the crash gave
+    -1 and the skip gave +1, so `unaccounted` read 0 and a run that lost a
+    message reported balanced. Each defect must now be visible on its own.
+    """
+
+    class RefusesToSaveDrafts(FakeBackend):
+        async def save_draft(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("Zoho API 500 while saving draft")
+
+    backend = RefusesToSaveDrafts(
+        inbox=[
+            _msg("m1", "KITAS renewal", "a@x.example", "T1"),
+            _msg("m2", "PT PMA setup", "b@x.example", "T2"),
+        ],
+        bodies={
+            "m1": "My KITAS expires next month, what do you need?",
+            "m2": "I want to open a PT PMA, what is required?",
+        },
+    )
+    loop = _loop(backend, tmp_path)
+    real_handle_one = loop._handle_one
+
+    async def _skip_the_second(
+        message_id: str, *args: Any, **kwargs: Any
+    ) -> Any:
+        if message_id == "m2":
+            return None  # the fourth ending nobody recorded
+        return await real_handle_one(message_id, *args, **kwargs)
+
+    loop._handle_one = _skip_the_second  # type: ignore[method-assign]
+    summary = asyncio.run(loop.run())
+
+    assert summary.seen == 2
+    assert summary.unaccounted == 1, "the skipped message must still show"
+    assert summary.degraded is True

@@ -640,17 +640,56 @@ missing), or handling it raised (`message_errors`). So:
 unaccounted = seen - routed - left_in_inbox - message_errors
 ```
 
-must be `0`, and a non-zero value is degraded. This is reachable, it is zero on
-every path the code has today, and it turns non-zero **the day someone adds a
-fourth ending** — the silent `return` (skip old mail, skip our own address, a
-guard added in a hurry) that would otherwise let a half-run report success.
-It cannot go dead the way its predecessor did, because it is not a statement
-about today's branches.
+must be `0`, and a non-zero value is degraded. It turns non-zero **the day
+someone adds a fourth ending** — the silent `return` (skip old mail, skip our
+own address, a guard added in a hurry) that would otherwise let a half-run
+report success. It cannot go dead the way its predecessor did, because it is
+not a statement about today's branches.
 
 Its guilt test injects that fourth ending rather than waiting for it: it
 monkeypatches `_handle_one` into a silent no-op and asserts the run is reported
 degraded with `errors` and `missing_folders` both empty — the branch under
 test, and no other.
+
+### The law's first version could read −1, which is worse than dead
+
+The paragraph above originally continued "it is zero on every path the code has
+today". Adversarial review measured that claim and reproduced the opposite on a
+live path:
+
+```
+seen 1  routed 1  left_in_inbox 0  message_errors 1
+unaccounted = -1
+moves [(['m1'], 'F-VISA')]
+errors ['message m1: Zoho API 500 while saving draft']
+```
+
+`routed += 1` sat inside `_handle_one`, **before** drafting. `_draft_reply`
+handles `DraftUnavailable` itself, but anything else — Zoho refusing to store
+the reply, the pending buffer failing to write — propagated to the caller's
+per-message handler, which added `message_errors` for a message it had already
+counted as routed. Two endings, one message.
+
+The negative was truthy, so that particular run still read degraded. The real
+damage is that **a sum can cancel**: a `−1` here silently absorbs a genuine
+`+1` elsewhere in the same run, and the law reports balanced while hiding two
+distinct defects. A conservation law that can net out is not a conservation
+law — and it fails quiet, where the dead branch it replaced at least failed
+loud under mutation.
+
+The cure was not a bigger check but a **smaller surface**. `_handle_one` now
+returns an ending and touches none of the three counters; the caller increments
+exactly one of them, in a single `if/elif`, and a crash after the move is
+reported as a draft failure because the message's ending was settled when it
+moved. There is deliberately **no `else`** on that mapping: an unmapped ending
+falls through to no counter, which is exactly what `unaccounted` is for.
+
+`unroutable` stays where it is because it is a _reason_, not an ending — it
+takes no part in the subtraction and cannot unbalance it.
+
+Both shapes are now pinned: the post-move crash (`routed == 1`,
+`message_errors == 0`, `unaccounted == 0`) and a run carrying one of each
+defect, which must read `unaccounted == 1` rather than netting to zero.
 
 ### And the verdict now names its own cause
 
@@ -675,13 +714,20 @@ worth a test, and it was unreachable without a database.
 | a declined message not counted as left | 4                |
 | DEGRADED line drops `unaccounted`      | 1                |
 | clean line drops `unroutable`          | 1                |
+| post-move draft crash propagates again | 1                |
+| `else` swallows the unmapped ending    | 2                |
+| `routed` incremented in both places    | 9                |
 
 ### Declared limits
 
-- `unaccounted` cannot go negative on any path today (no ending increments two
-  counters), but nothing enforces that; if a future edit double-counts, a
-  negative value is truthy in Python and would read as degraded. The failure
-  mode is a false alarm, not a silent success — the safe direction.
 - The law says a message reached _an_ ending, never that it was the _right_
   one. Routing a tax question into `_Visa` is accounted for and clean; that is
   §10's problem, not this one's.
+- `unaccounted` can no longer go negative _by construction_ — one increment
+  site per counter — but nothing mechanically forbids a future edit from adding
+  a second site. What would catch it is the same corpus: the post-move-crash
+  test asserts `message_errors == 0` on a routed message, and the net-out test
+  asserts a run carrying one defect of each sign reads `1`, not `0`.
+- The wrapper reads only the exit code, so `unaccounted` reaches a human
+  through the log line and the JSON, not through a distinct alert. A run
+  degraded _only_ by the law raises the same P0 as any other.
