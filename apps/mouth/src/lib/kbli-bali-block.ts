@@ -86,8 +86,67 @@ const NATIONAL_CLOSURE_STATUSES = new Set<string>([
   "CHIUSO_PMA_NO_BESAR",
 ]);
 
-export function isNationalClosure(status?: string | null): boolean {
-  return NATIONAL_CLOSURE_STATUSES.has(status ?? "");
+/**
+ * The per-code adjudication of `TERTUTUP` the comment above says is required.
+ *
+ * A CODE list, not a status rule, because the status cannot carry the answer:
+ * censused on the live catalogue, the 68 `TERTUTUP` records split into 8 whose
+ * reason names a national legal basis, 2 that say "in Bali" explicitly, and
+ * 58 — every one of them — whose reason is "medium-high/high risk → not blocked
+ * by moratorium (verify per address)". That sentence answers whether the
+ * MORATORIUM TEST fired; it never says where the closure applies. So for 58
+ * codes the record does not hold the fact, and no rule over `l4_bali` can
+ * invent it. They keep the Bali framing, which understates rather than
+ * misdirects, and fixing them means fixing the DATA — a lane of its own.
+ *
+ * Each entry below was read individually and carries the instrument that closes
+ * it nationwide. None is a guess from the code number or the title:
+ */
+const NATIONAL_CLOSURE_CODES = new Map<string, string>([
+  [
+    "01287",
+    "narcotics/medicinal-plant cultivation — TERTUTUP/0% at the national level",
+  ],
+  [
+    "47111",
+    "minimarket/supermarket retail — reserved to Indonesian citizens (WNI)",
+  ],
+  [
+    "47112",
+    "minimarket/supermarket retail — reserved to Indonesian citizens (WNI)",
+  ],
+  ["59131", "film/video distribution — TERTUTUP/0% at the national level"],
+  [
+    "69102",
+    "legal consultancy — reserved to Indonesian-licensed advocates, UU 18/2003",
+  ],
+  [
+    "69104",
+    "notary/PPAT — a personal State office, WNI only, UU 30/2004 as am. UU 2/2014",
+  ],
+  [
+    "86201",
+    "solo doctor's practice — closed to foreign nationals under Kemenkes health law",
+  ],
+  [
+    "86202",
+    "solo specialist practice — closed to foreign nationals under Kemenkes health law",
+  ],
+]);
+
+/** Why this code is closed nationwide, or null when it is not (audit surface). */
+export function nationalClosureBasis(code?: string | null): string | null {
+  return NATIONAL_CLOSURE_CODES.get(code ?? "") ?? null;
+}
+
+export function isNationalClosure(
+  status?: string | null,
+  code?: string | null,
+): boolean {
+  return (
+    NATIONAL_CLOSURE_STATUSES.has(status ?? "") ||
+    NATIONAL_CLOSURE_CODES.has(code ?? "")
+  );
 }
 
 /**

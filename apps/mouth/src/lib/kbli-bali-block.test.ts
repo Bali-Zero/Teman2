@@ -10,6 +10,7 @@ import {
   narratesUnverifiedRoute,
   baliBlockedHint,
   isNationalClosure,
+  nationalClosureBasis,
 } from "./kbli-bali-block";
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 import goldData from "../../data/kbli-gold-all.json";
@@ -658,32 +659,74 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
   });
 
   it("INNOCENCE: no Bali-scoped block is turned into a national one", () => {
-    const baliScoped = BLOCKED.filter((r) =>
-      BALI_SCOPED.includes(r.l4_bali?.status ?? ""),
+    const baliScoped = BLOCKED.filter(
+      (r) =>
+        BALI_SCOPED.includes(r.l4_bali?.status ?? "") &&
+        // The 8 per-code adjudications ARE national and are supposed to be
+        // caught; excluding them keeps this test about the STATUS rule instead
+        // of quietly re-testing the code list.
+        nationalClosureBasis(r.kode_kbli_2025) === null,
     );
     // This is the set that would silently lose its Bali framing if the rule were
     // widened by "closed-sounding status" instead of by named entity.
     expect(baliScoped.length).toBeGreaterThan(100);
     const misclassified = baliScoped.filter((r) =>
-      isNationalClosure(r.l4_bali?.status),
+      isNationalClosure(r.l4_bali?.status, r.kode_kbli_2025),
     );
     expect(misclassified.map((r) => r.kode_kbli_2025)).toEqual([]);
   });
 
-  it("DECLARED GAP: TERTUTUP is mixed on the live data and stays Bali-framed", () => {
-    // `01287` says "closed to foreign ownership at the national level" while
-    // `01111` says "closed to PMA registration IN BALI". Judging all 68 by the
-    // name of the status would be the same form-over-entity move that produced
-    // the defect this rule fixes, so they wait for per-code adjudication.
-    // If this ever goes red, TERTUTUP stopped being mixed — re-read it and
-    // decide, do not just delete the test.
+  it("GUILT: the 8 per-code TERTUTUP adjudications each name their instrument", () => {
+    // A code list is data wearing code's clothes, so it earns its keep only if
+    // every entry stays auditable: the code must still be TERTUTUP on the live
+    // catalogue (otherwise the adjudication is stale and nobody would know) and
+    // must carry a stated basis. Read one by one — UU 18/2003 for advocates, UU
+    // 30/2004 for notaries, Kemenkes health law for solo practice, the WNI
+    // retail reservation, and the two national TERTUTUP/0% entries.
+    const adjudicated = [
+      "01287",
+      "47111",
+      "47112",
+      "59131",
+      "69102",
+      "69104",
+      "86201",
+      "86202",
+    ];
+    for (const code of adjudicated) {
+      const record = RECORDS.find((r) => r.kode_kbli_2025 === code);
+      expect(record, `${code} left the catalogue`).toBeDefined();
+      expect(record!.l4_bali?.status, `${code} is no longer TERTUTUP`).toBe(
+        "TERTUTUP",
+      );
+      expect(nationalClosureBasis(code)).toBeTruthy();
+      expect(isNationalClosure(record!.l4_bali?.status, code)).toBe(true);
+    }
+  });
+
+  it("DECLARED GAP: the other TERTUTUP records never state a scope at all", () => {
+    // The 68 split into 8 with a national legal basis, 2 that say "in Bali", and
+    // 58 whose reason is "medium-high/high risk -> not blocked by moratorium
+    // (verify per address)" — a sentence answering whether the MORATORIUM TEST
+    // fired, never where the closure applies. The record does not hold the fact,
+    // so no rule over `l4_bali` can invent it; those keep the Bali framing,
+    // which understates rather than misdirects.
+    // If this goes red the reasons gained a scope — read them and adjudicate,
+    // do not just delete the test.
     const tertutup = RECORDS.filter((r) => r.l4_bali?.status === "TERTUTUP");
     expect(tertutup.length).toBeGreaterThan(1);
-    const reasons = tertutup.map((r) =>
-      (r.l4_bali?.reason ?? "").toLowerCase(),
+    const unscoped = tertutup.filter(
+      (r) =>
+        nationalClosureBasis(r.kode_kbli_2025) === null &&
+        /not\s+blocked\s+by\s+moratorium/i.test(r.l4_bali?.reason ?? ""),
     );
-    expect(reasons.some((t) => t.includes("national level"))).toBe(true);
-    expect(reasons.some((t) => t.includes("in bali"))).toBe(true);
+    expect(unscoped.length).toBeGreaterThan(20);
+    for (const r of unscoped) {
+      expect(isNationalClosure(r.l4_bali?.status, r.kode_kbli_2025)).toBe(
+        false,
+      );
+    }
+    // …and the status ALONE still never nationalises anything.
     expect(isNationalClosure("TERTUTUP")).toBe(false);
   });
 
@@ -708,12 +751,33 @@ describe("the FAQ answer for a national closure", () => {
       ),
     );
     expect(national.length).toBeGreaterThan(0);
-    for (const r of national) {
+    // …plus the per-code adjudications, whose headline case is the notary page
+    // that started this whole lane.
+    const byCode = RECORDS.filter(
+      (r) => nationalClosureBasis(r.kode_kbli_2025) !== null,
+    );
+    expect(byCode.map((r) => r.kode_kbli_2025)).toContain("69104");
+    // Split by BRANCH, because only the `pma.status === "open"` records ever
+    // reached the defective answer. Measured on the live catalogue: of the 8
+    // per-code adjudications, 3 (`01287`, `59131` TERTUTUP/0 and `47111`
+    // TERBATAS/0) were ALREADY answered correctly off `pma_status`, and 5
+    // (`47112`, `69102`, `69104`, `86201`, `86202`) carry TERBUKA/100 — the
+    // absence-from-the-annex default — and are what this rule actually changes.
+    // They stay in the list regardless: the point is to stop depending on a
+    // default fill that can move underneath us.
+    let changed = 0;
+    for (const r of [...national, ...byCode]) {
       const answer = buildKbliFaq(toKbliCodeForFaq(r))[0].answer.toLowerCase();
-      expect(answer).not.toContain("outside bali it is open");
-      expect(answer).not.toContain("nationally yes");
-      expect(answer).toContain("everywhere in indonesia");
+      // No branch, ever, may route the reader to another province.
+      expect(answer, r.kode_kbli_2025).not.toContain("outside bali it is open");
+      expect(answer, r.kode_kbli_2025).not.toContain("nationally yes");
+      if (r.pma_status === "TERBUKA" && (r.pma_max_asing ?? 0) > 0) {
+        expect(answer, r.kode_kbli_2025).toContain("everywhere in indonesia");
+        changed += 1;
+      }
     }
+    // Premise: if this ever hits 0 the loop above is asserting nothing.
+    expect(changed).toBeGreaterThanOrEqual(5);
   });
 
   it("INNOCENCE: a genuine Bali-only block keeps the 'nationally yes' answer", () => {

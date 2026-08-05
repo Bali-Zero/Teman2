@@ -289,7 +289,7 @@ export default async function KBLICodePage({
                 // alone put "does not apply to a PT PMA in Bali" above an
                 // article saying the bar is nationwide. See isNationalClosure.
                 const nationallyClosed =
-                  isNationalClosure(kbli.baliL4?.status) ||
+                  isNationalClosure(kbli.baliL4?.status, kbli.code) ||
                   (!kbli.pma.capSpecial &&
                     (kbli.pma.status === "closed" ||
                       kbli.pma.maxForeign === 0));

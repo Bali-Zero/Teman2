@@ -72,7 +72,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // for the central bank, radioactive-waste collection, and seven bidang usaha a
   // presidential annex allocates to Koperasi/UMKM nationwide. The TERBUKA/100%
   // it leans on is the absence-from-the-annex default fill, not a permission.
-  const nationallyClosed = isNationalClosure(code.baliL4?.status);
+  const nationallyClosed = isNationalClosure(code.baliL4?.status, code.code);
 
   const pmaAnswer =
     code.pma.status === "open"
