@@ -45,6 +45,80 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-05 — keep current)
 
+**🟢 2026-08-05 — THE OBLIGATIONS BLOCK IS LIVE ON `chat_kbli`, AND THE THREE NUMBERS IT PRODUCED ARE
+ALL RIGHT.** `kbli_documents_cure.py --all-machine-template --apply` ran from the deployed image:
+**299** rows selected by the recogniser, **170** rewritten, **129** already byte-identical (all with
+`per_skala = 0` — an honest no-op, verified per code before the apply), and **87** rows now carry a
+`## Kewajiban` block — exactly the subset of the 170 for which canonical states any obligation. Before
+this, `count(*) FILTER (WHERE content ILIKE '%## Kewajiban%')` on the live table was **0 of 1,563**.
+
+- **PROVE-LIVE on the whole consumer map, which is one reader.** `grep`ping the repo for
+  `kbli_documents` outside tests/scripts returns exactly one file — `kbli_notebook_chat.py`, i.e.
+  `chat_kbli` (the `apps/mouth` TS hit is a comment, not a query). Asked about `25200` obligations,
+  the bot now answers grouped **by scale**: Mikro/Kecil get the industry-data + safety + MSDS set,
+  Menengah adds the disaster-evacuation SOP, Besar adds ISO 9001 — the exact per-scale shape
+  `build_kewajiban_section` emits. Positive control with the shared mechanism: all five tokens it
+  printed (`ISO 9001`, `SOP evakuasi bencana`, `Lembar Data Keselamatan Bahan`, `Menengah (Seluruh)`,
+  `Besar (Seluruh)`) were read back out of the DB row before crediting the channel with reading it.
+- **The 1,260 refused rows keep hand-written prose and this is BY DESIGN** — closing them needs prose
+  re-authored around the new rows (Legge 5), not a script. The refusal is declared in the apply log.
+- **CORRECTION to a note written before this ran:** `96230` was named as the code that would surface
+  _"Sertifikat Laik Sehat"_. It did not, and the cure is fine — `96230` is a hand-written editorial
+  row (`KBLI 96230: … WHAT IT MEANS:`), refused by the recogniser, never in the 299. A PROVE-LIVE
+  exemplar must be picked FROM the apply log, never from memory of "a code that has this fact":
+  [[lesson_a_cures_own_count_is_not_the_count_of_rows_that_gained_the_thing_2026_08_05]].
+
+**🟢 2026-08-05 — WE TOLD AN UMRAH TRAVEL AGENCY TO CLEAR PLANTATION LAND, ON A PUBLIC PAGE. CURED,
+APPLIED AND PROVEN LIVE.** PR #3625 merged (`4410bd48`); the apply ran from Pro at 16:57 WITA:
+**1,711 edge ROWS deleted across 1,707 pairs on 1,029 codes, 0 refusals, RC=0.**
+`kbli_notebook.py:466` renders each REQUIRES-edge target's `properties.kewajiban` verbatim as the
+code's `requirements`.
+
+- **IT WAS NEVER "FOUR BAD NODES" — that is how it was FOUND.** The deletable set spans **563 distinct
+  target nodes**; the four named ones (`0bf540b11cf6`, `55be853cd247`, `c7cd8d6c86e5`, `41a60205c6c0`)
+  are **1,116 of 1,707 = 65%**, leaving 591 over 559 other targets. A cure written against the four
+  names would have left a third of the lie standing. (An earlier note here said 1,118; measured: 1,116.)
+- **THE SECOND CONSUMER, missing from this corner until now — write it down or it gets left out
+  again.** `balizero.com/kbli-explorer` calls the same endpoint and prints these lines under the
+  heading **"What you need to do:"**, `.slice(0, 3)` — so a client saw exactly the three wrong ones.
+  Proven by searching **all 31** chunks the served page references (no sampling): only
+  `app/kbli-explorer/page-76f6af2d1b5d8ba9.js` carries both the heading and `kbli-notebook/inspect`,
+  and the bundle's host is `https://nuzantara-rag.fly.dev` — the backend the cure landed on. The
+  remaining readers (`/kbli/<code>` SEO pages, apps/kbli-navigator, `KBLIEye`) read the static
+  canonical JSON, a DIFFERENT store, and were never affected. `chat_kbli` has **zero** occurrences of
+  `kewajiban|persyaratan|REQUIRES`.
+- **PROVE-LIVE, anonymous, with positive controls sharing the mechanism** (HTTP 200 = what the public
+  page gets): on `79122` and `62110`, `pembukaan lahan tanpa bakar` / `good agriculture practices` /
+  `Menteri Pertanian` / `"skala"` are all **0**, while `Pembimbing Ibadah` (79122) and `konten SARA`
+  (62110) are still **1** — the zeros are real, not an empty response.
+- **Population proof, not two exemplars:** the four nodes went from **979 KBLI codes to 9**. Eight of
+  the nine are genuinely agricultural (corn, sugarcane, coconut, oil palm, tea, beverage crops,
+  rubber, tobacco curing) and SHOULD carry them.
+- **The ninth is the whole refusal class, and it is one code.** Both `CANNOT_JUDGE_CANONICAL_SILENT`
+  verdicts sit on **`91300`** (cultural-heritage restoration): its canonical row exists with
+  `per_skala = 0`, so the predicate cannot prove the agricultural edge wrong and KEEPS it — "absence
+  of a statement is not a denial". Visibly wrong to a human, unprovable by the rule: named residue,
+  not a miss. Closing it means giving 91300 canonical obligations.
+- **DECLARED GAP, measured not assumed:** the **11,245 node-silent** edges are untouched and DO
+  contain real errors — `62110` (video games) is still REQUIRES-linked to `Izin Industri Pertahanan`
+  and a defence-production permit. Those targets state no obligations, so this predicate is blind to
+  them by construction. That is a separate lane, not a follow-up of this one.
+- Arithmetic reconciles end to end: 15,030 pairs + 25 duplicate rows = 15,055 rows; −1,711 = **13,344**
+  measured after. **1,029 kg_nodes carry `_disputed_requires_obligations`** — one per acted code, so
+  nothing was deleted without an archive; per-code transaction, archive and delete land together.
+- **The innocence is per code, not per node** — 79122 lost land-clearing and KEPT its pilgrimage
+  duties (5 edges remain). `kg_kbli_license_fix.py` cannot do this: its verdict is whole-code.
+- A cross-family refuter returned **DEFECTIVE** with four real findings (undecoded HTML entities = a
+  latent false-DELETE; a non-list `kewajiban` iterated character by character; "never silent-delete"
+  not binding when there is no node to archive on; a tautological wiring pin). All fixed; 34 tests,
+  mutation 10/10; scope unchanged at 1,707.
+- **Cache:** 7 chunks of ≤150 over all 1,029 codes — **5 entries found, 5 evicted, 0 survived**. The
+  `0/150` on chunk 1 is a TRUE zero: the positive control showed the tool still sees
+  `kbli_inspect_v2_79122`/`_62110`. The cache is sparse — only inspected codes have entries.
+- **GOTCHA paid here:** on Pro the fly credential in `~/.nuzantara-secrets.env` is **unauthorized**
+  and `~/.fly/config.yml` is the live one — the **inverse** of the 2026-07-26 W106 reading. Probe by
+  doing the work (`machines list`), never `auth whoami`, and never hardcode which side wins.
+
 **🟢 2026-08-05 — THE `whatChanged` LANE: FOUR STORES, AND THE CURE ITSELF LEFT A CONTRADICTION IN
 THREE OF THEM.** #3610 cured 13 codes still telling clients _"Direct 1:1 match from KBLI 2020 — code
 and scope unchanged"_ on records whose own crosswalk denies it. Promoting it (prod was serving a
