@@ -424,3 +424,58 @@ def test_the_prompt_arrives_on_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
     # a `-p` that lost its flag would read stdin as an interactive session.
     assert seen["argv"][:2] == ["/fake/claude", "-p"]
     assert draft_module.CLAUDE_MODEL in seen["argv"]
+
+
+# --------------------------------------------------------------------------- #
+# 4. The verdict must name its own cause.                                      #
+#                                                                              #
+# `degraded` has four terms. Three of them leave a second trace a reader can   #
+# find (a missing folder, an error list, a draft failure). `unaccounted` does  #
+# not: it is silent by construction — a message nobody recorded. If the        #
+# DEGRADED line omits it, the run that most needs explaining is the one that   #
+# prints `routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0` and #
+# no reason at all. That is the mute alarm this repo keeps re-learning.        #
+# --------------------------------------------------------------------------- #
+
+
+def _summary(**overrides: Any) -> Any:
+    from backend.services.mail_loop.loop import RunSummary
+
+    return RunSummary(**overrides)
+
+
+def test_a_silent_degradation_still_says_why(caplog: pytest.LogCaptureFixture) -> None:
+    """GUILT: the only term with no other symptom must appear in the line."""
+    summary = _summary(seen=3, routed=0, left_in_inbox=0, message_errors=0)
+    assert summary.unaccounted == 3, "premise: this run is degraded ONLY by the law"
+    assert not summary.errors and not summary.missing_folders
+
+    with caplog.at_level("WARNING", logger="mail_loop"):
+        code = cli_module._report(summary)
+
+    assert code == 1
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert warnings, "a degraded run must warn"
+    assert "unaccounted=3" in warnings[0], (
+        "the DEGRADED line names every term of the verdict, or the reader is "
+        f"left guessing: {warnings[0]!r}"
+    )
+
+
+def test_a_clean_run_says_how_many_it_declined(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A quiet day is clean — and the log must let a human tell it from a dead one.
+
+    Same exit code, same `routed=0`: without the count, "understood nothing and
+    said so" and "did nothing at all" read identically at 07:30.
+    """
+    summary = _summary(seen=4, routed=0, unroutable=4, left_in_inbox=4)
+    assert summary.degraded is False, "premise: a fully-declined day is not degraded"
+
+    with caplog.at_level("INFO", logger="mail_loop"):
+        code = cli_module._report(summary)
+
+    assert code == 0
+    infos = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert infos and "unroutable=4" in infos[0], infos

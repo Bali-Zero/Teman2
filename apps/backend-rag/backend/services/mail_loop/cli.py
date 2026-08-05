@@ -23,6 +23,11 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # annotation only — `_amain` imports the real thing lazily so
+    # that `--help` keeps working without the backend's dependency tree.
+    from backend.services.mail_loop.loop import RunSummary
 
 logger = logging.getLogger("mail_loop")
 
@@ -235,6 +240,16 @@ async def _amain(args: argparse.Namespace) -> int:
     # which is precisely what makes it stop being parseable.
     print(json.dumps(summary.as_dict(), indent=2, ensure_ascii=False))  # noqa: T201
 
+    return _report(summary)
+
+
+def _report(summary: RunSummary) -> int:
+    """Turn a finished run into the process's exit code, and say why.
+
+    Pulled out of `_amain` so the wording is reachable without a database: the
+    thing worth testing here is not the arithmetic, it is that the line a human
+    finds at 07:30 names the reason for the verdict it announces.
+    """
     blocking = _consent_blocker(summary.errors)
     if blocking is not None:
         # Deliberately does NOT recite which scopes the stored grant holds.
@@ -256,21 +271,29 @@ async def _amain(args: argparse.Namespace) -> int:
         return 2
 
     if summary.degraded:
+        # Every term of `degraded` appears here. A verdict whose reason is not
+        # in the line it prints sends whoever finds it at 07:30 looking for a
+        # cause among the fields that happen to be shown — which is how
+        # `unaccounted` (silent, and the only one with no other symptom) would
+        # read as "routed nothing, no idea why".
         logger.warning(
             "run DEGRADED: routed=%d drafted=%d draft_failures=%d missing_folders=%s "
-            "errors=%d",
+            "errors=%d unaccounted=%d",
             summary.routed,
             summary.drafted,
             summary.draft_failures,
             summary.missing_folders,
             len(summary.errors),
+            summary.unaccounted,
         )
         return 1
 
     logger.info(
-        "run clean: seen=%d routed=%d drafted=%d left_in_inbox=%d lessons=%d%s",
+        "run clean: seen=%d routed=%d unroutable=%d drafted=%d left_in_inbox=%d "
+        "lessons=%d%s",
         summary.seen,
         summary.routed,
+        summary.unroutable,
         summary.drafted,
         summary.left_in_inbox,
         summary.lessons_learned,
