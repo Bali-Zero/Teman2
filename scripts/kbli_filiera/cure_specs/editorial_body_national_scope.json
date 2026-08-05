@@ -1,0 +1,378 @@
+{
+  "_meta": {
+    "lane": "editorial.body national-scope framing",
+    "population_basis": "the 15 codes cured by #3599 + #3606, whose `intel_2026.editorial.body` still framed a national restriction as Bali-only — 54 occurrences, 32 flagged paragraphs, 36 rewritten (authors also took adjacent paragraphs carrying the same implication)",
+    "why_it_was_missed": "the cures were FIELD-SCOPED and nobody enumerated `editorial.body`. It renders via MarkdownClient -> dynamic(react-markdown, {ssr:false}); the server HTML holds only BAILOUT_TO_CLIENT_SIDE_RENDERING, so every curl probe reported the text absent while every real visitor read it.",
+    "authored_by": "5 Sonnet lanes, 3 codes each, from the record evidence only",
+    "graded_by": "5 fresh-context Sonnet graders, each grading a DIFFERENT lane's output: 35/36 SOUND. A cross-family seat (Codex gpt-5.6-terra) then found 13 — the W100 pattern exactly. Adjudicated against the record: 2 UPHELD and fixed (a gloss naming BAPETEN as 'Indonesia's nuclear regulator', and 'at any business scale' on 86202 whose per_skala is null), 4 REFUTED with evidence (BAPETEN/BUMN ARE named instruments so 'nationwide' is supported; 69104's four scales are in per_skala), and 7 concerned spans CARRIED VERBATIM from the published paragraph, which rule 5 protects and the review packet could not see because it was shown only l4_reason.",
+    "what_this_does_not_fix": "the page BANNER still reads 'National procedure - does not apply to a PT PMA in Bali' and 'valid for a foreign-owned company outside Bali (e.g. Jakarta)'. It derives that from nationallyClosed = pma.status=='closed' || pma.maxForeign===0, and all 15 records still hold TERBUKA/100. The prose is now right and the chrome around it is not; the root cause is that a NATIONAL restriction is recorded in a BALI-scoped field (l4_bali). Data-layer lane."
+  },
+  "codes": {
+    "38122": {
+      "judul": "Pengumpulan Limbah Radioaktif",
+      "expect_l4_status": "CHIUSO_REGOLATORE_SETTORIALE",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Nationally, the record is straightforward. The activity is marked **TERBUKA** for PMA, with a foreign-ownership ceiling of **100%**, and it is open across **Mikro, Kecil, Menengah, and Besar** scales. That means the national investment table does not, on this record, impose a foreign-share cap below full ownership. The cited national source is **Perpres 10/2021, 49/2021**. For a founder reading only the national layer, this would look like a foreign-open activity available at every listed business scale.",
+          "new": "Our records file KBLI 38122 as **TERBUKA** for PMA, with a foreign-ownership ceiling of **100%**, across **Mikro, Kecil, Menengah, and Besar** scales — the baseline classification applied when the national investment list carries no specific entry for this code. That baseline is a default fill, not a recorded permission, and on its own it does not make the activity open to foreign capital. As the next section shows, a separate and more specific rule closes it outright.",
+          "why": "Not flagged, but it primes the same false implication the flagged paragraphs build on: it states pma_max_asing=100 (an absence-from-annex default fill, per the evidence file's own field name) as if it were a real national permission and invites the reader to conclude the activity 'would look like a foreign-open activity' — the exact R4 defect. Left uncorrected it also contradicts the corrected paragraphs below, which state the closure is nationwide, not Bali-only."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali changes the answer completely. The Bali status is **Closed (sector regulator)**, and the record states that the activity is blocked there. The reason is not framed as a tourism moratorium or a soft local preference; it is a sectoral closure. In Bali’s record, radioactive-waste collection is treated as a strategic sector reserved to the State through BUMN and BAPETEN, and closed to private capital and PMA capital. The honest conclusion is therefore blunt: a foreign-owned company cannot register this activity in Bali today.",
+          "new": "That default classification does not survive contact with the rule that actually governs this activity. Radioactive-waste collection is a strategic sector reserved to the State through BUMN and BAPETEN, and closed to private capital and PMA capital. This is not a tourism moratorium or a soft local preference; it is a national sectoral closure, so the classification above never actually opens the door. The honest conclusion is therefore blunt: a foreign-owned company cannot register this activity anywhere in Indonesia today.",
+          "why": "l4_reason names BAPETEN, a specific national regulator (R3), so the closure is nationwide, not a 'Bali record' fact. The original framed it as 'the Bali status is Closed', implying the activity is only closed in Bali and would otherwise be open elsewhere — false, since the BUMN/BAPETEN reservation is a national sectoral closure with no Bali-specific instrument behind it. | Cross-family round: UPHELD and applied."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "There is also a wider Bali rule in the record: the province blocks all low and medium-low risk KBLI for PMA, island-wide and permanently, under the cited governor’s letter. But for this activity, the sharper fact is the sectoral block itself. KBLI 38122 may be nationally open at 100% foreign ownership, yet the Bali-side reading is closed for PMA registration because the activity is radioactive-waste collection in a State-reserved strategic sector. For founders, the usable distinction is simple: national openness is real, but it does not override the Bali closure recorded here.",
+          "new": "There is also a wider Bali rule in the record: the province blocks all low and medium-low risk KBLI for PMA, island-wide and permanently, under the cited governor’s letter. For this activity, though, that rule is beside the point: the State reservation to BUMN and BAPETEN closes the activity to private and foreign capital regardless of risk scale, business size, or shareholding structure. For founders, the usable distinction is simple: this is a sector the State keeps for itself nationwide, not a Bali-specific restriction that a company might sidestep by registering elsewhere in Indonesia.",
+          "why": "Keeps the real, separately-evidenced Bali low/medium-low-risk PMA moratorium (R5) but removes the false 'nationally open at 100%, yet closed in Bali' contrast — since BAPETEN's reservation is national (R3), the activity cannot be registered anywhere in Indonesia, not merely outside Bali."
+        }
+      ]
+    },
+    "41011": {
+      "judul": "Konstruksi Konvensional Gedung Hunian",
+      "expect_l4_status": "TERBATAS",
+      "expect_l4_blocked": false,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "At the national level, the foreign-investment position is direct: the activity is open, with a foreign-ownership ceiling of 100%. That is the national reference point, not a promise that every locality applies the same practical terms. In Bali, the status is limited rather than blocked. The record sets a Bali-specific maximum of 67% for foreign nationals, requires a local partner, and requires an IUJK. Those are material conditions, not decorative footnotes: a structure that is nationally open to full foreign ownership must be reconsidered against Bali’s tighter local line.",
+          "new": "The foreign-investment position here is limited rather than open. Our records cap foreign-national participation at 67%, and pair that ceiling with two further conditions: a local partner, and an IUJK (construction-services business licence). Those are material conditions, not decorative footnotes — a structure built around full, unrestricted foreign ownership does not fit this activity as recorded.",
+          "why": "l4_reason ('konstruksi gedung: max 67% WNA + partner locale + IUJK') is a BARE restriction naming no law/Perpres/annex row, so R2 requires the rewrite to carry no geographic word at all. The original stated a false 'national... 100%' ceiling (R4) contrasted with a 'Bali-specific' 67% cap, implying full foreign ownership works anywhere outside Bali (R7). Rewritten to state the 67%+partner+IUJK restriction unscoped, with no 'national'/'Bali'/'locality' language."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali also has a permanent, island-wide moratorium blocking PMA registration for all low- and medium-low-risk KBLI activities. This record does not identify KBLI 41011 as blocked under that rule; it identifies the Bali position as limited. The honest reading is therefore neither a blanket Bali prohibition nor a simple extension of the national 100% ceiling. Nationally, residential construction under this code is fully open to foreign ownership. In Bali, it remains subject to a 67% foreign-national maximum, a local-partner requirement and an IUJK.",
+          "new": "Bali also has a permanent, island-wide moratorium blocking PMA registration for all low- and medium-low-risk KBLI activities. This record does not identify KBLI 41011 as blocked under that rule; it identifies the position instead as limited. The honest reading is therefore neither a blanket prohibition nor an opening to unrestricted foreign ownership. As recorded, this activity carries a 67% foreign-national maximum, together with a local-partner requirement and an IUJK.",
+          "why": "The original closed with 'Nationally... fully open to foreign ownership. In Bali, it remains subject to a 67%...', restating the unsupported 100% figure (R4) and directly implying the activity is fully open to foreign ownership outside Bali (R7). Kept the true, distinct Bali-moratorium sentence (R5, and consistent with l4_blocked=false) but stated the 67%/partner/IUJK restriction with no geographic scoping, per R2 since l4_reason names no instrument."
+        }
+      ]
+    },
+    "52292": {
+      "judul": "Aktivitas Tally Mandiri",
+      "expect_l4_status": "TERBATAS",
+      "expect_l4_blocked": false,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Nationally, the position is open. The foreign-ownership ceiling is 100%, which means the national record permits foreign ownership up to full ownership. Bali gives the activity a different contour. Its status is TERBATAS: restricted. Within the Bali entry’s cargo/freight-forwarding context, foreign nationals may hold no more than 49%. National openness does not transplant unchanged to Bali; the island listing carries a 49% ceiling for foreign nationals.",
+          "new": "The position, as recorded, is restricted rather than open. Status: TERBATAS. Within the cargo/freight-forwarding context that applies to this code, foreign nationals may hold no more than 49%. That is the material fact for a founder weighing this activity — a capped-ownership structure, not a fully open one.",
+          "why": "l4_reason ('cargo/freight forwarding: max 49% WNA') is a BARE restriction naming no law/Perpres/annex row, so R2 bars any geographic word in the restriction statement. The original claimed a false 'national... 100%' ceiling (R4) versus a 'Bali entry'/'island listing' 49% cap, implying full foreign ownership is available outside Bali (R7). Rewritten to state TERBATAS/49% unscoped."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "The record also notes a permanent, island-wide Bali rule that blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity’s own Bali entry is not marked as blocked; it is marked TERBATAS and states the 49% foreign-ownership limit. The slim record does not assign this activity a risk classification, so the precise reading is to keep those two facts distinct: the general moratorium applies to the risk categories named in the rule, while this activity’s recorded Bali treatment is a restriction on foreign ownership. For founders, that distinction is the essential one: a 100% national ceiling is not the Bali position for this activity.",
+          "new": "The record also notes a permanent, island-wide Bali rule that blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity’s own entry is not marked as blocked; it is marked TERBATAS and states the 49% foreign-ownership limit. The slim record does not assign this activity a risk classification, so the precise reading is to keep those two facts distinct: the general moratorium applies to the risk categories named in the rule, while this activity’s recorded treatment is a restriction on foreign ownership, capped at 49%, rather than an outright block. For founders, that distinction is the essential one: this is a capped-ownership activity, not an open one.",
+          "why": "The original closed with 'a 100% national ceiling is not the Bali position for this activity', restating the unsupported percentage (R4) and implying 100% foreign ownership is the position outside Bali (R7). Kept the true, distinct Bali-moratorium sentence (R5, consistent with l4_blocked=false) but removed the national/Bali contrast on the 49% cap itself, stating it unscoped per R2 since l4_reason names no instrument."
+        }
+      ]
+    },
+    "55201": {
+      "judul": "Aktivitas Rumah Tinggal Sewa (Homestay)",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "For a foreign investor, the defining fact is plain: this homestay activity cannot be registered through a PT PMA in Bali today. That is not because the national framework closes foreign ownership. At the national level, foreign investment is permitted for this activity, up to 100% ownership. The Bali result comes from a specific instrument, not a missing OSS business-scale row: Perpres 49/2021’s Lampiran II lists the *Pondok Wisata* sub-row — carrying the pre-2025 code KBLI 55130, now this activity’s 55201 — as *dialokasikan* (allocated) to Koperasi and UMKM. That allocation is what closes the bidang usaha to a PT PMA in Bali.",
+          "new": "For a foreign investor, the defining fact is plain: this homestay activity cannot be registered through a PT PMA anywhere in Indonesia. The closure comes from a specific national instrument, not a missing OSS business-scale row: Perpres 49/2021’s Lampiran II lists the *Pondok Wisata* sub-row — carrying the pre-2025 code KBLI 55130, now this activity’s 55201 — as *dialokasikan* (allocated) to Koperasi and UMKM. That allocation is what closes the bidang usaha to a PT PMA nationwide, not only in Bali.",
+          "why": "l4_reason names Perpres 49/2021 Lampiran II — a national annex, not a Bali-specific rule — so per R3 the scope word must be 'nationwide', not 'in Bali'. Also drops the invented '100% national ownership' claim (pma_max_asing=100 is an absence-from-annex default fill, not a recorded permission — R4)."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "The registration scales recorded for this activity are **Mikro**, **Kecil** and **Menengah**. Those scale rows describe the activity’s licensing track, not its ownership eligibility; they are not, on their own, what decides the Bali outcome. A national foreign-ownership allowance is therefore not, by itself, a promise of a usable Bali registration path. Here, the national position and the island-level registration result point in different directions: open at the national level, but closed to PMA registration in Bali because Perpres 49/2021’s Lampiran II allocates this bidang usaha to Koperasi/UMKM.",
+          "new": "The registration scales recorded for this activity are **Mikro**, **Kecil** and **Menengah**. Those scale rows describe the activity’s licensing track, not its ownership eligibility, and they are not what closes this bidang usaha to a PT PMA. The closure comes from a more specific source: Perpres 49/2021’s Lampiran II allocates this bidang usaha to Koperasi/UMKM, and that allocation is national in scope — it closes the activity to PT PMA registration everywhere in Indonesia, not just in Bali.",
+          "why": "Removes the false 'national position open, Bali closed' contrast — there is no recorded national opening (R4), and the Perpres annex allocation the paragraph itself cites is national, so the closure is nationwide (R3), not an island-level result."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali also has an island-wide, permanent policy blocking PMA for all Low- and Medium-Low-risk KBLI activities. The record does not assign a Bali ownership percentage or partnership condition to this homestay activity, so none should be inferred. The relevant local fact is the recorded closure: Perpres 49/2021’s Lampiran II allocates this bidang usaha — via the *Pondok Wisata* sub-row for KBLI 55130 — to Koperasi/UMKM, and that allocation prevents a PT PMA from registering the activity in Bali. Founders should read the national 100% ceiling accurately—as a national ownership position—while treating the Bali registration barrier as the operational answer for a PMA setup on the island.",
+          "new": "Bali also has a separate, island-wide, permanent policy blocking PMA for all Low- and Medium-Low-risk KBLI activities, but that provincial rule is not what governs this code. The record does not assign an ownership percentage or partnership condition to this homestay activity, so none should be inferred. The closure that matters here is the recorded one: Perpres 49/2021’s Lampiran II allocates this bidang usaha — via the *Pondok Wisata* sub-row for KBLI 55130 — to Koperasi/UMKM, a national annex entry that prevents a PT PMA from registering the activity anywhere in Indonesia. Founders should treat that nationwide allocation, not a Bali-only rule, as the operative barrier for a PMA setup.",
+          "why": "Keeps the real, separately-scoped Bali risk-based moratorium fact (R5) but stops treating the Perpres annex closure as 'the Bali registration barrier' — it is a national instrument, so it closes the activity nationwide (R3). Also drops the repeated invented '100% national ceiling' framing (R4)."
+        }
+      ]
+    },
+    "55203": {
+      "judul": "Aktivitas Vila",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Nationally, the foreign-investment position is open. The PMA status is TERBUKA and the maximum foreign ownership is 100%. In direct terms, the national ceiling allows full foreign ownership for this activity; the record states no lower national cap. Its cited PMA basis is Perpres 10/2021, 49/2021. The 100% figure is a national ownership ceiling, however, not a statement of whether registration is available in Bali.",
+          "new": "Our records carry a default marker for this activity — PMA status TERBUKA with a 100% foreign-ownership ceiling — but that marker is a fallback the dataset applies whenever an activity has no specific annex entry, not a confirmed permission. For this code, the annex does carry a specific entry, and it points the other way: Perpres 49/2021's Lampiran II allocates the activity to Koperasi/UMKM. That allocation, not the default marker, is what governs, and it applies nationwide.",
+          "why": "pma_status=TERBUKA / pma_max_asing=100 are explicitly flagged in the evidence as an absence-from-annex default fill, not a recorded permission — stating them as a confirmed 'open, 100%' national position is exactly the R4 defect. Reframed as a statement about our records (R1), with the actual governing fact (the Perpres annex closure, national in scope per R3) stated instead."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "In Bali, that path is closed today for a PT PMA. The record gives an explicit reason: Perpres 49/2021's Lampiran II allocates this activity to Koperasi/UMKM — page 15, entry 48, sub-row *Vila*, under the old KBLI code 55193 — a named annex entry, not an inference drawn from a missing OSS scale row, and a PT PMA cannot register under an allocation reserved for cooperatives and UMKM. It also records a permanent, island-wide Bali moratorium blocking PMA across low- and medium-low-risk KBLI activities. The careful conclusion is not that national openness disappeared. It is that a 100% national foreign-ownership ceiling does not produce a Bali PMA registration route where an annex allocation to Koperasi/UMKM prevents registration.",
+          "new": "This activity is closed today for a PT PMA, and not only in Bali. The record gives an explicit reason: Perpres 49/2021's Lampiran II allocates this activity to Koperasi/UMKM — page 15, entry 48, sub-row *Vila*, under the old KBLI code 55193 — a named annex entry, not an inference drawn from a missing OSS scale row, and a PT PMA cannot register under an allocation reserved for cooperatives and UMKM anywhere in Indonesia. Bali separately records a permanent, island-wide moratorium blocking PMA across low- and medium-low-risk KBLI activities, but that provincial rule is not what closes this one — the national annex allocation alone does. The careful conclusion is that the default 100% marker on this record is not a confirmed ownership permission; it is exactly what this nationwide closure overrides.",
+          "why": "The l4_reason instrument (Perpres 49/2021 Lampiran II) is a national annex, so per R3 the closure is nationwide, not 'in Bali' — the original framing implies the villa business is open to PMA elsewhere in Indonesia, which is the exact defect. Keeps the real, separate Bali risk-based moratorium (R5) but stops crediting it as the operative reason. Drops the repeated invented '100% national foreign-ownership ceiling' claim (R4)."
+        }
+      ]
+    },
+    "64110": {
+      "judul": "Aktivitas Bank Sentral",
+      "expect_l4_status": "CHIUSO_REGOLATORE_SETTORIALE",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "At the national level, the PMA status is recorded as open, with a foreign-ownership ceiling of 100%. Registration is listed as open across Mikro, Kecil, Menengah and Besar scales. Those entries establish the national classification position, but they do not alter the underlying character of the activity. In Bali, the decisive fact is plainer: a foreigner cannot register this activity today. The Bali record identifies it as an exclusive State monopoly operated by Bank Indonesia and structurally closed to all private and PMA capital.",
+          "new": "Our records file KBLI 64110 as open for PMA, with a foreign-ownership ceiling of 100%, across Mikro, Kecil, Menengah and Besar scales — the baseline classification applied when the national investment list carries no specific entry for this code. That baseline is a default fill, not a recorded permission, and it does not alter the underlying character of the activity. The decisive fact is plainer, and it holds everywhere in Indonesia, not just here: a foreigner cannot register this activity today. Our records identify central banking as an exclusive State monopoly operated by Bank Indonesia and structurally closed to all private and PMA capital.",
+          "why": "l4_reason names Bank Indonesia specifically as the monopoly holder (R3), so 'nationwide' framing is supported. The original framed the closure as an 'In Bali' fact set against a 'national classification position' of open/100%, implying the activity might be available outside Bali — false, and the 100% figure is an absence-from-annex default fill (R4), not a recorded permission."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "That Bali outcome is reinforced by the province-wide rule blocking all Low and Medium-Low risk KBLI activities for PMA. Yet the central-banking restriction is more fundamental than a location-based PMA barrier: the activity itself is reserved to the State through Bank Indonesia. For a founder or investor reading the national entry first, the lesson is to distinguish formal national openness from the actual institutional allocation of the function. Here, Bali is not a market-entry question to be solved through shareholding structure or business scale; private and foreign capital have no registration path into the activity.",
+          "new": "The province-wide rule blocking all Low and Medium-Low risk KBLI activities for PMA does not even need to be reached: the central-banking restriction is more fundamental than any location-based PMA barrier, because the activity itself is reserved to the State through Bank Indonesia. For a founder or investor reading the national entry first, the lesson is to distinguish the default classification in our records from the actual institutional allocation of the function. This is not a market-entry question to be solved through shareholding structure, business scale, or choice of location inside Indonesia; private and foreign capital have no registration path into the activity anywhere in the country.",
+          "why": "Removes 'That Bali outcome is reinforced by...' framing, which treated the closure as a Bali-specific outcome merely reinforced by a separate Bali rule. The closure is a national institutional monopoly (Bank Indonesia named in l4_reason, R3), so it applies regardless of location inside Indonesia, not only in Bali."
+        }
+      ]
+    },
+    "69104": {
+      "judul": "Aktivitas Notaris dan Pejabat Pembuat Akta Tanah",
+      "expect_l4_status": "TERTUTUP",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Nationally, the activity is listed as open to foreign investment, with a foreign-ownership ceiling of 100%. The registration scope is not confined to one business size: Micro, Small, Medium and Large enterprises are all included. That breadth should not be mistaken for a universal operating answer, however. National openness describes the position in the record at the national level; it does not erase a province-specific restriction that applies in Bali.",
+          "new": "Our records carry a default marker for this activity — PMA status TERBUKA with a 100% foreign-ownership ceiling — but that marker is a fallback applied whenever no specific closure is recorded, not a confirmed permission. The registration scope is not confined to one business size: Micro, Small, Medium and Large enterprises are all included. That breadth does not translate into a universal operating answer, however: the determining restriction here is not a matter of scale or province, but a nationwide citizenship rule that applies regardless of business size or location.",
+          "why": "Removes the invented 'nationally open, 100% ceiling' claim (R4 — the figure is an unverified default fill) and removes the false framing of this as a 'province-specific restriction' — l4_reason names UU 30/2004 (mod. UU 2/2014), a national law, so per R3 the restriction is nationwide, not Bali-specific. This is the exact defect flagged for this code."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "For a foreigner seeking to register this activity in Bali today, the answer is clear: PMA registration is not available. Bali marks the activity as closed. The stated reason is substantive, not merely procedural: the notary and land deed official role is treated as a personal public office reserved for Indonesian citizens, making PMA impossible. The record also notes a permanent, island-wide provincial rule blocking PMA for all Low and Medium-Low risk activities. Together, these entries make the Bali position unequivocal rather than conditional.",
+          "new": "For a foreigner seeking to register this activity anywhere in Indonesia, the answer is clear: PMA registration is not available, in Bali or in any other province. The stated reason is substantive, not merely procedural: under UU 30/2004 (as amended by UU 2/2014), the notary and land-deed-official role is a personal public office reserved for Indonesian citizens, making PMA impossible nationwide. Bali separately records a permanent, island-wide provincial rule blocking PMA for all Low and Medium-Low risk activities, but that rule is not what closes this activity — the citizenship requirement alone closes it everywhere.",
+          "why": "This is the paragraph the task calls out directly: framing the closure as 'in Bali today' implies the notary activity is open to a PT PMA in Jakarta or elsewhere, which is false — UU 30/2004 is a national statute (R3), so the correct scope is nationwide. Keeps the real, separately-scoped Bali risk-based moratorium (R5) but clarifies it is not the operative reason."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "That contrast is the point founders need to hold onto. A 100% national foreign-ownership ceiling can signal full openness in the national framework, while Bali’s local treatment can still prevent a PMA vehicle from being registered for the activity there. For this code, the relevant distinction is not between business scales or a partial foreign stake, but between national eligibility and the citizenship-based public-office character assigned to the activity in Bali.",
+          "new": "That contrast is the point founders need to hold onto — but it is not the contrast the record actually supports. There is no confirmed national ownership ceiling for this activity: the 100% figure some records display by default is a fallback, not a recorded permission. The real distinction is between business scale and citizenship: no scale category, and no province, changes the outcome. UU 30/2004 (as amended by UU 2/2014) assigns the notary and land-deed-official function a citizenship-based public-office character nationwide, and that is what makes a PT PMA impossible for this activity anywhere in Indonesia.",
+          "why": "Drops the invented '100% national foreign-ownership ceiling signals full openness' claim (R4) and corrects 'assigned to the activity in Bali' — the citizenship-based public-office character comes from a national law (UU 30/2004) named in l4_reason, so per R3 it applies nationwide, not just in Bali. This closes the same false implication the paragraph above was flagged for."
+        }
+      ]
+    },
+    "69201": {
+      "judul": "Aktivitas Akuntansi, Pembukuan, dan Pemeriksa",
+      "expect_l4_status": "TERBATAS",
+      "expect_l4_blocked": false,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Nationally, the PMA entry is TERBUKA and the maximum foreign ownership is 100%. Put plainly, the national ceiling allows full foreign ownership for this activity. The cited national basis is Perpres 10/2021, 49/2021. Yet the national result is only one part of the picture. Bali's listing is TERBATAS and is not marked as blocked. Its stated limitation must be read precisely: in a public-accountant firm, foreign nationals may make up no more than 20%. This is a Bali condition on foreign nationals in that firm, distinct from the national 100% foreign-ownership ceiling.",
+          "new": "Our records file the PMA entry for this activity as TERBUKA with a maximum foreign ownership of 100% — the baseline classification applied when the national investment list carries no specific entry for this code, not a recorded permission in its own right. A narrower, specific condition sits alongside that baseline: in a public-accountant firm, foreign nationals may make up no more than 20%. Our records mark this as a restriction rather than an outright block, and they do not say where it applies or does not apply. For founders, the useful discipline is to keep the 100% ownership-ceiling default separate from the 20% cap on foreign nationals in the firm, and to treat the cap, not the ceiling, as the operative limit on staffing.",
+          "why": "l4_reason ('Akuntan Publik max 20% WNA in firma') is a bare restriction naming no law, Perpres, or annex row, so per R2 the rewrite carries no geographic word at all. The original labelled the 20% cap 'Bali's listing' / 'a Bali condition', implying a firm outside Bali could staff above 20% foreign nationals — a claim no field in the evidence supports. Also drops the 100%-as-permission framing (R4) for the default-fill wording."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "One further Bali rule appears in the record: the province permanently blocks all Low and Medium-Low risk KBLI for PMA, island-wide, under the cited Governor's letter. The record does not assign a risk level to this activity, so that general rule cannot itself establish that it falls inside the moratorium. The direct Bali position supplied here is instead limited, together with the 20% foreign-national condition for a public-accountant firm. National openness is not a substitute for reading Bali's stated limitation on a public-accountant firm. For founders, the useful discipline is to keep the national ownership ceiling separate from Bali's specific condition.",
+          "new": "One further rule appears in the record: the province permanently blocks all Low and Medium-Low risk KBLI for PMA, island-wide, under the cited Governor's letter. The record does not assign a risk level to this activity, so that rule cannot itself be read as covering it. The condition that does apply here is the 20% cap on foreign nationals in a public-accountant firm, and it stands on its own: our records do not fold it into either the province-wide moratorium above or the default ownership-ceiling figure. For founders, the useful discipline is to keep the ownership-ceiling default separate from the 20% cap on foreign nationals in the firm, and not to treat either figure as telling you where the other one applies.",
+          "why": "Removes 'Bali's stated limitation' / 'Bali's specific condition' language for the 20% cap, which l4_reason ties to no place at all (R2 — bare restriction, no geographic word permitted). Keeps the real, separately-evidenced province-wide Low/Medium-Low-risk PMA moratorium (R5) but stops presenting the 20% professional-staffing cap as a Bali-only rule a firm could avoid by registering elsewhere."
+        }
+      ]
+    },
+    "79903": {
+      "judul": "Jasa Pramuwisata",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "The available registration scales are Mikro, Kecil and Menengah. That matters because the activity is framed around an operating service: a business can provide guidance itself, arrange the appropriate freelance guide, or do both in response to individual visitors and travel agencies. At the national level, the activity is TERBUKA to PMA and permits foreign ownership up to 100%. A foreign investor may therefore hold the full permitted stake at the national level.",
+          "new": "The available registration scales are Mikro, Kecil and Menengah. That matters because the activity is framed around an operating service: a business can provide guidance itself, arrange the appropriate freelance guide, or do both in response to individual visitors and travel agencies. That scale range does not settle the ownership question, though: Perpres 49/2021's Lampiran II places this bidang usaha — under its former KBLI 2020 code, 79921 — in the *dialokasikan* column, reserving it for Koperasi and UMKM, so a PT PMA cannot take it. That allocation is set at the national level; it is not a regional carve-out limited to Bali.",
+          "why": "needs_rewrite was false, but this paragraph asserted the exact false implication the defect targets — a national TERBUKA/100% permission — built only from the pma_status/pma_max_asing default-fill values, which the evidence file itself flags as an absence-from-annex default, not a recorded permission (R4). It directly contradicts l4_reason, which records a national Perpres 49/2021 Koperasi/UMKM allocation barring PT PMA. Replaced with the actual national basis, scoped nationwide per R3 since the instrument is named."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali is the decisive exception. A foreigner cannot register this activity in Bali today through a PT PMA. The obstacle is a specific Perpres allocation, not a scale gap: Perpres 49/2021's Lampiran II lists this bidang usaha — under its former KBLI 2020 code, 79921 — in the *dialokasikan* column (p.16, entry 56), reserving it for Koperasi/UMKM, and a PT PMA is excluded from registering it on that basis. This conclusion follows from that explicit Perpres allocation, not from the nature of the service itself.",
+          "new": "This is a nationwide restriction, not a Bali peculiarity: a foreigner cannot register this activity through a PT PMA anywhere in Indonesia. The obstacle is a specific Perpres allocation, not a scale gap: Perpres 49/2021's Lampiran II lists this bidang usaha — under its former KBLI 2020 code, 79921 — in the *dialokasikan* column (p.16, entry 56), reserving it for Koperasi/UMKM, and a PT PMA is excluded from registering it on that basis. This conclusion follows from that explicit Perpres allocation, not from the nature of the service itself, and it applies wherever in Indonesia the business would be registered.",
+          "why": "l4_reason names a specific instrument (Perpres 49/2021 Lampiran II, dialokasikan column) with no Bali-specific scope, so per R3 the restriction is nationwide; 'Bali is the decisive exception' falsely implies the activity is open to a PT PMA elsewhere in Indonesia — the exact defect this task targets. Reframed as nationwide while keeping every cited fact (Perpres number, annex column, page/entry, former KBLI code) unchanged."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "That position sits beside a permanent, island-wide Bali rule blocking PMA for low- and medium-low-risk activities. This activity is classified Low risk, which places it within that moratorium's scope as well — but independently of the moratorium, the Perpres 49/2021 Koperasi/UMKM allocation set out above is the basis recorded for its Bali outcome. Founders should keep the two levels separate: national policy permits up to 100% foreign ownership, while Bali’s registration structure prevents a PT PMA from using this activity there. That is the practical boundary to understand before treating national openness as a Bali registration route.",
+          "new": "There is no separate national layer sitting underneath this outcome: because the Koperasi/UMKM allocation comes from a national Perpres annex rather than a regional policy, the same result holds whether a PT PMA tries to register in Bali, Jakarta, or anywhere else in Indonesia. Founders should not read the earlier scale information as evidence of an open national default with only a local Bali restriction layered on top — our records do not show a national PMA opening for this activity; the Koperasi/UMKM allocation is the basis recorded for its closure, full stop, wherever the business is registered.",
+          "why": "The original built a 'national open / Bali closed' dichotomy the evidence does not support (the restriction is national), and also asserted a 'Low risk' classification and an island-wide risk-based moratorium that no field in this evidence file supports (R1) — those unverified claims are dropped rather than carried forward. Replaced with the correct nationwide scope, consistent with the Perpres-annex basis already cited."
+        }
+      ]
+    },
+    "86201": {
+      "judul": "Aktivitas Praktik Dokter",
+      "expect_l4_status": "TERTUTUP",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "For a foreign doctor considering Bali, the conclusion comes first: this activity cannot be registered there today as an independent solo practice. Bali records it as off-limits to foreign nationals. That is the local position even though the national entry is open to foreign investment and sets a foreign-ownership ceiling of 100%. A national ceiling describes the extent of foreign participation allowed nationally; it does not, by itself, create a registration route in Bali.",
+          "new": "For a foreign doctor, the conclusion comes first: this activity cannot be registered as an independent solo practice. Under Kemenkes health law, an independent medical practice is TERTUTUP — closed to foreign nationals — and that closure holds nationwide, not only in Bali. Our records do not support a foreign-ownership ceiling for this activity: the practice is closed to WNA outright, not restricted by percentage. A foreign doctor seeking a company structure instead should look at code 86103 (klinik), which our records show open to PMA at a foreign-ownership ceiling of 67%.",
+          "why": "The original framed the closure as Bali's local position against an implied-open national backdrop, and stated a false 100% national ceiling (that figure is only the absence-from-annex default fill per pma_max_asing_NOTE, not a recorded permission — R4). l4_reason names Kemenkes health law, a specific instrument, so R3 makes 'nationwide' the correct, required scope word instead of the false Bali/national contrast (R2/R3/R7). The 86103 alternative and its 67% ceiling are taken verbatim from l4_reason, preserving a real, useful fact (R5) instead of the invented ceiling."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali is where national openness stops being the whole story. Its status is TERTUTUP—closed—and the stated rationale is health law: a foreign doctor cannot open a solo practice. The provincial PMA rule recorded here is island-wide and permanent. Read together, these facts establish a firm local boundary, not a technical footnote. A 100% national ceiling allows full foreign ownership nationally; it does not override Bali’s recorded closure of this activity to a foreign doctor. For a founder assessing this route, the honest Bali answer is therefore no registration of this independent practice by a foreigner.",
+          "new": "This closure is not a Bali peculiarity. The stated rationale is Kemenkes health law: a foreign doctor cannot open a solo practice, and that rule reaches foreign nationals nationwide, not only in Bali. Read together, these facts establish a firm boundary grounded in national health regulation, not a technical footnote or a local carve-out. For a founder assessing this route, the honest answer is therefore no registration of this independent practice by a foreigner anywhere in Indonesia.",
+          "why": "The original recast a national Kemenkes-law closure as a 'provincial PMA rule' and repeated the invented 100% national ceiling as something the Bali rule 'overrides' — both fabricate a national-openness/local-closure contrast that l4_reason does not support (R1, R4). Since the instrument (Kemenkes health law) is named, R3 requires 'nationwide' scoping, and R7 requires the conclusion state the practice is unavailable anywhere in Indonesia, not just Bali, so a reader in Jakarta cannot infer this is open there."
+        }
+      ]
+    },
+    "86202": {
+      "judul": "Aktivitas Praktik Dokter Spesialis",
+      "expect_l4_status": "TERTUTUP",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "A foreign specialist cannot register a solo specialist practice in Bali today. That local constraint is the essential fact about an activity centred on independent specialist physicians providing care and treatment for particular diseases and conditions. Its field includes eye care, ear, nose and throat medicine, internal medicine, and dermatology and venereology. The focus is not general medical service, but the individual specialist’s independent professional practice. It is clinical work rendered by the specialist on an independent basis, with both care and treatment at the heart of its stated scope.",
+          "new": "A foreign specialist cannot register a solo specialist practice anywhere in Indonesia, not only in Bali. That nationwide restriction — TERTUTUP to foreign nationals under Kemenkes health law — is the essential fact about an activity centred on independent specialist physicians providing care and treatment for particular diseases and conditions. Its field includes eye care, ear, nose and throat medicine, internal medicine, and dermatology and venereology. The focus is not general medical service, but the individual specialist’s independent professional practice. It is clinical work rendered by the specialist on an independent basis, with both care and treatment at the heart of its stated scope.",
+          "why": "l4_reason records this as TERTUTUP to WNA under Kemenkes health law — a national health-sector instrument, not a Bali rule — so 'in Bali today' falsely implies the same solo practice would be open to a foreigner in Jakarta or elsewhere, which is precisely the notaries-style defect the brief flags. Corrected to nationwide scope per R3; every other descriptive fact in the paragraph is unchanged."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Nationally, the picture is unambiguous: the activity is open to PMA with a maximum foreign ownership of 100%. Registration is available at every listed business scale—Mikro, Kecil, Menengah and Besar. This national setting describes the ownership ceiling and the range of scales at which the activity may be registered; it does not alter the underlying character of the work, which remains specialist care and treatment independently provided by a specialist doctor. No subset of the listed scales is excluded in the national entry.",
+          "new": "Nationally, the picture is the opposite of an open default: the activity is TERTUTUP to foreign nationals under Kemenkes health law, so a PT PMA cannot register a solo specialist practice under this code. Our records do show a route for a foreign-backed specialist-medicine business: KBLI 86103 (klinik) permits PMA ownership up to a TERBATAS ceiling of 67%. That is a different registration — a clinic structure, not an individual specialist's independent practice — and it does not reopen this code to foreign ownership.",
+          "why": "needs_rewrite was false, but this paragraph is the clearest instance of the defect: it states a national TERBUKA/100% ceiling built from the pma_status/pma_max_asing default-fill fields, which the evidence file explicitly marks as an absence-from-annex default rather than a recorded permission (R4), and it directly contradicts l4_reason's TERTUTUP finding. Replaced with the true national position plus the one real alternative route the evidence does record (86103 klinik, TERBATAS 67%), rather than inventing anything new. | Cross-family round: UPHELD and applied."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali turns the result. The local status is closed, and the stated health-law position is direct: a foreign specialist cannot open a solo practice. This should be read as a registration outcome, not merely an administrative inconvenience. Bali’s policy setting also includes a permanent, island-wide moratorium blocking PMA registration for activities classified as low or medium-low risk. For this activity, however, the recorded local conclusion is already decisive: in Bali it is closed to PMA registration.",
+          "new": "This is not a Bali peculiarity: the closure is nationwide, and the stated health-law position is direct — a foreign specialist cannot open a solo practice anywhere in the country. This should be read as a registration outcome that applies across Indonesia, not an administrative inconvenience confined to one province. Under Kemenkes health law, TERTUTUP status attaches to this activity nationally; there is no more permissive setting to find by registering it elsewhere.",
+          "why": "'Bali turns the result' and 'in Bali it is closed' imply the closure is local, when l4_reason attributes it to national Kemenkes health law; per R3 that supports 'nationwide' language. Also dropped the 'island-wide moratorium ... low or medium-low risk' sentence, since no field in this evidence file records a risk classification for this code (R1) — it is not carried forward unverified."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "The two positions can coexist without contradiction. National openness answers the ownership position for this activity in Indonesia; Bali’s closed determination answers the position for a solo foreign-specialist practice on the island. A national PMA ceiling of 100% does not create a pathway where Bali expressly closes that form of registration. For founders, the honest reading is therefore location-specific: national registration remains open at all listed scales, while the foreign solo-practice route in Bali is closed.",
+          "new": "There is no national-versus-Bali split to reconcile here: because the restriction comes from national health-sector law rather than a regional rule, the same closed outcome holds wherever in Indonesia the practice might be registered. For founders, the honest reading is not location-specific — a foreign specialist cannot register a solo specialist practice under this code anywhere in the country. The alternative noted above, the TERBATAS klinik code 86103, remains the route for PMA into specialist-adjacent care; this code itself does not open up regionally.",
+          "why": "The 'two positions coexist' framing (national open, Bali closed) is the false geographic split the defect describes, and it no longer holds once P1/P2 are corrected — l4_reason gives one nationwide TERTUTUP outcome, not a split one. Rewritten to state the single nationwide outcome and point to the one real alternative (86103) already established earlier in this entry, rather than asserting a new fact."
+        }
+      ]
+    },
+    "95291": {
+      "judul": "Aktivitas Vermak Pakaian",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "At the national level, foreign investment has a clean answer. The activity is TERBUKA for PMA, with a maximum foreign ownership of 100%. In plain English, the national record permits a foreign investor to hold the whole business. There is no need to soften that finding or to imply a national cap that the record does not contain. But a national ceiling is only one layer of the picture for a Bali venture.",
+          "new": "At the national level, the answer is not an open one: Perpres 49/2021's Lampiran II allocates this bidang usaha to Koperasi/UMKM in the *dialokasikan* column, so a PT PMA cannot take it. That is a national allocation, not a scale-based inference, and it is the basis carried through the rest of this entry — there is no separate, more open national default sitting underneath it for a Bali venture to inherit.",
+          "why": "needs_rewrite was false, but this paragraph asserts the exact false implication the defect targets — a national TERBUKA/100% ceiling — built from the pma_status/pma_max_asing default-fill fields the evidence file itself flags as an absence-from-annex default, not a recorded permission (R4), and it contradicts l4_reason's Koperasi/UMKM allocation. Replaced with the real national basis, stated as nationwide per R3 since the instrument (Perpres 49/2021 Lampiran II) is named."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "In Bali, the operative conclusion is different: a foreign investor cannot register this activity there today. The Bali status is Closed to PMA. The reason is a specific allocation, not an inference from OSS's scale rows: Perpres 49/2021's Lampiran II lists this activity — page 16, entry 57, sub-row \"Vermak pakaian\", KBLI 95291 — in its *dialokasikan* column, reserving the bidang usaha for Koperasi and UMKM and barring a PT PMA from taking it. The code number is unchanged from 2020 to 2025, so that allocation carries straight through to the current KBLI. The record also identifies a permanent, island-wide Bali PMA block for Low and Medium-Low risk activities. The result is direct rather than nuanced: national foreign openness does not translate into Bali registration for a PT PMA. An enterprise that wants to serve the public through commercial clothing alterations in Bali must take that local registration barrier as the deciding fact.",
+          "new": "The restriction is not something that appears only once a venture reaches Bali: a foreign investor cannot register this activity through a PT PMA anywhere in Indonesia. The reason is a specific allocation, not an inference from OSS's scale rows: Perpres 49/2021's Lampiran II lists this activity — page 16, entry 57, sub-row \"Vermak pakaian\", KBLI 95291 — in its *dialokasikan* column, reserving the bidang usaha for Koperasi and UMKM and barring a PT PMA from taking it. The code number is unchanged from 2020 to 2025, so that allocation carries straight through to the current KBLI. The result is direct rather than nuanced: there is no national opening for a PT PMA that a Bali registration narrows down — the Koperasi/UMKM allocation is the basis recorded, nationwide. An enterprise that wants to serve the public through commercial clothing alterations under a PT PMA structure cannot use this registration anywhere in the country.",
+          "why": "'In Bali, the operative conclusion is different' and 'national foreign openness does not translate into Bali registration' falsely imply the activity is open to a PT PMA outside Bali; l4_reason's Perpres 49/2021 Lampiran II allocation is a national instrument, so per R3 nationwide language is supported. Also dropped the 'island-wide Bali PMA block for Low and Medium-Low risk activities' sentence — no field in this evidence file records a risk classification for this code (R1) — while keeping every cited Perpres detail (page, entry, sub-row, code, unchanged-since-2020 fact) unchanged per R5."
+        }
+      ]
+    },
+    "96100": {
+      "judul": "Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "At the national level, the activity is open to foreign investment, with foreign ownership permitted up to 100%. It is open at Mikro, Kecil and Menengah scales. Yet the Bali position is materially different. A foreign-owned company cannot register this activity in Bali today because Perpres 10/2021, as amended by 49/2021, allocates this bidang usaha to Koperasi/UMKM in the Lampiran II *dialokasikan* column (p.16, entry 57, sub-row *Penatu*, listed there under the old KBLI code 96200) — a status that bars a PT PMA from taking it. National openness does not override that structural registration barrier.",
+          "new": "The scale eligibility is real: this activity is open at Mikro, Kecil and Menengah levels. But Perpres 10/2021, as amended by 49/2021, allocates this bidang usaha to Koperasi/UMKM in the Lampiran II *dialokasikan* column (p.16, entry 57, sub-row *Penatu*, listed there under the old KBLI code 96200) — and that allocation is a national one, not a Bali carve-out. It bars a PT PMA from taking this activity anywhere in Indonesia, not only on the island. Our records do not carry a separate foreign-ownership permission for this code that would override that allocation.",
+          "why": "l4_reason names the instrument (Perpres 49/2021 Lampiran II), so R3 requires stating the Koperasi/UMKM bar as nationwide, not Bali-specific. The original claimed a national 100% ceiling (R4 violation: pma_max_asing=100 is an absence-from-annex default fill, not a recorded permission) and framed the annex allocation as a 'Bali position... today', implying a PT PMA could take this activity elsewhere in Indonesia (R7) — exactly the defect."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali’s record adds a wider, island-wide and permanent rule blocking PMA registration for all low- and medium-low-risk activities. The decisive point here, however, is already explicit: the Perpres allocation of this activity to Koperasi/UMKM prevents PMA registration regardless of the moratorium. For a founder considering this activity in Bali, the national 100% ceiling is real, but it is not an available route to a Bali PMA registration under the recorded position.",
+          "new": "Bali’s own rules add a further, island-wide and permanent moratorium blocking PMA registration for all low- and medium-low-risk activities — a separate barrier layered on top of the Koperasi/UMKM allocation. But the decisive point is already settled at the national level: the Perpres 49/2021 Lampiran II allocation closes this activity to a PT PMA everywhere in Indonesia, Bali included, so the moratorium is not what is doing the work here. For a founder considering this activity, there is no national opening to fall back on outside Bali — the annex allocation is the operative barrier, wherever the company is registered.",
+          "why": "The original closed with 'the national 100% ceiling is real, but it is not an available route... in Bali', restating the false percentage (R4) and implying the activity is open to a PT PMA outside Bali (R7). Since l4_reason names Perpres 49/2021 Lampiran II, R3 makes 'nationwide'/'everywhere in Indonesia' the supported framing; the true, distinct Bali moratorium (kept per R5) is reframed as an additional, not the operative, barrier."
+        }
+      ]
+    },
+    "96210": {
+      "judul": "Aktivitas Penataan dan Pangkas Rambut",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "At national level, the foreign-investment position is explicit. The activity is marked TERBUKA, with a national foreign-ownership ceiling of 100%. In practical terms, that permits full foreign ownership nationally. Perpres 10/2021 and 49/2021 are named as the source for that position. National openness, however, describes the national ownership setting; it does not make a locally unavailable PMA registration route available in Bali.",
+          "new": "At national level, the position is not simply open. Perpres 49/2021's Lampiran II allocates this bidang usaha — recorded there under the old KBLI code 96111, the *Pangkas rambut/barber shop* sub-row, page 16, entry 57 — to Koperasi and UMKM in its *dialokasikan* column. That allocation sits in a national annex, not a regional variation, and it places the activity outside what a PT PMA may register wherever the Perpres applies. Our records do not carry a separate foreign-ownership ceiling for this activity beyond that allocation.",
+          "why": "TERBUKA/100% here are only the pma_status/pma_max_asing default fills for an activity absent from the annex (per the evidence file's own NOTE fields) — but l4_reason shows this activity is NOT absent, it is explicitly allocated to Koperasi/UMKM in Lampiran II. Presenting the default fill as 'the foreign-investment position, explicit... named by Perpres 10/2021 and 49/2021' inverts what those Perpres actually say for this code, and is exactly the R4 defect. The rewrite replaces it with the actual, sourced allocation and flags that no separate ceiling is on record."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "Bali is the decisive practical breakpoint. A foreign investor using a PT PMA cannot register this activity in Bali today. The recorded reason is a specific allocation: Perpres 10/2021, as amended by 49/2021, assigns this bidang usaha to Koperasi/UMKM in Lampiran II's *dialokasikan* column (p.16, entry 57, the *Pangkas rambut/barber shop* sub-row, listed there under KBLI 96111), placing it outside the activities a PT PMA may take up. This sits alongside Bali’s permanent, island-wide rule blocking PMA across Low and Medium-Low risk KBLI. For Bali, this is not a reduced foreign-ownership ceiling; it is a bar on PMA registration despite national openness.",
+          "new": "This is not a Bali-only breakpoint. Perpres 10/2021, as amended by 49/2021, assigns this bidang usaha to Koperasi/UMKM nationwide through Lampiran II's *dialokasikan* column, and a PT PMA cannot register this activity anywhere the Perpres governs, not only in Bali. For a foreign investor, this is not a reduced foreign-ownership ceiling; it is a nationwide bar on PMA registration for this specific bidang usaha, regardless of scale.",
+          "why": "Framing this as a 'Bali breakpoint' against national openness implies the activity is registrable by a PT PMA elsewhere in Indonesia — false, since the source is a national Perpres annex (R3/R7). Also dropped the added claim about 'Bali's permanent, island-wide rule blocking PMA across Low and Medium-Low risk KBLI', which is not present in l4_reason or any other field of this evidence file and cannot be asserted here (R1/R6). 'Regardless of scale' is retained from l4_status CHIUSO_PMA_NO_BESAR."
+        }
+      ]
+    },
+    "96220": {
+      "judul": "Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya",
+      "expect_l4_status": "CHIUSO_PMA_NO_BESAR",
+      "expect_l4_blocked": true,
+      "expect_pma_status": "TERBUKA",
+      "expect_pma_max_asing": 100,
+      "why": "The long-form article body carried the same Bali-only framing the field-scoped cures (#3599/#3606) removed everywhere else. It renders through MarkdownClient with ssr:false, so no curl-based probe had ever seen it.",
+      "patches": [
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "For a foreign investor considering Bali, the conclusion comes first: a PT PMA cannot register this activity there today. That is striking because the national position is materially different. Nationally, the activity is open to PMA and permits foreign ownership of up to 100%. In Bali, however, Peraturan Presiden 10/2021 (as amended by 49/2021) allocates this beauty-care activity to Koperasi and UMKM in its Lampiran II — naming it, under the old KBLI code 96112, \"Salon kecantikan,\" as dialokasikan — and a business field reserved that way is closed to PT PMA irrespective of scale, whether or not OSS lists a Besar-scale row for it. That reservation does not reach spa (96230) or fitness activities. The result is a closed PMA registration path on the island.",
+          "new": "For a foreign investor, the conclusion comes first: a PT PMA cannot register this activity, and that holds nationwide, not only in Bali. Peraturan Presiden 10/2021, as amended by 49/2021, allocates this beauty-care activity to Koperasi and UMKM in its Lampiran II — naming it, under the old KBLI code 96112, \"Salon kecantikan,\" as dialokasikan — and a business field reserved that way is closed to PT PMA irrespective of scale, whether or not OSS lists a Besar-scale row for it, and irrespective of where in Indonesia the investor is registering. That reservation does not reach spa (96230) or fitness activities. Our records do not support a foreign-ownership ceiling for this activity; the reservation itself is the governing fact.",
+          "why": "The original manufactured a 'national position is materially different... open to PMA... 100%' claim that contradicts l4_reason's own finding for this code (the 100% is only the pma_max_asing absence-from-annex default fill, not a recorded permission — R4), then used that manufactured contrast to frame the closure as Bali-only, implying availability elsewhere (R7). Since Perpres 49/2021 Lampiran II is a named national annex, R3 requires nationwide scoping. The SPA/fitness carve-out is preserved verbatim from l4_reason (R5)."
+        },
+        {
+          "field": "canonical:intel_2026.editorial.body",
+          "old": "The national opening and the Bali outcome must therefore be read together, without blurring them. The national foreign-ownership ceiling is 100%, and the activity is open at Mikro, Kecil and Menengah scales. Yet those facts do not create a Bali PMA route. The record also cites Bali’s permanent, island-wide rule blocking PMA for all low- and medium-low-risk KBLI activities. For foreign investors, that distinction is decisive: a 100% national ceiling does not create a Bali registration route.",
+          "new": "There is no separate national opening to weigh against a local outcome here — the reservation described above is itself the national position, not a regional carve-out from it. Our records do not support a foreign-ownership ceiling for this activity, so there is no percentage for a Bali rule to override. For foreign investors, the point that matters is simple: the activity is reserved to Koperasi and UMKM under a national Perpres annex, wherever in Indonesia that Perpres governs — not a Bali-specific closure sitting behind an open national position.",
+          "why": "The original repeated the invented 100% national ceiling twice and again framed the Perpres 49/2021 reservation as a 'Bali PMA route' distinct from a supposedly open national position — both false per R4/R7, since l4_reason shows the reservation IS the national position (Lampiran II is a national annex, R3). Also dropped the unsupported 'Bali's permanent, island-wide rule' addition and the Mikro/Kecil/Menengah scale-tier claim, neither of which appears in l4_reason or any other field of this evidence file (R1/R6)."
+        }
+      ]
+    }
+  }
+}
