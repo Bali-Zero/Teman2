@@ -291,12 +291,26 @@ def test_guilt_named_in_annex_with_no_canonical_basis():
     assert report["specific_citation_codes"] == 1
 
 
-def test_guilt_priority_lampiran_i_with_no_canonical_basis():
+def test_innocence_priority_lampiran_i_is_not_an_ownership_citation():
+    """This test asserted the OPPOSITE until 2026-08-06, and it was wrong.
+
+    Being listed in Lampiran I means the activity is a PRIORITY business field
+    — it attracts incentives; it states nothing about how much of it a foreigner
+    may own. `perpres_body_default_relation.py` says so in its own words
+    ("priority incentivises, it never restricts"), and the artifact agrees: all
+    175 codes in the bucket share ONE cite, which names no code, no percentage
+    and no ownership treatment.
+
+    So flagging them as "a citation the website shows and canonical lacks" was
+    demanding an adjudicated foreign-ownership basis for a fact nobody asserts
+    — 173 entries of a 414-entry backlog that were never real work.
+    """
     report = C.plan_citation_propagation(
-        store(canon("10211")),  # no pma_official_basis
+        store(canon("10211")),  # no pma_official_basis, and correctly not asked for
         {"10211": loc("priority-lampiran-i")},
     )
-    assert [d["code"] for d in report["citation_not_propagated"]] == ["10211"]
+    assert report["citation_not_propagated"] == []
+    assert report["specific_citation_codes"] == 0
 
 
 def test_innocence_generic_default_bucket_is_never_flagged():
@@ -370,3 +384,59 @@ def test_citation_not_propagated_folds_into_the_cli_exit_code(tmp_path):
         ]
     )
     assert rc == C.EXIT_DIVERGENCE
+
+
+# ---------------------------------------------------------------------------
+# The eligibility set must judge what a citation SAYS, not which bucket it is
+#
+# `priority-lampiran-i` sat in SPECIFIC_CITATION_BUCKETS until 2026-08-06 and
+# failed the very definition the constant's comment states. Its 175 codes share
+# ONE cite naming no code and no ownership treatment, so the detector demanded
+# an adjudicated foreign-ownership basis for 173 codes whose citation asserts
+# nothing about ownership. The structural test below is the general form: a
+# bucket whose codes all repeat a single string is generic BY MEASUREMENT,
+# whatever it is called, so the next such bucket cannot be added silently.
+# ---------------------------------------------------------------------------
+
+
+def _real_locators():
+    path = C.REPO_ROOT / "apps/mouth/data/perpres-locators.json"
+    if not path.exists():  # pragma: no cover - artifact always shipped
+        return None
+    return C.load_locators(path)
+
+
+def test_priority_listing_is_not_an_ownership_citation():
+    """GUILT, pinned on the live artifact: the excluded bucket really is the
+    degenerate case, and it really says nothing about foreign ownership."""
+    locators = _real_locators()
+    assert locators, "artifact missing — this pin cannot verify"
+
+    priority = [v for v in locators.values() if v.get("bucket") == "priority-lampiran-i"]
+    assert priority, "bucket vanished — re-derive this pin before deleting it"
+    assert len({v["cite"] for v in priority}) == 1, "no longer degenerate"
+    assert not any(
+        w in v["cite"].lower()
+        for v in priority
+        for w in ("asing", "%", "foreign", "modal", "ownership")
+    ), "priority cites now assert ownership — re-open the exclusion"
+    assert "priority-lampiran-i" not in C.SPECIFIC_CITATION_BUCKETS
+
+
+def test_every_eligible_bucket_is_code_named_by_measurement():
+    """INNOCENCE for the narrowing, and the tripwire for the NEXT bucket: what
+    stays in the set must earn it on the artifact, not by being named there.
+
+    `named-in-annex` passes with 61 distinct cites across 270 codes, several
+    carrying the KBLI-2020 crosswalk that earned the entry.
+    """
+    locators = _real_locators()
+    assert locators, "artifact missing — this pin cannot verify"
+
+    assert C.SPECIFIC_CITATION_BUCKETS, "an empty set would silently pass"
+    for bucket in C.SPECIFIC_CITATION_BUCKETS:
+        cites = {v["cite"] for v in locators.values() if v.get("bucket") == bucket}
+        assert len(cites) > 1, (
+            f"{bucket}: {len(cites)} distinct cite(s) — a single repeated string "
+            "is a generic default, not a code-named citation"
+        )
