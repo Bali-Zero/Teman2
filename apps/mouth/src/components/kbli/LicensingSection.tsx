@@ -10,6 +10,11 @@ import type {
   KBLIPmaInfo,
 } from "@/lib/kbli-types";
 import { formatTimeframe } from "@/lib/kbli-derive";
+import {
+  describeObligation,
+  TRUNCATION_HINT,
+  TRUNCATION_NOTE,
+} from "@/lib/kbli-obligation-truncation";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
 import {
@@ -407,26 +412,38 @@ function TierDetail({ tier }: { tier: KBLILicenseByScale }) {
             className="space-y-2 p-4"
             style={{ background: "var(--kbli-bg-surface)" }}
           >
-            {tier.requirements.map((req, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-lg border border-[var(--border)] px-3.5 py-2.5"
-                style={{ background: "var(--kbli-bg-elevated)" }}
-              >
-                <span
-                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold"
-                  style={{
-                    background: "rgba(212, 132, 90, 0.1)",
-                    color: "var(--kbli-accent)",
-                  }}
+            {tier.requirements.map((req, i) => {
+              const duty = describeObligation(req);
+              return (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 rounded-lg border border-[var(--border)] px-3.5 py-2.5"
+                  style={{ background: "var(--kbli-bg-elevated)" }}
                 >
-                  {i + 1}
-                </span>
-                <span className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                  {req}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold"
+                    style={{
+                      background: "rgba(212, 132, 90, 0.1)",
+                      color: "var(--kbli-accent)",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                    {duty.text}
+                    {duty.truncated && (
+                      <span
+                        className="text-[var(--kbli-accent)]"
+                        title={TRUNCATION_HINT}
+                      >
+                        {" "}
+                        […{TRUNCATION_NOTE}]
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </details>
       )}
@@ -446,49 +463,61 @@ function TierDetail({ tier }: { tier: KBLILicenseByScale }) {
             className="space-y-1.5 p-4"
             style={{ background: "var(--kbli-bg-surface)" }}
           >
-            {tier.obligations.map((obl, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-2.5 rounded-lg px-3 py-2"
-                style={{
-                  background: "var(--kbli-bg-elevated)",
-                  border: "1px solid var(--kbli-border)",
-                }}
-              >
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--kbli-accent)]/40" />
-                <div>
-                  <span className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                    {obl}
-                  </span>
-                  {/* English translation for common Indonesian obligations */}
-                  {obl.toLowerCase().includes("sertifikat laik sehat") && (
-                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
-                      → Obtain Health Feasibility Certificate from Dinas
-                      Kesehatan
-                    </p>
-                  )}
-                  {obl.toLowerCase().includes("laporan kegiatan") && (
-                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
-                      → Submit periodic business activity reports to regulator
-                    </p>
-                  )}
-                  {obl.toLowerCase().includes("standar") &&
-                    obl.toLowerCase().includes("menerapkan") && (
+            {tier.obligations.map((obl, i) => {
+              const duty = describeObligation(obl);
+              return (
+                <div
+                  key={i}
+                  className="flex items-start gap-2.5 rounded-lg px-3 py-2"
+                  style={{
+                    background: "var(--kbli-bg-elevated)",
+                    border: "1px solid var(--kbli-border)",
+                  }}
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--kbli-accent)]/40" />
+                  <div>
+                    <span className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                      {duty.text}
+                      {duty.truncated && (
+                        <span
+                          className="text-[var(--kbli-accent)]"
+                          title={TRUNCATION_HINT}
+                        >
+                          {" "}
+                          […{TRUNCATION_NOTE}]
+                        </span>
+                      )}
+                    </span>
+                    {/* English translation for common Indonesian obligations */}
+                    {obl.toLowerCase().includes("sertifikat laik sehat") && (
                       <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
-                        → Submit documentation of standard implementation
-                        compliance
+                        → Obtain Health Feasibility Certificate from Dinas
+                        Kesehatan
                       </p>
                     )}
-                  {obl.toLowerCase().includes("penerapan standar") &&
-                    !obl.toLowerCase().includes("menerapkan") && (
+                    {obl.toLowerCase().includes("laporan kegiatan") && (
                       <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
-                        → Provide evidence of business standard compliance
-                        documents
+                        → Submit periodic business activity reports to regulator
                       </p>
                     )}
+                    {obl.toLowerCase().includes("standar") &&
+                      obl.toLowerCase().includes("menerapkan") && (
+                        <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
+                          → Submit documentation of standard implementation
+                          compliance
+                        </p>
+                      )}
+                    {obl.toLowerCase().includes("penerapan standar") &&
+                      !obl.toLowerCase().includes("menerapkan") && (
+                        <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
+                          → Provide evidence of business standard compliance
+                          documents
+                        </p>
+                      )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </details>
       )}

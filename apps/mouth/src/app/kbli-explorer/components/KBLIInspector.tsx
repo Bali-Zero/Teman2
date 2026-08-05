@@ -4,6 +4,11 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Search, Loader2, X, FileText, Scale, Activity } from "lucide-react";
 import type { KBLIDetail } from "@/lib/api/kbli.api";
+import {
+  describeObligation,
+  TRUNCATION_HINT,
+  TRUNCATION_NOTE,
+} from "@/lib/kbli-obligation-truncation";
 
 // =============================================================================
 // HELPERS
@@ -255,14 +260,26 @@ const KBLIInspector = ({
                         What you need to do:
                       </p>
                       <ul className="space-y-1">
-                        {lic.requirements.slice(0, 3).map((req, ridx) => (
-                          <li
-                            key={ridx}
-                            className="text-[11px] text-[#888] leading-tight"
-                          >
-                            &bull; {req}
-                          </li>
-                        ))}
+                        {lic.requirements.slice(0, 3).map((req, ridx) => {
+                          const duty = describeObligation(req);
+                          return (
+                            <li
+                              key={ridx}
+                              className="text-[11px] text-[#888] leading-tight"
+                            >
+                              &bull; {duty.text}
+                              {duty.truncated && (
+                                <span
+                                  className="text-[#c98a3a]"
+                                  title={TRUNCATION_HINT}
+                                >
+                                  {" "}
+                                  […{TRUNCATION_NOTE}]
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   )}
