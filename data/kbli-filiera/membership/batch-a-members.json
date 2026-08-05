@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "4fe24f91900f054a7e470008038bdd2ed331fda5",
-  "canonical_sha256": "cb461598149d5137c2a37b7506c0cfcaecf2cde8242660cea5dd63fe9f52751f",
+  "canonical_revision": "0e6e219d91cebf05f349ddc4b389a62b59bbee5b",
+  "canonical_sha256": "f566428aaf3862f115a14899cb907e3c58b8d002b79618c726b8142f0834f798",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
