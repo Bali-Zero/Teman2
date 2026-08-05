@@ -26,10 +26,25 @@ structured JSON to a model that CAN carry a qualifier, so here the rows stay
 and name their source — same fact, opposite correct answer, which is why the
 two surfaces get two helpers rather than one shared flag.
 
-The rule below is the exact Python twin of `pp28ContentInheritedFrom` in
+The rule below is the Python counterpart of `pp28ContentInheritedFrom` in
 `apps/mouth/src/lib/kbli-provenance.ts`. Two languages cannot share a function,
-so they share a PINNED NUMBER instead: both sides assert 390 against the same
-canonical file, and a divergence turns one of them red.
+so they share a PINNED MEMBERSHIP instead: the test hashes the sorted list of
+inherited codes, not just its length — two divergent implementations can both
+answer 390 while disagreeing about WHICH 390.
+
+THEY ARE NOT BYTE-FOR-BYTE IDENTICAL, and the difference is stated rather than
+papered over (an adversarial review caught the earlier "exact twin" claim). On
+inputs the canonical does not contain, they diverge two ways:
+
+  - whitespace: `[" 62110 "]` on own code `62110` — Python strips and reads
+    self-sourced (silent); TypeScript does not strip and reads inherited.
+  - `null` entries: TypeScript's `String(null)` yields the client-visible
+    source code `"null"`; Python drops it.
+
+Measured on the canonical: **0** padded entries and **0** non-string entries out
+of 1,735. So both divergences are latent, and the Python side takes the
+fail-safe reading of each. The TypeScript fix is a follow-up (its file is under
+an open PR); until it lands, the hash pin is what would catch a real drift.
 """
 
 from __future__ import annotations

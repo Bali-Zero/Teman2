@@ -10,6 +10,7 @@ a cure becomes the next defect (cicatrix family #3): an inherited record must
 be named, and a self-sourced one must stay silent.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -140,14 +141,15 @@ def test_the_two_fields_always_agree():
 # --------------------------------------------------------------------------
 
 
-def test_canonical_partition_matches_the_typescript_twin():
+def test_canonical_partition_matches_the_typescript_counterpart():
     """`pp28ContentInheritedFrom` in apps/mouth/src/lib/kbli-provenance.ts
-    implements the identical rule and its test pins 390 on this same file.
+    implements the same rule and its test pins 390 on this same file.
 
-    Two languages cannot share a function, so they share this number. If a
-    future edit drifts one side, one of the two suites turns red — which is the
-    only mechanism keeping the web page and `inspect_kbli` telling a client the
-    same thing about the same code.
+    Two languages cannot share a function, so they share this pin. A COUNT is
+    not enough — two divergent implementations can both answer 390 while
+    disagreeing about WHICH 390 — so the membership is hashed as well. An
+    adversarial review made exactly that point about the first version of this
+    test.
     """
     rows = json.loads(DATASET.read_text(encoding="utf-8"))["data"]
     assert len(rows) == 1559, "canonical size changed — re-derive the pins below"
@@ -164,6 +166,12 @@ def test_canonical_partition_matches_the_typescript_twin():
             unrecorded.append(code)
 
     assert len(inherited) == 390
+    # WHICH 390, not just how many. Swapping one code for another keeps the
+    # count and changes what a client is told about two codes.
+    assert (
+        hashlib.sha256(",".join(sorted(inherited)).encode()).hexdigest()
+        == "a93e90f6e1c174b55ef0316609f4b945c39d0e8b69de2f92be7118fccf9dcf9f"
+    )
     # Exhaustive: every code lands in exactly one bucket, so a future field
     # rename cannot quietly shrink the inherited set into a fourth state.
     assert len(inherited) + len(self_sourced) + len(unrecorded) == 1559

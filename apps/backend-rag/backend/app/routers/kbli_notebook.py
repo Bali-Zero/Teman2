@@ -416,7 +416,14 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
     from backend.core.cache import get_cache_service
 
-    cache_key = f"kbli_inspect_v2_{code}"
+    # v2 → v3 (2026-08-06): the payload gained the inherited-licensing
+    # disclosure. A cached v2 entry validates on read — the new fields simply
+    # default to None — so a carried code would keep answering WITHOUT the note
+    # for up to the 30-day TTL, and a shipped cure invisible for a month is
+    # indistinguishable from one that never shipped. Bumping the version evicts
+    # atomically at deploy instead of depending on someone remembering to run
+    # the per-code cache-bust for the right 390 codes.
+    cache_key = f"kbli_inspect_v3_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
