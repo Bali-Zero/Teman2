@@ -235,6 +235,29 @@ export interface KBLIProvenance {
     vintage: "2025" | "2020" | null;
     /** true when `_l2_status === "no_oss_risk"` (OSS ruang-lingkup 404) */
     noOssScope: boolean;
+    /**
+     * The OTHER KBLI codes this record's PP 28/2025 licensing CONTENT was
+     * carried from, or null when the record is self-sourced (or records no
+     * PP 28 source at all).
+     *
+     * `status`/`locator`/`vintage` above are derived from `_l2_source`, which
+     * names the OSS-RBA **risk** source. `pp28_sources` is a different field
+     * recording where the PP 28 rows came from, and the two disagree on **337**
+     * codes: `_l2_source === "OSS_RBA_resiko_2025"` (so the risk tier is
+     * genuinely 2025-native and `status` is `oss_native`) while every entry of
+     * `pp28_sources` names a DIFFERENT code. **217** of those inherit a
+     * `pb_umku` permit that way.
+     *
+     * `62110` (video game development) is the case that surfaced it: sourced
+     * from `["62011","62019","62015","62013","62012"]`, and its inherited
+     * `pb_umku` lists three defence-industry permits.
+     *
+     * Deliberately a SEPARATE field rather than a new `status` value: the risk
+     * claim on these codes is verified and must keep being stated; only the
+     * licensing CONTENT is inherited. Folding both into one flag would suppress
+     * a true fact to qualify a different one.
+     */
+    contentInheritedFrom: string[] | null;
   };
   /** Foreign-ownership layer — Perpres 10/2021 + 49/2021 (KBLI-2020 vintage).
    *
