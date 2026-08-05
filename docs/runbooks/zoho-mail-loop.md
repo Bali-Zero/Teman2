@@ -384,6 +384,9 @@ PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
   "seen": 13,
   "routed": 7,
   "left_in_inbox": 6,
+  "unroutable": 6,
+  "message_errors": 0,
+  "unaccounted": 0,
   "drafted": 7,
   "draft_failures": 0,
   "missing_folders": [],
@@ -395,6 +398,12 @@ PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
 The six left in the inbox are the ones the classifier refuses to guess about;
 leaving them where a human sees them is the intended behaviour, not a shortfall.
 Note that `missing_folders` only became trustworthy in this change — see §9.
+
+`unaccounted` must always read `0`. It is `seen - routed - left_in_inbox -
+message_errors`: every message the run picks up ends in exactly one of those
+three places, so a non-zero value means one ended somewhere nobody recorded —
+and the run is reported degraded. See §11 for why that counter exists and what
+it replaced.
 
 3. Then §3.4 (install the plist) and §3.5 (flip `MAIL_LOOP_DRY_RUN` to 0).
 
@@ -574,3 +583,158 @@ still bites, and the tie example was rebuilt from two non-weak lanes.
   keeps pairs where the marker is a strict substring of an ordinary word, so a
   marker that _equals_ a whole ordinary word (`visto`, `tanah`, `imposte`) is
   structurally outside the sweep. Those rows are hand-written, and that is why.
+
+---
+
+## 11. An alarm that fires on the correct outcome
+
+**Measured 2026-08-05, the second non-dry-run.** The run saw 12 messages,
+classified all 12 as unroutable, left all 12 in the inbox — the intended
+behaviour — and reported:
+
+```json
+{
+  "seen": 12,
+  "routed": 0,
+  "left_in_inbox": 12,
+  "drafted": 0,
+  "draft_failures": 0,
+  "errors": [],
+  "degraded": true
+}
+```
+
+Exit **1**, heartbeat `degraded`, a P0 to the gateway. Nothing was wrong. The
+rule read `if self.seen and self.routed == 0: return True` — written when
+"routed nothing" could only mean the router was stuck, and untrue the first
+morning the inbox simply held nothing this classifier can defend a lane for.
+
+An alarm that fires on the correct outcome is an alarm nobody reads, which is
+how the next real one gets missed. The same night the gateway had already
+spooled a P0 for budget overflow.
+
+### The first fix was dead code, and mutation said so
+
+The narrowing was `routed == 0 and unroutable < seen`, with a new `unroutable`
+counter. It passed guilt and innocence. Then deleting **the whole branch**
+changed no test — and the reason was not a missing test:
+
+> with `routed == 0` and neither `errors` nor `missing_folders`, every seen
+> message has necessarily been counted `unroutable`, so `unroutable < seen` is
+> false by construction.
+
+The branch was **unreachable**. It read like a guard, ran on every run, and
+could never fire — superscar #2 in miniature, inside the fix for something
+else. Worse, its guilt test passed through the `errors or missing_folders`
+branch a few lines above: the premise was vacuous and the assertion still
+green. A guilt test that reaches the verdict by another road proves nothing
+about the road it names.
+
+### What replaced it: a conservation law
+
+Every message the run picks up ends in exactly one place — it moved
+(`routed`), it stayed on purpose (`left_in_inbox`: declined, or its folder was
+missing), or handling it raised (`message_errors`). So:
+
+```
+unaccounted = seen - routed - left_in_inbox - message_errors
+```
+
+must be `0`, and a non-zero value is degraded. It turns non-zero **the day
+someone adds a fourth ending** — the silent `return` (skip old mail, skip our
+own address, a guard added in a hurry) that would otherwise let a half-run
+report success. It cannot go dead the way its predecessor did, because it is
+not a statement about today's branches.
+
+Its guilt test injects that fourth ending rather than waiting for it: it
+monkeypatches `_handle_one` into a silent no-op and asserts the run is reported
+degraded with `errors` and `missing_folders` both empty — the branch under
+test, and no other.
+
+### The law's first version could read −1, which is worse than dead
+
+The paragraph above originally continued "it is zero on every path the code has
+today". Adversarial review measured that claim and reproduced the opposite on a
+live path:
+
+```
+seen 1  routed 1  left_in_inbox 0  message_errors 1
+unaccounted = -1
+moves [(['m1'], 'F-VISA')]
+errors ['message m1: Zoho API 500 while saving draft']
+```
+
+`routed += 1` sat inside `_handle_one`, **before** drafting. `_draft_reply`
+handles `DraftUnavailable` itself, but anything else — Zoho refusing to store
+the reply, the pending buffer failing to write — propagated to the caller's
+per-message handler, which added `message_errors` for a message it had already
+counted as routed. Two endings, one message.
+
+The negative was truthy, so that particular run still read degraded. The real
+damage is that **a sum can cancel**: a `−1` here silently absorbs a genuine
+`+1` elsewhere in the same run, and the law reports balanced while hiding two
+distinct defects. A conservation law that can net out is not a conservation
+law — and it fails quiet, where the dead branch it replaced at least failed
+loud under mutation.
+
+The cure was not a bigger check but a **smaller surface**. `_handle_one` now
+returns an ending and touches none of the three counters; the caller increments
+exactly one of them, in a single `if/elif`, and a crash after the move is
+reported as a draft failure because the message's ending was settled when it
+moved. There is deliberately **no `else`** on that mapping: an unmapped ending
+falls through to no counter, which is exactly what `unaccounted` is for.
+
+`unroutable` stays where it is because it is a _reason_, not an ending — it
+takes no part in the subtraction and cannot unbalance it.
+
+Both shapes are now pinned: the post-move crash (`routed == 1`,
+`message_errors == 0`, `unaccounted == 0`) and a run carrying one of each
+defect, which must read `unaccounted == 1` rather than netting to zero.
+
+### And the verdict now names its own cause
+
+`unaccounted` is the only term of `degraded` with no second symptom: no folder
+in the list, no error string, no failed draft. A DEGRADED line that omits it
+prints `routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0` and
+leaves the reader guessing. The line carries every term of the verdict it
+announces, and the clean line carries `unroutable` so a quiet day can be told
+from a dead one at a glance — same exit code, same `routed=0`, opposite
+meaning.
+
+`cli._report()` was pulled out of `_amain` for exactly this: the wording is
+worth a test, and it was unreachable without a database.
+
+### Mutation table
+
+| mutant                                 | tests turned red |
+| -------------------------------------- | ---------------- |
+| conservation branch deleted            | 1                |
+| `unaccounted` hardcoded to 0           | 1                |
+| a crashed message not accounted for    | 1                |
+| a declined message not counted as left | 4                |
+| DEGRADED line drops `unaccounted`      | 1                |
+| clean line drops `unroutable`          | 1                |
+| post-move draft crash propagates again | 1                |
+| `else` swallows the unmapped ending    | 2                |
+| `routed` incremented in both places    | 9                |
+
+### Declared limits
+
+- The law says a message reached _an_ ending, never that it was the _right_
+  one. Routing a tax question into `_Visa` is accounted for and clean; that is
+  §10's problem, not this one's.
+- `unaccounted` can no longer go negative _by construction_, but the
+  construction is **one increment per message**, not "one increment site per
+  counter" — `message_errors` has two sites (a message with no id, and the
+  per-message `except`), each followed immediately by `continue` so the
+  `if/elif` below is unreachable after either. An earlier draft of this section
+  and of the docstrings claimed the stronger property; it was never true, and
+  round-2 review caught it in the very commit whose message said the
+  overclaiming docstrings had been corrected. Nothing mechanically forbids a
+  future edit from adding an increment that is not followed by `continue`; what
+  would catch it is the same corpus — the post-move-crash test asserts
+  `message_errors == 0` on a routed message, and the net-out test asserts a run
+  carrying one defect of each sign reads `1`, not `0`.
+- The wrapper reads only the exit code, so `unaccounted` reaches a human
+  through the log line and the JSON, not through a distinct alert. A run
+  degraded _only_ by the law raises the same P0 as any other.
