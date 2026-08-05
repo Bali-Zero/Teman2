@@ -354,3 +354,73 @@ def test_an_ordinary_degraded_run_is_not_a_blocker() -> None:
 
 def test_no_errors_is_not_a_blocker() -> None:
     assert cli_module._consent_blocker([]) is None
+
+
+# --------------------------------------------------------------------------- #
+# The client's message goes in on STDIN, never on the command line.           #
+#                                                                             #
+# A process's argv is world-readable on macOS: `ps -A -ww -o args` returns the #
+# full command line of every process regardless of owner. Passing the prompt   #
+# as `-p <prompt>` published a client's mail — name, address, whole body — to  #
+# every account on the machine for up to TIMEOUT_SECONDS.                     #
+#                                                                             #
+# Same threat model as the two subject-bearing log lines cured alongside, with #
+# a strictly larger payload. SYMBIOSIS Law 2 / UU PDP Art. 67-68.             #
+# --------------------------------------------------------------------------- #
+
+_ARGV_CANARY = "Zzcanary-Quenneville-77"
+
+
+def _canary_request() -> draft_module.DraftRequest:
+    return draft_module.DraftRequest(
+        subject=f"KITAS renewal for {_ARGV_CANARY}",
+        body=f"{_ARGV_CANARY} here, what documents do you need?",
+        sender_name="someone@example.com",
+        language="en",
+        intent="visa",
+        style_block="(none)",
+    )
+
+
+def test_the_prompt_never_reaches_the_command_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: the client's words must not be visible to `ps`."""
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+    draft_module.generate(_canary_request())
+
+    joined = " ".join(seen["argv"])
+    assert _ARGV_CANARY not in joined, f"the client's text is in argv: {joined!r}"
+
+
+def test_the_prompt_arrives_on_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """INNOCENCE: privacy is not amnesia — the model must still get the prompt.
+
+    Without this, deleting the prompt entirely would pass the test above while
+    producing drafts about nothing.
+    """
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+    draft_module.generate(_canary_request())
+
+    assert seen["input"], "no prompt was passed at all"
+    assert _ARGV_CANARY in seen["input"], "the prompt reached the model without the message"
+    # And the invocation is still the CLI in print mode, on the pinned model —
+    # a `-p` that lost its flag would read stdin as an interactive session.
+    assert seen["argv"][:2] == ["/fake/claude", "-p"]
+    assert draft_module.CLAUDE_MODEL in seen["argv"]

@@ -171,6 +171,91 @@ _DECISIVE: dict[Intent, frozenset[str]] = {
     ),
 }
 
+# Markers too common in ordinary business email to justify a route ON THEIR OWN.
+#
+# `_DECISIVE` above says an instrument is strong because it has "no
+# ordinary-language twin, so a single hit is not a coincidence". The
+# contrapositive was written in that comment and never enforced: a soft marker's
+# single hit CAN be a coincidence, and until 2026-08-05 the count path routed on
+# it anyway — one hit, runner-up zero, message moved out of the inbox.
+#
+# Measured on the live mailbox before this rule existed: of 7 routings in one
+# run, SIX rested on a single soft marker (five on `tax`, one on `meeting`) and
+# not one carried a decisive instrument. `tax` is boilerplate — it sits in the
+# footer of every invoice, receipt and SaaS bill on earth — so "mentions tax"
+# was filing a client's mail into _Tax on the strength of a vendor's small
+# print.
+#
+# Each entry below is listed WITH the ordinary-language twin that makes it
+# coincidence-grade. A weak marker still SCORES (it can win a lane, break a tie,
+# and confirm a strong one); it simply may not be the sole reason to move
+# somebody's mail. A lane whose every hit is weak yields UNKNOWN, which this
+# module already treats as a first-class answer: the message stays in the inbox
+# where a human sees it. That is the stated preference, now enforced.
+#
+# Deliberately NOT weak, and why: `visa` (the card-brand twin is already killed
+# by negative context, and no other boilerplate carries it), `invoice`/`receipt`
+# and their translations (these DO define their topic, and _Admin is the correct
+# home for a vendor invoice), `pajak`/`налог` (domain words, not footer
+# furniture). Extending this set is a measurement, not a hunch — add a token
+# only after seeing it decide a route it should not have.
+_WEAK: frozenset[str] = frozenset(
+    {
+        # TAX — every commercial email quotes a tax line.
+        "tax", "taxes", "vat", "iva",
+        # "codice fiscale" is an identity number; "anno fiscale" is a date range.
+        "fiscale",
+        # Pure accounting boilerplate, and no more specific than `vat`.
+        "fiscal year",
+        # Italian "imposte" is both taxes AND window shutters.
+        "imposte",
+        # ADMIN — scheduling language lives INSIDE substantive mail. A visa
+        # question that ends "can we set a meeting?" is a visa question.
+        "meeting", "appointment", "calendar", "reschedule",
+        "jadwal", "pertemuan", "appuntamento", "встреча",
+        # Signature-block furniture in the same sense: a call link pasted under
+        # a name says nothing about what the mail is about.
+        "zoom link", "google meet",
+        # PROPERTY — in Bali everyone lives in a villa; `bangunan` shows up in
+        # postal addresses. "villa" already has negative context for the
+        # housekeeping sense, which is a different (narrower) filter.
+        "villa", "bangunan",
+        # "Tanah Lot" is one of Bali's best-known landmarks — the commonest
+        # place-name component on the island, and a stronger coincidence than
+        # `bangunan`, which was demoted for the weaker (postal) reason.
+        "tanah",
+        # VISA — Italian "soggiorno" is also a living room and a plain stay.
+        # The instrument "permesso di soggiorno" is listed separately and stays
+        # strong.
+        "soggiorno",
+        # "ho visto" = "I saw"; "ci siamo visti" = "we met". A top-20 Italian
+        # past participle in the busiest lane, on a channel where Italian is a
+        # first-class language — strictly worse than `soggiorno`, which was
+        # already demoted. Declared cost: a bare "vorrei un visto" now stays in
+        # the inbox instead of routing. That is the trade this whole rule
+        # makes, and it is pinned by a test so nobody pays it unknowingly.
+        "visto", "visti",
+        # PT_PMA — three letters that also spell "open source software" and sit
+        # inside plenty of unrelated acronym soup.
+        "oss",
+        # Signature-block furniture: "Budi Santoso / Direktur Utama" says who
+        # wrote the mail, not what it is about.
+        "direktur",
+    }
+)
+
+# Decisive instruments SHORT enough to appear by accident. These keep their
+# decisive status — one hit still settles the lane — but only when the lane
+# carries at least one other marker.
+#
+# The rest of `_DECISIVE` needs no corroboration: nobody writes `kitas`,
+# `b211a`, `npwp` or `hak guna bangunan` by chance. These do get written by
+# chance, in exactly one shape: an address. "Villa C2, Jalan Raya" and "Blok
+# D12" are how this island writes where you live.
+_NEEDS_CORROBORATION: frozenset[str] = frozenset(
+    {"c1", "c2", "c7", "c12", "c22", "d12", "e23", "e31", "ahu", "shm", "ajb"}
+)
+
 # Negative context: a marker is dropped when it sits next to one of these.
 # Keyed by marker, each value is a set of words that must NOT appear within
 # `_NEG_WINDOW` characters of the hit.
@@ -242,6 +327,29 @@ def _suppressed(haystack: str, marker: str, at: int) -> bool:
     lo = max(0, at - _NEG_WINDOW)
     window = haystack[lo : at + len(marker) + _NEG_WINDOW]
     return any(_word_pattern(word).search(window) for word in forbidden)
+
+
+def _lane_is_credible(hits: list[str]) -> bool:
+    """Does this lane hold at least one marker worth acting on?
+
+    Two ways to fail, and the second was learned by getting it wrong: denying
+    an uncorroborated `C2` the DECISIVE path is not enough, because it then
+    falls through to the count path and wins there instead — a lane of one
+    two-character token beats a runner-up that has just stepped aside. Closing
+    a hole in one path moves it to the other unless the same judgement is
+    applied to both.
+
+    So a marker counts here only when it is neither coincidence-grade prose
+    (`_WEAK`) nor a short permit index standing on its own
+    (`_NEEDS_CORROBORATION` with nothing else in the lane).
+    """
+    for marker in hits:
+        if marker in _WEAK:
+            continue
+        if marker in _NEEDS_CORROBORATION and len(hits) == 1:
+            continue
+        return True
+    return False
 
 
 def _hits(haystack: str, intent: Intent) -> list[str]:
@@ -335,6 +443,9 @@ def classify(
          markers another lane collected.
       3. otherwise, the lane with the most distinct markers; a tie or a blank
          score is UNKNOWN, which the loop leaves in the inbox untouched.
+      4. and a lane that won on WEAK markers only is UNKNOWN too, however
+         lopsided the count: beating a runner-up of zero proves nothing when
+         the winning token is the word every invoice already contains.
 
     UNKNOWN is a first-class answer, not a failure: routing a message we do
     not understand is worse than leaving it where a human will see it.
@@ -357,27 +468,65 @@ def classify(
 
     for intent, decisive_set in _DECISIVE.items():
         hit = [m for m in per_lane.get(intent, []) if m in decisive_set]
-        if hit:
-            return Classification(
-                intent=intent,
-                language=language,
-                folder=FOLDER_BY_INTENT[intent],
-                bulk=False,
-                decisive=True,
-                markers={k.value: v for k, v in per_lane.items()},
-            )
+        if not hit:
+            continue
+        # A short alphanumeric permit index needs a second opinion. `C2` and
+        # `D12` decide a lane on one hit, and they are also how Bali writes an
+        # address ("Villa C2, Jalan Raya"), a spreadsheet cell and an invoice
+        # line reference. Corroboration costs nothing on real mail — measured
+        # over 106 live messages, `c1` fired 15 times and NEVER alone, `pma`
+        # 3 of 3 — so requiring another marker in the same lane closes the
+        # address case without losing a single real routing.
+        if all(marker in _NEEDS_CORROBORATION for marker in hit):
+            others = [m for m in per_lane[intent] if m not in hit]
+            if not others:
+                logger.debug(
+                    "decisive %s in lane %s stands alone — not corroborated",
+                    hit,
+                    intent.value,
+                )
+                continue
+        return Classification(
+            intent=intent,
+            language=language,
+            folder=FOLDER_BY_INTENT[intent],
+            bulk=False,
+            decisive=True,
+            markers={k.value: v for k, v in per_lane.items()},
+        )
 
-    if not per_lane:
+    # Drop weak-only lanes BEFORE ranking, not after choosing a winner.
+    #
+    # Filtering afterwards was a real defect, caught by adversarial review with
+    # a measured case: "I need help with a work permit... could we set a meeting
+    # or an appointment next week?" gives {visa: [work permit], admin:
+    # [appointment, meeting]}. ADMIN wins the count 2-1, its hits are all weak,
+    # and a post-hoc check then collapsed the WHOLE verdict to UNKNOWN —
+    # discarding `work permit`, a strong marker in the lane that was right.
+    #
+    # A weak-only lane must step ASIDE, not poison the message. UNKNOWN is then
+    # what happens when nothing non-weak survives anywhere, which is what the
+    # comment above `_WEAK` always claimed and what the code now does.
+    considered = {
+        intent: hits for intent, hits in per_lane.items() if _lane_is_credible(hits)
+    }
+    if len(considered) != len(per_lane):
+        logger.debug(
+            "weak-only lanes stepped aside: %s",
+            sorted(lane.value for lane in per_lane.keys() - considered.keys()),
+        )
+
+    if not considered:
         return Classification(
             intent=Intent.UNKNOWN,
             language=language,
             folder=None,
             bulk=False,
             decisive=False,
-            markers={},
+            markers={k.value: v for k, v in per_lane.items()},
         )
 
-    ranked = sorted(per_lane.items(), key=lambda kv: (-len(kv[1]), kv[0].value))
+    ranked = sorted(considered.items(), key=lambda kv: (-len(kv[1]), kv[0].value))
     top_intent, top_hits = ranked[0]
     if len(ranked) > 1 and len(ranked[1][1]) == len(top_hits):
         # Ambiguous on soft markers only: refuse to guess.

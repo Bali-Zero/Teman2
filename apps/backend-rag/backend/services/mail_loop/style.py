@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from backend.services.mail_loop.state_io import write_private
+
 logger = logging.getLogger(__name__)
 
 # Cap per (intent, language) bucket. A style file that grows without bound stops
@@ -188,10 +190,7 @@ class ReplyStyleStore:
             chunks.append("")
         body = "\n".join(chunks).rstrip() + "\n"
 
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_suffix(self.path.suffix + ".tmp")
-        tmp.write_text(body, encoding="utf-8")
-        tmp.replace(self.path)
+        write_private(self.path, body)
 
 
 def bucket_for(intent: str, language: str) -> str:
