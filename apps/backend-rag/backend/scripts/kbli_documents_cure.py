@@ -346,6 +346,61 @@ def is_machine_template(code: str, content: str | None) -> bool:
     return bool(sections) and sections <= MACHINE_TEMPLATE_SECTIONS
 
 
+def selector_conflict(
+    *, quarantined: bool, licensing_absent: bool, machine_template: bool
+) -> str | None:
+    """Pure. The refusal message when more than one scope selector is on, or None.
+
+    The three selectors choose populations three different WAYS — a canonical
+    marker, a detector's verdict about live state, and the stored text itself —
+    so a union has no single sentence that describes what acted, and the run
+    report is the only record of a write to a client-facing table. They also
+    carry OPPOSITE duties: the quarantine scope deliberately destroys stored
+    content (it is fabricated by definition) while the table scope refuses to.
+    Silently letting one win is how a run destroys prose under a flag the
+    operator thought meant something narrower.
+
+    Pure and out here because the refusal lives in `main`, which no test can
+    execute (it opens a real connection) — inline, a mutation disabling the
+    check survived the whole suite.
+    """
+    chosen = [
+        name
+        for name, on in (
+            ("--all-quarantined", quarantined),
+            ("--all-licensing-absent", licensing_absent),
+            ("--all-machine-template", machine_template),
+        )
+        if on
+    ]
+    if len(chosen) < 2:
+        return None
+    return (
+        f"{' and '.join(chosen)} select DIFFERENT populations DIFFERENT ways (marker vs detector "
+        "state vs stored text) — refusing to union them, because the run report could no longer "
+        "say which scope acted. Run them separately."
+    )
+
+
+def select_machine_template_rows(
+    codes: list[str], table_rows: dict[str, dict]
+) -> tuple[list[str], int]:
+    """Pure. The `--all-machine-template` population: of the codes queried, the
+    rows the table actually holds, narrowed to the ones whose STORED TEXT is a
+    machine seed. Returns (kept, how many were present) so the caller can print
+    N of M rather than a bare N (W97).
+
+    It lives out here, and `main` does nothing but call it, on purpose: while it
+    was three lines inlined in `main` a mutation that replaced the predicate with
+    `True` — rebuild every row present, including 316 pieces of hand-written
+    editorial prose — SURVIVED the whole suite, because the test re-implemented
+    the filter instead of calling it. A decision that only exists inside an
+    un-runnable function is a decision nothing tests.
+    """
+    present = [c for c in codes if c in table_rows]
+    return [c for c in present if is_machine_template(c, table_rows[c]["content"])], len(present)
+
+
 def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str | None:
     """Pure. Why this row may be rebuilt wholesale — or None to refuse it.
 
@@ -761,6 +816,18 @@ async def main() -> int | None:
         "1,423 rows no --only list ever named. Refuses if the detector cannot verify.",
     )
     ap.add_argument(
+        "--all-machine-template",
+        action="store_true",
+        help="rebuild every row the table itself shows to be a machine-seed document, i.e. every "
+        "row `is_machine_template` accepts (299 of 1,563 measured 2026-08-05). TABLE-selected: "
+        "the population is a property of the stored text, not of a marker or a detector, so this "
+        "is the only selector that can DELIVER a change to the builder — the other three each "
+        "answer a narrower question and together they reach a few dozen rows. Lossless by "
+        "construction: a machine-seed row is regenerated from the same canonical fields it was "
+        "built from. The other 1,264 rows keep their hand-written prose and are named, not "
+        "silently skipped.",
+    )
+    ap.add_argument(
         "--conformance-script",
         type=Path,
         default=CONFORMANCE_SCRIPT,
@@ -796,15 +863,25 @@ async def main() -> int | None:
     dataset = await load_dataset(args.dataset)
 
     canonical_rows_by_code: dict[str, int] = {}
-    if args.all_quarantined and args.all_licensing_absent:
-        logger.error(
-            "--all-quarantined and --all-licensing-absent are two DIFFERENT populations selected "
-            "two different ways (marker vs state) — refusing to union them, because the run "
-            "report could no longer say which scope acted. Run them separately."
-        )
+    conflict = selector_conflict(
+        quarantined=args.all_quarantined,
+        licensing_absent=args.all_licensing_absent,
+        machine_template=args.all_machine_template,
+    )
+    if conflict:
+        logger.error("%s", conflict)
         return
 
-    if args.all_quarantined:
+    if args.all_machine_template:
+        # Every code the canonical carries. The table-shaped narrowing happens
+        # below, after the rows are read — the predicate is a property of the
+        # STORED TEXT, so it cannot be evaluated before the fetch, and it is the
+        # SAME `rebuild_reason` the other gate calls rather than a second copy
+        # of it (two predicates for one decision is how they start disagreeing).
+        codes = [str(r.get("kode_kbli_2025")) for r in dataset if r.get("kode_kbli_2025")]
+        if args.only:
+            logger.warning("--only ignored: --all-machine-template takes precedence")
+    elif args.all_quarantined:
         codes = quarantined_codes(dataset)
         if args.only:
             logger.warning("--only ignored: --all-quarantined takes precedence")
@@ -869,7 +946,28 @@ async def main() -> int | None:
         # revoked regulation), so "preserve what a human wrote" would preserve
         # exactly what the cure exists to destroy. Same code, opposite duty,
         # decided by which selector chose the row.
-        if args.all_licensing_absent:
+        if args.all_machine_template:
+            # Table-selected: keep ONLY rows whose stored text is a machine seed.
+            # `contradicted-licensing-claim` is deliberately NOT admitted here —
+            # that reason needs the detector's per-code `canonical_rows`, which
+            # this path does not have, and inventing a second count for it is
+            # exactly the drift W105 describes. A broad rebuild must be the
+            # lossless case and nothing else.
+            keep, n_present = select_machine_template_rows(codes, table_rows)
+            logger.info(
+                "table-selected scope: %d machine-seed row(s) of %d present in the table "
+                "(%d canonical codes queried); the other %d keep hand-written prose and are NOT "
+                "rebuilt — closing them needs prose re-authored around the new rows, not a script",
+                len(keep),
+                n_present,
+                len(codes),
+                n_present - len(keep),
+            )
+            codes = keep
+            if not codes:
+                logger.warning("no machine-seed row in the table — nothing to do")
+                return
+        elif args.all_licensing_absent:
             keep, refused = [], []
             for code in codes:
                 row = table_rows.get(code)

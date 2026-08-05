@@ -1011,6 +1011,7 @@ from backend.scripts.kbli_documents_cure import (  # noqa: E402
     build_cured_content,
     build_kewajiban_section,
     is_machine_template,
+    select_machine_template_rows,
 )
 
 
@@ -1165,3 +1166,163 @@ def test_the_obligations_are_actually_wired_into_the_document_the_channel_reads(
     assert "Sertifikat Laik Sehat" in content, (
         "the document the client is answered from does not carry the obligation"
     )
+
+
+# ---------------------------------------------------------------------------
+# --all-machine-template — the DELIVERY selector.
+#
+# Measured on the live table 2026-08-05: 1,563 rows, of which 299 are machine
+# seeds, 316 are the 2026-02-17 editorial prose (`KBLI 55203: AKTIVITAS VILA` /
+# `WHAT IT MEANS:` — no `#` heading, no `##` sections at all) and 948 carry a
+# section outside the seed's. Without this selector the obligations builder
+# reaches ZERO rows: the other three selectors together name a few dozen.
+#
+# The danger it must not have: a sectionless document makes
+# "every `##` section is one of ours" VACUOUSLY TRUE, so a predicate written
+# only as a subset test would classify all 316 pieces of hand-written editorial
+# copy as machine template and destroy them.
+# ---------------------------------------------------------------------------
+
+_EDITORIAL_2026_02_17 = (
+    "KBLI 55203: AKTIVITAS VILA\n\n"
+    "WHAT IT MEANS:\n"
+    "Villas - private houses exclusively rented out to tourists.\n\n"
+    "BALI CONTEXT:\n"
+    "The provincial moratorium applies.\n"
+)
+
+
+def test_the_sectionless_editorial_rows_are_not_swept_up_as_machine_template():
+    """316 live rows look like this. A subset test alone says True on the empty
+    set, so the predicate must ALSO require the machine heading — and these have
+    `KBLI 55203:` with a colon and no `#`, which is not it."""
+    assert is_machine_template("55203", _EDITORIAL_2026_02_17) is False
+    assert rebuild_reason("55203", _EDITORIAL_2026_02_17, canonical_rows=4) is None
+
+
+def test_a_document_with_the_heading_but_no_sections_is_still_refused():
+    """The vacuous-truth case in isolation: right heading, zero sections.
+    Nothing about it says the machine wrote it, so it is not rebuildable."""
+    assert is_machine_template("55203", "# KBLI 55203 - Aktivitas Vila\n\nsome prose\n") is False
+
+
+def test_the_delivery_selector_keeps_only_machine_seeds_and_names_the_rest():
+    """The selector's whole job: pick the lossless population out of the table
+    and leave the rest, rather than picking a code list by hand."""
+    canonical = _canonical_by_code()
+    machine = build_cured_content("96230", canonical["96230"])
+    rows = {
+        "96230": {"content": machine},
+        "55203": {"content": _EDITORIAL_2026_02_17},
+        "47401": {"content": "# KBLI 47401 - Retail\n\n## Informasi Umum\nx\n\n## Sejarah\nhand-written\n"},
+    }
+    kept, n_present = select_machine_template_rows(list(rows), rows)
+    assert n_present == 3
+    assert kept == ["96230"], (
+        "the selector must keep the machine seed, refuse the sectionless editorial row, "
+        "and refuse the row carrying a section outside the seed's"
+    )
+
+
+def test_the_delivered_document_is_the_one_that_carries_the_obligations():
+    """Ties the selector to the point of the exercise: the rows this scope
+    rebuilds are exactly the rows that gain `## Kewajiban`."""
+    canonical = _canonical_by_code()
+    content = build_cured_content("96230", canonical["96230"])
+    assert is_machine_template("96230", content), "a delivered row must stay re-curable"
+    assert "## Kewajiban" in content
+    assert "Sertifikat Laik Sehat" in content
+
+
+def test_a_code_the_table_does_not_hold_is_not_counted_as_present():
+    """`--all-machine-template` queries every canonical code (1,559) against a
+    table that holds 1,563 rows but not necessarily the same set. Counting a
+    missing code as "present" both inflates the denominator the run reports and
+    walks straight into a KeyError on the row lookup."""
+    canonical = _canonical_by_code()
+    rows = {"96230": {"content": build_cured_content("96230", canonical["96230"])}}
+    kept, n_present = select_machine_template_rows(["96230", "00000", "99999"], rows)
+    assert kept == ["96230"]
+    assert n_present == 1, "only the row the table actually holds is present"
+
+
+def test_main_uses_the_selector_rather_than_its_own_inline_filter():
+    """A WIRING PIN, and labelled as one — not a behavioural test.
+
+    `main()` opens a real asyncpg connection, so nothing in this suite executes
+    it, and mutation testing proved the consequence: replacing the selector call
+    in `main` with `list(codes)` — rebuild every row, editorial prose included —
+    leaves all 81 tests green. This asserts, at the AST level, that the
+    machine-template branch delegates to `select_machine_template_rows` instead
+    of re-deriving the population inline, which is the only part of that
+    mutation this suite can see.
+
+    DECLARED GAP, measured not guessed: `main()` has no behavioural coverage, so
+    this pin sees that the call EXISTS and not that its result is used. Mutation
+    `if conflict:` -> `if False:` still SURVIVES the suite — the call remains,
+    its verdict is dropped, and two scope selectors would silently be ranked
+    instead of refused. Left as a declared gap rather than papered over with an
+    AST rule about the shape of an `if`: what actually protects the rows is the
+    selector's own tests plus this pin. Closing it needs `main` to take an
+    injected connection, which is a refactor, not a test.
+    """
+    import ast
+
+    src = _Path_obl(__file__).resolve()
+    root = _repo_root_obl()
+    tree = ast.parse(
+        (root / "apps/backend-rag/backend/scripts/kbli_documents_cure.py").read_text(encoding="utf-8")
+    )
+    main_fn = next(
+        n for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "main"
+    )
+    called = {
+        n.func.id
+        for n in ast.walk(main_fn)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+    }
+    for fn_name, what in (
+        ("select_machine_template_rows", "an inline filter there is invisible to every test here"),
+        ("selector_conflict", "an inline union check there is invisible to every test here"),
+    ):
+        assert fn_name in called, f"main() no longer calls {fn_name} ({src.name} pins this): {what}"
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        {"quarantined": True, "licensing_absent": True, "machine_template": False},
+        {"quarantined": True, "licensing_absent": False, "machine_template": True},
+        {"quarantined": False, "licensing_absent": True, "machine_template": True},
+        {"quarantined": True, "licensing_absent": True, "machine_template": True},
+    ],
+)
+def test_two_scope_selectors_together_are_refused_never_silently_ranked(flags):
+    """They carry OPPOSITE duties — the quarantine scope destroys stored content
+    on purpose, the table scope refuses to — so letting the if/elif chain pick a
+    winner would destroy prose under a flag the operator thought was narrower."""
+    from backend.scripts.kbli_documents_cure import selector_conflict
+
+    msg = selector_conflict(**flags)
+    assert msg is not None
+    assert "refusing to union them" in msg
+    for name, on in (("--all-quarantined", flags["quarantined"]),
+                     ("--all-licensing-absent", flags["licensing_absent"]),
+                     ("--all-machine-template", flags["machine_template"])):
+        assert (name in msg) is on, "the refusal must name exactly the selectors that were on"
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        {"quarantined": False, "licensing_absent": False, "machine_template": False},
+        {"quarantined": True, "licensing_absent": False, "machine_template": False},
+        {"quarantined": False, "licensing_absent": True, "machine_template": False},
+        {"quarantined": False, "licensing_absent": False, "machine_template": True},
+    ],
+)
+def test_one_selector_alone_is_never_refused(flags):
+    from backend.scripts.kbli_documents_cure import selector_conflict
+
+    assert selector_conflict(**flags) is None
