@@ -50,7 +50,18 @@ concurrency:
 jobs:
   check-docs-sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    # 2 → 10 (2026-08-06). The BUDGET WAS SIZED BY THE WORK, NOT BY GETTING THE
+    # WORK THERE. `docs_sync.py` takes seconds; `actions/checkout` on this repo
+    # normally takes ~20s but intermittently takes ~2 MINUTES, and the whole job
+    # had 2. Measured on the three runs it killed (31035447775, 31033448943,
+    # 31010616378 — one of them on `main`): checkout ran 1m58s-2m01s and was cut
+    # off, so the docs-sync step NEVER RAN in any of them.
+    #
+    # A blown budget reports as `cancelled`, not `failure`, and a cancelled
+    # required check never turns green by itself — the PR is hard-blocked with
+    # nothing red to fix. Do not tune this back down toward the runtime of the
+    # script: the floor is the checkout, and it is not the script's floor.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 

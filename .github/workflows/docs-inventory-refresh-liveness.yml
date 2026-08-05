@@ -73,7 +73,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
+    # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s.
+    timeout-minutes: 10
     env:
       COOLDOWN_KEY: docs-inventory-refresh-liveness-cooldown-v1
       COOLDOWN_SECONDS: "21600" # 6h — one alert per still-overdue window, not one per run

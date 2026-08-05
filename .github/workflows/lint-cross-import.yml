@@ -28,7 +28,9 @@ jobs:
   lint-cross-import:
     name: Cross-import integrity
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
+    # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s.
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
