@@ -1,6 +1,10 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
-import { baliBlockClause, shouldShowReason } from "@/lib/kbli-bali-block";
+import {
+  baliBlockClause,
+  isNationalClosure,
+  shouldShowReason,
+} from "@/lib/kbli-bali-block";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
 
 export interface KbliFaqEntry {
@@ -62,26 +66,40 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // applicability is genuinely unresolved, not "open" or "blocked".
   const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
 
+  // A NATIONAL closure recorded in the Bali-scoped `l4_bali` field. Without this
+  // branch the answer below ends "Outside Bali it is open to a PT PMA with no
+  // local partner required" — published in the FAQPage JSON-LD Google ingests —
+  // for the central bank, radioactive-waste collection, and seven bidang usaha a
+  // presidential annex allocates to Koperasi/UMKM nationwide. The TERBUKA/100%
+  // it leans on is the absence-from-the-annex default fill, not a permission.
+  const nationallyClosed = isNationalClosure(code.baliL4?.status);
+
   const pmaAnswer =
     code.pma.status === "open"
-      ? baliBlocked
-        ? // The cause is DERIVED, and the record's own reason is gated by the same
-          // rule the licensing frame uses. Both were hardcoded here: the clause
-          // named UMKM and the 2026 moratorium together for EVERY blocking status
-          // (the literal is asserted absent by test, so it is not repeated here),
-          // and the reason was spliced unconditionally. Measured on the canonical of
-          // 2026-07-27: 455 pages reach this branch, 416 of them carry a status the
-          // hardcoded clause misnames, and `69104` served Italian ("Notaio/PPAT è
-          // ufficio personale e statale, solo WNI…") — in the visible answer AND in
-          // the FAQPage JSON-LD, which is the copy Google ingests.
-          `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+      ? nationallyClosed
+        ? `No — and not only in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)}, and that closure applies everywhere in Indonesia, so registering the activity in another province does not change the answer.${
             shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
               ? ` ${code.baliL4?.reason}`
               : ""
-          } Outside Bali it is open to a PT PMA with no local partner required.`
-        : baliNonClassifiable
-          ? `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
-          : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
+          } Our records carry no confirmed national foreign-ownership ceiling for this activity: the 100% some rows display is a default applied when the investment list holds no specific entry, not a recorded permission.`
+        : baliBlocked
+          ? // The cause is DERIVED, and the record's own reason is gated by the same
+            // rule the licensing frame uses. Both were hardcoded here: the clause
+            // named UMKM and the 2026 moratorium together for EVERY blocking status
+            // (the literal is asserted absent by test, so it is not repeated here),
+            // and the reason was spliced unconditionally. Measured on the canonical of
+            // 2026-07-27: 455 pages reach this branch, 416 of them carry a status the
+            // hardcoded clause misnames, and `69104` served Italian ("Notaio/PPAT è
+            // ufficio personale e statale, solo WNI…") — in the visible answer AND in
+            // the FAQPage JSON-LD, which is the copy Google ingests.
+            `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+              shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
+                ? ` ${code.baliL4?.reason}`
+                : ""
+            } Outside Bali it is open to a PT PMA with no local partner required.`
+          : baliNonClassifiable
+            ? `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
+            : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
       : code.pma.status === "restricted"
         ? restrictedPmaAnswer(code)
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;

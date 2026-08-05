@@ -13,7 +13,7 @@ import {
   getKbliDatasetLastModified,
 } from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
-import { baliBlockClause } from "@/lib/kbli-bali-block";
+import { baliBlockClause, isNationalClosure } from "@/lib/kbli-bali-block";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
 import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
@@ -283,9 +283,16 @@ export default async function KBLICodePage({
               {/* PMA verdict banner — the binding answer for a PT PMA, aligned with the native app */}
               {(() => {
                 const baliBlocked = !!kbli.baliL4?.blocked;
+                // `pma.status` / `pma.maxForeign` are the annex-default fill,
+                // so they say TERBUKA/100 on records whose L4 verdict is a
+                // NATIONAL closure — the central bank among them. Reading them
+                // alone put "does not apply to a PT PMA in Bali" above an
+                // article saying the bar is nationwide. See isNationalClosure.
                 const nationallyClosed =
-                  !kbli.pma.capSpecial &&
-                  (kbli.pma.status === "closed" || kbli.pma.maxForeign === 0);
+                  isNationalClosure(kbli.baliL4?.status) ||
+                  (!kbli.pma.capSpecial &&
+                    (kbli.pma.status === "closed" ||
+                      kbli.pma.maxForeign === 0));
                 const pmaBlocked = baliBlocked || nationallyClosed;
                 return (
                   <>

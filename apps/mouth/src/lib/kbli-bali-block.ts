@@ -49,6 +49,48 @@ export function isProposalOnly(status?: string | null): boolean {
 }
 
 /**
+ * The closure is NATIONAL, even though it is recorded in a Bali-scoped field.
+ *
+ * `l4_bali` is where the L4 layer records its verdict, and for some codes that
+ * verdict has nothing to do with Bali: the activity is shut everywhere in
+ * Indonesia. Nothing downstream could tell the two apart, because the only
+ * national signals the renderer read — `pma_status` / `pma_max_asing` — are the
+ * ABSENCE-from-the-annex default fill and still say `TERBUKA` / `100` on every
+ * one of these records. So the banner rendered "National procedure — does not
+ * apply to a PT PMA in Bali" and the FAQ published, in the FAQPage JSON-LD that
+ * Google ingests, "Outside Bali it is open to a PT PMA with no local partner
+ * required" — on the central bank, on radioactive-waste collection, and on seven
+ * bidang usaha a presidential annex allocates to Koperasi/UMKM nationwide.
+ *
+ * Two statuses, and only two, are national by their own recorded reason —
+ * verified one by one on the live catalogue (all 9, `confidence: HIGH`,
+ * `needs_review: false`, each with a locator):
+ *
+ *   CHIUSO_REGOLATORE_SETTORIALE (2) — a sectoral regulator or State monopoly:
+ *     `64110` Bank Sentral (Bank Indonesia), `38122` radioactive waste (BAPETEN).
+ *   CHIUSO_PMA_NO_BESAR (7) — allocated to Koperasi/UMKM by Perpres 49/2021
+ *     Lampiran II, "a PT PMA cannot take this bidang usaha", with page and entry.
+ *
+ * DELIBERATELY NOT `TERTUTUP`, and this is the whole reason the rule is a named
+ * SET rather than a "closed-sounding status" test. That status is MIXED on the
+ * live catalogue: `01287` reads "closed to foreign ownership at the national
+ * level", but `01111` reads "closed to PMA registration IN BALI" and `11010`
+ * carries a sentence that is not a closure at all. Convicting all 68 on the
+ * strength of the name would be judging the FORM of the status instead of the
+ * entity it records — the same move that produced the defect above. The
+ * nationally-closed members of `TERTUTUP` need per-code adjudication; until then
+ * they keep the Bali framing, which understates rather than misdirects.
+ */
+const NATIONAL_CLOSURE_STATUSES = new Set<string>([
+  "CHIUSO_REGOLATORE_SETTORIALE",
+  "CHIUSO_PMA_NO_BESAR",
+]);
+
+export function isNationalClosure(status?: string | null): boolean {
+  return NATIONAL_CLOSURE_STATUSES.has(status ?? "");
+}
+
+/**
  * The clause completing "In Bali, this activity is currently …".
  *
  * Total over the statuses above. The fallback is deliberately CAUSE-FREE: an

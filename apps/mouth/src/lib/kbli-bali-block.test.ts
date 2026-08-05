@@ -9,9 +9,12 @@ import {
   isProposalOnly,
   narratesUnverifiedRoute,
   baliBlockedHint,
+  isNationalClosure,
 } from "./kbli-bali-block";
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 import goldData from "../../data/kbli-gold-all.json";
+import { buildKbliFaq } from "./kbli-faq";
+import type { KBLICode } from "./kbli-types";
 
 interface RawL4 {
   blocked?: boolean;
@@ -31,6 +34,42 @@ const BLOCKED = RECORDS.filter((r) => r.l4_bali?.blocked === true);
 const GOLD = goldData as unknown as Record<string, { whatYouNeed?: string }>;
 
 const MORATORIUM_SENTENCE = "under the 13 May 2026 moratorium";
+
+// The FAQ reads a transformed `KBLICode`, and `transformCode` is module-private
+// in the loader. Rather than export internals for a test, this builds the exact
+// subset `buildKbliFaq` touches — and takes every load-bearing value FROM THE
+// LIVE RECORD, so the fixture cannot drift into fiction while the catalogue moves
+// underneath it. The fields the PMA answer does not read are inert placeholders.
+function toKbliCodeForFaq(r: RawRecord): KBLICode {
+  return {
+    code: r.kode_kbli_2025,
+    titleId: "(judul)",
+    titleEn: "(title)",
+    titleEnIsReal: false,
+    section: "A",
+    licensing: [],
+    transition: { mappingStatus: null, mappingNote: null, previousCodes: [] },
+    pma: {
+      status:
+        r.pma_status === "TERBUKA"
+          ? "open"
+          : r.pma_status === "TERBATAS"
+            ? "restricted"
+            : "closed",
+      maxForeign: r.pma_max_asing ?? null,
+      capVerified: false,
+      capSpecial: r.pma_cap_special ?? false,
+      condition: null,
+    },
+    baliL4: r.l4_bali?.status
+      ? {
+          status: r.l4_bali.status,
+          reason: r.l4_bali.reason ?? null,
+          blocked: r.l4_bali.blocked ?? false,
+        }
+      : null,
+  } as unknown as KBLICode;
+}
 
 describe("baliBlockClause — the cause is derived, never defaulted", () => {
   it("GUILT: a non-moratorium block never claims the moratorium", () => {
@@ -581,5 +620,108 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     // sentence might gain later, which is how a pin stops pinning.
     expect(hint).toContain("420 of them");
     expect(hint).toContain("the other 98");
+  });
+});
+
+// =============================================================================
+// isNationalClosure — a national bar recorded in the Bali-scoped field
+// =============================================================================
+
+describe("isNationalClosure — the banner and the FAQ must not send a client to Jakarta", () => {
+  // The two statuses whose recorded reason is national on EVERY member, read one
+  // by one off the live catalogue: a sectoral regulator / State monopoly, and a
+  // Perpres 49/2021 Lampiran II allocation to Koperasi/UMKM.
+  const NATIONAL = ["CHIUSO_REGOLATORE_SETTORIALE", "CHIUSO_PMA_NO_BESAR"];
+  // Everything else `l4_bali` can carry while blocked. These are Bali-scoped (or
+  // mixed, in TERTUTUP's case) and must keep the Bali framing.
+  const BALI_SCOPED = [
+    "BLOCCATO_CLASSE_RISCHIO",
+    "CHIUSO_MORATORIA_BALI",
+    "CHIUSO_BALI",
+    "CHIUSO_BALI_PROPOSTO",
+    "TERTUTUP",
+  ];
+
+  it("GUILT: every live record carrying a national status is recognised", () => {
+    const national = RECORDS.filter((r) =>
+      NATIONAL.includes(r.l4_bali?.status ?? ""),
+    );
+    // Premise first: an empty set would make every assertion below vacuous.
+    expect(national.length).toBeGreaterThan(0);
+    for (const r of national) {
+      expect(isNationalClosure(r.l4_bali?.status)).toBe(true);
+      // …and each one is exactly the shape that fooled the old derivation:
+      // the national signals still read open.
+      expect(r.pma_status).toBe("TERBUKA");
+      expect(r.pma_max_asing).toBe(100);
+    }
+  });
+
+  it("INNOCENCE: no Bali-scoped block is turned into a national one", () => {
+    const baliScoped = BLOCKED.filter((r) =>
+      BALI_SCOPED.includes(r.l4_bali?.status ?? ""),
+    );
+    // This is the set that would silently lose its Bali framing if the rule were
+    // widened by "closed-sounding status" instead of by named entity.
+    expect(baliScoped.length).toBeGreaterThan(100);
+    const misclassified = baliScoped.filter((r) =>
+      isNationalClosure(r.l4_bali?.status),
+    );
+    expect(misclassified.map((r) => r.kode_kbli_2025)).toEqual([]);
+  });
+
+  it("DECLARED GAP: TERTUTUP is mixed on the live data and stays Bali-framed", () => {
+    // `01287` says "closed to foreign ownership at the national level" while
+    // `01111` says "closed to PMA registration IN BALI". Judging all 68 by the
+    // name of the status would be the same form-over-entity move that produced
+    // the defect this rule fixes, so they wait for per-code adjudication.
+    // If this ever goes red, TERTUTUP stopped being mixed — re-read it and
+    // decide, do not just delete the test.
+    const tertutup = RECORDS.filter((r) => r.l4_bali?.status === "TERTUTUP");
+    expect(tertutup.length).toBeGreaterThan(1);
+    const reasons = tertutup.map((r) =>
+      (r.l4_bali?.reason ?? "").toLowerCase(),
+    );
+    expect(reasons.some((t) => t.includes("national level"))).toBe(true);
+    expect(reasons.some((t) => t.includes("in bali"))).toBe(true);
+    expect(isNationalClosure("TERTUTUP")).toBe(false);
+  });
+
+  it("an unknown or absent status is never treated as national", () => {
+    for (const s of [
+      undefined,
+      null,
+      "",
+      "OK_or_HIGHER_RISK",
+      "SOMETHING_NEW",
+    ]) {
+      expect(isNationalClosure(s)).toBe(false);
+    }
+  });
+});
+
+describe("the FAQ answer for a national closure", () => {
+  it("GUILT: it never tells the reader the activity is open outside Bali", () => {
+    const national = RECORDS.filter((r) =>
+      ["CHIUSO_REGOLATORE_SETTORIALE", "CHIUSO_PMA_NO_BESAR"].includes(
+        r.l4_bali?.status ?? "",
+      ),
+    );
+    expect(national.length).toBeGreaterThan(0);
+    for (const r of national) {
+      const answer = buildKbliFaq(toKbliCodeForFaq(r))[0].answer.toLowerCase();
+      expect(answer).not.toContain("outside bali it is open");
+      expect(answer).not.toContain("nationally yes");
+      expect(answer).toContain("everywhere in indonesia");
+    }
+  });
+
+  it("INNOCENCE: a genuine Bali-only block keeps the 'nationally yes' answer", () => {
+    const baliOnly = BLOCKED.filter(
+      (r) => r.l4_bali?.status === "CHIUSO_MORATORIA_BALI",
+    );
+    expect(baliOnly.length).toBeGreaterThan(0);
+    const answer = buildKbliFaq(toKbliCodeForFaq(baliOnly[0]))[0].answer;
+    expect(answer).toContain("Nationally yes");
   });
 });
