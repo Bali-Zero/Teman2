@@ -26,6 +26,7 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
+from backend.services.kbli_pp28_provenance import licensing_disclosure
 from backend.services.kbli_requires_kind import (
     classify_requires_target,
     permit_name_verdict,
@@ -93,6 +94,18 @@ class KBLIDetail(BaseModel):
     related_requirements: dict[str, list[str]] = {}
     related_codes: list[str] = []
     expert_legal: dict | None = None
+    # WHOSE licences these are. A KBLI-2025 code that is new in the 2025
+    # numbering has no PP 28/2025 row of its own; the canonical fills it from
+    # the KBLI-2020 ancestors and records them here. 390 of 1,559 codes serve
+    # carried content, and 217 inherit a `pb_umku` permit that way — `62110`
+    # (video games) shows three defence-industry permits belonging to the five
+    # 62xxx programming codes it was sourced from.
+    #
+    # Both fields are additive and defaulted, so a payload cached before they
+    # existed still validates on read. The note is BUILT FROM the list, so the
+    # sentence and the codes cannot drift apart.
+    licensing_content_inherited_from: list[str] | None = None
+    licensing_note: str | None = None
 
 
 class KBLISearchResult(BaseModel):
@@ -406,7 +419,24 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
     from backend.core.cache import get_cache_service
 
-    cache_key = f"kbli_inspect_v2_{code}"
+    # v2 → v3 (2026-08-06): the payload gained the inherited-licensing
+    # disclosure. A cached v2 entry validates on read — the new fields simply
+    # default to None — so a carried code would keep answering WITHOUT the note
+    # for up to the 30-day TTL, and a shipped cure invisible for a month is
+    # indistinguishable from one that never shipped. Bumping the version evicts
+    # atomically at deploy instead of depending on someone remembering to run
+    # the per-code cache-bust for the right 390 codes.
+    #
+    # v3 → v4 (2026-08-06): this one is WORSE than a missing field and needs the
+    # bump for a different reason. `permit_name_verdict` changes the CONTENT of
+    # `licenses[]` — entries that were served as permits move to `obligations`
+    # and `unspecified_permits`. A cached v3 entry is fully valid on read and
+    # would keep serving `izin_usaha_tidak_diketahui` as a permit named "Izin
+    # Usaha" on the 186 codes that carry it. The stale payload is not
+    # incomplete, it is WRONG, and nothing in the response would betray it.
+    # Rule of thumb for the next reader: bump whenever the meaning of an
+    # existing field changes, not only when a field is added.
+    cache_key = f"kbli_inspect_v4_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
@@ -564,8 +594,21 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     if lic.risk_level == "Unknown":
                         lic.risk_level = qdrant_risk
 
+            # Disclose carried licensing content. Requires
+            # `properties.pp28_sources` on the node, which
+            # `backend/scripts/kg_kbli_resync.py` syncs from the canonical; an
+            # unsynced node yields None here — today's silence, never a
+            # fabricated provenance.
+            inherited_from, licensing_note = licensing_disclosure(
+                props.get("pp28_sources"), code, bool(licenses)
+            )
+
             logger.info(
-                "✅ KBLI %s details retrieved (pma=%s, risk=%s)", code, pma_status, risk_profile
+                "✅ KBLI %s details retrieved (pma=%s, risk=%s, inherited_licensing=%s)",
+                code,
+                pma_status,
+                risk_profile,
+                bool(inherited_from),
             )
 
             result = KBLIDetail(
@@ -580,6 +623,8 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 related_requirements=related_requirements,
                 related_codes=related_codes,
                 expert_legal=props.get("expert_legal"),
+                licensing_content_inherited_from=inherited_from,
+                licensing_note=licensing_note,
             )
 
             # Save to cache with dynamic TTL

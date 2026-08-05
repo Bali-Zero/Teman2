@@ -13,6 +13,8 @@ import {
   getDisputedLicensing,
   isBaliL4BlockVerifiedForBareClaim,
   isLicensingVerifiedForBareClaim,
+  licensingContentInheritedFrom,
+  pp28ContentInheritedFrom,
 } from "./kbli-provenance";
 import type {
   KBLICode,
@@ -489,5 +491,123 @@ describe("bare-claim gates", () => {
     expect(
       isBaliL4BlockVerifiedForBareClaim(codeWith(rows, undefined, undefined)),
     ).toBe(false);
+  });
+});
+
+// =============================================================================
+// licensingContentInheritedFrom (2026-08-06) — the BODY complement of the meta
+// gate. The indexed <meta> goes silent on an inherited licence type; a body can
+// qualify, so it keeps the value and names the source. Opposite behaviours from
+// the same fact, which is why they are two helpers.
+// =============================================================================
+
+describe("licensingContentInheritedFrom", () => {
+  function codeWithProv(
+    licensing: KBLICode["licensing"],
+    contentInheritedFrom: string[] | null,
+  ): KBLICode {
+    return {
+      licensing,
+      provenance: {
+        licensing: {
+          status: "oss_native",
+          locator: null,
+          vintage: "2025",
+          noOssScope: false,
+          contentInheritedFrom,
+        },
+      },
+    } as KBLICode;
+  }
+
+  const someRows = [{ riskCategory: "Tinggi" }] as KBLICode["licensing"];
+
+  it("GUILT: returns the source codes when rows are served and inherited", () => {
+    expect(
+      licensingContentInheritedFrom(
+        codeWithProv(someRows, ["62011", "62019", "62015"]),
+      ),
+    ).toEqual(["62011", "62019", "62015"]);
+  });
+
+  it("INNOCENCE: null for a self-sourced record", () => {
+    expect(
+      licensingContentInheritedFrom(codeWithProv(someRows, null)),
+    ).toBeNull();
+  });
+
+  it("INNOCENCE: null when no rows are served — nothing on screen to qualify", () => {
+    expect(
+      licensingContentInheritedFrom(
+        codeWithProv([] as KBLICode["licensing"], ["62011"]),
+      ),
+    ).toBeNull();
+  });
+
+  it("fails CLOSED — not by throwing — on a missing/malformed provenance block", () => {
+    expect(() =>
+      licensingContentInheritedFrom({ licensing: someRows } as KBLICode),
+    ).not.toThrow();
+    expect(
+      licensingContentInheritedFrom({ licensing: someRows } as KBLICode),
+    ).toBeNull();
+    expect(
+      licensingContentInheritedFrom({
+        licensing: someRows,
+        provenance: {},
+      } as unknown as KBLICode),
+    ).toBeNull();
+  });
+});
+
+describe("pp28ContentInheritedFrom (raw-record derivation)", () => {
+  it("GUILT: sources naming only OTHER codes are inheritance", () => {
+    expect(
+      pp28ContentInheritedFrom(
+        makeRaw({ kode_kbli_2025: "62110", pp28_sources: ["62011", "62019"] }),
+      ),
+    ).toEqual(["62011", "62019"]);
+  });
+
+  it("INNOCENCE: a record listing its OWN code has a row of its own", () => {
+    expect(
+      pp28ContentInheritedFrom(
+        makeRaw({ kode_kbli_2025: "56101", pp28_sources: ["56101", "56102"] }),
+      ),
+    ).toBeNull();
+  });
+
+  it("INNOCENCE: an empty source list is absence, not inheritance", () => {
+    // 175 codes record no PP 28 source at all. Withdrawing a claim on missing
+    // data would be asserting inheritance we cannot show.
+    expect(
+      pp28ContentInheritedFrom(
+        makeRaw({ kode_kbli_2025: "99999", pp28_sources: [] }),
+      ),
+    ).toBeNull();
+  });
+
+  it("real dataset: 390 inherited, and deriveProvenance carries it on every branch", () => {
+    const parsed = JSON.parse(
+      fs.readFileSync(
+        path.join(process.cwd(), "data", "KBLI_2025_FINAL_CLEAN.json"),
+        "utf-8",
+      ),
+    ) as KBLIRawDataFile;
+
+    const inherited = parsed.data.filter(
+      (r) => pp28ContentInheritedFrom(r) !== null,
+    );
+    expect(inherited.length).toBe(390);
+
+    // The field must survive derivation on EVERY record, not only the branch
+    // that motivated it — a branch that dropped it would read as self-sourced.
+    for (const r of parsed.data) {
+      const prov = deriveProvenance(r);
+      expect(
+        prov.licensing.contentInheritedFrom,
+        `code ${r.kode_kbli_2025}`,
+      ).toEqual(pp28ContentInheritedFrom(r));
+    }
   });
 });
