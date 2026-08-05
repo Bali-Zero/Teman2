@@ -136,6 +136,44 @@ source]` label, and derivable from a field we already carry on every record, wit
 source needed. Deletion stays refused for the original reason, which survives correction: the layers are
 real and most of these permits are real.
 
+**✅ THE WEB HALF IS SHIPPED, DEPLOYED AND PROVEN LIVE (#3645, merge `9a0a8e8adc`).** The disclosure is
+split across two surfaces on purpose, because the same fact has opposite correct answers on each:
+
+- **Indexed `<meta>` goes SILENT on the licence type** — a `<title>` has no room for a qualifier.
+  `verifiedLicenseType` now also requires `contentInheritedFrom == null`; `verifiedRiskLabel` is
+  **untouched**, because the risk tier on these codes IS 2025-native. One flag for both would have
+  suppressed a true fact to qualify a different one. `kbliMetaDescription` also had
+  `risk && license ? … : null`, which dropped BOTH when only the licence was ungated — it now falls
+  back to the risk sentence alone.
+- **The page body KEEPS the licence and names the source** (#3646) — a body has room to qualify, so
+  going silent there would destroy true information instead of framing it.
+
+**PROVEN by a before/after captured on prod, not by inference.** Before (commit `0f6f3e67f3`) and after
+(`9a0a8e8adc`, which is #3645's own merge commit):
+
+| code                 | inherited?                | before                                      | after              |
+| -------------------- | ------------------------- | ------------------------------------------- | ------------------ |
+| `62110` video games  | **yes**, from 5 codes     | `Medium-Low risk, license: NIB + Sert. St.` | `Medium-Low risk.` |
+| `56101` restaurant   | no (own code in the list) | `… license: NIB + Sert. St.`                | **unchanged**      |
+| `01111` corn farming | no                        | `… license: NIB + Sert. St.`                | **unchanged**      |
+
+Two innocence controls and one guilt, all three read on the live site. The risk tier survives on
+`62110` — that is the asymmetry working.
+
+**The gate binds on 336, not 337.** A raw `_l2_source === "OSS_RBA_resiko_2025"` count gives 337;
+`49213` (Angkutan Perkotaan) carries a `per_skala_disputed_pp28_collision` block, so `deriveProvenance`
+resolves it to `detached` before it can reach `oss_native`. My own first count said 337 — it measured
+the MARKER, the test pins the GATE. Same shape as every other probe lesson in this file.
+
+**🟡 `inspect_kbli` IS THE REMAINING SURFACE, and its blocker is measured rather than guessed.** It
+renders the inherited `pb_umku` permits as licences to the bot and the MCP. Two facts bound the fix:
+the backend Dockerfile copies `backend` / `scripts` / `training-data` / `*.py` but **not `data/`**, so
+the router cannot read canonical from disk; and `kg_nodes` for `kbli:62110` and `kbli:56101` carry
+**no `pp28_sources` property at all**. So the path is a sync that writes the field onto the nodes — the
+pattern `kg_kbli_resync.py` already uses for `pma_status` — applied from Pro. NOT a second derived copy
+inside the backend: that is a HOME-fork by construction (superscar #1) and would drift from canonical
+silently.
+
 **Left standing from the refusal, because it is still true**: comparing a licence name against
 `perizinan` ALONE reads "contradicted" across the whole UMKU layer, and what remains at NO_OVERLAP after
 the union is dominated by **mis-typed nodes rather than wrong permits** — `Izin Usaha` (174 codes), bare
