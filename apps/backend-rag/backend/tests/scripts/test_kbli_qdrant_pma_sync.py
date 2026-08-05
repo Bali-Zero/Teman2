@@ -286,3 +286,232 @@ def test_the_pma_layer_is_unchanged_by_the_generalisation():
     targets, _ = build_targets([_rec("25200", "TERBATAS", 49)], ["25200"])
     assert targets["25200"].layer == "pma"
     assert targets["25200"].fields == {"pma_status": "TERBATAS", "pma_max_asing": 49}
+
+
+# ---------------------------------------------------------------------------
+# PROSE REPAIR — the same fact in the blob the retriever hands to the LLM.
+#
+# Measured on prod 2026-08-05: 20 codes had the flat keys cured by `--layer pma`
+# and their `content`/`text` blob still opened `## Status PMA: TERBUKA` /
+# `- Kepemilikan asing maksimal: 100` — including `25200` (arms, real cap 49)
+# and `79122` (Umrah travel, real cap 0). One fact, two representations, one
+# cured. These tests exist so that cannot recur silently.
+# ---------------------------------------------------------------------------
+
+from backend.scripts.kbli_qdrant_pma_sync import (  # noqa: E402
+    PROSE_KEYS,
+    render_pma_block,
+    rewrite_pma_prose,
+    rewrite_whatchanged_prose,
+)
+
+_BLOB_OPEN = """[CONTEXT: KBLI 2025 - Kode 25200 - Industri Senjata dan Amunisi]
+
+# KBLI 25200: Industri Senjata dan Amunisi
+
+## Deskripsi (BPS)
+Kelompok ini mencakup pembuatan senjata dan amunisi.
+
+**Sektor:** I.C
+
+## Status PMA: TERBUKA
+- Kepemilikan asing maksimal: 100
+
+## Perizinan per Skala Usaha (PP 28/2025)
+### Skala: Besar
+- Kategori risiko: Tinggi
+
+## Intelligence 2026
+- whatItMeans: Making weapons and ammunition.
+- whatChanged: Direct 1:1 match from KBLI 2020 - code and scope unchanged.
+- baliContext: Not a Bali activity.
+"""
+
+
+def _blob_point(pid: Any, blob: str, status: str = "TERBUKA", cap: Any = 100) -> dict:
+    payload: dict[str, Any] = {"pma_status": status, "pma_max_asing": cap}
+    for key in PROSE_KEYS:
+        payload[key] = blob
+    return {"id": pid, "payload": payload}
+
+
+def test_the_blob_still_saying_terbuka_100_is_repaired_not_left_behind():
+    """The P0 this whole section exists for: an arms factory advertised at 100%
+    foreign ownership in the text the LLM is handed, while the flat field
+    already said 49."""
+    rec = _rec("25200", status="TERBATAS", cap=49)
+    point = _blob_point("p1", _BLOB_OPEN, status="TERBATAS", cap=49)  # flat ALREADY cured
+    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), [point])
+
+    assert plan.stale_points() == ["p1"], "a cured flat field must not excuse an uncured blob"
+    for key in PROSE_KEYS:
+        new = plan.prose["p1"][key]
+        assert "## Status PMA: TERBATAS" in new
+        assert "- Kepemilikan asing maksimal: 49" in new
+        assert "TERBUKA" not in new
+        assert "maksimal: 100" not in new
+        # everything outside the owned block survives untouched
+        assert "Industri Senjata dan Amunisi" in new
+        assert "## Perizinan per Skala Usaha (PP 28/2025)" in new
+        assert "- whatItMeans: Making weapons and ammunition." in new
+
+
+def test_a_zero_percent_cap_omits_the_line_because_the_generator_omits_it():
+    """`build_embedding_text` writes the cap line under `if
+    entry.get("pma_max_asing")`, so 0 is FALSY and the line is absent. `79122`
+    (Umrah/Hajj travel) is capped at 0: a repair that wrote `maksimal: 0` would
+    diverge from the next re-index and re-open this exact gap."""
+    rec = _rec("79122", status="TERBATAS", cap=0)
+    out = rewrite_pma_prose(rec, _BLOB_OPEN)
+    assert "## Status PMA: TERBATAS" in out
+    assert "Kepemilikan asing maksimal" not in out
+    assert render_pma_block(rec) == ["## Status PMA: TERBATAS"]
+
+
+def test_a_point_whose_blob_already_tells_the_truth_is_not_rewritten():
+    """Innocence: the repair must be a no-op on a truthful blob, or every run
+    would rewrite the whole collection and the diff would stop meaning anything."""
+    rec = _rec("25200", status="TERBATAS", cap=49)
+    cured = rewrite_pma_prose(rec, _BLOB_OPEN)
+    point = _blob_point("p1", cured, status="TERBATAS", cap=49)
+    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), [point])
+    assert plan.prose == {}
+    assert plan.stale_points() == []
+
+
+def test_a_blob_without_the_owned_block_is_REFUSED_not_guessed_at():
+    """A blob we cannot locate the block in is a blob we do not understand.
+    Refusing is the whole point — writing into it would be a guess about a
+    client-facing store."""
+    rec = _rec("25200", status="TERBATAS", cap=49)
+    point = _blob_point("p1", "# KBLI 25200\n\nno pma section here at all\n", status="TERBATAS", cap=49)
+    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), [point])
+    assert plan.unshaped == ["p1"]
+    assert plan.prose == {}
+    assert plan.stale_points() == [], "an unshaped point must not be written"
+
+
+def test_the_whatchanged_layer_replaces_only_its_own_line():
+    rec = {
+        "kode_kbli_2025": "25200",
+        "intel_2026": {"whatChanged": "Our records do not support this code number carrying over."},
+    }
+    out = rewrite_whatchanged_prose(rec, _BLOB_OPEN)
+    assert "- whatChanged: Our records do not support this code number carrying over." in out
+    assert "Direct 1:1 match" not in out
+    # the neighbours in the same section are untouched
+    assert "- whatItMeans: Making weapons and ammunition." in out
+    assert "- baliContext: Not a Bali activity." in out
+    # and it does not touch the PMA block it does not own
+    assert "## Status PMA: TERBUKA" in out
+
+
+def test_the_whatchanged_layer_owns_no_flat_key():
+    """It has none in the live payload (29 flat keys, measured 2026-08-05), so a
+    run must not invent one — writing `whatChanged` as a flat field would create
+    a second representation nobody reads and nobody keeps in step."""
+    targets, refusals = build_targets(
+        [{"kode_kbli_2025": "25200", "intel_2026": {"whatChanged": "x"}}], ["25200"], layer="whatchanged"
+    )
+    assert refusals == []
+    assert targets["25200"].fields == {}
+
+
+def test_a_record_without_whatchanged_is_refused_not_blanked():
+    _, refusals = build_targets(
+        [{"kode_kbli_2025": "25200", "intel_2026": {}}], ["25200"], layer="whatchanged"
+    )
+    assert len(refusals) == 1 and "whatChanged" in refusals[0]
+
+
+def test_each_point_gets_its_OWN_repaired_blob_never_a_shared_body():
+    """The blob is per-point. A single shared `set_payload` body would stamp one
+    point's text onto its siblings — silently replacing another point's content
+    with a near-copy."""
+    rec = _rec("25200", status="TERBATAS", cap=49)
+    other = _BLOB_OPEN.replace("Industri Senjata dan Amunisi", "SIBLING CHUNK")
+    points = [_blob_point("p1", _BLOB_OPEN, "TERBATAS", 49), _blob_point("p2", other, "TERBATAS", 49)]
+    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), points)
+    fake = FakeQdrant({})
+    with fake.client() as http:
+        written = apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True)
+    assert written == 2
+    bodies = fake.payload_writes
+    assert [b["points"] for b in bodies] == [["p1"], ["p2"]]
+    assert "SIBLING CHUNK" in bodies[1]["payload"]["content"]
+    assert "SIBLING CHUNK" not in bodies[0]["payload"]["content"]
+
+
+def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records():
+    """THE ORGAN. These renderers must emit exactly what a full re-index emits,
+    or the next re-index reverts the cure and the two disagree again.
+
+    So this loads the REAL canonical dataset, runs the REAL
+    `build_embedding_text`, and requires both repairs to be no-ops on its fresh
+    output. It is what caught the falsy-zero trap: `build_embedding_text` omits
+    the cap line when the cap is 0, and a repair that emitted `maksimal: 0`
+    passes every hand-written test above and still diverges in production.
+    """
+    import pathlib
+    import types
+
+    here = pathlib.Path(__file__).resolve()
+    root = next(
+        (p for p in here.parents if (p / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").is_file()),
+        None,
+    )
+    assert root is not None, f"canonical dataset not found walking up from {here}"
+
+    gen_path = root / "apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py"
+    mod = types.ModuleType("rix_for_test")
+    # The module derives a dataset path from __file__ with parents[4]; give it a
+    # deep enough stand-in rather than importing it for real (it would also try
+    # to read that path at import time).
+    mod.__dict__["__file__"] = "/a/b/c/d/e/reindex.py"
+    exec(compile(gen_path.read_text(encoding="utf-8"), str(gen_path), "exec"), mod.__dict__)
+    build_embedding_text = mod.build_embedding_text
+
+    records = json.loads(
+        (root / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").read_text(encoding="utf-8")
+    )["data"]
+
+    checked_pma = checked_wc = truncated = 0
+    zero_cap_seen = False
+    for rec in records:
+        fresh = build_embedding_text(rec)
+        if rec.get("pma_status"):
+            assert rewrite_pma_prose(rec, fresh) == fresh, (
+                f"{rec['kode_kbli_2025']}: the PMA repair is not a no-op on freshly generated text — "
+                "it would fight the next re-index"
+            )
+            checked_pma += 1
+            if rec.get("pma_max_asing") in (0, None):
+                zero_cap_seen = True
+        if (rec.get("intel_2026") or {}).get("whatChanged"):
+            out = rewrite_whatchanged_prose(rec, fresh)
+            if "\n- whatChanged: " not in fresh:
+                # The generator CAPS the embedding text (`build_embedding_text`
+                # truncates long per_skala blocks with "... dipotong untuk batas
+                # panjang"), so for 101 of 1,559 records the Intelligence 2026
+                # section never makes it into the blob at all. There is no line
+                # to repair, and the tool must REFUSE rather than append one —
+                # appending would put text past a truncation marker, where a
+                # reader has been told the document stops.
+                assert out is None, (
+                    f"{rec['kode_kbli_2025']}: repaired a whatChanged line into a blob that has none"
+                )
+                truncated += 1
+                continue
+            assert out == fresh, (
+                f"{rec['kode_kbli_2025']}: the whatChanged repair is not a no-op on freshly generated text"
+            )
+            checked_wc += 1
+
+    assert checked_pma > 1400 and checked_wc > 1400, (
+        f"corpus too thin to mean anything: pma={checked_pma} whatChanged={checked_wc}"
+    )
+    assert zero_cap_seen, "no zero/absent cap in the corpus — the falsy-zero branch went untested"
+    assert truncated > 0, (
+        "no truncated record in the corpus — the refusal branch went untested, and it is the "
+        "branch that stops the tool inventing content past a truncation marker"
+    )
