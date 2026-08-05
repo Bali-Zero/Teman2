@@ -119,6 +119,61 @@ code's `requirements`.
   and `~/.fly/config.yml` is the live one — the **inverse** of the 2026-07-26 W106 reading. Probe by
   doing the work (`machines list`), never `auth whoami`, and never hardcode which side wins.
 
+**🟢 2026-08-05 — TWO MORE DEFECTS ON THE SAME ENDPOINT, BOTH SHIPPED AND PROVEN LIVE.** Reading
+`kbli_notebook.py` to cure the edges above surfaced two independent lies in what it returns. Neither
+was found by a report: both by asking "what does this field say when the data is EMPTY?".
+
+- **#3634 — `Licenses: None` was an ASSERTION built out of a data gap** (merged `55548f24`,
+  PROMOTED, proven in the served chunk). The `kbli-explorer` copy button built
+  `licenses.map(l=>l.type).join(", ") || "None"`. Unlike text on a page this line **travels** —
+  clients paste it into emails and quotes, where no on-screen caveat follows. Measured: **284 of
+  1,559** codes render `licenses: []` and canonical states obligations for **125** of them; sharpest
+  is **`07101` iron-sand mining**, which the SAME response flags `REGULATED` / risk `Tinggi` while
+  the copied line read `Licenses: None`. Live `licensing_status`: `REGULATED` 1,266 ·
+  `PENDING_REGULATION` 217 · `NOT_APPLICABLE_OSS` 75 · null 6 · `NOT_IN_KBLI_2025` 4 — **only
+  `NOT_APPLICABLE_OSS` genuinely means no OSS licence is required**, the rest mean we hold no rows.
+  Cure is a pure resolver (`apps/mouth/src/lib/kbli-licence-summary.ts`) with guilt+innocence tests,
+  so the two labels are one decision instead of a ternary inline in a click handler.
+- **#3635 — `related_codes` showed each sibling twice, and the limit paid for it** (merged
+  `10060600`, deployed 11:59:58Z, proven live). The KG holds **1,341 duplicated `(source, sector)`
+  `BELONGS_TO` rows** — histogram exactly `{2: 1341}`, every duplicated pair twice, never three
+  times. `LIMIT 6` ran BEFORE any dedup, so `79122` returned `['79110','79110','79121','79121']`:
+  six rows spent on two codes. After the cure (DISTINCT + self-exclusion in SQL, plus
+  `related_codes_from_rows` as an independent second line): `79122` → six distinct siblings,
+  `56101` → six. **The 1,341 duplicate ROWS are deliberately still there** — `BELONGS_TO` is shared
+  with CRM and joined pairwise by `mediated_edges_builder`, so a data-level dedup needs its own
+  blast-radius analysis. Curing the READER first was the reversible half.
+
+**MEASURED LIMITS OF THIS ENDPOINT — declared, deliberately NOT "fixed", each with its number.**
+Every one of these was a candidate cure that the measurement talked me out of:
+
+- **Why the 11,245 node-silent edges are not curable with data we hold** (the gap the KG block
+  above declares): the predicate would need licence TYPES, and canonical names one in **6 of 1,559**
+  rows. A full scan of the Qdrant OSS collection — **10,825 of 10,825 points, no sampling** — yields
+  **160** (1.5%). **58** codes carry a defence permit; sorting those is per-code legal judgment
+  (Legge 5), not a script. So `62110` video games stays REQUIRES-linked to `Izin Industri
+Pertahanan` until someone rules on it, and saying so is more honest than a heuristic.
+- **222 codes render `sector: "N/A"` and `related_codes: []`** — no `BELONGS_TO` edge at all.
+  Canonical can place **42** of them, and **all 42 are multi-sector** — there are exactly 42
+  multi-sector codes in the whole corpus, so the KG builder skipped every code it could not assign
+  to ONE sector. `"N/A"` asserts nothing false; inventing one sector for a two-sector code would be
+  the plausible-but-wrong assertion. **Field-name trap paid here:** asking canonical for `sektor_id`
+  / `sektor` gives "5 of 222"; the real key is **`sektors`** (plural, a list) and gives 42.
+- **877 `kewajiban` strings end in a bare dangling conjunction** across ~169 codes
+  (`"Melaporkan ikan hasil tangkapan dan"`), and `62110` carries a licence literally named
+  `"NIB dan"`. Split from the 127 that are legitimate Indonesian list style (`"…; dan"` = item N).
+  **NOT trimmed:** dropping `dan` yields a grammatical sentence that **understates a legal duty** —
+  the dangling word at least signals incompleteness. The real fix is re-extraction from PP 28/2021.
+- **`_resolve_risk_profile` falls back to `licenses[0].risk_level` with no `ORDER BY`** — a latent
+  fragility, not a live defect: **218** codes lack a Qdrant risk (159 have no licence edges at all,
+  59 have edges that all AGREE, **0 disagree**). Self-audit of the edge cure's blast radius:
+  **0 of the 218** were touched.
+
+**Method note that outlived both fixes:** the post-promote PROVE-LIVE for #3634 returned a
+believable **zero across all 31 chunks** — the edge was serving cached pre-promote HTML pointing at
+the OLD chunk hash. Twenty seconds later the hash had moved and both labels were there. **Compare
+the chunk hash before believing a post-deploy zero**, and always run a positive control.
+
 **🟢 2026-08-05 — THE `whatChanged` LANE: FOUR STORES, AND THE CURE ITSELF LEFT A CONTRADICTION IN
 THREE OF THEM.** #3610 cured 13 codes still telling clients _"Direct 1:1 match from KBLI 2020 — code
 and scope unchanged"_ on records whose own crosswalk denies it. Promoting it (prod was serving a
