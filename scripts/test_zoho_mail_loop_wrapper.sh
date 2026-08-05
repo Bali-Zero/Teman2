@@ -227,6 +227,78 @@ for pair in "0:ok" "1:degraded" "2:error"; do
     check "rc=$rc -> heartbeat $want" "$want" "$(tail -1 "$HB_LOG" 2>/dev/null)"
 done
 
+# =============================================================================
+# The claude CLI must be resolved by the WRAPPER, not discovered per message.
+#
+# Measured on the first non-dry-run run (2026-08-05): 1 message routed, 0 drafts
+# written, every one failing "claude CLI not on PATH". The plist ships a
+# deliberately minimal PATH and the CLI lives in ~/.local/bin, which launchd has
+# no reason to inherit. `draft.py` had predicted the failure in its own error
+# text; the other half was never armed.
+#
+# PATH is pinned to the plist's OWN value in every check below. Leaving the real
+# PATH in place would let `command -v claude` find the developer's install and
+# report green for a machine that has one — the corpus would then be measuring
+# this laptop, not the launchd environment (the W108 shape: a dev box
+# structurally unable to reproduce the red).
+# =============================================================================
+
+echo
+echo "== the claude CLI is resolved once, by the wrapper =="
+PLIST_PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+gateway_present
+fake_python 0
+
+plant_fake_cli() {
+    mkdir -p "$(dirname "$1")"
+    printf '#!/bin/bash
+exit 0
+' > "$1"
+    chmod +x "$1"
+}
+
+# The wrapper's own log is zoho-mail-loop.log ($LOG_DIR/zoho-mail-loop.log,
+# wrapper line 44). `.out.log` is launchd's stdout capture and does not exist
+# in this fake world — reading it returned empty and every grep below counted
+# 0, which is a probe measuring its own mistake, not the target.
+wrapper_log() { cat "$ROOT/logs/zoho-mail-loop.log" 2>/dev/null; }
+
+# GUILT: nothing to find anywhere -> say so, name where you looked, alert, and
+# STILL run. Routing without drafting is worth doing; exiting here would throw
+# away the half that works.
+rm -f "$ROOT/.local/bin/claude"
+: > "$ROOT/logs/zoho-mail-loop.log"
+rc="$(run_wrapper "" "PATH=$PLIST_PATH")"
+check "no CLI anywhere -> wrapper still exits with the job's rc" "0" "$rc"
+check "no CLI anywhere -> warned" "1" "$(wrapper_log | grep -c 'no claude CLI found')"
+check "no CLI anywhere -> alerted" "mail-loop-no-cli" "$(dedup_key)"
+
+# INNOCENCE: the real install location is found and EXPORTED, so draft.py — which
+# reads CLAUDE_CLI_PATH first — never has to search.
+plant_fake_cli "$ROOT/.local/bin/claude"
+: > "$ROOT/logs/zoho-mail-loop.log"
+rc="$(run_wrapper "" "PATH=$PLIST_PATH")"
+check "CLI in ~/.local/bin -> found" "1" "$(wrapper_log | grep -c "claude CLI: $ROOT/.local/bin/claude")"
+check "CLI in ~/.local/bin -> no warning" "0" "$(wrapper_log | grep -c 'no claude CLI found')"
+# A clean run legitimately alerts `mail-loop-ok`; the assertion is that the
+# CLI-missing alarm did NOT fire, not that nothing fired at all.
+check "CLI in ~/.local/bin -> no CLI alarm" "0" "$(grep -c mail-loop-no-cli "$ALERTS")"
+
+# INNOCENCE: an explicit CLAUDE_CLI_PATH wins and is not second-guessed.
+plant_fake_cli "$ROOT/elsewhere/claude"
+: > "$ROOT/logs/zoho-mail-loop.log"
+rc="$(run_wrapper "" "PATH=$PLIST_PATH CLAUDE_CLI_PATH=$ROOT/elsewhere/claude")"
+check "explicit CLAUDE_CLI_PATH is honoured" "1" "$(wrapper_log | grep -c "claude CLI: $ROOT/elsewhere/claude")"
+
+# GUILT: an explicit path pointing at nothing must NOT be trusted silently —
+# fall back and keep looking, because a stale pin is how this organ would go
+# quiet after a reinstall moves the binary.
+rm -f "$ROOT/elsewhere/claude"
+plant_fake_cli "$ROOT/.local/bin/claude"
+: > "$ROOT/logs/zoho-mail-loop.log"
+rc="$(run_wrapper "" "PATH=$PLIST_PATH CLAUDE_CLI_PATH=$ROOT/elsewhere/claude")"
+check "stale CLAUDE_CLI_PATH falls back" "1" "$(wrapper_log | grep -c "claude CLI: $ROOT/.local/bin/claude")"
+
 echo
 if [ "$FAILURES" -eq 0 ]; then
     echo "$CHECKS checks, all passed"
