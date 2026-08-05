@@ -112,6 +112,19 @@ class KBLISearchResult(BaseModel):
     bali_status: str | None = None
     bali_blocked: bool | None = None
     bali_reason: str = ""
+    # The national foreign-ownership CEILING, carried on the same flat payload.
+    # `pma_status` is a word ("TERBUKA"/"TERBATAS"/"TERTUTUP") and it is the only
+    # ownership fact the context line prints; the ceiling is the number, and the
+    # two can disagree in the direction that matters. Measured 2026-08-05 on the
+    # canonical: `79122` (Umrah/Hajj travel) reads `TERBATAS` with a ceiling of
+    # **0** — closed to foreign capital outright — while its Bali verdict is "not
+    # blocked". A reader shown only the word hears "restricted, so find a local
+    # partner"; the number says there is nothing to partner into.
+    #
+    # `None` means the payload carried no ceiling. It is NOT zero: an absent cap
+    # is stored as `""` by the indexer, and reading absence as 0% would invent a
+    # closure on every point written before the field existed.
+    pma_max_asing: int | str | None = None
 
 
 class KBLINotebookChatRequest(BaseModel):
@@ -171,6 +184,7 @@ def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchRe
         + "...",
         score=round(score, 4),
         pma_status=_payload_value(payload, "pma_status", default="UNKNOWN"),
+        pma_max_asing=_payload_value(payload, "pma_max_asing"),
         risk_category=_payload_value(payload, "kategori_risiko", default="Unknown"),
     )
 
