@@ -146,6 +146,45 @@ def test_non_string_obligations_are_dropped_rather_than_crashing():
     assert mod.edge_verdict(canon, [None, 42, {"a": 1}]) == mod.CANNOT_JUDGE_NODE_SILENT
 
 
+def test_an_html_entity_does_not_manufacture_a_contradiction():
+    """108 canonical obligation strings carry HTML entities and no KG node string
+    does, so without decoding the SAME sentence reads CONTRADICTED and the edge
+    is deleted. Found by a cross-family review, measured 0 live flips today."""
+    canon = mod.canonical_obligations(record("Memenuhi syarat A & B"))
+    assert mod.edge_verdict(canon, ["Memenuhi syarat A &amp; B"]) == mod.SUPPORTED
+
+
+def test_entities_are_decoded_on_the_canonical_side_too():
+    canon = mod.canonical_obligations(record("Memenuhi syarat A &amp; B"))
+    assert mod.edge_verdict(canon, ["Memenuhi syarat A & B"]) == mod.SUPPORTED
+
+
+# --- a shape we cannot read is a refusal, never a delete -----------------
+
+
+def test_a_bare_string_kewajiban_is_refused_not_iterated_character_by_character():
+    """`properties.kewajiban` is unvalidated JSON. Iterating a STRING yields
+    CHARACTERS: with canonical holding a one-letter entry the node would read
+    SUPPORTED off a misparse, and otherwise the whole node would be DELETED on
+    one. Neither verdict is evidence about the law."""
+    canon = mod.canonical_obligations(record("a"))
+    verdict = mod.edge_verdict(canon, "abc")
+    assert verdict == mod.CANNOT_JUDGE_NODE_UNREADABLE
+    assert not mod.is_deletable(verdict)
+
+
+def test_a_dict_kewajiban_is_refused_rather_than_judged_on_its_keys():
+    canon = mod.canonical_obligations(record(PILGRIM_GUIDE))
+    assert mod.edge_verdict(canon, {PILGRIM_GUIDE: 1}) == mod.CANNOT_JUDGE_NODE_UNREADABLE
+
+
+def test_absent_kewajiban_is_silent_not_unreadable():
+    """None must stay distinguishable from a broken shape — the first is the
+    ordinary `license:nib` case, the second is a data defect worth seeing."""
+    assert mod._obligation_list(None) == []
+    assert mod._obligation_list("abc") is None
+
+
 # --- only CONTRADICTED is deletable --------------------------------------
 
 
@@ -155,6 +194,7 @@ def test_non_string_obligations_are_dropped_rather_than_crashing():
         (mod.CONTRADICTED, True),
         (mod.SUPPORTED, False),
         (mod.CANNOT_JUDGE_NODE_SILENT, False),
+        (mod.CANNOT_JUDGE_NODE_UNREADABLE, False),
         (mod.CANNOT_JUDGE_CANONICAL_SILENT, False),
         (mod.CANNOT_JUDGE_CODE_ABSENT, False),
     ],
@@ -163,22 +203,22 @@ def test_is_deletable_admits_exactly_one_outcome(verdict, deletable):
     assert mod.is_deletable(verdict) is deletable
 
 
-def test_plan_code_detaches_exactly_the_verdicts_is_deletable_admits():
-    """Wiring pin: the plan must not grow its own opinion about what to delete.
-    If a sixth verdict is ever added, this fails unless `is_deletable` rules on
-    it — rather than the plan quietly sweeping it in."""
+def test_plan_code_asks_is_deletable_instead_of_holding_its_own_opinion(monkeypatch):
+    """Wiring pin, made non-tautological after a cross-family review: comparing
+    `plan.detach` against `is_deletable(plan.verdicts[...])` passes just as well
+    when `plan_code` hard-codes `== CONTRADICTED`, because the two agree today.
+    Redefining `is_deletable` to admit SUPPORTED instead is the only way to show
+    which of the two the plan actually consults."""
+    monkeypatch.setattr(mod, "is_deletable", lambda verdict: verdict == mod.SUPPORTED)
     plan = mod.plan_code(
         "79122",
         record(ACCREDITATION, PILGRIM_GUIDE),
         {
-            "perizinan:55be853cd247": [LAND_CLEARING],
-            "perizinan:7a471f5d56b8": [PILGRIM_GUIDE],
-            "license:nib": [],
+            "perizinan:55be853cd247": [LAND_CLEARING],  # CONTRADICTED
+            "perizinan:7a471f5d56b8": [PILGRIM_GUIDE],  # SUPPORTED
         },
     )
-    assert set(plan.detach) == {
-        t for t, v in plan.verdicts.items() if mod.is_deletable(v)
-    }
+    assert plan.detach == ["perizinan:7a471f5d56b8"]
 
 
 # --- the per-code plan ----------------------------------------------------

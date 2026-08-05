@@ -41,7 +41,7 @@ this population as out of its scope ("one shared agriculture-marker
 this script has nothing to derive a fix from"); canonical now carries per-scale
 `kewajiban` for 1,341 of 1,559 codes, which is the thing to derive it from.
 
-THE PREDICATE (pure, `edge_verdict` below — five outcomes, only ONE deletable):
+THE PREDICATE (pure, `edge_verdict` below — six outcomes, only ONE deletable):
 
   SUPPORTED                     ≥1 of the target's obligations appears in the
                                 code's canonical obligations. KEEP.
@@ -51,15 +51,18 @@ THE PREDICATE (pure, `edge_verdict` below — five outcomes, only ONE deletable)
   CANNOT_JUDGE_NODE_SILENT      the target states no obligations at all
                                 (`license:nib`, document nodes, …). Nothing to
                                 compare; this script has no opinion. KEEP.
+  CANNOT_JUDGE_NODE_UNREADABLE  `kewajiban` is neither a list nor absent (a bare
+                                string, a dict, …). A shape we cannot read is
+                                not evidence — see `_obligation_list`. KEEP.
   CANNOT_JUDGE_CANONICAL_SILENT canonical states no obligation for this code.
                                 Absence of a statement is not a denial, and
                                 deleting here would remove the only obligation
                                 text we hold. KEEP.
   CANNOT_JUDGE_CODE_ABSENT      the code is not in the canonical dataset. KEEP.
 
-Both sides are compared through the SAME `_norm` (HTML stripped, whitespace
-collapsed, lowercased) — one normaliser, so the two sides cannot drift apart
-into disagreeing about the same string.
+Both sides are compared through the SAME `_norm` (tags stripped, HTML entities
+decoded, whitespace collapsed, lowercased) — one normaliser, so the two sides
+cannot drift apart into disagreeing about the same string.
 
 MEASURED SCOPE at the time of writing, this module replayed over the live graph
 — **per ROW**: SUPPORTED 2,093 · CONTRADICTED 1,711 · node-silent 11,249 ·
@@ -91,10 +94,25 @@ AUDIT PARITY (never silent-delete, same discipline as the sibling script): the
 `(target, first obligation)` pairs about to be detached are archived on the
 `kbli:<code>` node itself, under `properties._disputed_requires_obligations`,
 BEFORE the edges go — so the removal is auditable by reading the node. Re-runs
-merge into that archive by target and never blank it.
+merge into that archive by target and never blank it. Two consequences that an
+earlier draft got wrong and a cross-family review caught:
+
+  * If there is NO `kbli:<code>` node, there is nowhere to archive to, so the
+    delete is REFUSED and counted, not performed with a warning. "Never
+    silent-delete" has to bind on the path where archiving is impossible, or
+    it is decoration.
+  * Archive and delete run in ONE transaction per code. Separately committed,
+    a delete that fails after the archive leaves the node asserting a
+    detachment that never happened — an audit trail that lies is worse than
+    no audit trail.
 
 Target nodes are never deleted, only the edges: those nodes are shared across
 many codes and several of their edges are SUPPORTED elsewhere.
+
+CONCURRENCY (declared, not guarded): the archive is a read-modify-write of the
+whole `properties` document, so two of these running at once on the same code
+can lose each other's archive entries. This is an operator-run, one-at-a-time
+cure; it is stated here rather than defended against.
 
 USAGE (dry-run is the default; nothing is written without --apply):
     fly ssh console -a nuzantara-rag -C \
@@ -107,6 +125,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import html
 import json
 import logging
 import os
@@ -129,6 +148,7 @@ ARCHIVE_KEY = "_disputed_requires_obligations"
 SUPPORTED = "SUPPORTED"
 CONTRADICTED = "CONTRADICTED"
 CANNOT_JUDGE_NODE_SILENT = "CANNOT_JUDGE_NODE_SILENT"
+CANNOT_JUDGE_NODE_UNREADABLE = "CANNOT_JUDGE_NODE_UNREADABLE"
 CANNOT_JUDGE_CANONICAL_SILENT = "CANNOT_JUDGE_CANONICAL_SILENT"
 CANNOT_JUDGE_CODE_ABSENT = "CANNOT_JUDGE_CODE_ABSENT"
 
@@ -139,10 +159,35 @@ _WS_RE = re.compile(r"\s+")
 def _norm(value: object) -> str:
     """Normalise one obligation string. BOTH sides of the comparison go through
     this single function — two normalisers would be two opinions about the same
-    string, and the disagreement would surface as a phantom CONTRADICTED."""
+    string, and the disagreement would surface as a phantom CONTRADICTED.
+
+    Tags are stripped first, THEN entities decoded: markup goes away, and what
+    survives is compared as the text a human reads. Decoding first would turn a
+    literal `&lt;` back into `<` and let the tag-stripper eat the prose after it.
+    Entity decoding is load-bearing, not cosmetic — 108 canonical obligation
+    strings carry entities and no KG node string does, so without it the SAME
+    sentence reads CONTRADICTED and the edge is deleted (measured: 0 verdicts
+    flip on today's data, so this is a latent false-delete, not a live one)."""
     if not isinstance(value, str):
         return ""
-    return _WS_RE.sub(" ", _TAG_RE.sub(" ", value)).strip().lower()
+    return _WS_RE.sub(" ", html.unescape(_TAG_RE.sub(" ", value))).strip().lower()
+
+
+def _obligation_list(value: object) -> list | None:
+    """The obligations of one node, or None when the shape is unreadable.
+
+    `properties.kewajiban` arrives as unvalidated JSON. A bare STRING is the
+    dangerous shape: iterating it yields CHARACTERS, so a canonical set holding
+    a one-letter entry would read SUPPORTED, and otherwise the whole node reads
+    CONTRADICTED and gets deleted on the strength of a misparse. A shape we
+    cannot read is not evidence of anything — it becomes a refusal, never a
+    delete. (Measured 2026-08-05: every live value is a list or absent, so this
+    is a guard against tomorrow's data, not today's.)"""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return None
 
 
 def canonical_obligations(record: dict | None) -> set[str] | None:
@@ -168,7 +213,10 @@ def edge_verdict(canon: set[str] | None, node_kewajiban: list | None) -> str:
     dataset, empty set = present but stating no obligation.
     `node_kewajiban` is the target node's raw `properties.kewajiban`.
     """
-    node = [n for n in (_norm(x) for x in (node_kewajiban or [])) if n]
+    items = _obligation_list(node_kewajiban)
+    if items is None:
+        return CANNOT_JUDGE_NODE_UNREADABLE
+    node = [n for n in (_norm(x) for x in items) if n]
     if not node:
         return CANNOT_JUDGE_NODE_SILENT
     if canon is None:
@@ -276,6 +324,12 @@ async def main() -> int:
     dataset = await load_dataset(args.dataset)
     by_code = {str(r.get("kode_kbli_2025")): r for r in dataset}
 
+    # Bound before the try so the summary after `finally` can never read an
+    # unbound name on the very path where the summary matters most: a crash.
+    acting: list[CodePlan] = []
+    deleted_rows = 0
+    unarchivable = 0
+
     conn = await asyncpg.connect(dsn)
     try:
         if args.only:
@@ -316,7 +370,7 @@ async def main() -> int:
             for verdict in plan.verdicts.values():
                 tally[verdict] = tally.get(verdict, 0) + 1
 
-        acting = [p for p in plans if p.detach]
+        acting[:] = [p for p in plans if p.detach]
         logger.info(
             "scanned %d code(s) / %d REQUIRES edge(s) — verdicts: %s",
             len(plans),
@@ -331,11 +385,8 @@ async def main() -> int:
             sum(len(p.verdicts) for p in plans) - sum(len(p.detach) for p in acting),
         )
 
-        deleted_rows = 0
         for plan in acting:
-            logger.info(
-                "  %s: detach %d, keep %d", plan.code, len(plan.detach), plan.kept
-            )
+            logger.info("  %s: detach %d, keep %d", plan.code, len(plan.detach), plan.kept)
             for target_id in plan.detach:
                 logger.info("    -> %s :: %s", target_id, plan.archive[target_id][:90])
             if not args.apply:
@@ -344,7 +395,24 @@ async def main() -> int:
             node = await conn.fetchrow(
                 "SELECT properties FROM kg_nodes WHERE entity_id = $1", f"kbli:{plan.code}"
             )
-            if node is not None:
+            if node is None:
+                # No node means no place to archive to, and "archive BEFORE the
+                # delete" is the whole audit contract — a delete here would be
+                # exactly the silent-delete this script says it never does.
+                # Refuse, count it, and let the summary name it.
+                logger.warning(
+                    "  %s: REFUSED — no kg_nodes row, so the detachment could not be "
+                    "archived; edges left in place",
+                    plan.code,
+                )
+                unarchivable += 1
+                continue
+
+            # One transaction per code: the archive and the delete it documents
+            # land together or not at all. Without it a delete that fails after
+            # the archive leaves the node asserting a detachment that never
+            # happened — an audit trail that lies is worse than none.
+            async with conn.transaction():
                 props = _as_dict(node["properties"])
                 props[ARCHIVE_KEY] = merge_archive(props.get(ARCHIVE_KEY), plan.archive)
                 # W89 jsonb double-encoding class-guard: pre-serialise and cast
@@ -355,20 +423,20 @@ async def main() -> int:
                     f"kbli:{plan.code}",
                     json.dumps(props, ensure_ascii=False),
                 )
-            else:
-                logger.warning(
-                    "  %s: no kg_nodes row — edges detached WITHOUT an archive", plan.code
+                result = await conn.execute(
+                    "DELETE FROM kg_edges WHERE source_entity_id = $1 "
+                    "AND target_entity_id = ANY($2) AND relationship_type = 'REQUIRES'",
+                    f"kbli:{plan.code}",
+                    plan.detach,
                 )
-            result = await conn.execute(
-                "DELETE FROM kg_edges WHERE source_entity_id = $1 "
-                "AND target_entity_id = ANY($2) AND relationship_type = 'REQUIRES'",
-                f"kbli:{plan.code}",
-                plan.detach,
-            )
             deleted_rows += int(result.rsplit(" ", 1)[-1] or 0)
     finally:
         await conn.close()
 
+    if args.apply and unarchivable:
+        logger.warning(
+            "REFUSED on %d code(s): no kg_nodes row to archive the detachment on", unarchivable
+        )
     if args.apply:
         # rows can exceed pairs: 25 (code, target) pairs carry duplicate rows.
         logger.info(
