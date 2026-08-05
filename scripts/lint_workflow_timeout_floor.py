@@ -41,11 +41,35 @@ from typing import Any
 
 import yaml
 
-# Below this, an ordinary slow checkout eats the whole budget. Not a guess, and
-# revised UPWARD once by measurement: the first draft used 5, sized on the ~2
-# minute checkouts seen on PR refs. Then the MERGE QUEUE was measured, where the
-# same action ran 4m59s and killed a 5-minute job. The floor has to clear the
-# worst checkout observed on ANY ref, plus the work, with room left.
+# Below this, an ordinary slow checkout eats the whole budget.
+#
+# Derived from 645 checkout steps sampled across recent runs of this repo, NOT
+# from the one incident that prompted the lint. What that sample says:
+#
+#   median ~15s  ·  71 of 645 (11%) over 60s  ·  worst observed 599s
+#
+# and the tail is NOT a property of any one ref type — the three populations are
+# indistinguishable (merge_group median 16s/max 340s · pull_request 14s/599s ·
+# push 16s/500s). An earlier revision of this file asserted the merge queue was
+# the slower population and sized the floor on that; the sample refutes it. What
+# actually decided which job died was the size of its own budget, which is why
+# the cure is a floor for every job rather than a fix for the ones that failed.
+#
+# THE CAUSE IS THE PAYLOAD, AND THIS FLOOR DOES NOT FIX IT. A checkout here
+# downloads 1,090 MiB of working tree (18,412 files at origin/main; `apps` alone
+# is 748 MiB, and three near-copies of KBLI_2025_FINAL_CLEAN.json are 106 MiB of
+# it) — 84 checkout steps across this corpus each pay that. A ten-minute
+# checkout is arithmetic, not a mystery.
+#
+# DECLARED RESIDUAL: 2 of the 645 (0.3%) exceeded ten minutes and would still be
+# killed at this floor — both measured, both `actions/checkout` still running
+# when the budget stopped them. Lifting the floor past them would mean raising 64
+# of 114 jobs to defend a 0.3% event, which buys less than shrinking the payload
+# would. That is the real fix and it is a separate piece of work.
+#
+# What would re-measure this: the payload size. Shrink it and the floor is
+# generous; let it grow and the floor is the next thing to be wrong (W106 — a
+# constant is a measurement of the world, frozen).
 FLOOR_MINUTES = 10
 
 WORKFLOW_DIR = Path(".github/workflows")

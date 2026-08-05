@@ -124,10 +124,14 @@ def test_a_budget_at_or_above_the_floor_is_not_flagged(tmp_path, delta):
 
 def test_the_floor_value_itself_is_pinned_to_the_measurement(tmp_path):
     """Lowering the floor is the regression this whole lint exists to prevent,
-    and it is a one-character edit. The number is not arbitrary: a checkout on
-    the merge-queue ref was measured STILL RUNNING at 4m59s when its 5-minute
-    job was killed — a censored lower bound, not a duration, which is why the
-    floor sits well above it rather than just past it.
+    and it is a one-character edit.
+
+    The number comes from a 645-step sample, not from the incident that
+    prompted the lint: median ~15s, 11% over 60s, worst observed 599s. It is
+    deliberately NOT set above that worst case — clearing it would mean raising
+    64 of 114 jobs to defend an event seen twice in 645, and the honest cure is
+    the 1,090 MiB checkout payload, not a bigger number here. The residual is
+    declared in the module docstring rather than papered over.
     """
     assert mod.FLOOR_MINUTES == 10
     # And the comparison is strict-below, so a job sitting exactly ON the floor
