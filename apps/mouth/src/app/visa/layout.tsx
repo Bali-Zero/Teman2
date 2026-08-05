@@ -7,7 +7,7 @@ import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
-  title: "Bali Visa Eligibility & Selection | Bali Zero",
+  title: "Bali Visa Eligibility & Selection",
   description:
     "Find the right Indonesia & Bali visa for your stay. Compare C1, D12, E33G, KITAS, and long-term residency options.",
   alternates: {
