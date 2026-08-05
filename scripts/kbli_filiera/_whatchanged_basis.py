@@ -96,13 +96,125 @@ _ENDS_COMPLETE = re.compile(r"[.!?]\s*$")
 # pattern reaches 27 (code, surface) pairs across 21 codes, this narrow one
 # reaches 17 across 14. The 10 uncovered pairs are reported by `--census` under
 # `ambiguous_continuity`, never cured.
-_CONTINUITY = re.compile(
-    r"unchanged from KBLI 2020"
-    r"|same code, same scope"
-    r"|the code and scope remain unchanged",
+#
+# WIDENED 2026-08-05 AFTER A LIVE UNDER-MATCH ON THE THIRD SURFACE (superscar #3,
+# the W82 twin). The census above was measured on canonical + gold ONLY. The KG
+# — which feeds `inspect_kbli`, i.e. WhatsApp and webchat — phrases the same
+# assertion differently, so the guard read it as innocent: 11 of the 14 codes
+# cured on the website were still telling clients, on every conversational
+# channel, "Direct 1:1 match from KBLI 2020 — code and scope unchanged." Eight
+# nodes carried that exact sentence and one carried "keep the same code and
+# scope"; `number_is_discontinuous` was True on all eleven. A pattern written
+# from the instances you happened to look at catches the instances you happened
+# to look at — so this alternation is now written around the ASSERTION ("the
+# code did not change") rather than around a phrasing, and the census is
+# measured over all THREE surfaces.
+#
+# Still NOT here, deliberately, and still reported by `--census`: the two
+# remaining live shapes assert something narrower than the number. `68210` says
+# "Direct match from KBLI 2020, BUT the PP28 source code is 68200", which names
+# a different number in the same breath; `86992` says the "classification" is
+# unchanged, which is a claim about the activity, not about the digits.
+# A SAME-CODE PHRASE ONLY SPEAKS ABOUT 2020 WHEN A 2020 MARKER IS PRESENT.
+# An independent cross-family review (Codex GPT-5.6, instructed to refute)
+# produced the sentence "The NIB entry keeps the same code and scope when you
+# amend the address; its KBLI 2020 predecessor is 62010." The first draft of the
+# widening convicted it: true prose about an ADDRESS AMENDMENT, deleted from a
+# client-facing page. So the weak phrases below are not standalone triggers —
+# they resolve the ambiguity of the 2020 match marker, and only in its presence.
+# That is also the honest reading of what makes them a claim: "code and scope
+# unchanged" says nothing about 2020 by itself; "Direct 1:1 match from KBLI 2020
+# — code and scope unchanged" does.
+_CONTINUITY_STRONG = re.compile(
+    r"unchanged from KBLI 2020" r"|same code, same scope" r"|the code and scope remain unchanged",
     re.IGNORECASE,
 )
-_CONTINUITY_AMBIGUOUS = re.compile(r"direct match from KBLI 2020", re.IGNORECASE)
+_CONTINUITY_WEAK = re.compile(
+    r"(?:the )?code and scope (?:are )?unchanged" r"|keeps? the same code and scope",
+    re.IGNORECASE,
+)
+_CONTINUITY_AMBIGUOUS = re.compile(r"direct (?:1:1 )?match from KBLI 2020", re.IGNORECASE)
+# Kept as the removal pattern: once guilt is established, every span that carries
+# either half of the claim goes, so no residue contradicts the replacement.
+_CONTINUITY = re.compile(
+    f"{_CONTINUITY_STRONG.pattern}|{_CONTINUITY_WEAK.pattern}", re.IGNORECASE
+)
+
+# A QUOTATION OF THE CLAIM IS NOT AN ASSERTION OF IT (2026-08-05).
+#
+# `52101` had already been corrected by hand, and its correction QUOTES what it
+# corrects: "…code number reused (corrected 2026-07-19 — the previous 'Direct
+# 1:1 match... code and scope unchanged' label was a false narrative)". The
+# widened pattern above matched INSIDE that quotation and the wide removal cut
+# the sentence in half, splicing the honest sentence into the middle of a
+# dangling quote. The output was not merely a false positive, it was gibberish —
+# and it would have replaced a record that documents a real, image-verified
+# five-parent merge with "the mapping is unconfirmed", which for THIS record is
+# false. Same shape as W113: a probe judging by FORM catches the citation living
+# inside the retraction.
+#
+# Deliberately narrow, so that fixing this over-match does not birth the
+# under-match twin (W94): only BALANCED pairs mask, an unbalanced quote masks
+# NOTHING (W84 — a greedy quote scan that swallows the rest of the text is how
+# this repo has been bitten before), and a straight `'` counts as a delimiter
+# only when it is not an intra-word apostrophe, so "don't" and "it's" cannot
+# fabricate a region that hides a real claim.
+_QUOTE_PAIRS = (("‘", "’"), ("“", "”"), ('"', '"'), ("'", "'"))
+
+
+def _quoted_regions(text: str) -> list[tuple[int, int]]:
+    """Half-open spans covered by a BALANCED quotation. Never a bare-open run."""
+    regions: list[tuple[int, int]] = []
+    for opener, closer in _QUOTE_PAIRS:
+        # A SYMMETRIC delimiter with an ODD count is unbalanced as a WHOLE, and
+        # the rule above says an unbalanced quote masks nothing. Without this the
+        # code broke its own promise on the first text the cross-family reviewer
+        # tried: `"The code and scope remain unchanged. The source calls it
+        # "legacy".` has three `"`, the scan paired the first two, and a real
+        # assertion went unconvicted inside a region the text never balanced.
+        # Asymmetric pairs (‘…’, “…”) are exempt — their counts are independent.
+        if opener == closer and text.count(opener) % 2:
+            continue
+        idx = 0
+        while True:
+            start = text.find(opener, idx)
+            if start < 0:
+                break
+            if opener == closer == "'" and not _is_quote_delimiter(text, start, opening=True):
+                idx = start + 1
+                continue
+            search_from = start + 1
+            while True:
+                end = text.find(closer, search_from)
+                if end < 0:
+                    break
+                if opener == closer == "'" and not _is_quote_delimiter(text, end, opening=False):
+                    search_from = end + 1
+                    continue
+                break
+            if end < 0:  # unbalanced: masks nothing
+                break
+            regions.append((start, end + 1))
+            idx = end + 1
+    return regions
+
+
+def _is_quote_delimiter(text: str, pos: int, *, opening: bool) -> bool:
+    """A straight `'` is a quote mark only when it is not inside a word."""
+    before = text[pos - 1] if pos > 0 else " "
+    after = text[pos + 1] if pos + 1 < len(text) else " "
+    if opening:
+        return not before.isalnum() and not after.isspace()
+    return not before.isspace() and not after.isalnum()
+
+
+def _outside_quotes(pattern: re.Pattern[str], text: str) -> bool:
+    """True when `pattern` hits at least once OUTSIDE every balanced quotation."""
+    regions = _quoted_regions(text)
+    return any(
+        not any(start <= m.start() and m.end() <= end for start, end in regions)
+        for m in pattern.finditer(text)
+    )
 
 
 class WhatChangedError(RuntimeError):
@@ -196,8 +308,16 @@ def claims_a_renumbering(text: str) -> bool:
 
 
 def claims_number_unchanged(text: str) -> bool:
-    """The prose asserts THIS code's NUMBER is what it was in KBLI 2020."""
-    return bool(_CONTINUITY.search(text))
+    """The prose ASSERTS THIS code's NUMBER is what it was in KBLI 2020.
+
+    Asserts, not merely contains: a match that lives entirely inside a balanced
+    quotation is a REPRODUCTION of the claim — typically by prose that exists to
+    correct it — and convicting on it re-corrects a correction (see the note on
+    `_QUOTE_PAIRS`).
+    """
+    if _outside_quotes(_CONTINUITY_STRONG, text):
+        return True
+    return _outside_quotes(_CONTINUITY_WEAK, text) and _outside_quotes(_CONTINUITY_AMBIGUOUS, text)
 
 
 def claims_ambiguous_continuity(text: str) -> bool:
@@ -373,10 +493,34 @@ def drop_false_continuity(text: str, record: dict[str, Any]) -> str:
     # would publish "Direct match from KBLI 2020. Our records do not support this
     # code number carrying over…" in one breath (measured on 96210), and a verdict
     # that keeps the rationale it just overturned invites its own reversal.
+    # …and the removal honours the same quotation rule as the conviction, on
+    # ABSOLUTE offsets: a quotation may straddle a sentence boundary, so the
+    # regions are computed once over the whole text rather than per slice.
+    _quoted = _quoted_regions(text)
+
+    def _asserts_here(start: int, end: int) -> bool:
+        # `finditer(text, start, end)` is NOT slice-equivalent in general: `^`
+        # still means the start of the whole string, and a lookbehind can read
+        # text before `start`. It is used here because both patterns are plain
+        # alternations with no anchors and no lookarounds, where the two agree —
+        # and because it keeps absolute offsets for the quotation test. Add an
+        # anchor or a lookbehind to either pattern and this line changes meaning
+        # silently. (Raised by the cross-family review; safe today, pinned so it
+        # stays that way.)
+        for pattern in (_CONTINUITY, _CONTINUITY_AMBIGUOUS):
+            assert "^" not in pattern.pattern and "(?<" not in pattern.pattern, (
+                "an anchor or lookbehind reached a pattern scanned with pos/endpos — "
+                "this is no longer equivalent to searching the sentence slice"
+            )
+            for m in pattern.finditer(text, start, end):
+                if not any(qs <= m.start() and m.end() <= qe for qs, qe in _quoted):
+                    return True
+        return False
+
     spans = [
         (start, end)
         for start, end in _sentence_spans(text)
-        if _CONTINUITY.search(text[start:end]) or _CONTINUITY_AMBIGUOUS.search(text[start:end])
+        if _asserts_here(start, end)
     ]
     if not spans:  # pragma: no cover - a match outside every span is structurally impossible
         raise WhatChangedError("continuity claim matched no sentence span")
