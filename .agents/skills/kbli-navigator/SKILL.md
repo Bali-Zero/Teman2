@@ -246,12 +246,27 @@ PRINTED IT LIKE A COMPLETE INSTRUCTION.** #3637 merged (`a532487e`), deployed an
   read like "the cure failed". The second ignored **which tier the page opens by default**
   (`licensing[0]`): on `01111` the truncated string exists but sits in a tier that is not rendered.
   **Pick the exemplar from what the PAGE SERVES, and from the branch that actually renders.**
-- **Follow-on (#3639, armed):** a licence NAME literally called **`"NIB dan"`** on **21 codes**.
-  Cured at the DATA layer, not with the label — a licence name reaches **ten** sites including
-  `KBLIStructuredData` (schema.org JSON-LD read by Google) and `kbli-meta` (the page `<title>`),
-  where a UI annotation would be actively wrong. `resolveLicenseType` now treats an unusable name as
-  absent so the documented risk-tier→licence-tier fallback fires. Innocence: `"NIB dan Sertifikat
-Standar"` ends on `Standar`, is not truncated, survives.
+- **Follow-on — licence NAMES. ⚠️ THE PARAGRAPH THAT STOOD HERE WAS WRONG, and correcting it is
+  worth more than the fix.** It said #3639 cured `"NIB dan"` on "21 codes, Google structured data and
+  the page title" by making `resolveLicenseType` treat an unusable name as absent. **#3639 is inert.**
+  `resolveLicenseType` is fed from `per_skala[].perizinan`, where `"NIB dan"` appears on **zero**
+  codes; the 21 canonical occurrences live under **`per_skala_legacy[].perizinan`**, written for audit
+  by `build_kbli_l2_oss_risk.py` and read by nothing that renders. #3639 was dequeued mid-flight, its
+  description corrected to say it is defence-in-depth, and merged on those honest terms.
+  - **The live before-state had already said so and was nearly read backwards.** `62110`, `47301`,
+    `96100`, `15112` served `"NIB dan"` **zero** times and the derived `NIB + …` 18/14/1/14 times.
+    That zero meant "you are measuring the wrong path", not "already fine". **A zero in a
+    before-state is a claim about your probe as much as about the world.**
+  - **The live path is the ENDPOINT** (#3642): `kbli_notebook.py` sets `licenses[].type` straight
+    from the KG node name, so it reaches the explorer's licence cards AND the clipboard line that
+    travels into client emails. Measured on prod: `"NIB dan"` on **10** codes
+    (`03110 15112 15113 20293 25119 25933 28171 61901 62110 62191`) and
+    `"Sertifikasi Cara Budi Daya Ternak Yang"` on **2** (`01445 01469`).
+  - **`62110` is the anchor case — it carries guilt AND innocence in ONE response:** a licence typed
+    `"NIB dan"` (scale Besar) alongside two typed `"NIB dan Sertifikat Standar"`, which contain `dan`
+    but end on `Standar` and must be copied verbatim. Verify there, not on a page.
+  - Labelled, never trimmed and never replaced: trimming to `"NIB"` states a weaker licence than the
+    law requires, replacing it invents the ending, dropping it hides a licence the business needs.
 
 **🔴 SETTLED — DO NOT DEDUP `kg_edges`, AND DO NOT ADD THE UNIQUE CONSTRAINT.** #3635 left the 1,341
 duplicated `BELONGS_TO` rows in place and ledgered a blast-radius analysis. It has been done, and
