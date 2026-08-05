@@ -1,1241 +1,483 @@
 """
-Bali Zero — Company Brochure PDF Generator v4
-=============================================
+Bali Zero — Company Brochure PDF generator (v5, brand surface)
+==============================================================
 THIS IS THE SOURCE of the brochure clients receive. Run it when facts, services
 or prices change, and commit the PDF it writes.
 
-Output: ../mouth/public/static/brochure_balizero_en.pdf — the file served at
-https://kita.balizero.com/static/brochure_balizero_en.pdf, which
+Output: ``apps/mouth/public/static/brochure_balizero_en.pdf`` — the file served
+at https://kita.balizero.com/static/brochure_balizero_en.pdf, which
 ``welcome_email_service.py`` fetches over HTTP and base64-attaches to every
 welcome email. There is no second copy: write here or the clients never see it.
 
-v4 (2026-08-05) — how this script became the source
----------------------------------------------------
-It was NOT the source before. Until now it wrote to ``data/assets/``, a path
-that is neither served nor present in the repo, and the published brochure was
-a hand-made binary committed on 2026-04-01 — five days AFTER this script's "v3"
-was written on 2026-03-27, in a commit that touched nothing else. The version
-labels ran backwards against time, and the published PDF had no source at all.
+v5 (2026-08-06) — rebuilt ON the brand surface instead of beside it
+-------------------------------------------------------------------
+v4 drew the document itself with reportlab, in its own palette. That palette
+was not the brand's: near-black instead of the antracite ``color.bg.antracite``,
+plus terracotta, warm gold, indigo and green accents — four families that the
+brand constitution Article 2.2 bans outright in text zones — with League Spartan
+titles against the single-family Montserrat rule (Article 3.1) and Title Case
+against the uppercase-titles rule (Article 3.3). It also ignored the fact that
+this organism already HAS a canonical A4 print surface, used by the client-quote
+lane: ``skills/bali-zero-brand/surfaces/internal-print-a4/``.
 
-That divergence had let the two drift apart on FACTS, and on every one of them
-the PUBLISHED file was the truthful side. Those facts are now ported in here,
-verbatim where the wording was published wording:
+So the drawing code is gone. This script now does the two things that are
+genuinely its own — resolve prices, and refuse to ship a broken artifact — and
+delegates every visual decision to the surface:
 
-    ported IN (published, true)      was in this script (stale/wrong)
-    10,000+ clients served           5,000+
-    22 years in Bali                 10+
-    40+ nationalities                "3 core services"
-    Bayu Santero Group (2003),       "since 2014"
-      Bali Zero est. 2020
-    Kerobokan                        Canggu
-    zantara@balizero.com             info@balizero.com
-    Mon–Fri 09:00–18:00 WITA         Mon–Sat
-    founder quote (published text)   an older quote citing "5,000 people"
+    content  ->  scripts/brochure/brochure_en.html   (this repo, reviewable)
+    design   ->  surfaces/internal-print-a4/_template.css      (REFERENCED)
+    render   ->  surfaces/internal-print-a4/_render.py         (IMPORTED)
 
-The one thing this script already had right, and the reason for the whole pass,
-is the contact number: the published brochure showed a team member's personal
-line 8 times. It now shows the public CTA line.
+Nothing about the look is duplicated here or in the HTML. Surface spec A6.3:
+"any agent producing a new A4 brief MUST reference the canonical CSS, not
+re-write tokens inline." A brand change now reaches this brochure by itself.
 
-Two structural traps were fixed at the same time, both of which had made a
-faithful rebuild impossible: FONT_DIR was hardcoded to one machine's home, so
-the brand fonts silently fell back to Helvetica anywhere else, and OUTPUT_PATH
-pointed at the unserved path above. Fonts now resolve from the running user's
-home and a missing brand font is LOUD, not a log line.
+What survived from v4, because it was the part that was right
+-------------------------------------------------------------
+Prices resolve by EXACT key and a miss STOPS THE BUILD. v3 matched substrings,
+so the row labelled "ERP" matched the entry "Investor KITAP + M**ERP**" and
+would have printed Rp 55.000.000 next to an 800.000 service, on a document
+handed to clients. And a lookup that quietly degraded to "–" had put 18 of 33
+rows on a dash with exit code 0, which nobody noticed because nothing said so.
+
+The template contract is now checked in BOTH directions: a placeholder with no
+mapping is a build failure (it would ship as the literal text ``{{PRICE_X}}``),
+and a mapping no placeholder uses is a build failure too (dead weight that looks
+like coverage). Then the finished PDF is read back and has to prove it: brand
+font actually embedded, no placeholder survived, and the only phone number
+anywhere in it is the public CTA line.
 
 Usage:
     cd apps/backend-rag
-    python scripts/generate_brochure.py
+    .venv/bin/python scripts/generate_brochure.py
 
-    Run it on a machine that has LeagueSpartan-VF.ttf and Montserrat[wght].ttf
-    in ~/Library/Fonts (Pro does; M5 does not). Without them the script refuses
-    to write rather than emit a system-font brochure — set
-    BROCHURE_ALLOW_SYSTEM_FONTS=1 only for a throwaway local preview.
-
-v3 changes:
-    - Real pricing data from bali_zero_official_prices_2025.json
-    - League Spartan (VF TTF) for titles — white
-    - Montserrat (VF TTF) for body — white
-    - Cleaner layout: more whitespace, stronger hierarchy
-    - Real service categories with actual prices
-    - Contact: zantara@balizero.com / +62 821 3454 721 / Kerobokan, Bali
+Needs Playwright (in the backend venv) and network access at render time — the
+surface CSS pulls Montserrat from the Google Fonts CDN, and without it Chromium
+falls back to a system font silently. That silence is exactly what the font
+check at the end refuses to accept.
 """
 
 from __future__ import annotations
 
-import ast
-import io
+import importlib.util
 import json
-import os
+import re
+import sys
+import tempfile
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────
-REPO_ROOT    = Path(__file__).parent.parent.parent.parent  # monorepo root
-BACKEND_ROOT = Path(__file__).parent.parent                # apps/backend-rag
+SCRIPT_DIR = Path(__file__).resolve().parent
+BACKEND_ROOT = SCRIPT_DIR.parent                     # apps/backend-rag
+REPO_ROOT = BACKEND_ROOT.parent.parent               # monorepo root
+
+TEMPLATE_PATH = SCRIPT_DIR / "brochure" / "brochure_en.html"
+SURFACE_DIR = REPO_ROOT / "skills" / "bali-zero-brand" / "surfaces" / "internal-print-a4"
+RENDER_PATH = SURFACE_DIR / "_render.py"
+PRICING_PATH = BACKEND_ROOT / "backend" / "data" / "bali_zero_official_prices_2026.json"
+
 # The SERVED path. Vercel publishes apps/mouth/public/ verbatim, and
 # welcome_email_service.py fetches this exact file over HTTP to attach it to
 # every welcome email. Writing anywhere else means the clients never see it —
-# which is precisely how this generator drifted four months out of date.
-OUTPUT_PATH  = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "brochure_balizero_en.pdf"
-LOGO_PATH    = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "balizero-logo-clean.png"
-# The 2026 list is the SSOT since 2026-05-06 (apps/backend-rag/CLAUDE.md, Pricing Rules).
-# This script was still reading the 2025 file. Measured before switching, so the claim is
-# a measurement and not a worry: all 15 rows that resolved were IDENTICAL in both files,
-# so no live price was ever wrong — but the category names moved, and that is what put
-# 18 of 33 rows on a dash.
-PRICING_PATH = BACKEND_ROOT / "backend" / "data" / "bali_zero_official_prices_2026.json"
+# which is precisely how an earlier generator drifted four months out of date.
+OUTPUT_PATH = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "brochure_balizero_en.pdf"
 
-OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+# The public CTA line. The brochure that was live until 2026-08-05 showed a team
+# member's personal number eight times; the check at the bottom is what makes
+# that impossible to reintroduce silently.
+CTA_PHONE_DIGITS = "628213454721"  # +62 821 3454 721, digits only
 
 # ─────────────────────────────────────────────────────────
-# IMPORTS
-# ─────────────────────────────────────────────────────────
-import numpy as np
-from PIL import Image as PILImage
-from reportlab.lib.colors import Color, HexColor
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.units import mm
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import (
-    BaseDocTemplate,
-    Flowable,
-    Frame,
-    KeepTogether,
-    NextPageTemplate,
-    PageBreak,
-    PageTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-)
-
-# ─────────────────────────────────────────────────────────
-# BRAND PALETTE
-# ─────────────────────────────────────────────────────────
-BASE        = HexColor("#0c0c0e")   # near-black background
-DARK2       = HexColor("#141416")   # slightly lighter background
-TERRA       = HexColor("#d4845a")   # terracotta accent
-GOLD        = HexColor("#c9a96e")   # gold accent
-INDIGO      = HexColor("#5e7fb5")   # immigration
-GREEN       = HexColor("#4db87a")   # AI/how-we-work
-TEXT_MAIN   = HexColor("#edeae4")   # off-white body text
-TEXT_DIM    = HexColor("#9d9a94")   # dimmed text
-CARD_BG     = Color(1, 1, 1, 0.06) # subtle card surface
-DIVIDER     = Color(1, 1, 1, 0.12) # faint dividers
-WHITE       = HexColor("#ffffff")
-
-# section accent per page
-SECTION_COLORS = {
-    "cover":   TERRA,
-    "who":     TERRA,
-    "imm":     INDIGO,
-    "biz":     TERRA,
-    "tax":     GOLD,
-    "how":     GREEN,
-    "contact": TERRA,
-}
-
-# ─────────────────────────────────────────────────────────
-# PAGE SIZE
-# ─────────────────────────────────────────────────────────
-W, H = A4  # 210 × 297 mm
-
-# ─────────────────────────────────────────────────────────
-# MARGINS — declared HERE, once, because two_col() needs the same number the
-# content Frame uses. They used to be declared next to the Frame, 950 lines
-# below, and two_col carried its own guess (`W - 25*mm`) that was 19pt wrong.
-# A width that two things must agree on gets one definition.
-# ─────────────────────────────────────────────────────────
-MARGIN_LR        = 15*mm
-MARGIN_TOP_COVER = 104*mm  # clears the centred square cover logo (22mm–96mm from top)
-MARGIN_BOT_COVER = 18*mm
-MARGIN_TOP       = 18*mm
-MARGIN_BOT       = 20*mm
-CONTENT_FRAME_INSET = 5    # extra left inset on content pages (accent bar)
-CONTENT_FRAME_W  = W - 2*MARGIN_LR - CONTENT_FRAME_INSET
-
-# ─────────────────────────────────────────────────────────
-# LOAD PRICING DATA
+# PRICES
 # ─────────────────────────────────────────────────────────
 def load_pricing() -> dict:
-    # Loud, not a warning-and-carry-on. An empty dict here means every price
-    # lookup misses, and before this pass that produced a brochure full of
-    # dashes with exit code 0 — a client-facing artifact degrading silently
-    # is the same shape as the Helvetica fallback (scar W99).
-    try:
-        with open(PRICING_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        raise SystemExit(f"\n❌ PRICING LOAD FAILED — {PRICING_PATH}\n   {e}\n")
+    """Loud, not a warning-and-carry-on.
 
-PRICING = load_pricing()
-
-
-def fmt_price(idr_str: str) -> str:
-    """'5.800.000 IDR' → 'Rp 5.8M'"""
-    try:
-        num = int(idr_str.replace(".", "").replace(",", "").replace(" IDR", "").replace("IDR", "").strip())
-        if num >= 1_000_000:
-            val = num / 1_000_000
-            return f"Rp {val:g}M"
-        elif num >= 1_000:
-            return f"Rp {num // 1000}K"
-        return f"Rp {num:,}"
-    except Exception:
-        return idr_str
-
-
-# Services this brochure lists that the price list deliberately does not carry a
-# figure for. Being on this list is an ASSERTION — "we offer it, the price is not
-# a list price" — so it is spelled out here rather than inferred from a lookup miss.
-# Anything NOT on this list that fails to resolve is a bug and stops the build.
-ON_REQUEST: set[tuple[str, str]] = set()
-
-
-def get_price(category: str, key: str) -> str:
-    """Look a price up by its EXACT key in the 2026 price list.
-
-    Exact, not substring, and the difference is not stylistic. The previous
-    version matched `key.lower() in k.lower()`, so the row labelled "ERP"
-    matched the entry "Investor KITAP + M**ERP**" and would have printed
-    Rp 55M — a 68x overstatement — next to an 800k service, on a document
-    handed to clients. Superscar #3: match the entity, never the shape.
-
-    A miss raises. A client-facing price list that silently degrades to "–"
-    is the same failure as the silent Helvetica fallback above: it produced
-    18 dashes out of 33 rows and nobody noticed, because nothing said so.
+    An empty dict here means every lookup misses, and that used to produce a
+    brochure full of dashes with exit code 0 — a client-facing artifact
+    degrading in silence, the same shape as a silent font fallback (scar W99).
     """
-    cat = PRICING.get("services", {}).get(category, {})
-    entry = cat.get(key)
-    if entry is None:
-        if (category, key) in ON_REQUEST:
+    try:
+        with PRICING_PATH.open(encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception as exc:  # any failure here must stop the build, not degrade
+        raise SystemExit(f"\n❌ PRICING LOAD FAILED — {PRICING_PATH}\n   {exc}\n") from exc
+
+
+def fmt_amount(raw: str) -> str:
+    """'5.800.000 IDR' → 'Rp 5.800.000'.
+
+    Full figures, not 'Rp 5.8M': a price list a client reads once should not
+    make them wonder whether that is 5.8 million or 5,800.
+    """
+    cleaned = raw.replace("IDR", "").strip()
+    # Shape-checked, because the alternative is printing whatever is there with a
+    # currency symbol glued on: '500 USD' would have rendered as 'Rp 500 USD' and
+    # a typo'd field as 'Rp banana'. A client-facing figure has to LOOK like one.
+    if not re.fullmatch(r"\d{1,3}(?:\.\d{3})*", cleaned):
+        raise SystemExit(
+            f"\n❌ AMOUNT IS NOT A RUPIAH FIGURE — refusing to print it as one.\n"
+            f"   raw value: {raw!r}\n"
+            f"   expected the price list's own format, e.g. '5.800.000 IDR'\n"
+        )
+    return f"Rp {cleaned}"
+
+
+def fmt_entry(entry: dict, where: str) -> str:
+    """Render one price-list entry, whichever shape it has.
+
+    The 2026 list carries either a single ``price`` or a ``tier_range`` pair —
+    the tax tiers and 'Close PMA' use the latter. A tier that silently printed
+    only its floor would understate the fee on a client-facing document.
+    """
+    price = (entry.get("price") or "").strip()
+    if price:
+        if price.lower().startswith("depend"):
             return "On request"
-        near = [k for k in cat if key.lower()[:6] in k.lower()] or sorted(cat)[:6]
-        raise SystemExit(
-            f"\n❌ PRICE NOT FOUND — refusing to write a client-facing price list.\n"
-            f"   asked for : services.{category}[{key!r}]\n"
-            f"   category has {len(cat)} keys; closest: {near}\n"
-            f"   Fix the key, fix the category, or add it to ON_REQUEST with a reason.\n"
-        )
-    return fmt_price(entry.get("price", ""))
+        return fmt_amount(price)
 
+    tier = entry.get("tier_range")
+    if isinstance(tier, list) and len(tier) == 2:
+        return f"{fmt_amount(tier[0])} – {fmt_amount(tier[1])}"
 
-# ─────────────────────────────────────────────────────────
-# FONT REGISTRATION
-# ─────────────────────────────────────────────────────────
-# Resolve from the RUNNING user's home. This was hardcoded to
-# /Users/nuzantara/Library/Fonts, which is a dead path on any machine whose user
-# is not `nuzantara` (M5's is `balizero`) — so a rebuild there silently produced
-# a system-font brochure and exited 0. The brand TTFs are not in the repo, so
-# the path has to be per-user, and a miss has to be loud (see below).
-FONT_DIR = Path.home() / "Library" / "Fonts"
-SYS_FONT_DIR = Path("/System/Library/Fonts")
-
-def _reg(name: str, path: Path) -> bool:
-    if path.exists():
-        try:
-            pdfmetrics.registerFont(TTFont(name, str(path)))
-            return True
-        except Exception:
-            return False
-    return False
-
-# League Spartan — titles
-LS_VF = FONT_DIR / "LeagueSpartan-VF.ttf"
-if not _reg("LS", LS_VF):
-    _reg("LS", FONT_DIR / "LeagueSpartan-Regular.otf")  # fallback (won't work OTF, handled below)
-
-# For OTF files that don't work, fall back to Helvetica
-try:
-    pdfmetrics.getFont("LS")
-    TITLE_FONT = "LS"
-except Exception:
-    TITLE_FONT = "Helvetica-Bold"
-
-# Montserrat — body
-MONT_VF = FONT_DIR / "Montserrat[wght].ttf"
-if _reg("Mont", MONT_VF):
-    BODY_FONT = "Mont"
-elif _reg("Mont", FONT_DIR / "Montserrat-Regular.ttf"):
-    BODY_FONT = "Mont"
-else:
-    BODY_FONT = "Helvetica"
-
-print(f"   Fonts: title={TITLE_FONT}, body={BODY_FONT}")
-
-# A brand-font miss must not be a log line. W99 is exactly this shape: a
-# renderer that KNEW the brand font had not loaded, said so at warning level,
-# and published nine slides painted in system fonts anyway. This brochure goes
-# to every new client, so a fallback is a refusal by default.
-_missing_brand_fonts = [
-    label
-    for label, font, fallback in (
-        ("League Spartan (LeagueSpartan-VF.ttf)", TITLE_FONT, "Helvetica-Bold"),
-        ("Montserrat (Montserrat[wght].ttf)", BODY_FONT, "Helvetica"),
-    )
-    if font == fallback
-]
-if _missing_brand_fonts and os.environ.get("BROCHURE_ALLOW_SYSTEM_FONTS") != "1":
     raise SystemExit(
-        "\n❌ BRAND FONT NOT LOADED — refusing to write a client-facing brochure.\n"
-        f"   Missing: {', '.join(_missing_brand_fonts)}\n"
-        f"   Looked in: {FONT_DIR}\n"
-        "   The brand TTFs are not versioned in this repo; run this on a machine\n"
-        "   that has them (Pro does). For a throwaway local preview only:\n"
-        "   BROCHURE_ALLOW_SYSTEM_FONTS=1 python scripts/generate_brochure.py\n"
+        f"\n❌ PRICE ENTRY HAS NEITHER price NOR tier_range — {where}\n"
+        f"   entry: {entry!r}\n"
     )
-if _missing_brand_fonts:
-    print(f"   ⚠️  SYSTEM FONTS — preview only, do NOT commit: {', '.join(_missing_brand_fonts)}")
 
 
-# ─────────────────────────────────────────────────────────
-# GLYPH GUARD — a font that lacks a character draws NOTHING and says nothing
-# ─────────────────────────────────────────────────────────
-# The published brochure asked Montserrat for a check mark (U+2713) and six
-# emoji (envelope, mobile, globe, pin, clock, robot). It carries none of them,
-# so the "What's Included" list had no bullets and the contact card no icons —
-# seven invisible glyphs on client-facing pages, at exit code 0. Same family as
-# the Helvetica fallback and the price dash: silent degradation.
-#
-# This asks the FONT FILES, at build time, rather than trusting a memory of what
-# they contain. Characters printed to the console (not drawn into the PDF) are
-# listed explicitly, so adding one is a deliberate line rather than an accident.
-#
-# Note the codepoints above are spelled out rather than written: this guard reads
-# its OWN source, so naming a missing glyph literally here would make it accuse
-# itself (W107 — the probe that measures a disease can have it).
-CONSOLE_ONLY_CHARS = set("✅❌⚠️🏝→")
+def get_price(pricing: dict, path: tuple[str, ...], expected_name: str) -> str:
+    """Look a price up by its EXACT key path. A miss stops the build.
 
+    Exact, not substring, and the difference is not stylistic — see the ERP /
+    M-ERP collision in the module docstring. Superscar #3: match the entity,
+    never the shape.
+    """
+    node: object = pricing.get("services", {})
+    walked: list[str] = []
+    for part in path:
+        if not isinstance(node, dict) or part not in node:
+            siblings = sorted(node)[:8] if isinstance(node, dict) else []
+            raise SystemExit(
+                f"\n❌ PRICE NOT FOUND — refusing to write a client-facing price list.\n"
+                f"   asked for : services.{'.'.join(path)}\n"
+                f"   resolved  : services.{'.'.join(walked)} (then {part!r} is missing)\n"
+                f"   available here: {siblings}\n"
+            )
+        node = node[part]
+        walked.append(part)
 
-def _assert_glyphs_available() -> None:
-    if _missing_brand_fonts:
-        return  # system-font preview: the brand faces are not loaded to ask
-    faces = {}
-    for label, font in (("titles", TITLE_FONT), ("body", BODY_FONT)):
-        face = pdfmetrics.getFont(font).face
-        faces[label] = getattr(face, "charToGlyph", None)
-    # STRING LITERALS ONLY, via the parser — not a scan of the file's bytes.
-    # The first version scanned the whole source and failed on U+2500, the box
-    # rule in this file's own section comments: it judged by where a character
-    # sits in the file instead of by whether it is ever drawn (superscar #3).
-    # ast never sees a comment, so the question it answers is the right one.
-    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
-    literals = "".join(
-        n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
-    )
-    bad: dict[str, list[str]] = {}
-    for ch in sorted({c for c in literals if ord(c) > 127}):
-        if ch in CONSOLE_ONLY_CHARS:
-            continue
-        absent = [lbl for lbl, cmap in faces.items() if cmap is not None and ord(ch) not in cmap]
-        if absent:
-            bad[ch] = absent
-    if bad:
-        listed = "; ".join(f"{ch!r} (U+{ord(ch):04X}) absent from: {', '.join(v)}" for ch, v in bad.items())
+    if not isinstance(node, dict):
+        raise SystemExit(f"\n❌ PRICE PATH IS NOT AN ENTRY — services.{'.'.join(path)}\n")
+
+    actual_name = node.get("name", "")
+    if actual_name != expected_name:
         raise SystemExit(
-            "\n❌ GLYPH NOT IN BRAND FONT — refusing to write a brochure with invisible characters.\n"
-            f"   {listed}\n"
-            "   Replace it with one the fonts carry (• · – — are all present), or, if it is\n"
-            "   only ever printed to the console, add it to CONSOLE_ONLY_CHARS.\n"
+            f"\n❌ PRICE ENTRY RENAMED UNDER ITS ROW — services.{'.'.join(path)}\n"
+            f"   pinned when the row was written : {expected_name!r}\n"
+            f"   in the price list now           : {actual_name!r}\n"
+            f"   Read the row in brochure_en.html: does it still describe this service?\n"
+            f"   Then update the pin in PRICE_MAP in the SAME commit as the row.\n"
         )
+    return fmt_entry(node, f"services.{'.'.join(path)}")
 
 
-_assert_glyphs_available()
-
-# ─────────────────────────────────────────────────────────
-# PARAGRAPH STYLES
-# ─────────────────────────────────────────────────────────
-def S(name: str, font: str, size: float, color=WHITE, leading_mul: float = 1.3,
-      align=TA_LEFT, bold: bool = False, space_before: float = 0, space_after: float = 0) -> ParagraphStyle:
-    return ParagraphStyle(
-        name,
-        fontName=font,
-        fontSize=size,
-        textColor=color,
-        leading=size * leading_mul,
-        alignment=align,
-        spaceBefore=space_before,
-        spaceAfter=space_after,
-    )
-
-ST = {
-    # Headings — League Spartan
-    "H1":    S("H1",    TITLE_FONT, 36, WHITE, 1.1, TA_LEFT),
-    "H1C":   S("H1C",   TITLE_FONT, 36, WHITE, 1.1, TA_CENTER),
-    "H2":    S("H2",    TITLE_FONT, 22, WHITE, 1.2, TA_LEFT),
-    "H2C":   S("H2C",   TITLE_FONT, 22, WHITE, 1.2, TA_CENTER),
-    "H3":    S("H3",    TITLE_FONT, 15, WHITE, 1.25, TA_LEFT),
-    "H3C":   S("H3C",   TITLE_FONT, 15, WHITE, 1.25, TA_CENTER),
-    "TAGLINE": S("TAGLINE", TITLE_FONT, 13, TEXT_DIM, 1.4, TA_LEFT),
-    "TAGLINEC": S("TAGLINEC", TITLE_FONT, 13, TEXT_DIM, 1.4, TA_CENTER),
-    # Body — Montserrat
-    "BODY":  S("BODY",  BODY_FONT, 9.5, TEXT_MAIN, 1.5, TA_LEFT),
-    "BODYC": S("BODYC", BODY_FONT, 9.5, TEXT_MAIN, 1.5, TA_CENTER),
-    "SMALL": S("SMALL", BODY_FONT, 8,   TEXT_DIM,  1.4, TA_LEFT),
-    "SMALLC":S("SMALLC",BODY_FONT, 8,   TEXT_DIM,  1.4, TA_CENTER),
-    "LABEL": S("LABEL", BODY_FONT, 7.5, TEXT_DIM,  1.3, TA_LEFT),
-    "LABELC":S("LABELC",BODY_FONT, 7.5, TEXT_DIM,  1.3, TA_CENTER),
-    "PRICE": S("PRICE", TITLE_FONT, 13, TERRA, 1.2, TA_RIGHT),
-    "PRICEG":S("PRICEG",TITLE_FONT, 13, GOLD,  1.2, TA_RIGHT),
-    "PRICEI":S("PRICEI",TITLE_FONT, 13, INDIGO,1.2, TA_RIGHT),
-    "BULLET":S("BULLET",BODY_FONT, 9,  TEXT_MAIN, 1.45, TA_LEFT),
-    "FOOTER":S("FOOTER",BODY_FONT, 7.5, TEXT_DIM, 1.3, TA_CENTER),
-    "ACCENT":S("ACCENT",TITLE_FONT, 10, TERRA, 1.3, TA_LEFT),
-    "ACCENTG":S("ACCENTG",TITLE_FONT, 10, GOLD, 1.3, TA_LEFT),
-    "ACCENTI":S("ACCENTI",TITLE_FONT, 10, INDIGO, 1.3, TA_LEFT),
-    "ACCENTGR":S("ACCENTGR",TITLE_FONT, 10, GREEN, 1.3, TA_LEFT),
-    "URL":   S("URL",   BODY_FONT, 9.5, TERRA, 1.4, TA_CENTER),
+# Placeholder → exact key path in bali_zero_official_prices_2026.json.
+# Every entry here must appear in the template, and every {{PRICE_*}} in the
+# template must appear here: both directions are checked before rendering.
+# Placeholder -> (exact key path, the entry's `name` field AS IT READS TODAY).
+#
+# The second element is a PIN, not documentation. A key is a proxy for a service
+# and a proxy can lie: `other_process["ERP (Exit Re-entry Permit)"]` is named
+# "ERP (Exit Permit Only — Offshore)" and its own description says re-entry has
+# been bundled into the KITAS/KITAP since UU 63/2024 — there is no re-entry
+# product to sell. A brochure row written from the KEY sold a thing that no
+# longer exists. Writing the name down here puts that contradiction in front of
+# whoever edits this file, and stops the build if the price list renames or
+# repurposes an entry under a row that still says the old thing.
+#
+# Every entry here must appear in the template, and every {{PRICE_*}} in the
+# template must appear here: both directions are checked before rendering.
+PRICE_MAP: dict[str, tuple[tuple[str, ...], str]] = {
+    "PRICE_VOA":           (('single_entry_visas', 'B1 Visa on Arrival (VOA)'), 'B1 Visa on Arrival (VOA)'),
+    "PRICE_C1":            (('single_entry_visas', 'C1 Tourism'), 'C1 Tourism'),
+    "PRICE_C1_EXT":        (('single_entry_visas', 'C1 Tourism Extension'), 'C1 Tourism — Extension (+60 days)'),
+    "PRICE_C2":            (('single_entry_visas', 'C2 Business'), 'C2 Business'),
+    "PRICE_C18":           (('single_entry_visas', 'C18 Work Trial'), 'C18 Work Trial'),
+    "PRICE_C22":           (('single_entry_visas', 'C22A&B Internship (180 Days)'), 'C22A&B Internship (180 Days)'),
+    "PRICE_D1_1":          (('multiple_entry_visas', 'D1 Tourism (1 Year)'), 'D1 Tourism (1 Year)'),
+    "PRICE_D2_1":          (('multiple_entry_visas', 'D2 Business (1 Year)'), 'D2 Business (1 Year)'),
+    "PRICE_D12_1":         (('multiple_entry_visas', 'D12 Business Investigation (1 Year)'), 'D12 Business Investigation (1 Year)'),
+    "PRICE_D12_2":         (('multiple_entry_visas', 'D12 Business Investigation (2 Years)'), 'D12 Business Investigation (2 Years)'),
+    "PRICE_E33G_OFF":      (('kitas_permits', 'E33G Remote Worker (Offshore)'), 'E33G Remote Worker (Offshore)'),
+    "PRICE_E33G_ALT":      (('kitas_permits', 'E33G Remote Worker (Altus/Onshore)'), 'E33G Remote Worker (Altus/Onshore)'),
+    "PRICE_INV_OFF":       (('kitas_permits', 'Investor KITAS 2 Years (Offshore)'), 'Investor KITAS 2 Years (Offshore)'),
+    "PRICE_E23_OFF":       (('kitas_permits', 'Freelance E23 (Offshore)'), 'Freelance E23 (Offshore)'),
+    "PRICE_RET_OFF":       (('kitas_permits', 'Retirement (Offshore)'), 'Retirement (Offshore)'),
+    "PRICE_SPOUSE_OFF":    (('kitas_permits', 'Spouse 1 Year (Offshore)'), 'Spouse 1 Year (Offshore)'),
+    "PRICE_E33E_OFF":      (('kitas_permits', 'E33E Second Home Senior (5 Years, Offshore)'), 'E33E Second Home Senior (5 Years, Offshore)'),
+    "PRICE_KITAP_INV":     (('kitap_permits', 'Investor KITAP + MERP'), 'Investor KITAP + MERP'),
+    "PRICE_KITAP_RET":     (('kitap_permits', 'Retirement KITAP + MERP'), 'Retirement KITAP + MERP'),
+    "PRICE_NEWCO":         (('company_services', 'New Company (PT PMA)'), 'New Company (PT PMA)'),
+    "PRICE_VO":            (('company_services', 'Virtual Office'), 'Virtual Office'),
+    "PRICE_CLOSE_PMA":     (('consultant_services', 'Close PMA Company'), 'Close PMA Company'),
+    "PRICE_WK_OFF":        (('kitas_permits', 'Working KITAS (Offshore)'), 'Working KITAS (Offshore)'),
+    "PRICE_WK_ALT":        (('kitas_permits', 'Working KITAS (Altus/Onshore)'), 'Working KITAS (Altus/Onshore)'),
+    "PRICE_WK_EXT":        (('kitas_permits', 'Working KITAS (Extend)'), 'Working KITAS (Extend)'),
+    "PRICE_NPWPD":         (('consultant_services', 'NPWPD Registration'), 'NPWPD Registration'),
+    "PRICE_BPJS_TK":       (('consultant_services', 'BPJS Employee (Tenaga Kerja)'), 'BPJS Employee (Tenaga Kerja)'),
+    "PRICE_BPJS_KES":      (('consultant_services', 'BPJS Insurance (Kesehatan)'), 'BPJS Insurance (Kesehatan)'),
+    "PRICE_TAX_M_0_50":    (('tax_accounting', 'monthly_tax_basic', 'Tier 0-50'), 'Monthly Tax Report — 0 to 50 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_M_50_100":  (('tax_accounting', 'monthly_tax_basic', 'Tier 50-100'), 'Monthly Tax Report — 50 to 100 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_M_100_200": (('tax_accounting', 'monthly_tax_basic', 'Tier 100-200'), 'Monthly Tax Report — 100 to 200 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_M_200":     (('tax_accounting', 'monthly_tax_basic', 'Tier 200+'), 'Monthly Tax Report — more than 200 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_B_0_50":    (('tax_accounting', 'monthly_tax_bundled', 'Tier 0-50'), 'Monthly Tax Report — 0 to 50 transactions (including LKPM & Annual)'),
+    "PRICE_TAX_B_50_100":  (('tax_accounting', 'monthly_tax_bundled', 'Tier 50-100'), 'Monthly Tax Report — 50 to 100 transactions (including LKPM & Annual)'),
+    "PRICE_TAX_B_100_200": (('tax_accounting', 'monthly_tax_bundled', 'Tier 100-200'), 'Monthly Tax Report — 100 to 200 transactions (including LKPM & Annual)'),
+    "PRICE_TAX_B_200":     (('tax_accounting', 'monthly_tax_bundled', 'Tier 200+'), 'Monthly Tax Report — more than 200 transactions (including LKPM & Annual)'),
+    "PRICE_ANNUAL_CO":     (('tax_accounting', 'annual_standalone', 'Annual Tax Company'), 'Annual Tax Company'),
+    "PRICE_ANNUAL_PERS":   (('tax_accounting', 'annual_standalone', 'Annual Tax Personal'), 'Annual Tax Personal'),
+    "PRICE_LKPM":          (('tax_accounting', 'annual_standalone', 'LKPM Yearly Report'), 'LKPM Yearly Report'),
+    "PRICE_ANNUAL_ZERO":   (('tax_accounting', 'annual_basic_packages', 'Annual Company ZERO'), 'Annual Company ZERO'),
+    "PRICE_SKTT":          (('other_process', 'SKTT'), 'SKTT'),
+    "PRICE_SKCK":          (('other_process', 'SKCK'), 'SKCK'),
+    "PRICE_DOM":           (('other_process', 'Domicilie Letter'), 'Domicilie Letter'),
+    "PRICE_PP5":           (('other_process', 'Passport 5 Years'), 'Passport 5 Years'),
+    "PRICE_PP10":          (('other_process', 'Passport 10 Years'), 'Passport 10 Years'),
+    "PRICE_MUT_PP":        (('other_process', 'Mutation Passport'), 'Mutation Passport'),
+    "PRICE_MUT_ADDR":      (('other_process', 'Mutation Address'), 'Mutation Address'),
+    "PRICE_SIM":           (('other_process', 'Driving License'), 'Driving License'),
+    "PRICE_EPO":           (('other_process', 'EPO (Exit Permit Only)'), 'EPO (Exit Permit Only)'),
+    "PRICE_ERP":           (('other_process', 'ERP (Exit Re-entry Permit)'), 'ERP (Exit Permit Only — Offshore)'),
 }
 
-
-# ─────────────────────────────────────────────────────────
-# LOGO PREPROCESSING
-# ─────────────────────────────────────────────────────────
-def _prepare_logo(path: Path) -> ImageReader:
-    # Loud on failure. A brochure with no logo is not a brochure, and the two
-    # `return None` paths this replaced printed a warning and carried on.
-    if not path.exists():
-        raise SystemExit(f"\n❌ LOGO NOT FOUND — {path}\n")
-    try:
-        img = PILImage.open(path).convert("RGBA")
-        arr = np.array(img, dtype=np.float32)
-        r, g, b, _a = arr[..., 0], arr[..., 1], arr[..., 2], arr[..., 3]
-        brightness = 0.299 * r + 0.587 * g + 0.114 * b
-        # Dark pixels (near-black background) → transparent
-        mask = brightness < 30
-        soft = (brightness >= 30) & (brightness < 60)
-
-        # A faint ring is visible around the mark on the cover. MEASURED, not
-        # guessed, and it is NOT a bug in this code: the asset is a near-black
-        # disc on a transparent square, and 566 of its rim pixels are bright
-        # (>=60) and spread across 11 of 12 angular sectors — a deliberate
-        # circular stroke in the logo itself. The knockout below already makes
-        # the 31,483 dark rim pixels transparent; the ring that remains is the
-        # brand mark as drawn.
-        #
-        # An earlier version of this function erased it. That was wrong twice
-        # over: it targeted the 305 rim pixels in the soft ramp, which are not
-        # what is visible, and quietly editing a brand mark is a business
-        # decision, not a rendering fix. Surfaced to Zero instead.
-        arr[mask, 3] = 0
-        arr[soft, 3] = ((brightness[soft] - 30) / 30 * 255).clip(0, 255)
-        out = PILImage.fromarray(arr.astype(np.uint8), "RGBA")
-        buf = io.BytesIO()
-        out.save(buf, format="PNG")
-        buf.seek(0)
-        return ImageReader(buf)
-    except SystemExit:
-        raise
-    except Exception as e:
-        raise SystemExit(f"\n❌ LOGO PREP FAILED — {path}\n   {e}\n")
-
-LOGO_READER = _prepare_logo(LOGO_PATH)
+# Inner whitespace is tolerated deliberately: `{{ PRICE_VOA }}` is what a human
+# writes, and a stricter pattern would leave it unsubstituted in the template AND
+# invisible to the survivor check in verify() — shipping the literal braces to a
+# client with a green build. One pattern, used by both, is what keeps the two
+# ends of that contract from drifting apart.
+PLACEHOLDER_RE = re.compile(r"\{\{\s*([A-Z0-9_]+)\s*\}\}")
 
 
-# ─────────────────────────────────────────────────────────
-# BACKGROUND CALLBACKS
-# ─────────────────────────────────────────────────────────
-def _bg_cover(canvas, doc):
-    canvas.saveState()
-    # Dark base
-    canvas.setFillColor(HexColor("#0a0a0c"))
-    canvas.rect(0, 0, W, H, fill=1, stroke=0)
-    # NOTE (2026-08-05): the cover used to paint a warm panel over the left 42%
-    # with a terracotta rule down its edge. The cover CONTENT is laid out full
-    # width, so that rule ran straight through the subtitle and the stats row —
-    # a headline slashed by a vertical bar, on the first page a client sees.
-    # Full-bleed dark instead, which is also what the published brochure did.
-    canvas.setFillColor(HexColor("#120b07"))
-    canvas.rect(0, 0, W, H, fill=1, stroke=0)
-    # Decorative dots grid (subtle), now full width so it reads as texture
-    canvas.setFillColor(Color(0.83, 0.52, 0.35, 0.06))
-    dot_size = 2
-    for row in range(0, int(H / 18) + 1):
-        for col in range(0, int(W / 18) + 1):
-            canvas.circle(col * 18 + 9, row * 18 + 9, dot_size, fill=1, stroke=0)
-    # Top accent band
-    canvas.setFillColor(TERRA)
-    canvas.rect(0, H - 3*mm, W, 3*mm, fill=1, stroke=0)
-    # Footer line
-    canvas.setFillColor(TERRA)
-    canvas.rect(0, 12*mm, W, 0.5, fill=1, stroke=0)
-    canvas.setFillColor(TEXT_DIM)
-    canvas.setFont(BODY_FONT, 7.5)
-    canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  zantara@balizero.com  ·  +62 821 3454 721  ·  Kerobokan, Bali")
-    canvas.restoreState()
+def fill_template(html: str, pricing: dict) -> tuple[str, dict[str, str]]:
+    """Substitute every placeholder, after proving the contract holds both ways.
 
-
-def _make_content_bg(section_id: str):
-    accent = SECTION_COLORS.get(section_id, TERRA)
-    def _bg(canvas, doc):
-        canvas.saveState()
-        # Base
-        canvas.setFillColor(BASE)
-        canvas.rect(0, 0, W, H, fill=1, stroke=0)
-        # Subtle top panel
-        canvas.setFillColor(HexColor("#111113"))
-        canvas.rect(0, H - 28*mm, W, 28*mm, fill=1, stroke=0)
-        # Accent top stripe
-        canvas.setFillColor(accent)
-        canvas.rect(0, H - 1.5, W, 1.5, fill=1, stroke=0)
-        # Left accent bar
-        canvas.setFillColor(accent)
-        canvas.rect(0, 18*mm, 3, H - 36*mm, fill=1, stroke=0)
-        # Footer
-        canvas.setFillColor(Color(1, 1, 1, 0.08))
-        canvas.rect(0, 0, W, 14*mm, fill=1, stroke=0)
-        canvas.setFillColor(accent)
-        canvas.rect(0, 14*mm, W, 0.5, fill=1, stroke=0)
-        canvas.setFillColor(TEXT_DIM)
-        canvas.setFont(BODY_FONT, 7.5)
-        canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  zantara@balizero.com  ·  +62 821 3454 721  ·  Kerobokan, Bali")
-        canvas.restoreState()
-    return _bg
-
-
-# ─────────────────────────────────────────────────────────
-# CUSTOM FLOWABLES
-# ─────────────────────────────────────────────────────────
-class HRule(Flowable):
-    """Horizontal rule with optional accent color."""
-    def __init__(self, width_mm: float = 60, color=TERRA, thickness: float = 1.5, space_after: float = 6):
-        super().__init__()
-        self._w = width_mm * mm
-        self._color = color
-        self._t = thickness
-        self._sa = space_after
-        self.hAlign = "LEFT"
-
-    def wrap(self, avail_w, avail_h):
-        return self._w, self._t + self._sa
-
-    def draw(self):
-        self.canv.setFillColor(self._color)
-        self.canv.rect(0, self._sa, self._w, self._t, fill=1, stroke=0)
-
-
-class SectionHeader(Flowable):
-    """Full-width section header with accent label + title."""
-    def __init__(self, label: str, title: str, accent=TERRA):
-        super().__init__()
-        self._label = label.upper()
-        self._title = title
-        self._accent = accent
-
-    def wrap(self, avail_w, avail_h):
-        self._avail_w = avail_w
-        return avail_w, 22*mm
-
-    def draw(self):
-        c = self.canv
-        c.saveState()
-        # label
-        c.setFont(BODY_FONT, 8)
-        c.setFillColor(self._accent)
-        c.drawString(0, 14*mm, self._label)
-        # rule under label
-        c.setFillColor(self._accent)
-        c.rect(0, 13*mm, self._avail_w * 0.25, 1, fill=1, stroke=0)
-        # title
-        c.setFont(TITLE_FONT, 24)
-        c.setFillColor(WHITE)
-        c.drawString(0, 3*mm, self._title)
-        c.restoreState()
-
-
-class PriceRow(Flowable):
-    """One price line: service name (left) + price (right) + subtle divider."""
-    def __init__(self, service: str, price: str, accent=TERRA, note: str = ""):
-        super().__init__()
-        self._service = service
-        self._price = price
-        self._accent = accent
-        self._note = note
-
-    def wrap(self, avail_w, avail_h):
-        self._avail_w = avail_w
-        # A row carrying a note is TALLER, and every y below is measured DOWN
-        # from the top of whatever height we claim. Before this, height was a
-        # flat 8mm while the note was drawn at -1.5mm — i.e. outside the box
-        # this flowable had reserved — so it landed on the next row's divider.
-        # Visible on the published page 4 under "New PMA Company (full package)".
-        self._h = 11*mm if self._note else 8*mm
-        return avail_w, self._h
-
-    def draw(self):
-        c = self.canv
-        h = self._h
-        c.saveState()
-        # divider, along the top edge of the row
-        c.setFillColor(DIVIDER)
-        c.rect(0, h - 0.5*mm, self._avail_w, 0.5, fill=1, stroke=0)
-        # service name
-        c.setFont(BODY_FONT, 9)
-        c.setFillColor(TEXT_MAIN)
-        c.drawString(0, h - 6.5*mm, self._service)
-        # note, inside the extra 3mm this row claimed for it
-        if self._note:
-            c.setFont(BODY_FONT, 7)
-            c.setFillColor(TEXT_DIM)
-            c.drawString(0, h - 9.5*mm, self._note)
-        # price
-        c.setFont(TITLE_FONT, 11)
-        c.setFillColor(self._accent)
-        c.drawRightString(self._avail_w, h - 6.5*mm, self._price)
-        c.restoreState()
-
-
-class StatBox(Flowable):
-    """Stat number + label in a card box."""
-    def __init__(self, number: str, label: str, accent=TERRA, width_mm: float = 40):
-        super().__init__()
-        self._number = number
-        self._label = label
-        self._accent = accent
-        self._bw = width_mm * mm
-
-    def wrap(self, avail_w, avail_h):
-        return self._bw, 22*mm
-
-    def draw(self):
-        c = self.canv
-        c.saveState()
-        # card bg
-        c.setFillColor(CARD_BG)
-        c.roundRect(0, 0, self._bw, 21*mm, 3, fill=1, stroke=0)
-        # accent left bar
-        c.setFillColor(self._accent)
-        c.rect(0, 0, 3, 21*mm, fill=1, stroke=0)
-        # number
-        c.setFont(TITLE_FONT, 20)
-        c.setFillColor(self._accent)
-        c.drawCentredString(self._bw / 2 + 1.5, 12*mm, self._number)
-        # label
-        c.setFont(BODY_FONT, 7.5)
-        c.setFillColor(TEXT_DIM)
-        c.drawCentredString(self._bw / 2 + 1.5, 5*mm, self._label)
-        c.restoreState()
-
-
-class ProcessStep(Flowable):
-    """Numbered process step."""
-    def __init__(self, number: int, title: str, desc: str, accent=TERRA):
-        super().__init__()
-        self._n = str(number)
-        self._title = title
-        self._desc = desc
-        self._accent = accent
-
-    def wrap(self, avail_w, avail_h):
-        self._avail_w = avail_w
-        return avail_w, 18*mm
-
-    def draw(self):
-        c = self.canv
-        c.saveState()
-        # circle
-        cx, cy = 6*mm, 9*mm
-        c.setFillColor(self._accent)
-        c.circle(cx, cy, 5.5*mm, fill=1, stroke=0)
-        c.setFont(TITLE_FONT, 11)
-        c.setFillColor(WHITE)
-        c.drawCentredString(cx, cy - 1.5*mm, self._n)
-        # connector line
-        c.setFillColor(Color(0.83, 0.52, 0.35, 0.3))
-        c.rect(cx, 0, 1, cy - 5.5*mm, fill=1, stroke=0)
-        # title
-        c.setFont(TITLE_FONT, 11)
-        c.setFillColor(WHITE)
-        c.drawString(14*mm, 12*mm, self._title)
-        # desc
-        c.setFont(BODY_FONT, 8.5)
-        c.setFillColor(TEXT_MAIN)
-        c.drawString(14*mm, 6*mm, self._desc)
-        c.restoreState()
-
-
-class ContactCard(Flowable):
-    """Contact info card with icon-label pairs."""
-    def __init__(self, items: list[tuple[str, str]], accent=TERRA):
-        super().__init__()
-        self._items = items
-        self._accent = accent
-
-    def wrap(self, avail_w, avail_h):
-        self._avail_w = avail_w
-        h = len(self._items) * 10*mm + 6*mm
-        return avail_w, h
-
-    def draw(self):
-        c = self.canv
-        c.saveState()
-        h = len(self._items) * 10*mm + 6*mm
-        # card bg
-        c.setFillColor(CARD_BG)
-        c.roundRect(0, 0, self._avail_w, h, 4, fill=1, stroke=0)
-        c.setFillColor(self._accent)
-        c.rect(0, 0, 3, h, fill=1, stroke=0)
-        # items
-        for i, (icon, text) in enumerate(self._items):
-            y = h - (i + 1) * 10*mm + 1*mm
-            c.setFont(BODY_FONT, 9)
-            c.setFillColor(self._accent)
-            # 12mm of air between marker and text was sized for an emoji the
-            # brand fonts never had. With a real bullet, close it up.
-            c.drawString(7*mm, y + 2*mm, icon)
-            c.setFillColor(TEXT_MAIN)
-            c.drawString(11*mm, y + 2*mm, text)
-        c.restoreState()
-
-
-# ─────────────────────────────────────────────────────────
-# HELPER: build two-column table
-# ─────────────────────────────────────────────────────────
-def two_col(left: list, right: list, col_ratio: float = 0.5, gap_mm: float = 10) -> Table:
-    """Two columns with a REAL gutter between them.
-
-    Three independent defects used to land on the same x coordinate here, which
-    is why pages 3-5 of the published brochure had a white line struck through
-    the text on both sides of it:
-
-    1. ``avail = W - 25*mm`` assumed a 12.5mm margin per side. The content frame
-       is ``W - 2*MARGIN_LR - 5`` and MARGIN_LR is 15mm, so the table was built
-       19pt too wide and overflowed the frame it sits in.
-    2. Subtracting ``gap/2`` from each column width does NOT put space between
-       them — reportlab lays cell 2 immediately after cell 1, so the gutter was
-       ZERO. The left column's right-aligned price and the right column's
-       left-aligned text were drawn at the same x.
-    3. ``("INNERGRID", ..., 0, white)`` — in reportlab a line width of 0 is a
-       HAIRLINE, not "no line". It drew a white rule at exactly that x.
-
-    The gutter is now a real empty middle column, the width is derived from the
-    same expression the frame uses, and nothing is stroked between the columns.
+    Returns the filled HTML and the resolved values, because verify() has to
+    check the amounts against the finished PDF and must not re-derive them —
+    a checker that recomputes what it is checking agrees with itself by
+    construction.
     """
-    gap = gap_mm * mm
-    avail = CONTENT_FRAME_W
-    body = avail - gap
-    lw = body * col_ratio
-    rw = body * (1 - col_ratio)
-    return Table(
-        [[left, "", right]],
-        colWidths=[lw, gap, rw],
-        style=TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ]),
+    in_template = set(PLACEHOLDER_RE.findall(html))
+    in_map = set(PRICE_MAP)
+
+    unmapped = sorted(in_template - in_map)
+    unused = sorted(in_map - in_template)
+    if unmapped or unused:
+        raise SystemExit(
+            "\n❌ TEMPLATE / PRICE-MAP MISMATCH — refusing to render.\n"
+            + (f"   in the HTML with no mapping (would ship as literal text): {unmapped}\n" if unmapped else "")
+            + (f"   mapped but never used in the HTML (dead weight): {unused}\n" if unused else "")
+        )
+
+    resolved = {
+        placeholder: get_price(pricing, path, expected_name)
+        for placeholder, (path, expected_name) in PRICE_MAP.items()
+    }
+    return PLACEHOLDER_RE.sub(lambda m: resolved[m.group(1)], html), resolved
+
+
+# ─────────────────────────────────────────────────────────
+# RENDER — the canonical surface renderer, imported, never reimplemented
+# ─────────────────────────────────────────────────────────
+def load_surface_renderer():
+    if not RENDER_PATH.exists():
+        raise SystemExit(f"\n❌ BRAND SURFACE RENDERER MISSING — {RENDER_PATH}\n")
+    spec = importlib.util.spec_from_file_location("bz_internal_print_a4_render", RENDER_PATH)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"\n❌ CANNOT LOAD RENDERER — {RENDER_PATH}\n")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.render
+
+
+# ─────────────────────────────────────────────────────────
+# VERIFY THE ARTIFACT — read back what was actually written
+# ─────────────────────────────────────────────────────────
+def _pdf_font_names(reader) -> set[str]:
+    """Every font name in the document, whichever field carries it.
+
+    Three fields, not one, and that is not belt-and-braces. The first version
+    of this read only ``/BaseFont`` — and Chromium embeds webfonts as **Type 3**
+    fonts, which have no ``/BaseFont`` at all: the name lives in the descriptor.
+    So the check reported '(none)' on a PDF carrying twenty Montserrat subsets,
+    i.e. it was about to fail the correct artifact while passing the Helvetica
+    one, whose CID fonts DO have ``/BaseFont``. A guard that reads one field
+    measures the shapes it happens to know.
+    """
+    fonts: set[str] = set()
+    for page in reader.pages:
+        resources = page.get("/Resources")
+        if resources is None:
+            continue
+        font_dict = resources.get_object().get("/Font")
+        if font_dict is None:
+            continue
+        for ref in font_dict.get_object().values():
+            font = ref.get_object()
+            names = [font.get("/BaseFont"), font.get("/Name")]
+            descriptor = font.get("/FontDescriptor")
+            if descriptor is not None:
+                desc = descriptor.get_object()
+                names += [desc.get("/FontName"), desc.get("/FontFamily")]
+            for name in names:
+                if name:
+                    # Subsets are prefixed: '/ABCDEF+Montserrat-Regular'.
+                    fonts.add(str(name).lstrip("/").split("+")[-1])
+    return fonts
+
+
+AMOUNT_TOKEN_RE = re.compile(r"\d{1,3}(?:\.\d{3})+")
+
+
+def verify(pdf_path: Path, expected_pages: int, resolved: dict[str, str] | None = None) -> None:
+    """Judge the FILE, not the intention that produced it.
+
+    Three things this catches that the render itself reports as success:
+      - Montserrat did not load (offline / CDN blocked) and Chromium fell back
+        to a system font — the exact silent degradation of scar W99;
+      - a placeholder survived and shipped as literal text;
+      - a phone number other than the public CTA line is in the document.
+    """
+    from pypdf import PdfReader
+
+    reader = PdfReader(str(pdf_path))
+    pages = len(reader.pages)
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    problems: list[str] = []
+
+    if pages != expected_pages:
+        problems.append(
+            f"page count is {pages}, expected {expected_pages} — content is "
+            f"overflowing its page or a section vanished; open the PDF and look"
+        )
+
+    fonts = _pdf_font_names(reader)
+    if not any("montserrat" in f.lower() for f in fonts):
+        problems.append(
+            f"brand font NOT embedded — fonts in the PDF: {sorted(fonts) or '(none)'}. "
+            f"The surface CSS loads Montserrat from the Google Fonts CDN; without "
+            f"network Chromium substitutes a system font and says nothing."
+        )
+    # Presence of Montserrat alone is too weak: one styled heading would satisfy it
+    # while the body fell back. So the absence of any substitute family is asserted
+    # too — the brochure declares no font outside the brand stack, so a Helvetica or
+    # Times anywhere in it means something resolved to a substitute.
+    substitutes = sorted(
+        f for f in fonts
+        if any(bad in f.lower() for bad in ("helvetica", "times", "arial", "courier"))
     )
+    if substitutes:
+        problems.append(
+            f"substitute fonts present — {substitutes}. Nothing in this document asks "
+            f"for them, so a face the brand stack should have covered fell back."
+        )
 
+    survivors = sorted(set(PLACEHOLDER_RE.findall(text)))
+    if survivors:
+        problems.append(f"placeholders shipped as literal text: {survivors}")
 
-# ─────────────────────────────────────────────────────────
-# PAGE CONTENT BUILDERS
-# ─────────────────────────────────────────────────────────
-def page_cover() -> list:
-    story = []
+    # Substituting a price into the HTML is not the same as PRINTING it: a table
+    # can be clipped by its page, hidden by a layout change, or dropped by a
+    # renderer, and every check above would still pass. So each amount the price
+    # list produced has to be findable in the text the reader actually gets.
+    # Compared on the bare digit groups, not the composed string, because the
+    # renderer wraps "Rp 1.800.000 – Rp 2.000.000" across two lines.
+    if resolved:
+        wanted = {t for value in resolved.values() for t in AMOUNT_TOKEN_RE.findall(value)}
+        printed = set(AMOUNT_TOKEN_RE.findall(text))
+        missing = sorted(wanted - printed)
+        if missing:
+            problems.append(
+                f"{len(missing)} resolved amount(s) never reach the page: {missing[:8]} "
+                f"— substituted into the HTML but absent from the rendered text"
+            )
 
-    # ── Logo (top-right zone, drawn on canvas in bg — here we place it via spacer + inline)
-    story.append(Spacer(1, 15*mm))
+    # Every phone-shaped string in the document must be the CTA line. Enumerating
+    # what IS there beats checking that a known-bad list is absent: the number
+    # that bites is the one nobody thought to put on the list.
+    digits_found = {
+        re.sub(r"\D", "", m)
+        for m in re.findall(r"\+?\d[\d\s().-]{8,}\d", text)
+    }
+    phones = {d for d in digits_found if d.startswith("62") and 10 <= len(d) <= 15}
+    stray = sorted(phones - {CTA_PHONE_DIGITS})
+    if stray:
+        problems.append(f"phone numbers other than the public CTA line: {stray}")
+    if CTA_PHONE_DIGITS not in phones:
+        problems.append("the public CTA number is not in the document at all")
 
-    # ── Big headline
-    story.append(Paragraph("Your Bali.", ST["H1"]))
-    story.append(Paragraph("Done Right.", ST["H1"]))
-    story.append(Spacer(1, 4*mm))
-    story.append(HRule(50, TERRA, 2))
-    story.append(Spacer(1, 4*mm))
-    story.append(Paragraph(
-        "Expert immigration, company setup & tax advisory\n"
-        "for expats and investors in Bali, Indonesia.",
-        ST["TAGLINE"]))
+    if problems:
+        raise SystemExit(
+            "\n❌ BROCHURE REJECTED — written, then read back and found wrong:\n"
+            + "".join(f"   • {p}\n" for p in problems)
+        )
 
-    story.append(Spacer(1, 20*mm))
-
-    # ── Stats row
-    stats = [
-        StatBox("10,000+", "Clients served",  TERRA, 42),
-        StatBox("22",      "Years in Bali",    GOLD,  42),
-        StatBox("40+",     "Nationalities",    INDIGO, 42),
-        StatBox("99%",     "Compliance rate",  GREEN,  42),
-    ]
-    gap = 4*mm
-    tbl = Table(
-        [stats],
-        colWidths=[42*mm, 42*mm, 42*mm, 42*mm],
-        style=TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), gap),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ]),
+    brand = sorted({f for f in fonts if "montserrat" in f.lower()})
+    print(
+        f"  ✓ {pages} pages · {len(brand)} Montserrat faces embedded "
+        f"· CTA number present, no stray numbers"
     )
-    story.append(tbl)
-
-    story.append(Spacer(1, 20*mm))
-
-    # ── Tagline block
-    story.append(Paragraph("AI-powered intelligence.", ST["ACCENT"]))
-    story.append(Paragraph("Human expertise.", ST["ACCENT"]))
-    story.append(Paragraph("Local authority.", ST["ACCENT"]))
-
-    story.append(Spacer(1, 20*mm))
-
-    # ── Service pills
-    pills = ["Immigration", "Company Setup", "Tax & Accounting"]
-    pill_str = "  ·  ".join(f'<font color="{TERRA.hexval()}">{p}</font>' for p in pills)
-    story.append(Paragraph(pill_str, ST["SMALL"]))
-
-    # Logo positioned in top-right via onPage canvas
-    story.append(NextPageTemplate("who"))
-    story.append(PageBreak())
-    return story
-
-
-def page_who() -> list:
-    story = []
-    story.append(SectionHeader("About Bali Zero", "Who We Are", TERRA))
-    story.append(Spacer(1, 6*mm))
-
-    intro = (
-        "Bali Zero is Bali's leading immigration and business services firm, "
-        "serving expats and investors from over 40 countries. We are the "
-        "operational branch of Bayu Santero Group — founded in 2003 — with over "
-        "22 years of uninterrupted presence in Bali. Bali Zero was established in "
-        "2020 as the dedicated expat services division. "
-        "We combine deep local expertise with AI-powered intelligence to deliver "
-        "accurate, fast, and reliable guidance — so you can build your life in Bali "
-        "with full confidence and zero uncertainty."
-    )
-    story.append(Paragraph(intro, ST["BODY"]))
-    story.append(Spacer(1, 6*mm))
-
-    # Why us: 3 pillars
-    pillars = [
-        ("Local Authority", "22+ years in Bali. We know every immigration officer, every notary, every rule change — often before it's announced."),
-        ("AI-Verified Accuracy", "Our AI cross-references every regulation, flags inconsistencies and ensures every answer is grounded in current Indonesian law. AI verifies. Humans decide."),
-        ("End-to-End Service", "From first visa to company setup, KBLI compliance, tax filing and property acquisition — one team, one lasting relationship."),
-    ]
-    for title, desc in pillars:
-        story.append(KeepTogether([
-            Paragraph(f'<font color="{TERRA.hexval()}">{title}</font>', ST["H3"]),
-            Spacer(1, 1.5*mm),
-            Paragraph(desc, ST["BODY"]),
-            Spacer(1, 4*mm),
-        ]))
-
-    story.append(Spacer(1, 3*mm))
-    story.append(HRule(40, TERRA, 1))
-    story.append(Spacer(1, 4*mm))
-
-    # Anti-fraud note
-    story.append(Paragraph(
-        "Transparency guarantee: We never ask for personal document originals. "
-        "All work is traceable in your client portal. Our team identities are verifiable.",
-        ST["SMALL"]))
-
-    story.append(NextPageTemplate("imm"))
-    story.append(PageBreak())
-    return story
-
-
-def page_immigration() -> list:
-    story = []
-    story.append(SectionHeader("Immigration Services", "Visas & Permits", INDIGO))
-    story.append(Spacer(1, 4*mm))
-
-    story.append(Paragraph(
-        "From a 60-day tourist visa to a lifetime KITAP — we handle every immigration "
-        "pathway in Indonesia. All applications are filed digitally via the Molina portal "
-        "by our licensed team.",
-        ST["BODY"]))
-    story.append(Spacer(1, 5*mm))
-
-    # Left column: visa categories + prices
-    # Right column: key notes
-
-    # Popular single-entry
-    left = []
-    left.append(Paragraph("Single-Entry Visas", ST["ACCENTI"]))
-    left.append(Spacer(1, 2*mm))
-
-    single_entries = [
-        ("C1 Tourism (60 days)",      get_price("single_entry_visas", "C1 Tourism")),
-        ("C2 Business (60 days)",     get_price("single_entry_visas", "C2 Business")),
-        ("C18 Work Trial (90 days)",  get_price("single_entry_visas", "C18 Work Trial")),
-        ("C22A&B Internship (180d)",  get_price("single_entry_visas", "C22A&B Internship (180 Days)")),
-    ]
-    for name, price in single_entries:
-        left.append(PriceRow(name, price, INDIGO))
-    left.append(Spacer(1, 4*mm))
-
-    left.append(Paragraph("Multiple-Entry Visas", ST["ACCENTI"]))
-    left.append(Spacer(1, 2*mm))
-    left.append(PriceRow("D12 Business (1 year)",  get_price("multiple_entry_visas", "D12 Business Investigation (1 Year)"), INDIGO))
-    left.append(PriceRow("D12 Business (2 years)", get_price("multiple_entry_visas", "D12 Business Investigation (2 Years)"), INDIGO))
-    left.append(Spacer(1, 4*mm))
-
-    left.append(Paragraph("KITAS / Stay Permits", ST["ACCENTI"]))
-    left.append(Spacer(1, 2*mm))
-    kitas_rows = [
-        ("E33G Remote Worker (Offshore)", get_price("kitas_permits", "E33G Remote Worker (Offshore)")),
-        ("E33G Remote Worker (Altus)",    get_price("kitas_permits", "E33G Remote Worker (Altus/Onshore)")),
-        ("Freelance E23 (Offshore)",      get_price("kitas_permits", "Freelance E23 (Offshore)")),
-        ("Investor KITAS 2Y (Offshore)",  get_price("kitas_permits", "Investor KITAS 2 Years (Offshore)")),
-        ("Retirement KITAS (Offshore)",   get_price("kitas_permits", "Retirement (Offshore)")),
-        ("Spouse / Dependent 1Y",         get_price("kitas_permits", "Spouse 1 Year (Offshore)")),
-    ]
-    for name, price in kitas_rows:
-        left.append(PriceRow(name, price, INDIGO))
-
-    # Right column: key info
-    right = []
-    right.append(Paragraph("Offshore vs Altus", ST["ACCENTI"]))
-    right.append(Spacer(1, 1.5*mm))
-    right.append(Paragraph(
-        "<b>Offshore:</b> Applied from outside Indonesia (recommended for new applicants).\n\n"
-        "<b>Altus/Onshore:</b> Applied while in Bali — faster, no flight required.",
-        ST["SMALL"]))
-    right.append(Spacer(1, 4*mm))
-
-    right.append(Paragraph("Urgent Processing", ST["ACCENTI"]))
-    right.append(Spacer(1, 1.5*mm))
-    right.append(PriceRow("Same day (1 day)", get_price("urgent_processing", "Urgent 1 Hari"), TERRA))
-    right.append(PriceRow("2-day service",    get_price("urgent_processing", "Urgent 2 Hari"), GOLD))
-    right.append(PriceRow("3-day service",    get_price("urgent_processing", "Urgent 3 Hari"), TEXT_DIM))
-    right.append(Spacer(1, 4*mm))
-
-    right.append(Paragraph("KITAP (Permanent)", ST["ACCENTI"]))
-    right.append(Spacer(1, 1.5*mm))
-    right.append(PriceRow("Investor KITAP + MERP", get_price("kitap_permits", "Investor KITAP + MERP"), GOLD))
-    right.append(PriceRow("Retirement KITAP + MERP", get_price("kitap_permits", "Retirement KITAP + MERP"), GOLD))
-    right.append(Spacer(1, 4*mm))
-
-    story.append(two_col(left, right, col_ratio=0.56))
-    story.append(NextPageTemplate("biz"))
-    story.append(PageBreak())
-    return story
-
-
-def page_business() -> list:
-    story = []
-    story.append(SectionHeader("Business Services", "Company Setup", TERRA))
-    story.append(Spacer(1, 4*mm))
-
-    story.append(Paragraph(
-        "Setting up a PT PMA (foreign-owned company) or PT PMDN in Bali requires "
-        "navigating OSS, KBLI codes, notarial deeds, and LKPM reporting. "
-        "We handle every step — from entity selection to BKPM registration and "
-        "the June 2026 KBLI 2025 migration.",
-        ST["BODY"]))
-    story.append(Spacer(1, 5*mm))
-
-    # Prices
-    left = []
-    left.append(Paragraph("Company Formation", ST["ACCENT"]))
-    left.append(Spacer(1, 2*mm))
-    left.append(PriceRow("New PMA Company (full package)", get_price("company_services", "New Company (PT PMA)"), TERRA, "Includes OSS, BKPM, NIB, notarial deed"))
-    left.append(PriceRow("Virtual Office (1 year)",        get_price("company_services", "Virtual Office"), TERRA))
-    left.append(Spacer(1, 4*mm))
-
-    left.append(Paragraph("Work Permits (Foreign Employees)", ST["ACCENT"]))
-    left.append(Spacer(1, 2*mm))
-    working_rows = [
-        ("Working KITAS (Offshore)", get_price("kitas_permits", "Working KITAS (Offshore)")),
-        ("Working KITAS (Altus)",    get_price("kitas_permits", "Working KITAS (Altus/Onshore)")),
-        ("Working KITAS (Extend)",   get_price("kitas_permits", "Working KITAS (Extend)")),
-    ]
-    for name, price in working_rows:
-        left.append(PriceRow(name, price, TERRA))
-    left.append(Spacer(1, 4*mm))
-
-    left.append(Paragraph("Compliance & Admin", ST["ACCENT"]))
-    left.append(Spacer(1, 2*mm))
-    admin_rows = [
-        ("Cancel Wajib Lapor",                get_price("other_process", "Cancel Wajib Lapor")),
-        ("Cancel RPTKA only",                  get_price("other_process", "Cancel RPTKA")),
-        ("Reset Molina",                       get_price("other_process", "Reset Molina")),
-        ("EPO (Exit Permit Only)",             get_price("other_process", "EPO (Exit Permit Only)")),
-        ("ERP (Exit Re-entry Permit)",         get_price("other_process", "ERP (Exit Re-entry Permit)")),
-    ]
-    for name, price in admin_rows:
-        left.append(PriceRow(name, price, TERRA))
-
-    right = []
-    right.append(Paragraph("KBLI 2025 Deadline", ST["ACCENT"]))
-    right.append(Spacer(1, 1.5*mm))
-    right.append(Paragraph(
-        "All businesses must migrate from KBLI 2020 to KBLI 2025 codes "
-        "by <b>18 June 2026</b>. Non-compliant NIBs risk suspension.\n\n"
-        "Use our KBLI Navigator at <b>balizero.com/kbli</b> to check "
-        "your codes and PMA status instantly.",
-        ST["SMALL"]))
-    right.append(Spacer(1, 4*mm))
-
-    right.append(Paragraph("What's Included", ST["ACCENT"]))
-    right.append(Spacer(1, 1.5*mm))
-    included = [
-        "OSS & BKPM registration",
-        "KBLI 2025 selection & PMA check",
-        "Notarial deed coordination",
-        "NIB issuance",
-        "LKPM reporting setup",
-        "Virtual office address",
-    ]
-    for item in included:
-        right.append(Paragraph(f'<font color="{TERRA.hexval()}">•</font>  {item}', ST["SMALL"]))
-        right.append(Spacer(1, 1.5*mm))
-
-    story.append(two_col(left, right, col_ratio=0.58))
-    story.append(NextPageTemplate("tax"))
-    story.append(PageBreak())
-    return story
-
-
-def page_tax() -> list:
-    story = []
-    story.append(SectionHeader("Tax & Accounting", "Financial Compliance", GOLD))
-    story.append(Spacer(1, 4*mm))
-
-    story.append(Paragraph(
-        "Indonesian tax law is complex — and the wrong structure can cost more than "
-        "the tax itself. Our certified advisors ensure your PT PMA, KITAS, and personal "
-        "obligations are met, with zero surprises.",
-        ST["BODY"]))
-    story.append(Spacer(1, 5*mm))
-
-    left = []
-    left.append(Paragraph("Personal Tax", ST["ACCENTG"]))
-    left.append(Spacer(1, 2*mm))
-    left.append(Paragraph(
-        "If you hold a KITAS (working, investor, freelance), you are a tax resident "
-        "and must file an annual SPT. We handle registration, filing, and NPWP issuance.",
-        ST["SMALL"]))
-    left.append(Spacer(1, 4*mm))
-
-    left.append(Paragraph("Corporate Tax", ST["ACCENTG"]))
-    left.append(Spacer(1, 2*mm))
-    left.append(Paragraph(
-        "PT PMA companies must file monthly VAT (PPN), income tax (PPh 21/25), "
-        "and annual reports. We act as your local tax representative.",
-        ST["SMALL"]))
-    left.append(Spacer(1, 4*mm))
-
-    left.append(Paragraph("Document Services", ST["ACCENTG"]))
-    left.append(Spacer(1, 2*mm))
-    doc_rows = [
-        ("SKTT (Resident Card)",        get_price("other_process", "SKTT")),
-        ("SKCK (Police Clearance)",     get_price("other_process", "SKCK")),
-        ("Domicile Letter",             get_price("other_process", "Domicilie Letter")),
-        ("Passport 5 years",            get_price("other_process", "Passport 5 Years")),
-        ("Passport 10 years",           get_price("other_process", "Passport 10 Years")),
-        ("Mutation (passport/address)", get_price("other_process", "Mutation Passport")),
-    ]
-    for name, price in doc_rows:
-        left.append(PriceRow(name, price, GOLD))
-
-    right = []
-    right.append(Paragraph("Key Tax Facts", ST["ACCENTG"]))
-    right.append(Spacer(1, 1.5*mm))
-    facts = [
-        ("Personal income tax", "5%–35% progressive"),
-        ("Corporate income tax", "22% flat"),
-        ("VAT (PPN)",            "12% (2025)"),
-        ("NPWP requirement",     "Mandatory for KITAS holders"),
-        ("Filing deadline",      "Annual SPT: 31 March"),
-        ("DGT jurisdiction",     "Worldwide income (tax residents)"),
-    ]
-    for k, v in facts:
-        right.append(Paragraph(f'<font color="{GOLD.hexval()}">{k}:</font>  {v}', ST["SMALL"]))
-        right.append(Spacer(1, 2*mm))
-
-    right.append(Spacer(1, 4*mm))
-    right.append(Paragraph("Property Documents", ST["ACCENTG"]))
-    right.append(Spacer(1, 1.5*mm))
-    right.append(Paragraph(
-        "Foreign nationals cannot hold Hak Milik (freehold). "
-        "We structure Hak Pakai (Right of Use) and Hak Sewa (Leasehold) "
-        "arrangements that are legally compliant under PP 18/2021.",
-        ST["SMALL"]))
-
-    story.append(two_col(left, right, col_ratio=0.55))
-    story.append(NextPageTemplate("how"))
-    story.append(PageBreak())
-    return story
-
-
-def page_how() -> list:
-    story = []
-    story.append(SectionHeader("Our Process", "How We Work", GREEN))
-    story.append(Spacer(1, 4*mm))
-
-    story.append(Paragraph(
-        "Every client gets a dedicated advisor, a private portal to track their case, "
-        "and access to our AI assistant Zantara — available 24/7 for questions, "
-        "document checklists, and status updates.",
-        ST["BODY"]))
-    story.append(Spacer(1, 5*mm))
-
-    steps = [
-        (1, "Free Discovery Call",    "We map your situation: visa needs, business goals, tax obligations."),
-        (2, "Proposal & Onboarding",  "You receive a fixed-price proposal. No surprises. No hidden fees."),
-        (3, "Dedicated Advisor",      "Your advisor coordinates everything. You have one point of contact."),
-        (4, "AI-Backed Preparation",  "Zantara cross-checks all documents before submission. AI verifies. Humans decide."),
-        (5, "Filing & Tracking",      "We file with the relevant authority. You track progress in real-time."),
-        (6, "Approval & Aftercare",   "We deliver your permit/certificate. Annual reminders keep you compliant."),
-    ]
-    for n, title, desc in steps:
-        story.append(ProcessStep(n, title, desc, GREEN))
-        story.append(Spacer(1, 1.5*mm))
-
-    story.append(Spacer(1, 4*mm))
-    story.append(HRule(40, GREEN, 1))
-    story.append(Spacer(1, 3*mm))
-
-    story.append(Paragraph(
-        "Your client portal at <b>my.balizero.com</b> gives you "
-        "real-time case status, document vault, and direct messaging with your advisor.",
-        ST["SMALL"]))
-
-    story.append(NextPageTemplate("contact"))
-    story.append(PageBreak())
-    return story
-
-
-def page_contact() -> list:
-    story = []
-    story.append(SectionHeader("Get In Touch", "Start Today", TERRA))
-    story.append(Spacer(1, 6*mm))
-
-    story.append(Paragraph(
-        "Ready to make Bali official? Our team is available Monday–Friday, "
-        "9am–6pm WITA. WhatsApp is the fastest way to reach us.",
-        ST["BODY"]))
-    story.append(Spacer(1, 6*mm))
-
-    contact_items = [
-        ("•",  "zantara@balizero.com"),
-        ("•",  "+62 821 3454 721  (WhatsApp)"),
-        ("•",  "balizero.com"),
-        ("•",  "Jl. Raya Anyar No. 2 Gg. 3, Kerobokan Kelod, Kuta Utara, Badung, Bali 80361"),
-        ("•",  "Mon–Fri  09:00–18:00 WITA"),
-        ("•",  "AI chat available 24/7 at zantara.balizero.com"),
-    ]
-    story.append(ContactCard(contact_items, TERRA))
-    story.append(Spacer(1, 8*mm))
-
-    # Second column: QR prompt + note
-    story.append(Paragraph("First consultation is always free.", ST["H3"]))
-    story.append(Spacer(1, 3*mm))
-    story.append(Paragraph(
-        "We'll map your situation, identify the right pathway, and give you "
-        "a fixed-price quote before you commit to anything.",
-        ST["BODY"]))
-    story.append(Spacer(1, 5*mm))
-
-    story.append(HRule(60, TERRA, 1.5))
-    story.append(Spacer(1, 4*mm))
-
-    story.append(Paragraph(
-        '"Most people arrive in Bali with a plan. Very few arrive with the right one. '
-        'After 22 years here, we know the difference — and we\'re the team '
-        'that makes sure yours holds up when it actually matters."',
-        ST["BODY"]))
-    story.append(Spacer(1, 3*mm))
-    story.append(Paragraph("— Bali Zero Founding Team", ST["LABEL"]))
-
-    return story
-
-
-# ─────────────────────────────────────────────────────────
-# COVER LOGO OVERLAY
-# ─────────────────────────────────────────────────────────
-def _cover_logo_overlay(canvas, doc):
-    """Draw logo on cover page (called as onPage)."""
-    _bg_cover(canvas, doc)
-    if LOGO_READER:
-        # Centred and large, as on the published brochure. It used to sit small
-        # in the top-right corner, where it read as clipped against the accent
-        # band rather than as the mark the cover is built around.
-        # SQUARE: balizero-logo-clean.png is 512x512. Every previous call here
-        # passed a wide-flat box (45x18, 28x11), which squashed a round mark to
-        # 40% of its height on every page of a client-facing brochure.
-        lw = lh = 74*mm
-        lx = (W - lw) / 2
-        ly = H - lh - 22*mm
-        canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
-
-
-def _content_logo_overlay(section_id: str):
-    """Return onPage callback that draws background + small logo for content pages."""
-    bg_fn = _make_content_bg(section_id)
-    def _fn(canvas, doc):
-        bg_fn(canvas, doc)
-        if LOGO_READER:
-            lw = lh = 13*mm  # square: the source PNG is 512x512 (see cover)
-            lx = W - lw - 10*mm
-            ly = H - lh - 7*mm
-            canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
-    return _fn
-
-
-# ─────────────────────────────────────────────────────────
-# DOCUMENT ASSEMBLY
-# ─────────────────────────────────────────────────────────
-# (margins are declared once, near the page size — see CONTENT_FRAME_W)
-
-def build_doc() -> None:
-    doc = BaseDocTemplate(
-        str(OUTPUT_PATH),
-        pagesize=A4,
-        leftMargin=MARGIN_LR,
-        rightMargin=MARGIN_LR,
-        topMargin=MARGIN_TOP_COVER,
-        bottomMargin=MARGIN_BOT_COVER,
-    )
-
-    # Frames
-    f_cover = Frame(MARGIN_LR, MARGIN_BOT_COVER, W - 2*MARGIN_LR, H - MARGIN_TOP_COVER - MARGIN_BOT_COVER, id="cover")
-    f_content = Frame(MARGIN_LR + CONTENT_FRAME_INSET, MARGIN_BOT, CONTENT_FRAME_W, H - MARGIN_TOP - MARGIN_BOT, id="content")
-
-    pages = [
-        PageTemplate(id="cover",   frames=[f_cover],   onPage=_cover_logo_overlay),
-        PageTemplate(id="who",     frames=[f_content],  onPage=_content_logo_overlay("who")),
-        PageTemplate(id="imm",     frames=[f_content],  onPage=_content_logo_overlay("imm")),
-        PageTemplate(id="biz",     frames=[f_content],  onPage=_content_logo_overlay("biz")),
-        PageTemplate(id="tax",     frames=[f_content],  onPage=_content_logo_overlay("tax")),
-        PageTemplate(id="how",     frames=[f_content],  onPage=_content_logo_overlay("how")),
-        PageTemplate(id="contact", frames=[f_content],  onPage=_content_logo_overlay("contact")),
-    ]
-    doc.addPageTemplates(pages)
-
-    story = []
-    story += page_cover()
-    story += page_who()
-    story += page_immigration()
-    story += page_business()
-    story += page_tax()
-    story += page_how()
-    story += page_contact()
-
-    doc.build(story)
 
 
 # ─────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────
+EXPECTED_PAGES = 9  # cover + 8
+
+
+def main() -> int:
+    if not TEMPLATE_PATH.exists():
+        raise SystemExit(f"\n❌ TEMPLATE MISSING — {TEMPLATE_PATH}\n")
+
+    pricing = load_pricing()
+    html, resolved = fill_template(TEMPLATE_PATH.read_text(encoding="utf-8"), pricing)
+
+    render = load_surface_renderer()
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    # The filled HTML has to sit NEXT TO the template: its stylesheet link is
+    # relative, and rendering from a temp dir elsewhere would resolve to nothing
+    # — which Chromium would render as an unstyled page without complaining.
+    tmp = tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", suffix=".html", dir=TEMPLATE_PATH.parent, delete=False
+    )
+    tmp_html = Path(tmp.name)
+    # Render BESIDE the served file and publish only after the checks pass. Writing
+    # straight to OUTPUT_PATH had two failure modes that both end with a client
+    # holding the wrong document: a render that returns without overwriting leaves
+    # verify() reading — and blessing — the PREVIOUS build, and a render that is
+    # then REJECTED leaves the rejected file sitting in the served path anyway.
+    staged_pdf = OUTPUT_PATH.with_suffix(".staged.pdf")
+    try:
+        tmp.write(html)
+        tmp.close()
+        staged_pdf.unlink(missing_ok=True)
+        render(tmp_html, staged_pdf)
+        if not staged_pdf.exists():
+            raise SystemExit(f"\n❌ RENDERER WROTE NOTHING — {staged_pdf}\n")
+        verify(staged_pdf, EXPECTED_PAGES, resolved)
+        staged_pdf.replace(OUTPUT_PATH)
+    finally:
+        tmp_html.unlink(missing_ok=True)
+        staged_pdf.unlink(missing_ok=True)
+    size_kb = OUTPUT_PATH.stat().st_size / 1024
+    print(f"\n✅ {OUTPUT_PATH.relative_to(REPO_ROOT)} ({size_kb:,.1f} KB)")
+    print("   Commit it — this file IS what clients receive.\n")
+    return 0
+
+
 if __name__ == "__main__":
-    print("🏝  Bali Zero Brochure Generator v3")
-    print(f"   Output: {OUTPUT_PATH}")
-    build_doc()
-    size_kb = OUTPUT_PATH.stat().st_size // 1024
-    print(f"✅ Brochure generated: {OUTPUT_PATH}")
-    print(f"   Size: {size_kb} KB | Pages: 7")
-    print(f"   Pricing source: {PRICING_PATH.name}")
-    print(f"   Logo: {'embedded (RGBA)' if LOGO_READER else 'missing'}")
+    sys.exit(main())
