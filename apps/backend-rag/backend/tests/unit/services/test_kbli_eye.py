@@ -176,17 +176,25 @@ def test_cap_is_always_a_percentage_or_a_declared_gap(records: list[dict]) -> No
 
 
 def test_umkm_reserved_is_tri_state_and_rare(records: list[dict]) -> None:
-    """2 reserved / 1468 open / 89 undetermined — NOT 71 blanket True.
+    """41 reserved / 1429 open / 89 undetermined — NOT 71 blanket True.
 
     The split was 1488/69 until 2026-08-02, when the Perpres 49/2021 Lampiran III
     cure moved 20 codes out of TERBUKA (arms and ammunition, military vehicles,
     commercial air transport, the ferry family, couriers, umrah travel). They
     became `None` — undetermined — which is the honest verdict: leaving TERBUKA
     says nothing at all about a K-UMKM reservation.
+
+    2026-08-06: the Lampiran II cure NAMED 39 more codes as allocated, so True
+    goes 2 -> 41 and False 1468 -> 1429. `None` returning to 89 rather than
+    growing is the check that mattered: the first attempt wrote the marker as
+    `Dialokasikan` while `UMKM_ALLOCATION_MARKER` is `DIALOKASIKAN`, so all 39
+    read as UNDETERMINED — the fact was known and the data failed to say it.
+    Two writers of one vocabulary is how that happens; the reader's spelling is
+    the contract.
     """
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
-    assert verdicts.count(True) == 2
-    assert verdicts.count(False) == 1468
+    assert verdicts.count(True) == 41
+    assert verdicts.count(False) == 1429
     assert verdicts.count(None) == 89
     # The counts above are population pins and will move again with the data.
     # This one is the invariant underneath them, and it must not: `False` means
@@ -223,21 +231,45 @@ def test_the_cure_only_ever_shrinks_the_rejected_bucket(records: list[dict]) -> 
     new_rejected = {
         r["kode_kbli_2025"] for r in records if KBLIEye._foreign_cap(r)[0] == 0
     }
-    assert len(old_rejected) == 91
-    assert len(new_rejected) == 64
+    # 2026-08-06: the Perpres 49/2021 Lampiran II cure moved 39 codes out of
+    # TERBUKA at a 0% cap (activities the annex allocates to Koperasi/UMKM), so
+    # both buckets grew by the same 39: 91 -> 130 and 64 -> 103. The set that
+    # stops being wrongly rejected is untouched at 27, which is the point — the
+    # cure added restrictions the instrument states, it did not un-reject
+    # anything, and it did not reject anything the OLD rule would have passed.
+    assert len(old_rejected) == 130
+    assert len(new_rejected) == 103
     assert len(old_rejected - new_rejected) == 27
     # The counts above move with the data; THIS is the property that must not.
     assert new_rejected <= old_rejected, "the cure must never REJECT something new"
 
 
-def test_missing_cap_falls_back_to_status_not_to_zero(records: list[dict]) -> None:
-    """01122 (TERBUKA) carries no cap field — it must not read as 0%."""
-    no_cap = [r for r in records if "pma_max_asing" not in r]
-    assert len(no_cap) == 1
-    cap, basis, verified = KBLIEye._foreign_cap(no_cap[0])
+def test_missing_cap_falls_back_to_status_not_to_zero() -> None:
+    """A TERBUKA record with no cap field must read as 100%, never as 0%.
+
+    This used to run against `01122`, the one live record missing the field.
+    The 2026-08-06 Lampiran II cure wrote a cap onto it (Pertanian Padi Inbrida
+    is allocated to Koperasi/UMKM), so the catalogue now has **zero** such
+    records — and a test whose whole subject is "the field is absent" cannot be
+    pinned to a population a cure is free to empty. It is the FALLBACK RULE that
+    must hold, not one code's luck, so the record is now constructed here.
+
+    The live-population check moved to its own test below, which asserts the
+    count without depending on it being non-zero.
+    """
+    cap, basis, verified = KBLIEye._foreign_cap({"kode_kbli_2025": "00000", "pma_status": "TERBUKA"})
     assert cap == 100
     assert verified is False, "a status-derived figure is not an adjudicated one"
     assert basis is not None
+
+
+def test_every_live_record_now_carries_an_explicit_cap(records: list[dict]) -> None:
+    """Innocence for the cure above: it filled the last gap rather than leaving
+    a mixed population where some codes answer from a field and others from a
+    fallback. If a future record arrives without the field this goes red, which
+    is the signal to check that the fallback still reaches it."""
+    no_cap = [r["kode_kbli_2025"] for r in records if "pma_max_asing" not in r]
+    assert no_cap == [], f"records missing pma_max_asing: {no_cap[:5]}"
 
 
 # --------------------------------------------------------------------------
