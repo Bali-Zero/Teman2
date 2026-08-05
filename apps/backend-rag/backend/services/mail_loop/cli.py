@@ -6,7 +6,8 @@ Exit codes are the contract with the wrapper, because the wrapper is what turns
 a bad run into an alert and a shell only ever sees a number:
 
     0  clean run
-    1  ran, but degraded (a folder is missing, drafting failed, nothing routed)
+    1  ran, but degraded (a folder is missing, a message errored, drafting
+       failed, or a message reached no recorded ending — see RunSummary.degraded)
     2  could not run at all (no DB, no Zoho token, no such user)
 
 There is no exit code that means "probably fine". A run that half-worked must be

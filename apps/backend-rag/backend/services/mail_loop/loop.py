@@ -149,10 +149,15 @@ class RunSummary:
         classifier, or its folder was missing), or handling it raised
         (`message_errors`). Nothing else is a legal ending.
 
-        "Exactly one" is enforced structurally, not by care: those three
-        counters are incremented in a single `if/elif` in `_route_and_draft`,
-        driven by what `_handle_one` returns. `_handle_one` itself never
-        touches them.
+        "Exactly one" is enforced structurally, not by care: all three counters
+        are incremented ONLY inside `_route_and_draft`, never in `_handle_one`.
+        `routed` and `left_in_inbox` come from one `if/elif` driven by what
+        `_handle_one` returns; `message_errors` has two sites (a message with
+        no id, and the per-message `except`) and each is followed immediately
+        by `continue`, so no message can reach the `if/elif` after one of them.
+        The property is "one increment per message", which is not the same as
+        "one increment site per counter" — an earlier version of this docstring
+        claimed the latter and it was never true.
 
         That was not true when this property was written, and adversarial
         review measured it: `routed` was incremented inside `_handle_one`
@@ -200,7 +205,7 @@ class RunSummary:
 
         A first version of it could also read NEGATIVE, which is worse than
         dead: see `unaccounted`. The cure was not a bigger check but a smaller
-        surface — one increment site per counter, in the caller.
+        surface — every increment moved into the caller, one per message.
         """
         if self.errors or self.missing_folders:
             return True
@@ -528,11 +533,10 @@ class MailLoop:
         """Decide what happens to one message. RAISING is the third ending.
 
         This function does not touch `routed`, `left_in_inbox` or
-        `message_errors` — its caller does, in one place, from the value
-        returned here. That separation is the whole point: the counters that
-        the conservation law subtracts must have exactly one increment site
-        each, or the law can be fed two endings for one message and read
-        balanced.
+        `message_errors` — its caller does, from the value returned here. That
+        separation is the whole point: the counters the conservation law
+        subtracts must be incremented at most once PER MESSAGE, or the law can
+        be fed two endings for one message and read balanced.
         """
         # Read the body without disturbing the mailbox.
         #

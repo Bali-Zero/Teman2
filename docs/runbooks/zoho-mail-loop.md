@@ -723,11 +723,18 @@ worth a test, and it was unreachable without a database.
 - The law says a message reached _an_ ending, never that it was the _right_
   one. Routing a tax question into `_Visa` is accounted for and clean; that is
   §10's problem, not this one's.
-- `unaccounted` can no longer go negative _by construction_ — one increment
-  site per counter — but nothing mechanically forbids a future edit from adding
-  a second site. What would catch it is the same corpus: the post-move-crash
-  test asserts `message_errors == 0` on a routed message, and the net-out test
-  asserts a run carrying one defect of each sign reads `1`, not `0`.
+- `unaccounted` can no longer go negative _by construction_, but the
+  construction is **one increment per message**, not "one increment site per
+  counter" — `message_errors` has two sites (a message with no id, and the
+  per-message `except`), each followed immediately by `continue` so the
+  `if/elif` below is unreachable after either. An earlier draft of this section
+  and of the docstrings claimed the stronger property; it was never true, and
+  round-2 review caught it in the very commit whose message said the
+  overclaiming docstrings had been corrected. Nothing mechanically forbids a
+  future edit from adding an increment that is not followed by `continue`; what
+  would catch it is the same corpus — the post-move-crash test asserts
+  `message_errors == 0` on a routed message, and the net-out test asserts a run
+  carrying one defect of each sign reads `1`, not `0`.
 - The wrapper reads only the exit code, so `unaccounted` reaches a human
   through the log line and the JSON, not through a distinct alert. A run
   degraded _only_ by the law raises the same P0 as any other.
