@@ -327,17 +327,18 @@ def _bg_cover(canvas, doc):
     # Dark base
     canvas.setFillColor(HexColor("#0a0a0c"))
     canvas.rect(0, 0, W, H, fill=1, stroke=0)
-    # Warm gradient panel left ~40%
-    canvas.setFillColor(HexColor("#1a100a"))
-    canvas.rect(0, 0, W * 0.42, H, fill=1, stroke=0)
-    # Terracotta vertical bar
-    canvas.setFillColor(TERRA)
-    canvas.rect(W * 0.42 - 3, 0, 3, H, fill=1, stroke=0)
-    # Decorative dots grid (subtle)
-    canvas.setFillColor(Color(0.83, 0.52, 0.35, 0.08))
+    # NOTE (2026-08-05): the cover used to paint a warm panel over the left 42%
+    # with a terracotta rule down its edge. The cover CONTENT is laid out full
+    # width, so that rule ran straight through the subtitle and the stats row —
+    # a headline slashed by a vertical bar, on the first page a client sees.
+    # Full-bleed dark instead, which is also what the published brochure did.
+    canvas.setFillColor(HexColor("#120b07"))
+    canvas.rect(0, 0, W, H, fill=1, stroke=0)
+    # Decorative dots grid (subtle), now full width so it reads as texture
+    canvas.setFillColor(Color(0.83, 0.52, 0.35, 0.06))
     dot_size = 2
     for row in range(0, int(H / 18) + 1):
-        for col in range(0, int(W * 0.42 / 18) + 1):
+        for col in range(0, int(W / 18) + 1):
             canvas.circle(col * 18 + 9, row * 18 + 9, dot_size, fill=1, stroke=0)
     # Top accent band
     canvas.setFillColor(TERRA)
@@ -1018,10 +1019,13 @@ def _cover_logo_overlay(canvas, doc):
     """Draw logo on cover page (called as onPage)."""
     _bg_cover(canvas, doc)
     if LOGO_READER:
-        lw = 45*mm
-        lh = 18*mm
-        lx = W - lw - 12*mm
-        ly = H - lh - 12*mm
+        # Centred and large, as on the published brochure. It used to sit small
+        # in the top-right corner, where it read as clipped against the accent
+        # band rather than as the mark the cover is built around.
+        lw = 78*mm
+        lh = 31*mm
+        lx = (W - lw) / 2
+        ly = H - lh - 26*mm
         canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
 
 
@@ -1043,7 +1047,7 @@ def _content_logo_overlay(section_id: str):
 # DOCUMENT ASSEMBLY
 # ─────────────────────────────────────────────────────────
 MARGIN_LR = 15*mm
-MARGIN_TOP_COVER = 20*mm
+MARGIN_TOP_COVER = 66*mm  # clears the centred cover logo (26mm–57mm from top)
 MARGIN_BOT_COVER = 18*mm
 MARGIN_TOP = 18*mm
 MARGIN_BOT = 20*mm
