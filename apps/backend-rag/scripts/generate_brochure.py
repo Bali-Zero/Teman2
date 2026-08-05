@@ -1022,10 +1022,12 @@ def _cover_logo_overlay(canvas, doc):
         # Centred and large, as on the published brochure. It used to sit small
         # in the top-right corner, where it read as clipped against the accent
         # band rather than as the mark the cover is built around.
-        lw = 78*mm
-        lh = 31*mm
+        # SQUARE: balizero-logo-clean.png is 512x512. Every previous call here
+        # passed a wide-flat box (45x18, 28x11), which squashed a round mark to
+        # 40% of its height on every page of a client-facing brochure.
+        lw = lh = 74*mm
         lx = (W - lw) / 2
-        ly = H - lh - 26*mm
+        ly = H - lh - 22*mm
         canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
 
 
@@ -1035,10 +1037,9 @@ def _content_logo_overlay(section_id: str):
     def _fn(canvas, doc):
         bg_fn(canvas, doc)
         if LOGO_READER:
-            lw = 28*mm
-            lh = 11*mm
+            lw = lh = 13*mm  # square: the source PNG is 512x512 (see cover)
             lx = W - lw - 10*mm
-            ly = H - lh - 9*mm
+            ly = H - lh - 7*mm
             canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
     return _fn
 
@@ -1047,7 +1048,7 @@ def _content_logo_overlay(section_id: str):
 # DOCUMENT ASSEMBLY
 # ─────────────────────────────────────────────────────────
 MARGIN_LR = 15*mm
-MARGIN_TOP_COVER = 66*mm  # clears the centred cover logo (26mm–57mm from top)
+MARGIN_TOP_COVER = 104*mm  # clears the centred square cover logo (22mm–96mm from top)
 MARGIN_BOT_COVER = 18*mm
 MARGIN_TOP = 18*mm
 MARGIN_BOT = 20*mm
