@@ -339,6 +339,17 @@ PRINTED IT LIKE A COMPLETE INSTRUCTION.** #3637 merged (`a532487e`), deployed an
     but end on `Standar` and must be copied verbatim. Verify there, not on a page.
   - Labelled, never trimmed and never replaced: trimming to `"NIB"` states a weaker licence than the
     law requires, replacing it invents the ending, dropping it hides a licence the business needs.
+  - **✅ MERGED, DEPLOYED AND PROVEN LIVE 2026-08-05.** #3642 merged as `0f6f3e67f3`; the frontend
+    does not go live unattended (it lands `STAGED`), so `scripts/vercel_prod_deploy.py` built it and,
+    after eight probes still showed the old build at terminal READY, promoted it — HTTP 201, and
+    `balizero.com/api/health` now reports `commit: 0f6f3e67f3…`, **which is #3642's own merge commit**.
+    Proof of BEHAVIOUR, not just of shipping: the `kbli-licence-summary.ts` read out of that exact
+    deployed commit, run against the exact `licenses[].type` list `inspect_kbli 62110` returned in
+    the same turn, produces
+    `… NIB dan Sertifikat Standar, NIB dan Sertifikat Standar, NIB dan […cut off in the official source]`
+    — the label **once**, on the truncated name, with both complete `NIB dan Sertifikat Standar`
+    entries and `Izin Usaha` left bare. The served explorer chunk carries the shared module (note
+    present, `Confirm the full wording at oss.go.id` present, negative control 0).
 
 **🔴 SETTLED — DO NOT DEDUP `kg_edges`, AND DO NOT ADD THE UNIQUE CONSTRAINT.** #3635 left the 1,341
 duplicated `BELONGS_TO` rows in place and ledgered a blast-radius analysis. It has been done, and
