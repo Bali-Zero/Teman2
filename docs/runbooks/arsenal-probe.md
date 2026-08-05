@@ -57,6 +57,14 @@ Credential values are never printed, logged, or reported (scrub layer; scar #4).
 | nlm AUTH_DEAD           | `nlm login` on Pro (recurs ~monthly)                                                                                                                         |
 | kimi AUTH_DEAD          | `kimi login` on that machine (device-code flow — authorize the printed URL/code from a kimi.com-logged browser; Allegro subscription, seat added 2026-07-19) |
 
+Note (2026-08-05, healer tick): `claude` and `nlm`'s unauthenticated shapes ("Not logged in ·
+Please run /login", "Run nlm login to re-authenticate") carry no 401/oauth-token marker, only
+short prose — this table already promised `claude AUTH/QUOTA` and `nlm AUTH_DEAD` as the cure,
+but the classifier fell through to a bare `UNKNOWN_ERR` for both (the same shape `kimi`'s "No
+providers configured" already had a local override for). Matched locally per-seat now, mirroring
+the existing `kimi` pattern — `scripts/tests/test_arsenal_probe.py` carries the guilt+innocence
+pair for each.
+
 ## Selftest / CI
 
 `python3 scripts/arsenal_probe.py --selftest` — classifier table on canned provider outputs,

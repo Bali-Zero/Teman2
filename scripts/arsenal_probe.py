@@ -401,7 +401,15 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     if res.timed_out:
         return TIMEOUT, ev or "probe timed out", latency_ms
     live = "PONG" in res.stdout
-    status = classify_generic(res.stdout + res.stderr, live, "claude", is_ssh_context())
+    combined = res.stdout + res.stderr
+    # claude CLI's unauthenticated shape ("Not logged in · Please run
+    # /login") carries no 401/oauth-token marker, only this short prose, and
+    # fell through classify_generic() to a bare UNKNOWN_ERR — same shape as
+    # kimi's "No providers configured" below. Matched locally so the shared
+    # _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
+    if not live and re.search(r"not logged in", combined, re.IGNORECASE):
+        return AUTH_DEAD, ev or "claude not logged in", latency_ms
+    status = classify_generic(combined, live, "claude", is_ssh_context())
     return status, ev, latency_ms
 
 
@@ -532,7 +540,16 @@ def probe_nlm(timeout: float) -> tuple[str, str, int]:
         live = isinstance(parsed, (list, dict))
     except (json.JSONDecodeError, ValueError):
         live = False
-    status = classify_generic(res.stdout + res.stderr, live, "nlm", is_ssh_context())
+    combined = res.stdout + res.stderr
+    # nlm's expired-credential shape ("Run nlm login to re-authenticate")
+    # carries no 401/oauth-token marker, only this prose, and fell through
+    # classify_generic() to a bare UNKNOWN_ERR despite docs/runbooks/
+    # arsenal-probe.md documenting "nlm AUTH_DEAD -> `nlm login` on Pro" as
+    # the expected cure. Matched locally (claude/kimi pattern) so the shared
+    # _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
+    if not live and re.search(r"nlm login|not logged in", combined, re.IGNORECASE):
+        return AUTH_DEAD, ev or "nlm not logged in", latency_ms
+    status = classify_generic(combined, live, "nlm", is_ssh_context())
     return status, ev, latency_ms
 
 
