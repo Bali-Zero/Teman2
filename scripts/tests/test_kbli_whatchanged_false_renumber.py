@@ -32,6 +32,7 @@ from scripts.kbli_filiera.cure_whatchanged_false_renumber import (
     PASS_TRUNCATED,
     WhatChangedError,
     claims_ambiguous_continuity,
+    claims_number_unchanged,
     contradicted_predecessors,
     has_no_recorded_predecessor,
     is_truncated_midword,
@@ -768,14 +769,26 @@ def test_the_live_52101_record_is_not_convicted_by_the_shipped_predicates():
 def test_an_unbalanced_quote_masks_nothing_and_an_apostrophe_fabricates_nothing():
     """Both directions of the twin the quotation guard could have birthed (W94):
     a greedy quote scan that swallows the rest of the text hides real claims,
-    and treating every `'` as a delimiter turns "don't … it's" into a region."""
+    and treating every `'` as a delimiter turns "don't … it's" into a region.
+
+    Every fixture carries the 2020 match marker on purpose. Without it the weak
+    phrase does not convict at all, so the test would go green while exercising
+    NOTHING of the quotation guard — passing for the wrong reason is not passing.
+    """
     record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
-    unbalanced = "a stray ' quote opens here and code and scope unchanged follows"
-    apostrophes = "We don't say it's settled: code and scope unchanged."
+    marker = "Direct 1:1 match from KBLI 2020"
+    unbalanced = f"a stray ' quote opens here. {marker} — code and scope unchanged."
+    apostrophes = f"We don't say it's settled: {marker} — code and scope unchanged."
     both_quoted_and_bare = (
-        "A note reading 'code and scope unchanged' — and separately, code and scope unchanged."
+        f"A note reading 'code and scope unchanged' — and separately, "
+        f"{marker} — code and scope unchanged."
     )
-    for text in (unbalanced, apostrophes, both_quoted_and_bare):
+    # Codex, reviewing this diff on fresh context, opened with this one: three
+    # straight `"` in a text the scan paired two-of-three, masking a REAL
+    # assertion inside a region the text never balanced — the guard breaking its
+    # own "unbalanced masks nothing" promise on the first try.
+    odd_double_quotes = f'"{marker} — the code and scope remain unchanged. It calls it "legacy".'
+    for text in (unbalanced, apostrophes, both_quoted_and_bare, odd_double_quotes):
         _, passes = plan_text(text, record)
         assert PASS_FALSE_CONTINUITY in passes, f"masked by the quotation guard: {text!r}"
 
@@ -796,3 +809,43 @@ def test_a_surface_with_nothing_to_rewrite_is_not_written_at_all():
         "main() writes a surface unconditionally again — a cure with an empty "
         "plan for one surface must not touch that surface's file"
     )
+
+
+def test_known_gap_an_accidental_straight_quote_pair_can_mask_a_real_assertion():
+    """DECLARED LIMIT, not an accident — found by adversarial probing of the
+    quotation guard before it shipped, and left in rather than papered over.
+
+    A straight `'` is genuinely ambiguous between a quotation mark and an
+    apostrophe, and no lexical rule separates "'twas" from an opening quote. So
+    an archaic contraction opening and a possessive plural closing can enclose a
+    REAL assertion and hide it. Every alternative considered was a magic
+    threshold on region length or sentence count — a frozen measurement (W106)
+    dressed up as a rule, which is worse than a stated gap.
+
+    It fails in the SAFE direction: the text is left alone, never rewritten —
+    the same direction `_CONTINUITY_AMBIGUOUS` already chose. And the shape does
+    not occur in this corpus, which is machine-written provenance sentences.
+
+    If this ever goes red, the guard got SMARTER — re-read it, then delete this.
+    """
+    record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
+    marker = "Direct 1:1 match from KBLI 2020"
+    masked = f"'twas said: {marker} — code and scope unchanged, per the workers' file."
+    assert claims_number_unchanged(masked.replace("'", "")) is True, (
+        "premise: with the apostrophes removed this text IS a conviction, so the "
+        "assertion below is measuring the guard and not the absence of a claim"
+    )
+    _, passes = plan_text(masked, record)
+    assert PASS_FALSE_CONTINUITY not in passes, (
+        "the known gap closed — the guard now sees through an accidental "
+        "apostrophe pair; update the note above and drop this test"
+    )
+
+    # …and the near neighbours that must NOT fall into the same hole.
+    for text in (
+        f"Rock 'n' roll aside, {marker} — code and scope unchanged.",
+        f"The '90s aside: {marker} — code and scope unchanged.",
+        f"Ministers' and workers' filings: {marker} — code and scope unchanged.",
+    ):
+        _, passes = plan_text(text, record)
+        assert PASS_FALSE_CONTINUITY in passes, f"gap widened to: {text!r}"

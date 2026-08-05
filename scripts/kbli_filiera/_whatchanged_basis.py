@@ -115,14 +115,30 @@ _ENDS_COMPLETE = re.compile(r"[.!?]\s*$")
 # "Direct match from KBLI 2020, BUT the PP28 source code is 68200", which names
 # a different number in the same breath; `86992` says the "classification" is
 # unchanged, which is a claim about the activity, not about the digits.
-_CONTINUITY = re.compile(
-    r"unchanged from KBLI 2020"
-    r"|same code, same scope"
-    r"|(?:the )?code and scope (?:remain |are )?unchanged"
-    r"|keeps? the same code and scope",
+# A SAME-CODE PHRASE ONLY SPEAKS ABOUT 2020 WHEN A 2020 MARKER IS PRESENT.
+# An independent cross-family review (Codex GPT-5.6, instructed to refute)
+# produced the sentence "The NIB entry keeps the same code and scope when you
+# amend the address; its KBLI 2020 predecessor is 62010." The first draft of the
+# widening convicted it: true prose about an ADDRESS AMENDMENT, deleted from a
+# client-facing page. So the weak phrases below are not standalone triggers —
+# they resolve the ambiguity of the 2020 match marker, and only in its presence.
+# That is also the honest reading of what makes them a claim: "code and scope
+# unchanged" says nothing about 2020 by itself; "Direct 1:1 match from KBLI 2020
+# — code and scope unchanged" does.
+_CONTINUITY_STRONG = re.compile(
+    r"unchanged from KBLI 2020" r"|same code, same scope" r"|the code and scope remain unchanged",
     re.IGNORECASE,
 )
-_CONTINUITY_AMBIGUOUS = re.compile(r"direct match from KBLI 2020", re.IGNORECASE)
+_CONTINUITY_WEAK = re.compile(
+    r"(?:the )?code and scope (?:are )?unchanged" r"|keeps? the same code and scope",
+    re.IGNORECASE,
+)
+_CONTINUITY_AMBIGUOUS = re.compile(r"direct (?:1:1 )?match from KBLI 2020", re.IGNORECASE)
+# Kept as the removal pattern: once guilt is established, every span that carries
+# either half of the claim goes, so no residue contradicts the replacement.
+_CONTINUITY = re.compile(
+    f"{_CONTINUITY_STRONG.pattern}|{_CONTINUITY_WEAK.pattern}", re.IGNORECASE
+)
 
 # A QUOTATION OF THE CLAIM IS NOT AN ASSERTION OF IT (2026-08-05).
 #
@@ -150,6 +166,15 @@ def _quoted_regions(text: str) -> list[tuple[int, int]]:
     """Half-open spans covered by a BALANCED quotation. Never a bare-open run."""
     regions: list[tuple[int, int]] = []
     for opener, closer in _QUOTE_PAIRS:
+        # A SYMMETRIC delimiter with an ODD count is unbalanced as a WHOLE, and
+        # the rule above says an unbalanced quote masks nothing. Without this the
+        # code broke its own promise on the first text the cross-family reviewer
+        # tried: `"The code and scope remain unchanged. The source calls it
+        # "legacy".` has three `"`, the scan paired the first two, and a real
+        # assertion went unconvicted inside a region the text never balanced.
+        # Asymmetric pairs (‘…’, “…”) are exempt — their counts are independent.
+        if opener == closer and text.count(opener) % 2:
+            continue
         idx = 0
         while True:
             start = text.find(opener, idx)
@@ -290,7 +315,9 @@ def claims_number_unchanged(text: str) -> bool:
     correct it — and convicting on it re-corrects a correction (see the note on
     `_QUOTE_PAIRS`).
     """
-    return _outside_quotes(_CONTINUITY, text)
+    if _outside_quotes(_CONTINUITY_STRONG, text):
+        return True
+    return _outside_quotes(_CONTINUITY_WEAK, text) and _outside_quotes(_CONTINUITY_AMBIGUOUS, text)
 
 
 def claims_ambiguous_continuity(text: str) -> bool:
@@ -472,7 +499,19 @@ def drop_false_continuity(text: str, record: dict[str, Any]) -> str:
     _quoted = _quoted_regions(text)
 
     def _asserts_here(start: int, end: int) -> bool:
+        # `finditer(text, start, end)` is NOT slice-equivalent in general: `^`
+        # still means the start of the whole string, and a lookbehind can read
+        # text before `start`. It is used here because both patterns are plain
+        # alternations with no anchors and no lookarounds, where the two agree —
+        # and because it keeps absolute offsets for the quotation test. Add an
+        # anchor or a lookbehind to either pattern and this line changes meaning
+        # silently. (Raised by the cross-family review; safe today, pinned so it
+        # stays that way.)
         for pattern in (_CONTINUITY, _CONTINUITY_AMBIGUOUS):
+            assert "^" not in pattern.pattern and "(?<" not in pattern.pattern, (
+                "an anchor or lookbehind reached a pattern scanned with pos/endpos — "
+                "this is no longer equivalent to searching the sentence slice"
+            )
             for m in pattern.finditer(text, start, end):
                 if not any(qs <= m.start() and m.end() <= qe for qs, qe in _quoted):
                     return True
