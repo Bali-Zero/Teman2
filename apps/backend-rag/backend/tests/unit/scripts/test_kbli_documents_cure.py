@@ -987,3 +987,181 @@ def test_no_snapshot_means_the_detector_queries_the_db_as_before(monkeypatch, tm
     monkeypatch.setattr("backend.scripts.kbli_documents_cure.subprocess.run", _run)
     fetch_conformance_report(script)
     assert "--table-json" not in seen["cmd"]
+
+
+# ---------------------------------------------------------------------------
+# THE OBLIGATIONS THE CHANNEL WAS DROPPING — and the cure that could not
+# re-cure its own output (2026-08-05)
+#
+# Measured on canonical, 9,095 per-scale rows:
+#     perizinan    non-empty in     17 rows  (0.19%)
+#     persyaratan  non-empty in  5,369 rows  (59%)
+#     kewajiban    non-empty in  8,951 rows  (98%)
+#
+# `## Perizinan` rendered `perizinan` and nothing else — the one field that is
+# empty 99.8% of the time — so the channel answered `Perizinan: N/A` about a
+# catalogue whose obligations we hold. The website already renders them.
+# ---------------------------------------------------------------------------
+
+import json as _json_obl
+from pathlib import Path as _Path_obl
+
+from backend.scripts.kbli_documents_cure import (  # noqa: E402
+    KEWAJIBAN_BLOCK_MAX_CHARS,
+    build_cured_content,
+    build_kewajiban_section,
+    is_machine_template,
+)
+
+
+def _repo_root_obl() -> _Path_obl:
+    """Walk up to the checkout root rather than counting directories — a depth
+    constant silently reads the wrong tree the day this file moves, and a
+    missing canonical would turn the organ below into a green no-op."""
+    here = _Path_obl(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").is_file():
+            return parent
+    raise AssertionError(f"canonical dataset not found walking up from {here}")
+
+
+_CANONICAL_OBL = (
+    _repo_root_obl() / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+)
+
+
+def _canonical_by_code():
+    payload = _json_obl.loads(_CANONICAL_OBL.read_text(encoding="utf-8"))
+    return {r["kode_kbli_2025"]: r for r in payload["data"]}
+
+
+def _scale(skala, kewajiban, scope=None):
+    entry = {"skala_usaha": [skala], "kategori_risiko": "Rendah", "kewajiban": kewajiban}
+    if scope:
+        entry["scope_uraian"] = scope
+    return entry
+
+
+def test_the_spa_obligation_the_channel_was_hiding_is_rendered():
+    """96230 — canonical holds the SLHS and the channel said "requirements pending"."""
+    record = _canonical_by_code()["96230"]
+    block = "\n".join(build_kewajiban_section(record))
+    assert "Sertifikat Laik Sehat" in block
+    assert "Sertifikat Standar Usaha Pariwisata" in block
+
+
+def test_scales_sharing_an_obligation_are_named_together_and_the_text_appears_once():
+    record = {
+        "per_skala": [
+            _scale("Mikro", ["Lapor ke Menteri"]),
+            _scale("Kecil", ["Lapor ke Menteri"]),
+            _scale("Besar", ["Sertifikat Laik Sehat"]),
+        ]
+    }
+    block = "\n".join(build_kewajiban_section(record))
+    assert block.count("Lapor ke Menteri") == 1, "the same obligation rendered per scale again"
+    assert "**Mikro, Kecil**" in block
+    assert "**Besar**" in block
+
+
+def test_a_record_with_no_obligations_gets_no_section_at_all():
+    """INNOCENCE. An empty section headed `Kewajiban` would repeat the very
+    defect this fixes — an absent field dressed up as an answer."""
+    record = {"per_skala": [_scale("Mikro", []), {"skala_usaha": ["Besar"]}]}
+    assert build_kewajiban_section(record) == []
+    assert build_kewajiban_section({}) == []
+
+
+def test_no_obligation_is_ever_rendered_as_not_available():
+    for record in ({"per_skala": [_scale("Mikro", [])]}, {"per_skala": []}, {}):
+        assert "N/A" not in "\n".join(build_kewajiban_section(record))
+
+
+def test_markup_from_the_extraction_never_reaches_the_client():
+    record = {"per_skala": [_scale("Besar", ["<strong>Sertifikat</strong> Laik Sehat"])]}
+    block = "\n".join(build_kewajiban_section(record))
+    assert "<strong>" not in block and "</strong>" not in block
+    assert "Sertifikat Laik Sehat" in block
+
+
+def test_an_oversized_block_declares_its_truncation_instead_of_being_cut_quietly():
+    """W97 — a silent cut reads downstream as "this is everything"."""
+    record = {
+        "per_skala": [_scale(f"S{i}", ["x" * 900 + str(i)]) for i in range(40)]
+    }
+    block = "\n".join(build_kewajiban_section(record))
+    assert "tidak ditampilkan di sini" in block
+    assert len(block) <= KEWAJIBAN_BLOCK_MAX_CHARS + 2000, "the cap did not bound the block"
+
+
+def test_the_whole_catalogue_stays_within_the_declared_bound():
+    over = []
+    for record in _canonical_by_code().values():
+        block = "\n".join(build_kewajiban_section(record))
+        if len(block) > KEWAJIBAN_BLOCK_MAX_CHARS + 2000:
+            over.append(record["kode_kbli_2025"])
+    assert over == [], f"obligation block exceeded its bound on: {over}"
+
+
+def test_the_builders_own_output_is_recognised_by_the_recogniser():
+    """THE ORGAN. `build_cured_content` writes sections the 2026-02-18 seed never
+    had (`## Perizinan`, and now `## Kewajiban`), while `is_machine_template` —
+    which decides whether a row may be rebuilt — listed only the seed's three.
+
+    So the cure could not re-cure its own output: measured on the live table,
+    of the 55 rows it wrote on 2026-08-03, ZERO were still recognised. Every one
+    was frozen against any future licensing update, protected as "hand-written
+    prose" that the machine itself had written.
+
+    Adding a section to the builder without declaring it in
+    MACHINE_TEMPLATE_SECTIONS fails HERE instead of silently freezing rows.
+    """
+    unrecognised = []
+    for code, record in _canonical_by_code().items():
+        if not is_machine_template(code, build_cured_content(code, record)):
+            unrecognised.append(code)
+    assert unrecognised == [], (
+        "the cure writes content its own rebuild predicate refuses — those rows "
+        f"can never be re-cured: {unrecognised[:10]} ({len(unrecognised)} total)"
+    )
+
+
+def test_scar_pin_a_row_shaped_like_the_2026_08_03_cure_is_still_rebuildable():
+    """The exact live regression, pinned as a fixture: sections observed on the
+    real row `01122` after that run — seed sections PLUS `## Perizinan`."""
+    content = (
+        "# KBLI 01122 — Something\n\n"
+        "## Deskripsi Kegiatan Usaha\nx\n\n"
+        "## Investasi Asing (PMA)\n- Status PMA: TERBUKA\n\n"
+        "## Perizinan\n- **[Mikro] (Seluruh)** — Risiko: Rendah\n"
+    )
+    assert is_machine_template("01122", content) is True
+
+
+def test_a_hand_added_section_is_still_refused():
+    """INNOCENCE for the widening: declaring the builder's own sections must not
+    turn the predicate into a blanket yes — editorial prose still refuses."""
+    content = (
+        "# KBLI 96230 — Spa\n\n"
+        "## Deskripsi Kegiatan Usaha\nx\n\n"
+        "## Perizinan\n- row\n\n"
+        "## BALI CONTEXT\nBali is globally famous for spas.\n"
+    )
+    assert is_machine_template("96230", content) is False
+
+
+def test_the_obligations_are_actually_wired_into_the_document_the_channel_reads():
+    """`chat_kbli` injects `content` verbatim — so the section being CORRECT is
+    worth nothing unless `build_cured_content` emits it.
+
+    Added because mutation testing killed five of six mutants and this one
+    SURVIVED: deleting the one line that appends the section left the whole
+    corpus green, since every other test calls the renderer directly and the
+    round-trip organ passes whether or not the section is there. Second time in
+    one day that the surviving mutant was the WIRING, not the logic.
+    """
+    content = build_cured_content("96230", _canonical_by_code()["96230"])
+    assert "## Kewajiban" in content
+    assert "Sertifikat Laik Sehat" in content, (
+        "the document the client is answered from does not carry the obligation"
+    )
