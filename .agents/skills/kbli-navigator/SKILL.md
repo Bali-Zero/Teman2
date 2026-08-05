@@ -43,7 +43,42 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-03 — keep current)
+## 1. LIVE STATE (last update 2026-08-05 — keep current)
+
+**🟢 2026-08-05 — THE `whatChanged` LANE: FOUR STORES, AND THE CURE ITSELF LEFT A CONTRADICTION IN
+THREE OF THEM.** #3610 cured 13 codes still telling clients _"Direct 1:1 match from KBLI 2020 — code
+and scope unchanged"_ on records whose own crosswalk denies it. Promoting it (prod was serving a
+build **two commits behind** — nothing on this project goes live unattended) proved all 13 live:
+`lie=0 cure=2` on each, innocence held on `01111/01112/01113`, whose records agree they are
+continuous.
+
+**What the promotion exposed is the lesson worth keeping.** The removal pattern knew two phrasings of
+the claim; **"No structural changes" is a third** and was in neither, so on `47401` and `63900` the
+cure deleted the sentences it recognised and published the honest replacement **next to a sentence
+denying it** — live on the website and in the KG. And the first draft of the fix repeated the disease
+a generation lower: written from those two, it missed `96210` (_"Hair salons have been consistently
+classified across both KBLI versions"_), found only by pulling the KG's own vintage of all sixteen
+cured texts.
+
+Two halves, and only one changes what a client reads: **widening the removal pattern alone would have
+cured nothing** — re-derived on the shipped catalogue, **zero** records are still convicted, so a
+record whose convicting wording was already taken is refused by `drop_false_continuity`. The repair
+pass (`residual_continuity_claim`, #3619) decides **without reading a record**: an already-retracted
+text that still asserts continuity is an internal contradiction. What makes a measured-only pattern
+safe is the organ beside it — pass D's replacement ends at `(GARUDA-FILIERA).`, so a cured text that
+does not end there goes **red** instead of reaching a client, and the organ **refuses** rather than
+cures.
+
+**The KG cure is applied and verified by an independent path** (read-only Postgres, not the writer):
+13 cured / 13 archived / 0 drift, and the corpus-wide count of nodes asserting continuity fell
+725 → 713, exactly −13 minus the two that still carried residue. Innocence: the 6 records whose
+crosswalk agrees (`47112 47242 47751 47761 47774 47782`) are untouched — `47242` is word-for-word the
+shape of `47401`'s pre-cure text with the opposite truth.
+
+**Still open in this lane:** the 4 unadjudicated layer disagreements (`91212 91222 91424 91425`, BPS
+vs `pp28_sources`) — the replacement sentence deliberately asserts only the NEGATIVE for that reason;
+and `reindex_kbli_2025_final.py::build_embedding_text` still bakes the old Bali framing into the
+vectors (embedding model FROZEN → payload-only merge is the precedented fix).
 
 **🟢 2026-08-03 (night) — THE CHAT CHANNEL NOW CARRIES THE BALI VERDICT, AND THE STORE ALWAYS KNEW.**
 Production was asked whether a PT PMA can open a massage parlour (86995) in Bali and answered _"Yes,
