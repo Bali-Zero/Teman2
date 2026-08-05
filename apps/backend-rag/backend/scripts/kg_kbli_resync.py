@@ -14,6 +14,9 @@ WHAT IT SYNCS (1:1 canonical fields only — no derivations):
     generated, mirroring apps/mouth/src/lib/kbli-data.ts precedence)
   - description               ← uraian
   - properties.pma_status     ← pma_status
+  - properties.pp28_sources   ← pp28_sources (the OTHER codes a record's PP
+    28/2025 licensing rows were carried from; `inspect_kbli` reads it to
+    disclose inherited licences — see backend/services/kbli_pp28_provenance.py)
   - properties.{whatItMeans, whatYouNeed, baliContext, whatChanged,
     zantaraOpener}            ← intel_2026.* (only keys present; never nulled)
 Fields with unknown original derivation (kategori_risiko, skala_usaha,
@@ -58,6 +61,56 @@ def parse_ts_title_map(source: str) -> dict[str, str]:
     return {code: title.replace('\\"', '"') for code, title in TS_ENTRY_RE.findall(source)}
 
 
+def merge_node_props(props: dict, rec: dict) -> dict:
+    """The canonical fields folded onto a kg_node's existing `properties`.
+
+    Two DELIBERATELY different merge rules live here, and the asymmetry is the
+    whole point:
+
+    - `pma_status` and the intel keys are **only ever added**. Canonical not
+      carrying a value means "nothing to say", not "delete what the graph has"
+      — those fields have other writers and other derivations.
+    - `pp28_sources` is **authoritative**: written when canonical has it,
+      REMOVED when canonical does not. `inspect_kbli` turns this field into a
+      client-facing sentence naming other KBLI codes; a stale list left behind
+      would disclose an inheritance the dataset no longer records, and a wrong
+      provenance claim is worse than no note at all.
+
+    Pure, so both rules are exercisable — the previous version of this merge
+    lived inline in `main()` under a live DSN, where nothing could reach it.
+    """
+    new_props = dict(props)
+
+    pma = rec.get("pma_status")
+    if pma:
+        new_props["pma_status"] = pma
+
+    intel = rec.get("intel_2026") or {}
+    for key in INTEL_KEYS:
+        value = intel.get(key)
+        if value:
+            new_props[key] = value
+
+    raw_sources = rec.get("pp28_sources")
+    sources: list[str] = []
+    if isinstance(raw_sources, list):
+        for entry in raw_sources:
+            # `str(None)` is "None" — a source code that does not exist. Reject
+            # non-strings BEFORE stringify, matching
+            # backend/services/kbli_pp28_provenance.content_inherited_from.
+            if not isinstance(entry, (str, int)) or isinstance(entry, bool):
+                continue
+            text = str(entry).strip()
+            if text:
+                sources.append(text)
+    if sources:
+        new_props["pp28_sources"] = sources
+    else:
+        new_props.pop("pp28_sources", None)
+
+    return new_props
+
+
 async def fetch_inputs() -> tuple[list[dict], dict[str, str]]:
     async with httpx.AsyncClient(timeout=60) as http:
         responses = {}
@@ -87,6 +140,7 @@ async def main() -> None:
     conn = await asyncpg.connect(dsn)
     updated, missing, unchanged = [], [], 0
     pma_flips: list[str] = []
+    pp28_changes: list[str] = []
     writes: list[tuple] = []
     try:
         # One bulk read: per-row round-trips over the Fly proxy take >5min for 1559 codes.
@@ -100,8 +154,6 @@ async def main() -> None:
             code = str(rec.get("kode_kbli_2025"))
             judul = (rec.get("judul") or "").strip()
             uraian = (rec.get("uraian") or "").strip()
-            pma = rec.get("pma_status")
-            intel = rec.get("intel_2026") or {}
             en = titles.get(code, "")
 
             row = rows.get(f"kbli:{code}")
@@ -112,13 +164,7 @@ async def main() -> None:
             props = json.loads(row["properties"]) if row["properties"] else {}
             name = f"{en.upper()} ({judul.upper()})" if en else judul.upper()
 
-            new_props = dict(props)
-            if pma:
-                new_props["pma_status"] = pma
-            for k in INTEL_KEYS:
-                v = intel.get(k)
-                if v:
-                    new_props[k] = v
+            new_props = merge_node_props(props, rec)
 
             if row["name"] == name and row["description"] == uraian and new_props == props:
                 unchanged += 1
@@ -126,6 +172,8 @@ async def main() -> None:
 
             if props.get("pma_status") != new_props.get("pma_status"):
                 pma_flips.append(f"{code}: {props.get('pma_status')} -> {new_props.get('pma_status')}")
+            if props.get("pp28_sources") != new_props.get("pp28_sources"):
+                pp28_changes.append(code)
             updated.append(code)
             writes.append(
                 (f"kbli:{code}", name, judul, en, uraian, json.dumps(new_props, ensure_ascii=False))
@@ -149,6 +197,10 @@ async def main() -> None:
     # No display caps: a truncated list reads as the whole list downstream (W97).
     for line in pma_flips:
         logger.info("  pma flip %s", line)
+    # A count, not the list: 1,384 codes carry the field, so printing them all
+    # would bury the pma flips above. The count IS the audit — it must land on
+    # the number the canonical says, and a silent 0 means the field never synced.
+    logger.info("  pp28_sources changed on %d node(s)", len(pp28_changes))
     if missing:
         logger.info("  missing nodes: %s", " ".join(missing))
     if not args.apply and updated:
