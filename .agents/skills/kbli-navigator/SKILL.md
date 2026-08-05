@@ -45,6 +45,51 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-05 — keep current)
 
+**🟢 2026-08-06 — THE BOT/MCP HALF IS SHIPPED, SYNCED AND PROVEN LIVE (#3648, `b5dd5f37ca`). Both
+web surfaces were already live (#3645/#3646); this closes the third.** Every step measured, none
+inferred: deploy `success` → the code proven INSIDE the running container (`grep -c
+licensing_disclosure /app/backend/app/routers/kbli_notebook.py` = 2, cache key `kbli_inspect_v3`) →
+`kg_kbli_resync.py --apply` → verified by INDEPENDENT SQL on prod rather than by the script's own
+report: `properties.pp28_sources` **0 → 1,384** KBLI nodes, **390 inherited**.
+
+Reconciliation that holds, which is what makes it a proof: 1,419 updated + 139 unchanged + 1 missing
+(`01122`, declared) = 1,559 canonical codes; and 1,384 = 390 inherited + 994 self-sourced. The 390 was
+derived twice by different routes — Python over `KBLI_2025_FINAL_CLEAN.json`, and SQL over `kg_nodes`
+— and agreed.
+
+Live payloads, read off prod:
+
+- `inspect_kbli 62110` → `licensing_content_inherited_from` `["62011","62019","62015","62013","62012"]`
+  plus the note naming them.
+- `56101` (8 licences rendered) and `01111` (6) → **both fields `null`**. Innocence for the RIGHT
+  reason: each renders licences, so the silence is the self-sourced verdict, not an empty-list side
+  effect.
+
+**Fleet reach measured on the KG after the sync: 390 inherited → 305 get the note, 85 render zero
+licences and are correctly silent.** Say 305, never 390 —
+[[lesson_a_cures_own_count_is_not_the_count_of_rows_that_gained_the_thing_2026_08_05]].
+
+**THE PROPAGATION FACT THAT MAKES THIS DIFFERENT FROM THE PMA CURE, and the trap it avoids:**
+`inspect_kbli` reads `pma_status` from **Qdrant first** and `kg_nodes` only as a fallback — which is
+why `kg_kbli_resync.py` was a no-op on that field and the twenty perpres codes needed
+`kbli_qdrant_pma_sync.py`. `pp28_sources` is NOT on that path: it is read from `props`, bound from
+`SELECT * FROM kg_nodes WHERE entity_id = $1`. **Verified in the router before running the apply**,
+because the same-shaped sync had already been a wasted write once on this lane.
+
+**NEVER query `inspect_kbli` between a deploy and its data sync.** The version bump evicts at deploy,
+so any call in that window writes a fresh entry WITHOUT the cure and hides it for the 30-day TTL.
+This proof was taken with no such call in between.
+
+**What that live call also exposed, and it is the case for #3650 (open):** `62110` VIDEO GAME
+DEVELOPMENT is served `Izin Produksi Alat Peralatan Pertahanan dan Keamanan`, `Izin Industri
+Pertahanan`, `Sertifikat Persetujuan Kelaikan Fasilitas Produksi Pertahanan`, the placeholder `Izin
+Usaha`, and a truncated `NIB dan`. The note now warns the client; #3650 removes the placeholder.
+An independent review of #3650 returned DEFECTIVE, and **verifying its objection is what found the
+bigger defect**: 0 live permit-typed nodes open with a meN- verb outside the enumerated 23 (its
+counterexample was constructed), but **97 nodes on 62 codes carry `kewajiban` as an id token while
+`entity_type` files them as permits** — noun-phrase duties (`Laporan Penomoran Telekomunikasi`) that
+no verb list can catch. Innocence measured before shipping: 0 of those 97 carry a permit-shaped name.
+
 **🔴🟡 2026-08-05 — WE TELL A VIDEO-GAME STUDIO IT NEEDS THREE DEFENCE-INDUSTRY LICENCES, AND CANONICAL
 IS WHERE IT COMES FROM: 62110 INHERITED ITS PP 28 LICENSING FROM FIVE OTHER CODES.** Read this section
 to the CORRECTION at its end — the first verdict here (a refusal built on one canonical field) was
