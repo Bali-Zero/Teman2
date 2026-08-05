@@ -71,6 +71,24 @@ export function isLicensingVerificationPending(code: KBLICode): boolean {
 }
 
 /**
+ * The other KBLI codes this code's licensing rows were carried from, for a
+ * surface that CAN qualify a claim — or null when there is nothing to declare.
+ *
+ * Complement of the `verifiedLicenseType` gate in `kbli-meta.ts`, and
+ * deliberately the opposite behaviour: an indexed `<title>`/`<meta>` has no room
+ * for a qualifier, so it goes SILENT; a page body has room, so it KEEPS the
+ * licence type and says where it came from. Same fact, two surfaces, opposite
+ * correct answers — which is why they are two helpers and not one flag.
+ *
+ * Requires rows to be served: a code with no licensing rows has no inherited
+ * claim on screen to qualify, whatever `pp28_sources` says.
+ */
+export function licensingContentInheritedFrom(code: KBLICode): string[] | null {
+  if ((code.licensing?.length ?? 0) === 0) return null;
+  return code.provenance?.licensing?.contentInheritedFrom ?? null;
+}
+
+/**
  * Derive the full provenance object for a raw KBLI record.
  *
  * State partition (exhaustive over the 1,559 catalog):

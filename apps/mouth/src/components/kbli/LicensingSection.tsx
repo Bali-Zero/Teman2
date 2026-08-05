@@ -15,7 +15,10 @@ import {
   TRUNCATION_HINT,
   TRUNCATION_NOTE,
 } from "@/lib/kbli-obligation-truncation";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  licensingContentInheritedFrom,
+} from "@/lib/kbli-provenance";
 import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
 import {
   baliBlockClause,
@@ -1063,6 +1066,23 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               <p className="text-[11px] text-[var(--foreground-muted)]">
                 ⏳ All licensing values below await KBLI-2025 crosswalk
                 verification — see Sources &amp; Verification.
+              </p>
+            )}
+            {/* A DIFFERENT provenance question from the line above. That one asks
+                whether the KBLI-2025 crosswalk has been verified; this one asks
+                where the PP 28/2025 rows came from in the first place. 336 codes
+                have no PP 28 row of their own and were filled from KBLI-2020
+                ancestors — 62110 (video games) inherits three defence-industry
+                permits that way. The indexed <meta> goes SILENT on the licence
+                type for these (kbli-meta.ts); a body can qualify, so it keeps the
+                value and names the source instead. */}
+            {licensingContentInheritedFrom(kbli) && (
+              <p className="text-[11px] text-[var(--foreground-muted)]">
+                ↩ This code has no PP 28/2025 licensing row of its own — the
+                values below were carried over from KBLI code
+                {licensingContentInheritedFrom(kbli)!.length > 1 ? "s " : " "}
+                {licensingContentInheritedFrom(kbli)!.join(", ")}. Confirm the
+                licence type with the Bali Zero team before acting on it.
               </p>
             )}
             {/* Tier tabs */}
