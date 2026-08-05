@@ -53,4 +53,25 @@ describe("summariseLicences", () => {
   it("drops blanks but keeps the named rows beside them", () => {
     expect(summariseLicences(["", "NIB", null], "REGULATED")).toBe("NIB");
   });
+  // A licence NAME can itself stop mid-sentence. Measured on prod 2026-08-05:
+  // the graph holds a licence node literally called "NIB dan" reachable from 10
+  // KBLI codes. This line is COPIED into client emails, so the caveat has to
+  // travel with it — the name is labelled, never trimmed and never replaced.
+  it("labels a licence name that stops mid-sentence, without altering it", () => {
+    const out = summariseLicences(["NIB dan"], "REGULATED");
+    expect(out).toContain("NIB dan");
+    expect(out).toContain("cut off in the official source");
+  });
+
+  it("INNOCENCE — a complete name containing 'dan' is copied verbatim", () => {
+    expect(summariseLicences(["NIB dan Sertifikat Standar"], "REGULATED")).toBe(
+      "NIB dan Sertifikat Standar",
+    );
+  });
+
+  it("labels only the truncated entry when several are copied together", () => {
+    const out = summariseLicences(["NIB dan", "Izin Usaha"], "REGULATED");
+    expect(out.match(/cut off in the official source/g)).toHaveLength(1);
+    expect(out).toContain("Izin Usaha");
+  });
 });

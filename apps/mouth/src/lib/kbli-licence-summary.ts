@@ -22,6 +22,25 @@
  * honest gap over false reassurance.
  */
 
+import {
+  isSourceTruncated,
+  TRUNCATION_NOTE,
+} from "./kbli-obligation-truncation";
+
+/**
+ * A licence NAME can itself stop mid-sentence: measured on prod 2026-08-05, the
+ * knowledge graph holds a licence node literally called **`"NIB dan"`** ("NIB
+ * and") reachable from **10** KBLI codes, and `"Sertifikasi Cara Budi Daya
+ * Ternak Yang"` from 2 more. The endpoint sets `licenses[].type` straight from
+ * that node name (`kbli_notebook.py`: `type=lic["name"]`), so it reaches the
+ * licence cards AND this clipboard line — which travels into client emails.
+ *
+ * A truncated name is LABELLED, never trimmed and never replaced: "NIB dan" is
+ * a real fragment of a real requirement, and inventing its ending would be the
+ * plausible-but-wrong assertion. Same rule and same detector as the obligation
+ * text (`kbli-obligation-truncation.ts`), so the two cannot drift apart.
+ */
+
 /** Shown when we hold no licence rows and cannot say none are required. */
 export const LICENCE_GAP_LABEL = "Not listed in our data";
 
@@ -35,7 +54,10 @@ export function summariseLicences(
   types: readonly (string | null | undefined)[],
   licensingStatus?: string | null,
 ): string {
-  const named = types.map((t) => (t ?? "").trim()).filter(Boolean);
+  const named = types
+    .map((t) => (t ?? "").trim())
+    .filter(Boolean)
+    .map((t) => (isSourceTruncated(t) ? `${t} [\u2026${TRUNCATION_NOTE}]` : t));
   if (named.length > 0) return named.join(", ");
   return licensingStatus === STATUS_NO_LICENCE_REQUIRED
     ? LICENCE_NONE_LABEL
