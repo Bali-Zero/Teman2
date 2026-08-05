@@ -2,8 +2,10 @@ name: Root Guard
 
 on:
   pull_request:
-    # Run on every PR — the check is fast (~0.2s) and catches root-pollution
+    # Run on every PR — the SCRIPT is fast (~0.2s) and catches root-pollution
     # attempts that slip past pre-commit (e.g. someone commits with --no-verify).
+    # The JOB is not: see the timeout note below — the script's runtime is not
+    # the job's floor, and reading it as one is what set the budget too low.
   merge_group:
   push:
     branches: [main]
@@ -15,7 +17,16 @@ concurrency:
 jobs:
   root-guard:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    # 2 → 6 (2026-08-06). Same wall as docs-sync.yml, and this one is worse:
+    # `root-guard` is a REQUIRED context on main AND runs on `merge_group`, so a
+    # blown budget stalls the merge queue itself. `actions/checkout` on this repo
+    # normally takes ~20s but intermittently takes ~2 MINUTES; measured on this
+    # workflow's own history, 1 of the last 30 runs was cut off that way.
+    #
+    # A blown budget reports as `cancelled`, not `failure`, and a cancelled
+    # required check never turns green by itself. `fetch-depth: 1` is already set
+    # — the cost is the repo's size, not its history — so headroom is the cure.
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v7
         with:
