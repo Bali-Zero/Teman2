@@ -4,6 +4,36 @@ Bali Zero — Company Brochure PDF Generator v3
 One-time script. Run when services/prices change.
 Output: data/assets/brochure_balizero_en.pdf
 
+⚠️  THIS IS NOT THE SOURCE OF THE PUBLISHED BROCHURE (checked 2026-08-05).
+    The brochure clients actually receive is served from
+    ``apps/mouth/public/static/brochure_balizero_en.pdf`` (fetched over HTTP by
+    ``welcome_email_service.py`` and base64-attached to every welcome email).
+    That file is a hand-made binary with no source in this repo: it was
+    committed on 2026-04-01, five days AFTER this "v3" script was written on
+    2026-03-27, in a commit that touched nothing else. The version labels are
+    inverted with respect to time — "v2" is the newer artifact.
+
+    Do not "just regenerate and copy over". The two have diverged on FACTS, and
+    the published one is the truthful side on every one of them:
+
+        published            this script
+        10,000+ clients      5,000+
+        22 years in Bali     10+
+        Bayu Santero Group   "since 2014"
+          (2003) / BZ 2020
+        Kerobokan            Canggu
+        zantara@balizero.com info@balizero.com
+
+    The one thing this script has right and the published PDF has wrong is the
+    contact number: the published brochure still shows a team member's personal
+    line (8 occurrences), which is why it was audited here. Fixing that means
+    rebuilding the brochure from a real source, not running this.
+
+    Two more traps if you do run it: FONT_DIR below is hardcoded to one
+    machine's home, so on any other machine the brand fonts silently fall back
+    to Helvetica; and OUTPUT_PATH writes to a path that is not served and does
+    not exist in this repo.
+
 Usage:
     cd apps/backend-rag
     python scripts/generate_brochure.py
