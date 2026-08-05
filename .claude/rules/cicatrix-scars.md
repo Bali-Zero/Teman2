@@ -949,3 +949,46 @@ Misurato, non ragionato: su 106 messaggi vivi (Inbox + Inviati) instradano **71*
 **GOTCHA di consegna.** `gh pr merge --disable-auto` **non** toglie una PR dalla merge queue (dice «is already queued» ed esce 0); serve la mutation GraphQL `dequeuePullRequest(input:{id:$prNodeId})` — e il campo si chiama `id`, non `pullRequestId`. Finché è in coda il branch è protetto e ogni push è rifiutato: se la review arriva dopo l'accodamento, si merge la versione **col difetto**.
 
 **Reference:** `backend/services/mail_loop/classify.py` (`_WEAK`, `_NEEDS_CORROBORATION`, `_lane_is_credible`) · `backend/services/mail_loop/draft.py` (prompt su stdin) · `backend/services/mail_loop/state_io.py` (0600 alla creazione) · corpus `test_classify.py` (omografi + costo del recall dichiarato) e `test_state_privacy.py` · runbook `docs/runbooks/zoho-mail-loop.md` §10 — PR #3603.
+
+---
+
+## W116 — l'allarme suonava sull'esito GIUSTO; la cura era codice morto; la cura della cura poteva sommare a ZERO due difetti; e il commit che diceva «ho corretto le sopra-affermazioni» ne conteneva una nuova — 2026-08-05
+
+_Discovered: 2026-08-05, leggendo il secondo run non-dry-run del `mail_loop`. Severity: **P2** (nessun dato perso; un P0 al giorno su un esito corretto, che è il modo in cui il prossimo P0 vero non viene letto) · Status: **CURED**, PR #3615._
+
+**Famiglia: superscar #2 (Esiste ≠ Armato)**, con innesto di **#6** (anche la correzione mente, linea W113).
+
+**TRAUMA — il primo: l'allarme che suona sull'esito giusto.** Il run ha visto 12 messaggi, li ha declinati tutti e li ha lasciati tutti in inbox — **il comportamento voluto** — e ha riportato `degraded=true`, exit 1, heartbeat `degraded`, un P0 al gateway. La riga, misurata alle 09:58:39: `run DEGRADED: routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0`. Nessuna causa, perché non c'era. La regola era `seen and routed == 0`, scritta quando «instradato niente» poteva solo significare «il router è bloccato», e falsa la prima mattina in cui l'inbox semplicemente non contiene niente per cui questo classificatore possa difendere una corsia. **Un allarme che suona sull'esito corretto è un allarme che nessuno legge** — ed è così che si perde il prossimo vero. Quella notte il gateway aveva già spoolato un P0 per overflow di budget.
+
+**TRAUMA — il secondo: la cura era IRRAGGIUNGIBILE, e il mutation testing è ciò che l'ha detto.** Il restringimento — un contatore `unroutable` nuovo e la condizione `routed == 0 and unroutable < seen` — passava colpevolezza e innocenza. Poi la mutation ha cancellato **l'intero ramo** e non è diventato rosso niente. Non era un test mancante:
+
+> con `routed == 0` e né `errors` né `missing_folders`, ogni messaggio visto è **necessariamente** già contato `unroutable`, quindi `unroutable < seen` è falsa per costruzione.
+
+Il ramo girava a ogni run, sembrava una guardia, e non poteva scattare mai. **La #2 in miniatura, dentro la cura di qualcos'altro.** E la sua prova di colpevolezza raggiungeva `degraded is True` passando dal ramo `errors or missing_folders` due righe sopra: **premessa vacua, asserzione verde**. Una prova di colpevolezza che arriva al verdetto per un'altra strada non prova nulla sulla strada che nomina.
+
+**TRAUMA — il terzo, ed è il vero insegnamento: una somma che si CANCELLA è più silenziosa di un ramo morto.** Al posto del ramo morto è stata messa una legge di conservazione — `unaccounted = seen - routed - left_in_inbox - message_errors`, che deve valere 0. La review avversariale ha misurato la frase «è zero su ogni percorso che questo codice ha oggi» e ha riprodotto il contrario, dal vivo:
+
+```
+seen 1  routed 1  left_in_inbox 0  message_errors 1  ->  unaccounted = -1
+moves [(['m1'], 'F-VISA')]   errors ['message m1: Zoho API 500 while saving draft']
+```
+
+`routed += 1` stava dentro `_handle_one`, **prima** della bozza. `_draft_reply` gestisce da sé `DraftUnavailable`, ma qualunque altra eccezione — Zoho che rifiuta di salvare la risposta, il buffer pending che non si scrive — risaliva al gestore per-messaggio del chiamante, che aggiungeva `message_errors` per un messaggio **già contato come instradato**. Due finali, un messaggio.
+
+Il negativo è truthy, quindi quel run leggeva comunque degraded: sembra innocuo. Non lo è. **Una somma può cancellare**: quel −1 assorbe in silenzio un +1 autentico nello stesso run, e la legge riporta in pari mentre nasconde **due** difetti distinti. È **peggio** del ramo morto che aveva sostituito — il codice morto fallisce forte (la mutation lo uccide), questo fallisce piano.
+
+**TRAUMA — il quarto: la correzione conteneva una sopra-affermazione nuova.** Il commit che chiudeva il terzo diceva testualmente «entrambe le docstring che sopra-affermavano sono corrette, non ammorbidite». Il round-2 ha trovato dentro quella correzione: «i tre contatori sono incrementati in un solo `if/elif`» — **falso**, `message_errors` ha **due** siti (messaggio senza id, e l'`except` per-messaggio). La proprietà vera è «un incremento **per messaggio**» (ogni sito è seguito subito da `continue`), che non è la stessa cosa. Ripetuta in quattro punti, docstring e runbook. **W113 alla lettera: nessun round adversariale punta la frase che SOSTITUISCE, solo quella che si ritira.**
+
+**ANTIBODY.** Non un controllo più grande: una **superficie più piccola**. `_handle_one` restituisce un `_Ending` e non tocca nessuno dei tre contatori; il chiamante ne incrementa esattamente uno, e **non c'è `else`** su quella mappatura — un finale non mappato (un membro nuovo dell'enum, o il `return None` di una guardia aggiunta di fretta) cade in nessun contatore, che è precisamente ciò per cui `unaccounted` esiste. Un crash **dopo** lo spostamento è una draft-failure, perché il finale del messaggio era deciso quando si è mosso. `unroutable` resta dov'è: è una **ragione**, non un finale, e non partecipa alla sottrazione.
+
+E il verdetto nomina la propria causa: `unaccounted` è l'unico termine di `degraded` senza un secondo sintomo (nessuna cartella in lista, nessuna stringa d'errore, nessuna bozza fallita), quindi la riga DEGRADED lo porta; la riga pulita porta `unroutable`, così una giornata muta si distingue da una morta — stesso exit code, stesso `routed=0`, significato opposto. `cli._report()` è stato estratto da `_amain` perché quella formulazione merita un test ed era irraggiungibile senza un database.
+
+**GOTCHA — il mutation testing ha trovato il codice morto, e non poteva trovare il resto.** Uccidere ogni mutante dice che il TUO corpus si accorge se il TUO codice cambia. Il ramo irraggiungibile è stato colto proprio così (cancellarlo non cambiava niente = non stava difendendo niente): **un mutante che sopravvive non è sempre un test mancante, a volte è codice morto che si fingeva guardia.** Ma il −1 no: quello richiedeva un seat esterno con l'ordine di refutare, che ha portato un repro eseguito, non un'opinione. E il quarto trauma ha richiesto un **secondo** round, puntato sulla cura del primo.
+
+**GOTCHA — la sonda che misura può avere la malattia.** Il primo Monitor su questa PR aveva il `case` **fuori** dal controllo di cambiamento: riemetteva «needs attention» a ogni giro di polling su uno stato fermo. Riscritto. (W107, di nuovo, su me stesso.)
+
+**GOTCHA di misura.** `scripts/lint_test_reward_hacking.py` passato con una **directory** ha risposto `1 test file(s) checked` su una cartella che ne contiene sei; con i file espliciti dice `2` e li controlla davvero. Un «clean» su un argomento-directory qui misura quasi niente — passare i percorsi, non la cartella.
+
+**GOTCHA.** `gh pr merge --auto` esce **0 senza output** anche quando `autoMergeRequest` resta `null`: su questo repo con la merge queue la PR era già **accodata** (`isInMergeQueue: true`, posizione 1) e il campo auto-merge non lo dice. Il gesto è un proxy (W111): interroga `mergeQueueEntry`, non l'exit code del comando.
+
+**Reference:** `backend/services/mail_loop/loop.py` (`_Ending`, `RunSummary.unaccounted`, il mapping senza `else` in `_route_and_draft`) · `backend/services/mail_loop/cli.py` (`_report`) · corpus `test_loop.py` (crash post-spostamento + «la legge non può fare zero in somma») e `test_preflight_and_env.py` (il verdetto nomina la causa) · runbook `docs/runbooks/zoho-mail-loop.md` §11 — PR #3615. 9 mutanti su 9 uccisi.
