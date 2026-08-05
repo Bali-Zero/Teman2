@@ -45,8 +45,10 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-05 — keep current)
 
-**🔴🟡 2026-08-05 — WE TELL A VIDEO-GAME STUDIO IT NEEDS THREE DEFENCE-INDUSTRY LICENCES. THE OBVIOUS
-CURE WAS BUILT IN MEASUREMENT, MEASURED, AND REFUSED — IT WOULD HAVE DELETED ~1,900 MOSTLY-TRUE ROWS.**
+**🔴🟡 2026-08-05 — WE TELL A VIDEO-GAME STUDIO IT NEEDS THREE DEFENCE-INDUSTRY LICENCES, AND CANONICAL
+IS WHERE IT COMES FROM: 62110 INHERITED ITS PP 28 LICENSING FROM FIVE OTHER CODES.** Read this section
+to the CORRECTION at its end — the first verdict here (a refusal built on one canonical field) was
+wrong within the hour, and the corrected finding is the larger one.
 
 This closes the declared gap left open by #3625 ("the 11,245 node-silent edges are untouched and still
 wrong in places") with a NUMBER and a NO, not with a fix.
@@ -71,7 +73,9 @@ resolvable from Postgres — a pointer, not evidence (W65).
 `izin_usaha` 1,935 rows / 647 codes / 506 distinct targets · `license` 1,167 / 967 / 4 · `nib` 100 ·
 `penetapan` 10 · `permit_type` 9 · `perizinan` 2.
 
-**THE TEMPTING PREDICATE, AND WHY IT IS REFUSED.** The obligations cure compares the target's
+**THE TEMPTING PREDICATE, AND WHY IT IS REFUSED** — ⚠️ **read the CORRECTION below before using any
+number in this paragraph: it was measured against one canonical field and the missing one changes the
+diagnosis.** The obligations cure compares the target's
 `kewajiban` against canonical's; the obvious sequel compares the target's NAME against canonical's
 `perizinan` for the same code. Measured over all 3,222: **NO_OVERLAP 1,925** (624 codes, 495 names) ·
 SUBPHRASE_OF_CANONICAL 634 · EXACT 614 · CANONICAL_SILENT 38 · CODE_ABSENT 9 · CANONICAL_INSIDE_NAME 2.
@@ -89,12 +93,56 @@ comparison reads "contradicted" on the whole second layer.
 > not a tuning problem.** Same shape as the 1,341 duplicate `BELONGS_TO` rows: the cure that looks
 > obvious would have quietly destroyed data while wearing the shape of a fix.
 
-**WHAT WOULD ACTUALLY CLOSE IT** (not built, named so the next session does not re-derive the refusal):
-a per-code adjudication with a government source for the UMKU layer — the OSS UMKU catalogue keyed by
-KBLI — which we do not hold. Until then the honest move is DISCLOSURE, not deletion: a licence entry
-with empty `requirements` and no canonical corroboration is graph-attributed, and rendering it
-identically to a canonical-backed one overstates it. That is a render-side change, in the family of the
-`[… cut off in the official source]` label.
+**🔴 CORRECTED ONE HOUR AFTER MERGING IT — WE DO HOLD THE UMKU LAYER, AND THE DEFENCE PERMITS ARE IN
+CANONICAL.** The paragraph above shipped in #3643 saying the UMKU layer was absent from canonical and
+that a per-code adjudication would need a source "which we do not hold". **Both halves are false**, and
+they were false because the refusal enumerated ONE canonical field. `per_skala_legacy[].pb_umku` is the
+UMKU layer: **930 codes, 1,316 entries, 645 distinct values**, and its vocabulary is exactly the one the
+refusal called "contradicted" — `Sertifikat Tingkat Komponen Dalam Negeri`, the TKDN machine approval,
+`Sertifikat Laik Sehat`, `Pelepasan Varietas Tanaman Perkebunan`.
+
+Re-measured with the reference it should have used from the start (`perizinan` ∪ `pb_umku`, both
+`per_skala` and `per_skala_legacy`, bulleted cells split): **EXACT 1,358 · SUBPHRASE 817 ·
+CANONICAL_INSIDE_NAME 29 · NO_OVERLAP 971** (497 codes, 328 names) · CANONICAL_SILENT 38 · CODE_ABSENT 9. The graph mirrors canonical far more closely than the first pass could see.
+
+**And that flips the diagnosis of the 62110 case entirely.** Canonical's own record for VIDEO GAME
+DEVELOPMENT carries, verbatim in `per_skala_legacy[2].pb_umku`:
+
+> `- Pendaftaran Penyelenggara Sistem Elektronik Lingkup Privat (dalam hal memiliki sistem elektronik
+yang dipergunakan) - Izin Penetapan Indust ri Pertahanan - Sertifikat Persetujuan Kelaik an Fasilitas
+Produ ksi Pertahanan … - Izin Produksi Alat Peralatan Pertahanan dan Keamanan`
+
+So the KG is **faithfully reproducing canonical**, not inventing. #3625's "CANONICAL IS CLEAN — this is
+an EDGE defect" holds for the agricultural OBLIGATIONS and **does not generalise to this class**. (The
+mid-word spaces — `Indust ri`, `Kelaik an`, `Produ ksi` — are the PDF text-layer damage this lane has
+met before; the text is a bad extraction, not a bad transcription by us.)
+
+**THE MECHANISM IS RECORDED IN THE DATA AND NOTHING SURFACES IT.** `62110.pp28_sources` is
+`["62011", "62019", "62015", "62013", "62012"]`: 62110 is a NEW 2025 code with no PP 28/2021 row of its
+own, so its licensing was filled from its KBLI-2020 ancestors — computer-programming codes. Measured
+across the file: **390 of 1,559 codes carry `pp28_sources` naming ONLY OTHER codes** (plus 88 that mix
+own + others, 906 that are self-sourced, 175 empty), and **217 of those 390 inherit a `pb_umku` permit
+that belongs to a different code**. The ancestry itself can be wrong — `02101 Pengelolaan Hutan` (forest
+management) is sourced from `['63111']` (data processing / hosting).
+
+**This is the north star's own words made measurable**: _"zero silent cross-vintage fill anywhere in the
+catalog"_. The fill is not silent in the data — `pp28_sources` is a complete audit trail — it is silent
+on the SURFACES. A client reading `/kbli/62110` or asking the bot is told it needs a defence-production
+permit, with nothing saying that requirement was inherited from a different code.
+
+**WHAT WOULD ACTUALLY CLOSE IT** (not built): DISCLOSURE, not deletion. A permit whose only support is
+an INHERITED `pp28_sources` entry should say so — same family as the `[… cut off in the official
+source]` label, and derivable from a field we already carry on every record, with no new government
+source needed. Deletion stays refused for the original reason, which survives correction: the layers are
+real and most of these permits are real.
+
+**Left standing from the refusal, because it is still true**: comparing a licence name against
+`perizinan` ALONE reads "contradicted" across the whole UMKU layer, and what remains at NO_OVERLAP after
+the union is dominated by **mis-typed nodes rather than wrong permits** — `Izin Usaha` (174 codes), bare
+`UMKU` (81), `Badan Hukum` (16), `Perizinan Berusaha` (8), and sentences that are obligations or table
+headings carrying `entity_type='izin_usaha'`: `Menjamin mutu yang dihasilkan sesuai standar`, `Layanan
+keluhan pelanggan`, `Kewajiban Pelaku Usaha`, `Lokasi industri berada pada Provinsi bersangkutan`. Those
+are rendered to clients as licences to obtain. Named here, not cured here.
 
 **THE FIELD TRAP THAT BIT TWICE IN ONE NIGHT — read this before writing any canonical licence probe.**
 `per_skala[].perizinan` is populated on **6 of 1,559 codes** (17 of 9,095 scale entries).
