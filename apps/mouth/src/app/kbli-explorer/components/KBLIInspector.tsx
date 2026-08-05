@@ -236,7 +236,16 @@ const KBLIInspector = ({
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-sm font-medium text-silver group-hover:text-white transition-colors">
-                      {lic.type}
+                      {describeObligation(lic.type).text}
+                      {describeObligation(lic.type).truncated && (
+                        <span
+                          className="text-[#c98a3a]"
+                          title={TRUNCATION_HINT}
+                        >
+                          {" "}
+                          […{TRUNCATION_NOTE}]
+                        </span>
+                      )}
                     </span>
                     <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
                       {lic.sla}

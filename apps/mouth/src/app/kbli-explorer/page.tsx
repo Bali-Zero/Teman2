@@ -850,7 +850,16 @@ const InspectorChoreographed = ({
                         <span
                           className={`font-medium text-silver group-hover:text-white transition-colors ${idx === 0 ? "text-sm" : "text-xs"}`}
                         >
-                          {lic.type}
+                          {describeObligation(lic.type).text}
+                          {describeObligation(lic.type).truncated && (
+                            <span
+                              className="text-[#c98a3a]"
+                              title={TRUNCATION_HINT}
+                            >
+                              {" "}
+                              […{TRUNCATION_NOTE}]
+                            </span>
+                          )}
                         </span>
                         <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
                           {lic.sla}
