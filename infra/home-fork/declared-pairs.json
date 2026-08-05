@@ -560,6 +560,11 @@
       "repo": "scripts/cron-runner.sh",
       "machines": ["all"],
       "_note": "Largest of the FIVE receipt producers in ~/.agent/decisions/state (36 receipts, 30 invocations = 25 crontab + 5 plist on Pro, vs cron-state's 28/27). Undeclared until 2026-07-28, which is why Mini read clean 96/96 while carrying a 10-line ANCESTOR of this script that writes no receipt at all (inert there: 0 crontab invocations, 0 receipts). Declared so the divergence is visible and so the failure-alert added here cannot be merged-but-inert: Pro's live copy is a real file, not a symlink, so a git pull alone does not reach it."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.zoho-mail-loop.daily.plist",
+      "repo": "infra/launchagents/com.balizero.zoho-mail-loop.daily.plist",
+      "machines": ["all"]
     }
   ],
   "allow": [
