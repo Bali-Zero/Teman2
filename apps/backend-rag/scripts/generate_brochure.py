@@ -78,7 +78,12 @@ BACKEND_ROOT = Path(__file__).parent.parent                # apps/backend-rag
 # which is precisely how this generator drifted four months out of date.
 OUTPUT_PATH  = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "brochure_balizero_en.pdf"
 LOGO_PATH    = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "balizero-logo-clean.png"
-PRICING_PATH = BACKEND_ROOT / "backend" / "data" / "bali_zero_official_prices_2025.json"
+# The 2026 list is the SSOT since 2026-05-06 (apps/backend-rag/CLAUDE.md, Pricing Rules).
+# This script was still reading the 2025 file. Measured before switching, so the claim is
+# a measurement and not a worry: all 15 rows that resolved were IDENTICAL in both files,
+# so no live price was ever wrong — but the category names moved, and that is what put
+# 18 of 33 rows on a dash.
+PRICING_PATH = BACKEND_ROOT / "backend" / "data" / "bali_zero_official_prices_2026.json"
 
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -87,7 +92,7 @@ OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 # ─────────────────────────────────────────────────────────
 import numpy as np
 from PIL import Image as PILImage
-from reportlab.lib.colors import Color, HexColor, white
+from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -141,15 +146,32 @@ SECTION_COLORS = {
 W, H = A4  # 210 × 297 mm
 
 # ─────────────────────────────────────────────────────────
+# MARGINS — declared HERE, once, because two_col() needs the same number the
+# content Frame uses. They used to be declared next to the Frame, 950 lines
+# below, and two_col carried its own guess (`W - 25*mm`) that was 19pt wrong.
+# A width that two things must agree on gets one definition.
+# ─────────────────────────────────────────────────────────
+MARGIN_LR        = 15*mm
+MARGIN_TOP_COVER = 104*mm  # clears the centred square cover logo (22mm–96mm from top)
+MARGIN_BOT_COVER = 18*mm
+MARGIN_TOP       = 18*mm
+MARGIN_BOT       = 20*mm
+CONTENT_FRAME_INSET = 5    # extra left inset on content pages (accent bar)
+CONTENT_FRAME_W  = W - 2*MARGIN_LR - CONTENT_FRAME_INSET
+
+# ─────────────────────────────────────────────────────────
 # LOAD PRICING DATA
 # ─────────────────────────────────────────────────────────
 def load_pricing() -> dict:
+    # Loud, not a warning-and-carry-on. An empty dict here means every price
+    # lookup misses, and before this pass that produced a brochure full of
+    # dashes with exit code 0 — a client-facing artifact degrading silently
+    # is the same shape as the Helvetica fallback (scar W99).
     try:
         with open(PRICING_PATH, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"⚠️  Pricing load failed: {e}")
-        return {}
+        raise SystemExit(f"\n❌ PRICING LOAD FAILED — {PRICING_PATH}\n   {e}\n")
 
 PRICING = load_pricing()
 
@@ -168,13 +190,39 @@ def fmt_price(idr_str: str) -> str:
         return idr_str
 
 
-def get_price(category: str, key_fragment: str) -> str:
-    """Get first matching price from pricing data."""
+# Services this brochure lists that the price list deliberately does not carry a
+# figure for. Being on this list is an ASSERTION — "we offer it, the price is not
+# a list price" — so it is spelled out here rather than inferred from a lookup miss.
+# Anything NOT on this list that fails to resolve is a bug and stops the build.
+ON_REQUEST: set[tuple[str, str]] = set()
+
+
+def get_price(category: str, key: str) -> str:
+    """Look a price up by its EXACT key in the 2026 price list.
+
+    Exact, not substring, and the difference is not stylistic. The previous
+    version matched `key.lower() in k.lower()`, so the row labelled "ERP"
+    matched the entry "Investor KITAP + M**ERP**" and would have printed
+    Rp 55M — a 68x overstatement — next to an 800k service, on a document
+    handed to clients. Superscar #3: match the entity, never the shape.
+
+    A miss raises. A client-facing price list that silently degrades to "–"
+    is the same failure as the silent Helvetica fallback above: it produced
+    18 dashes out of 33 rows and nobody noticed, because nothing said so.
+    """
     cat = PRICING.get("services", {}).get(category, {})
-    for k, v in cat.items():
-        if key_fragment.lower() in k.lower():
-            return fmt_price(v.get("price", ""))
-    return "–"
+    entry = cat.get(key)
+    if entry is None:
+        if (category, key) in ON_REQUEST:
+            return "On request"
+        near = [k for k in cat if key.lower()[:6] in k.lower()] or sorted(cat)[:6]
+        raise SystemExit(
+            f"\n❌ PRICE NOT FOUND — refusing to write a client-facing price list.\n"
+            f"   asked for : services.{category}[{key!r}]\n"
+            f"   category has {len(cat)} keys; closest: {near}\n"
+            f"   Fix the key, fix the category, or add it to ON_REQUEST with a reason.\n"
+        )
+    return fmt_price(entry.get("price", ""))
 
 
 # ─────────────────────────────────────────────────────────
@@ -441,27 +489,34 @@ class PriceRow(Flowable):
 
     def wrap(self, avail_w, avail_h):
         self._avail_w = avail_w
-        return avail_w, 8*mm
+        # A row carrying a note is TALLER, and every y below is measured DOWN
+        # from the top of whatever height we claim. Before this, height was a
+        # flat 8mm while the note was drawn at -1.5mm — i.e. outside the box
+        # this flowable had reserved — so it landed on the next row's divider.
+        # Visible on the published page 4 under "New PMA Company (full package)".
+        self._h = 11*mm if self._note else 8*mm
+        return avail_w, self._h
 
     def draw(self):
         c = self.canv
+        h = self._h
         c.saveState()
-        # divider
+        # divider, along the top edge of the row
         c.setFillColor(DIVIDER)
-        c.rect(0, 7.5*mm, self._avail_w, 0.5, fill=1, stroke=0)
+        c.rect(0, h - 0.5*mm, self._avail_w, 0.5, fill=1, stroke=0)
         # service name
         c.setFont(BODY_FONT, 9)
         c.setFillColor(TEXT_MAIN)
-        c.drawString(0, 1.5*mm, self._service)
-        # note
+        c.drawString(0, h - 6.5*mm, self._service)
+        # note, inside the extra 3mm this row claimed for it
         if self._note:
             c.setFont(BODY_FONT, 7)
             c.setFillColor(TEXT_DIM)
-            c.drawString(0, -1.5*mm, self._note)
+            c.drawString(0, h - 9.5*mm, self._note)
         # price
         c.setFont(TITLE_FONT, 11)
         c.setFillColor(self._accent)
-        c.drawRightString(self._avail_w, 1.5*mm, self._price)
+        c.drawRightString(self._avail_w, h - 6.5*mm, self._price)
         c.restoreState()
 
 
@@ -569,21 +624,40 @@ class ContactCard(Flowable):
 # ─────────────────────────────────────────────────────────
 # HELPER: build two-column table
 # ─────────────────────────────────────────────────────────
-def two_col(left: list, right: list, col_ratio: float = 0.5, gap_mm: float = 6) -> Table:
+def two_col(left: list, right: list, col_ratio: float = 0.5, gap_mm: float = 10) -> Table:
+    """Two columns with a REAL gutter between them.
+
+    Three independent defects used to land on the same x coordinate here, which
+    is why pages 3-5 of the published brochure had a white line struck through
+    the text on both sides of it:
+
+    1. ``avail = W - 25*mm`` assumed a 12.5mm margin per side. The content frame
+       is ``W - 2*MARGIN_LR - 5`` and MARGIN_LR is 15mm, so the table was built
+       19pt too wide and overflowed the frame it sits in.
+    2. Subtracting ``gap/2`` from each column width does NOT put space between
+       them — reportlab lays cell 2 immediately after cell 1, so the gutter was
+       ZERO. The left column's right-aligned price and the right column's
+       left-aligned text were drawn at the same x.
+    3. ``("INNERGRID", ..., 0, white)`` — in reportlab a line width of 0 is a
+       HAIRLINE, not "no line". It drew a white rule at exactly that x.
+
+    The gutter is now a real empty middle column, the width is derived from the
+    same expression the frame uses, and nothing is stroked between the columns.
+    """
     gap = gap_mm * mm
-    avail = W - 25*mm  # frame width
-    lw = avail * col_ratio - gap / 2
-    rw = avail * (1 - col_ratio) - gap / 2
+    avail = CONTENT_FRAME_W
+    body = avail - gap
+    lw = body * col_ratio
+    rw = body * (1 - col_ratio)
     return Table(
-        [[left, right]],
-        colWidths=[lw, rw],
+        [[left, "", right]],
+        colWidths=[lw, gap, rw],
         style=TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
             ("TOPPADDING", (0, 0), (-1, -1), 0),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ("INNERGRID", (0, 0), (-1, -1), 0, white),
         ]),
     )
 
@@ -722,7 +796,7 @@ def page_immigration() -> list:
         ("C1 Tourism (60 days)",      get_price("single_entry_visas", "C1 Tourism")),
         ("C2 Business (60 days)",     get_price("single_entry_visas", "C2 Business")),
         ("C18 Work Trial (90 days)",  get_price("single_entry_visas", "C18 Work Trial")),
-        ("C22A&B Internship (180d)",  get_price("single_entry_visas", "C22A&B Internship (180")),
+        ("C22A&B Internship (180d)",  get_price("single_entry_visas", "C22A&B Internship (180 Days)")),
     ]
     for name, price in single_entries:
         left.append(PriceRow(name, price, INDIGO))
@@ -730,19 +804,19 @@ def page_immigration() -> list:
 
     left.append(Paragraph("Multiple-Entry Visas", ST["ACCENTI"]))
     left.append(Spacer(1, 2*mm))
-    left.append(PriceRow("D12 Business (1 year)",  get_price("multiple_entry_visas", "D12 Business Investigation (1"), INDIGO))
-    left.append(PriceRow("D12 Business (2 years)", get_price("multiple_entry_visas", "D12 Business Investigation (2"), INDIGO))
+    left.append(PriceRow("D12 Business (1 year)",  get_price("multiple_entry_visas", "D12 Business Investigation (1 Year)"), INDIGO))
+    left.append(PriceRow("D12 Business (2 years)", get_price("multiple_entry_visas", "D12 Business Investigation (2 Years)"), INDIGO))
     left.append(Spacer(1, 4*mm))
 
     left.append(Paragraph("KITAS / Stay Permits", ST["ACCENTI"]))
     left.append(Spacer(1, 2*mm))
     kitas_rows = [
-        ("E33G Remote Worker (Offshore)", get_price("kitas_permits", "E33G Remote Worker (Offshore")),
-        ("E33G Remote Worker (Altus)",    get_price("kitas_permits", "E33G Remote Worker (Altus")),
-        ("Freelance E23 (Offshore)",      get_price("kitas_permits", "Freelance E23 (Offshore")),
-        ("Investor KITAS 2Y (Offshore)",  get_price("kitas_permits", "Investor KITAS 2 Years (Offshore")),
-        ("Retirement KITAS (Offshore)",   get_price("kitas_permits", "Retirement (Offshore")),
-        ("Spouse / Dependent 1Y",         get_price("kitas_permits", "Spouse 1 Year (Offshore")),
+        ("E33G Remote Worker (Offshore)", get_price("kitas_permits", "E33G Remote Worker (Offshore)")),
+        ("E33G Remote Worker (Altus)",    get_price("kitas_permits", "E33G Remote Worker (Altus/Onshore)")),
+        ("Freelance E23 (Offshore)",      get_price("kitas_permits", "Freelance E23 (Offshore)")),
+        ("Investor KITAS 2Y (Offshore)",  get_price("kitas_permits", "Investor KITAS 2 Years (Offshore)")),
+        ("Retirement KITAS (Offshore)",   get_price("kitas_permits", "Retirement (Offshore)")),
+        ("Spouse / Dependent 1Y",         get_price("kitas_permits", "Spouse 1 Year (Offshore)")),
     ]
     for name, price in kitas_rows:
         left.append(PriceRow(name, price, INDIGO))
@@ -759,21 +833,16 @@ def page_immigration() -> list:
 
     right.append(Paragraph("Urgent Processing", ST["ACCENTI"]))
     right.append(Spacer(1, 1.5*mm))
-    right.append(PriceRow("Same day (1 day)",  "Rp 3M", TERRA))
-    right.append(PriceRow("2-day service",     "Rp 2.5M", GOLD))
-    right.append(PriceRow("3-day service",     "Rp 1M",  TEXT_DIM))
+    right.append(PriceRow("Same day (1 day)", get_price("urgent_processing", "Urgent 1 Hari"), TERRA))
+    right.append(PriceRow("2-day service",    get_price("urgent_processing", "Urgent 2 Hari"), GOLD))
+    right.append(PriceRow("3-day service",    get_price("urgent_processing", "Urgent 3 Hari"), TEXT_DIM))
     right.append(Spacer(1, 4*mm))
 
     right.append(Paragraph("KITAP (Permanent)", ST["ACCENTI"]))
     right.append(Spacer(1, 1.5*mm))
-    right.append(PriceRow("Investor KITAP + MERP", get_price("kitas_permits", "Investor KITAP"), GOLD))
-    right.append(PriceRow("Retirement KITAP",      get_price("kitas_permits", "Retirement KITAP"), GOLD))
+    right.append(PriceRow("Investor KITAP + MERP", get_price("kitap_permits", "Investor KITAP + MERP"), GOLD))
+    right.append(PriceRow("Retirement KITAP + MERP", get_price("kitap_permits", "Retirement KITAP + MERP"), GOLD))
     right.append(Spacer(1, 4*mm))
-
-    right.append(Paragraph("MERP (Re-entry)", ST["ACCENTI"]))
-    right.append(Spacer(1, 1.5*mm))
-    right.append(PriceRow("MERP 1 year", get_price("kitas_permits", "MERP 1 Year"), INDIGO))
-    right.append(PriceRow("MERP 2 year", get_price("kitas_permits", "MERP 2 Year"), INDIGO))
 
     story.append(two_col(left, right, col_ratio=0.56))
     story.append(NextPageTemplate("biz"))
@@ -798,16 +867,16 @@ def page_business() -> list:
     left = []
     left.append(Paragraph("Company Formation", ST["ACCENT"]))
     left.append(Spacer(1, 2*mm))
-    left.append(PriceRow("New PMA Company (full package)", get_price("other_services", "NEW COMPANY"), TERRA, "Includes OSS, BKPM, NIB, notarial deed"))
-    left.append(PriceRow("Virtual Office (1 year)",        get_price("other_services", "VIRTUAL OFFICE"), TERRA))
+    left.append(PriceRow("New PMA Company (full package)", get_price("company_services", "New Company (PT PMA)"), TERRA, "Includes OSS, BKPM, NIB, notarial deed"))
+    left.append(PriceRow("Virtual Office (1 year)",        get_price("company_services", "Virtual Office"), TERRA))
     left.append(Spacer(1, 4*mm))
 
     left.append(Paragraph("Work Permits (Foreign Employees)", ST["ACCENT"]))
     left.append(Spacer(1, 2*mm))
     working_rows = [
-        ("Working KITAS (Offshore)", get_price("kitas_permits", "Working KITAS (Offshore")),
-        ("Working KITAS (Altus)",    get_price("kitas_permits", "Working KITAS (Altus")),
-        ("Working KITAS (Extend)",   get_price("kitas_permits", "Working KITAS (Extend")),
+        ("Working KITAS (Offshore)", get_price("kitas_permits", "Working KITAS (Offshore)")),
+        ("Working KITAS (Altus)",    get_price("kitas_permits", "Working KITAS (Altus/Onshore)")),
+        ("Working KITAS (Extend)",   get_price("kitas_permits", "Working KITAS (Extend)")),
     ]
     for name, price in working_rows:
         left.append(PriceRow(name, price, TERRA))
@@ -816,11 +885,11 @@ def page_business() -> list:
     left.append(Paragraph("Compliance & Admin", ST["ACCENT"]))
     left.append(Spacer(1, 2*mm))
     admin_rows = [
-        ("Cancel RPTKA / IMTA / Wajib Lapor", get_price("other_services", "CANCEL (RPTKA")),
-        ("Cancel RPTKA only",                  get_price("other_services", "CANCEL RPTKA")),
-        ("Reset Molina",                       get_price("other_services", "RESET MOLINA")),
-        ("EPO (OSS permit)",                   get_price("other_services", "EPO")),
-        ("ERP (OSS amendment)",                get_price("other_services", "ERP")),
+        ("Cancel Wajib Lapor",                get_price("other_process", "Cancel Wajib Lapor")),
+        ("Cancel RPTKA only",                  get_price("other_process", "Cancel RPTKA")),
+        ("Reset Molina",                       get_price("other_process", "Reset Molina")),
+        ("EPO (Exit Permit Only)",             get_price("other_process", "EPO (Exit Permit Only)")),
+        ("ERP (Exit Re-entry Permit)",         get_price("other_process", "ERP (Exit Re-entry Permit)")),
     ]
     for name, price in admin_rows:
         left.append(PriceRow(name, price, TERRA))
@@ -888,13 +957,12 @@ def page_tax() -> list:
     left.append(Paragraph("Document Services", ST["ACCENTG"]))
     left.append(Spacer(1, 2*mm))
     doc_rows = [
-        ("SKTT (Resident Card)",        get_price("other_services", "SKTT")),
-        ("SKCK (Police Clearance)",     get_price("other_services", "SKCK")),
-        ("Domicile Letter",             get_price("other_services", "DOMICILIE LETTER")),
-        ("Domicile + SKTT (combined)",  get_price("other_services", "DOMICILIE + SKTT")),
-        ("Passport 5 years",            get_price("other_services", "PASSPORT 5 YEARS")),
-        ("Passport 10 years",           get_price("other_services", "PASSPORT 10 YEARS")),
-        ("Mutation (passport/address)", get_price("other_services", "MUTATION PASSPORT")),
+        ("SKTT (Resident Card)",        get_price("other_process", "SKTT")),
+        ("SKCK (Police Clearance)",     get_price("other_process", "SKCK")),
+        ("Domicile Letter",             get_price("other_process", "Domicilie Letter")),
+        ("Passport 5 years",            get_price("other_process", "Passport 5 Years")),
+        ("Passport 10 years",           get_price("other_process", "Passport 10 Years")),
+        ("Mutation (passport/address)", get_price("other_process", "Mutation Passport")),
     ]
     for name, price in doc_rows:
         left.append(PriceRow(name, price, GOLD))
@@ -1047,11 +1115,7 @@ def _content_logo_overlay(section_id: str):
 # ─────────────────────────────────────────────────────────
 # DOCUMENT ASSEMBLY
 # ─────────────────────────────────────────────────────────
-MARGIN_LR = 15*mm
-MARGIN_TOP_COVER = 104*mm  # clears the centred square cover logo (22mm–96mm from top)
-MARGIN_BOT_COVER = 18*mm
-MARGIN_TOP = 18*mm
-MARGIN_BOT = 20*mm
+# (margins are declared once, near the page size — see CONTENT_FRAME_W)
 
 def build_doc() -> None:
     doc = BaseDocTemplate(
@@ -1065,7 +1129,7 @@ def build_doc() -> None:
 
     # Frames
     f_cover = Frame(MARGIN_LR, MARGIN_BOT_COVER, W - 2*MARGIN_LR, H - MARGIN_TOP_COVER - MARGIN_BOT_COVER, id="cover")
-    f_content = Frame(MARGIN_LR + 5, MARGIN_BOT, W - 2*MARGIN_LR - 5, H - MARGIN_TOP - MARGIN_BOT, id="content")
+    f_content = Frame(MARGIN_LR + CONTENT_FRAME_INSET, MARGIN_BOT, CONTENT_FRAME_W, H - MARGIN_TOP - MARGIN_BOT, id="content")
 
     pages = [
         PageTemplate(id="cover",   frames=[f_cover],   onPage=_cover_logo_overlay),
