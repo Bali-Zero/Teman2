@@ -258,6 +258,57 @@ def _iter_candidate_paths(
 # --------------------------------------------------------------------------
 
 
+def _dir_traversal(directory: str, _cache: dict = {}) -> Tuple[bool, bool]:
+    """(group_can_traverse, other_can_traverse) for ONE directory.
+
+    On any stat error the answer is (True, True): a guard that could not
+    verify must never absolve (W106b — CANNOT-VERIFY is not the same as
+    clean). Cached because a fleet scan walks ~90k files over a few hundred
+    directories.
+    """
+    hit = _cache.get(directory)
+    if hit is not None:
+        return hit
+    try:
+        mode = stat.S_IMODE(os.stat(directory).st_mode)
+        result = (bool(mode & stat.S_IXGRP), bool(mode & stat.S_IXOTH))
+    except OSError:
+        result = (True, True)
+    _cache[directory] = result
+    return result
+
+
+def reachable_by(path: Path) -> Tuple[bool, bool]:
+    """(group, other) — can each actually walk down to this file?
+
+    A 0644 file inside a 0700 directory is NOT in the clear: nobody but the
+    owner can reach it. Judging the file's own mode alone answers a narrower
+    question than the one this tool exists to ask, and the gap is not
+    academic — it shows up as a permanent stream of findings for files that
+    cannot be read by anyone, which is precisely how a guard's output stops
+    being read at all (superscar #2). Every directory from the file up to the
+    root must permit traversal, so one tight directory anywhere in the chain
+    is enough to close the path.
+
+    DECLARED LIMIT: this follows the resolved path only. A hard link to the
+    same inode from a permissive directory would still be reachable and this
+    function cannot see it — hard links are outside what a path-based audit
+    can answer, and saying so here is cheaper than implying otherwise.
+    """
+    group = other = True
+    try:
+        directory = path.parent.resolve()
+    except OSError:
+        return (True, True)
+    while True:
+        can_group, can_other = _dir_traversal(str(directory))
+        group = group and can_group
+        other = other and can_other
+        if not (group or other) or directory.parent == directory:
+            return (group, other)
+        directory = directory.parent
+
+
 def scan(
     roots: Iterable[Path],
     max_depth: int = DEFAULT_MAX_DEPTH,
@@ -290,7 +341,16 @@ def scan(
             continue  # symlink, socket, fifo, etc. — skip, never follow
 
         mode_bits = stat.S_IMODE(lst.st_mode)
-        if mode_bits & 0o077:
+        if not mode_bits & 0o077:
+            continue
+
+        # The mode says who MAY read; the directory chain says who can get
+        # here at all. Both have to be true for the file to be exposed.
+        can_group, can_other = reachable_by(candidate)
+        exposed = (bool(mode_bits & 0o070) and can_group) or (
+            bool(mode_bits & 0o007) and can_other
+        )
+        if exposed:
             findings.append(Finding(path=candidate, mode=mode_bits))
 
     findings.sort(key=lambda f: str(f.path))
