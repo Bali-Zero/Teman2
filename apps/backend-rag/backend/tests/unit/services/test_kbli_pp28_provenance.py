@@ -43,12 +43,34 @@ def test_note_names_every_source_code_and_plural_agrees():
     note = inherited_licensing_note(["62011", "62019"])
     assert note is not None
     assert "62011" in note and "62019" in note
-    assert "KBLI codes " in note  # plural
+    assert "KBLI 2020 codes " in note  # plural
     assert "Bali Zero team" in note
 
     single = inherited_licensing_note(["63111"])
-    assert single is not None and "KBLI code 63111" in single
-    assert "KBLI codes" not in single
+    assert single is not None and "KBLI 2020 code 63111" in single
+    assert "KBLI 2020 codes" not in single
+
+
+def test_the_note_dates_the_codes_it_names_to_the_2020_vintage():
+    """The codes in `pp28_sources` are KBLI-2020 numbers, and the note is read
+    by clients who will look them up on OUR site, where the catalogue is 2025.
+
+    Measured over the 378 distinct codes this note can name: 345 do not exist
+    as 2025 codes (the client finds nothing) and 33 DO — as a DIFFERENT
+    activity, because numbers are reused across vintages. `62110`'s five
+    sources are all in the first group. Naming a bare number is therefore a
+    dangling pointer at best and a wrong page at worst, so the year is part of
+    the claim, not formatting. Guard it in BOTH grammatical forms: the plural
+    branch is the one 62110 hits, and a fix that reaches only the branch that
+    bit you is half a fix.
+    """
+    for sources in (["62011"], ["62011", "62019", "62015"]):
+        note = inherited_licensing_note(sources)
+        assert note is not None
+        assert "KBLI 2020 code" in note, note
+        # An undated "KBLI code 62011" must not survive anywhere in the string.
+        assert "from KBLI code" not in note, note
+        assert "from KBLI codes" not in note, note
 
 
 # --------------------------------------------------------------------------

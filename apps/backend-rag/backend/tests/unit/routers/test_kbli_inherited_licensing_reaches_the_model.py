@@ -22,7 +22,15 @@ from fastapi.testclient import TestClient
 import backend.app.routers.kbli_notebook as kbli_notebook_module
 from backend.app.dependencies import get_optional_database_pool, get_search_service
 
+# The endpoint's real query is `SELECT n.*, ... FROM kg_nodes n JOIN kg_edges e`,
+# so every key `kg_nodes` has reaches this row — `entity_id` included. Keep this
+# fake at the shape the SOURCE emits, not at the subset today's reader happens to
+# touch: this fixture was first written against a reader that never looked at
+# `entity_id`, and the very next change to the endpoint (the permit-name verdict,
+# which classifies on it) turned all four tests into `KeyError: 'entity_id'`. A
+# fake trimmed to its current reader is a trap armed for the next one (W114).
 LICENSE_ROW = {
+    "entity_id": "perizinan:izin_industri_alpalhan",
     "name": "Industri Kelaikan Produksi Alat Peralatan Pertahanan",
     "target_entity_type": "perizinan",
     "properties": {"skala_usaha": ["Besar"], "kategori_risiko": "Tinggi"},
@@ -187,7 +195,7 @@ def test_the_cache_key_is_versioned_past_the_payload_that_lacked_the_field(
         body = _get(client)
         assert body["licensing_note"] is not None
         requested = client._cache.get.await_args.args[0]
-        assert requested == "kbli_inspect_v3_62110", requested
+        assert requested == "kbli_inspect_v4_62110", requested
         assert "_v2_" not in requested
     finally:
         _stop(client)

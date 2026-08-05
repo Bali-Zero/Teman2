@@ -611,3 +611,41 @@ describe("pp28ContentInheritedFrom (raw-record derivation)", () => {
     }
   });
 });
+
+// =============================================================================
+// The note's VINTAGE — pinned on the source, because the sentence lives in JSX
+//
+// `pp28_sources` holds KBLI-2020 numbers. A client reading "carried over from
+// KBLI code 62011" looks 62011 up on THIS site, whose catalogue is 2025.
+// Measured over the 378 distinct codes the note can name: 345 do not exist as
+// 2025 codes and 33 do — as a DIFFERENT activity, since numbers are reused
+// across vintages. So the year is part of the claim, not formatting.
+//
+// The same sentence exists in the backend (kbli_pp28_provenance.py, which has
+// its own test). Two surfaces carrying one sentence is exactly how one of them
+// drifts, so each pins its own copy rather than trusting the other's.
+// =============================================================================
+
+describe("inherited-licensing note", () => {
+  const SOURCE = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src",
+      "components",
+      "kbli",
+      "LicensingSection.tsx",
+    ),
+    "utf-8",
+  );
+
+  it("dates the codes it names to the 2020 vintage", () => {
+    expect(SOURCE).toContain("carried over from KBLI 2020 code");
+  });
+
+  it("never names a source code without its vintage", () => {
+    // Guilt for the exact shipped-then-corrected wording, in both grammatical
+    // branches: the plural is the one 62110 renders.
+    expect(SOURCE).not.toContain("carried over from KBLI code");
+    expect(SOURCE).not.toContain("carried over from KBLI codes");
+  });
+});

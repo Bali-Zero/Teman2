@@ -27,7 +27,10 @@ from backend.app.dependencies import (
 )
 from backend.core.collection_registry import resolve_collection_name
 from backend.services.kbli_pp28_provenance import licensing_disclosure
-from backend.services.kbli_requires_kind import classify_requires_target
+from backend.services.kbli_requires_kind import (
+    classify_requires_target,
+    permit_name_verdict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -423,7 +426,17 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     # indistinguishable from one that never shipped. Bumping the version evicts
     # atomically at deploy instead of depending on someone remembering to run
     # the per-code cache-bust for the right 390 codes.
-    cache_key = f"kbli_inspect_v3_{code}"
+    #
+    # v3 → v4 (2026-08-06): this one is WORSE than a missing field and needs the
+    # bump for a different reason. `permit_name_verdict` changes the CONTENT of
+    # `licenses[]` — entries that were served as permits move to `obligations`
+    # and `unspecified_permits`. A cached v3 entry is fully valid on read and
+    # would keep serving `izin_usaha_tidak_diketahui` as a permit named "Izin
+    # Usaha" on the 186 codes that carry it. The stale payload is not
+    # incomplete, it is WRONG, and nothing in the response would betray it.
+    # Rule of thumb for the next reader: bump whenever the meaning of an
+    # existing field changes, not only when a field is added.
+    cache_key = f"kbli_inspect_v4_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
@@ -492,6 +505,16 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     lic_props = {}
 
                 kind = classify_requires_target(lic["target_entity_type"])
+                if kind == "license":
+                    # The TYPE says permit; the NAME can still say otherwise.
+                    # `izin_usaha_tidak_diketahui` — the graph admitting it does
+                    # not know which permit — reached 186 codes as a permit
+                    # called "Izin Usaha"; 71 whole obligation sentences reached
+                    # 39 more. Same treatment as any non-permit: bucketed, never
+                    # dropped. See kbli_requires_kind.permit_name_verdict.
+                    kind = permit_name_verdict(lic["entity_id"], lic["name"])
+                    if kind == "permit":
+                        kind = "license"
                 if kind != "license":
                     # Kept, never silently dropped — bucketed so a reader can
                     # still see what the graph attached to this code.
