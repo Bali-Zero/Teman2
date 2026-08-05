@@ -495,10 +495,26 @@ def main(argv: list[str] | None = None) -> int:
     for code, _, new_text, _ in gold_plan:
         gold[code]["whatChanged"] = new_text
 
-    _write_json(args.canonical, dataset, canonical_indent)
-    logger.info("wrote %d canonical record(s) to %s", len(canonical_plan), args.canonical)
-    _write_json(args.gold, gold_doc, gold_indent)
-    logger.info("wrote %d gold entry(ies) to %s", len(gold_plan), args.gold)
+    # A surface with nothing to rewrite is not written AT ALL. Re-serialising it
+    # is not a no-op: on 2026-08-05 a run that reported "wrote 0 gold entry(ies)"
+    # still stripped the trailing newline from `kbli-gold-all.json`, so the diff
+    # carried a file the run had just declared untouched — and `prettier --check`
+    # then failed on a change nobody made. A tool that says it wrote nothing must
+    # leave the bytes alone.
+    if canonical_plan:
+        _write_json(args.canonical, dataset, canonical_indent)
+    logger.info(
+        "wrote %d canonical record(s) to %s",
+        len(canonical_plan),
+        args.canonical if canonical_plan else "(nothing to write — file untouched)",
+    )
+    if gold_plan:
+        _write_json(args.gold, gold_doc, gold_indent)
+    logger.info(
+        "wrote %d gold entry(ies) to %s",
+        len(gold_plan),
+        args.gold if gold_plan else "(nothing to write — file untouched)",
+    )
 
     run_sync_script()
     update_sidecar()

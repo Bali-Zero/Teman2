@@ -663,3 +663,136 @@ def test_live_sidecar_datasetSha256_matches_the_live_dataset_hash():
     assert sidecar["datasetSha256"] == f"sha256:{sha}", (
         "sidecar datasetSha256 is stale — run cure.update_sidecar() or bump it by hand"
     )
+
+
+# ---------------------------------------------------------------------------
+# Pass D — the wording census was measured on TWO surfaces, and the third
+# spoke differently (2026-08-05)
+# ---------------------------------------------------------------------------
+
+# The nine shapes below are LIVE `kg_nodes.properties.whatChanged` values, read
+# from prod on 2026-08-05. All nine sat on records where `number_is_discontinuous`
+# was already True, on codes whose website copy had ALREADY been cured — so the
+# site told the truth while WhatsApp and webchat kept saying the number carried
+# over. The narrow pattern of #3602 was written from canonical + gold wordings
+# and was blind to every one of them.
+LIVE_KG_ASSERTIONS = (
+    "Direct 1:1 match from KBLI 2020 — code and scope unchanged.",
+    "Direct match from KBLI 2020. No structural changes. Web portals and "
+    "information services keep the same code and scope.",
+)
+
+# …and the two the widening still refuses, on purpose. Neither asserts the
+# DIGITS carried over: the first names a different number in the same breath,
+# the second speaks about the activity classification.
+LIVE_KG_REFUSALS = (
+    "Direct match from KBLI 2020, but the PP28 source code is 68200 — the old "
+    "general real estate services code.",
+    "Direct match from KBLI 2020. Traditional health services classification unchanged.",
+)
+
+
+@pytest.mark.parametrize("text", LIVE_KG_ASSERTIONS)
+def test_pass_d_convicts_the_live_kg_wordings_it_used_to_read_as_innocent(text):
+    """GUILT. A pattern written from the instances you looked at catches the
+    instances you looked at — these are the ones nobody had looked at."""
+    record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
+    assert number_is_discontinuous(record), "premise: the record must be discontinuous"
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY in passes, f"still innocent to the guard: {text!r}"
+
+
+@pytest.mark.parametrize("text", LIVE_KG_ASSERTIONS)
+def test_pass_d_leaves_the_same_wordings_alone_when_the_number_really_did_carry_over(text):
+    """INNOCENCE. The conjunction is what protects the ~908 codes the government
+    crosswalk maps to themselves: identical prose, continuous record, no verdict."""
+    record = {"kode_kbli_2025": "01111", "kbli_2020_source": "01111"}
+    assert not number_is_discontinuous(record), "premise: the record must be continuous"
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+
+
+@pytest.mark.parametrize("text", LIVE_KG_REFUSALS)
+def test_pass_d_still_refuses_the_two_shapes_that_assert_something_narrower(text):
+    """The declared limit stays declared — these are census rows, not cures."""
+    record = {"kode_kbli_2025": "68210", "kbli_2020_source": "68200"}
+    assert number_is_discontinuous(record)
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+    assert claims_ambiguous_continuity(text), "…and it must still be REPORTED by the census"
+
+
+# ---------------------------------------------------------------------------
+# …and a quotation of the claim is not an assertion of it
+# ---------------------------------------------------------------------------
+
+# Verbatim from canonical `52101` on 2026-08-05. A hand-written correction that
+# QUOTES the label it corrects. The first draft of the widening matched inside
+# that quotation and spliced the replacement into the middle of a dangling
+# quote — output that was not merely a false positive but gibberish, and that
+# would have overwritten an image-verified five-parent merge with "the mapping
+# is unconfirmed". W113: the probe judged by FORM and caught the citation living
+# inside the retraction.
+SCAR_52101 = (
+    "Renumbered/merged from KBLI 2020 52108 + fishery post-harvest services codes "
+    "— activity scope from 52108, code number reused (corrected 2026-07-19 — the "
+    "previous 'Direct 1:1 match... code and scope unchanged' label was a false "
+    "narrative)."
+)
+
+
+def test_a_correction_that_quotes_the_claim_is_not_convicted_of_making_it():
+    record = {"kode_kbli_2025": "52101", "kbli_2020_source": "52108"}
+    assert number_is_discontinuous(record), "premise: 52101 is not its own predecessor"
+    cured, passes = plan_text(SCAR_52101, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+    assert cured == SCAR_52101, "the text must come back untouched, not merely unconvicted"
+
+
+def test_the_live_52101_record_is_not_convicted_by_the_shipped_predicates():
+    """Scar pin on the real file, not on a fixture: if a future widening starts
+    convicting this record again, this goes red before it reaches a client."""
+    records = _canonical_records()
+    record = next(
+        r for r in records if str(r.get(cure.CODE_FIELD) or "") == "52101"
+    )
+    text = (record.get("intel_2026") or {}).get("whatChanged") or record.get("whatChanged") or ""
+    assert "code and scope unchanged" in text, (
+        "premise gone: 52101 no longer quotes the label it corrects, so this pin "
+        "is testing nothing — re-anchor it or delete it"
+    )
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+
+
+def test_an_unbalanced_quote_masks_nothing_and_an_apostrophe_fabricates_nothing():
+    """Both directions of the twin the quotation guard could have birthed (W94):
+    a greedy quote scan that swallows the rest of the text hides real claims,
+    and treating every `'` as a delimiter turns "don't … it's" into a region."""
+    record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
+    unbalanced = "a stray ' quote opens here and code and scope unchanged follows"
+    apostrophes = "We don't say it's settled: code and scope unchanged."
+    both_quoted_and_bare = (
+        "A note reading 'code and scope unchanged' — and separately, code and scope unchanged."
+    )
+    for text in (unbalanced, apostrophes, both_quoted_and_bare):
+        _, passes = plan_text(text, record)
+        assert PASS_FALSE_CONTINUITY in passes, f"masked by the quotation guard: {text!r}"
+
+
+def test_a_surface_with_nothing_to_rewrite_is_not_written_at_all():
+    """A run that reports "wrote 0 gold entry(ies)" must leave the bytes alone.
+
+    It did not: re-serialising the untouched surface stripped the trailing
+    newline from `kbli-gold-all.json`, so the diff carried a file the run had
+    just declared untouched and `prettier --check` failed on a change nobody
+    made. Pinned on the SOURCE because the effect is an absence — there is no
+    output to assert against.
+    """
+    import inspect
+
+    source = inspect.getsource(cure.main)
+    assert "if gold_plan:" in source and "if canonical_plan:" in source, (
+        "main() writes a surface unconditionally again — a cure with an empty "
+        "plan for one surface must not touch that surface's file"
+    )
