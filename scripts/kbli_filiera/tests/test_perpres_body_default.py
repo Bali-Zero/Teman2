@@ -244,14 +244,30 @@ def test_a_code_named_in_an_annex_still_reports_its_besar_state(canonical, annex
 
 
 def test_the_barred_but_open_list_reads_across_every_bucket(rep):
-    """Measured: 23 codes publish TERBUKA while their own scale data names no
-    Besar row. A locator-partitioned reading found only 14.
+    """Codes that publish TERBUKA while their own scale data names no Besar row.
+    A locator-partitioned reading found only 14; reading across every bucket
+    found 23.
+
+    **19, not 23, since 2026-08-06.** The queue lost `55201` (homestay),
+    `55203` (villa), `79110` (travel agent) and `95291` (clothing alterations)
+    because the Lampiran II cure restricted them for a STRONGER and different
+    reason: the annex allocates those activities to Koperasi/UMKM, so they no
+    longer publish as open and the Pasal 7(1) question about them is moot.
+
+    That is the queue working, not shrinking: this list exists to hold codes
+    whose openness is unexplained, and four of them stopped being open. The
+    membership assertions below therefore moved to codes still IN the queue —
+    an assertion naming a code the cure removed would fail for the right
+    reason, which is precisely how this test caught the change.
     """
     rows = pasal7_review_flags(rep)
-    assert len(rows) == 23
+    assert len(rows) == 19
     codes = {r["code"] for r in rows}
-    assert {"55203", "55201", "96210", "96220"} <= codes  # annex-named AND Besar-less
-    assert {"56304", "70201", "86995"} <= codes           # residual AND Besar-less
+    assert {"96210", "96220"} <= codes           # annex-named AND Besar-less
+    assert {"56304", "70201", "86995"} <= codes  # residual AND Besar-less
+    assert not ({"55201", "55203", "79110", "95291"} & codes), (
+        "a Lampiran II code is publishing as open again — the cure regressed"
+    )
     assert all(r["besar"] == "absent" for r in rows)
 
 

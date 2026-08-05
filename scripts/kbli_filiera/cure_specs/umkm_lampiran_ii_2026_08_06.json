@@ -1,0 +1,452 @@
+{
+  "instrument": "Perpres 10/2021 as amended by Perpres 49/2021, Lampiran II",
+  "vintage": "2021-05-25",
+  "method": "two independent passes (Sonnet propose / Codex blind re-derive) over 85 whole-row codes; only unanimous PATCH verdicts appear here",
+  "excluded": {
+    "disagreements": 13,
+    "agreed_unclear": 3,
+    "ocr_illegible": ["47722"]
+  },
+  "items": [
+    {
+      "code": "01111",
+      "judged_as": null,
+      "annex_row": "Jagung",
+      "page": 1,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p1, row \"Jagung\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "01113",
+      "judged_as": null,
+      "annex_row": "Kedelai",
+      "page": 1,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p1, row \"Kedelai\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "01114",
+      "judged_as": null,
+      "annex_row": "Kacang tanah",
+      "page": 1,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p1, row \"Kacang tanah\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "01115",
+      "judged_as": null,
+      "annex_row": "Kacang hijau",
+      "page": 1,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p1, row \"Kacang hijau\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "01121",
+      "judged_as": null,
+      "annex_row": "Padi hibrida",
+      "page": 1,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p1, row \"Padi hibrida\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "01122",
+      "judged_as": null,
+      "annex_row": "Padi inbrida",
+      "page": 1,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p1, row \"Padi inbrida\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": null
+      }
+    },
+    {
+      "code": "10214",
+      "judged_as": null,
+      "annex_row": "Industri pemindangan ikan",
+      "page": 2,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p2, row \"Industri pemindangan ikan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "10307",
+      "judged_as": "10391",
+      "annex_row": "Industri tempe kedelai",
+      "page": 2,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p2, row \"Industri tempe kedelai\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 10391, applied to its single 2025 heir 10307 (same activity name).",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "10308",
+      "judged_as": "10392",
+      "annex_row": "Industri tahu kedelai",
+      "page": 2,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p2, row \"Industri tahu kedelai\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 10392, applied to its single 2025 heir 10308 (same activity name).",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "10722",
+      "judged_as": null,
+      "annex_row": "Industri gula merah",
+      "page": 2,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p2, row \"Industri gula merah\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "10794",
+      "judged_as": null,
+      "annex_row": "Industri kerupuk, keripik, peyek dan seienisnya (pabrikan dan non pabrikan)",
+      "page": 3,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p3, row \"Industri kerupuk, keripik, peyek dan seienisnya (pabrikan dan non pabr\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "16293",
+      "judged_as": null,
+      "annex_row": "Industri kerajinan ukiran dari kayu bukan mebeller ukiran kayu, relief, topeng, patung, wayang",
+      "page": 4,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p4, row \"Industri kerajinan ukiran dari kayu bukan mebeller ukiran kayu, relief\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "22121",
+      "judged_as": null,
+      "annex_row": "Industri pengasapan karet",
+      "page": 4,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p4, row \"Industri pengasapan karet\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "41016",
+      "judged_as": null,
+      "annex_row": "gedung pendidikan meliputi sarana pendidikan, tempat kursus, laboratorium dan bangunan penunjang pendidikan lainnya",
+      "page": 7,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p7, row \"gedung pendidikan meliputi sarana pendidikan, tempat kursus, laborator\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "41018",
+      "judged_as": null,
+      "annex_row": "gedung tempat hiburan dan olahraga meliputi bioskop, gedung kebudayaan/kesenian, gedung wisata dan rekreasi serta gedung olahraga",
+      "page": 7,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p7, row \"gedung tempat hiburan dan olahraga meliputi bioskop, gedung kebudayaan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "41020",
+      "judged_as": null,
+      "annex_row": "jasa pekerjaan konstruksi prafabrikasi bangunan gedung meliputi pemasangan bahan hasil produksi pabrik seperti beton pracetak, baja, plastik, karet, dan hasil produksi pabrik lainnya dengan metode pabrikasi, erection, dan/atau perakitan untuk bangunan gedung",
+      "page": 7,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p7, row \"jasa pekerjaan konstruksi prafabrikasi bangunan gedung meliputi pemasa\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "42202",
+      "judged_as": null,
+      "annex_row": "bangunan pengolahan, penyaluran dan penampungan air minum",
+      "page": 8,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p8, row \"bangunan pengolahan, penyaluran dan penampungan air minum\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "42912",
+      "judged_as": null,
+      "annex_row": "pelabuhan bukan perikanan pelabuhan perikanan",
+      "page": 9,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p9, row \"pelabuhan bukan perikanan pelabuhan perikanan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "42913",
+      "judged_as": null,
+      "annex_row": "pelabuhan perikanan",
+      "page": 9,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p9, row \"pelabuhan perikanan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43215",
+      "judged_as": null,
+      "annex_row": "sinyal dan telekomunikasi kereta api",
+      "page": 10,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p10, row \"sinyal dan telekomunikasi kereta api\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43221",
+      "judged_as": null,
+      "annex_row": "saluran air Qtlambingl pemanas dan geotermal",
+      "page": 10,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p10, row \"saluran air Qtlambingl pemanas dan geotermal\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43222",
+      "judged_as": null,
+      "annex_row": "pemanas dan geotermal",
+      "page": 10,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p10, row \"pemanas dan geotermal\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43224",
+      "judged_as": null,
+      "annex_row": "pendingin dan ventilasi udara mekanikal",
+      "page": 11,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p11, row \"pendingin dan ventilasi udara mekanikal\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43303",
+      "judged_as": null,
+      "annex_row": "pengecatan",
+      "page": 11,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p11, row \"pengecatan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43309",
+      "judged_as": null,
+      "annex_row": "Penyelesaian konstruksi bangunan lainnya",
+      "page": 12,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p12, row \"Penyelesaian konstruksi bangunan lainnya\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43902",
+      "judged_as": null,
+      "annex_row": "Pemasangan perancah (steigefi Pemasangan atap I roof coueing",
+      "page": 12,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p12, row \"Pemasangan perancah (steigefi Pemasangan atap I roof coueing\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "43904",
+      "judged_as": null,
+      "annex_row": "Kerangka baja Penyewaan alat konstruksi dengan operator yang",
+      "page": 12,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p12, row \"Kerangka baja Penyewaan alat konstruksi dengan operator yang\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "47241",
+      "judged_as": null,
+      "annex_row": "Beras",
+      "page": 13,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p13, row \"Beras\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "47242",
+      "judged_as": null,
+      "annex_row": "Roti, kue kering, serta kue basah dan sejenisnya",
+      "page": 13,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p13, row \"Roti, kue kering, serta kue basah dan sejenisnya\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "47244",
+      "judged_as": null,
+      "annex_row": "Tahu, tempe, tauco dan oncom",
+      "page": 13,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p13, row \"Tahu, tempe, tauco dan oncom\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "47249",
+      "judged_as": null,
+      "annex_row": "Makanan lainnya",
+      "page": 14,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p14, row \"Makanan lainnya\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "47712",
+      "judged_as": null,
+      "annex_row": "Alas kaki",
+      "page": 14,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p14, row \"Alas kaki\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "55106",
+      "judged_as": "55120",
+      "annex_row": "Hotel Melati",
+      "page": 15,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p15, row \"Hotel Melati\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 55120, applied to its single 2025 heir 55106 (same activity name).",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "55201",
+      "judged_as": "55130",
+      "annex_row": "Pondok Wisata",
+      "page": 15,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p15, row \"Pondok Wisata\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 55130, applied to its single 2025 heir 55201 (same activity name).",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "55203",
+      "judged_as": "55193",
+      "annex_row": "Vila",
+      "page": 15,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p15, row \"Vila\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 55193, applied to its single 2025 heir 55203 (same activity name).",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "79110",
+      "judged_as": "79111",
+      "annex_row": "Aktivitas agen perialanan wisata",
+      "page": 16,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p16, row \"Aktivitas agen perialanan wisata\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 79111, applied to its single 2025 heir 79110 (same activity name).",
+      "was": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "79903",
+      "judged_as": "79921",
+      "annex_row": "Jasa pramuwisata",
+      "page": 16,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p16, row \"Jasa pramuwisata\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%. Judged on KBLI-2020 79921, applied to its single 2025 heir 79903 (same activity name).",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "95220",
+      "judged_as": null,
+      "annex_row": "Reparasi peralatan: Peralatan rumah tangga dan Peralatan rumah dan kebun",
+      "page": 16,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p16, row \"Reparasi peralatan: Peralatan rumah tangga dan Peralatan rumah dan keb\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "95291",
+      "judged_as": null,
+      "annex_row": "Vermak pakaian",
+      "page": 16,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p16, row \"Vermak pakaian\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    },
+    {
+      "code": "95299",
+      "judged_as": null,
+      "annex_row": "Industri reparasi barang rumah tangga dan pribadi lainnya St( No 054256 C",
+      "page": 16,
+      "locator": "Perpres 49/2021 Lampiran II (Bidang Usaha Dialokasikan untuk Koperasi dan UMKM), p16, row \"Industri reparasi barang rumah tangga dan pribadi lainnya St( No 05425\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      }
+    }
+  ]
+}

@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""Apply the Lampiran II K-UMKM reservation to canonical, from an adjudicated spec.
+
+WHAT THIS ASSERTS, AND ON WHAT
+-------------------------------
+Perpres 10/2021 as amended by 49/2021, **Lampiran II**, allocates a *bidang
+usaha* to Indonesian cooperatives and MSMEs (the DIALOKASIKAN column). A foreign
+investor cannot be a Koperasi or a UMKM, so for the allocated activity the
+lawful foreign share is 0% — the reading our own catalogue already carries, once,
+hand-adjudicated, on `47111` (minimarket).
+
+Two articles that are NOT this one, and must not be conflated with it:
+
+* **Pasal 7 ayat (1)** ("Penanam Modal asing hanya dapat melakukan kegiatan
+  usaha pada Usaha Besar dengan nilai investasi lebih dari Rp10.000.000.000,00")
+  conditions the INVESTOR and its project, not the activity. It can stop a
+  particular PMA that cannot qualify as large; it does not open or close an
+  activity, and it does not dissolve a Lampiran II allocation. Reading the
+  Rp10B threshold as "so a PMA is above the reservation anyway" inverts a
+  reservation into a permission and is wrong.
+* **KEMITRAAN**, the other column of the same annex, is a duty to PARTNER with
+  K-UMKM, which an open PMA discharges. 57 codes sit there and NONE of them
+  appear in this spec.
+
+WHAT IS IN THE SPEC, AND WHAT DELIBERATELY IS NOT
+--------------------------------------------------
+`cure_specs/umkm_lampiran_ii_2026_08_06.json` carries only codes where two
+INDEPENDENT passes of different model families agreed on PATCH — a Claude lane
+proposing from the annex row and an OpenAI lane re-deriving the same codes
+blind, with the bias stated against restricting ("a wrongly-restricted code
+costs a client a business they could lawfully run; that is not a safer error,
+it is a different error").
+
+Excluded by construction, and none of it is a silent drop: 13 codes where the
+two families disagreed, 3 both called unclear, 1 whose annex text the OCR
+destroyed on the token that sets its scope, and 28 both refused as BROADER than
+the reserved activity — Pasal 3 ayat (3) attaches the requirement to the named
+bidang usaha, never to the code number.
+
+Seven spec rows were judged on a KBLI-2020 number that is not a 2025 code
+(`55193` villa, `10391` tempe, …). Each resolves to EXACTLY ONE 2025 heir with
+the same activity name, so the determination is applied to the heir and the
+row records `judged_as`. This tool re-derives that heir itself and refuses if
+the spec's target disagrees — the vintage trap has bitten this catalogue twice
+in one day and a written-down mapping is a proxy, not the fact.
+
+REFUSES RATHER THAN GUESSES
+----------------------------
+`--apply` aborts, writing nothing, if: a spec code is absent from the dataset;
+a spec row's `judged_as` does not resolve to its stated target through
+`bps_2020_ancestors`; a record already carries a DIFFERENT `pma_official_basis`
+(someone adjudicated it by hand and this tool is not the later word); or the
+observed `pma_status`/`pma_max_asing` differ from what the spec recorded when it
+was built, which means the world moved under the adjudication.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+SPEC = Path(__file__).resolve().parent / "cure_specs" / "umkm_lampiran_ii_2026_08_06.json"
+
+VINTAGE = "2021-05-25"
+KONDISI = (
+    "Bidang usaha dialokasikan untuk Koperasi dan UMKM (Perpres 49/2021 "
+    "Lampiran II) — foreign ownership 0%"
+)
+
+EXIT_OK = 0
+EXIT_REFUSED = 2
+
+
+def load(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]], str]:
+    text = path.read_text(encoding="utf-8")
+    payload = json.loads(text)
+    records = payload["data"] if isinstance(payload, dict) else payload
+    if not isinstance(records, list) or not records:
+        raise ValueError(f"{path}: expected a non-empty record list")
+    return payload, records, text
+
+
+def heirs_of(records: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """2020 code -> the 2025 codes that record it as an ancestor."""
+    out: dict[str, list[str]] = {}
+    for r in records:
+        anc = r.get("bps_2020_ancestors")
+        codes = anc.get("codes") if isinstance(anc, dict) else None
+        for c in codes or []:
+            out.setdefault(str(c), []).append(str(r["kode_kbli_2025"]))
+    return out
+
+
+def patch_for(item: dict[str, Any]) -> dict[str, Any]:
+    """Pure — the field-level patch for one adjudicated code."""
+    return {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_official_basis": item["locator"],
+        "pma_cap_verified": True,
+        "pma_source_vintage": VINTAGE,
+        "pma_kondisi": KONDISI,
+    }
+
+
+def check(
+    spec: dict[str, Any], records: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Returns (applicable items, refusals). A refusal aborts the whole run:
+    a spec that is wrong about one code is not trustworthy about the rest."""
+    by_code = {str(r["kode_kbli_2025"]): r for r in records}
+    heirs = heirs_of(records)
+    refusals: list[str] = []
+    todo: list[dict[str, Any]] = []
+
+    for item in spec["items"]:
+        code = item["code"]
+        record = by_code.get(code)
+        if record is None:
+            refusals.append(f"{code}: not in the dataset")
+            continue
+
+        judged = item.get("judged_as")
+        if judged:
+            # Re-derive rather than trust the spec's own mapping.
+            found = heirs.get(judged, [])
+            if found != [code]:
+                refusals.append(
+                    f"{code}: judged on 2020 {judged}, which resolves to "
+                    f"{found or 'no 2025 heir'} — not this code alone"
+                )
+                continue
+
+        existing = record.get("pma_official_basis")
+        if existing and existing != item["locator"]:
+            refusals.append(f"{code}: already carries a different pma_official_basis")
+            continue
+
+        was = item.get("was") or {}
+        now = {
+            "pma_status": record.get("pma_status"),
+            "pma_max_asing": record.get("pma_max_asing"),
+        }
+        if was and was != now:
+            refusals.append(f"{code}: moved since adjudication — spec {was}, now {now}")
+            continue
+
+        todo.append(item)
+
+    return todo, refusals
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--apply", action="store_true", help="write (default: dry-run)")
+    ap.add_argument("--dataset", default=str(CANONICAL))
+    ap.add_argument("--spec", default=str(SPEC))
+    args = ap.parse_args(argv)
+
+    spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+    path = Path(args.dataset)
+    payload, records, original = load(path)
+
+    todo, refusals = check(spec, records)
+
+    print(f"spec items {len(spec['items'])} · applicable {len(todo)} · refused {len(refusals)}")
+    print(f"excluded by the adjudication itself: {spec['excluded']}")
+    for r in refusals:
+        print(f"  REFUSE {r}")
+    if refusals:
+        print("\nrefusing to write: a spec wrong about one code is not trusted for the rest")
+        return EXIT_REFUSED
+
+    for item in todo:
+        via = f" (judged as {item['judged_as']})" if item.get("judged_as") else ""
+        print(f"  {item['code']}{via}: {item['was']} -> TERBATAS/0")
+
+    if not args.apply:
+        print("\ndry-run — rerun with --apply to write")
+        return EXIT_OK
+
+    by_code = {str(r["kode_kbli_2025"]): r for r in records}
+    for item in todo:
+        by_code[item["code"]].update(patch_for(item))
+
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    path.write_text(body + ("\n" if original.endswith("\n") else ""), encoding="utf-8")
+
+    # Read back and prove the write, rather than trusting that it happened.
+    _, again, _ = load(path)
+    fresh = {str(r["kode_kbli_2025"]): r for r in again}
+    wrong = [
+        i["code"]
+        for i in todo
+        if fresh[i["code"]].get("pma_max_asing") != 0
+        or fresh[i["code"]].get("pma_status") != "TERBATAS"
+    ]
+    if wrong:
+        print(f"WROTE BUT READ BACK WRONG on {len(wrong)}: {wrong[:10]}")
+        return EXIT_REFUSED
+    print(f"\napplied and verified on re-read: {len(todo)} code(s)")
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
