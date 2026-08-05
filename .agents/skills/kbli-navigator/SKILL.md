@@ -45,6 +45,78 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-05 — keep current)
 
+**🔴🟡 2026-08-05 — WE TELL A VIDEO-GAME STUDIO IT NEEDS THREE DEFENCE-INDUSTRY LICENCES. THE OBVIOUS
+CURE WAS BUILT IN MEASUREMENT, MEASURED, AND REFUSED — IT WOULD HAVE DELETED ~1,900 MOSTLY-TRUE ROWS.**
+
+This closes the declared gap left open by #3625 ("the 11,245 node-silent edges are untouched and still
+wrong in places") with a NUMBER and a NO, not with a fix.
+
+**The harm, proven on the live endpoint, not inferred.** `inspect_kbli 62110` (VIDEO GAME DEVELOPMENT)
+returns six licences whose `requirements` is `[]`, and three of them are defence permits: `Izin Produksi
+Alat Peralatan Pertahanan dan Keamanan`, `Sertifikat Persetujuan Kelaikan Fasilitas Produksi Pertahanan`,
+`Izin Industri Pertahanan`. A fourth is `Penyelenggara Sistem Elektronik Lingkup Privat`. The
+canonical-backed obligations cure could not touch them **by construction**: a target that states no
+obligation has nothing to compare against canonical, so it is KEPT.
+
+**Provenance names the mechanism and does not separate right from wrong.** All five non-OSS-tier targets
+on 62110 carry one and the same `source_chunk_ids` entry, `2933b2b9-4853-53ad-ab23-e630571011aa`, and
+that chunk produced REQUIRES edges for **exactly one** KBLI code — 62110. So the error is one bad
+extraction, not a shared over-linked node like the four agricultural ones; there is no "this node is
+attached to 888 codes" signal to key on. The chunk text itself is a Qdrant point id and is not
+resolvable from Postgres — a pointer, not evidence (W65).
+
+**The population, measured this turn.** REQUIRES edges out of `kbli:%` whose target is a PERMIT type
+(`classify_requires_target` → `license`: `perizinan`, `izin_usaha`, `license`, `nib`, `permit_type`,
+`penetapan`) **and** states no obligations: **3,222** (code, target) pairs. By entity type —
+`izin_usaha` 1,935 rows / 647 codes / 506 distinct targets · `license` 1,167 / 967 / 4 · `nib` 100 ·
+`penetapan` 10 · `permit_type` 9 · `perizinan` 2.
+
+**THE TEMPTING PREDICATE, AND WHY IT IS REFUSED.** The obligations cure compares the target's
+`kewajiban` against canonical's; the obvious sequel compares the target's NAME against canonical's
+`perizinan` for the same code. Measured over all 3,222: **NO_OVERLAP 1,925** (624 codes, 495 names) ·
+SUBPHRASE_OF_CANONICAL 634 · EXACT 614 · CANONICAL_SILENT 38 · CODE_ABSENT 9 · CANONICAL_INSIDE_NAME 2.
+
+Read the 1,925 and the cure dies: its biggest members are `Sertifikat Tingkat Komponen Dalam Negeri`
+(172 codes), `Surat Persetujuan Penilaian TKDN Penggunaan Mesin Produksi Dalam Negeri` (103), `UMKU`
+(83), `Izin Edar Pangan Olahan` (38), the CPPOB and PMR food-safety permits (~90 between them), the
+medical-device `Izin Edar` family. **Those are real permits the businesses really need.** Canonical's
+`perizinan` states the **OSS main tier only** — `NIB dan Sertifikat Standar` and its siblings — while
+the graph's `izin_usaha` targets are overwhelmingly the **UMKU sub-licence layer**. The two vocabularies
+describe DIFFERENT LAYERS of licensing, so absence from one is not denial by the other, and a name
+comparison reads "contradicted" on the whole second layer.
+
+> **The predicate that worked for obligations does not transfer to names, and the reason is structural,
+> not a tuning problem.** Same shape as the 1,341 duplicate `BELONGS_TO` rows: the cure that looks
+> obvious would have quietly destroyed data while wearing the shape of a fix.
+
+**WHAT WOULD ACTUALLY CLOSE IT** (not built, named so the next session does not re-derive the refusal):
+a per-code adjudication with a government source for the UMKU layer — the OSS UMKU catalogue keyed by
+KBLI — which we do not hold. Until then the honest move is DISCLOSURE, not deletion: a licence entry
+with empty `requirements` and no canonical corroboration is graph-attributed, and rendering it
+identically to a canonical-backed one overstates it. That is a render-side change, in the family of the
+`[… cut off in the official source]` label.
+
+**THE FIELD TRAP THAT BIT TWICE IN ONE NIGHT — read this before writing any canonical licence probe.**
+`per_skala[].perizinan` is populated on **6 of 1,559 codes** (17 of 9,095 scale entries).
+`per_skala_legacy[].perizinan` is populated on **1,254**. **299** codes state no licence name anywhere.
+`kewajiban` lives on `per_skala`; `perizinan` effectively lives on `per_skala_legacy` — the same split
+that made #3639's first description false. A first pass of the measurement above read only `per_skala`
+and reported **3,206 of 3,222** edges as CANONICAL_SILENT: a clean, believable "there is nothing here to
+cure", manufactured entirely by looking at the wrong field. It was caught only because 3,206/3,222 is
+too tidy to be true — the same reflex as the zero in #3642's before-state.
+
+**Smaller, unambiguous, and NOT cured here** (measured, ledgered): `NOT_APPLICABLE_OSS` (50 codes) and
+`PENDING_REGULATION` (10) are `licensing_status` ENUM VALUES materialised as `kg_nodes` and
+REQUIRES-linked to the codes that carry them. They land in `related_requirements.systems`, so
+`inspect_kbli 84111` returns `licensing_status: "NOT_APPLICABLE_OSS"` and, one field below,
+`related_requirements: {"systems": ["NOT_APPLICABLE_OSS"]}` — the same fact twice, once as a status and
+once as a "related requirement". Noise rather than a false claim, and `related_requirements` has **zero
+consumers outside the router** (grepped repo-wide: producer in `kbli_notebook.py`, and this file) — so
+it reaches a reader only as a field of the `inspect_kbli` response, never through a rendered web page.
+Low harm, hence ledgered rather than shipped. It does not overturn the audit two sections below: that
+verdict is that no OBLIGATION TEXT travels through this field and that the classifier's drift is
+fail-safe, and both still hold.
+
 **🟢 2026-08-05 — THE OBLIGATIONS BLOCK IS LIVE ON `chat_kbli`, AND THE THREE NUMBERS IT PRODUCED ARE
 ALL RIGHT.** `kbli_documents_cure.py --all-machine-template --apply` ran from the deployed image:
 **299** rows selected by the recogniser, **170** rewritten, **129** already byte-identical (all with
@@ -188,7 +260,7 @@ the lie survives.
 | `sector`                     | honest gap                                       | 222 `"N/A"`; the 42 placeable are the 42 multi-sector codes                      |
 | `risk_profile`               | latent fragility, ledgered                       | 218 without Qdrant risk; **0** with disagreeing licences                         |
 | `licenses`                   | **cured** #3625 (obligations) + #3634 (gap≠None) | 1,707 pairs detached · 284 empty lists relabelled                                |
-| `related_requirements`       | **sound — audited, no defect**                   | see below                                                                        |
+| `related_requirements`       | **audited — no obligation text leaks**           | see below; one noise finding added 2026-08-05 (status enums in `systems`)        |
 | `related_codes`              | **cured** #3635                                  | 1,341 duplicate rows collapsed at the reader                                     |
 | `expert_legal`               | universally absent                               | **0 of 1,568** kbli nodes carry it — always `null`, asserts nothing              |
 
@@ -246,12 +318,38 @@ PRINTED IT LIKE A COMPLETE INSTRUCTION.** #3637 merged (`a532487e`), deployed an
   read like "the cure failed". The second ignored **which tier the page opens by default**
   (`licensing[0]`): on `01111` the truncated string exists but sits in a tier that is not rendered.
   **Pick the exemplar from what the PAGE SERVES, and from the branch that actually renders.**
-- **Follow-on (#3639, armed):** a licence NAME literally called **`"NIB dan"`** on **21 codes**.
-  Cured at the DATA layer, not with the label — a licence name reaches **ten** sites including
-  `KBLIStructuredData` (schema.org JSON-LD read by Google) and `kbli-meta` (the page `<title>`),
-  where a UI annotation would be actively wrong. `resolveLicenseType` now treats an unusable name as
-  absent so the documented risk-tier→licence-tier fallback fires. Innocence: `"NIB dan Sertifikat
-Standar"` ends on `Standar`, is not truncated, survives.
+- **Follow-on — licence NAMES. ⚠️ THE PARAGRAPH THAT STOOD HERE WAS WRONG, and correcting it is
+  worth more than the fix.** It said #3639 cured `"NIB dan"` on "21 codes, Google structured data and
+  the page title" by making `resolveLicenseType` treat an unusable name as absent. **#3639 is inert.**
+  `resolveLicenseType` is fed from `per_skala[].perizinan`, where `"NIB dan"` appears on **zero**
+  codes; the 21 canonical occurrences live under **`per_skala_legacy[].perizinan`**, written for audit
+  by `build_kbli_l2_oss_risk.py` and read by nothing that renders. #3639 was dequeued mid-flight, its
+  description corrected to say it is defence-in-depth, and merged on those honest terms.
+  - **The live before-state had already said so and was nearly read backwards.** `62110`, `47301`,
+    `96100`, `15112` served `"NIB dan"` **zero** times and the derived `NIB + …` 18/14/1/14 times.
+    That zero meant "you are measuring the wrong path", not "already fine". **A zero in a
+    before-state is a claim about your probe as much as about the world.**
+  - **The live path is the ENDPOINT** (#3642): `kbli_notebook.py` sets `licenses[].type` straight
+    from the KG node name, so it reaches the explorer's licence cards AND the clipboard line that
+    travels into client emails. Measured on prod: `"NIB dan"` on **10** codes
+    (`03110 15112 15113 20293 25119 25933 28171 61901 62110 62191`) and
+    `"Sertifikasi Cara Budi Daya Ternak Yang"` on **2** (`01445 01469`).
+  - **`62110` is the anchor case — it carries guilt AND innocence in ONE response:** a licence typed
+    `"NIB dan"` (scale Besar) alongside two typed `"NIB dan Sertifikat Standar"`, which contain `dan`
+    but end on `Standar` and must be copied verbatim. Verify there, not on a page.
+  - Labelled, never trimmed and never replaced: trimming to `"NIB"` states a weaker licence than the
+    law requires, replacing it invents the ending, dropping it hides a licence the business needs.
+  - **✅ MERGED, DEPLOYED AND PROVEN LIVE 2026-08-05.** #3642 merged as `0f6f3e67f3`; the frontend
+    does not go live unattended (it lands `STAGED`), so `scripts/vercel_prod_deploy.py` built it and,
+    after eight probes still showed the old build at terminal READY, promoted it — HTTP 201, and
+    `balizero.com/api/health` now reports `commit: 0f6f3e67f3…`, **which is #3642's own merge commit**.
+    Proof of BEHAVIOUR, not just of shipping: the `kbli-licence-summary.ts` read out of that exact
+    deployed commit, run against the exact `licenses[].type` list `inspect_kbli 62110` returned in
+    the same turn, produces
+    `… NIB dan Sertifikat Standar, NIB dan Sertifikat Standar, NIB dan […cut off in the official source]`
+    — the label **once**, on the truncated name, with both complete `NIB dan Sertifikat Standar`
+    entries and `Izin Usaha` left bare. The served explorer chunk carries the shared module (note
+    present, `Confirm the full wording at oss.go.id` present, negative control 0).
 
 **🔴 SETTLED — DO NOT DEDUP `kg_edges`, AND DO NOT ADD THE UNIQUE CONSTRAINT.** #3635 left the 1,341
 duplicated `BELONGS_TO` rows in place and ledgered a blast-radius analysis. It has been done, and
