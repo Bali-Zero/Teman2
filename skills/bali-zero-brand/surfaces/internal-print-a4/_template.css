@@ -1,5 +1,18 @@
 /* Bali Zero — design template extracted from PBG_Villa_Kutuh_BaliZero_ID.pdf */
 
+/* Font: Montserrat per brand constitution (Article 3.1).
+   Caricato via Google Fonts CDN. Fallback Inter / Poppins / system sans (sempre sans, mai serif — Article 3.2).
+
+   ⚠️ QUESTA RIGA DEVE RESTARE LA PRIMA REGOLA DEL FILE. Per specifica CSS un
+   `@import` che segue una qualsiasi altra regola viene SCARTATO dal parser,
+   senza errore. Stava dopo `@page` e `*` (riga 21), quindi era morto: ogni PDF
+   uscito da questa superficie era in Helvetica, non in Montserrat — cioè la
+   superficie che esiste per applicare l'Articolo 3.1 lo violava in silenzio.
+   Misurato 2026-08-06 con due render identici a meno della posizione:
+   @import dopo una regola → `AAAAAA+HelveticaNeue`; @import per primo →
+   `AAAAAA+Montserrat-Regular`. Chi rimette una regola sopra questa la ri-uccide. */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
 @page {
   size: A4;
   margin: 0;
@@ -15,10 +28,6 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-
-/* Font: Montserrat per brand constitution (Article 3.1).
-   Caricato via Google Fonts CDN. Fallback Inter / Poppins / system sans (sempre sans, mai serif — Article 3.2). */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 
 html, body {
   margin: 0;
