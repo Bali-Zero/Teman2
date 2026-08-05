@@ -163,7 +163,7 @@ def adapt_legacy_schema(legacy: dict[str, Any], *, topic: str) -> dict[str, Any]
             new["heading"] = "Want to act on this?"
             new["body"] = ls.get("body") or ""
             new["email"] = "zantara@balizero.com"
-            new["whatsapp"] = "wa.me/6285954680980"
+            new["whatsapp"] = "wa.me/628213454721"
         elif layout == "evidence-carved":
             new["evidence_code"] = ls.get("subhead") or ""
 

@@ -14,7 +14,7 @@ v3 changes:
     - Montserrat (VF TTF) for body — white
     - Cleaner layout: more whitespace, stronger hierarchy
     - Real service categories with actual prices
-    - Contact: info@balizero.com / +62 813 3805 1876 / Canggu Bali
+    - Contact: info@balizero.com / +62 821 3454 721 / Canggu Bali
 """
 
 from __future__ import annotations
@@ -270,7 +270,7 @@ def _bg_cover(canvas, doc):
     canvas.rect(0, 12*mm, W, 0.5, fill=1, stroke=0)
     canvas.setFillColor(TEXT_DIM)
     canvas.setFont(BODY_FONT, 7.5)
-    canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 813 3805 1876  ·  Canggu, Bali")
+    canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 821 3454 721  ·  Canggu, Bali")
     canvas.restoreState()
 
 
@@ -297,7 +297,7 @@ def _make_content_bg(section_id: str):
         canvas.rect(0, 14*mm, W, 0.5, fill=1, stroke=0)
         canvas.setFillColor(TEXT_DIM)
         canvas.setFont(BODY_FONT, 7.5)
-        canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 813 3805 1876  ·  Canggu, Bali")
+        canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 821 3454 721  ·  Canggu, Bali")
         canvas.restoreState()
     return _bg
 
@@ -899,7 +899,7 @@ def page_contact() -> list:
 
     contact_items = [
         ("✉",  "info@balizero.com"),
-        ("📱",  "+62 813 3805 1876  (WhatsApp)"),
+        ("📱",  "+62 821 3454 721  (WhatsApp)"),
         ("🌐",  "balizero.com"),
         ("📍",  "Canggu, Bali, Indonesia"),
         ("🕐",  "Mon–Sat  09:00–18:00 WITA"),
