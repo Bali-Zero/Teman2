@@ -49,6 +49,107 @@ export function isProposalOnly(status?: string | null): boolean {
 }
 
 /**
+ * The closure is NATIONAL, even though it is recorded in a Bali-scoped field.
+ *
+ * `l4_bali` is where the L4 layer records its verdict, and for some codes that
+ * verdict has nothing to do with Bali: the activity is shut everywhere in
+ * Indonesia. Nothing downstream could tell the two apart, because the only
+ * national signals the renderer read — `pma_status` / `pma_max_asing` — are the
+ * ABSENCE-from-the-annex default fill and still say `TERBUKA` / `100` on every
+ * one of these records. So the banner rendered "National procedure — does not
+ * apply to a PT PMA in Bali" and the FAQ published, in the FAQPage JSON-LD that
+ * Google ingests, "Outside Bali it is open to a PT PMA with no local partner
+ * required" — on the central bank, on radioactive-waste collection, and on seven
+ * bidang usaha a presidential annex allocates to Koperasi/UMKM nationwide.
+ *
+ * Two statuses, and only two, are national by their own recorded reason —
+ * verified one by one on the live catalogue (all 9, `confidence: HIGH`,
+ * `needs_review: false`, each with a locator):
+ *
+ *   CHIUSO_REGOLATORE_SETTORIALE (2) — a sectoral regulator or State monopoly:
+ *     `64110` Bank Sentral (Bank Indonesia), `38122` radioactive waste (BAPETEN).
+ *   CHIUSO_PMA_NO_BESAR (7) — allocated to Koperasi/UMKM by Perpres 49/2021
+ *     Lampiran II, "a PT PMA cannot take this bidang usaha", with page and entry.
+ *
+ * DELIBERATELY NOT `TERTUTUP`, and this is the whole reason the rule is a named
+ * SET rather than a "closed-sounding status" test. That status is MIXED on the
+ * live catalogue: `01287` reads "closed to foreign ownership at the national
+ * level", but `01111` reads "closed to PMA registration IN BALI" and `11010`
+ * carries a sentence that is not a closure at all. Convicting all 68 on the
+ * strength of the name would be judging the FORM of the status instead of the
+ * entity it records — the same move that produced the defect above. The
+ * nationally-closed members of `TERTUTUP` need per-code adjudication; until then
+ * they keep the Bali framing, which understates rather than misdirects.
+ */
+const NATIONAL_CLOSURE_STATUSES = new Set<string>([
+  "CHIUSO_REGOLATORE_SETTORIALE",
+  "CHIUSO_PMA_NO_BESAR",
+]);
+
+/**
+ * The per-code adjudication of `TERTUTUP` the comment above says is required.
+ *
+ * A CODE list, not a status rule, because the status cannot carry the answer:
+ * censused on the live catalogue, the 68 `TERTUTUP` records split into 8 whose
+ * reason names a national legal basis, 2 that say "in Bali" explicitly, and
+ * 58 — every one of them — whose reason is "medium-high/high risk → not blocked
+ * by moratorium (verify per address)". That sentence answers whether the
+ * MORATORIUM TEST fired; it never says where the closure applies. So for 58
+ * codes the record does not hold the fact, and no rule over `l4_bali` can
+ * invent it. They keep the Bali framing, which understates rather than
+ * misdirects, and fixing them means fixing the DATA — a lane of its own.
+ *
+ * Each entry below was read individually and carries the instrument that closes
+ * it nationwide. None is a guess from the code number or the title:
+ */
+const NATIONAL_CLOSURE_CODES = new Map<string, string>([
+  [
+    "01287",
+    "narcotics/medicinal-plant cultivation — TERTUTUP/0% at the national level",
+  ],
+  [
+    "47111",
+    "minimarket/supermarket retail — reserved to Indonesian citizens (WNI)",
+  ],
+  [
+    "47112",
+    "minimarket/supermarket retail — reserved to Indonesian citizens (WNI)",
+  ],
+  ["59131", "film/video distribution — TERTUTUP/0% at the national level"],
+  [
+    "69102",
+    "legal consultancy — reserved to Indonesian-licensed advocates, UU 18/2003",
+  ],
+  [
+    "69104",
+    "notary/PPAT — a personal State office, WNI only, UU 30/2004 as am. UU 2/2014",
+  ],
+  [
+    "86201",
+    "solo doctor's practice — closed to foreign nationals under Kemenkes health law",
+  ],
+  [
+    "86202",
+    "solo specialist practice — closed to foreign nationals under Kemenkes health law",
+  ],
+]);
+
+/** Why this code is closed nationwide, or null when it is not (audit surface). */
+export function nationalClosureBasis(code?: string | null): string | null {
+  return NATIONAL_CLOSURE_CODES.get(code ?? "") ?? null;
+}
+
+export function isNationalClosure(
+  status?: string | null,
+  code?: string | null,
+): boolean {
+  return (
+    NATIONAL_CLOSURE_STATUSES.has(status ?? "") ||
+    NATIONAL_CLOSURE_CODES.has(code ?? "")
+  );
+}
+
+/**
  * The clause completing "In Bali, this activity is currently …".
  *
  * Total over the statuses above. The fallback is deliberately CAUSE-FREE: an

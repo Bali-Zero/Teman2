@@ -419,3 +419,229 @@ def test_corrupt_pending_buffer_does_not_break_routing(
     summary = asyncio.run(_loop(backend, tmp_path).run())
     assert summary.routed == 1
     assert summary.lessons_learned == 0
+
+
+# --------------------------------------------------------------------------- #
+# A quiet day is not a broken day.                                            #
+#                                                                             #
+# Measured live on 2026-08-05, the second real run: 12 messages seen, 12       #
+# declined by the classifier, 12 left where a human would see them — the       #
+# correct outcome — reported as DEGRADED with a P0. An alarm that fires on the #
+# correct outcome is an alarm nobody reads, and the gateway had already        #
+# spooled a P0 for budget overflow that same night.                           #
+#                                                                             #
+# The first narrowing read "something WAS routable and none of it moved".      #
+# Mutation-testing killed it: deleting the branch changed no test, because it   #
+# had become UNREACHABLE — with routed==0 and no errors/missing folders, every  #
+# seen message is necessarily counted unroutable. What replaced it is a         #
+# conservation law (`unaccounted`), and the guilt half below aims at THAT,      #
+# not at a branch that fires earlier.                                          #
+# --------------------------------------------------------------------------- #
+
+
+def test_a_run_that_understood_nothing_is_clean(tmp_path: Path, stub_model: None) -> None:
+    """INNOCENCE: every message declined, nothing moved — not degraded."""
+    backend = FakeBackend(
+        inbox=[
+            _msg("m1", "Re: lunch", "a@x.example", "T1"),
+            _msg("m2", "Photos from Sunday", "b@x.example", "T2"),
+        ],
+        bodies={
+            "m1": "Are we still on for Thursday? Let me know.",
+            "m2": "Sending the pictures we took, hope you like them.",
+        },
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+
+    assert summary.seen == 2
+    assert summary.routed == 0
+    assert summary.unroutable == 2, "premise: the classifier must have DECLINED both"
+    assert summary.left_in_inbox == 2
+    assert summary.unaccounted == 0
+    assert summary.degraded is False
+    assert backend.moves == [], "a clean quiet day must still mutate nothing"
+
+
+def test_a_message_that_reached_no_outcome_is_degraded(
+    tmp_path: Path, stub_model: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GUILT: the conservation law, aimed at the ending that does not exist yet.
+
+    Today every message ends routed, left-in-inbox or errored, so this shape is
+    only reachable by simulating the edit that would introduce a fourth: a
+    silent `return` out of `_handle_one` that touches no counter — a filter on
+    message age, a "skip anything from ourselves", a guard added in a hurry.
+    That is precisely the run that would otherwise report success while doing
+    nothing, so the test injects it rather than waiting for someone to write it.
+    """
+    backend = FakeBackend(
+        inbox=[_msg("m1", "KITAS renewal", "a@x.example", "T1")],
+        bodies={"m1": "My KITAS expires next month, what do you need?"},
+    )
+    loop = _loop(backend, tmp_path)
+
+    async def _silently_skip(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(loop, "_handle_one", _silently_skip)
+    summary = asyncio.run(loop.run())
+
+    assert summary.seen == 1
+    assert not summary.errors, "premise: nothing raised"
+    assert not summary.missing_folders, "premise: no folder was missing"
+    assert summary.unaccounted == 1
+    assert summary.degraded is True
+
+
+def test_a_message_that_raised_is_accounted_for(
+    tmp_path: Path, stub_model: None
+) -> None:
+    """A crash is a legal ending — it must not ALSO read as unaccounted.
+
+    Otherwise the conservation law would double-count the shape the errors
+    branch already reports, and `unaccounted` would stop meaning "nobody
+    noticed this message".
+    """
+    backend = FakeBackend(
+        inbox=[_msg("m1", "KITAS renewal", "a@x.example", "T1")],
+        bodies={},  # get_message_content will raise KeyError
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+
+    assert summary.seen == 1
+    assert summary.message_errors == 1
+    assert summary.errors, "premise: the message must have raised"
+    assert summary.unaccounted == 0
+    assert summary.degraded is True  # via the errors branch, not the law
+
+
+def test_a_missing_folder_is_accounted_for(tmp_path: Path, stub_model: None) -> None:
+    """The other legal non-move: routable, but its folder is gone.
+
+    It lands in `left_in_inbox`, so the law stays quiet and `missing_folders`
+    does the reporting. Pins that the two guards do not overlap.
+    """
+    backend = FakeBackend(
+        inbox=[_msg("m1", "KITAS renewal", "a@x.example", "T1")],
+        bodies={"m1": "My KITAS expires next month, what do you need?"},
+        folders=[f for f in FOLDERS if f.get("folder_name") != "_Visa"],
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+
+    assert summary.routed == 0
+    assert summary.unroutable == 0, "premise: the message WAS routable"
+    assert summary.missing_folders == ["_Visa"]
+    assert summary.unaccounted == 0
+    assert summary.degraded is True
+
+
+def test_mixed_day_with_one_routed_is_clean(tmp_path: Path, stub_model: None) -> None:
+    """INNOCENCE: one defensible routing among declines is a good day."""
+    backend = FakeBackend(
+        inbox=[
+            _msg("m1", "KITAS renewal", "a@x.example", "T1"),
+            _msg("m2", "Re: lunch", "b@x.example", "T2"),
+        ],
+        bodies={
+            "m1": "My KITAS expires next month, what do you need?",
+            "m2": "Are we still on for Thursday?",
+        },
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+
+    assert summary.routed == 1
+    assert summary.unroutable == 1
+    assert summary.degraded is False
+
+
+def test_unroutable_is_reported_so_a_quiet_day_is_explicable(
+    tmp_path: Path, stub_model: None
+) -> None:
+    """The wrapper's log must be able to say WHY a run moved nothing.
+
+    Without the count in the summary, "routed 0, clean" and "routed 0, broken"
+    read identically to whoever finds the log at 07:30.
+    """
+    backend = FakeBackend(
+        inbox=[_msg("m1", "Re: lunch", "a@x.example", "T1")],
+        bodies={"m1": "Are we still on for Thursday?"},
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+    reported = summary.as_dict()
+    assert reported["unroutable"] == 1
+    assert reported["unaccounted"] == 0
+
+
+def test_a_draft_that_crashes_after_the_move_does_not_unbalance_the_law(
+    tmp_path: Path, stub_model: None
+) -> None:
+    """GUILT: the shape that made `unaccounted` read -1, reproduced.
+
+    The message moves, then Zoho refuses to store the reply. Before the fix
+    `routed` was incremented inside `_handle_one` and the crash propagated to
+    the caller's per-message handler, which added `message_errors` on top —
+    two endings for one message, `unaccounted == -1`.
+
+    A negative value is truthy, so the run still read degraded and the defect
+    was invisible. What it really costs is cancellation: a `-1` here silently
+    absorbs a genuine `+1` elsewhere in the same run, and the law reports
+    balanced while hiding both.
+    """
+
+    class RefusesToSaveDrafts(FakeBackend):
+        async def save_draft(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("Zoho API 500 while saving draft")
+
+    backend = RefusesToSaveDrafts(
+        inbox=[_msg("m1", "KITAS renewal", "a@x.example", "T1")],
+        bodies={"m1": "My KITAS expires next month, what do you need?"},
+    )
+    summary = asyncio.run(_loop(backend, tmp_path).run())
+
+    assert backend.moves == [(["m1"], "F-VISA")], "premise: the message DID move"
+    assert summary.errors, "premise: the draft step DID fail"
+    assert summary.routed == 1
+    assert summary.message_errors == 0, "a moved message is not also an error-ending"
+    assert summary.unaccounted == 0
+    assert summary.draft_failures == 1
+    assert summary.degraded is True  # via errors + drafted==0, not via the law
+
+
+def test_the_law_cannot_net_out(tmp_path: Path, stub_model: None) -> None:
+    """Two messages, one crashing after its move and one silently skipped.
+
+    This is the run the cancellation would hide: before the fix the crash gave
+    -1 and the skip gave +1, so `unaccounted` read 0 and a run that lost a
+    message reported balanced. Each defect must now be visible on its own.
+    """
+
+    class RefusesToSaveDrafts(FakeBackend):
+        async def save_draft(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("Zoho API 500 while saving draft")
+
+    backend = RefusesToSaveDrafts(
+        inbox=[
+            _msg("m1", "KITAS renewal", "a@x.example", "T1"),
+            _msg("m2", "PT PMA setup", "b@x.example", "T2"),
+        ],
+        bodies={
+            "m1": "My KITAS expires next month, what do you need?",
+            "m2": "I want to open a PT PMA, what is required?",
+        },
+    )
+    loop = _loop(backend, tmp_path)
+    real_handle_one = loop._handle_one
+
+    async def _skip_the_second(
+        message_id: str, *args: Any, **kwargs: Any
+    ) -> Any:
+        if message_id == "m2":
+            return None  # the fourth ending nobody recorded
+        return await real_handle_one(message_id, *args, **kwargs)
+
+    loop._handle_one = _skip_the_second  # type: ignore[method-assign]
+    summary = asyncio.run(loop.run())
+
+    assert summary.seen == 2
+    assert summary.unaccounted == 1, "the skipped message must still show"
+    assert summary.degraded is True

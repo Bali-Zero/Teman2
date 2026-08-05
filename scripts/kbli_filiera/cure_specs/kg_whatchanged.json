@@ -4,26 +4,26 @@
     {
       "code": "47401",
       "entity_id": "kbli:47401",
-      "md5": "e085ef183d3341192c08f67754a6508b",
-      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 47401 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). No structural changes to the retail classification.",
-      "old": "Unchanged from KBLI 2020 — direct match. Direct match from KBLI 2020 — same code, same scope. No structural changes to the retail classification.",
-      "passes": ["false_continuity_claim"]
+      "md5": "0568ab6d926a7cda61e187f9bde2be75",
+      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 47401 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+      "old": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 47401 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). No structural changes to the retail classification.",
+      "passes": ["residual_continuity_claim"]
     },
     {
-      "code": "90130",
-      "entity_id": "kbli:90130",
-      "md5": "5eec1c865cc8b5ef4f6b3cfbb488ab89",
-      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 90130 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
-      "old": "Unchanged from KBLI 2020 — direct match.",
-      "passes": ["false_continuity_claim"]
+      "code": "63900",
+      "entity_id": "kbli:63900",
+      "md5": "9c586af3a38cbc5161aeb8c1b5c5316c",
+      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 63900 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+      "old": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 63900 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). No structural changes.",
+      "passes": ["residual_continuity_claim"]
     },
     {
       "code": "96210",
       "entity_id": "kbli:96210",
-      "md5": "df55e1d10ee7b2a627fe8a0c219a3ab0",
-      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 96210 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). Hair salons have been consistently classified across both KBLI versions.",
-      "old": "Direct match from KBLI 2020. Same code, same scope. Hair salons have been consistently classified across both KBLI versions.",
-      "passes": ["false_continuity_claim"]
+      "md5": "ed564442d08fc64b8b2c96d3dcda8bfb",
+      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 96210 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+      "old": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 96210 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). Hair salons have been consistently classified across both KBLI versions.",
+      "passes": ["residual_continuity_claim"]
     }
   ],
   "spec_id": "kg_whatchanged",
