@@ -41,10 +41,12 @@ from typing import Any
 
 import yaml
 
-# Below this, an ordinary slow checkout eats the whole budget. Not a guess: the
-# observed bad checkouts land at ~2 minutes, and the floor has to clear that plus
-# the actual work with room left.
-FLOOR_MINUTES = 5
+# Below this, an ordinary slow checkout eats the whole budget. Not a guess, and
+# revised UPWARD once by measurement: the first draft used 5, sized on the ~2
+# minute checkouts seen on PR refs. Then the MERGE QUEUE was measured, where the
+# same action ran 4m59s and killed a 5-minute job. The floor has to clear the
+# worst checkout observed on ANY ref, plus the work, with room left.
+FLOOR_MINUTES = 10
 
 WORKFLOW_DIR = Path(".github/workflows")
 

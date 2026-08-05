@@ -17,16 +17,18 @@ concurrency:
 jobs:
   root-guard:
     runs-on: ubuntu-latest
-    # 2 → 6 (2026-08-06). Same wall as docs-sync.yml, and this one is worse:
+    # 2 → 10 (2026-08-06). Same wall as docs-sync.yml, and this one is worse:
     # `root-guard` is a REQUIRED context on main AND runs on `merge_group`, so a
     # blown budget stalls the merge queue itself. `actions/checkout` on this repo
-    # normally takes ~20s but intermittently takes ~2 MINUTES; measured on this
-    # workflow's own history, 1 of the last 30 runs was cut off that way.
+    # normally takes ~20s but intermittently takes MINUTES. Measured on this
+    # workflow's own history: 1 of the last 30 PR runs was cut off — and on the
+    # MERGE QUEUE ref its checkout ran 2m05s and was killed, which is what kept
+    # ejecting #3647 from the queue three times in a row.
     #
     # A blown budget reports as `cancelled`, not `failure`, and a cancelled
     # required check never turns green by itself. `fetch-depth: 1` is already set
     # — the cost is the repo's size, not its history — so headroom is the cure.
-    timeout-minutes: 6
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:

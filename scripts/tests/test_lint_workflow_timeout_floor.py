@@ -112,11 +112,30 @@ jobs:
     assert found == []
 
 
-@pytest.mark.parametrize("t", [5, 6, 30])
-def test_a_budget_at_or_above_the_floor_is_not_flagged(tmp_path, t):
-    root = write(tmp_path, "w.yml", CHECKOUT_JOB.format(t=t))
+@pytest.mark.parametrize("delta", [0, 1, 20])
+def test_a_budget_at_or_above_the_floor_is_not_flagged(tmp_path, delta):
+    """Derived from the constant, so raising the floor does not falsify the
+    COMPARISON. The constant's own value is pinned separately below — a test
+    that reads the constant can never catch the constant being wrong."""
+    root = write(tmp_path, "w.yml", CHECKOUT_JOB.format(t=mod.FLOOR_MINUTES + delta))
     found, _, _ = mod.offenders(root)
     assert found == []
+
+
+def test_the_floor_value_itself_is_pinned_to_the_measurement(tmp_path):
+    """Lowering the floor is the regression this whole lint exists to prevent,
+    and it is a one-character edit. The number is not arbitrary: a checkout on
+    the merge-queue ref was measured STILL RUNNING at 4m59s when its 5-minute
+    job was killed — a censored lower bound, not a duration, which is why the
+    floor sits well above it rather than just past it.
+    """
+    assert mod.FLOOR_MINUTES == 10
+    # And the comparison is strict-below, so a job sitting exactly ON the floor
+    # is accepted — the 15 jobs raised in this PR sit there.
+    root = write(tmp_path, "w.yml", CHECKOUT_JOB.format(t=10))
+    assert mod.offenders(root)[0] == []
+    root = write(tmp_path, "x.yml", CHECKOUT_JOB.format(t=9))
+    assert mod.offenders(root)[0] == [("x.yml", "guard", 9)]
 
 
 def test_an_undeclared_timeout_is_out_of_scope(tmp_path):

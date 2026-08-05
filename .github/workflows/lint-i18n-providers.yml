@@ -21,7 +21,9 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
+    # Was 5; a checkout on the merge-queue ref was measured still running at 4m59s.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
