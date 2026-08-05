@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Iterable
 from inspect import isawaitable
 from typing import Annotated, Any
 
@@ -312,6 +313,26 @@ def get_kbli_ttl(code: str) -> int:
     return 2592000  # 30 Days
 
 
+def related_codes_from_rows(rows: Iterable[str], code: str) -> list[str]:
+    """Map `kbli:<code>` entity ids to bare codes, deduped, self excluded.
+
+    The SQL already does both (see the caller), so this is a second, independent
+    line rather than the only one: the graph holds 1,341 duplicated BELONGS_TO
+    rows, and a future edit to that query — or a caller that forgets `DISTINCT` —
+    would put the duplicates straight back in front of a client. Order is the
+    caller's (the query is `ORDER BY source_entity_id`), preserved here.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for row in rows:
+        bare = row.replace("kbli:", "", 1).strip()
+        if not bare or bare == code or bare in seen:
+            continue
+        seen.add(bare)
+        out.append(bare)
+    return out
+
+
 def _resolve_risk_profile(qdrant_risk: str | None, licenses: list["KBLILicense"]) -> str:
     """Risk label surfaced to the client for a KBLI code.
 
@@ -486,20 +507,29 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             if sector_id:
                 # Filter by same 2-digit sector prefix to prevent cross-sector contamination
                 # e.g. 56210 (catering, sector I) should only relate to 56xxx codes
+                #
+                # DISTINCT and the self-exclusion both belong in SQL, not after the
+                # fetch: `LIMIT 6` is applied by Postgres, so anything filtered out
+                # afterwards silently COSTS A SLOT instead of being replaced. The
+                # graph carries 1,341 duplicated (source, sector) BELONGS_TO rows —
+                # every duplicated pair appears exactly twice — so the old query
+                # spent its six rows on three codes and then showed each twice.
+                # Measured on prod: 79122 returned ['79110','79110','79121','79121']
+                # and now returns six distinct siblings; 56101 likewise.
                 sector_prefix = code[:2]
                 others = await conn.fetch(
-                    "SELECT source_entity_id FROM kg_edges "
+                    "SELECT DISTINCT source_entity_id FROM kg_edges "
                     "WHERE target_entity_id = $1 AND relationship_type = 'BELONGS_TO' "
                     "AND source_entity_id LIKE $2 "
+                    "AND source_entity_id <> $3 "
                     "ORDER BY source_entity_id LIMIT 6",
                     sector_id,
                     f"kbli:{sector_prefix}%",
+                    f"kbli:{code}",
                 )
-                related_codes = [
-                    r["source_entity_id"].replace("kbli:", "")
-                    for r in others
-                    if r["source_entity_id"] != f"kbli:{code}"
-                ]
+                related_codes = related_codes_from_rows(
+                    (r["source_entity_id"] for r in others), code
+                )
 
             # 5. Enrich with Qdrant payload (pma_status, risk category)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
