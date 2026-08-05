@@ -41,7 +41,7 @@ def _load_module(open_chain: bool = True) -> ModuleType:
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     if open_chain:
-        module.reachable_by = lambda path: (True, True)
+        module.reachable_by = lambda path, cache=None: (True, True)
     return module
 
 
@@ -341,7 +341,9 @@ def test_non_blind_clean_scan_exits_0(tmp_path, capsys):
 def _chain(module: ModuleType, monkeypatch: pytest.MonkeyPatch, table: dict) -> None:
     """Declare (group_x, other_x) per directory; anything absent is 0755."""
     monkeypatch.setattr(
-        module, "_dir_traversal", lambda d, _t=table: _t.get(d, (True, True))
+        module,
+        "_dir_traversal",
+        lambda d, cache=None, _t=table: _t.get(d, (True, True)),
     )
 
 
@@ -412,11 +414,11 @@ def test_scan_skips_a_readable_file_that_nobody_can_reach(tmp_path: Path) -> Non
     module = _load_module()
     secret = tmp_path / "credentials.env"
     secret.write_text("x")
-    os.chmod(secret, 0o644)
+    secret.chmod(0o644)
 
     monkeypatch = pytest.MonkeyPatch()
     try:
-        monkeypatch.setattr(module, "reachable_by", lambda p: (False, False))
+        monkeypatch.setattr(module, "reachable_by", lambda p, cache=None: (False, False))
         findings = module.scan([tmp_path])
     finally:
         monkeypatch.undo()
@@ -438,7 +440,7 @@ def test_a_symlinked_root_is_audited_not_silently_dropped(tmp_path: Path) -> Non
     real_dir.mkdir()
     secret = real_dir / "creds.env"
     secret.write_text("x")
-    os.chmod(secret, 0o644)
+    secret.chmod(0o644)
     link = tmp_path / "link"
     link.symlink_to(real_dir)
 
@@ -462,7 +464,7 @@ def test_a_symlink_met_during_the_walk_is_still_not_followed(tmp_path: Path) -> 
     outside.mkdir()
     outside_secret = outside / "creds.env"
     outside_secret.write_text("x")
-    os.chmod(outside_secret, 0o644)
+    outside_secret.chmod(0o644)
 
     root = tmp_path / "root"
     root.mkdir()
@@ -493,7 +495,7 @@ def test_the_real_root_and_its_symlink_are_walked_once(tmp_path: Path) -> None:
     real_dir.mkdir()
     secret = real_dir / "creds.env"
     secret.write_text("x")
-    os.chmod(secret, 0o644)
+    secret.chmod(0o644)
     link = tmp_path / "link"
     link.symlink_to(real_dir)
 
@@ -513,11 +515,11 @@ def test_scan_still_reports_the_same_file_when_the_chain_is_open(
     module = _load_module()
     secret = tmp_path / "credentials.env"
     secret.write_text("x")
-    os.chmod(secret, 0o644)
+    secret.chmod(0o644)
 
     monkeypatch = pytest.MonkeyPatch()
     try:
-        monkeypatch.setattr(module, "reachable_by", lambda p: (True, True))
+        monkeypatch.setattr(module, "reachable_by", lambda p, cache=None: (True, True))
         findings = module.scan([tmp_path])
     finally:
         monkeypatch.undo()

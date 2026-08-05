@@ -272,27 +272,36 @@ def _iter_candidate_paths(
 # --------------------------------------------------------------------------
 
 
-def _dir_traversal(directory: str, _cache: dict = {}) -> Tuple[bool, bool]:
+def _dir_traversal(
+    directory: str, cache: Optional[dict] = None
+) -> Tuple[bool, bool]:
     """(group_can_traverse, other_can_traverse) for ONE directory.
 
     On any stat error the answer is (True, True): a guard that could not
     verify must never absolve (W106b — CANNOT-VERIFY is not the same as
-    clean). Cached because a fleet scan walks ~90k files over a few hundred
-    directories.
+    clean).
+
+    `cache` is supplied by the caller and lives for exactly one scan — a
+    fleet walk crosses ~90k files over a few hundred directories, so the
+    saving is real, but a cache that outlived the scan would be a stored
+    answer about a world that can change under it. Same reason the default
+    is None rather than a shared dict.
     """
-    hit = _cache.get(directory)
-    if hit is not None:
-        return hit
+    if cache is not None:
+        hit = cache.get(directory)
+        if hit is not None:
+            return hit
     try:
         mode = stat.S_IMODE(os.stat(directory).st_mode)
         result = (bool(mode & stat.S_IXGRP), bool(mode & stat.S_IXOTH))
     except OSError:
         result = (True, True)
-    _cache[directory] = result
+    if cache is not None:
+        cache[directory] = result
     return result
 
 
-def reachable_by(path: Path) -> Tuple[bool, bool]:
+def reachable_by(path: Path, cache: Optional[dict] = None) -> Tuple[bool, bool]:
     """(group, other) — can each actually walk down to this file?
 
     A 0644 file inside a 0700 directory is NOT in the clear: nobody but the
@@ -315,7 +324,7 @@ def reachable_by(path: Path) -> Tuple[bool, bool]:
     except OSError:
         return (True, True)
     while True:
-        can_group, can_other = _dir_traversal(str(directory))
+        can_group, can_other = _dir_traversal(str(directory), cache)
         group = group and can_group
         other = other and can_other
         if not (group or other) or directory.parent == directory:
@@ -339,6 +348,7 @@ def scan(
     """
     findings: List[Finding] = []
     seen_files: set = set()
+    traversal_cache: dict = {}  # one scan's worth — see _dir_traversal
 
     for candidate in _iter_candidate_paths(roots, max_depth, stats):
         key = os.path.abspath(candidate)
@@ -360,7 +370,7 @@ def scan(
 
         # The mode says who MAY read; the directory chain says who can get
         # here at all. Both have to be true for the file to be exposed.
-        can_group, can_other = reachable_by(candidate)
+        can_group, can_other = reachable_by(candidate, traversal_cache)
         exposed = (bool(mode_bits & 0o070) and can_group) or (
             bool(mode_bits & 0o007) and can_other
         )
