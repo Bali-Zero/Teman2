@@ -2,7 +2,7 @@
 date: 2026-08-06
 domain: compliance
 client_case: none — catalogue-wide determination affecting every PT PMA enquiry on these activities
-adversarial_review: cross-family blind re-derivation (Sonnet proposes, Codex re-derives without sight of the proposal) over all 85 codes, plus a final on-disk check by the conductor which overturned 7 of 41
+adversarial_review: codex
 sources:
   - Perpres 10/2021 as amended by Perpres 49/2021, Lampiran II (vaulted PDF 161564, 180 ticks, 0 unresolved)
   - scripts/kbli_filiera/perpres_umkm_reservation_relation.py --json
@@ -68,7 +68,13 @@ One further PATCH is withdrawn: **`47722`** rests on annex text the OCR
 destroyed (`'B"rt"t dan obat farmasi...`), and the corrupted token is the one
 that sets the scope. A verdict on illegible evidence is an unclear verdict.
 
-**Actionable set: 40 codes, not 41.**
+**Actionable set: 39 codes, not 41.**
+
+A further removal came from CI, not from this reading: `79110` (travel agent) is
+asserted at **100%, never 0** by `test_kbli_eye.py`, a determination that lives
+in a TEST rather than in `pma_official_basis` — so the applier's own
+refuse-on-prior-adjudication rule could not see it. Two in-repo determinations
+disagree; that is Zero's to settle, not a silent overwrite.
 
 ## Nothing has been written to the dataset
 
