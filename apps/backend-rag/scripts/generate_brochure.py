@@ -1,42 +1,55 @@
 """
-Bali Zero — Company Brochure PDF Generator v3
+Bali Zero — Company Brochure PDF Generator v4
 =============================================
-One-time script. Run when services/prices change.
-Output: data/assets/brochure_balizero_en.pdf
+THIS IS THE SOURCE of the brochure clients receive. Run it when facts, services
+or prices change, and commit the PDF it writes.
 
-⚠️  THIS IS NOT THE SOURCE OF THE PUBLISHED BROCHURE (checked 2026-08-05).
-    The brochure clients actually receive is served from
-    ``apps/mouth/public/static/brochure_balizero_en.pdf`` (fetched over HTTP by
-    ``welcome_email_service.py`` and base64-attached to every welcome email).
-    That file is a hand-made binary with no source in this repo: it was
-    committed on 2026-04-01, five days AFTER this "v3" script was written on
-    2026-03-27, in a commit that touched nothing else. The version labels are
-    inverted with respect to time — "v2" is the newer artifact.
+Output: ../mouth/public/static/brochure_balizero_en.pdf — the file served at
+https://kita.balizero.com/static/brochure_balizero_en.pdf, which
+``welcome_email_service.py`` fetches over HTTP and base64-attaches to every
+welcome email. There is no second copy: write here or the clients never see it.
 
-    Do not "just regenerate and copy over". The two have diverged on FACTS, and
-    the published one is the truthful side on every one of them:
+v4 (2026-08-05) — how this script became the source
+---------------------------------------------------
+It was NOT the source before. Until now it wrote to ``data/assets/``, a path
+that is neither served nor present in the repo, and the published brochure was
+a hand-made binary committed on 2026-04-01 — five days AFTER this script's "v3"
+was written on 2026-03-27, in a commit that touched nothing else. The version
+labels ran backwards against time, and the published PDF had no source at all.
 
-        published            this script
-        10,000+ clients      5,000+
-        22 years in Bali     10+
-        Bayu Santero Group   "since 2014"
-          (2003) / BZ 2020
-        Kerobokan            Canggu
-        zantara@balizero.com info@balizero.com
+That divergence had let the two drift apart on FACTS, and on every one of them
+the PUBLISHED file was the truthful side. Those facts are now ported in here,
+verbatim where the wording was published wording:
 
-    The one thing this script has right and the published PDF has wrong is the
-    contact number: the published brochure still shows a team member's personal
-    line (8 occurrences), which is why it was audited here. Fixing that means
-    rebuilding the brochure from a real source, not running this.
+    ported IN (published, true)      was in this script (stale/wrong)
+    10,000+ clients served           5,000+
+    22 years in Bali                 10+
+    40+ nationalities                "3 core services"
+    Bayu Santero Group (2003),       "since 2014"
+      Bali Zero est. 2020
+    Kerobokan                        Canggu
+    zantara@balizero.com             info@balizero.com
+    Mon–Fri 09:00–18:00 WITA         Mon–Sat
+    founder quote (published text)   an older quote citing "5,000 people"
 
-    Two more traps if you do run it: FONT_DIR below is hardcoded to one
-    machine's home, so on any other machine the brand fonts silently fall back
-    to Helvetica; and OUTPUT_PATH writes to a path that is not served and does
-    not exist in this repo.
+The one thing this script already had right, and the reason for the whole pass,
+is the contact number: the published brochure showed a team member's personal
+line 8 times. It now shows the public CTA line.
+
+Two structural traps were fixed at the same time, both of which had made a
+faithful rebuild impossible: FONT_DIR was hardcoded to one machine's home, so
+the brand fonts silently fell back to Helvetica anywhere else, and OUTPUT_PATH
+pointed at the unserved path above. Fonts now resolve from the running user's
+home and a missing brand font is LOUD, not a log line.
 
 Usage:
     cd apps/backend-rag
     python scripts/generate_brochure.py
+
+    Run it on a machine that has LeagueSpartan-VF.ttf and Montserrat[wght].ttf
+    in ~/Library/Fonts (Pro does; M5 does not). Without them the script refuses
+    to write rather than emit a system-font brochure — set
+    BROCHURE_ALLOW_SYSTEM_FONTS=1 only for a throwaway local preview.
 
 v3 changes:
     - Real pricing data from bali_zero_official_prices_2025.json
@@ -44,13 +57,14 @@ v3 changes:
     - Montserrat (VF TTF) for body — white
     - Cleaner layout: more whitespace, stronger hierarchy
     - Real service categories with actual prices
-    - Contact: info@balizero.com / +62 821 3454 721 / Canggu Bali
+    - Contact: zantara@balizero.com / +62 821 3454 721 / Kerobokan, Bali
 """
 
 from __future__ import annotations
 
 import io
 import json
+import os
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────
@@ -58,7 +72,11 @@ from pathlib import Path
 # ─────────────────────────────────────────────────────────
 REPO_ROOT    = Path(__file__).parent.parent.parent.parent  # monorepo root
 BACKEND_ROOT = Path(__file__).parent.parent                # apps/backend-rag
-OUTPUT_PATH  = BACKEND_ROOT / "data" / "assets" / "brochure_balizero_en.pdf"
+# The SERVED path. Vercel publishes apps/mouth/public/ verbatim, and
+# welcome_email_service.py fetches this exact file over HTTP to attach it to
+# every welcome email. Writing anywhere else means the clients never see it —
+# which is precisely how this generator drifted four months out of date.
+OUTPUT_PATH  = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "brochure_balizero_en.pdf"
 LOGO_PATH    = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "balizero-logo-clean.png"
 PRICING_PATH = BACKEND_ROOT / "backend" / "data" / "bali_zero_official_prices_2025.json"
 
@@ -162,7 +180,12 @@ def get_price(category: str, key_fragment: str) -> str:
 # ─────────────────────────────────────────────────────────
 # FONT REGISTRATION
 # ─────────────────────────────────────────────────────────
-FONT_DIR = Path("/Users/nuzantara/Library/Fonts")
+# Resolve from the RUNNING user's home. This was hardcoded to
+# /Users/nuzantara/Library/Fonts, which is a dead path on any machine whose user
+# is not `nuzantara` (M5's is `balizero`) — so a rebuild there silently produced
+# a system-font brochure and exited 0. The brand TTFs are not in the repo, so
+# the path has to be per-user, and a miss has to be loud (see below).
+FONT_DIR = Path.home() / "Library" / "Fonts"
 SYS_FONT_DIR = Path("/System/Library/Fonts")
 
 def _reg(name: str, path: Path) -> bool:
@@ -196,6 +219,30 @@ else:
     BODY_FONT = "Helvetica"
 
 print(f"   Fonts: title={TITLE_FONT}, body={BODY_FONT}")
+
+# A brand-font miss must not be a log line. W99 is exactly this shape: a
+# renderer that KNEW the brand font had not loaded, said so at warning level,
+# and published nine slides painted in system fonts anyway. This brochure goes
+# to every new client, so a fallback is a refusal by default.
+_missing_brand_fonts = [
+    label
+    for label, font, fallback in (
+        ("League Spartan (LeagueSpartan-VF.ttf)", TITLE_FONT, "Helvetica-Bold"),
+        ("Montserrat (Montserrat[wght].ttf)", BODY_FONT, "Helvetica"),
+    )
+    if font == fallback
+]
+if _missing_brand_fonts and os.environ.get("BROCHURE_ALLOW_SYSTEM_FONTS") != "1":
+    raise SystemExit(
+        "\n❌ BRAND FONT NOT LOADED — refusing to write a client-facing brochure.\n"
+        f"   Missing: {', '.join(_missing_brand_fonts)}\n"
+        f"   Looked in: {FONT_DIR}\n"
+        "   The brand TTFs are not versioned in this repo; run this on a machine\n"
+        "   that has them (Pro does). For a throwaway local preview only:\n"
+        "   BROCHURE_ALLOW_SYSTEM_FONTS=1 python scripts/generate_brochure.py\n"
+    )
+if _missing_brand_fonts:
+    print(f"   ⚠️  SYSTEM FONTS — preview only, do NOT commit: {', '.join(_missing_brand_fonts)}")
 
 # ─────────────────────────────────────────────────────────
 # PARAGRAPH STYLES
@@ -280,17 +327,18 @@ def _bg_cover(canvas, doc):
     # Dark base
     canvas.setFillColor(HexColor("#0a0a0c"))
     canvas.rect(0, 0, W, H, fill=1, stroke=0)
-    # Warm gradient panel left ~40%
-    canvas.setFillColor(HexColor("#1a100a"))
-    canvas.rect(0, 0, W * 0.42, H, fill=1, stroke=0)
-    # Terracotta vertical bar
-    canvas.setFillColor(TERRA)
-    canvas.rect(W * 0.42 - 3, 0, 3, H, fill=1, stroke=0)
-    # Decorative dots grid (subtle)
-    canvas.setFillColor(Color(0.83, 0.52, 0.35, 0.08))
+    # NOTE (2026-08-05): the cover used to paint a warm panel over the left 42%
+    # with a terracotta rule down its edge. The cover CONTENT is laid out full
+    # width, so that rule ran straight through the subtitle and the stats row —
+    # a headline slashed by a vertical bar, on the first page a client sees.
+    # Full-bleed dark instead, which is also what the published brochure did.
+    canvas.setFillColor(HexColor("#120b07"))
+    canvas.rect(0, 0, W, H, fill=1, stroke=0)
+    # Decorative dots grid (subtle), now full width so it reads as texture
+    canvas.setFillColor(Color(0.83, 0.52, 0.35, 0.06))
     dot_size = 2
     for row in range(0, int(H / 18) + 1):
-        for col in range(0, int(W * 0.42 / 18) + 1):
+        for col in range(0, int(W / 18) + 1):
             canvas.circle(col * 18 + 9, row * 18 + 9, dot_size, fill=1, stroke=0)
     # Top accent band
     canvas.setFillColor(TERRA)
@@ -300,7 +348,7 @@ def _bg_cover(canvas, doc):
     canvas.rect(0, 12*mm, W, 0.5, fill=1, stroke=0)
     canvas.setFillColor(TEXT_DIM)
     canvas.setFont(BODY_FONT, 7.5)
-    canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 821 3454 721  ·  Canggu, Bali")
+    canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  zantara@balizero.com  ·  +62 821 3454 721  ·  Kerobokan, Bali")
     canvas.restoreState()
 
 
@@ -327,7 +375,7 @@ def _make_content_bg(section_id: str):
         canvas.rect(0, 14*mm, W, 0.5, fill=1, stroke=0)
         canvas.setFillColor(TEXT_DIM)
         canvas.setFont(BODY_FONT, 7.5)
-        canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 821 3454 721  ·  Canggu, Bali")
+        canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  zantara@balizero.com  ·  +62 821 3454 721  ·  Kerobokan, Bali")
         canvas.restoreState()
     return _bg
 
@@ -564,10 +612,10 @@ def page_cover() -> list:
 
     # ── Stats row
     stats = [
-        StatBox("5,000+", "Clients served",  TERRA, 42),
-        StatBox("10+",    "Years in Bali",    GOLD,  42),
-        StatBox("3",      "Core services",    INDIGO, 42),
-        StatBox("99%",    "Compliance rate",  GREEN,  42),
+        StatBox("10,000+", "Clients served",  TERRA, 42),
+        StatBox("22",      "Years in Bali",    GOLD,  42),
+        StatBox("40+",     "Nationalities",    INDIGO, 42),
+        StatBox("99%",     "Compliance rate",  GREEN,  42),
     ]
     gap = 4*mm
     tbl = Table(
@@ -610,7 +658,10 @@ def page_who() -> list:
 
     intro = (
         "Bali Zero is Bali's leading immigration and business services firm, "
-        "serving expats and investors from over 40 countries since 2014. "
+        "serving expats and investors from over 40 countries. We are the "
+        "operational branch of Bayu Santero Group — founded in 2003 — with over "
+        "22 years of uninterrupted presence in Bali. Bali Zero was established in "
+        "2020 as the dedicated expat services division. "
         "We combine deep local expertise with AI-powered intelligence to deliver "
         "accurate, fast, and reliable guidance — so you can build your life in Bali "
         "with full confidence and zero uncertainty."
@@ -620,9 +671,9 @@ def page_who() -> list:
 
     # Why us: 3 pillars
     pillars = [
-        ("Local Authority", "10+ years in Bali. We know every immigration officer, every notary, every rule change — often before it's announced."),
-        ("AI-Verified Accuracy", "Our AI cross-references every regulation, flags inconsistencies, and ensures every answer is grounded in current law. AI verifies. Humans decide."),
-        ("End-to-End Service", "From your first visa to company setup, KBLI compliance, tax filing, and property acquisition — one team, one relationship."),
+        ("Local Authority", "22+ years in Bali. We know every immigration officer, every notary, every rule change — often before it's announced."),
+        ("AI-Verified Accuracy", "Our AI cross-references every regulation, flags inconsistencies and ensures every answer is grounded in current Indonesian law. AI verifies. Humans decide."),
+        ("End-to-End Service", "From first visa to company setup, KBLI compliance, tax filing and property acquisition — one team, one lasting relationship."),
     ]
     for title, desc in pillars:
         story.append(KeepTogether([
@@ -922,17 +973,17 @@ def page_contact() -> list:
     story.append(Spacer(1, 6*mm))
 
     story.append(Paragraph(
-        "Ready to make Bali official? Our team is available Monday–Saturday, "
+        "Ready to make Bali official? Our team is available Monday–Friday, "
         "9am–6pm WITA. WhatsApp is the fastest way to reach us.",
         ST["BODY"]))
     story.append(Spacer(1, 6*mm))
 
     contact_items = [
-        ("✉",  "info@balizero.com"),
+        ("✉",  "zantara@balizero.com"),
         ("📱",  "+62 821 3454 721  (WhatsApp)"),
         ("🌐",  "balizero.com"),
-        ("📍",  "Canggu, Bali, Indonesia"),
-        ("🕐",  "Mon–Sat  09:00–18:00 WITA"),
+        ("📍",  "Jl. Raya Anyar No. 2 Gg. 3, Kerobokan Kelod, Kuta Utara, Badung, Bali 80361"),
+        ("🕐",  "Mon–Fri  09:00–18:00 WITA"),
         ("🤖",  "AI chat available 24/7 at zantara.balizero.com"),
     ]
     story.append(ContactCard(contact_items, TERRA))
@@ -951,9 +1002,9 @@ def page_contact() -> list:
     story.append(Spacer(1, 4*mm))
 
     story.append(Paragraph(
-        '"We built Bali Zero because we saw too many expats get caught by wrong visas, '
-        'fraudulent agents, and surprise tax bills. '
-        'Ten years later, we\'ve helped 5,000 people do it right."',
+        '"Most people arrive in Bali with a plan. Very few arrive with the right one. '
+        'After 22 years here, we know the difference — and we\'re the team '
+        'that makes sure yours holds up when it actually matters."',
         ST["BODY"]))
     story.append(Spacer(1, 3*mm))
     story.append(Paragraph("— Bali Zero Founding Team", ST["LABEL"]))
@@ -968,10 +1019,15 @@ def _cover_logo_overlay(canvas, doc):
     """Draw logo on cover page (called as onPage)."""
     _bg_cover(canvas, doc)
     if LOGO_READER:
-        lw = 45*mm
-        lh = 18*mm
-        lx = W - lw - 12*mm
-        ly = H - lh - 12*mm
+        # Centred and large, as on the published brochure. It used to sit small
+        # in the top-right corner, where it read as clipped against the accent
+        # band rather than as the mark the cover is built around.
+        # SQUARE: balizero-logo-clean.png is 512x512. Every previous call here
+        # passed a wide-flat box (45x18, 28x11), which squashed a round mark to
+        # 40% of its height on every page of a client-facing brochure.
+        lw = lh = 74*mm
+        lx = (W - lw) / 2
+        ly = H - lh - 22*mm
         canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
 
 
@@ -981,10 +1037,9 @@ def _content_logo_overlay(section_id: str):
     def _fn(canvas, doc):
         bg_fn(canvas, doc)
         if LOGO_READER:
-            lw = 28*mm
-            lh = 11*mm
+            lw = lh = 13*mm  # square: the source PNG is 512x512 (see cover)
             lx = W - lw - 10*mm
-            ly = H - lh - 9*mm
+            ly = H - lh - 7*mm
             canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
     return _fn
 
@@ -993,7 +1048,7 @@ def _content_logo_overlay(section_id: str):
 # DOCUMENT ASSEMBLY
 # ─────────────────────────────────────────────────────────
 MARGIN_LR = 15*mm
-MARGIN_TOP_COVER = 20*mm
+MARGIN_TOP_COVER = 104*mm  # clears the centred square cover logo (22mm–96mm from top)
 MARGIN_BOT_COVER = 18*mm
 MARGIN_TOP = 18*mm
 MARGIN_BOT = 20*mm
