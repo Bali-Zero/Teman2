@@ -40,9 +40,24 @@ export function verifiedRiskLabel(kbli: KBLICode): string | null {
   return riskLabelEn(kbli.licensing[0]?.riskCategory);
 }
 
-/** License type safe to state bare, or null. Only ever paired with the risk. */
+/**
+ * License type safe to state bare, or null. Only ever paired with the risk.
+ *
+ * The second gate is NOT redundant with the first. `isLicensingVerifiedForBareClaim`
+ * reads `_l2_source`, which names the OSS-RBA **risk** source; `pp28_sources`
+ * separately records where the PP 28 licensing rows came from, and the two
+ * disagree on **337** codes — risk genuinely 2025-native, licensing content
+ * carried from other codes. `62110` (video game development) is sourced from
+ * five 62xxx computer-programming codes and inherits three defence-industry
+ * permits that way.
+ *
+ * So the risk label survives (it is verified) and the licence type goes silent
+ * (it may belong to another code). One flag for both would suppress a true fact
+ * to qualify a different one.
+ */
 export function verifiedLicenseType(kbli: KBLICode): string | null {
   if (!verifiedRiskLabel(kbli)) return null;
+  if (kbli.provenance?.licensing?.contentInheritedFrom) return null;
   return kbli.licensing[0]?.licenseType || "NIB";
 }
 
@@ -134,7 +149,15 @@ export function kbliMetaDescription(
     `${metaTitleEn} (KBLI ${kbli.code}): ${kbliPmaLabel(kbli)}${
       baliBlocked ? " nationally — blocked for a PT PMA in Bali (2026)" : ""
     }.`,
-    risk && license ? `${risk} risk, license: ${license}.` : null,
+    // Degrade one fact at a time. `risk && license ? … : null` dropped BOTH
+    // when only the licence was ungated, so the 337 inherited-content codes
+    // would have lost a risk tier that is verified — silence about what we
+    // cannot back, not silence about everything near it.
+    risk && license
+      ? `${risk} risk, license: ${license}.`
+      : risk
+        ? `${risk} risk.`
+        : null,
     "KBLI 2025 rules + Bali notes by Bali Zero.",
   ]
     .filter(Boolean)
