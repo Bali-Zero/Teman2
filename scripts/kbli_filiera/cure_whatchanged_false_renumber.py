@@ -92,9 +92,11 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
     ALL_PASSES,
     FALSE_CLAIM,
     HONEST_CLAIM,
+    CURED_CONTINUITY_MARKER,
     PASS_CONTRADICTED_PREDECESSOR,
     PASS_FALSE_CLAIM,
     PASS_FALSE_CONTINUITY,
+    PASS_RESIDUAL_CONTINUITY,
     PASS_TRUNCATED,
     TRUNCATION_LENGTH,
     WhatChangedError,
@@ -102,8 +104,10 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
     claims_number_unchanged,
     contradicted_continuity,
     contradicted_predecessors,
+    contradicts_own_correction,
     drop_contradicted_predecessor,
     drop_false_continuity,
+    drop_residual_continuity,
     has_no_recorded_predecessor,
     is_truncated_midword,
     number_is_discontinuous,
@@ -111,6 +115,7 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
     recorded_predecessors,
     swap_false_claim,
     trim_to_last_complete_sentence,
+    unconfirmed_continuity_sentence,
 )
 
 # The re-exports above are unused *inside* this module by construction — they exist
@@ -121,11 +126,13 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
 __all__ = [
     # re-exported from _whatchanged_basis (single module object — see comment above)
     "ALL_PASSES",
+    "CURED_CONTINUITY_MARKER",
     "FALSE_CLAIM",
     "HONEST_CLAIM",
     "PASS_CONTRADICTED_PREDECESSOR",
     "PASS_FALSE_CLAIM",
     "PASS_FALSE_CONTINUITY",
+    "PASS_RESIDUAL_CONTINUITY",
     "PASS_TRUNCATED",
     "TRUNCATION_LENGTH",
     "WhatChangedError",
@@ -133,8 +140,10 @@ __all__ = [
     "claims_number_unchanged",
     "contradicted_continuity",
     "contradicted_predecessors",
+    "contradicts_own_correction",
     "drop_contradicted_predecessor",
     "drop_false_continuity",
+    "drop_residual_continuity",
     "has_no_recorded_predecessor",
     "is_truncated_midword",
     "number_is_discontinuous",
@@ -142,6 +151,7 @@ __all__ = [
     "recorded_predecessors",
     "swap_false_claim",
     "trim_to_last_complete_sentence",
+    "unconfirmed_continuity_sentence",
     # this module's own surface
     "CODE_FIELD",
     "DEFAULT_CANONICAL",
