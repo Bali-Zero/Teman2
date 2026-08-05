@@ -44,6 +44,8 @@ that pattern, and the names here are precisely where the noise lives
 
 from __future__ import annotations
 
+import re
+
 # Types that genuinely denote something a business must OBTAIN — a permit, a
 # registration, a standards certificate, a formal determination. Verified
 # against the live node names, not assumed from the type label:
@@ -175,6 +177,26 @@ def is_permit_type(entity_type: str | None) -> bool:
 #: Substrings that make an entity_id an admission of ignorance, not an entity.
 _UNKNOWN_ID_MARKERS: tuple[str, ...] = ("tidak_diketahui", "unknown", "placeholder")
 
+#: The id token by which the graph calls a node a DUTY. When it disagrees with
+#: `entity_type`, this wins — a node's own identity outranks the column that
+#: happens to file it.
+#:
+#: Found by an independent reviewer's push on the name rule, then measured
+#: rather than argued: **97** permit-typed targets of a KBLI `REQUIRES` edge
+#: carry `kewajiban` as an id token, reaching **62** codes — far more than the
+#: name rule could ever see, because these are noun-phrase duties
+#: ("Laporan Penomoran Telekomunikasi", "Wajib Lapor Ketenagakerjaan
+#: Perusahaan", "Laporan 6 Bulan") that no verb list catches.
+#:
+#: INNOCENCE MEASURED BEFORE SHIPPING, which is what makes it safe: of those 97,
+#: **zero** carry a permit-shaped name (`Izin…`/`Sertifikat…`/`NIB…`/`Surat
+#: Izin…`/`Persetujuan…`/`Penetapan…`). So the rule demotes no real permit today.
+#:
+#: Matched as a TOKEN, never as a bare substring (cicatrix #3): the id is split
+#: on its own separators, so a hypothetical `izin_kewajibanX` is NOT caught. The
+#: entity, not the shape.
+_OBLIGATION_ID_TOKEN = "kewajiban"
+
 #: Enumerated from the census. A category, a header, or a truncation wreck —
 #: never an instance. Compared case-insensitively after stripping.
 _CATEGORY_LABELS: frozenset[str] = frozenset(
@@ -232,6 +254,11 @@ def permit_name_verdict(entity_id: str | None, name: str | None) -> str:
 
     if any(marker in ident for marker in _UNKNOWN_ID_MARKERS):
         return "unspecified_permits"
+
+    # The graph calling itself a duty outranks the column that filed it as a
+    # permit. Token match, not substring: `izin_kewajibanX` is a different word.
+    if _OBLIGATION_ID_TOKEN in re.split(r"[^a-z0-9]+", ident):
+        return "obligations"
 
     if label.casefold() in _CATEGORY_LABELS:
         return "unspecified_permits"

@@ -172,3 +172,58 @@ def test_every_enumerated_verb_actually_fires():
     assert len(_OBLIGATION_VERBS) == 23
     for verb in _OBLIGATION_VERBS:
         assert permit_name_verdict("x", f"{verb.capitalize()} sesuatu") == "obligations"
+
+
+# ---------------------------------------------------------------------------
+# The graph calling itself a duty (added after an independent review pushed on
+# the name rule and the LIVE data answered bigger than the objection).
+#
+# The reviewer's counterexample was a name opening with a 24th verb
+# (`Mendaftarkan …`). Checked on prod before acting on it: ZERO permit-typed
+# targets of a KBLI REQUIRES edge open with a meN- verb outside the enumerated
+# 23, so that specific hole is not live. What IS live is larger and invisible to
+# any verb list — 97 such targets, on 62 codes, whose own id token says
+# `kewajiban`, carrying NOUN-phrase names ("Laporan Penomoran Telekomunikasi").
+# A verdict is a lead; verifying it is what found the real one.
+# ---------------------------------------------------------------------------
+
+
+def test_an_id_that_calls_itself_an_obligation_outranks_the_type_that_filed_it():
+    """Live exemplar: entity_type says izin_usaha, the id says kewajiban."""
+    assert (
+        permit_name_verdict("kewajiban_laporan_penomoran", "Laporan Penomoran Telekomunikasi")
+        == "obligations"
+    )
+    assert (
+        permit_name_verdict(
+            "kewajiban_pelaku_usaha_laporan_6_bulan", "Laporan 6 Bulan"
+        )
+        == "obligations"
+    )
+
+
+def test_the_obligation_id_rule_matches_a_TOKEN_not_a_substring():
+    """`izin_kewajibanX` is a different word — cicatrix #3, the entity not the form."""
+    assert permit_name_verdict("izin_kewajibanx", "Izin Kewajibanx") == "permit"
+    assert permit_name_verdict("izin_industri_pertahanan", "Izin Industri Pertahanan") == "permit"
+
+
+def test_the_obligation_id_rule_demotes_no_real_permit_in_live_data():
+    """Innocence, measured on prod before the rule shipped, pinned as a property.
+
+    Of the 97 live permit-typed nodes whose id token is `kewajiban`, ZERO carry
+    a permit-shaped name. The rule is therefore safe TODAY; if a future node
+    pairs a `kewajiban` id with a real permit name the id still wins, and this
+    test states that trade rather than hiding it.
+    """
+    permit_shaped = (
+        "Izin Industri Pertahanan",
+        "Sertifikat Standar",
+        "NIB dan Sertifikat Standar",
+        "Persetujuan Lingkungan",
+        "Penetapan Pusat Penyedia",
+    )
+    for nm in permit_shaped:
+        assert permit_name_verdict("izin_" + nm.split()[0].lower(), nm) == "permit"
+    # And the trade, stated: a kewajiban id beats even a permit-shaped name.
+    assert permit_name_verdict("kewajiban_sertifikat_x", "Sertifikat Standar") == "obligations"
