@@ -103,14 +103,29 @@ def inherited_licensing_note(sources: list[str] | None) -> str | None:
     Built FROM the list rather than beside it, so the note and the codes cannot
     drift apart: there is one derivation, and the note is a rendering of it.
     """
+    # "KBLI 2020" is load-bearing, not decoration. `pp28_sources` is the
+    # PP-28 LICENSING-BASIS pointer in the 2020 numbering (the compilers under
+    # scripts/kbli_filiera/ say so: "pp28_sources tracks the PP28-licensing-basis
+    # pointer only, separate from the full BPS crosswalk-ancestor narrative").
+    # It is NOT the same field as `bps_2020_ancestors` and is not a subset of it
+    # — measured: 62110 lists ONE ancestor (62011) and FIVE licensing sources,
+    # and 0 of the 390 inherited rows have sources contained in their ancestors.
+    #
+    # Without the year the sentence is a dangling pointer into OUR OWN catalogue.
+    # Measured over the 378 distinct codes this note can name: 345 do not exist
+    # as KBLI-2025 codes at all (a client looking one up finds nothing), and 33
+    # DO — as a DIFFERENT 2025 activity, because a number can be reused across
+    # the two vintages. Those 33 are the dangerous ones: the note sent a client
+    # to a real page about the wrong business.
     if not sources:
         return None
     plural = "s" if len(sources) > 1 else ""
     return (
         f"This code has no PP 28/2025 licensing row of its own — the licences "
-        f"listed were carried over from KBLI code{plural} {', '.join(sources)}. "
-        f"They may belong to the source activity rather than this one; confirm "
-        f"the licence type with the Bali Zero team before acting on it."
+        f"listed were carried over from KBLI 2020 code{plural} "
+        f"{', '.join(sources)}. They may belong to the source activity rather "
+        f"than this one; confirm the licence type with the Bali Zero team "
+        f"before acting on it."
     )
 
 
