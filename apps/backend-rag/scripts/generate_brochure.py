@@ -62,6 +62,7 @@ v3 changes:
 
 from __future__ import annotations
 
+import ast
 import io
 import json
 import os
@@ -292,6 +293,61 @@ if _missing_brand_fonts and os.environ.get("BROCHURE_ALLOW_SYSTEM_FONTS") != "1"
 if _missing_brand_fonts:
     print(f"   ⚠️  SYSTEM FONTS — preview only, do NOT commit: {', '.join(_missing_brand_fonts)}")
 
+
+# ─────────────────────────────────────────────────────────
+# GLYPH GUARD — a font that lacks a character draws NOTHING and says nothing
+# ─────────────────────────────────────────────────────────
+# The published brochure asked Montserrat for a check mark (U+2713) and six
+# emoji (envelope, mobile, globe, pin, clock, robot). It carries none of them,
+# so the "What's Included" list had no bullets and the contact card no icons —
+# seven invisible glyphs on client-facing pages, at exit code 0. Same family as
+# the Helvetica fallback and the price dash: silent degradation.
+#
+# This asks the FONT FILES, at build time, rather than trusting a memory of what
+# they contain. Characters printed to the console (not drawn into the PDF) are
+# listed explicitly, so adding one is a deliberate line rather than an accident.
+#
+# Note the codepoints above are spelled out rather than written: this guard reads
+# its OWN source, so naming a missing glyph literally here would make it accuse
+# itself (W107 — the probe that measures a disease can have it).
+CONSOLE_ONLY_CHARS = set("✅❌⚠️🏝→")
+
+
+def _assert_glyphs_available() -> None:
+    if _missing_brand_fonts:
+        return  # system-font preview: the brand faces are not loaded to ask
+    faces = {}
+    for label, font in (("titles", TITLE_FONT), ("body", BODY_FONT)):
+        face = pdfmetrics.getFont(font).face
+        faces[label] = getattr(face, "charToGlyph", None)
+    # STRING LITERALS ONLY, via the parser — not a scan of the file's bytes.
+    # The first version scanned the whole source and failed on U+2500, the box
+    # rule in this file's own section comments: it judged by where a character
+    # sits in the file instead of by whether it is ever drawn (superscar #3).
+    # ast never sees a comment, so the question it answers is the right one.
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    literals = "".join(
+        n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
+    )
+    bad: dict[str, list[str]] = {}
+    for ch in sorted({c for c in literals if ord(c) > 127}):
+        if ch in CONSOLE_ONLY_CHARS:
+            continue
+        absent = [lbl for lbl, cmap in faces.items() if cmap is not None and ord(ch) not in cmap]
+        if absent:
+            bad[ch] = absent
+    if bad:
+        listed = "; ".join(f"{ch!r} (U+{ord(ch):04X}) absent from: {', '.join(v)}" for ch, v in bad.items())
+        raise SystemExit(
+            "\n❌ GLYPH NOT IN BRAND FONT — refusing to write a brochure with invisible characters.\n"
+            f"   {listed}\n"
+            "   Replace it with one the fonts carry (• · – — are all present), or, if it is\n"
+            "   only ever printed to the console, add it to CONSOLE_ONLY_CHARS.\n"
+        )
+
+
+_assert_glyphs_available()
+
 # ─────────────────────────────────────────────────────────
 # PARAGRAPH STYLES
 # ─────────────────────────────────────────────────────────
@@ -341,10 +397,11 @@ ST = {
 # ─────────────────────────────────────────────────────────
 # LOGO PREPROCESSING
 # ─────────────────────────────────────────────────────────
-def _prepare_logo(path: Path) -> ImageReader | None:
+def _prepare_logo(path: Path) -> ImageReader:
+    # Loud on failure. A brochure with no logo is not a brochure, and the two
+    # `return None` paths this replaced printed a warning and carried on.
     if not path.exists():
-        print(f"⚠️  Logo not found: {path}")
-        return None
+        raise SystemExit(f"\n❌ LOGO NOT FOUND — {path}\n")
     try:
         img = PILImage.open(path).convert("RGBA")
         arr = np.array(img, dtype=np.float32)
@@ -353,6 +410,19 @@ def _prepare_logo(path: Path) -> ImageReader | None:
         # Dark pixels (near-black background) → transparent
         mask = brightness < 30
         soft = (brightness >= 30) & (brightness < 60)
+
+        # A faint ring is visible around the mark on the cover. MEASURED, not
+        # guessed, and it is NOT a bug in this code: the asset is a near-black
+        # disc on a transparent square, and 566 of its rim pixels are bright
+        # (>=60) and spread across 11 of 12 angular sectors — a deliberate
+        # circular stroke in the logo itself. The knockout below already makes
+        # the 31,483 dark rim pixels transparent; the ring that remains is the
+        # brand mark as drawn.
+        #
+        # An earlier version of this function erased it. That was wrong twice
+        # over: it targeted the 305 rim pixels in the soft ramp, which are not
+        # what is visible, and quietly editing a brand mark is a business
+        # decision, not a rendering fix. Surfaced to Zero instead.
         arr[mask, 3] = 0
         arr[soft, 3] = ((brightness[soft] - 30) / 30 * 255).clip(0, 255)
         out = PILImage.fromarray(arr.astype(np.uint8), "RGBA")
@@ -360,9 +430,10 @@ def _prepare_logo(path: Path) -> ImageReader | None:
         out.save(buf, format="PNG")
         buf.seek(0)
         return ImageReader(buf)
+    except SystemExit:
+        raise
     except Exception as e:
-        print(f"⚠️  Logo prep failed: {e}")
-        return None
+        raise SystemExit(f"\n❌ LOGO PREP FAILED — {path}\n   {e}\n")
 
 LOGO_READER = _prepare_logo(LOGO_PATH)
 
@@ -615,9 +686,11 @@ class ContactCard(Flowable):
             y = h - (i + 1) * 10*mm + 1*mm
             c.setFont(BODY_FONT, 9)
             c.setFillColor(self._accent)
-            c.drawString(6*mm, y + 2*mm, icon)
+            # 12mm of air between marker and text was sized for an emoji the
+            # brand fonts never had. With a real bullet, close it up.
+            c.drawString(7*mm, y + 2*mm, icon)
             c.setFillColor(TEXT_MAIN)
-            c.drawString(18*mm, y + 2*mm, text)
+            c.drawString(11*mm, y + 2*mm, text)
         c.restoreState()
 
 
@@ -916,7 +989,7 @@ def page_business() -> list:
         "Virtual office address",
     ]
     for item in included:
-        right.append(Paragraph(f'<font color="{TERRA.hexval()}">✓</font>  {item}', ST["SMALL"]))
+        right.append(Paragraph(f'<font color="{TERRA.hexval()}">•</font>  {item}', ST["SMALL"]))
         right.append(Spacer(1, 1.5*mm))
 
     story.append(two_col(left, right, col_ratio=0.58))
@@ -1047,12 +1120,12 @@ def page_contact() -> list:
     story.append(Spacer(1, 6*mm))
 
     contact_items = [
-        ("✉",  "zantara@balizero.com"),
-        ("📱",  "+62 821 3454 721  (WhatsApp)"),
-        ("🌐",  "balizero.com"),
-        ("📍",  "Jl. Raya Anyar No. 2 Gg. 3, Kerobokan Kelod, Kuta Utara, Badung, Bali 80361"),
-        ("🕐",  "Mon–Fri  09:00–18:00 WITA"),
-        ("🤖",  "AI chat available 24/7 at zantara.balizero.com"),
+        ("•",  "zantara@balizero.com"),
+        ("•",  "+62 821 3454 721  (WhatsApp)"),
+        ("•",  "balizero.com"),
+        ("•",  "Jl. Raya Anyar No. 2 Gg. 3, Kerobokan Kelod, Kuta Utara, Badung, Bali 80361"),
+        ("•",  "Mon–Fri  09:00–18:00 WITA"),
+        ("•",  "AI chat available 24/7 at zantara.balizero.com"),
     ]
     story.append(ContactCard(contact_items, TERRA))
     story.append(Spacer(1, 8*mm))
