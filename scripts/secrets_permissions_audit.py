@@ -224,7 +224,16 @@ def _iter_candidate_paths(
     A root may itself be a regular file (e.g. an expanded `~/.env*` glob
     hit) rather than a directory — handled directly rather than via
     os.walk (which yields nothing for a non-directory top). Roots that do
-    not exist are skipped. Root-level symlinks are not followed.
+    not exist are skipped.
+
+    A root that IS a symlink is resolved once and its target audited. A
+    root is NAMED by the caller; a link met during the walk is not, and
+    only the latter is a way for the walk to be lured out of the tree it
+    was asked to audit. Dropping a named root silently is how this tool
+    certified "clean" for the fleet's own memory directory — reached
+    through two symlinks — while looking at zero files: with no root
+    counted, the blind-scan guard could not fire either. Broken or
+    looping links are treated exactly like a path that does not exist.
     """
     seen_dirs: set = set()
     for raw_root in roots:
@@ -235,12 +244,17 @@ def _iter_candidate_paths(
             continue  # doesn't exist — skip per spec
 
         if stat.S_ISLNK(root_lstat.st_mode):
-            continue  # never follow symlinks, including at the root level
+            try:
+                resolved = Path(os.path.realpath(root))
+                root_lstat = os.stat(resolved)
+            except OSError:
+                continue  # broken or looping — same as a missing path
+            root = resolved
 
         if stats is not None:
             stats["roots_existing"] = stats.get("roots_existing", 0) + 1
         if stat.S_ISDIR(root_lstat.st_mode):
-            key = os.path.abspath(root)
+            key = os.path.realpath(root)
             if key in seen_dirs:
                 continue
             seen_dirs.add(key)

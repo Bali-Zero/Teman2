@@ -424,6 +424,84 @@ def test_scan_skips_a_readable_file_that_nobody_can_reach(tmp_path: Path) -> Non
     assert findings == []
 
 
+def test_a_symlinked_root_is_audited_not_silently_dropped(tmp_path: Path) -> None:
+    """GUILT: the caller NAMED this root; auditing nothing is not 'clean'.
+
+    Live case that found this: the memory directory every runbook cites,
+    `~/.claude/projects/<project>/memory`, is reached through two symlinks.
+    Auditing it returned count 0, roots_existing 0, exit 0 — a clean verdict
+    over zero files, with the blind-scan guard unable to fire because it
+    requires at least one root to exist.
+    """
+    module = _load_module()
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    secret = real_dir / "creds.env"
+    secret.write_text("x")
+    os.chmod(secret, 0o644)
+    link = tmp_path / "link"
+    link.symlink_to(real_dir)
+
+    stats: dict = {}
+    findings = module.scan([link], stats=stats)
+
+    assert [f.path.name for f in findings] == ["creds.env"]
+    assert stats["roots_existing"] == 1
+    assert stats["files_traversed"] == 1
+
+
+def test_a_symlink_met_during_the_walk_is_still_not_followed(tmp_path: Path) -> None:
+    """INNOCENCE: resolving a NAMED root must not loosen the walk itself.
+
+    Paired with the test above: a link the caller named is audited, a link
+    the walk stumbles into is not — that asymmetry is the whole point, and
+    without this test the fix could quietly become 'follow every symlink'.
+    """
+    module = _load_module()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    outside_secret = outside / "creds.env"
+    outside_secret.write_text("x")
+    os.chmod(outside_secret, 0o644)
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "escape").symlink_to(outside)
+
+    findings = module.scan([root])
+
+    assert findings == []
+
+
+def test_a_broken_symlink_root_is_treated_as_a_missing_path(tmp_path: Path) -> None:
+    """A link to nowhere is the documented missing-root case, not a crash."""
+    module = _load_module()
+    dangling = tmp_path / "dangling"
+    dangling.symlink_to(tmp_path / "does-not-exist")
+
+    stats: dict = {}
+    findings = module.scan([dangling], stats=stats)
+
+    assert findings == []
+    assert stats.get("roots_existing", 0) == 0
+
+
+def test_the_real_root_and_its_symlink_are_walked_once(tmp_path: Path) -> None:
+    """Naming a directory twice, once through a link, must not double-report."""
+    module = _load_module()
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    secret = real_dir / "creds.env"
+    secret.write_text("x")
+    os.chmod(secret, 0o644)
+    link = tmp_path / "link"
+    link.symlink_to(real_dir)
+
+    findings = module.scan([real_dir, link])
+
+    assert len(findings) == 1
+
+
 def test_scan_still_reports_the_same_file_when_the_chain_is_open(
     tmp_path: Path,
 ) -> None:
