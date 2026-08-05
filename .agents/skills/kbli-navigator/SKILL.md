@@ -210,6 +210,69 @@ is a snapshot"_ — with nothing re-measuring it, so it was re-measured here:
 - Mapped-but-unused: `pasal` has a bucket and **0** live rows. Harmless; noted so a future reader
   does not read its absence as a bug.
 
+**🟢 2026-08-05 — "MELAPORKAN IKAN HASIL TANGKAPAN DAN". THE SENTENCE STOPS THERE, AND EVERY SURFACE
+PRINTED IT LIKE A COMPLETE INSTRUCTION.** #3637 merged (`a532487e`), deployed and PROVEN LIVE.
+1,714 legal duties end mid-sentence; one is literally `". Produk yang"`.
+
+- **This entry exists because a note in this corner was WRONG, and it is the most reusable thing
+  here.** The earlier note said _"877 obligations end mid-sentence — deliberately NOT fixed, because
+  trimming understates a legal duty."_ The reasoning is right and still stands, but it only rules out
+  **trimming**. It said nothing about the client, who was reading a cut-off duty as a complete one.
+  **A ruling about one remedy is not a ruling about the defect.** Same shape as `Licenses: None`: a
+  gap rendered as an assertion. The cure LABELS and never alters — `describeObligation` returns the
+  source text byte-identical, and a mutant that trims is killed by test.
+- **And the count was wrong because it looked at ONE FIELD:** `kewajiban` **1,241** over 229 codes
+  **plus `persyaratan` 473** over 92 = **1,714**, not 877. On the graph the endpoint reads: **234**
+  rows over 104 codes, 39 distinct strings, the widest sitting on **35** codes.
+- **FOUR render sites.** Beyond the two obvious ones, BOTH halves of `LicensingSection.tsx` (the
+  static `/kbli/<code>` pages), which carry the larger population. **Naming trap, the third of the
+  night** (after `sektors` and `kode_kbli_2025`): the ENDPOINT's `requirements` is fed from
+  `kewajiban`, the STATIC page's `requirements` is `persyaratan`. Same word, different fields.
+- **The word list is DATA-DERIVED.** A first draft guarded eight further prepositions; measured
+  against both stores each matched **zero**. Kept: `dan`/`atau`/`yang`/`di`, word-boundary anchored —
+  a substring match would falsely flag **17 complete duties**, sharpest being the Hajj obligations
+  ending **"ke Arab Saudi"** on `79122`. That is now an innocence test.
+- **THE LANE IS BOUNDED, and the boundary is the useful part.** Asking the same question of every
+  other text field, both stores: `judul` **0** · `uraian` **0** · `pma_nota`/`pma_kondisi` **0** ·
+  kg_nodes titles+descriptions **0**. **The truncation lives entirely in the PP 28/2021 + OSS
+  extraction and never in the BPS classification data** — that is where a re-extraction must aim, and
+  why the visible page headings were never wrong.
+- **PROVE-LIVE, and the correspondence is exact — label count == truncated count on every page:**
+  `62110` renders `Menjamin konten … konten SARA dan [… cut off in the official source]`, **1 label
+  for 1 truncated duty**; `01111` 7 duties/0 truncated/**0** labels; `18113` 4/0/**0**; `79122` with
+  "Arab Saudi" ×23 → **0**. That last one is the proof that matters.
+- **BOTH PROVE-LIVE mistakes were mine, and both are exemplar-selection:** the first exemplar came
+  from CANONICAL, but `03120`'s page has **zero** obligations (detached-licensing code) — that zero
+  read like "the cure failed". The second ignored **which tier the page opens by default**
+  (`licensing[0]`): on `01111` the truncated string exists but sits in a tier that is not rendered.
+  **Pick the exemplar from what the PAGE SERVES, and from the branch that actually renders.**
+- **Follow-on (#3639, armed):** a licence NAME literally called **`"NIB dan"`** on **21 codes**.
+  Cured at the DATA layer, not with the label — a licence name reaches **ten** sites including
+  `KBLIStructuredData` (schema.org JSON-LD read by Google) and `kbli-meta` (the page `<title>`),
+  where a UI annotation would be actively wrong. `resolveLicenseType` now treats an unusable name as
+  absent so the documented risk-tier→licence-tier fallback fires. Innocence: `"NIB dan Sertifikat
+Standar"` ends on `Standar`, is not truncated, survives.
+
+**🔴 SETTLED — DO NOT DEDUP `kg_edges`, AND DO NOT ADD THE UNIQUE CONSTRAINT.** #3635 left the 1,341
+duplicated `BELONGS_TO` rows in place and ledgered a blast-radius analysis. It has been done, and
+BOTH halves of the stated reason were wrong:
+
+- **Wrong table.** `mediated_edges_builder` / `evidence_dossier` / `admin_crm_kg` all operate on
+  **`crm_kg_edges`**; only `kbli_notebook.py` and `kbli_documents_phantom_cure.py` touch `kg_edges`
+  with `BELONGS_TO`. The shared relationship-type NAME is not a shared table.
+- **And the rows are not redundant.** Whole table: 2,118 duplicated triples / 2,161 excess rows over
+  16 relationship types, of which only **423** are byte-identical. The KBLI slice: **all 1,341**
+  differ in **BOTH** `source_chunk_ids` and `confidence`; **zero** byte-identical. They are two
+  independent EXTRACTIONS of one fact, each recording which passage asserted it and how confidently.
+  **Deleting either destroys provenance.**
+- `crm_kg_edges` HAS `UNIQUE (source, target, relationship_type)` (migration 167) and `kg_edges` does
+  not. That looks like the asymmetry-between-twins defect and is **not**: multi-evidence rows are this
+  table's design, and the writers' `ON CONFLICT (relationship_id)` is consistent with it.
+- **The reader-side dedup (#3635) is the correct and complete cure** — collapse at render, keep every
+  evidence row. Right answer, better reason. Method note worth keeping: the root-cause hunt stopped
+  at "here is the missing guard" and would have shipped the wrong fix; the next question —
+  _"and is the thing that guard would prevent actually wrong?"_ — reversed the conclusion.
+
 **🟢 2026-08-05 — THE `whatChanged` LANE: FOUR STORES, AND THE CURE ITSELF LEFT A CONTRADICTION IN
 THREE OF THEM.** #3610 cured 13 codes still telling clients _"Direct 1:1 match from KBLI 2020 — code
 and scope unchanged"_ on records whose own crosswalk denies it. Promoting it (prod was serving a
