@@ -1,7 +1,29 @@
 # Klausul PKWT / Employment Contract Clause
 
+**Versi 1.1 — 2026-08-05** (versi sebelumnya tidak bernomor; lihat "Perubahan" di bawah)
+
 **Untuk ditambahkan di bagian "Alat Kerja" / "Tools" pada PKWT baru atau
 addendum PKWT yang sudah berjalan.**
+
+> **Perubahan dari versi sebelumnya / Change from the previous version.**
+> Versi lama menjanjikan bahwa klien yang ditangani karyawan dapat dialihkan
+> ke "nomor resmi perusahaan". Sejak 2026-08-05 nomor WhatsApp publik Bali
+> Zero adalah **nomor kerja milik salah satu anggota tim**, bukan nomor
+> terpisah milik perusahaan — jadi rumusan lama tidak lagi menggambarkan
+> keadaan sebenarnya, dan bagi pemilik nomor publik itu sendiri rumusan lama
+> menjadi melingkar. Klausul ini tidak menambah kewajiban apa pun bagi
+> karyawan; yang berubah hanya deskripsi mekanisme kelangsungan layanan.
+> Klausul ini juga sengaja **tidak mencantumkan nomor telepon**, supaya tidak
+> menjadi usang lagi ketika nomor berubah.
+>
+> The previous version promised that clients handled by an employee could be
+> routed to "the company's official number". Since 2026-08-05 the public Bali
+> Zero WhatsApp number is **a team member's own work line**, not a separate
+> company-held number — so the old wording no longer describes reality, and for
+> the holder of that public line it was circular. This clause adds no obligation
+> on the employee; only the description of the continuity mechanism changes. It
+> also deliberately **carries no phone number**, so it cannot go stale again the
+> next time the number moves.
 
 ---
 
@@ -23,9 +45,11 @@ klien Bali Zero. Percakapan pribadi tidak dicatat dan tidak dapat diakses
 oleh perusahaan.
 
 Karyawan berhak mencabut hubungan ini kapan saja melalui pengaturan
-WhatsApp pribadi. Pencabutan tidak menjadi alasan PHK atau penalti, namun
-perusahaan dapat menyalurkan klien yang ditangani karyawan ke nomor resmi
-perusahaan untuk kelangsungan layanan.
+WhatsApp pribadi. Pencabutan tidak menjadi alasan PHK atau penalti. Namun,
+karena percakapan yang tidak tercatat memutus jejak layanan di CRM,
+perusahaan dapat mengalihkan klien yang ditangani karyawan kepada rekan
+kerja yang nomor kerjanya tertaut, atau ke nomor bisnis Bali Zero yang
+dikelola melalui dashboard, demi kelangsungan layanan.
 
 ---
 
@@ -48,5 +72,8 @@ accessed by the company.
 
 The employee has the right to revoke this link at any time via their
 personal WhatsApp settings. Revocation does not constitute grounds for
-termination or penalty, however the company may route clients handled
-by the employee to the company's official number for service continuity.
+termination or penalty. However, because conversations that are not logged
+break the service trail in the CRM, the company may reassign the clients
+handled by the employee to a colleague whose work number is linked, or to
+the Bali Zero business number managed through the dashboard, for service
+continuity.
