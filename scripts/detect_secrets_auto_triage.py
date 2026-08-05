@@ -242,13 +242,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)env\.example$"),
         "env.example (no leading dot): documented placeholder",
     ),
-    # Test fixtures and unit tests — conventional location for fake credentials
+    # Test fixtures and unit tests — conventional location for fake credentials.
+    # `sh` is in the extension list because scripts/tests/ holds many shell test
+    # scripts with synthetic fixtures (e.g. fake 40-char git oids) that read as
+    # high-entropy — the gap that let a fake oid in test_branch_graveyard_prmerged.sh
+    # block Detect Secrets on PRs #3591/#3596 (2026-08-04) despite already living
+    # under a tests?/ dir.
     (
-        re.compile(r"(^|/)tests?/.*\.(py|ts|tsx|js|jsx|json|yaml|yml)$"),
+        re.compile(r"(^|/)tests?/.*\.(py|ts|tsx|js|jsx|json|yaml|yml|sh)$"),
         "tests/** tree: test fixtures, not production secrets",
     ),
     (
-        re.compile(r"(^|/)__tests__/.*\.(py|ts|tsx|js|jsx|json|yaml|yml)$"),
+        re.compile(r"(^|/)__tests__/.*\.(py|ts|tsx|js|jsx|json|yaml|yml|sh)$"),
         "__tests__/** tree: test fixtures",
     ),
     (
