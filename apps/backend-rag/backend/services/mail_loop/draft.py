@@ -187,12 +187,30 @@ def generate(request: DraftRequest, *, dry_run: bool = False) -> str:
             "reachable; export the token in the wrapper if drafts start failing."
         )
 
-    argv = [cli, "-p", prompt, "--model", CLAUDE_MODEL]
+    # The prompt goes in on STDIN, never in argv.
+    #
+    # It contains the client's message: their name in the salutation, their
+    # address in the From line, whatever they wrote. A process's command line is
+    # world-readable on macOS — `ps -A -ww -o args` returns the full argv of
+    # every process on the box regardless of owner — so passing it as `-p
+    # <prompt>` published a client's mail to every account on the machine for
+    # the length of the call, up to TIMEOUT_SECONDS.
+    #
+    # That is the same threat model as the two log lines cured beside this, with
+    # a strictly larger payload: the logs leaked a subject, this leaked the whole
+    # message. Found by adversarial review, which measured it rather than
+    # asserting it — 299 processes owned by other users had readable argv on this
+    # machine at the time.
+    #
+    # `claude -p` with no argument reads the prompt from stdin, so this is the
+    # same invocation, minus the exposure. SYMBIOSIS Law 2 / UU PDP Art. 67-68.
+    argv = [cli, "-p", "--model", CLAUDE_MODEL]
     try:
         # No pipeline, no shell: the exit code must reach us intact. Piping this
         # into anything is how an rc gets masked (W97).
         completed = subprocess.run(  # argv list, never a shell string
             argv,
+            input=prompt,
             capture_output=True,
             text=True,
             timeout=TIMEOUT_SECONDS,

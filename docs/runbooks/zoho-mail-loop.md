@@ -445,3 +445,132 @@ carried its **own hardcoded copy** of the scope list
 had drifted from `ZohoOAuthService.SCOPES`. That endpoint is the one humans are
 sent to; the mail loop names it verbatim in its own error message. It now builds
 the scope from the service's list, pinned by `test_zoho_consent_scope.py`.
+
+## 10. Six of seven live routings rested on a coincidence
+
+Once the loop could finally read the mailbox (§9), the next question was not
+_does it route_ but _on what_. Measured on the real inbox, not reasoned:
+
+> **7 of 13 messages routed, and 6 of those 7 won their lane on a single soft
+> marker** — five on `tax`, one on `meeting` — with **no decisive instrument
+> anywhere in the run**.
+
+`tax` sits in the footer of every invoice, receipt and SaaS bill ever sent. The
+loop was filing client mail into `_Tax` on the strength of a vendor's small
+print. The routing **rate** said the organ was working; the routing **basis**
+said it was guessing.
+
+### The rule the code already contained
+
+`_DECISIVE` defines a strong instrument as one with _"no ordinary-language twin,
+so a single hit is not a coincidence"_. The contrapositive is in that same
+comment and was never enforced: a soft marker's single hit **can** be a
+coincidence, and the count path routed on it anyway — one hit against a
+runner-up of zero.
+
+Winning a landslide of one is not evidence. A lane whose hits are all **weak**
+now steps aside. Weak markers still **score** — they break ties and confirm
+strong ones — they simply cannot be the sole reason to move somebody's mail.
+
+### Step aside, do not poison — the defect in the first version
+
+The first cut checked for weak-only **after** picking the winner, and
+adversarial review broke it with a measured case:
+
+> `"I need help with a work permit for my staff. Could we set a meeting or an
+appointment next week?"`
+
+ADMIN wins the count 2-1 on `appointment` + `meeting`, both weak; VISA holds
+`work permit`, which is not. Checking afterwards collapsed the **whole verdict**
+to UNKNOWN, discarding the one marker that was right. Weak-only lanes are now
+dropped **before** ranking, so UNKNOWN happens only when nothing non-weak
+survives anywhere — which is what the rule always claimed and now does.
+
+Closing that hole moved a second one rather than shutting it: an uncorroborated
+short permit index, denied the decisive path, simply won the count path instead.
+Both paths now ask the same question, in `_lane_is_credible`.
+
+### Short decisive codes need a second opinion
+
+`C2` and `D12` are visa indexes. They are also how this island writes an
+address — _"Villa C2, Jalan Raya"_ — and the decisive path returns before every
+other check, so one accidental hit moved mail with nothing to appeal to.
+
+`_NEEDS_CORROBORATION` keeps them decisive but only alongside another marker in
+the same lane. This costs nothing measurable: over 106 live messages `c1` fired
+**15 times and never once alone**, `pma` 3 of 3.
+
+### Was it tuned into silence? No — it got slightly better
+
+One morning's unread mail is too thin to answer that; those 13 were mostly
+noise. Measured over **106 messages** (Inbox plus Sent, since every sent message
+is a reply to a genuine enquiry):
+
+|                 | decisive instrument | strong soft marker | left for a human |
+| --------------- | ------------------- | ------------------ | ---------------- |
+| Inbox (46)      | 11                  | 10                 | 25               |
+| Sent (60)       | 30                  | 19                 | 11               |
+| **Total (106)** | **41**              | **30**             | **36**           |
+
+**71 of 106 still route** — three MORE than the first version of the rule
+allowed, because a weak lane stepping aside now leaves a strong one standing
+instead of taking it down. Carried by real instruments: `kitas` x16, `c1` x12,
+`npwp` x4, `pt pma` x3, `sktt` x2, `e33g` x2, `kbli` x1.
+
+The declared cost is pinned in `test_the_recall_cost_of_the_weak_set_is_visible`:
+a bare "buy a villa in Ubud", a bare Italian "visto", `soggiorno` and `oss` now
+stay in the inbox. A message left visible costs a human one glance; a message
+filed wrongly costs them the message.
+
+### Three Law 2 leaks closed, and the biggest was not a log
+
+Two log lines interpolated the **email subject** — one truncated to 40
+characters (a smaller leak, not redaction), one in full.
+
+The third was larger and was found by the same review: `draft.py` passed the
+prompt as `claude -p <prompt>`, putting the client's whole message — name,
+address, body — on the **process command line**, which is world-readable on
+macOS (`ps -A -ww -o args` returned the argv of 299 processes owned by other
+users on this machine). It goes in on **stdin** now; verified live that
+`claude -p` reads it there.
+
+The two state files were also landing `0644` in a `0755` directory. They are
+written by `state_io.write_private`, created at `0600` by `tempfile.mkstemp`
+rather than chmod'd afterwards — the first version did chmod afterwards and its
+docstring claimed the bytes were "never observable at a wider mode", which the
+review measured and disproved. The claim is true now because the code changed,
+not because the wording softened.
+
+### What the mutations caught
+
+| mutation                               | tests red |
+| -------------------------------------- | --------- |
+| weak/credibility filter removed        | 12        |
+| corroboration set emptied              | 1         |
+| prompt put back into argv              | 1         |
+| chmod-after-write restored             | 5         |
+| subject put back in the draft log line | 1         |
+| draft log line deleted outright        | 1         |
+| failure log line deleted outright      | 1         |
+
+The last two matter most. The **first** innocence check asserted the id and lane
+appeared _"somewhere in caplog"_, and deleting the draft line outright left the
+suite **green** — the routing line a few statements earlier carries the same id
+and the same lane. A test that accepts any line is not testing a line.
+
+The corpus also caught two of its own rows going vacuous under the change:
+`test_negative_context_premise_holds` failed because a weak `villa` can no
+longer carry a lane in either direction, and
+`test_ambiguous_soft_markers_refuse_to_guess` had quietly stopped being a tie.
+Neither check was weakened — the villa suppression moved to the level where it
+still bites, and the tie example was rebuilt from two non-weak lanes.
+
+### Declared limits
+
+- Absence of a lone short-code routing across 106 messages is not proof it
+  cannot happen. It is evidence there was no live defect, which is why the
+  corroboration rule was added and nothing else in `_DECISIVE` was touched.
+- The generated landmine corpus cannot reach **homographs**: `_landmines()`
+  keeps pairs where the marker is a strict substring of an ordinary word, so a
+  marker that _equals_ a whole ordinary word (`visto`, `tanah`, `imposte`) is
+  structurally outside the sweep. Those rows are hand-written, and that is why.
