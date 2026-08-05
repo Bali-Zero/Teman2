@@ -325,6 +325,41 @@ gh pr ready <N> --undo            # convert to draft → removed from queue
 # fix → push → gh pr ready <N>    # re-queue when green
 ```
 
+#### Step 3b — When you need to PUSH to a queued branch (measured 2026-08-05)
+
+A queued branch is **protected**: every push is rejected with
+
+```
+remote: error: GH006: Protected branch update failed
+remote: - A pull request for this branch has been added to a merge queue.
+```
+
+This is the shape that bites: an adversarial review lands _after_ the PR was
+enqueued, finds a real defect, and the version already in the queue — the one
+with the defect — merges while you are still typing the fix. Dequeue first,
+push second, re-arm third.
+
+**`gh pr merge <N> --disable-auto` does NOT dequeue.** It prints
+`! Pull request ... is already queued to merge` and **exits 0** — a no-op that
+reads like a success. Verified live: the entry stayed at `pos=1`.
+
+The one that works:
+
+```bash
+PRID=$(gh pr view <N> --repo <owner/repo> --json id -q .id)
+gh api graphql -f query='mutation($id:ID!){ dequeuePullRequest(input:{id:$id}){ clientMutationId } }' -f id="$PRID"
+git push                                  # now accepted
+gh pr merge <N> --auto --repo <owner/repo>  # re-arm
+```
+
+The input field is **`id`**, not `pullRequestId` — the obvious guess returns
+`argumentNotAccepted`. Confirm with the queue itself, never with the exit code:
+
+```bash
+gh api graphql -f query='{ repository(owner:"<owner>", name:"<repo>") { mergeQueue(branch:"main") { entries(first:20){nodes{position state pullRequest{number}}} } } }' \
+  --jq '.data.repository.mergeQueue.entries.nodes[] | "pos=\(.position) \(.state) #\(.pullRequest.number)"'
+```
+
 ---
 
 ## 6bis. Queue parameters, and the one knob NOT to turn
