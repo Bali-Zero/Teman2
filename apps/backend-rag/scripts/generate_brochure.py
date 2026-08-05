@@ -113,8 +113,15 @@ def fmt_amount(raw: str) -> str:
     make them wonder whether that is 5.8 million or 5,800.
     """
     cleaned = raw.replace("IDR", "").strip()
-    if not cleaned:
-        raise ValueError(f"empty amount: {raw!r}")
+    # Shape-checked, because the alternative is printing whatever is there with a
+    # currency symbol glued on: '500 USD' would have rendered as 'Rp 500 USD' and
+    # a typo'd field as 'Rp banana'. A client-facing figure has to LOOK like one.
+    if not re.fullmatch(r"\d{1,3}(?:\.\d{3})*", cleaned):
+        raise SystemExit(
+            f"\n❌ AMOUNT IS NOT A RUPIAH FIGURE — refusing to print it as one.\n"
+            f"   raw value: {raw!r}\n"
+            f"   expected the price list's own format, e.g. '5.800.000 IDR'\n"
+        )
     return f"Rp {cleaned}"
 
 
@@ -141,7 +148,7 @@ def fmt_entry(entry: dict, where: str) -> str:
     )
 
 
-def get_price(pricing: dict, path: tuple[str, ...]) -> str:
+def get_price(pricing: dict, path: tuple[str, ...], expected_name: str) -> str:
     """Look a price up by its EXACT key path. A miss stops the build.
 
     Exact, not substring, and the difference is not stylistic — see the ERP /
@@ -164,75 +171,104 @@ def get_price(pricing: dict, path: tuple[str, ...]) -> str:
 
     if not isinstance(node, dict):
         raise SystemExit(f"\n❌ PRICE PATH IS NOT AN ENTRY — services.{'.'.join(path)}\n")
+
+    actual_name = node.get("name", "")
+    if actual_name != expected_name:
+        raise SystemExit(
+            f"\n❌ PRICE ENTRY RENAMED UNDER ITS ROW — services.{'.'.join(path)}\n"
+            f"   pinned when the row was written : {expected_name!r}\n"
+            f"   in the price list now           : {actual_name!r}\n"
+            f"   Read the row in brochure_en.html: does it still describe this service?\n"
+            f"   Then update the pin in PRICE_MAP in the SAME commit as the row.\n"
+        )
     return fmt_entry(node, f"services.{'.'.join(path)}")
 
 
 # Placeholder → exact key path in bali_zero_official_prices_2026.json.
 # Every entry here must appear in the template, and every {{PRICE_*}} in the
 # template must appear here: both directions are checked before rendering.
-PRICE_MAP: dict[str, tuple[str, ...]] = {
-    # — visas
-    "PRICE_VOA":        ("single_entry_visas", "B1 Visa on Arrival (VOA)"),
-    "PRICE_C1":         ("single_entry_visas", "C1 Tourism"),
-    "PRICE_C1_EXT":     ("single_entry_visas", "C1 Tourism Extension"),
-    "PRICE_C2":         ("single_entry_visas", "C2 Business"),
-    "PRICE_C18":        ("single_entry_visas", "C18 Work Trial"),
-    "PRICE_C22":        ("single_entry_visas", "C22A&B Internship (180 Days)"),
-    "PRICE_D1_1":       ("multiple_entry_visas", "D1 Tourism (1 Year)"),
-    "PRICE_D2_1":       ("multiple_entry_visas", "D2 Business (1 Year)"),
-    "PRICE_D12_1":      ("multiple_entry_visas", "D12 Business Investigation (1 Year)"),
-    "PRICE_D12_2":      ("multiple_entry_visas", "D12 Business Investigation (2 Years)"),
-    # — stay permits
-    "PRICE_E33G_OFF":   ("kitas_permits", "E33G Remote Worker (Offshore)"),
-    "PRICE_E33G_ALT":   ("kitas_permits", "E33G Remote Worker (Altus/Onshore)"),
-    "PRICE_INV_OFF":    ("kitas_permits", "Investor KITAS 2 Years (Offshore)"),
-    "PRICE_E23_OFF":    ("kitas_permits", "Freelance E23 (Offshore)"),
-    "PRICE_RET_OFF":    ("kitas_permits", "Retirement (Offshore)"),
-    "PRICE_SPOUSE_OFF": ("kitas_permits", "Spouse 1 Year (Offshore)"),
-    "PRICE_E33E_OFF":   ("kitas_permits", "E33E Second Home Senior (5 Years, Offshore)"),
-    "PRICE_KITAP_INV":  ("kitap_permits", "Investor KITAP + MERP"),
-    "PRICE_KITAP_RET":  ("kitap_permits", "Retirement KITAP + MERP"),
-    # — company
-    "PRICE_NEWCO":      ("company_services", "New Company (PT PMA)"),
-    "PRICE_VO":         ("company_services", "Virtual Office"),
-    "PRICE_CLOSE_PMA":  ("consultant_services", "Close PMA Company"),
-    "PRICE_WK_OFF":     ("kitas_permits", "Working KITAS (Offshore)"),
-    "PRICE_WK_ALT":     ("kitas_permits", "Working KITAS (Altus/Onshore)"),
-    "PRICE_WK_EXT":     ("kitas_permits", "Working KITAS (Extend)"),
-    "PRICE_NPWPD":      ("consultant_services", "NPWPD Registration"),
-    "PRICE_BPJS_TK":    ("consultant_services", "BPJS Employee (Tenaga Kerja)"),
-    "PRICE_BPJS_KES":   ("consultant_services", "BPJS Insurance (Kesehatan)"),
-    # — tax
-    "PRICE_TAX_M_0_50":     ("tax_accounting", "monthly_tax_basic", "Tier 0-50"),
-    "PRICE_TAX_M_50_100":   ("tax_accounting", "monthly_tax_basic", "Tier 50-100"),
-    "PRICE_TAX_M_100_200":  ("tax_accounting", "monthly_tax_basic", "Tier 100-200"),
-    "PRICE_TAX_M_200":      ("tax_accounting", "monthly_tax_basic", "Tier 200+"),
-    "PRICE_TAX_B_0_50":     ("tax_accounting", "monthly_tax_bundled", "Tier 0-50"),
-    "PRICE_TAX_B_50_100":   ("tax_accounting", "monthly_tax_bundled", "Tier 50-100"),
-    "PRICE_TAX_B_100_200":  ("tax_accounting", "monthly_tax_bundled", "Tier 100-200"),
-    "PRICE_TAX_B_200":      ("tax_accounting", "monthly_tax_bundled", "Tier 200+"),
-    "PRICE_ANNUAL_CO":      ("tax_accounting", "annual_standalone", "Annual Tax Company"),
-    "PRICE_ANNUAL_PERS":    ("tax_accounting", "annual_standalone", "Annual Tax Personal"),
-    "PRICE_LKPM":           ("tax_accounting", "annual_standalone", "LKPM Yearly Report"),
-    "PRICE_ANNUAL_ZERO":    ("tax_accounting", "annual_basic_packages", "Annual Company ZERO"),
-    # — personal documents
-    "PRICE_SKTT":       ("other_process", "SKTT"),
-    "PRICE_SKCK":       ("other_process", "SKCK"),
-    "PRICE_DOM":        ("other_process", "Domicilie Letter"),   # sic: key spelling in the price list
-    "PRICE_PP5":        ("other_process", "Passport 5 Years"),
-    "PRICE_PP10":       ("other_process", "Passport 10 Years"),
-    "PRICE_MUT_PP":     ("other_process", "Mutation Passport"),
-    "PRICE_MUT_ADDR":   ("other_process", "Mutation Address"),
-    "PRICE_SIM":        ("other_process", "Driving License"),
-    "PRICE_EPO":        ("other_process", "EPO (Exit Permit Only)"),
-    "PRICE_ERP":        ("other_process", "ERP (Exit Re-entry Permit)"),
+# Placeholder -> (exact key path, the entry's `name` field AS IT READS TODAY).
+#
+# The second element is a PIN, not documentation. A key is a proxy for a service
+# and a proxy can lie: `other_process["ERP (Exit Re-entry Permit)"]` is named
+# "ERP (Exit Permit Only — Offshore)" and its own description says re-entry has
+# been bundled into the KITAS/KITAP since UU 63/2024 — there is no re-entry
+# product to sell. A brochure row written from the KEY sold a thing that no
+# longer exists. Writing the name down here puts that contradiction in front of
+# whoever edits this file, and stops the build if the price list renames or
+# repurposes an entry under a row that still says the old thing.
+#
+# Every entry here must appear in the template, and every {{PRICE_*}} in the
+# template must appear here: both directions are checked before rendering.
+PRICE_MAP: dict[str, tuple[tuple[str, ...], str]] = {
+    "PRICE_VOA":           (('single_entry_visas', 'B1 Visa on Arrival (VOA)'), 'B1 Visa on Arrival (VOA)'),
+    "PRICE_C1":            (('single_entry_visas', 'C1 Tourism'), 'C1 Tourism'),
+    "PRICE_C1_EXT":        (('single_entry_visas', 'C1 Tourism Extension'), 'C1 Tourism — Extension (+60 days)'),
+    "PRICE_C2":            (('single_entry_visas', 'C2 Business'), 'C2 Business'),
+    "PRICE_C18":           (('single_entry_visas', 'C18 Work Trial'), 'C18 Work Trial'),
+    "PRICE_C22":           (('single_entry_visas', 'C22A&B Internship (180 Days)'), 'C22A&B Internship (180 Days)'),
+    "PRICE_D1_1":          (('multiple_entry_visas', 'D1 Tourism (1 Year)'), 'D1 Tourism (1 Year)'),
+    "PRICE_D2_1":          (('multiple_entry_visas', 'D2 Business (1 Year)'), 'D2 Business (1 Year)'),
+    "PRICE_D12_1":         (('multiple_entry_visas', 'D12 Business Investigation (1 Year)'), 'D12 Business Investigation (1 Year)'),
+    "PRICE_D12_2":         (('multiple_entry_visas', 'D12 Business Investigation (2 Years)'), 'D12 Business Investigation (2 Years)'),
+    "PRICE_E33G_OFF":      (('kitas_permits', 'E33G Remote Worker (Offshore)'), 'E33G Remote Worker (Offshore)'),
+    "PRICE_E33G_ALT":      (('kitas_permits', 'E33G Remote Worker (Altus/Onshore)'), 'E33G Remote Worker (Altus/Onshore)'),
+    "PRICE_INV_OFF":       (('kitas_permits', 'Investor KITAS 2 Years (Offshore)'), 'Investor KITAS 2 Years (Offshore)'),
+    "PRICE_E23_OFF":       (('kitas_permits', 'Freelance E23 (Offshore)'), 'Freelance E23 (Offshore)'),
+    "PRICE_RET_OFF":       (('kitas_permits', 'Retirement (Offshore)'), 'Retirement (Offshore)'),
+    "PRICE_SPOUSE_OFF":    (('kitas_permits', 'Spouse 1 Year (Offshore)'), 'Spouse 1 Year (Offshore)'),
+    "PRICE_E33E_OFF":      (('kitas_permits', 'E33E Second Home Senior (5 Years, Offshore)'), 'E33E Second Home Senior (5 Years, Offshore)'),
+    "PRICE_KITAP_INV":     (('kitap_permits', 'Investor KITAP + MERP'), 'Investor KITAP + MERP'),
+    "PRICE_KITAP_RET":     (('kitap_permits', 'Retirement KITAP + MERP'), 'Retirement KITAP + MERP'),
+    "PRICE_NEWCO":         (('company_services', 'New Company (PT PMA)'), 'New Company (PT PMA)'),
+    "PRICE_VO":            (('company_services', 'Virtual Office'), 'Virtual Office'),
+    "PRICE_CLOSE_PMA":     (('consultant_services', 'Close PMA Company'), 'Close PMA Company'),
+    "PRICE_WK_OFF":        (('kitas_permits', 'Working KITAS (Offshore)'), 'Working KITAS (Offshore)'),
+    "PRICE_WK_ALT":        (('kitas_permits', 'Working KITAS (Altus/Onshore)'), 'Working KITAS (Altus/Onshore)'),
+    "PRICE_WK_EXT":        (('kitas_permits', 'Working KITAS (Extend)'), 'Working KITAS (Extend)'),
+    "PRICE_NPWPD":         (('consultant_services', 'NPWPD Registration'), 'NPWPD Registration'),
+    "PRICE_BPJS_TK":       (('consultant_services', 'BPJS Employee (Tenaga Kerja)'), 'BPJS Employee (Tenaga Kerja)'),
+    "PRICE_BPJS_KES":      (('consultant_services', 'BPJS Insurance (Kesehatan)'), 'BPJS Insurance (Kesehatan)'),
+    "PRICE_TAX_M_0_50":    (('tax_accounting', 'monthly_tax_basic', 'Tier 0-50'), 'Monthly Tax Report — 0 to 50 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_M_50_100":  (('tax_accounting', 'monthly_tax_basic', 'Tier 50-100'), 'Monthly Tax Report — 50 to 100 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_M_100_200": (('tax_accounting', 'monthly_tax_basic', 'Tier 100-200'), 'Monthly Tax Report — 100 to 200 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_M_200":     (('tax_accounting', 'monthly_tax_basic', 'Tier 200+'), 'Monthly Tax Report — more than 200 transactions (without LKPM & Annual)'),
+    "PRICE_TAX_B_0_50":    (('tax_accounting', 'monthly_tax_bundled', 'Tier 0-50'), 'Monthly Tax Report — 0 to 50 transactions (including LKPM & Annual)'),
+    "PRICE_TAX_B_50_100":  (('tax_accounting', 'monthly_tax_bundled', 'Tier 50-100'), 'Monthly Tax Report — 50 to 100 transactions (including LKPM & Annual)'),
+    "PRICE_TAX_B_100_200": (('tax_accounting', 'monthly_tax_bundled', 'Tier 100-200'), 'Monthly Tax Report — 100 to 200 transactions (including LKPM & Annual)'),
+    "PRICE_TAX_B_200":     (('tax_accounting', 'monthly_tax_bundled', 'Tier 200+'), 'Monthly Tax Report — more than 200 transactions (including LKPM & Annual)'),
+    "PRICE_ANNUAL_CO":     (('tax_accounting', 'annual_standalone', 'Annual Tax Company'), 'Annual Tax Company'),
+    "PRICE_ANNUAL_PERS":   (('tax_accounting', 'annual_standalone', 'Annual Tax Personal'), 'Annual Tax Personal'),
+    "PRICE_LKPM":          (('tax_accounting', 'annual_standalone', 'LKPM Yearly Report'), 'LKPM Yearly Report'),
+    "PRICE_ANNUAL_ZERO":   (('tax_accounting', 'annual_basic_packages', 'Annual Company ZERO'), 'Annual Company ZERO'),
+    "PRICE_SKTT":          (('other_process', 'SKTT'), 'SKTT'),
+    "PRICE_SKCK":          (('other_process', 'SKCK'), 'SKCK'),
+    "PRICE_DOM":           (('other_process', 'Domicilie Letter'), 'Domicilie Letter'),
+    "PRICE_PP5":           (('other_process', 'Passport 5 Years'), 'Passport 5 Years'),
+    "PRICE_PP10":          (('other_process', 'Passport 10 Years'), 'Passport 10 Years'),
+    "PRICE_MUT_PP":        (('other_process', 'Mutation Passport'), 'Mutation Passport'),
+    "PRICE_MUT_ADDR":      (('other_process', 'Mutation Address'), 'Mutation Address'),
+    "PRICE_SIM":           (('other_process', 'Driving License'), 'Driving License'),
+    "PRICE_EPO":           (('other_process', 'EPO (Exit Permit Only)'), 'EPO (Exit Permit Only)'),
+    "PRICE_ERP":           (('other_process', 'ERP (Exit Re-entry Permit)'), 'ERP (Exit Permit Only — Offshore)'),
 }
 
-PLACEHOLDER_RE = re.compile(r"\{\{([A-Z0-9_]+)\}\}")
+# Inner whitespace is tolerated deliberately: `{{ PRICE_VOA }}` is what a human
+# writes, and a stricter pattern would leave it unsubstituted in the template AND
+# invisible to the survivor check in verify() — shipping the literal braces to a
+# client with a green build. One pattern, used by both, is what keeps the two
+# ends of that contract from drifting apart.
+PLACEHOLDER_RE = re.compile(r"\{\{\s*([A-Z0-9_]+)\s*\}\}")
 
 
-def fill_template(html: str, pricing: dict) -> str:
-    """Substitute every placeholder, after proving the contract holds both ways."""
+def fill_template(html: str, pricing: dict) -> tuple[str, dict[str, str]]:
+    """Substitute every placeholder, after proving the contract holds both ways.
+
+    Returns the filled HTML and the resolved values, because verify() has to
+    check the amounts against the finished PDF and must not re-derive them —
+    a checker that recomputes what it is checking agrees with itself by
+    construction.
+    """
     in_template = set(PLACEHOLDER_RE.findall(html))
     in_map = set(PRICE_MAP)
 
@@ -245,8 +281,11 @@ def fill_template(html: str, pricing: dict) -> str:
             + (f"   mapped but never used in the HTML (dead weight): {unused}\n" if unused else "")
         )
 
-    resolved = {name: get_price(pricing, path) for name, path in PRICE_MAP.items()}
-    return PLACEHOLDER_RE.sub(lambda m: resolved[m.group(1)], html)
+    resolved = {
+        placeholder: get_price(pricing, path, expected_name)
+        for placeholder, (path, expected_name) in PRICE_MAP.items()
+    }
+    return PLACEHOLDER_RE.sub(lambda m: resolved[m.group(1)], html), resolved
 
 
 # ─────────────────────────────────────────────────────────
@@ -299,7 +338,10 @@ def _pdf_font_names(reader) -> set[str]:
     return fonts
 
 
-def verify(pdf_path: Path, expected_pages: int) -> None:
+AMOUNT_TOKEN_RE = re.compile(r"\d{1,3}(?:\.\d{3})+")
+
+
+def verify(pdf_path: Path, expected_pages: int, resolved: dict[str, str] | None = None) -> None:
     """Judge the FILE, not the intention that produced it.
 
     Three things this catches that the render itself reports as success:
@@ -329,10 +371,39 @@ def verify(pdf_path: Path, expected_pages: int) -> None:
             f"The surface CSS loads Montserrat from the Google Fonts CDN; without "
             f"network Chromium substitutes a system font and says nothing."
         )
+    # Presence of Montserrat alone is too weak: one styled heading would satisfy it
+    # while the body fell back. So the absence of any substitute family is asserted
+    # too — the brochure declares no font outside the brand stack, so a Helvetica or
+    # Times anywhere in it means something resolved to a substitute.
+    substitutes = sorted(
+        f for f in fonts
+        if any(bad in f.lower() for bad in ("helvetica", "times", "arial", "courier"))
+    )
+    if substitutes:
+        problems.append(
+            f"substitute fonts present — {substitutes}. Nothing in this document asks "
+            f"for them, so a face the brand stack should have covered fell back."
+        )
 
     survivors = sorted(set(PLACEHOLDER_RE.findall(text)))
     if survivors:
         problems.append(f"placeholders shipped as literal text: {survivors}")
+
+    # Substituting a price into the HTML is not the same as PRINTING it: a table
+    # can be clipped by its page, hidden by a layout change, or dropped by a
+    # renderer, and every check above would still pass. So each amount the price
+    # list produced has to be findable in the text the reader actually gets.
+    # Compared on the bare digit groups, not the composed string, because the
+    # renderer wraps "Rp 1.800.000 – Rp 2.000.000" across two lines.
+    if resolved:
+        wanted = {t for value in resolved.values() for t in AMOUNT_TOKEN_RE.findall(value)}
+        printed = set(AMOUNT_TOKEN_RE.findall(text))
+        missing = sorted(wanted - printed)
+        if missing:
+            problems.append(
+                f"{len(missing)} resolved amount(s) never reach the page: {missing[:8]} "
+                f"— substituted into the HTML but absent from the rendered text"
+            )
 
     # Every phone-shaped string in the document must be the CTA line. Enumerating
     # what IS there beats checking that a known-bad list is absent: the number
@@ -372,7 +443,7 @@ def main() -> int:
         raise SystemExit(f"\n❌ TEMPLATE MISSING — {TEMPLATE_PATH}\n")
 
     pricing = load_pricing()
-    html = fill_template(TEMPLATE_PATH.read_text(encoding="utf-8"), pricing)
+    html, resolved = fill_template(TEMPLATE_PATH.read_text(encoding="utf-8"), pricing)
 
     render = load_surface_renderer()
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -383,15 +454,25 @@ def main() -> int:
     tmp = tempfile.NamedTemporaryFile(
         "w", encoding="utf-8", suffix=".html", dir=TEMPLATE_PATH.parent, delete=False
     )
-    tmp_path = Path(tmp.name)
+    tmp_html = Path(tmp.name)
+    # Render BESIDE the served file and publish only after the checks pass. Writing
+    # straight to OUTPUT_PATH had two failure modes that both end with a client
+    # holding the wrong document: a render that returns without overwriting leaves
+    # verify() reading — and blessing — the PREVIOUS build, and a render that is
+    # then REJECTED leaves the rejected file sitting in the served path anyway.
+    staged_pdf = OUTPUT_PATH.with_suffix(".staged.pdf")
     try:
         tmp.write(html)
         tmp.close()
-        render(tmp_path, OUTPUT_PATH)
+        staged_pdf.unlink(missing_ok=True)
+        render(tmp_html, staged_pdf)
+        if not staged_pdf.exists():
+            raise SystemExit(f"\n❌ RENDERER WROTE NOTHING — {staged_pdf}\n")
+        verify(staged_pdf, EXPECTED_PAGES, resolved)
+        staged_pdf.replace(OUTPUT_PATH)
     finally:
-        tmp_path.unlink(missing_ok=True)
-
-    verify(OUTPUT_PATH, EXPECTED_PAGES)
+        tmp_html.unlink(missing_ok=True)
+        staged_pdf.unlink(missing_ok=True)
     size_kb = OUTPUT_PATH.stat().st_size / 1024
     print(f"\n✅ {OUTPUT_PATH.relative_to(REPO_ROOT)} ({size_kb:,.1f} KB)")
     print("   Commit it — this file IS what clients receive.\n")
