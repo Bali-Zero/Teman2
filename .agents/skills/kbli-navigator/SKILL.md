@@ -174,6 +174,42 @@ believable **zero across all 31 chunks** — the edge was serving cached pre-pro
 the OLD chunk hash. Twenty seconds later the hash had moved and both labels were there. **Compare
 the chunk hash before believing a post-deploy zero**, and always run a positive control.
 
+**THE ENDPOINT IS NOW SWEPT FIELD BY FIELD — every one of `KBLIDetail`'s twelve has a number.** Both
+cures above were found by asking one question of one field ("what does this say when the data is
+EMPTY?"), which is a reason to ask it of ALL of them rather than stop at the two that bit. Enumerated
+from the response model, not from a sample of responses — the field you did not enumerate is where
+the lie survives.
+
+| field                        | state                                            | number                                                                           |
+| ---------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `code`/`title`/`description` | identity                                         | —                                                                                |
+| `pma_status`                 | cured (perpres caps, earlier lanes)              | 20 patched, 14 deliberately unadjudicated                                        |
+| `licensing_status`           | enumerated                                       | REGULATED 1,266 · PENDING 217 · `NOT_APPLICABLE_OSS` 75 · null 6 · not-in-2025 4 |
+| `sector`                     | honest gap                                       | 222 `"N/A"`; the 42 placeable are the 42 multi-sector codes                      |
+| `risk_profile`               | latent fragility, ledgered                       | 218 without Qdrant risk; **0** with disagreeing licences                         |
+| `licenses`                   | **cured** #3625 (obligations) + #3634 (gap≠None) | 1,707 pairs detached · 284 empty lists relabelled                                |
+| `related_requirements`       | **sound — audited, no defect**                   | see below                                                                        |
+| `related_codes`              | **cured** #3635                                  | 1,341 duplicate rows collapsed at the reader                                     |
+| `expert_legal`               | universally absent                               | **0 of 1,568** kbli nodes carry it — always `null`, asserts nothing              |
+
+**`related_requirements` got the closest look and came back clean, which is worth recording as
+loudly as a defect** — it renders the SAME REQUIRES edges the cure above deleted from, so it was the
+obvious place for the lie to have a second door. It does not: it renders target NAMES only, never
+their `kewajiban`, so no obligation text travels through it. And `kbli_requires_kind.py` carries the
+W106 signature in its own docstring — _"this classification was derived from a census, and a census
+is a snapshot"_ — with nothing re-measuring it, so it was re-measured here:
+
+- **35 distinct target entity types reach that list today; the classifier knows 30.** The census HAS
+  drifted — 6 types have appeared since: `fasilitas`, `pekerja`, `kbli`, `entity`, `parameter`,
+  `jabatan`, totalling **16 edge rows** over 8 target names.
+- **The fail-safe direction held, and that is the finding.** All 8 are things a business _is_ or
+  _has_ — a port facility, ship crew (`Awak Kapal`), a Regent's office (`Bupati/Walikota`), an R&D
+  activity, a consumer-complaint service, `UMKM`. **Not one is a permit that got demoted to
+  `other`**, which is the only drift that would cost a client something (a licence they are never
+  shown). A missing badge on 16 edges is the acceptable failure the module designed for.
+- Mapped-but-unused: `pasal` has a bucket and **0** live rows. Harmless; noted so a future reader
+  does not read its absence as a bug.
+
 **🟢 2026-08-05 — THE `whatChanged` LANE: FOUR STORES, AND THE CURE ITSELF LEFT A CONTRADICTION IN
 THREE OF THEM.** #3610 cured 13 codes still telling clients _"Direct 1:1 match from KBLI 2020 — code
 and scope unchanged"_ on records whose own crosswalk denies it. Promoting it (prod was serving a
