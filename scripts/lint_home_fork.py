@@ -259,6 +259,7 @@ def check_pairs(
     home: Path,
     label: str,
     notices: Optional[list[str]] = None,
+    skipped: Optional[list[str]] = None,
 ) -> list[str]:
     """The --check arm: sha256 live vs repo twin for machine-applicable pairs.
 
@@ -274,6 +275,20 @@ def check_pairs(
     moved, and only call it a HOME-fork when the LIVE copy is the stale one.
     A stale checkout goes to `notices` instead: real, differently owned, and
     on M5 not even fixable (pulling that checkout races ~45 live worktrees).
+
+    `skipped` collects the pairs this machine CLAIMS (machines: all/<label>)
+    whose live copy is not on disk. They are not breaches — nothing can drift
+    when nothing is running — but they are not coverage either, and silence
+    made them read as coverage. Measured 2026-08-06: `--check` reported
+    "109 declared pair(s) ... clean" on the Pro while three of the ten
+    wa-mirror pairs were never evaluated, including BOTH files the promotion
+    PR existed for (their live copies had been moved to an attic hours
+    earlier). The verdict was true; the conclusion a reader draws from it —
+    "the promoted files are verified" — was not.
+
+    A pair scoped to another machine is deliberately NOT collected here: that
+    is legitimate non-applicability, not a blind spot, and reporting it would
+    bury the real signal in fleet-wide noise on every run.
     """
     breaches: list[str] = []
     for pair in pairs:
@@ -282,7 +297,10 @@ def check_pairs(
         live = expand_home(pair["live"], home)
         repo = repo_root / pair["repo"]
         if not live.exists():
-            continue  # this machine does not run that copy — not a breach
+            # Not a breach — but say so, or "clean" reads as "checked".
+            if skipped is not None:
+                skipped.append(f"{pair['live']} (declared for {label}, not on disk)")
+            continue
         if not repo.exists():
             breaches.append(
                 f"NO-REPO-TWIN: {pair['live']} executes live but {pair['repo']} "
@@ -547,6 +565,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     undeclared: list[str] = []
     errors: list[str] = []
     stale_checkout: list[str] = []
+    skipped_pairs: list[str] = []
 
     if run_check:
         # Refresh the reference BEFORE anyone is blamed against it. A failure
@@ -568,7 +587,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                     f"acted on from this run"
                 )
         breaches = check_pairs(
-            pairs, args.repo_root, args.home, label, notices=stale_checkout
+            pairs,
+            args.repo_root,
+            args.home,
+            label,
+            notices=stale_checkout,
+            skipped=skipped_pairs,
         )
         if args.strict_checkout:
             breaches += stale_checkout
@@ -606,6 +630,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     "machine": label,
                     "check_breaches": breaches,
                     "check_stale_checkout": stale_checkout,
+                    "check_skipped_live_absent": skipped_pairs,
                     "discover_undeclared": undeclared,
                     "errors": errors,
                     "pairs_declared": len(pairs),
@@ -629,7 +654,24 @@ def main(argv: Optional[list[str]] = None) -> int:
                     f"because this checkout trails origin/main (--strict-checkout to fail on it)"
                 )
             else:
-                print("  clean — every live copy matches its repo twin")
+                verified = len(
+                    [p for p in pairs if pair_applies(p, label)]
+                ) - len(skipped_pairs)
+                print(
+                    f"  clean — {verified} live copy/copies match their repo twin"
+                    if skipped_pairs
+                    else "  clean — every live copy matches its repo twin"
+                )
+        if skipped_pairs:
+            # Never touches the exit code: a diagnostic that can fail a build is
+            # not a diagnostic. It exists so "clean" is not read as "checked".
+            shown = skipped_pairs[:10]
+            print(
+                f"  {len(skipped_pairs)} pair(s) NOT checked — live copy absent on "
+                f"this machine (showing {len(shown)} of {len(skipped_pairs)}):"
+            )
+            for s in shown:
+                print(f"    ? {s}")
     if run_discover:
         print(f"[discover] undeclared HOME-executed payloads: {len(undeclared)}")
         for f in undeclared:

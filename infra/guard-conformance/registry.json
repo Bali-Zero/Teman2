@@ -375,6 +375,36 @@
           "innocence": ["test_innocence_spine_echoed_via_regulation_code_alone"]
         }
       }
+    },
+    "wa_mirror_control_api": {
+      "_doc": "Roster-derived identity for the wa-mirror control API. The endpoints already REFUSED names outside the roster, then built the log path and the subprocess argv from the REQUEST string anyway — CodeQL py/path-injection x7 on PR #3671, the first time this file met a gate at all (it lived HOME-only until then). Contract: every filesystem path and argv is built from what roster_account() RETURNS.",
+      "source": "apps/wa-mirror/scripts/api_server.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "roster_"
+      },
+      "test_file": "apps/wa-mirror/scripts/test_api_server_path_confinement.py",
+      "guards": {
+        "roster_account": {
+          "scar": ["py/path-injection", "#3-form-not-entity"],
+          "guilt": [
+            "test_hostile_names_are_refused_and_serve_nothing",
+            "test_a_name_absent_from_the_roster_is_refused",
+            "test_refusal_does_not_echo_the_caller_string"
+          ],
+          "innocence": [
+            "test_a_roster_name_still_gets_its_log",
+            "test_case_and_whitespace_variants_of_a_roster_name_work"
+          ]
+        },
+        "roster_stem": {
+          "scar": ["py/path-injection"],
+          "guilt": ["test_log_path_is_always_directly_inside_the_log_dir"],
+          "innocence": [
+            "test_roster_account_returns_the_roster_record_not_the_caller_string"
+          ]
+        }
+      }
     }
   }
 }
