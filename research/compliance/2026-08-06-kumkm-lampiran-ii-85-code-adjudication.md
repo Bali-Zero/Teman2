@@ -254,10 +254,25 @@ each, including the ones that did not survive:
    that decision stands; the document simply never said so, so it contradicted
    its own artifact. A reader would have found four 0% verdicts on codes the
    text called unresolved. Moot under the withdrawal, fixed in the re-write.
-4. **Semantic check on the seven 2020→2025 mappings — UPHELD as insufficient.**
-   The applier verified cardinality (exactly one heir) and not identity of
-   perimeter. `55120` "Hotel Melati" → `55106` "Aktivitas Hotel Nonbintang" is a
-   single heir and not obviously the same activity.
+4. **Semantic check on the seven 2020→2025 mappings — UPHELD, and MEASURED.**
+   The applier asked one direction only: did the 2020 activity SPLIT (exactly
+   one heir)? It never asked the reverse — did the 2025 code MERGE several 2020
+   activities, making it broader than the single row the annex reserves? Run
+   against canonical: **six of the seven are 1:1, and `79110` (Aktivitas Agen
+   Perjalanan) absorbs THREE 2020 codes — `79111`, `79112`, `79119`.** Reserving
+   all of `79110` on `79111`'s row would close activities the annex never named,
+   which is exactly the ground the 28 REFUSE_BROADER verdicts stand on.
+
+   That code was already out of the spec — but for an unrelated reason (a
+   competing determination living in `test_kbli_eye.py`), i.e. by luck rather
+   than by any rule. It is now a refusal in the applier, with the failure named:
+   `79110: judged on 2020 79111, but this 2025 code also absorbs ['79112',
+   '79119'] — broader than the reserved activity`. Mutation-verified.
+
+   What is still NOT checked, and is a different question: whether a 1:1 heir
+   is the same ACTIVITY rather than merely the same lineage. `55120` "Hotel
+   Melati" → `55106` "Aktivitas Hotel Nonbintang" is 1:1 by the crosswalk and a
+   renaming this session has not verified against BPS. Ledgered, not claimed.
 5. **`42912` — UPHELD on the evidence, and it is a second parser defect.** Its
    activity cell reads `"pelabuhan bukan perikanan pelabuhan perikanan"`: two
    distinct annex cells run together. Ledgered, not fixed here.
