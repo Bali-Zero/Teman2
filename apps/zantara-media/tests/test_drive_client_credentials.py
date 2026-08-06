@@ -205,3 +205,96 @@ def test_a_non_service_account_file_is_rejected_by_name(tmp_path):
 
     with pytest.raises(ValueError, match="not a service-account key"):
         drive_client._load_sa_credentials(str(bad))
+
+
+# ------------------------------------------------- the scope under the grant
+@pytest.fixture
+def fake_oauth_db(monkeypatch):
+    """Stand in for asyncpg + google.oauth2.credentials on the LEGACY path.
+
+    Captures the scope list the refresh is built with. That list is not
+    cosmetic: Google validates it against what the consent screen actually
+    granted and rejects the whole refresh — it does not quietly drop an extra.
+    """
+    seen: dict = {}
+
+    class _Creds:
+        def __init__(self, **kw):
+            seen.update(kw)
+
+    class _Conn:
+        async def fetchrow(self, *a, **k):
+            return {
+                "access_token": "at",
+                "refresh_token": "rt",
+                "expires_at": None,
+            }
+
+        async def close(self):
+            seen["closed"] = True
+
+    async def _connect(url):
+        seen["dsn_given"] = bool(url)
+        return _Conn()
+
+    aspg = types.ModuleType("asyncpg")
+    aspg.connect = _connect
+    monkeypatch.setitem(sys.modules, "asyncpg", aspg)
+
+    mod = types.ModuleType("google.oauth2.credentials")
+    mod.Credentials = _Creds
+    pkg_oauth2 = sys.modules.get("google.oauth2") or types.ModuleType("google.oauth2")
+    pkg_google = sys.modules.get("google") or types.ModuleType("google")
+    monkeypatch.setattr(pkg_oauth2, "credentials", mod, raising=False)
+    monkeypatch.setattr(pkg_google, "oauth2", pkg_oauth2, raising=False)
+    monkeypatch.setitem(sys.modules, "google", pkg_google)
+    monkeypatch.setitem(sys.modules, "google.oauth2", pkg_oauth2)
+    monkeypatch.setitem(sys.modules, "google.oauth2.credentials", mod)
+
+    monkeypatch.setenv("DATABASE_URL", "postgres://probe/none")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "cid")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "csec")
+    return seen
+
+
+def test_the_legacy_refresh_never_asks_for_a_scope_the_consent_did_not_grant(
+    fake_oauth_db,
+):
+    """THE defect that outlived the revocation.
+
+    The consent screen builds its authorize URL with ONE scope
+    (`admin_drive_auth.py:47` — `scope=…/auth/drive`, singular). This call site
+    asked for `drive` AND `drive.readonly`, and Google answers a refresh that
+    names an ungranted scope with `invalid_scope: Bad Request`.
+
+    It was invisible for as long as the credential was also revoked, because
+    `invalid_grant` is decided first. Measured on Pro 2026-08-06: the night
+    after the re-auth, `invalid_grant` vanished and `invalid_scope` took its
+    place — 14 runs of it in the log, back to 2026-06-28.
+    """
+    asyncio.run(drive_client._load_creds_from_db())
+
+    assert "drive.readonly" not in " ".join(fake_oauth_db["scopes"]), (
+        "asking for a scope the grant never contained fails the WHOLE refresh; "
+        "Google does not ignore the extra"
+    )
+    assert fake_oauth_db["scopes"] == ["https://www.googleapis.com/auth/drive"], (
+        "must be exactly the scope admin_drive_auth.py sends to the consent "
+        "screen — anything else is a refresh that cannot succeed"
+    )
+
+
+def test_the_two_scope_lists_are_separate_objects(fake_oauth_db):
+    """Innocence, and a design assertion.
+
+    SA_SCOPES and OAUTH_SCOPES hold the same string today. They are NOT the
+    same thing: one is bounded by the Workspace admin console's delegation, the
+    other by what a human approved on a consent screen. Sharing one constant
+    would make widening the delegation silently widen the user grant's request
+    — which is precisely the class of mistake this test file exists for.
+    """
+    assert drive_client.SA_SCOPES is not drive_client.OAUTH_SCOPES
+    asyncio.run(drive_client._load_creds_from_db())
+    assert fake_oauth_db["scopes"] is drive_client.OAUTH_SCOPES, (
+        "the legacy path must read OAUTH_SCOPES, not an inlined literal"
+    )

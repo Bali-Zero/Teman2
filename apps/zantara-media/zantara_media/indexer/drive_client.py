@@ -125,13 +125,19 @@ SA_DEFAULT_PATH = os.path.expanduser("~/.nuzantara-drive-sa.json")
 # resolve for this subject.
 SA_SUBJECT_DEFAULT = "zero@balizero.com"
 
-# ONLY `drive`, deliberately — not the `drive` + `drive.readonly` pair the
-# legacy OAuth path below asks for. Domain-wide delegation grants scopes
-# explicitly in the Workspace admin console, and this service account has just
-# the one; requesting an ungranted scope fails the token exchange outright with
+# ONLY `drive`, deliberately. Domain-wide delegation grants scopes explicitly in
+# the Workspace admin console, and this service account has just the one;
+# requesting an ungranted scope fails the token exchange outright with
 # `unauthorized_client`, which reads like a broken key rather than a missing
 # grant. Same single scope the backend's ServiceAccountDriveService uses.
 SA_SCOPES = ["https://www.googleapis.com/auth/drive"]
+
+# The scope set for the legacy per-user OAuth row. Deliberately a SEPARATE
+# literal from SA_SCOPES even though the two are identical today: they are equal
+# by coincidence, not by construction. One is bounded by what the Workspace
+# admin console delegated, the other by what the consent screen asked the human
+# to approve, and widening either must not silently widen the other.
+OAUTH_SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
 async def get_drive_service():  # type: ignore[return]
@@ -292,10 +298,22 @@ async def _load_creds_from_db():
         token_uri="https://oauth2.googleapis.com/token",
         client_id=client_id,
         client_secret=client_secret,
-        scopes=[
-            "https://www.googleapis.com/auth/drive",
-            "https://www.googleapis.com/auth/drive.readonly",
-        ],
+        # ONE scope, and it must be exactly the one the consent screen asked
+        # for. `admin_drive_auth.py:47` builds the authorize URL with
+        # `scope=https://www.googleapis.com/auth/drive` — singular — and every
+        # other consumer of this row (`drive_auth.py:32`,
+        # `google_drive_service.py:34`) refreshes with that same single scope.
+        # This call site was the only one asking for `drive.readonly` as well,
+        # a scope the grant never contained, and Google rejects the whole
+        # refresh with `invalid_scope: Bad Request` rather than ignoring the
+        # extra. `drive` is a superset of `drive.readonly`, so nothing is lost.
+        #
+        # Measured on Pro, 2026-08-06: after the credential was re-authed the
+        # nightly run stopped answering `invalid_grant` and immediately
+        # answered `invalid_scope` instead — the older defect underneath. The
+        # log carries 14 such runs going back to 2026-06-28, the day after the
+        # last run that reached Drive without an auth error at all.
+        scopes=OAUTH_SCOPES,
     )
 
 
