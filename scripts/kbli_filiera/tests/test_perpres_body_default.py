@@ -248,8 +248,9 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     A locator-partitioned reading found only 14; reading across every bucket
     found 23.
 
-    It went to 19 for a few hours on 2026-08-06, back to 23, and now sits at 22.
-    The round trip is worth more than any of the three numbers. The Lampiran II cure had restricted
+    It went to 19 for a few hours on 2026-08-06, back to 23, then 22, and now 19
+    again for an unrelated reason (the split-heir cure, at the bottom of this
+    docstring). The round trip is worth more than any of the numbers. The Lampiran II cure had restricted
     `55201` (homestay), `55203` (villa), `79110` (travel agent) and `95291`
     (clothing alterations) for a stronger and different reason — the annex
     allocates those activities to Koperasi/UMKM — so they stopped publishing as
@@ -266,9 +267,22 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     "cleared", but unadjudicated on evidence that was never complete.
     """
     rows = pasal7_review_flags(rep)
-    assert len(rows) == 22
+    assert len(rows) == 19
     codes = {r["code"] for r in rows}
-    assert {"96210", "96220"} <= codes           # annex-named AND Besar-less
+    # 2026-08-06, THIRD movement — and the one that empties the "annex-named AND
+    # Besar-less" example slot this line used to hold. `96210` (barber),
+    # `96220` (salon) and `96100` (laundry) are gone because the SPLIT-HEIR cure
+    # adjudicated them: each is the sole 2025 heir of the 2020 code the annex
+    # names, absorbing no other ancestor, so the whole code is the reserved
+    # bidang usaha. They left as RESERVED, which is a resolution — not as
+    # "still unexplained", which is what this queue is for.
+    assert not ({"96210", "96220", "96100"} & codes)
+    # The fourth code that cure restricted, `55105` (Hotel Bintang I), was never
+    # in this queue and did not move: its own scale data DOES name a Besar row
+    # (`besar_state == "observed"`), so its openness had a scale justification
+    # and the Pasal 7(1) question never attached to it. Four codes cured, three
+    # departures — a cure's own count is not the count of rows that move.
+    assert "55105" not in codes
     assert {"56304", "70201", "86995"} <= codes  # residual AND Besar-less
     # The three the withdrawn cure had removed, asserted as PRESENT: re-applying
     # a Lampiran II verdict to them shows up here as a failure and gets read

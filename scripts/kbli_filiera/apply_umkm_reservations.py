@@ -90,7 +90,16 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 CURE_SPECS = Path(__file__).resolve().parent / "cure_specs"
-SPEC = CURE_SPECS / "umkm_lampiran_ii_readjudicated_2026_08_06.json"
+
+# The cure currently pointed at by `--spec`'s default. Each spec is a distinct
+# adjudication over a distinct POPULATION, and they are applied in sequence; a
+# spec that has already been written stays on disk and stays pinned by tests,
+# because "what did we assert about this code, and on whose two signatures" is a
+# question a client-facing 0% verdict has to be able to answer years later.
+SPEC = CURE_SPECS / "umkm_lampiran_ii_split_heirs_2026_08_06.json"
+
+# Applied 2026-08-06 (#3666) — the nine codes whose 2020 ancestor did NOT split.
+PRIOR_SPEC = CURE_SPECS / "umkm_lampiran_ii_readjudicated_2026_08_06.json"
 
 # Kept on disk on purpose. It still carries the 39 verdicts and the record of WHY
 # they were withdrawn; `main()` refuses it by its own `withdrawn` marker, so
@@ -161,6 +170,14 @@ def check(
             continue
 
         judged = item.get("judged_as")
+        # Asked BEFORE either gate runs. Asked after, it can never fire: the
+        # `judged_as` branch below consumes the item first and refuses it for a
+        # multi-heir ancestor, so the reader is told the wrong thing about a
+        # malformed spec and this check is decoration. Its own guilt test caught
+        # that on the first run.
+        if judged and item.get("judged_as_split_heir"):
+            refusals.append(f"{code}: has both judged_as and judged_as_split_heir")
+            continue
         if judged:
             # Re-derive rather than trust the spec's own mapping.
             found = heirs.get(judged, [])
@@ -190,6 +207,70 @@ def check(
                 refusals.append(
                     f"{code}: judged on 2020 {judged}, but this 2025 code also "
                     f"absorbs {others} — broader than the reserved activity"
+                )
+                continue
+
+        split = item.get("judged_as_split_heir")
+        if split:
+            # A SEPARATE, NARROWER GATE — not a relaxation of the one above.
+            #
+            # `judged_as` refuses whenever the 2020 code has more than one 2025
+            # heir, and that refusal is right for what it guards: when an
+            # activity fans out you cannot tell from the crosswalk alone WHICH
+            # heir the annex row names. But "cannot tell from the crosswalk" is
+            # not "cannot tell". Two shapes recur and both are decidable:
+            #
+            #   `96111` (Pangkas rambut) -> {96210 barbering, 96400 a personal-
+            #      services INTERMEDIATION platform that also swallows eight
+            #      unrelated 2020 codes}. The activity itself is 96210.
+            #   `55110` (all star hotels) -> {55101..55105 by star grade}. The
+            #      annex names "Hotel Bintang I", one grade, which is 55105.
+            #
+            # What makes them decidable is the REVERSE direction: the heir that
+            # absorbs no other 2020 code cannot be wider than the row. So this
+            # gate re-derives, mechanically and without trusting the spec:
+            #   1. the named 2020 code really is an ancestor of this 2025 code;
+            #   2. this 2025 code absorbs NOTHING else (so it cannot over-reach);
+            #   3. the 2020 code really did split — otherwise the item belongs
+            #      on `judged_as`, and two gates that overlap drift apart;
+            #   4. the siblings left open are NAMED in the spec and match what
+            #      the dataset says they are, so the drop is visible rather than
+            #      implied.
+            #
+            # What this gate does NOT do is decide identity. Whether 96210 IS
+            # "Pangkas rambut/barber shop" is a judgment; it is made by two
+            # independent lanes and recorded per item in `agreed_by`, and
+            # `main()` requires two of them. The mechanics here only guarantee
+            # that a wrong identity call cannot ALSO over-reach into activities
+            # the annex never named.
+            ancestors = [
+                str(a) for a in (record.get("bps_2020_ancestors") or {}).get("codes") or []
+            ]
+            if split not in ancestors:
+                refusals.append(
+                    f"{code}: judged as a split heir of 2020 {split}, which is "
+                    f"not among its ancestors {ancestors or 'none'}"
+                )
+                continue
+            others = [a for a in ancestors if a != split]
+            if others:
+                refusals.append(
+                    f"{code}: judged as a split heir of 2020 {split}, but it also "
+                    f"absorbs {others} — broader than the reserved activity"
+                )
+                continue
+            siblings = sorted(set(heirs.get(split, [])) - {code})
+            if not siblings:
+                refusals.append(
+                    f"{code}: 2020 {split} has no other heir — this is the "
+                    f"judged_as case, not a split"
+                )
+                continue
+            declared = sorted(item.get("siblings_left_open") or [])
+            if declared != siblings:
+                refusals.append(
+                    f"{code}: spec leaves open {declared or 'nothing'}, but 2020 "
+                    f"{split} also went to {siblings}"
                 )
                 continue
 

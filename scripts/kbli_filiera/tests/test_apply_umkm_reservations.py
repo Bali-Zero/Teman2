@@ -40,6 +40,13 @@ def item(code, judged_as=None, was=None, locator="L-II p1"):
     }
 
 
+def split_item(code, split, siblings, was=None, locator="L-II p1", judged_as=None):
+    it = item(code, judged_as=judged_as, was=was, locator=locator)
+    it["judged_as_split_heir"] = split
+    it["siblings_left_open"] = siblings
+    return it
+
+
 def run(items, records):
     return A.check({"items": items}, records)
 
@@ -98,6 +105,99 @@ def test_refuses_when_the_2020_code_has_several_heirs():
 def test_refuses_when_the_2020_code_has_no_heir_at_all():
     todo, refusals = run([item("55203", judged_as="55193")], [rec("55203")])
     assert todo == [] and "no 2025 heir" in refusals[0]
+
+
+# --------------------------------------------------------------------------
+# The SPLIT-HEIR gate — a second, narrower door, not a hole in the first one
+#
+# `judged_as` refuses every split, and that refusal is correct for what it
+# guards: the crosswalk alone cannot name which heir the annex row means. This
+# gate admits the sub-case where the REVERSE direction can — the heir that
+# absorbs no other 2020 code cannot be wider than the row. Each mechanical
+# precondition below gets its own guilt test, because a gate whose conditions
+# are only tested in aggregate is a gate with untested conditions.
+# --------------------------------------------------------------------------
+
+
+def test_innocence_a_split_heir_that_absorbs_nothing_else_applies():
+    """`96111` (Pangkas rambut) fans out to barbering and to an intermediation
+    platform. Barbering absorbs only 96111, so it cannot over-reach."""
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"])],
+        [
+            rec("96210", ancestors=["96111"]),
+            rec("96400", ancestors=["96111", "96112", "96200"]),
+        ],
+    )
+    assert refusals == []
+    assert [i["code"] for i in todo] == ["96210"]
+
+
+def test_guilt_a_split_heir_that_absorbs_another_2020_code_is_refused():
+    """The whole point. `96400` is also an heir of 96111, and closing it would
+    bar the eight other activities it swallowed."""
+    todo, refusals = run(
+        [split_item("96400", "96111", ["96210"])],
+        [
+            rec("96400", ancestors=["96111", "96112", "96200"]),
+            rec("96210", ancestors=["96111"]),
+        ],
+    )
+    assert todo == []
+    assert "also absorbs" in refusals[0] and "96112" in refusals[0]
+
+
+def test_guilt_a_split_heir_whose_named_ancestor_is_not_an_ancestor_is_refused():
+    """A typo in the spec must not become a 0% verdict on an unrelated code."""
+    todo, refusals = run(
+        [split_item("96210", "96119", ["96400"])],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96119", "96129"])],
+    )
+    assert todo == []
+    assert "not among its ancestors" in refusals[0]
+
+
+def test_guilt_an_undeclared_sibling_is_refused():
+    """The siblings left open are the population this cure DROPS. A spec that
+    names one while the dataset says there are four is describing a different
+    world than the one being patched — and the drop would be invisible."""
+    todo, refusals = run(
+        [split_item("55105", "55110", ["55101"])],
+        [rec(c, ancestors=["55110"]) for c in ("55101", "55102", "55105")],
+    )
+    assert todo == []
+    assert "also went to" in refusals[0] and "55102" in refusals[0]
+
+
+def test_guilt_a_code_whose_ancestor_did_not_split_is_refused_from_this_gate():
+    """Not a split at all: it belongs on `judged_as`. Two gates that accept the
+    same item drift apart, and then a change to one silently spares the other."""
+    todo, refusals = run(
+        [split_item("55203", "55193", [])],
+        [rec("55203", ancestors=["55193"])],
+    )
+    assert todo == []
+    assert "no other heir" in refusals[0] and "judged_as case" in refusals[0]
+
+
+def test_guilt_an_item_claiming_both_gates_is_refused():
+    """Which gate judged it has to be answerable from the item alone."""
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"], judged_as="96111")],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "both judged_as and judged_as_split_heir" in refusals[0]
+
+
+def test_innocence_the_original_single_heir_gate_still_refuses_a_split():
+    """The new door must not have widened the old one: an item that still uses
+    `judged_as` on a split ancestor is refused exactly as before."""
+    todo, refusals = run(
+        [item("55203", judged_as="55110")],
+        [rec("55203", ancestors=["55110"]), rec("55201", ancestors=["55110"])],
+    )
+    assert todo == [] and "resolves to" in refusals[0]
 
 
 def test_refuses_a_record_already_adjudicated_by_hand():
@@ -285,11 +385,16 @@ def test_the_readjudication_overturned_eleven_of_the_thirteen():
 # --------------------------------------------------------------------------
 
 
-def test_the_live_spec_is_the_nine_that_survived_both_rounds():
+def test_the_prior_spec_is_the_nine_that_survived_both_rounds():
     """Of the 39 codes the withdrawn patch would have written, nine survive. The
     list is pinned by NAME, not by count: a count alone would let a substitution
-    pass, and every one of these publishes a 0%-foreign verdict to clients."""
-    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    pass, and every one of these publishes a 0%-foreign verdict to clients.
+
+    Pinned against `PRIOR_SPEC` and not `SPEC`: this cure was applied on
+    2026-08-06 (#3666) and `SPEC` has since moved on to the split heirs. An
+    applied spec stays pinned — "what did we assert about this code, and on
+    whose two signatures" outlives the run that asserted it."""
+    spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     codes = [i["code"] for i in spec["items"]]
     assert codes == [
         "10214", "10722", "22121", "41016", "41018", "41020",
@@ -301,10 +406,10 @@ def test_the_live_spec_is_the_nine_that_survived_both_rounds():
         assert len(i["agreed_by"]) == 2, "one lane's word is not an adjudication"
 
 
-def test_the_live_spec_names_every_population_it_left_behind():
+def test_the_prior_spec_names_every_population_it_left_behind():
     """The honest half of the cure. A spec that patches nine out of sixty-eight
     and does not say where the other fifty-nine went is a silent drop."""
-    ex = json.loads(A.SPEC.read_text(encoding="utf-8"))["excluded"]
+    ex = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))["excluded"]
     for key in (
         "refuse_segment_round2",
         "refuse_broader_round2",
@@ -327,7 +432,7 @@ def test_guilt_no_patched_code_is_also_on_a_refusal_list():
     """The tripwire that matters: a code cannot be both reserved and refused. If
     a future edit moves one back into `items` without taking it off its refusal
     list, this fails rather than shipping a contradiction to clients."""
-    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     patched = {i["code"] for i in spec["items"]}
     ex = spec["excluded"]
     refused = set()
@@ -343,10 +448,10 @@ def test_guilt_no_patched_code_is_also_on_a_refusal_list():
     assert not (patched & refused), f"both patched and refused: {sorted(patched & refused)}"
 
 
-def test_the_live_spec_supersedes_the_withdrawn_one_by_name():
+def test_the_prior_spec_supersedes_the_withdrawn_one_by_name():
     """A replacement that does not name what it replaces leaves the next reader
     to guess which of the two files on disk is the live one."""
-    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     assert A.WITHDRAWN_SPEC.name in spec["supersedes"]
     assert "sibling" in spec["adjudicated"], "round 2's added evidence must be stated"
 

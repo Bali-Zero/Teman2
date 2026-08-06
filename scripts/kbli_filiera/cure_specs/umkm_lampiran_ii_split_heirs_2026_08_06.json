@@ -1,0 +1,82 @@
+{
+  "instrument": "Perpres 10/2021 as amended by 49/2021, Lampiran II",
+  "population": "SPLIT HEIRS — annex rows whose 2020 code fans out to several 2025 codes. The prior spec (umkm_lampiran_ii_readjudicated_2026_08_06.json) deliberately excluded every one of these, because a 1:1 crosswalk edge was its only mechanical proof of identity and a split has none.",
+  "adjudicated": "2026-08-06, generator!=grader and cross-family: a Claude Sonnet 5 lane proposes one verdict per candidate 2025 code, a Codex GPT-5.6 lane re-derives blind on fresh context without seeing the proposal. Only codes where BOTH lanes independently returned PATCH_ZERO are here. 62 candidate 2025 codes across 12 annex rows were judged; four survived.",
+  "decisive_test": "The REVERSE direction. Forward ('did the 2020 activity split?') cannot name the heir. Reverse ('does this 2025 code absorb any OTHER 2020 code?') can: an heir that absorbs nothing else cannot be wider than the row the annex reserves. All four absorb exactly one ancestor, and it is the annex's.",
+  "parent_headings": "None of these four rows sits under a qualifier-carrying parent heading. For 'Hotel Bintang I' the governing heading is 'Jasa Penginapan', which the parser only surfaces after the dotted-item fix (#3667); it carries no qualifier and narrows nothing, so it does not change these verdicts either way.",
+  "supersedes": null,
+  "items": [
+    {
+      "code": "96210",
+      "judged_as_split_heir": "96111",
+      "siblings_left_open": ["96400"],
+      "annex_row_text": "Pangkas rambut/ barber shop",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Pangkas rambut/ barber shop\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "why_the_sibling_stays_open": "96400 (Aktivitas Jasa Intermediasi untuk Jasa Perorangan) absorbs nine 2020 codes — 63122, 96111, 96112, 96121, 96122, 96129, 96200, 96910, 96990. Closing it on account of barber shops would bar eight activities the annex never named."
+    },
+    {
+      "code": "96220",
+      "judged_as_split_heir": "96112",
+      "siblings_left_open": ["96400"],
+      "annex_row_text": "Salon kecantikan",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Salon kecantikan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "why_the_sibling_stays_open": "Same intermediation platform, 96400, refused by both lanes for the same reason."
+    },
+    {
+      "code": "96100",
+      "judged_as_split_heir": "96200",
+      "siblings_left_open": ["96400"],
+      "annex_row_text": "Penatu",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Penatu\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "why_the_sibling_stays_open": "Same intermediation platform, 96400, refused by both lanes for the same reason."
+    },
+    {
+      "code": "55105",
+      "judged_as_split_heir": "55110",
+      "siblings_left_open": ["55101", "55102", "55103", "55104"],
+      "annex_row_text": "Hotel Bintang I",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p14, row \"Hotel Bintang I\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "why_the_sibling_stays_open": "2020 code 55110 covered every star grade; the 2025 catalogue splits it into 55101..55105 by grade and the annex names ONE grade. Reserving 55101-55104 (five-, four-, three- and two-star hotels) would close grades the annex never mentions — Pasal 5(5) attaches the allocation to the named bidang usaha."
+    }
+  ],
+  "excluded": {
+    "broader_absorber_refused_by_both_lanes": [
+      "96400",
+      "18111",
+      "82100",
+      "43400"
+    ],
+    "star_grade_not_named_by_the_annex": ["55101", "55102", "55103", "55104"],
+    "retail_and_construction_rows_all_refused": {
+      "annex_rows": ["47911", "47912", "47913", "43304", "43305", "45407"],
+      "verdicts": 47,
+      "outcome": "every candidate refused as BROADER (one as SEGMENT). Nothing to patch.",
+      "note": "In the orchestrated run the grader lane for these rows received the literal string 'undefined' as its evidence path — an unfilled variable in the workflow script — and REFUSED to reason from files it had not been given rather than inventing verdicts. They were re-derived afterwards against the real path; the verdicts recorded here are the re-derived ones."
+    },
+    "agreed_to_refuse_but_labelled_differently": {
+      "codes": ["55101", "55102", "55103", "55104"],
+      "detail": "one lane REFUSE_SEGMENT, the other REFUSE_UNCLEAR — same outcome (leave open), different name for why. No action either way."
+    }
+  },
+  "bias_stated_to_both_lanes": "A wrongly-restricted code costs a client a business they could lawfully run; that is not a safer error, it is a different error. REFUSE_UNCLEAR was a real option. Refusing is NOT the safe direction — the opposite error tells a client he may wholly own a reserved activity."
+}
