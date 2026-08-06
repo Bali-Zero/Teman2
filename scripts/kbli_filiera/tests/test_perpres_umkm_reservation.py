@@ -32,10 +32,12 @@ from parse_perpres_lampiran2 import (  # noqa: E402
     SUBSTITUTIONS,
     content_words,
     decode,
+    governing_headings,
     parse,
 )
 from perpres_umkm_reservation_relation import (  # noqa: E402
     RELATION,
+    _PARENT_QUALIFIER_RE,
     classify,
     live_heirs,
     load_canonical,
@@ -589,6 +591,67 @@ def test_the_live_artifact_carries_the_parent_that_was_missing():
     assert {r["code"] for r in qualified} == {
         "01111", "01113", "01114", "01115", "01121", "01122",
     }
+
+
+def test_guilt_a_dotted_item_number_is_a_heading_like_any_other():
+    """The annex numbers items BOTH ways, two rows apart: `48.  Jasa Penginapan:`
+    and `49  Aktivitas konsultansi ...`. A rule that required whitespace right
+    after the digits saw only the second, and `Jasa Penginapan:` — the heading
+    that governs every hotel, homestay, guest house and villa row in Lampiran II
+    — was invisible."""
+    text = "  48.   Jasa Penginapan:\n       - Hotel Bintang I    55110    V\n"
+    h = governing_headings(text)
+    assert h[(1, 1)] == "Jasa Penginapan"
+
+
+def test_guilt_a_dotted_item_CLOSES_the_parent_above_it():
+    """The worse half, and the one that put a false fact in the data rather than
+    merely omitting a true one. A numbered item always ends the previous parent;
+    when the dotted form was not recognised as an item, its rows kept inheriting
+    the heading above. Live instance: `10214` (fish processing, item `3.`) was
+    carrying `Pemungutan hasil hutan` — forest harvesting, item 2."""
+    text = (
+        "   2   Pemungutan hasil hutan:\n"
+        "        Rotan                  02302   V\n"
+        "   3.   Industri pemindangan ikan   10214   V\n"
+    )
+    h = governing_headings(text)
+    assert h[(1, 1)] == "Pemungutan hasil hutan", "the child of item 2 keeps its parent"
+    assert h[(1, 2)] is None, "item 3. is its own item and inherits nothing"
+
+
+def test_innocence_the_undotted_form_still_governs_its_children():
+    """The fix must not trade one form for the other."""
+    text = "   4   Industri pengolahan kedelai:\n       Industri tempe kedelai  10391  V\n"
+    h = governing_headings(text)
+    assert h[(1, 1)] == "Industri pengolahan kedelai"
+
+
+def test_innocence_a_dotted_line_that_is_not_an_item_number_is_not_a_heading():
+    """`1.500` in a row's text, or a page number, must not become a parent."""
+    text = "        Nilai investasi 1. 500 juta rupiah:\n        Sesuatu   12345   V\n"
+    h = governing_headings(text)
+    assert h[(1, 0)] is None and h[(1, 1)] is None
+
+
+def test_the_live_artifact_attributes_the_accommodation_family_and_not_the_fish():
+    """TRIPWIRE on the DATA for both halves of the dotted-number defect, on the
+    rows that carry commercial weight: the accommodation family is Bali Zero's
+    own market, and `Jasa Penginapan` is what says these rows are a family at
+    all. It carries NO restricting qualifier — which is the point: recovering a
+    parent is not the same as finding a restriction, and this test asserts the
+    parent is present AND that it does not narrow anything."""
+    rows = load_relation()["rows"]
+    by = {}
+    for r in rows:
+        by.setdefault(r["code"], []).append(r)
+    for code in ("55110", "55120", "55130", "55193", "55199"):
+        assert all(r.get("parent_heading") == "Jasa Penginapan" for r in by[code]), code
+    assert not _PARENT_QUALIFIER_RE.search("Jasa Penginapan"), (
+        "a recovered parent must not be assumed restrictive"
+    )
+    # …and the phantom is gone: item `3.` inherits nothing from item 2.
+    assert all(r.get("parent_heading") is None for r in by["10214"])
 
 
 # ---------------------------------------------------------------------------

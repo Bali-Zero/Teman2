@@ -203,7 +203,21 @@ def cell_at(line: str, tick_x: int) -> str:
 # amount of care further down can recover what was never in the row. Measured
 # 2026-08-06 against the vaulted PDF: three parents carry such a qualifier
 # ("... kurang dari 25 Ha", and twice "... teknologi sederhana dan madya").
-_NUMBERED_ITEM_RE = re.compile(r"^\s{0,14}\d{1,3}\s{2,}(\S.*?)\s*$")
+# The annex numbers its items in BOTH forms, interleaved and with no pattern:
+# `48.   Jasa Penginapan:` and `49     Aktivitas konsultansi ...` sit two rows
+# apart. Requiring whitespace immediately after the digits saw only the second,
+# which cost twice over: 4 colon-terminated PARENTS were invisible (`Jasa
+# Penginapan:` governs the whole accommodation family — hotels, homestays,
+# villas), and, worse, a dotted item no longer CLOSED the parent above it, so
+# its rows inherited a heading that does not govern them. `10214` (fish
+# processing, item `3.`) was carrying `Pemungutan hasil hutan` — forest
+# harvesting, item 2 — as its parent.
+#
+# Measured before the fix, both directions: of 76 line-positions whose
+# governing parent changes, ZERO lose a restricting parent and ZERO gain one.
+# So no verdict moved — the defect was live and had not yet bitten. That is the
+# reason to fix it now rather than the reason not to.
+_NUMBERED_ITEM_RE = re.compile(r"^\s{0,14}\d{1,3}\.?\s{1,}(\S.*?)\s*$")
 
 
 def governing_headings(text: str) -> dict[tuple[int, int], str | None]:
