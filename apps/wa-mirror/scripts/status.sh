@@ -27,8 +27,17 @@ for NAME in $ALL_NAMES; do
     else
         SES="linked"
         if [ -f "$LOGFILE" ]; then
-            LAST_LOGOUT=$(grep -nE "logged_out|code 401" "$LOGFILE" 2>/dev/null | tail -1 | cut -d: -f1)
-            LAST_CONN=$(grep -nE "session connected|session restored| connected:" "$LOGFILE" 2>/dev/null | tail -1 | cut -d: -f1)
+            # `|| VAR=""` is load-bearing, not defensive noise. This file runs
+            # under `set -eo pipefail`, and a grep that finds NOTHING exits 1;
+            # pipefail hands that 1 to the whole pipeline, and a BARE assignment
+            # from a failing command substitution aborts the script (W101, the
+            # scar this organism has now hit five times). The healthy case is
+            # exactly the empty one — a working account has no `logged_out` line
+            # — so without this the loop dies on the FIRST healthy account and
+            # the table renders empty: the check that exists to expose a dead
+            # session silently killed the tool that displays sessions.
+            LAST_LOGOUT=$(grep -nE "logged_out|code 401" "$LOGFILE" 2>/dev/null | tail -1 | cut -d: -f1) || LAST_LOGOUT=""
+            LAST_CONN=$(grep -nE "session connected|session restored| connected:" "$LOGFILE" 2>/dev/null | tail -1 | cut -d: -f1) || LAST_CONN=""
             if [ -n "$LAST_LOGOUT" ] && [ "$LAST_LOGOUT" -gt "${LAST_CONN:-0}" ]; then
                 SES="🔓LOGGED-OUT"
             fi
