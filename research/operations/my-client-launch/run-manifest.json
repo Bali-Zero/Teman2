@@ -1,0 +1,486 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "my-client-launch-2026-08-04-wave0",
+  "state": "WAVE_3_LOCAL_REAL_PATH_INDEPENDENTLY_VERIFIED_PRODUCTION_LIVE_PENDING_NO_GO",
+  "generated_at_utc": "2026-08-06T01:22:10Z",
+  "coordinator": "Sol",
+  "repository": {
+    "path": "/Users/nuzantara/nuzantara",
+    "app": "apps/mouth",
+    "backend": "apps/backend-rag",
+    "commit_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e",
+    "branch": "agent/nuzantara/infra/my-portal-local-qa",
+    "peer_head_agreement": true,
+    "local_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "mini_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "current_origin_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "origin_main_is_ancestor": false,
+    "origin_main_patch_integrated_via_cherry_pick": true,
+    "origin_main_source_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "app_diff_base_to_current_origin": "CANDIDATE_AHEAD_WITH_REVIEWED_PORTAL_FIXES_AND_QA_HARNESS",
+    "note": "The candidate was created through the worktree broker and never mutated the main checkout. The latest origin/main patch 26d33712d was contextually cherry-picked as 8117b1e2b. Its two-file Telegram environment-parser delta does not overlap apps/mouth or apps/backend-rag; an independent verifier confirmed the non-overlap, 9/9 dedicated tests and DOCSYNC OK."
+  },
+  "live": {
+    "origin": "https://my.balizero.com",
+    "provider": "Vercel",
+    "deployment_id": "dpl_HEg7YiQUngo5PvdHcEMd7mnaoEya",
+    "vercel_request_id": "sin1::7f2hl-1785777168492-cf13cea6e1e9",
+    "matched_path": "/portal/login-upgraded",
+    "observed_at_utc": "2026-08-03T17:12:48Z",
+    "deployed_commit_sha": null,
+    "deployment_sha_status": "BLOCKED_BY_VERCEL_PORTAL_READONLY_ACCESS"
+  },
+  "source_counts": {
+    "portal_pages": 29,
+    "portal_route_handlers": 2,
+    "authenticated_pages": 24,
+    "page_tests_present": 28,
+    "loading_boundaries": 22,
+    "error_boundaries": 22,
+    "portal_not_found_boundaries": 0
+  },
+  "baseline_results": {
+    "frontend_portal_unit": {
+      "result": "PASS",
+      "tests_passed": 303,
+      "tests_failed": 0,
+      "files_passed": 57,
+      "runtime": "node-v24.18.1"
+    },
+    "frontend_typecheck": {
+      "result": "PASS",
+      "runtime": "node-v24.18.1"
+    },
+    "frontend_lint": {
+      "result": "FAIL",
+      "dependency_integrity_fix": "READY_FOR_INTEGRATION",
+      "resolved_eslint_before": "10.3.0",
+      "resolved_eslint_after": "9.39.5",
+      "errors": 5,
+      "warnings": 160,
+      "note": "The runner crash is fixed in its isolated worktree; lint now executes and exposes five real rule violations."
+    },
+    "backend_import_chain": {
+      "result": "PASS",
+      "evidence": "IMPORT_OK"
+    },
+    "backend_focused_combined": {
+      "result": "PASS_AFTER_FIX",
+      "collected": 114,
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "root_cause": "order-dependent test config contamination",
+      "fix": "test settings now define jwt_access_token_expire_hours explicitly"
+    },
+    "backend_auth_isolated": {
+      "result": "PASS",
+      "passed": 18
+    },
+    "backend_portal_remainder_isolated": {
+      "result": "PASS",
+      "passed": 96
+    },
+    "backend_legacy_portal_simple": {
+      "result": "EVIDENCE_INVALID",
+      "passed": 4,
+      "skipped": 29,
+      "skip_ratio_percent": 87.9
+    }
+  },
+  "wave_2_candidate_results": {
+    "candidate_commit_sha": "71745e423d77c4f4178abab8ee4ac1660d38e261",
+    "frontend_portal_and_auth_regression": {
+      "result": "PASS",
+      "files_passed": 63,
+      "tests_passed": 446,
+      "tests_failed": 0,
+      "runtime": "node-v24.18.1",
+      "independent_unique_tests_passed": 476,
+      "independent_portal_auth_tests_passed": 375,
+      "independent_retest_commit_sha": "f99583f96"
+    },
+    "frontend_lint": {
+      "result": "PASS_WITH_DEBT",
+      "errors": 0,
+      "warnings": 160,
+      "portal_warning_debt_open": true,
+      "generated_browser_artifact_gate": "VERIFIED",
+      "independent_retest_commit_sha": "71745e423d77c4f4178abab8ee4ac1660d38e261"
+    },
+    "frontend_typecheck": {
+      "result": "PASS",
+      "runtime": "node-v24.18.1"
+    },
+    "frontend_production_build": {
+      "result": "PASS",
+      "pages_generated": 1754,
+      "public_login_bundle_gate": "PASS",
+      "public_login_assets_inspected": 7,
+      "internal_api_route_prefixes_found": 0
+    },
+    "frontend_production_dependency_audit": {
+      "result": "PASS",
+      "vulnerabilities": 0,
+      "brace_expansion_resolved": "5.0.9",
+      "independent_retest": "VERIFIED"
+    },
+    "backend_independent_regression": {
+      "result": "PASS",
+      "tests_passed": 545,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "commit_sha": "f99583f96",
+      "reviewer": "backend_wave2_verifier",
+      "breakdown": {
+        "lkpm": "205/205",
+        "portal_boundary_and_upload": "67/67",
+        "auth_session_and_websocket": "37/37",
+        "order_independence": "104/104 in both orders",
+        "legacy_portal": "28/28"
+      }
+    },
+    "docx_release_regression": {
+      "result": "PASS",
+      "endpoint_matrix": "5/5",
+      "member_safety": "3/3",
+      "focused_suite": "30/30",
+      "rejected_input_service_calls": 0,
+      "reviewer": "docx_release_reviewer"
+    },
+    "production_browser_matrix": {
+      "result": "PASS",
+      "runtime": "node-v24.18.1",
+      "retries": 0,
+      "tests_passed": 24,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "tests_flaky": 0,
+      "chromium": "6/6",
+      "firefox": "6/6",
+      "webkit": "6/6",
+      "mobile_chrome": "6/6",
+      "unhandled_api_calls": 0,
+      "critical_asset_failures": 0,
+      "browser_console_and_page_errors": 0,
+      "focused_webkit_repeats": ["6/6", "6/6"],
+      "independent_reviewer": "frontend_wave2_verifier",
+      "independent_retest_commit_sha": "71745e423d77c4f4178abab8ee4ac1660d38e261"
+    },
+    "runtime_edge_gate": {
+      "anonymous_protected_deep_link": "307_BEFORE_RENDER",
+      "redirect_query_preserved": true,
+      "portal_csp": "ENFORCING",
+      "prime_portal_csp_absent": true,
+      "independent_retest": "VERIFIED"
+    },
+    "independent_verification": {
+      "auth_redirect_canonicalization": "VERIFIED",
+      "portal_only_csp": "VERIFIED",
+      "production_dependency_advisory": "VERIFIED",
+      "lkpm_receipt_and_authorization": "VERIFIED",
+      "public_auth_bundle_and_telemetry": "VERIFIED",
+      "session_expiry_and_revocation": "VERIFIED",
+      "zod_csp_jitless": "VERIFIED",
+      "production_browser_matrix": "VERIFIED",
+      "authenticated_prod_like_journeys": "BLOCKED_QA-BE-003"
+    }
+  },
+  "live_public_sweep": {
+    "result": "NO_GO",
+    "unauthenticated_auth_gate": "PASS",
+    "authenticated_authorization": "UNVERIFIED",
+    "client_safe_bundle_gate": "FAIL",
+    "csp_gate": "FAIL",
+    "login_accessibility_gate": "FAIL",
+    "viewports_verified": [360, 390, 768, 1024, 1440],
+    "responsive_overflow_observed": false,
+    "application_console_errors_excluding_test_aborts": 0,
+    "csp_report_only_violations": 1,
+    "unused_font_preload_warnings": 2
+  },
+  "live_authenticated_sweep": {
+    "result": "NO_GO",
+    "observed_at_utc": "2026-08-04T22:19:51Z",
+    "account_reference": "operator-provided account; credential and identifiers omitted",
+    "safety": "read-only route navigation; no client records, response bodies, screenshots, traces, storage, cookies or tokens captured",
+    "routes_discovered": 14,
+    "routes_navigated": 14,
+    "authenticated_portal_routes_navigated": 12,
+    "route_navigation_result": "14/14 reached the requested route during the authenticated sweep",
+    "clean_portal_routes": [
+      "/portal/billing",
+      "/portal/companies",
+      "/portal/family",
+      "/portal/lkpm",
+      "/portal/messages",
+      "/portal/process",
+      "/portal/profile",
+      "/portal/settings",
+      "/portal/taxes",
+      "/portal/vault"
+    ],
+    "failing_portal_routes": [
+      "/portal",
+      "/portal/visa"
+    ],
+    "dashboard_evidence": {
+      "api_path": "/api/portal/dashboard",
+      "http_status": 404,
+      "reproduced_requests": 2,
+      "loading_indicators_after_settle": 11,
+      "alert_present": false,
+      "retry_present": false
+    },
+    "visa_evidence": {
+      "reproduction": "3/3",
+      "visible_error_alert": true,
+      "actionable_retry_control": false,
+      "console_errors_per_run": 5,
+      "client_not_found_signatures_per_run": 2,
+      "telemetry_429_per_run": 1
+    },
+    "session_lifecycle": {
+      "back": "PASS",
+      "reload": "PASS",
+      "deep_link_after_browser_restart": "PASS",
+      "logout_immediate_revocation": "FAIL",
+      "logout_after_browser_restart": "PASS"
+    },
+    "finding_ids": [
+      "BZP-LIVE-DASHBOARD-404-001",
+      "BZP-LIVE-VISA-CLIENT-001",
+      "BZP-LIVE-LOGOUT-SESSION-001",
+      "BZP-LIVE-OBSERVABILITY-429-001"
+    ]
+  },
+  "wave_3_candidate_results": {
+    "candidate_commit_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e",
+    "result": "LOCAL_SYNTHETIC_REAL_PATH_INDEPENDENTLY_VERIFIED_PRODUCTION_LIVE_PENDING",
+    "lineage": {
+      "current_origin_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+      "refreshed_candidate_sha": "508b8b7565865410ab51f99ae1701f5df37ce588",
+      "prodlike_harness_integration_sha": "0a3ac16a1db902314c513ddfc260d2f5434d89da",
+      "pre_kbli_main_refresh_sha": "5cddbbb6d0e884a8b9890f15ae571f54d1c8481d",
+      "independent_full_gate_sha": "12f0e95d3bdbfb755f5a36a947351ac5cd8422ae",
+      "final_main_refresh_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e"
+    },
+    "findings": {
+      "BZP-LIVE-DASHBOARD-404-001": "VERIFIED_CODE_AND_REGRESSION",
+      "BZP-LIVE-VISA-CLIENT-001": "VERIFIED_CODE_AND_REGRESSION",
+      "BZP-LIVE-LOGOUT-SESSION-001": "VERIFIED_CODE_AND_REGRESSION"
+    },
+    "focused_regression": {
+      "result": "PASS",
+      "files_passed": 5,
+      "tests_passed": 59,
+      "tests_failed": 0,
+      "supplemental_storage_tests_passed": 2,
+      "runtime": "node-v24.18.1"
+    },
+    "frontend_typecheck": "PASS",
+    "frontend_focused_lint": {
+      "result": "PASS_WITH_PREEXISTING_WARNINGS",
+      "errors": 0,
+      "preexisting_warnings": 5
+    },
+    "frontend_prettier": "PASS",
+    "frontend_production_build": {
+      "result": "PASS",
+      "pages_generated": 1754,
+      "public_login_assets_inspected": 7,
+      "independent_retest_commit_sha": "12f0e95d3bdbfb755f5a36a947351ac5cd8422ae"
+    },
+    "production_browser_matrix": {
+      "result": "PASS",
+      "scope": "optimized frontend runtime with synthetic localStorage and intercepted API responses; not evidence of backend, database or real login contracts",
+      "retries": 0,
+      "tests_passed": 24,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "tests_flaky": 0,
+      "chromium": "6/6",
+      "firefox": "6/6",
+      "webkit": "6/6",
+      "mobile_chrome": "6/6"
+    },
+    "prodlike_real_path_harness": {
+      "result": "PASS_LOCAL_SYNTHETIC_CRITICAL_AUTH_SLICE",
+      "harness_commit_sha": "b24e92f56cc7e316fed41c6623ef9038df42ee4a",
+      "fixture_commit_sha": "4a53b1dff0d1256d7a1f78f71fc86b1e20e701c6",
+      "preflight_tests": "13/13 PASS",
+      "playwright_discovery": "1 test in 1 file",
+      "journey": "real synthetic login to dashboard, refresh, authenticated deep link, logout and protected-route denial",
+      "api_interception": false,
+      "workers": 1,
+      "retries": 0,
+      "production_endpoint_policy": "hard reject my.balizero.com and nuzantara-rag.fly.dev; backend must be loopback with explicit port or an allowlisted non-production hostname",
+      "current_environment_proof": "ephemeral loopback PostgreSQL, Redis and FastAPI runtime seeded only with reserved example.com synthetic data; runtime values never recorded",
+      "real_journey_execution": "AUTHOR_1_OF_1_PASS; INDEPENDENT_1_OF_1_PASS_IN_55.9S",
+      "production_build": "PASS_1754_OF_1754_STATIC_PAGES",
+      "public_login_bundle": "PASS_7_ASSETS_ZERO_INTERNAL_API_PREFIXES",
+      "external_writes": 0,
+      "non_qa_network_requests": 0,
+      "browser_console_and_page_errors": 0,
+      "http_5xx": 0,
+      "independent_reviewer": "portal_launch_independent_verifier",
+      "independent_retest_commit_sha": "12f0e95d3bdbfb755f5a36a947351ac5cd8422ae"
+    },
+    "frontend_portal_regression": {
+      "result": "PASS",
+      "files_passed": 66,
+      "tests_passed": 370,
+      "focused_changed_tests_passed": 145,
+      "tests_failed": 0
+    },
+    "backend_portal_regression": {
+      "result": "PASS",
+      "files_passed": 36,
+      "tests_passed": 523,
+      "tests_failed": 0,
+      "integration_contract_tests": "14/14",
+      "fixture_seeder_tests": "20/20"
+    },
+    "dependency_audit": {
+      "production_dependencies": "0 vulnerabilities",
+      "all_dependencies": "0 vulnerabilities at independent retest",
+      "independent_retest_commit_sha": "12f0e95d3bdbfb755f5a36a947351ac5cd8422ae",
+      "note": "advisories are time-varying and must be rerun at delivery"
+    },
+    "observability_429_review": {
+      "result": "SOURCE_NOISE_MITIGATED_ROOT_CAUSE_BLOCKED",
+      "candidate_evidence": "Visa 404 propagates as ApiError status 404 and returns before logger.error or Sentry.captureException",
+      "tests": "42/42 Visa/logger/Sentry plus 34/34 API status/portal API",
+      "root_cause_status": "BLOCKED_BY_SENTRY_PORTAL_READONLY_ACCESS",
+      "independent_reviewer": "portal_observability_429_audit"
+    },
+    "delivery_independent_verification": {
+      "result": "VERIFIED_LOCAL_PRODLIKE",
+      "reviewer": "portal_launch_independent_verifier",
+      "full_gate_sha": "12f0e95d3bdbfb755f5a36a947351ac5cd8422ae",
+      "final_candidate_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e",
+      "final_delta": "VERIFIED_NON_OVERLAPPING_WITH_PORTAL_SOURCE_AND_HARNESS",
+      "frontend_full_suite": "330 files / 3047 tests PASS",
+      "frontend_portal_suite": "66 files / 370 tests PASS",
+      "backend_portal_shard": "36 files / 523 tests PASS",
+      "production_build": "1754/1754 static pages PASS",
+      "browser_matrix": "24/24 PASS; zero retries",
+      "prodlike_real_path": "1/1 PASS in 55.9s",
+      "dependency_audits": "0 production vulnerabilities; 0 all-dependency vulnerabilities",
+      "final_delta_test": "9/9 PASS; DOCSYNC OK",
+      "cleanup": "ephemeral services removed and test ports closed"
+    },
+    "independent_reviewer": "portal_launch_independent_verifier",
+    "independent_retest_commit_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e",
+    "production_live_retest": "PENDING_NOT_VERIFIED",
+    "safety": "no deploy, main push, merge, production mutation, source edit by reviewer or PII evidence capture; feature-branch draft delivery permitted after verification"
+  },
+  "initial_artifact_hashes_sha256": {
+    "route_manifest": "51ad9ddcd20a3ff7af353e749f13c491dd08e1396d730b4b41be9f2051f853a2",
+    "coverage_map": "cf64c436e3ca80887d8402a674c157a5e7b63a6a757705af1898249cf04ad854",
+    "action_api_map": "2ff0195d96394ee50f9dc6f6eafb197716018bf0e07e92f6ddf9974010f4971e",
+    "bug_ledger": "dbe9d00750b2677f004f077f064d386cc218138e8f8ad6b45b61f42970e54127"
+  },
+  "current_artifact_hashes_sha256": {
+    "route_manifest": "51ad9ddcd20a3ff7af353e749f13c491dd08e1396d730b4b41be9f2051f853a2",
+    "coverage_map": "408f10fc986998e68ee2b6a1f2750ea580db0be0d0bf6f8028302a88af439995",
+    "action_api_map": "c7c0476c4e15d271603fbfe3f5a373095878bec3699e13e02f638c5876db3af0",
+    "bug_ledger": "aa9f1ccd5ab15420ac9e54e076807c1178d42cf1286347b28a4b5f245cb0b72c"
+  },
+  "finding_counts": {
+    "total": 43,
+    "ready": 38,
+    "verified": 3,
+    "classified": 1,
+    "blocked": 1,
+    "open_p0": 0,
+    "open_p1": 3,
+    "open_p2": 1,
+    "open_blockers": 1,
+    "production_open_verified_p1": 3
+  },
+  "owner_defaults": {
+    "critical_journeys": [
+      "login",
+      "dashboard",
+      "process",
+      "vault_upload_download",
+      "messages",
+      "companies",
+      "visa",
+      "taxes",
+      "lkpm",
+      "billing",
+      "profile_family_settings"
+    ],
+    "p2_acceptance_authority": "owner_only",
+    "p2_max_days": 30,
+    "legacy_routes": "out_of_scope_unless_linked_from_portal",
+    "accessibility": "voiceover_plus_remote_nvda_before_go",
+    "field_performance_fallback": "five_run_lab_median_then_seven_day_rum_gate",
+    "generator_is_not_grader": true
+  },
+  "matrix": {
+    "browsers": ["chromium", "firefox", "webkit"],
+    "viewports_px": [360, 390, 768, 1024, 1440],
+    "network_states": ["nominal", "slow", "offline", "timeout", "partial_failure"],
+    "session_states": ["valid", "expired", "malformed", "revoked", "restored"],
+    "variation_strategy": "all_actions_once_plus_risk_based_pairwise; full_negative_matrix_for_auth_rbac_tenant"
+  },
+  "required_access_names_missing": [
+    "VERCEL_PORTAL_READONLY_ACCESS",
+    "FLY_BACKEND_READONLY_ACCESS",
+    "SENTRY_PORTAL_READONLY_ACCESS",
+    "GA4_PORTAL_READONLY_ACCESS"
+  ],
+  "effective_read_capabilities": {
+    "vercel_portal": "BLOCKED; project metadata exists but deployment identity and SHA cannot be inspected",
+    "fly_backend": "AVAILABLE through authenticated CLI read operations; dedicated least-privilege label FLY_BACKEND_READONLY_ACCESS remains absent and effective scope is unverified",
+    "sentry_portal": "BLOCKED; CLI and read-only credential are absent",
+    "ga4_portal": "BLOCKED; active gcloud context and Analytics API exist but portal account/property read configuration is absent"
+  },
+  "synthetic_fixture_status": "ACTIVE_CLIENT_LOCAL_SLICE_AVAILABLE_EPHEMERALLY; REMAINING_STATES_AND_SINKS_ABSENT",
+  "wave_2_worktrees": {
+    "frontend_login_safety": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-login-safety-pro",
+    "frontend_csp_safety": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-csp-safety-pro",
+    "frontend_lockfile_integrity": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-lockfile-integrity-pro",
+    "frontend_lint_errors": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-lint-errors-pro",
+    "backend_lkpm_authz": "/Users/nuzantara/nuzantara/.worktrees/backend-rag-my-lkpm-authz-pro",
+    "backend_client_redaction": "/Users/nuzantara/nuzantara/.worktrees/backend-rag-my-client-redaction-pro",
+    "backend_qa_integrity": "/Users/nuzantara/nuzantara/.worktrees/backend-rag-my-qa-integrity-pro",
+    "integration_candidate_original": "/Users/nuzantara/nuzantara/.worktrees/infra-my-launch-candidate",
+    "integration_candidate_current_main": "/Users/nuzantara/nuzantara/.worktrees/infra-my-launch-current-main",
+    "frontend_public_auth_bundle": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-public-bundle-leak",
+    "frontend_portal_csp_scope": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-portal-csp-scope",
+    "frontend_proxy_auth_gate": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-portal-proxy-auth-gate",
+    "backend_lkpm_drive_leak": "/Users/nuzantara/nuzantara/.worktrees/backend-rag-my-lkpm-drive-leak",
+    "backend_auth_session_enforcement": "/Users/nuzantara/nuzantara/.worktrees/backend-rag-my-auth-session-enforcement",
+    "playwright_production_harness": "/Users/nuzantara/nuzantara/.worktrees/infra-my-playwright-prod-harness",
+    "frontend_zod_csp_jitless": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-zod-csp-jitless",
+    "frontend_live_data_states": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-live-data-states",
+    "frontend_live_logout_invalidation": "/Users/nuzantara/nuzantara/.worktrees/frontend-my-live-logout-invalidation",
+    "playwright_prodlike_real_path_harness": "/Users/nuzantara/nuzantara/.worktrees/infra-my-portal-prodlike-harness"
+  },
+  "required_synthetic_fixture_names_missing": [
+    "MY_PORTAL_SYNTHETIC_TENANT_ID",
+    "MY_PORTAL_SYNTHETIC_EMPTY_ACCOUNT",
+    "MY_PORTAL_SYNTHETIC_EXPIRED_SESSION",
+    "MY_PORTAL_SYNTHETIC_WRONG_TENANT_SESSION",
+    "MY_PORTAL_SYNTHETIC_MAGIC_LINK_INBOX",
+    "MY_PORTAL_MAGIC_LINK_MAIL_SINK",
+    "MY_PORTAL_SUPPORT_MAIL_SINK",
+    "MY_PORTAL_SYNTHETIC_DOCUMENT_FIXTURE",
+    "MY_PORTAL_EXTERNAL_SIDE_EFFECT_SINK"
+  ],
+  "required_prodlike_endpoint_names_missing": [],
+  "safety": {
+    "production_db": "read_only",
+    "real_pii": "forbidden",
+    "external_side_effects": "sink_or_stub_only",
+    "repo_main_checkout_mutation": "forbidden",
+    "main_push_merge_deploy": "forbidden",
+    "feature_branch_draft_pr": "permitted_after_independent_verification",
+    "evidence_redaction_required": true
+  },
+  "current_launch_verdict": "NO_GO"
+}

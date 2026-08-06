@@ -615,6 +615,35 @@ function collectBrowserErrors(page: Page): string[] {
   return errors;
 }
 
+function collectCriticalResourceFailures(page: Page): string[] {
+  const failures: string[] = [];
+  const criticalResourceTypes = new Set([
+    "document",
+    "stylesheet",
+    "script",
+    "font",
+    "image",
+  ]);
+  page.on("requestfailed", (request) => {
+    if (!criticalResourceTypes.has(request.resourceType())) return;
+    failures.push(
+      `${request.method()} ${request.url()} (${request.failure()?.errorText ?? "unknown failure"})`,
+    );
+  });
+  page.on("response", (response) => {
+    if (
+      response.status() < 400 ||
+      !criticalResourceTypes.has(response.request().resourceType())
+    ) {
+      return;
+    }
+    failures.push(
+      `${response.request().method()} ${response.url()} (HTTP ${response.status()})`,
+    );
+  });
+  return failures;
+}
+
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => {
     const doc = document.documentElement;
@@ -624,6 +653,11 @@ async function assertNoHorizontalOverflow(page: Page) {
 }
 
 test.describe("portal client ready smoke", () => {
+  // API responses in this suite are fulfilled through Playwright routes.
+  // Blocking the PWA worker keeps those routes observable in every engine,
+  // including WebKit once the production build registers /sw.js.
+  test.use({ serviceWorkers: "block" });
+
   test.beforeEach(async ({ context }) => {
     await seedClientSession(context);
   });
@@ -697,7 +731,9 @@ test.describe("portal client ready smoke", () => {
       page.getByText("Active Processes", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Documents Required").first()).toBeVisible();
-    await expect(page.getByText("Investor KITAS Renewal")).toBeVisible();
+    await expect(
+      page.getByText("Investor KITAS Renewal").first(),
+    ).toBeVisible();
     await expect(
       page.getByText("Passport renewal scan", { exact: true }).last(),
     ).toBeVisible();
@@ -745,6 +781,7 @@ test.describe("portal client ready smoke", () => {
     test.setTimeout(120_000);
 
     const errors = collectBrowserErrors(page);
+    const criticalResourceFailures = collectCriticalResourceFailures(page);
     const unhandledApiCalls: string[] = [];
     await mockPortalApi(context, unhandledApiCalls);
 
@@ -774,10 +811,18 @@ test.describe("portal client ready smoke", () => {
           page.getByRole("main").getByText(section.text).first(),
         ).toBeVisible();
         await assertNoHorizontalOverflow(page);
+
+        // Every portal document mounts navigation links that trigger Next.js RSC
+        // prefetches and lazy client chunks. A following top-level navigation can
+        // otherwise interrupt those requests; WebKit surfaces the interruption as
+        // a page error. Waiting for an actual idle lifecycle proves that the page's
+        // requests settled before moving to the next independently tested route.
+        await page.waitForLoadState("networkidle");
       });
     }
 
     expect(unhandledApiCalls).toEqual([]);
+    expect(criticalResourceFailures).toEqual([]);
     expect(errors).toEqual([]);
   });
 
@@ -794,7 +839,7 @@ test.describe("portal client ready smoke", () => {
 
     await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Vault" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Chat" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Messages/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "Profile" })).toBeVisible();
     await expect(page.getByText("Upload passport renewal scan")).toBeVisible();
 

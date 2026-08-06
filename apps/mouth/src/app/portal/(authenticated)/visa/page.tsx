@@ -13,12 +13,20 @@
  * theme copper via color-mix. No hardcoded colors.
  */
 
-import React, { useEffect, useState } from "react";
-import { Plane, Calendar, FileText, Clock } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Plane,
+  Calendar,
+  FileText,
+  Clock,
+  RefreshCw,
+  UserRoundX,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { StatusBadge, PortalEmptyState } from "@/components/portal";
 import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import type {
@@ -92,21 +100,32 @@ function VisaMasthead() {
   );
 }
 
+function getStatusCode(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  const candidate = error as { statusCode?: unknown; status?: unknown };
+  if (typeof candidate.statusCode === "number") return candidate.statusCode;
+  if (typeof candidate.status === "number") return candidate.status;
+  return undefined;
+}
+
 export default function VisaPage() {
   const router = useRouter();
-  const { error } = useToast();
+  const { error: showErrorToast } = useToast();
   const [visaInfo, setVisaInfo] = useState<VisaInfo | null>(null);
   const [needsClientSelection, setNeedsClientSelection] = useState(false);
+  const [needsClientConnection, setNeedsClientConnection] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const hasStartedInitialLoad = useRef(false);
 
-  useEffect(() => {
-    loadVisaInfo();
-  }, []);
-
-  const loadVisaInfo = async () => {
+  const loadVisaInfo = useCallback(async () => {
     try {
       setIsLoading(true);
+      setVisaInfo(null);
       setNeedsClientSelection(false);
+      setNeedsClientConnection(false);
+      setLoadFailed(false);
       const data = await api.portal.getVisaStatus();
       setVisaInfo(data);
     } catch (err) {
@@ -117,10 +136,22 @@ export default function VisaPage() {
         setNeedsClientSelection(true);
         return;
       }
+
+      // The backend contract uses 404 when the linked client row is missing
+      // or inactive. This is an expected account-data state, not a runtime
+      // failure: keep backend text and internal identifiers out of the UI/log.
+      if (getStatusCode(err) === 404) {
+        setNeedsClientConnection(true);
+        return;
+      }
+
+      setLoadFailed(true);
+      const message = err instanceof Error ? err.message : "";
       const is403 =
-        (err as Error).message === "Forbidden" ||
-        (err as Error).message.includes("HTTP 403");
-      error(
+        getStatusCode(err) === 403 ||
+        message === "Forbidden" ||
+        message.includes("HTTP 403");
+      showErrorToast(
         "Failed to load visa information",
         is403 ? "Your account needs verification." : "Please try again later",
         is403
@@ -138,7 +169,13 @@ export default function VisaPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router, showErrorToast]);
+
+  useEffect(() => {
+    if (hasStartedInitialLoad.current) return;
+    hasStartedInitialLoad.current = true;
+    void loadVisaInfo();
+  }, [loadVisaInfo]);
 
   if (isLoading) {
     return (
@@ -195,23 +232,50 @@ export default function VisaPage() {
     );
   }
 
-  if (!visaInfo) {
+  if (loadFailed) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
         <VisaMasthead />
         <PortalEmptyState
           icon={Plane}
+          title="Visa information unavailable"
+          description="We couldn't load your visa information. Please try again."
+        />
+        <Button onClick={() => void loadVisaInfo()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (!visaInfo) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <VisaMasthead />
+        <PortalEmptyState
+          icon={needsClientConnection ? UserRoundX : Plane}
           title={
             needsClientSelection
               ? "Select a client to view visa information"
-              : "No visa information"
+              : needsClientConnection
+                ? "Client profile connection needed"
+                : "No visa information"
           }
           description={
             needsClientSelection
               ? "Choose a client from the portal selector to inspect their immigration status."
-              : "Visa details will appear here once your immigration process begins."
+              : needsClientConnection
+                ? "Your portal account is signed in, but it is not connected to an active client profile yet. Contact your Bali Zero team to complete the connection, then try again."
+                : "Visa details will appear here once your immigration process begins."
           }
         />
+        {(needsClientSelection || needsClientConnection) && (
+          <Button onClick={() => void loadVisaInfo()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try again
+          </Button>
+        )}
       </div>
     );
   }

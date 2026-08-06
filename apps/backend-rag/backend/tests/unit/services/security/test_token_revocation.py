@@ -43,7 +43,7 @@ class TestTokenRevocationService:
 
         mock_redis = AsyncMock()
         svc = TokenRevocationService(redis_client=mock_redis)
-        await svc.revoke_all_user_tokens("user@balizero.com", reason="password_change")
+        await svc.revoke_all_user_tokens("User@BaliZero.com", reason="password_change")
         mock_redis.setex.assert_called_once_with(
             "revoked_user:user@balizero.com", 86400, "password_change"
         )
@@ -55,23 +55,30 @@ class TestTokenRevocationService:
         mock_redis = AsyncMock()
         mock_redis.exists.return_value = 1
         svc = TokenRevocationService(redis_client=mock_redis)
-        result = await svc.is_user_revoked("user@balizero.com")
+        result = await svc.is_user_revoked("User@BaliZero.com")
         assert result is True
+        mock_redis.exists.assert_awaited_once_with("revoked_user:user@balizero.com")
 
     @pytest.mark.asyncio
-    async def test_graceful_on_redis_unavailable(self):
-        from backend.services.security.token_revocation import TokenRevocationService
+    async def test_fails_closed_on_redis_unavailable(self):
+        from backend.services.security.token_revocation import (
+            RevocationStoreUnavailable,
+            TokenRevocationService,
+        )
 
         svc = TokenRevocationService(redis_client=None)
-        result = await svc.is_revoked("jti-123")
-        assert result is False
+        with pytest.raises(RevocationStoreUnavailable):
+            await svc.is_revoked("jti-123")
 
     @pytest.mark.asyncio
-    async def test_graceful_on_redis_error(self):
-        from backend.services.security.token_revocation import TokenRevocationService
+    async def test_fails_closed_on_redis_error(self):
+        from backend.services.security.token_revocation import (
+            RevocationStoreUnavailable,
+            TokenRevocationService,
+        )
 
         mock_redis = AsyncMock()
         mock_redis.exists.side_effect = ConnectionError("Redis down")
         svc = TokenRevocationService(redis_client=mock_redis)
-        result = await svc.is_revoked("jti-123")
-        assert result is False
+        with pytest.raises(RevocationStoreUnavailable):
+            await svc.is_revoked("jti-123")

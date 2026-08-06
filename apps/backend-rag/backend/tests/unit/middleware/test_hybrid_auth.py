@@ -23,6 +23,21 @@ from middleware.hybrid_auth import (
 )
 
 
+@pytest.fixture(autouse=True)
+def available_revocation_store():
+    """Make successful JWT tests use an available, empty revocation store."""
+    async_client = MagicMock()
+    async_client.exists = AsyncMock(return_value=0)
+    manager = MagicMock()
+    manager.get_async_client.return_value = async_client
+
+    with patch(
+        "backend.core.redis_manager.RedisManager.get_instance",
+        return_value=manager,
+    ):
+        yield
+
+
 @pytest.fixture
 def mock_app():
     return MagicMock()

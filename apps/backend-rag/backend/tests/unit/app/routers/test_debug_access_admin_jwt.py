@@ -15,6 +15,8 @@ the configured jwt_secret_key, so they prove the gate by CONTENT.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
@@ -30,7 +32,12 @@ def _make_jwt(role: str, secret: str) -> str:
     from jose import jwt
 
     return jwt.encode(
-        {"email": "u@balizero.com", "role": role, "type": "access"},
+        {
+            "email": "u@balizero.com",
+            "role": role,
+            "type": "access",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        },
         secret,
         algorithm="HS256",
     )

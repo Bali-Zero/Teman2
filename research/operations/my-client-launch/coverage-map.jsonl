@@ -1,0 +1,13 @@
+{"category":"route_navigation_deeplink","denominator":"all in-scope route and navigation actions","status":"IN_PROGRESS","owner_lane":"L01"}
+{"category":"auth_session_authorization","denominator":"all role, account, token, CSRF and tenant states","status":"BLOCKED_FIXTURES","owner_lane":"L02"}
+{"category":"critical_client_journeys","denominator":"11 owner-approved journeys","status":"BLOCKED_FIXTURES","owner_lane":"L03"}
+{"category":"forms_upload_download","denominator":"all form controls and file actions","status":"PENDING","owner_lane":"L04"}
+{"category":"api_contracts_degradation","denominator":"frontend calls mapped to runtime backend operations","status":"IN_PROGRESS","owner_lane":"L05"}
+{"category":"responsive_browser_visual","denominator":"3 engines x 5 widths with pairwise action coverage","status":"PENDING_BROWSER_INSTALL","owner_lane":"L06"}
+{"category":"accessibility_keyboard_at","denominator":"all controls plus route-level axe and manual checks","status":"IN_PROGRESS_PUBLIC_ONLY","owner_lane":"L07"}
+{"category":"performance_web_vitals","denominator":"critical journeys and route classes","status":"PENDING_FIXTURES","owner_lane":"L08"}
+{"category":"privacy_security_leakage","denominator":"all UI, response, console, trace and telemetry surfaces","status":"IN_PROGRESS","owner_lane":"L09"}
+{"category":"loading_empty_offline_failure","denominator":"all routes and mutating actions","status":"PENDING","owner_lane":"L10"}
+{"category":"content_language_trust","denominator":"all client-visible copy and state messages","status":"PENDING","owner_lane":"L11"}
+{"category":"observability_incident_diagnosis","denominator":"critical journeys and one synthetic failure per integration","status":"BLOCKED_READONLY_ACCESS","owner_lane":"L12"}
+{"category":"critical_client_journeys","scope":"login_dashboard_reload_session_restore_process_logout_protected_deep_link","role":"synthetic_active_client","browser":"chromium","runtime":"optimized frontend plus loopback FastAPI, disposable PostgreSQL and Redis","status":"PASS_LOCAL_PRODLIKE_REAL_PATH","evidence_commit":"a908b2a7f4a4abc6373bce2b9113347ce563aa75","evidence":"1/1 in 57.6s; zero API interception, external writes, non-QA network, console/page errors or 5xx","remaining":"other critical journeys, roles, account states, browsers, viewports and degraded networks remain gated by QA-BE-003"}

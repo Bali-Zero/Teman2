@@ -271,7 +271,7 @@
     },
     "forgot_password": {
       "title": "Recover access",
-      "sent": "We received your request. Our team will contact you."
+      "instructions": "Contact our team to recover access. No request has been sent yet."
     }
   },
   "book": {

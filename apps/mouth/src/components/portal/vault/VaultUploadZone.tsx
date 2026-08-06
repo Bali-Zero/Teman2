@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Upload } from "lucide-react";
 import { useVaultUpload } from "@/hooks/useVaultUpload";
+import { UPLOAD_ACCEPT, UPLOAD_FORMAT_LABEL } from "@/lib/vault/uploadLimits";
 
 interface Props {
   practiceId?: number | string | null;
@@ -75,6 +76,12 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
         <p className="text-sm text-[var(--bz-text-2)] mb-3">
           Drag & drop here, or
         </p>
+        <p
+          id="vault-upload-formats"
+          className="text-xs text-[var(--bz-text-3)] mb-3"
+        >
+          {UPLOAD_FORMAT_LABEL}
+        </p>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -85,9 +92,11 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
         <input
           ref={inputRef}
           type="file"
+          accept={UPLOAD_ACCEPT}
           className="sr-only"
           onChange={(e) => handleFiles(e.target.files)}
           aria-label="Choose file to upload"
+          aria-describedby="vault-upload-formats"
         />
         {state.status === "uploading" && (
           <p role="status" className="text-xs text-[var(--bz-text-2)] mt-3">

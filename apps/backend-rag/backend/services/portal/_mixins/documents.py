@@ -42,6 +42,16 @@ logger = get_logger(__name__)
 class PortalDocumentsMixin:
     """Client-portal document listing + upload pipeline (Drive / OCR / virus scan)."""
 
+    _CLIENT_UPLOAD_RESPONSE_FIELDS = (
+        "id",
+        "type",
+        "name",
+        "status",
+        "size_kb",
+        "created_at",
+        "expiry_date",
+    )
+
     pool: asyncpg.Pool
     _metrics: dict[str, int]
     _upload_rate_limits: dict[int, list[float]]
@@ -62,6 +72,11 @@ class PortalDocumentsMixin:
             name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
             filename = name[:195] + ("." + ext if ext else "")
         return filename
+
+    @classmethod
+    def _client_safe_upload_response(cls, result: dict[str, Any]) -> dict[str, Any]:
+        """Project an upload result onto the fields safe for portal clients."""
+        return {key: result[key] for key in cls._CLIENT_UPLOAD_RESPONSE_FIELDS if key in result}
 
     @staticmethod
     def _classify_document_category(document_type: str, file_name: str) -> str:
@@ -773,25 +788,17 @@ class PortalDocumentsMixin:
             if ocr_result.get("success"):
                 self._metrics["ocr_processed"] += 1
 
-            return {
-                "id": doc["id"],
-                "type": doc["document_type"],
-                "name": doc["file_name"],
-                "status": doc["status"],
-                "size_kb": file_size_kb,
-                "created_at": doc["created_at"].isoformat(),
-                "expiry_date": expiry_result.get("expiry_date"),
-                "extracted_text_preview": (
-                    ocr_result.get("text", "")[:200] + "..."
-                    if ocr_result.get("text") and len(ocr_result.get("text", "")) > 200
-                    else ocr_result.get("text", "")
-                ),
-                "processing": {
-                    "virus_clean": scan_result["clean"],
-                    "ocr_pages": ocr_result.get("pages"),
-                    "drive_uploaded": drive_result.get("success", False),
-                },
-            }
+            return self._client_safe_upload_response(
+                {
+                    "id": doc["id"],
+                    "type": doc["document_type"],
+                    "name": doc["file_name"],
+                    "status": doc["status"],
+                    "size_kb": file_size_kb,
+                    "created_at": doc["created_at"].isoformat(),
+                    "expiry_date": expiry_result.get("expiry_date"),
+                }
+            )
 
     async def _upload_to_drive(
         self,

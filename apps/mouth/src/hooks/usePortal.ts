@@ -25,12 +25,31 @@ import type {
 // DASHBOARD
 // ============================================================================
 
+function retryPortalRead(failureCount: number, error: unknown): boolean {
+  const statusCode =
+    error && typeof error === "object" && "statusCode" in error
+      ? (error as { statusCode?: unknown }).statusCode
+      : undefined;
+
+  // Portal 4xx responses describe account/client state, not a transient
+  // transport failure. Retrying them keeps the dashboard in skeletons and
+  // duplicates expected 404s in the browser console/network ledger.
+  if (typeof statusCode === "number" && statusCode >= 400 && statusCode < 500) {
+    return false;
+  }
+
+  // Preserve the existing QueryProvider policy for timeouts, network failures
+  // and 5xx responses.
+  return failureCount < 3;
+}
+
 export function usePortalDashboard() {
   return useQuery({
     queryKey: ["portal", "dashboard"],
     queryFn: async (): Promise<PortalDashboard> => {
       return api.portal.getDashboard();
     },
+    retry: retryPortalRead,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: 5 * 60 * 1000, // Auto refresh every 5 minutes
   });
@@ -40,6 +59,7 @@ export function usePortalDashboardSummary() {
   return useQuery({
     queryKey: ["portal", "dashboard", "summary"],
     queryFn: async () => api.portal.getDashboardSummary(),
+    retry: retryPortalRead,
     staleTime: 60 * 1000,
     refetchInterval: 2 * 60 * 1000,
   });
@@ -71,6 +91,7 @@ export function usePortalTimeline(limit: number = 50) {
     queryFn: async () => {
       return api.portal.getTimeline(limit);
     },
+    retry: retryPortalRead,
     staleTime: 5 * 60 * 1000,
   });
 }

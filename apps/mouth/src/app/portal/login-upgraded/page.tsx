@@ -9,7 +9,8 @@ import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
 import { useSystemSound } from "@/hooks/useSystemSound";
-import { api } from "@/lib/api";
+import { publicAuth } from "@/lib/api/public-auth";
+import { sanitizeRedirect } from "@/lib/auth/sanitizeRedirect";
 import { logger } from "@/lib/logger";
 import { I18nProvider, useTranslation } from "@/i18n";
 
@@ -79,6 +80,7 @@ function UpgradedLoginPageInner() {
   >("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const { play } = useSystemSound();
+  const loginInFlightRef = useRef(false);
 
   // Spotlight mouse tracking state
   const cardRef = useRef<HTMLDivElement>(null);
@@ -102,54 +104,65 @@ function UpgradedLoginPageInner() {
 
   const handleSubmitEmail = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    const normalizedEmail = email.trim();
+    if (normalizedEmail) {
       playClickSound();
+      setEmail(normalizedEmail);
       setStep("pin");
     }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginStage !== "idle") return;
+    const normalizedEmail = email.trim();
+    if (
+      loginStage !== "idle" ||
+      loginInFlightRef.current ||
+      !normalizedEmail ||
+      pin.length < 4 ||
+      pin.length > 8
+    ) {
+      return;
+    }
+    loginInFlightRef.current = true;
 
     logger.info("Login process started", {
       component: "UpgradedLoginPage",
       action: "handleLogin",
-      metadata: { email, currentUrl: globalThis.location.href },
     });
 
     play("auth_start");
     setLoginStage("authenticating");
 
     try {
-      const loginResponse = await api.login(email, pin);
+      await publicAuth.login(normalizedEmail, pin);
       setLoginStage("success");
       play("access_granted");
 
       const urlParams = new URLSearchParams(globalThis.location.search);
-      const redirectParam = urlParams.get("redirect");
-      const redirectTo = redirectParam ? redirectParam : "/portal";
+      const redirectTo =
+        sanitizeRedirect(urlParams.get("redirect")) ?? "/portal";
 
       setTimeout(() => {
-        globalThis.location.replace(redirectTo);
+        router.replace(redirectTo);
       }, REDIRECT_DELAY_MS);
     } catch (error) {
-      logger.error(
-        "Login failed",
-        {
-          component: "UpgradedLoginPage",
-          action: "handleLogin",
-          metadata: { email },
-        },
-        error as Error,
-      );
-
       // Extract HTTP status from error shape (best-effort — covers both
       // fetch Response-shaped errors and axios-style { response: { status } }).
       const status =
         (error as { response?: { status?: number } })?.response?.status ??
         (error as { status?: number })?.status ??
         0;
+
+      // Auth telemetry is deliberately limited to non-sensitive diagnostics.
+      // Never pass credentials, addresses, the current URL, or the raw HTTP
+      // error (which may embed a request body) to the logger/Sentry pipeline.
+      logger.error("Login failed", {
+        component: "UpgradedLoginPage",
+        action: "handleLogin",
+        code: status,
+        reason: errorKeyFor(status),
+      });
 
       let msg = t(errorKeyFor(status));
       if (status === 429) {
@@ -168,6 +181,7 @@ function UpgradedLoginPageInner() {
       play("access_denied");
 
       setTimeout(() => {
+        loginInFlightRef.current = false;
         setLoginStage("idle");
       }, ERROR_RESET_DELAY_MS);
     }
@@ -190,6 +204,8 @@ function UpgradedLoginPageInner() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.1 }}
           className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md"
+          role="status"
+          aria-live="polite"
           style={{
             background: "color-mix(in srgb, var(--bz-base) 80%, transparent)",
           }}
@@ -212,6 +228,8 @@ function UpgradedLoginPageInner() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.1 }}
           className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md"
+          role="alert"
+          aria-live="assertive"
           style={{
             background: "color-mix(in srgb, var(--bz-base) 92%, transparent)",
           }}
@@ -224,6 +242,7 @@ function UpgradedLoginPageInner() {
           </h1>
           {errorMessage && (
             <p
+              id="portal-login-error"
               className="mt-4 text-sm tracking-wide max-w-md text-center px-4"
               style={{ color: "var(--state-danger)" }}
             >
@@ -1361,12 +1380,18 @@ function UpgradedLoginPageInner() {
                     >
                       <div className="space-y-2">
                         <label
+                          htmlFor="portal-email"
                           className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-[var(--bz-accent-warm)] font-bold`}
                         >
                           Corporate Email
                         </label>
                         <input
+                          id="portal-email"
                           type="email"
+                          name="email"
+                          autoComplete="username"
+                          autoCapitalize="none"
+                          spellCheck={false}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           onFocus={() => play("focus")}
@@ -1382,6 +1407,7 @@ function UpgradedLoginPageInner() {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
+                        disabled={loginStage !== "idle" || !email.trim()}
                         className="w-full py-4 rounded-xl text-[13px] tracking-[0.08em] uppercase font-bold relative overflow-hidden"
                         style={LOGIN_CTA_STYLE}
                       >
@@ -1405,6 +1431,7 @@ function UpgradedLoginPageInner() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <label
+                            htmlFor="portal-pin"
                             className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-[var(--bz-accent-warm)] font-bold`}
                           >
                             Access PIN
@@ -1421,8 +1448,15 @@ function UpgradedLoginPageInner() {
                           </button>
                         </div>
                         <input
+                          id="portal-pin"
                           type="password"
-                          aria-label="PIN"
+                          name="password"
+                          autoComplete="current-password"
+                          inputMode="numeric"
+                          aria-describedby={
+                            errorMessage ? "portal-login-error" : undefined
+                          }
+                          aria-invalid={loginStage === "denied"}
                           value={pin}
                           onChange={(e) => {
                             setPin(e.target.value);
@@ -1438,7 +1472,8 @@ function UpgradedLoginPageInner() {
                           placeholder="••••••"
                           required
                           autoFocus
-                          maxLength={6}
+                          minLength={4}
+                          maxLength={8}
                           className="w-full rounded-xl px-4 py-4 text-[22px] text-center tracking-[14px] outline-none transition-all bg-[var(--bz-base)] border border-[var(--bz-border)] text-[var(--tx-primary)] placeholder:text-[var(--tx-tertiary)] focus:border-[var(--bz-copper)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--bz-copper)_25%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <div className="flex justify-end pt-1">
@@ -1454,12 +1489,24 @@ function UpgradedLoginPageInner() {
                       <motion.button
                         whileTap={{ scale: 0.98 }}
                         type="submit"
-                        disabled={loginStage !== "idle"}
+                        disabled={
+                          loginStage !== "idle" ||
+                          pin.length < 4 ||
+                          pin.length > 8
+                        }
+                        aria-label={
+                          loginStage === "authenticating"
+                            ? "Verifying identity"
+                            : "Verify Identity"
+                        }
                         className={`w-full py-4 rounded-xl text-[13px] tracking-[0.08em] uppercase flex items-center justify-center gap-2 font-bold transition-all ${loginStage !== "idle" ? "opacity-70 cursor-not-allowed" : ""}`}
                         style={LOGIN_CTA_STYLE}
                       >
                         {loginStage === "authenticating" ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2
+                            className="w-5 h-5 animate-spin"
+                            aria-hidden="true"
+                          />
                         ) : (
                           "Verify Identity"
                         )}

@@ -24,6 +24,10 @@ from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry
 from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
 from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
+from backend.services.security.token_revocation import (
+    RevocationStoreUnavailable,
+    is_session_revoked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -273,7 +277,6 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     content={
                         "detail": "Authentication service temporarily unavailable",
                         "correlation_id": correlation_id,
-                        "error_type": error_type,
                     },
                     headers={**cors_headers, "X-Correlation-ID": correlation_id},
                 )
@@ -464,18 +467,21 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         try:
             from jose import JWTError, jwt
 
-            # Stateless validation using secret key
-            # S03: Two-phase JWT expiry enforcement
+            # Stateless validation using secret key. Expiry is mandatory.
             payload = jwt.decode(
                 token,
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
-                options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+                options={"verify_exp": True, "require_exp": True},
             )
 
             # Validate required fields
             if not payload.get("sub") or not payload.get("email"):
                 logger.warning("JWT missing required claims (sub, email)")
+                return None
+
+            if await is_session_revoked(payload):
+                logger.warning("Rejected revoked cookie JWT session")
                 return None
 
             # Construct user context from token
@@ -490,6 +496,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         except JWTError as e:
             logger.warning("JWT token validation failed: %s", e)
             return None
+        except RevocationStoreUnavailable:
+            raise
         except Exception as e:
             logger.warning("Unexpected JWT token error: %s", e)
             return None
@@ -508,18 +516,21 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             jwt_token = auth_header[7:]  # Remove "Bearer " prefix
 
-            # Stateless validation using secret key
-            # S03: Two-phase JWT expiry enforcement
+            # Stateless validation using secret key. Expiry is mandatory.
             payload = jwt.decode(
                 jwt_token,
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
-                options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+                options={"verify_exp": True, "require_exp": True},
             )
 
             # Validate required fields
             if not payload.get("sub") or not payload.get("email"):
                 logger.warning("JWT missing required claims")
+                return None
+
+            if await is_session_revoked(payload):
+                logger.warning("Rejected revoked header JWT session")
                 return None
 
             # Construct user context from token
@@ -535,6 +546,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         except JWTError as e:
             logger.debug("JWT validation failed: %s", e)
             return None
+        except RevocationStoreUnavailable:
+            raise
         except Exception as e:
             logger.debug("Unexpected JWT error: %s", e)
             return None

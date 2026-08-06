@@ -42,6 +42,16 @@ def mock_settings_no_redis():
     return settings
 
 
+@pytest.fixture(autouse=True)
+def available_ws_session():
+    """Valid WebSocket tests use an available, non-revoked session."""
+    with patch(
+        "backend.app.routers.websocket.is_session_revoked",
+        AsyncMock(return_value=False),
+    ):
+        yield
+
+
 @pytest.fixture
 def valid_jwt_token(mock_settings):
     """Generate a valid JWT token for WebSocket authentication"""
@@ -55,6 +65,7 @@ def valid_jwt_token(mock_settings):
         "userId": "test-user-123",
         "email": "test@example.com",
         "exp": int(exp.timestamp()),
+        "type": "access",
     }
     token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
     return token
@@ -71,6 +82,7 @@ def expired_jwt_token(mock_settings):
     payload = {
         "sub": "test-user-123",
         "exp": int(exp),
+        "type": "access",
     }
     token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
     return token
@@ -373,6 +385,7 @@ class TestWebSocketJWTValidation:
         payload = {
             "sub": "user-from-sub",
             "exp": int(exp.timestamp()),
+            "type": "access",
         }
         token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
 
@@ -394,6 +407,7 @@ class TestWebSocketJWTValidation:
         payload = {
             "userId": "user-from-userId",
             "exp": int(exp.timestamp()),
+            "type": "access",
         }
         token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
 
@@ -415,6 +429,7 @@ class TestWebSocketJWTValidation:
         payload = {
             "email": "test@example.com",  # No sub or userId
             "exp": int(exp.timestamp()),
+            "type": "access",
         }
         token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
 
@@ -424,6 +439,79 @@ class TestWebSocketJWTValidation:
             user_id = await get_current_user_ws(token)
 
             assert user_id is None
+
+    @pytest.mark.asyncio
+    async def test_token_without_exp_returns_none(self, mock_settings):
+        """A signed access token without an expiry is never a valid session."""
+        from jose import jwt
+
+        token = jwt.encode(
+            {"sub": "test-user-123", "type": "access"},
+            mock_settings.jwt_secret_key,
+            algorithm=mock_settings.jwt_algorithm,
+        )
+
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
+
+            assert await get_current_user_ws(token) is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("token_type", [None, "refresh", "visa_funnel"])
+    async def test_non_access_token_type_returns_none(self, mock_settings, token_type):
+        """WebSocket sessions accept only an explicitly typed access token."""
+        from datetime import datetime, timedelta, timezone
+
+        from jose import jwt
+
+        claims = {
+            "sub": "test-user-123",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        }
+        if token_type is not None:
+            claims["type"] = token_type
+        token = jwt.encode(
+            claims,
+            mock_settings.jwt_secret_key,
+            algorithm=mock_settings.jwt_algorithm,
+        )
+
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
+
+            assert await get_current_user_ws(token) is None
+
+    @pytest.mark.asyncio
+    async def test_revoked_access_token_returns_none(self, mock_settings, valid_jwt_token):
+        """A revoked access session cannot upgrade to WebSocket."""
+        with (
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch(
+                "backend.app.routers.websocket.is_session_revoked",
+                AsyncMock(return_value=True),
+            ),
+        ):
+            from backend.app.routers.websocket import get_current_user_ws
+
+            assert await get_current_user_ws(valid_jwt_token) is None
+
+    @pytest.mark.asyncio
+    async def test_unavailable_revocation_store_returns_none(
+        self, mock_settings, valid_jwt_token
+    ):
+        """WebSocket authentication fails closed when revocation is unavailable."""
+        from backend.services.security.token_revocation import RevocationStoreUnavailable
+
+        with (
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch(
+                "backend.app.routers.websocket.is_session_revoked",
+                AsyncMock(side_effect=RevocationStoreUnavailable("unavailable")),
+            ),
+        ):
+            from backend.app.routers.websocket import get_current_user_ws
+
+            assert await get_current_user_ws(valid_jwt_token) is None
 
 
 # ============================================================================
@@ -528,6 +616,33 @@ class TestWebSocketEndpoint:
             mock_websocket.close.assert_called_once_with(
                 code=4003, reason="Authentication required"
             )
+
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_query_param_token(
+        self, mock_settings, mock_websocket, valid_jwt_token
+    ):
+        """Credentials in URLs are rejected instead of entering logs/history."""
+        mock_websocket.headers = {}
+        mock_websocket.scope = {"subprotocols": []}
+        mock_websocket.url.query = f"token={valid_jwt_token}"
+
+        with (
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch(
+                "backend.app.routers.websocket.get_current_user_ws",
+                AsyncMock(),
+            ) as validate_token,
+            patch("backend.app.routers.websocket.logger"),
+        ):
+            from backend.app.routers.websocket import websocket_endpoint
+
+            await websocket_endpoint(mock_websocket)
+
+        validate_token.assert_not_awaited()
+        mock_websocket.close.assert_called_once_with(
+            code=4003,
+            reason="Authentication required",
+        )
 
 
 # ============================================================================

@@ -52,6 +52,18 @@ describe("VaultUploadZone", () => {
     });
   });
 
+  it("advertises exactly the formats and cap enforced by the backend", () => {
+    render(<VaultUploadZone />);
+    const input = screen.getByLabelText(
+      "Choose file to upload",
+    ) as HTMLInputElement;
+    expect(input).toHaveAttribute("accept", ".pdf,.jpg,.jpeg,.png,.docx");
+    expect(input).toHaveAttribute("aria-describedby", "vault-upload-formats");
+    expect(
+      screen.getByText("PDF, JPG, PNG, or DOCX up to 10 MB"),
+    ).toBeInTheDocument();
+  });
+
   it("forwards the typed purpose to upload()", () => {
     render(<VaultUploadZone practiceId={42} />);
     const purposeInput = screen.getByLabelText(

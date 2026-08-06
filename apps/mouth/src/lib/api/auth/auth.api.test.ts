@@ -1,4 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const { mockLoggerDebug, mockLoggerError, mockLoggerInfo } = vi.hoisted(() => ({
+  mockLoggerDebug: vi.fn(),
+  mockLoggerError: vi.fn(),
+  mockLoggerInfo: vi.fn(),
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    debug: mockLoggerDebug,
+    error: mockLoggerError,
+    info: mockLoggerInfo,
+  },
+}));
+
 import { AuthApi } from "./auth.api";
 import { ApiClientBase } from "../client";
 import type { BackendLoginResponse } from "./auth.types";
@@ -9,6 +24,7 @@ describe("AuthApi", () => {
   let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockRequest = vi.fn();
     mockClient = {
       request: mockRequest,
@@ -100,6 +116,39 @@ describe("AuthApi", () => {
 
       expect(mockClient.setCsrfToken).not.toHaveBeenCalled();
     });
+
+    it("never forwards email, credentials, response messages, or raw errors to telemetry", async () => {
+      const email = "synthetic.private@example.test";
+      const pin = "781245";
+      const responseMessage = "synthetic account detail from backend";
+      const rawError = Object.assign(new Error("synthetic backend detail"), {
+        response: { data: { email, pin } },
+      });
+
+      mockRequest.mockResolvedValueOnce({
+        success: false,
+        message: responseMessage,
+        data: undefined as never,
+      } satisfies BackendLoginResponse);
+      await expect(authApi.login(email, pin)).rejects.toThrow(responseMessage);
+
+      mockRequest.mockRejectedValueOnce(rawError);
+      await expect(authApi.login(email, pin)).rejects.toBe(rawError);
+
+      const telemetry = JSON.stringify({
+        debug: mockLoggerDebug.mock.calls,
+        error: mockLoggerError.mock.calls,
+        info: mockLoggerInfo.mock.calls,
+      });
+      expect(telemetry).not.toContain(email);
+      expect(telemetry).not.toContain(pin);
+      expect(telemetry).not.toContain(responseMessage);
+      expect(telemetry).not.toContain("synthetic backend detail");
+      expect(mockLoggerError).toHaveBeenCalledWith("Login error", {
+        component: "AuthApi",
+        action: "login_error",
+      });
+    });
   });
 
   describe("logout", () => {
@@ -119,6 +168,25 @@ describe("AuthApi", () => {
 
       await expect(authApi.logout()).rejects.toThrow("Network error");
       expect(mockClient.clearToken).toHaveBeenCalled();
+    });
+
+    it("clears local auth state while server invalidation is still pending", async () => {
+      let resolveLogout!: () => void;
+      mockRequest.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveLogout = resolve;
+          }),
+      );
+
+      const logoutPromise = authApi.logout();
+      const clearCallsWhilePending = vi.mocked(mockClient.clearToken).mock.calls
+        .length;
+
+      resolveLogout();
+      await logoutPromise;
+
+      expect(clearCallsWhilePending).toBe(1);
     });
   });
 

@@ -10,12 +10,15 @@ vi.mock("@/lib/logger", () => ({
 
 const originalNuzantaraApiUrl = process.env.NUZANTARA_API_URL;
 const originalNextPublicApiUrl = process.env.NEXT_PUBLIC_API_URL;
+const originalCookieDomain = process.env.COOKIE_DOMAIN;
 
-function makeLoginRequest(): NextRequest {
-  return new NextRequest("https://balizero.com/api/auth/login", {
+function makeLoginRequest(
+  url = "https://balizero.com/api/auth/login",
+): NextRequest {
+  return new NextRequest(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: "ops@balizero.com", pin: "123456" }),
+    body: JSON.stringify({ email: "ops@example.com", pin: "123456" }),
   });
 }
 
@@ -54,6 +57,12 @@ describe("POST /api/auth/login", () => {
       process.env.NEXT_PUBLIC_API_URL = originalNextPublicApiUrl;
     }
 
+    if (originalCookieDomain === undefined) {
+      delete process.env.COOKIE_DOMAIN;
+    } else {
+      process.env.COOKIE_DOMAIN = originalCookieDomain;
+    }
+
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -70,5 +79,41 @@ describe("POST /api/auth/login", () => {
       "https://backend.example.com/api/auth/login",
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("uses host-only non-Secure cookies on loopback production builds", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NUZANTARA_API_URL", "http://127.0.0.1:8000");
+    vi.stubEnv("COOKIE_DOMAIN", "localhost");
+    vi.stubEnv("MY_PORTAL_PRODLIKE_ENFORCE_MIDDLEWARE", "1");
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      makeLoginRequest("http://127.0.0.1:3101/api/auth/login"),
+    );
+    const cookies = response.headers.getSetCookie();
+
+    expect(cookies).toHaveLength(2);
+    for (const cookie of cookies) {
+      expect(cookie).not.toContain("Domain=");
+      expect(cookie).not.toContain("; Secure");
+    }
+  });
+
+  it("keeps production cookie policy when the QA flag is absent", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NUZANTARA_API_URL", "http://127.0.0.1:8000");
+    vi.stubEnv("COOKIE_DOMAIN", ".balizero.com");
+    vi.stubEnv("MY_PORTAL_PRODLIKE_ENFORCE_MIDDLEWARE", "0");
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      makeLoginRequest("http://127.0.0.1:3101/api/auth/login"),
+    );
+
+    for (const cookie of response.headers.getSetCookie()) {
+      expect(cookie).toContain("Domain=.balizero.com");
+      expect(cookie).toContain("; Secure");
+    }
   });
 });

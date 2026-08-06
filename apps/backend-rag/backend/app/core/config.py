@@ -498,9 +498,9 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_hours: int = 1  # S03: reduced from 24h to 1h
-    jwt_enforce_expiry: bool = False  # S03: Phase 1 audit mode, flip to True for Phase 2
+    jwt_enforce_expiry: bool = True  # Launch gate: expired JWTs are always rejected
 
-    enable_token_revocation: bool = False  # S03-S2: Redis-backed token revocation
+    enable_token_revocation: bool = True  # Launch gate: Redis-backed revocation is mandatory
 
     @field_validator("jwt_secret_key", mode="before")
     @classmethod

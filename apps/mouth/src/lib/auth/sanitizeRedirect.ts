@@ -1,4 +1,21 @@
 const ALLOWED_PREFIXES = ["/portal/", "/workspace/"] as const;
+const REDIRECT_BASE = "https://redirect.invalid";
+
+function fullyDecodePath(path: string): string | null {
+  let decoded = path;
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) return decoded;
+      decoded = next;
+    } catch {
+      return null;
+    }
+  }
+
+  return decoded.includes("%") ? null : decoded;
+}
 
 export function sanitizeRedirect(
   raw: string | undefined | null,
@@ -9,11 +26,38 @@ export function sanitizeRedirect(
   if (raw.startsWith("//")) return null;
   if (/^[a-z][a-z0-9+.\-]*:/i.test(raw)) return null;
   if (!raw.startsWith("/")) return null;
-  if (raw.includes("/../") || raw.endsWith("/..")) return null;
+
+  const rawPath = raw.split(/[?#]/, 1)[0];
+  const decodedPath = fullyDecodePath(rawPath);
+  if (!decodedPath) return null;
+  if (/[\x00-\x1f\x7f\\]/.test(decodedPath)) return null;
+  if (decodedPath.startsWith("//")) return null;
   if (
-    !ALLOWED_PREFIXES.some((p) => raw.startsWith(p) || raw === p.slice(0, -1))
+    decodedPath
+      .split("/")
+      .some((segment) => segment === "." || segment === "..")
   ) {
     return null;
   }
-  return raw;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw, REDIRECT_BASE);
+  } catch {
+    return null;
+  }
+  if (parsed.origin !== REDIRECT_BASE || parsed.pathname.startsWith("//")) {
+    return null;
+  }
+  if (
+    !ALLOWED_PREFIXES.some(
+      (prefix) =>
+        parsed.pathname.startsWith(prefix) ||
+        parsed.pathname === prefix.slice(0, -1),
+    )
+  ) {
+    return null;
+  }
+
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }

@@ -313,6 +313,11 @@ class TestMagicLink:
             patch("backend.app.routers.auth.spawn") as spawn_mock,
             patch("backend.app.routers.auth._send_magic_link_email", new=AsyncMock()),
         ):
+
+            def close_spawned_coroutine(coroutine, **_kwargs) -> None:
+                coroutine.close()
+
+            spawn_mock.side_effect = close_spawned_coroutine
             response = client.post(
                 "/api/auth/request-magic-link",
                 json={"email": "client@example.com"},
