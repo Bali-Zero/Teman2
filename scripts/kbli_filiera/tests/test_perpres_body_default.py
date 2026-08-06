@@ -270,10 +270,20 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     codes = {r["code"] for r in rows}
     assert {"96210", "96220"} <= codes           # annex-named AND Besar-less
     assert {"56304", "70201", "86995"} <= codes  # residual AND Besar-less
-    # The four the withdrawn cure had removed. Asserted as PRESENT, so that
-    # re-applying a Lampiran II verdict to them shows up here as a failure and
-    # gets read against the withdrawal above rather than landing unnoticed.
-    assert {"55201", "55203", "79110", "95291"} <= codes
+    # The three the withdrawn cure had removed, asserted as PRESENT: re-applying
+    # a Lampiran II verdict to them shows up here as a failure and gets read
+    # against the withdrawal above rather than landing unnoticed.
+    #
+    # `79110` (travel agent) is deliberately NOT in this set, and finding that
+    # out cost an assertion. It appeared in the earlier version of this list, but
+    # it was never in the withdrawn patch — it had been dropped from that spec
+    # days before, as contested by a determination living in `test_kbli_eye.py`.
+    # It is out of the queue on its own terms: the catalogue already publishes it
+    # TERBATAS, so it is not "barred but open" and this list has no claim on it.
+    # A code can leave a queue for a reason that has nothing to do with the cure
+    # you are writing about.
+    assert {"55201", "55203", "95291"} <= codes
+    assert "79110" not in codes
     assert all(r["besar"] == "absent" for r in rows)
 
 
