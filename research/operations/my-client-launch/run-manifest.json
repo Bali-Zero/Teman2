@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "run_id": "my-client-launch-2026-08-04-wave0",
   "state": "WAVE_3_LOCAL_REAL_PATH_INDEPENDENTLY_VERIFIED_PRODUCTION_LIVE_PENDING_NO_GO",
-  "generated_at_utc": "2026-08-06T03:35:14Z",
+  "generated_at_utc": "2026-08-06T04:14:52Z",
   "coordinator": "Sol",
   "repository": {
     "path": "/Users/nuzantara/nuzantara",
@@ -18,7 +18,7 @@
     "origin_main_patch_integrated_via_cherry_pick": false,
     "origin_main_source_sha": "67735cabc94052b697257193b5bbe770abf8cb08",
     "app_diff_base_to_current_origin": "CANDIDATE_AHEAD_WITH_REVIEWED_PORTAL_FIXES_AND_QA_HARNESS",
-    "note": "The candidate was created through the worktree broker and never mutated the main checkout. The delivery branch merge-integrates current origin/main at 67735cabc; the original candidate lineage remains recorded under wave_3_candidate_results. The two main-refresh merges were conflict-free, and exact-head CI plus an independent verifier are required after this metadata refresh."
+    "note": "The candidate was created through the worktree broker and never mutated the main checkout. The delivery branch merge-integrates current origin/main at 67735cabc; the original candidate lineage remains recorded under wave_3_candidate_results. The two main-refresh merges were conflict-free. GitHub's exact-head status rollup is authoritative for CI, and every documentation refresh requires a new independent exact-head review."
   },
   "delivery": {
     "branch": "agent/nuzantara/infra/my-portal-launch-delivery",
@@ -28,17 +28,24 @@
     "verified_artifact_receipt_sha": "070f663e15e2b707b832b5cdf4e3bee04a49fa03",
     "verified_artifact_receipt_tree_sha": "04a4e431c559590ed193c5dd7a4794ebe10cb338",
     "tree_equivalence": "EXACT_MATCH",
-    "history_shape": "EIGHT_COMMITS_AFTER_METADATA_REFRESH: SOURCE, ARTIFACT_RECEIPT, CI_REMEDIATION, INVENTORY_REFRESH, TWO_MAIN_SYNC_MERGES, SECURITY_AUDIT, METADATA_REFRESH",
+    "history_shape": "NINE_COMMITS_AFTER_PREVIEW_ACCURACY_REFRESH: SOURCE, ARTIFACT_RECEIPT, CI_REMEDIATION, INVENTORY_REFRESH, TWO_MAIN_SYNC_MERGES, SECURITY_AUDIT, METADATA_REFRESH, PREVIEW_ACCURACY_REFRESH",
     "draft_pr_only": true,
     "draft_pr": {
       "number": 3662,
       "url": "https://github.com/Bali-Zero/Teman2/pull/3662",
       "state": "OPEN_DRAFT",
-      "merge_or_deploy_performed": false
+      "merge_to_main_or_production_deploy_performed": false,
+      "manual_deploy_performed": false,
+      "automatic_vercel_preview_observed": true,
+      "automatic_vercel_preview_environment": "Preview",
+      "automatic_vercel_preview_status": "SUCCESS",
+      "automatic_vercel_preview_is_production": false
     },
     "ci_remediation": {
-      "status": "REMOTE_RETEST_PASS",
+      "status": "GITHUB_PR_STATUS_CHECK_ROLLUP_IS_AUTHORITATIVE_FOR_CURRENT_HEAD",
       "exact_head_ci_source": "GITHUB_PR_STATUS_CHECK_ROLLUP",
+      "last_observed_terminal_sha": "7b715dbb06ae5478e4f700b637e84d389d1b6961",
+      "last_observed_terminal_result": "57 SUCCESS / 3 CONDITIONAL SKIPS / 0 PENDING / 0 FAILURE",
       "codeql_hostname_regex": "REPLACED_WITH_LITERAL_SUBSTRING_ASSERTION",
       "generic_playwright_discovery": "PRODLIKE_SMOKE_EXCLUDED_FROM_GENERIC_CONFIG_AND_RETAINED_IN_DEDICATED_CONFIG",
       "author_preflight_tests": "13/13 PASS",
@@ -399,7 +406,7 @@
     "independent_reviewer": "portal_launch_independent_verifier",
     "independent_retest_commit_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e",
     "production_live_retest": "PENDING_NOT_VERIFIED",
-    "safety": "no deploy, main push, merge, production mutation, source edit by reviewer or PII evidence capture; feature-branch draft delivery permitted after verification"
+    "safety": "no manual or production deploy, main push, merge, production mutation, source edit by reviewer or PII evidence capture; an automatic Vercel Preview deployment was observed for the draft PR; feature-branch draft delivery permitted after verification"
   },
   "initial_artifact_hashes_sha256": {
     "route_manifest": "51ad9ddcd20a3ff7af353e749f13c491dd08e1396d730b4b41be9f2051f853a2",
@@ -504,7 +511,8 @@
     "real_pii": "forbidden",
     "external_side_effects": "sink_or_stub_only",
     "repo_main_checkout_mutation": "forbidden",
-    "main_push_merge_deploy": "forbidden",
+    "main_push_merge_or_production_deploy": "forbidden",
+    "automatic_preview_deployment": "observed via Vercel Preview for the draft PR; non-production",
     "feature_branch_draft_pr": "permitted_after_independent_verification",
     "evidence_redaction_required": true
   },
