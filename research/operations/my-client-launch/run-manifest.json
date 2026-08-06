@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "run_id": "my-client-launch-2026-08-04-wave0",
   "state": "WAVE_3_LOCAL_REAL_PATH_INDEPENDENTLY_VERIFIED_PRODUCTION_LIVE_PENDING_NO_GO",
-  "generated_at_utc": "2026-08-06T01:27:50Z",
+  "generated_at_utc": "2026-08-06T03:35:14Z",
   "coordinator": "Sol",
   "repository": {
     "path": "/Users/nuzantara/nuzantara",
@@ -11,24 +11,24 @@
     "commit_sha": "8117b1e2baf1d9c7f8cacd6ccd6467257e802d2e",
     "branch": "agent/nuzantara/infra/my-portal-local-qa",
     "peer_head_agreement": true,
-    "local_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
-    "mini_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
-    "current_origin_main_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
-    "origin_main_is_ancestor": false,
-    "origin_main_patch_integrated_via_cherry_pick": true,
-    "origin_main_source_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "local_main_sha": "67735cabc94052b697257193b5bbe770abf8cb08",
+    "mini_main_sha": "67735cabc94052b697257193b5bbe770abf8cb08",
+    "current_origin_main_sha": "67735cabc94052b697257193b5bbe770abf8cb08",
+    "origin_main_is_ancestor": true,
+    "origin_main_patch_integrated_via_cherry_pick": false,
+    "origin_main_source_sha": "67735cabc94052b697257193b5bbe770abf8cb08",
     "app_diff_base_to_current_origin": "CANDIDATE_AHEAD_WITH_REVIEWED_PORTAL_FIXES_AND_QA_HARNESS",
-    "note": "The candidate was created through the worktree broker and never mutated the main checkout. The latest origin/main patch 26d33712d was contextually cherry-picked as 8117b1e2b. Its two-file Telegram environment-parser delta does not overlap apps/mouth or apps/backend-rag; an independent verifier confirmed the non-overlap, 9/9 dedicated tests and DOCSYNC OK."
+    "note": "The candidate was created through the worktree broker and never mutated the main checkout. The delivery branch merge-integrates current origin/main at 67735cabc; the original candidate lineage remains recorded under wave_3_candidate_results. The two main-refresh merges were conflict-free, and exact-head CI plus an independent verifier are required after this metadata refresh."
   },
   "delivery": {
     "branch": "agent/nuzantara/infra/my-portal-launch-delivery",
-    "base_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "base_sha": "67735cabc94052b697257193b5bbe770abf8cb08",
     "source_commit_sha": "023c4540d482a6a102fe165ef7cbc033baf5ef0d",
     "source_tree_sha": "04a4e431c559590ed193c5dd7a4794ebe10cb338",
     "verified_artifact_receipt_sha": "070f663e15e2b707b832b5cdf4e3bee04a49fa03",
     "verified_artifact_receipt_tree_sha": "04a4e431c559590ed193c5dd7a4794ebe10cb338",
     "tree_equivalence": "EXACT_MATCH",
-    "history_shape": "ONE_CLEAN_SOURCE_COMMIT_ON_CURRENT_ORIGIN_MAIN_PLUS_ONE_ARTIFACT_ONLY_RECEIPT_COMMIT_PLUS_ONE_CI_REMEDIATION_COMMIT",
+    "history_shape": "EIGHT_COMMITS_AFTER_METADATA_REFRESH: SOURCE, ARTIFACT_RECEIPT, CI_REMEDIATION, INVENTORY_REFRESH, TWO_MAIN_SYNC_MERGES, SECURITY_AUDIT, METADATA_REFRESH",
     "draft_pr_only": true,
     "draft_pr": {
       "number": 3662,
@@ -37,7 +37,8 @@
       "merge_or_deploy_performed": false
     },
     "ci_remediation": {
-      "status": "PENDING_REMOTE_RETEST",
+      "status": "REMOTE_RETEST_PASS",
+      "exact_head_ci_source": "GITHUB_PR_STATUS_CHECK_ROLLUP",
       "codeql_hostname_regex": "REPLACED_WITH_LITERAL_SUBSTRING_ASSERTION",
       "generic_playwright_discovery": "PRODLIKE_SMOKE_EXCLUDED_FROM_GENERIC_CONFIG_AND_RETAINED_IN_DEDICATED_CONFIG",
       "author_preflight_tests": "13/13 PASS",
