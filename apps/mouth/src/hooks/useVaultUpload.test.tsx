@@ -106,7 +106,7 @@ describe("useVaultUpload", () => {
   it("rejects oversize file before opening request", () => {
     const { result } = renderHook(() => useVaultUpload());
 
-    // 30 MB — default cap is 20 MB
+    // 30 MB — safely above the backend-aligned 10 MB default cap.
     const big = makeFile("huge.pdf", 30 * 1024 * 1024, "application/pdf");
 
     act(() => result.current.upload(big));

@@ -2,16 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import PortalLayout from "./layout";
+import { ApiError } from "@/lib/api/error-handler";
 
 // Hoisted mocks (must be defined before vi.mock)
 const {
   mockPush,
+  mockReplace,
   mockGetToken,
   mockGetUserProfile,
   mockGetProfile,
   mockLogout,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
+  mockReplace: vi.fn(),
   mockGetToken: vi.fn(),
   mockGetUserProfile: vi.fn(),
   mockGetProfile: vi.fn(),
@@ -22,7 +25,7 @@ const {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
-    replace: vi.fn(),
+    replace: mockReplace,
     prefetch: vi.fn(),
     back: vi.fn(),
   }),
@@ -129,6 +132,7 @@ vi.mock("@/types/navigation", () => ({
 describe("PortalLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState({}, "", "/portal");
     mockGetToken.mockReturnValue("test-token");
     mockGetUserProfile.mockReturnValue(null);
     mockGetProfile.mockResolvedValue({
@@ -143,8 +147,9 @@ describe("PortalLayout", () => {
     vi.restoreAllMocks();
   });
 
-  it("should redirect to login when no token and no cookie session", async () => {
+  it("replaces an anonymous protected deep link with the upgraded login", async () => {
     mockGetToken.mockReturnValue(null);
+    window.history.replaceState({}, "", "/portal?view=active");
     // Cookie-based SSO fallback also fails (no valid session)
     mockGetProfile.mockRejectedValue(new Error("401 Unauthorized"));
 
@@ -155,8 +160,13 @@ describe("PortalLayout", () => {
     );
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/portal/login");
+      expect(mockReplace).toHaveBeenCalledWith(
+        "/portal/login-upgraded?redirect=%2Fportal%3Fview%3Dactive",
+      );
     });
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.queryByText("Test Content")).not.toBeInTheDocument();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("should load user profile from stored profile", async () => {
@@ -232,7 +242,7 @@ describe("PortalLayout", () => {
     });
   });
 
-  it("should handle logout correctly", async () => {
+  it("invalidates the session and replaces history with the upgraded login", async () => {
     mockLogout.mockResolvedValue(undefined);
 
     render(
@@ -253,15 +263,15 @@ describe("PortalLayout", () => {
     });
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/portal/login");
+      expect(mockReplace).toHaveBeenCalledWith("/portal/login-upgraded");
     });
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("should handle 401 error gracefully (error caught in loadUserProfile)", async () => {
-    // Note: loadUserProfile catches errors internally and logs them,
-    // so 401 errors don't propagate to trigger a redirect in current implementation
+  it("keeps protected content hidden when a stored session has expired", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockGetProfile.mockRejectedValue(new Error("401 Unauthorized"));
+    window.history.replaceState({}, "", "/portal?view=active");
+    mockGetProfile.mockRejectedValue(new ApiError("Session expired", 401));
 
     render(
       <PortalLayout>
@@ -269,10 +279,13 @@ describe("PortalLayout", () => {
       </PortalLayout>,
     );
 
-    // Should complete loading and render (error is caught internally)
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith(
+        "/portal/login-upgraded?redirect=%2Fportal%3Fview%3Dactive",
+      );
     });
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.queryByText("Test Content")).not.toBeInTheDocument();
 
     consoleSpy.mockRestore();
   });

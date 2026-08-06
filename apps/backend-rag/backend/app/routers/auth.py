@@ -118,12 +118,11 @@ async def get_current_user(
     )
 
     try:
-        # S03: Two-phase JWT expiry enforcement
         payload = jwt.decode(
             credentials.credentials,
             JWT_SECRET_KEY,
             algorithms=[JWT_ALGORITHM],
-            options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+            options={"verify_exp": True, "require_exp": True},
         )
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
@@ -131,6 +130,20 @@ async def get_current_user(
             raise credentials_exception
     except JWTError as e:
         raise credentials_exception from e
+
+    from backend.services.security.token_revocation import (
+        RevocationStoreUnavailable,
+        is_session_revoked,
+    )
+
+    try:
+        if await is_session_revoked(payload):
+            raise credentials_exception
+    except RevocationStoreUnavailable as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service temporarily unavailable",
+        ) from e
 
     # Get user from database using connection pool
     async with db_pool.acquire() as conn:
@@ -809,21 +822,22 @@ async def revoke_all_sessions(
     Sets a user-level revocation key in Redis. All tokens for this
     user will be rejected until the key expires (24h).
     """
-    from backend.app.core.config import settings
-
     user_email = current_user.get("email", "")
     client_ip = request.client.host if request.client else None
 
-    if settings.enable_token_revocation:
-        try:
-            from backend.core.redis_manager import RedisManager
-            from backend.services.security.token_revocation import TokenRevocationService
+    try:
+        from backend.core.redis_manager import RedisManager
+        from backend.services.security.token_revocation import TokenRevocationService
 
-            redis_client = RedisManager.get_instance().get_async_client()
-            revocation_svc = TokenRevocationService(redis_client=redis_client)
-            await revocation_svc.revoke_all_user_tokens(user_email, reason="user_requested")
-        except Exception as e:
-            logger.warning("S03-S2: Revoke-all failed for %s: %s", user_email, e)
+        redis_client = RedisManager.get_instance().get_async_client()
+        revocation_svc = TokenRevocationService(redis_client=redis_client)
+        await revocation_svc.revoke_all_user_tokens(user_email, reason="user_requested")
+    except Exception as e:
+        logger.error("S03-S2: Revoke-all failed: %s", type(e).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Session revocation service temporarily unavailable",
+        ) from e
 
     # Audit log
     try:

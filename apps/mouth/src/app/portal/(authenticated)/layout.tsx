@@ -25,6 +25,15 @@ const PortalBottomNav = dynamic(
   { ssr: false },
 );
 
+function portalLoginHref(pathname: string): string {
+  return `/portal/login-upgraded?redirect=${encodeURIComponent(pathname)}`;
+}
+
+function currentPortalLocation(pathname: string): string {
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  return `${pathname}${search}`;
+}
+
 export default function PortalLayout({
   children,
 }: {
@@ -92,6 +101,7 @@ export default function PortalLayout({
         { component: "PortalLayout", action: "loadUserProfile" },
         error as Error,
       );
+      throw error;
     }
   }, []);
 
@@ -113,12 +123,11 @@ export default function PortalLayout({
           // `error.message.includes("401")`, which is also true of "Practice
           // 4012 not found" — so a 404 could sign a client out of the portal.
           if (error instanceof ApiError && error.statusCode === 401) {
-            router.push("/portal/login");
+            router.replace(portalLoginHref(currentPortalLocation(pathname)));
             return;
           }
-        } finally {
-          setIsLoading(false);
         }
+        setIsLoading(false);
         return;
       }
 
@@ -142,13 +151,13 @@ export default function PortalLayout({
         // Cookie auth also failed — redirect to login
       }
 
-      setIsLoading(false);
-      router.push("/portal/login");
+      router.replace(portalLoginHref(currentPortalLocation(pathname)));
+      return;
     };
 
     const timeoutId = setTimeout(checkAuth, 100);
     return () => clearTimeout(timeoutId);
-  }, [loadUserProfile, router]);
+  }, [loadUserProfile, pathname, router]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -161,7 +170,7 @@ export default function PortalLayout({
         error as Error,
       );
     } finally {
-      router.push("/portal/login");
+      router.replace("/portal/login-upgraded");
     }
   };
 

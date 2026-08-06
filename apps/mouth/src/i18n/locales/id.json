@@ -271,7 +271,7 @@
     },
     "forgot_password": {
       "title": "Pemulihan akses",
-      "sent": "Kami telah menerima permintaan Anda. Tim akan menghubungi Anda."
+      "instructions": "Hubungi tim kami untuk memulihkan akses. Belum ada permintaan yang dikirim."
     }
   },
   "book": {

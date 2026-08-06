@@ -219,7 +219,11 @@ export default function LKPMSubmitPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header — day masthead: copper rule + Cormorant serif in --tx-pure */}
       <section className="flex items-center gap-3">
-        <Link href="/portal/lkpm">
+        <Link
+          href="/portal/lkpm"
+          aria-label="Back to LKPM reports"
+          className={`rounded ${FIELD_FOCUS_CLASS}`}
+        >
           <ArrowLeft
             className="w-5 h-5"
             style={{ color: "var(--bz-text-2)" }}

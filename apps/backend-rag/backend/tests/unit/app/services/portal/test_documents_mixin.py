@@ -189,12 +189,8 @@ async def test_upload_document_success_stores_processed_document() -> None:
     assert result["type"] == "passport"
     assert result["name"] == "passport.pdf"
     assert result["expiry_date"] == "2027-05-10"
-    assert result["processing"] == {
-        "virus_clean": True,
-        "ocr_pages": 2,
-        "drive_uploaded": True,
-    }
-    assert result["extracted_text_preview"].endswith("...")
+    assert "processing" not in result
+    assert "extracted_text_preview" not in result
     assert service._metrics["uploads_total"] == 1
     assert service._metrics["drive_uploads"] == 1
     assert service._metrics["ocr_processed"] == 1
@@ -456,7 +452,8 @@ async def test_upload_document_falls_back_when_insert_columns_are_missing() -> N
         )
 
     assert result["id"] == 89
-    assert result["processing"]["drive_uploaded"] is False
+    assert "processing" not in result
+    assert "extracted_text_preview" not in result
     assert service._metrics["uploads_total"] == 1
     assert service._metrics["drive_uploads"] == 0
     assert service._metrics["ocr_processed"] == 0

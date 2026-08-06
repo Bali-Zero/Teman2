@@ -71,8 +71,10 @@ const RECEIPTS = [
     lokasi: null,
     tanggal_diterima: "2026-04-10",
     nama_perusahaan_oss: null,
-    file_drive_id: null,
-    file_drive_url: "https://example.com/receipt.pdf",
+    file_drive_id: "drive-file-id-must-never-render",
+    file_drive_url:
+      "https://drive.google.com/file/d/drive-file-id-must-never-render/view",
+    download_url: "/api/v1/lkpm/receipts/1/download",
     file_name: null,
     quarter: "Q1",
     year: 2026,
@@ -174,6 +176,14 @@ describe("LKPMPage (list)", () => {
     // PDF link: small copper text on the AA daylight step.
     expect(screen.getByText("Open").style.color).toBe(
       "var(--bz-copper-text, var(--tx-secondary))",
+    );
+    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/api/v1/lkpm/receipts/1/download",
+    );
+    expect(document.body.innerHTML).not.toContain("drive.google.com");
+    expect(document.body.innerHTML).not.toContain(
+      "drive-file-id-must-never-render",
     );
   });
 

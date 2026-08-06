@@ -1,19 +1,91 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLogin } = vi.hoisted(() => ({ mockLogin: vi.fn() }));
+const { mockLogin, mockLoggerError, mockLoggerInfo, mockRouterReplace } =
+  vi.hoisted(() => ({
+    mockLogin: vi.fn(),
+    mockLoggerError: vi.fn(),
+    mockLoggerInfo: vi.fn(),
+    mockRouterReplace: vi.fn(),
+  }));
 
-vi.mock("@/lib/api", () => ({
-  api: { login: mockLogin },
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: mockRouterReplace,
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+}));
+
+// Login behaviour does not depend on animation timing. Keeping this unit test
+// on semantic DOM elements also prevents motion's RAF loop from obscuring the
+// submit and accessibility assertions.
+vi.mock("framer-motion", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
+  const makeMotionElement = (tag: "button" | "div" | "form" | "p") =>
+    React.forwardRef<
+      HTMLElement,
+      Record<string, unknown> & { children?: ReactNode }
+    >(function MotionElement(
+      {
+        animate: _animate,
+        exit: _exit,
+        initial: _initial,
+        transition: _transition,
+        whileHover: _whileHover,
+        whileTap: _whileTap,
+        children,
+        ...domProps
+      },
+      ref,
+    ) {
+      return React.createElement(
+        tag,
+        { ...domProps, ref },
+        children as ReactNode,
+      );
+    });
+
+  return {
+    AnimatePresence: ({ children }: { children?: ReactNode }) => children,
+    motion: {
+      button: makeMotionElement("button"),
+      div: makeMotionElement("div"),
+      form: makeMotionElement("form"),
+      p: makeMotionElement("p"),
+    },
+  };
+});
+
+vi.mock("@/lib/api/public-auth", () => ({
+  publicAuth: { login: mockLogin },
 }));
 
 vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+  logger: {
+    error: mockLoggerError,
+    info: mockLoggerInfo,
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 import UpgradedLoginPage from "./page";
 
 describe("UpgradedLoginPage (WS3 day pass)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.history.replaceState({}, "", "/portal/login-upgraded");
+  });
+
   it("shell reads --bz-base and the gate scene carries its re-light class", () => {
     const { container } = render(<UpgradedLoginPage />);
 
@@ -64,11 +136,11 @@ describe("UpgradedLoginPage (WS3 day pass)", () => {
     render(<UpgradedLoginPage />);
 
     fireEvent.change(screen.getByPlaceholderText("client@company.com"), {
-      target: { value: "made@example.com" },
+      target: { value: "synthetic.user@example.test" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Pass the Portal/ }));
 
-    const pin = await screen.findByLabelText("PIN");
+    const pin = await screen.findByLabelText("Access PIN");
     expect(pin.className).toContain("bg-[var(--bz-base)]");
     expect(pin.className).toContain("border-[var(--bz-border)]");
 
@@ -80,6 +152,122 @@ describe("UpgradedLoginPage (WS3 day pass)", () => {
       name: /Sign in with an email link instead/,
     });
     expect(magicLink.className).toContain("text-[var(--bz-accent-warm)]");
+  });
+
+  it("exposes durable labels and password-manager semantics", async () => {
+    render(<UpgradedLoginPage />);
+
+    const email = screen.getByRole("textbox", { name: "Corporate Email" });
+    expect(email).toHaveAttribute("name", "email");
+    expect(email).toHaveAttribute("autocomplete", "username");
+
+    fireEvent.change(email, {
+      target: { value: "  synthetic.user@example.test  " },
+    });
+    fireEvent.submit(email.closest("form")!);
+
+    const pin = await screen.findByLabelText("Access PIN");
+    expect(pin).toHaveAttribute("name", "password");
+    expect(pin).toHaveAttribute("autocomplete", "current-password");
+    expect(pin).toHaveAttribute("minlength", "4");
+    expect(pin).toHaveAttribute("maxlength", "8");
+  });
+
+  it.each([
+    ["/portal/matters?tab=open", "/portal/matters?tab=open"],
+    ["https://attacker.example/collect", "/portal"],
+    ["//attacker.example/collect", "/portal"],
+  ])(
+    "routes redirect %s only through the allowlisted same-origin sanitizer",
+    async (redirect, expected) => {
+      window.history.replaceState(
+        {},
+        "",
+        `/portal/login-upgraded?redirect=${encodeURIComponent(redirect)}`,
+      );
+      mockLogin.mockResolvedValue({ success: true });
+      render(<UpgradedLoginPage />);
+
+      const email = screen.getByRole("textbox", { name: "Corporate Email" });
+      fireEvent.change(email, {
+        target: { value: "synthetic.user@example.test" },
+      });
+      fireEvent.submit(email.closest("form")!);
+
+      const pin = await screen.findByLabelText("Access PIN");
+      fireEvent.change(pin, { target: { value: "1234" } });
+
+      vi.useFakeTimers();
+      try {
+        await act(async () => {
+          const form = pin.closest("form")!;
+          fireEvent.submit(form);
+          fireEvent.submit(form);
+          await Promise.resolve();
+        });
+
+        expect(mockLogin).toHaveBeenCalledTimes(1);
+        expect(mockLogin).toHaveBeenCalledWith(
+          "synthetic.user@example.test",
+          "1234",
+        );
+
+        act(() => {
+          vi.advanceTimersByTime(1500);
+        });
+        expect(mockRouterReplace).toHaveBeenCalledWith(expected);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it("never forwards credentials, email, current URL, or raw auth errors to telemetry", async () => {
+    const rawError = Object.assign(new Error("synthetic auth failure"), {
+      response: {
+        status: 401,
+        config: {
+          data: {
+            email: "synthetic.user@example.test",
+            pin: "1234",
+          },
+        },
+      },
+    });
+    mockLogin.mockRejectedValue(rawError);
+    render(<UpgradedLoginPage />);
+
+    const email = screen.getByRole("textbox", { name: "Corporate Email" });
+    fireEvent.change(email, {
+      target: { value: "synthetic.user@example.test" },
+    });
+    fireEvent.submit(email.closest("form")!);
+
+    const pin = await screen.findByLabelText("Access PIN");
+    fireEvent.change(pin, { target: { value: "1234" } });
+    fireEvent.submit(pin.closest("form")!);
+
+    await waitFor(() => {
+      expect(mockLoggerError).toHaveBeenCalledWith("Login failed", {
+        component: "UpgradedLoginPage",
+        action: "handleLogin",
+        code: 401,
+        reason: "portal.login.errors.invalid_credentials",
+      });
+    });
+    expect(mockLoggerInfo).toHaveBeenCalledWith("Login process started", {
+      component: "UpgradedLoginPage",
+      action: "handleLogin",
+    });
+
+    const telemetryPayload = JSON.stringify([
+      mockLoggerInfo.mock.calls,
+      mockLoggerError.mock.calls,
+    ]);
+    expect(telemetryPayload).not.toContain("synthetic.user@example.test");
+    expect(telemetryPayload).not.toContain("1234");
+    expect(telemetryPayload).not.toContain("currentUrl");
+    expect(telemetryPayload).not.toContain("config");
   });
 
   it("drain guard: no forced-dark UI utilities or gold hexes outside the scene", () => {

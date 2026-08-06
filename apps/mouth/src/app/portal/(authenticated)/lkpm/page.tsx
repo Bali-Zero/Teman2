@@ -465,9 +465,9 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
                                 {r.tanggal_diterima ?? "—"}
                               </td>
                               <td className="px-3 py-2">
-                                {r.file_drive_url ? (
+                                {r.download_url ? (
                                   <a
-                                    href={r.file_drive_url}
+                                    href={r.download_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{

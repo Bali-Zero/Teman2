@@ -3,24 +3,21 @@ import { UserProfile } from "@/types";
 import type { BackendLoginResponse, LoginResponse } from "./auth.types";
 import { logger } from "@/lib/logger";
 
+type AuthApiClient = Pick<
+  IApiClient,
+  "request" | "setToken" | "setUserProfile" | "setCsrfToken" | "clearToken"
+>;
+
 /**
  * Authentication API methods
  */
 export class AuthApi {
-  constructor(private client: IApiClient) {}
+  constructor(private client: AuthApiClient) {}
 
   async login(email: string, pin: string): Promise<LoginResponse> {
     logger.debug("Login attempt started", {
       component: "AuthApi",
       action: "login",
-      metadata: {
-        email,
-        pinLength: pin.length,
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        cookieEnabled: navigator.cookieEnabled,
-        storageAvailable: typeof localStorage !== "undefined",
-      },
     });
 
     try {
@@ -36,19 +33,12 @@ export class AuthApi {
       logger.debug("API response received", {
         component: "AuthApi",
         action: "login_response",
-        metadata: {
-          success: response.success,
-          hasData: !!response.data,
-          hasToken: !!response.data?.token,
-          message: response.message,
-        },
       });
 
       if (!response.success || !response.data) {
         logger.error("Login failed - invalid response", {
           component: "AuthApi",
           action: "login_failed",
-          metadata: { message: response.message },
         });
         throw new Error(response.message || "Login failed");
       }
@@ -73,7 +63,6 @@ export class AuthApi {
       logger.info("Login successful", {
         component: "AuthApi",
         action: "login_success",
-        user: response.data.user.email,
       });
 
       // Return frontend-friendly format
@@ -83,17 +72,10 @@ export class AuthApi {
         user: response.data.user,
       };
     } catch (error) {
-      logger.error(
-        "Login error",
-        {
-          component: "AuthApi",
-          action: "login_error",
-          metadata: {
-            message: error instanceof Error ? error.message : "Unknown error",
-          },
-        },
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      logger.error("Login error", {
+        component: "AuthApi",
+        action: "login_error",
+      });
       throw error;
     }
   }
@@ -131,11 +113,14 @@ export class AuthApi {
   }
 
   async logout(): Promise<void> {
-    try {
-      await this.client.request<void>("/api/auth/logout", { method: "POST" });
-    } finally {
-      this.client.clearToken();
-    }
+    // Start the authenticated request before clearing local state so the
+    // request captures the current Authorization/CSRF credentials. Do not wait
+    // for the network before invalidating the in-memory and persisted session.
+    const serverInvalidation = this.client.request<void>("/api/auth/logout", {
+      method: "POST",
+    });
+    this.client.clearToken();
+    await serverInvalidation;
   }
 
   async getProfile(): Promise<UserProfile> {

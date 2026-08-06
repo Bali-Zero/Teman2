@@ -31,7 +31,7 @@
  * optional so either is valid.
  */
 
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // ============================================
 // LANGUAGE ENUM

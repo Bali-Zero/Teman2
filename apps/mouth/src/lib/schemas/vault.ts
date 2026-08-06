@@ -49,7 +49,7 @@
  *    when present, but historically some rows may be null — tolerate it.
  */
 
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // ============================================
 // SCAN STATUS (future-proof, currently unused in list response)

@@ -410,8 +410,11 @@ export interface LKPMReceipt {
   lokasi: string | null;
   tanggal_diterima: string | null; // ISO date
   nama_perusahaan_oss: string | null;
-  file_drive_id: string | null;
-  file_drive_url: string | null;
+  /** Workspace-only storage metadata; omitted from the client portal contract. */
+  file_drive_id?: string | null;
+  file_drive_url?: string | null;
+  /** Same-origin, tenant-authorized receipt download path for portal clients. */
+  download_url?: string | null;
   file_name: string | null;
   // Joined from lkpm_reports when returned by /receipts/me and /receipts/by-client:
   quarter?: string;
@@ -549,6 +552,7 @@ export interface PortalNotification {
 export interface NotificationsResponse {
   notifications: PortalNotification[];
   unread_count: number;
+  degraded?: boolean;
 }
 
 // V2 Matter-first dashboard summary (3 hero cards)

@@ -2,22 +2,40 @@
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 from jose import jwt as jose_jwt
 
 
+@pytest.fixture(autouse=True)
+def available_revocation_store():
+    """Keep valid-token tests explicit about an available, empty revocation store."""
+    sync_client = MagicMock()
+    sync_client.exists.return_value = 0
+    async_client = MagicMock()
+    async_client.exists = AsyncMock(return_value=0)
+    manager = MagicMock()
+    manager.get_sync_client.return_value = sync_client
+    manager.get_async_client.return_value = async_client
+
+    with patch(
+        "backend.core.redis_manager.RedisManager.get_instance",
+        return_value=manager,
+    ):
+        yield
+
+
 class TestSecurityConfig:
     """Test new security configuration fields."""
 
-    def test_jwt_enforce_expiry_defaults_to_false(self):
-        """JWT_ENFORCE_EXPIRY should default to False for safe rollout."""
+    def test_jwt_enforce_expiry_defaults_to_true(self):
+        """JWT expiry must be enforced by default."""
         from backend.app.core.config import settings
 
         assert hasattr(settings, "jwt_enforce_expiry")
-        assert settings.jwt_enforce_expiry is False
+        assert settings.jwt_enforce_expiry is True
 
     def test_jwt_access_token_expire_hours_is_one(self):
         """Access token expiry should be 1 hour (down from 24)."""
@@ -116,8 +134,8 @@ class TestJWTExpiryValidation:
         user = get_current_user(request, creds)
         assert user["email"] == "test@balizero.com"
 
-    def test_expired_token_audit_mode_logs_warning(self):
-        """When jwt_enforce_expiry=False, expired tokens pass but flag _warn_expired."""
+    def test_expired_token_rejected_even_if_legacy_flag_is_false(self):
+        """A legacy environment override cannot re-enable expired sessions."""
         from backend.app.deps.auth import get_current_user
 
         token = self._make_token(exp_delta=timedelta(hours=-1))
@@ -129,9 +147,9 @@ class TestJWTExpiryValidation:
             mock_settings.jwt_secret_key = real_secret
             mock_settings.jwt_enforce_expiry = False
 
-            user = get_current_user(request, creds)
-            assert user["email"] == "test@balizero.com"
-            assert user.get("_warn_expired") is True
+            with pytest.raises(HTTPException) as exc_info:
+                get_current_user(request, creds)
+            assert exc_info.value.status_code == 401
 
     def test_expired_token_enforce_mode_raises_401(self):
         """When jwt_enforce_expiry=True, expired tokens raise 401."""
@@ -184,7 +202,7 @@ class TestValidationModuleExpiry:
         assert result["email"] == "test@balizero.com"
 
     @pytest.mark.asyncio
-    async def test_expired_token_audit_mode_returns_user_with_flag(self):
+    async def test_expired_token_rejected_even_if_legacy_flag_is_false(self):
         from backend.app.auth.validation import validate_auth_token
 
         token = self._make_token(exp_delta=timedelta(hours=-1))
@@ -194,8 +212,7 @@ class TestValidationModuleExpiry:
             mock_settings.jwt_algorithm = "HS256"
             mock_settings.jwt_enforce_expiry = False
             result = await validate_auth_token(token)
-            assert result is not None
-            assert result.get("_warn_expired") is True
+            assert result is None
 
     @pytest.mark.asyncio
     async def test_expired_token_enforce_mode_returns_none(self):
@@ -287,12 +304,12 @@ class TestFullAuthFlowS03:
 class TestSprint2Config:
     """Test Sprint 2 config fields."""
 
-    def test_enable_token_revocation_defaults_to_false(self):
-        """Token revocation should be off by default for safe rollout."""
+    def test_enable_token_revocation_defaults_to_true(self):
+        """Token revocation must be enabled by default."""
         from backend.app.core.config import settings
 
         assert hasattr(settings, "enable_token_revocation")
-        assert settings.enable_token_revocation is False
+        assert settings.enable_token_revocation is True
 
 
 class TestTokenRevocationInAuth:
@@ -323,15 +340,16 @@ class TestTokenRevocationInAuth:
         creds.credentials = token
         return creds
 
-    def test_revocation_disabled_passes_normally(self):
-        """When enable_token_revocation=False, auth works normally."""
+    def test_legacy_flag_cannot_disable_revocation_validation(self):
+        """A legacy false flag cannot bypass an available revocation check."""
         from backend.app.deps.auth import get_current_user
 
         token = self._make_token()
         request = self._make_request()
         creds = self._make_credentials(token)
 
-        user = get_current_user(request, creds)
+        with patch("backend.app.core.config.settings.enable_token_revocation", False):
+            user = get_current_user(request, creds)
         assert user["email"] == "test@balizero.com"
 
 
