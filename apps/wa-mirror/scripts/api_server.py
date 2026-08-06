@@ -2,7 +2,6 @@
 import asyncio
 import json
 import os
-import re
 from pathlib import Path
 from typing import Literal
 import asyncpg
@@ -28,7 +27,14 @@ app.add_middleware(
 # ── Paths & Environment ────────────────────────────────────────────────────────
 HOME = Path.home()
 ACCOUNTS_JSON = HOME / ".wa-mirror.accounts.json"
-WA_MIRROR_DIR = HOME / "Desktop" / "nuzantara" / "apps" / "wa-mirror"
+# `~/Desktop/nuzantara` still resolves on the Pro, but only because a compat
+# symlink survives the 2026-07-16 move out of Desktop (W84/TCC). `_lib.sh`, the
+# launcher's own source of truth, says `$HOME/nuzantara/apps/wa-mirror` — two
+# files disagreeing about where wa-mirror lives is how the session-linked column
+# silently reads the wrong tree the day someone tidies the symlink away.
+WA_MIRROR_DIR = Path(
+    os.environ.get("WA_MIRROR_DIR") or (HOME / "nuzantara" / "apps" / "wa-mirror")
+)
 PID_DIR = Path("/tmp/wa-mirror-pids")
 LOG_DIR = Path("/tmp/wa-mirror-logs")
 SCRIPT_DIR = HOME / "scripts" / "wa-mirror-launcher"
@@ -96,6 +102,33 @@ def is_pid_running(pid: int) -> bool:
         return False
 
 
+def roster_account(name: str) -> dict | None:
+    """Map a caller-supplied employee name to its roster record, or None.
+
+    Every filesystem path and subprocess argument downstream is built from the
+    RETURNED record — never from the caller's string. That distinction is the
+    whole fix: the endpoints already refused unknown names, but they then went
+    on to use the *request* value to build the path, so the tainted value still
+    reached the sink. A guard that only raises does not sanitise anything; one
+    that returns the trusted value does. Concretely, `/api/accounts/{name}/logs`
+    can now only ever open a log file named after a roster entry, even if this
+    comparison were subtly wrong (case folding, unicode, stray whitespace).
+    """
+    wanted = name.strip().lower()
+    if not wanted:
+        return None
+    for acc in load_accounts():
+        roster_name = str(acc.get("name", "")).strip().lower()
+        if roster_name and roster_name == wanted:
+            return acc
+    return None
+
+
+def roster_stem(acc: dict) -> str:
+    """The lowercase roster name, the only value allowed to name a file."""
+    return str(acc.get("name", "")).strip().lower()
+
+
 def get_account_status(name: str, e164: str) -> dict:
     name_lower = name.lower()
     pid_file = PID_DIR / f"{name_lower}.pid"
@@ -134,8 +167,11 @@ def get_account_status(name: str, e164: str) -> dict:
                     lines = f.read().decode("utf-8", errors="replace").splitlines()
                     if lines:
                         last_log = lines[-1].strip()
-        except Exception:
-            pass
+        except OSError as exc:
+            # Say so in the field the dashboard renders. An empty string here is
+            # indistinguishable from "the daemon has logged nothing", which is
+            # the shape that lets a broken read read as a quiet account.
+            last_log = f"[log unreadable: {type(exc).__name__}]"
 
     return {
         "status": status,
@@ -183,13 +219,13 @@ def get_accounts():
 @app.post("/api/accounts/{name}/control")
 async def control_account(name: str, payload: ControlRequest):
     """Start, stop, or restart a specific account scraper process."""
-    name_clean = name.strip().lower()
-    accounts = load_accounts()
-    valid_names = {a["name"].lower(): a for a in accounts if "name" in a}
-    
-    if name_clean not in valid_names:
-        raise HTTPException(status_code=404, detail=f"Employee '{name}' not found in roster.")
-    
+    acc_info = roster_account(name)
+    if acc_info is None:
+        raise HTTPException(status_code=404, detail="Employee not found in roster.")
+
+    # Roster-derived from here down: nothing the caller typed reaches argv.
+    name_clean = roster_stem(acc_info)
+
     start_script = SCRIPT_DIR / "start-one.sh"
     stop_script = SCRIPT_DIR / "stop-one.sh"
     
@@ -230,8 +266,7 @@ async def control_account(name: str, payload: ControlRequest):
         except asyncio.TimeoutError:
             output = "Action initiated, but process monitoring timed out. Daemon should be running."
 
-        acc_info = valid_names[name_clean]
-        new_status = get_account_status(name_clean, acc_info["e164"])
+        new_status = get_account_status(name_clean, str(acc_info.get("e164", "")))
         
         return {
             "status": "success",
@@ -247,20 +282,26 @@ async def control_account(name: str, payload: ControlRequest):
 @app.get("/api/accounts/{name}/logs")
 def get_logs(name: str, lines: int = Query(50, ge=1, le=500)):
     """Retrieve the last N lines of logs for a specific daemon securely."""
-    name_clean = name.strip().lower()
-    accounts = load_accounts()
-    valid_names = {a["name"].lower() for a in accounts if "name" in a}
-    
-    if name_clean not in valid_names:
-        raise HTTPException(status_code=404, detail=f"Employee '{name}' not found.")
-        
+    acc_info = roster_account(name)
+    if acc_info is None:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    # Roster-derived: the filename can only ever be a name the roster carries.
+    name_clean = roster_stem(acc_info)
     log_file = LOG_DIR / f"{name_clean}.log"
+
+    # Belt and braces. The containment check is deliberately OUTSIDE the try:
+    # in the previous version the `raise HTTPException(403)` sat inside a
+    # `try: ... except Exception:` block, so the guard's own refusal was caught
+    # by its own handler and re-raised as a 400 — it still refused, but a guard
+    # whose raise is swallowed by its own except is one edit away from passing.
     try:
         resolved_path = log_file.resolve()
-        if not str(resolved_path).startswith(str(LOG_DIR.resolve())):
-            raise HTTPException(status_code=403, detail="Access denied.")
-    except Exception:
+        log_root = LOG_DIR.resolve()
+    except OSError:
         raise HTTPException(status_code=400, detail="Invalid file path.")
+    if resolved_path.parent != log_root:
+        raise HTTPException(status_code=403, detail="Access denied.")
 
     if not log_file.exists():
         return {
