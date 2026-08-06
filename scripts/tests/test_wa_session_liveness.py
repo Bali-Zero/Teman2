@@ -90,6 +90,32 @@ def test_the_alert_says_the_pid_is_not_the_proof() -> None:
     assert "re-pair" in message
 
 
+def test_the_alert_names_the_restart_before_the_qr() -> None:
+    """La prima stesura indicava il re-pair QR come LA cura. Misurato il 6/8:
+    vino e tornata a specchiare 17 minuti dopo che il supervisore aveva
+    RILANCIATO il suo processo — nessun QR. Ari invece il QR l'aveva richiesto.
+    Sono due guasti diversi, e mandare qualcuno al telefono quando bastava un
+    riavvio blocca la cura dietro un gesto fisico che non serviva.
+    """
+    message = wa.format_alert([wa.classify("vino", None, NOW)], "Nuzantara", 72)
+    assert message.index("RIAVVIA") < message.index("re-pair"), (
+        "la cura economica va nominata PRIMA di quella che blocca su una persona"
+    )
+    assert "already running" in message, (
+        "senza il perche — il supervisore salta un PID vivo — il consiglio e un rito"
+    )
+
+
+def test_the_alert_never_suggests_pkill_f() -> None:
+    """`pkill -f --employee=vino` matcha anche la riga di comando di chi la
+    scrive: e la stessa over-match che ha gia falsato due sonde in questa
+    lane. Un allarme che suggerisce un comando cosi arma il prossimo incidente.
+    """
+    message = wa.format_alert([wa.classify("vino", None, NOW)], "Nuzantara", 72)
+    assert "pkill -f`" in message or "mai `pkill -f`" in message, "deve METTERNE IN GUARDIA"
+    assert "\n    pkill" not in message, "non deve PRESCRIVERLO come comando"
+
+
 # --------------------------------------------------- CANNOT-VERIFY (la parte critica)
 
 

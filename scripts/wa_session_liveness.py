@@ -123,8 +123,15 @@ def format_alert(stale: Sequence[LineStatus], host: str, stale_hours: float) -> 
         body.append(f"\n• {line.name}: {when}")
     body.append(
         "\n\nIl processo puo essere vivo lo stesso: il PID non e la prova."
-        "\nSe la sessione e revocata serve un re-pair QR (gesto fisico):"
-        "\n  apps/wa-mirror/scripts/start-one.sh <nome>  → scansione dal telefono"
+        "\nDue cure, in ordine di costo — la prima e nostra, la seconda no:"
+        "\n 1. RIAVVIA quella linea. Il supervisore salta un figlio finche il"
+        "\n    PID c'e ('already running'), quindi un processo vivo-e-muto non"
+        "\n    lo riprende mai da solo. Prendi il PID da status.sh e uccidi"
+        "\n    QUELLO — mai `pkill -f`, che matcha anche il comando che stai"
+        "\n    scrivendo. Il supervisore lo rilancia entro un ciclo."
+        "\n 2. SOLO se dopo il riavvio il log dice logged_out/401 serve il"
+        "\n    re-pair QR, che e un gesto fisico e blocca finche non lo fa"
+        "\n    qualcuno: apps/wa-mirror/scripts/start-one.sh <nome>"
     )
     return head + "".join(body)
 
