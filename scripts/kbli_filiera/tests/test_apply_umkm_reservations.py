@@ -187,3 +187,70 @@ def test_the_withdrawal_names_the_codes_whose_evidence_was_short():
     assert len(tainted) == w["count_tainted"] > 0
     assert "01111" in tainted, "the 25-Ha food crops are the clearest members"
     assert "43215" in tainted, "so is the simple/intermediate technology grade"
+
+
+def test_guilt_a_2025_code_that_absorbs_other_2020_codes_is_refused():
+    """`79110` (Aktivitas Agen Perjalanan) is the live shape: the annex reserves
+    the 2020 row `79111`, but the 2025 code also absorbs `79112` and `79119`, so
+    a 0% verdict on it closes activities the annex never named."""
+    todo, refusals = run(
+        [item("79110", judged_as="79111")],
+        [rec("79110", ancestors=["79111", "79112", "79119"])],
+    )
+    assert todo == []
+    assert "broader than the reserved activity" in refusals[0]
+    assert "79112" in refusals[0], "the refusal must name what makes it broader"
+
+
+def test_innocence_a_clean_one_to_one_carry_over_still_applies():
+    """Six of the seven vintage rows ARE 1:1 (`55193`->`55203` villa). A rule
+    that refused those too would withdraw six real determinations to catch one."""
+    todo, refusals = run(
+        [item("55203", judged_as="55193")],
+        [rec("55203", ancestors=["55193"])],
+    )
+    assert refusals == [] and [i["code"] for i in todo] == ["55203"]
+
+
+def test_the_two_directions_are_different_questions():
+    """Forward: did the 2020 activity SPLIT? Reverse: did the 2025 code MERGE?
+    A record can pass one and fail the other, which is why both are asked — the
+    first rule was there from the start and could not have caught 79110."""
+    records = [rec("79110", ancestors=["79111", "79112", "79119"])]
+    heirs = A.heirs_of(records)
+    assert heirs["79111"] == ["79110"], "forward check passes: one heir"
+    todo, refusals = run([item("79110", judged_as="79111")], records)
+    assert todo == [] and refusals, "reverse check refuses"
+
+
+def test_the_readjudication_scope_is_named_and_small():
+    """The withdrawal's own follow-up scope, pinned so it cannot drift back into
+    "recheck all 68". Measured by diffing each verdict's annex row before and
+    after the parent/fusion cures: 11 had a restricting parent hidden from the
+    lane, 2 had their row text change, 26 read exactly what the annex says."""
+    d = json.loads(A.SPEC.read_text(encoding="utf-8"))["withdrawn"]["evidence_delta_2026_08_06"]
+    hidden = d["restricting_parent_was_hidden"]
+    changed = d["row_text_changed_by_the_fusion_cure"]
+    assert len(hidden) + len(changed) == 13, "the re-adjudication is thirteen codes"
+    assert d["evidence_unchanged"] == 26
+    assert "42912" in changed, "the fused-cell row is one of the two"
+    # …and 26 unchanged is NOT a licence to revive them; the spec has to keep
+    # saying which axes are still open on that group.
+    assert "same ACTIVITY" in d["meaning"] and "OCR" in d["meaning"]
+
+
+def test_the_readjudication_overturned_eleven_of_the_thirteen():
+    """The 13 named codes, re-judged on evidence that finally carries the parent
+    bidang usaha. Pinned because it is the reason the withdrawal was right: the
+    six 25-Ha crops and the five simple/intermediate-technology grades are
+    reserved only as a SEGMENT, not as whole codes."""
+    r = json.loads(A.SPEC.read_text(encoding="utf-8"))["withdrawn"]["readjudication_2026_08_06"]
+    v = r["verdicts"]
+    assert len(v["REFUSE_SEGMENT"]) == 11
+    assert v["PATCH_ZERO"] == ["95299"] and v["REFUSE_BROADER"] == ["42912"]
+    assert sum(len(x) for x in v.values()) == 13
+    # 01111 is the worked example of the whole defect; it must not drift back
+    # into a whole-code reservation without this test failing.
+    assert "01111" in v["REFUSE_SEGMENT"]
+    # …and the run's own weakness stays written down next to its result.
+    assert "handed both lanes the conclusion" in r["declared_weakness"]
