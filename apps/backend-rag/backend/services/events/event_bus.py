@@ -60,7 +60,8 @@ PG_CHANNEL_MAP: dict[str, str] = {
     "war_room_event": "war_room.event",
     # Emitted by whatsapp_message_context INSERT trigger trg_wa_message_notify
     # (migration 193). Payload: {id, direction, team_member_phone, counterpart_phone,
-    # chat_type, group_jid, attention_priority}. Consumers: wa_dashboard_stream
+    # chat_type, group_jid, attention_priority}. No in-repo consumer since
+    # 2026-08-06 (wa_dashboard_stream removed with apps/wa-dashboard).
     # SSE manager (sse_manager.publish). Pointer-only payload — well under
     # 8KB NOTIFY hard limit. SSE worker SELECTs full row by id.
     "wa_message_inserted": "wa_message.inserted",

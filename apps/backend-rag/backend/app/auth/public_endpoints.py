@@ -119,15 +119,6 @@ _INFRA = (
         "Best-effort frontend browser metrics ingestion - no PII, no auth header",
         match="exact",
     ),
-    # M1.2 WA Dashboard (2026-05-23): SSE stream health probe. The /stream
-    # endpoint itself remains auth-protected (cookie JWT); only /stream/health
-    # is public for smoke-test + dashboard reachability ping.
-    PublicEndpoint(
-        "/api/v1/wa-dashboard/stream/health",
-        Category.INFRA,
-        "WA Dashboard SSE stream health probe — public for dashboard reachability",
-        match="exact",
-    ),
     # P1.2 asset upload proxy (2026-05-26): /api/assets/upload is auth-protected
     # via X-Asset-Upload-Token header (env ASSET_UPLOAD_TOKEN); only /health is
     # public for liveness probe of the asset upload service (Tigris config check).
