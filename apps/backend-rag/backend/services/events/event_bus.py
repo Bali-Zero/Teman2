@@ -60,11 +60,19 @@ PG_CHANNEL_MAP: dict[str, str] = {
     "war_room_event": "war_room.event",
     # Emitted by whatsapp_message_context INSERT trigger trg_wa_message_notify
     # (migration 193). Payload: {id, direction, team_member_phone, counterpart_phone,
-    # chat_type, group_jid, attention_priority}. No in-repo consumer since
-    # 2026-08-06 (wa_dashboard_stream removed with apps/wa-dashboard).
+    # chat_type, group_jid, attention_priority}.
+    # DELISTED 2026-08-06: its only subscriber was the app_factory SSE handler
+    # feeding apps/wa-dashboard, deleted with that app. The channel is gone from
+    # PG_CHANNEL_MAP and CHANNEL_CONSUMERS because this registry is enforced as
+    # a truth claim (test_channel_consumer_parity) and an empty consumer set is
+    # rejected by design — declaring a consumer that does not exist is exactly
+    # what that suite is here to stop.
+    # STILL ON THE DATA PLANE, deliberately not touched here: migration 193's
+    # trg_wa_message_notify keeps firing pg_notify('wa_message_inserted', ...)
+    # into a channel nobody LISTENs on (a no-op in Postgres). Dropping a trigger
+    # needs its own migration and Squawk review, not a rider on a deletion PR.
     # SSE manager (sse_manager.publish). Pointer-only payload — well under
     # 8KB NOTIFY hard limit. SSE worker SELECTs full row by id.
-    "wa_message_inserted": "wa_message.inserted",
     # Emitted by trend_signals INSERT + research_dossiers INSERT/UPDATE triggers
     # (migration 113). Payload: {signal_id|dossier_id, topic|slug, event_type,
     # occurred_at}. Consumers: dossier_compiler (batch pre-compute on new trends),
@@ -181,7 +189,6 @@ CHANNEL_CONSUMERS: dict[str, frozenset[str]] = {
     "compliance_alert": frozenset({"in_app", "bridge"}),
     "lkpm_ingest_completed": frozenset({"in_app", "bridge"}),
     "war_room_event": frozenset({"bridge"}),
-    "wa_message_inserted": frozenset({"in_app"}),
     "intel_event": frozenset({"in_app", "bridge"}),
     "cognitive_event": frozenset({"bridge"}),
     "partner_commission_changed": frozenset({"bridge"}),
