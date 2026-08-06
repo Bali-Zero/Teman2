@@ -33,6 +33,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -80,6 +81,17 @@ API_TIMEOUT = 6
 
 # ---------------------------------------------------------------- token chain
 def _parse_env_file(path: Path) -> dict:
+    """Read a shell-style secrets file into a dict.
+
+    `export FOO=bar` is the SAME key as `FOO=bar`: the file is sourced by shell
+    wrappers (which need `export` to reach child processes) AND read by this
+    parser, so both forms must resolve. Without the prefix strip the key became
+    the literal "export FOO" and the secret was invisible — measured 2026-08-06:
+    19 keys on Mini (incl. TELEGRAM_BOT_TOKEN, DATABASE_URL), 6 on Pro, 4 on M5.
+    Never `lstrip("export ")`: lstrip strips CHARACTERS, so it would turn
+    EVENTBUS_URL into VENTBUS_URL. The prefix is anchored and must be followed by
+    whitespace, so `exportFOO=1` and `export=1` stay keys in their own right.
+    """
     out: dict = {}
     try:
         for line in path.read_text(errors="replace").splitlines():
@@ -87,7 +99,10 @@ def _parse_env_file(path: Path) -> dict:
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, _, v = line.partition("=")
-            out[k.strip()] = v.strip().strip('"').strip("'")
+            k = re.sub(r"^\s*export\s+", "", k).strip()
+            if not k:  # `export =v` — malformed shell, names nothing
+                continue
+            out[k] = v.strip().strip('"').strip("'")
     except OSError:
         pass
     return out
