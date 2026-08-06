@@ -78,16 +78,26 @@ CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 # A condition that PERSISTS is not news each time it is re-measured. After the
 # first send, each further send of the same live condition mutes it for longer.
-# Replayed over the real corpus (5202 events / 29.5d, 1525 of them P0, today
-# 51.6 P0/day): identity alone with a flat 6h window leaves 28.9 P0/day, this
-# ladder leaves 15.9, and re-tiering the 24 timer-driven sources to digest
-# leaves 4.7 — which IS the real alarm rate (138 of 1525 P0 are alarms; the
-# other 1387 are scheduled reports wearing an alarm's clothes).
+# Replayed over the real corpus using the key the gateway ACTUALLY recorded
+# (5202 events / 29.5d, 1525 of them p0):
 #
-# An earlier replay of this same line said 12.6 and "~3". It simulated a streak
-# that never resets, so windows grew without bound and it under-counted; the
-# shipped rule restarts the ladder when a condition goes quiet. The numbers
-# above are from the replay that models what this file actually does.
+#   all tiers   176.1/day -> 48.2/day        p0   51.6/day -> 28.6/day
+#   log-size-watchdog 60.9 -> 4.2   wa-mirror-bridge 48.9 -> 4.5
+#
+# The control that makes this trustworthy: replaying a FLAT 6h window over the
+# same keys reproduces the observed rate exactly (176.1 -> 176.1). The old
+# window was not broken and was not being bypassed — 93.2% of events carry a
+# producer-supplied dedup_key, and what the archive holds is precisely what
+# survived a working 6h window. Four sends a day, forever, of a condition that
+# is simply still true. That is what the ladder is for, and it is where all of
+# the reduction above comes from.
+#
+# Where it does NOT bite: sentinel, 12.8 -> 10.6/day, because its producer key
+# is md5(the whole message) and the message carries a counter — 378 events, 255
+# distinct keys. A producer key that MOVES is worse than no key at all: it
+# bypasses condition_identity() below (explicit key wins) and then defeats every
+# window, because each re-measurement is a brand-new condition. Those producers
+# need fixing at the source; the gateway cannot rescue them.
 #
 # The FIRST rung is TG_DEDUP_HOURS: this replaces a flat window with a growing
 # one, it does not retire the knob that names the first window. Deriving the
@@ -111,16 +121,22 @@ API_TIMEOUT = 6
 # ---------------------------------------------------------------- identity
 # A condition's IDENTITY must not contain its MEASUREMENTS.
 #
-# The derived dedup key used to be sha1(source|text[:160]) — raw. Every one of
-# the three loudest sources embeds a changing number inside those 160 chars
-# ("= 4.7 MB", "reconnect_attempt=591", "for 115 consecutive cycles"), so every
-# repeat hashed to a brand-new key and the dedup window never once applied.
-# Measured on the live 31-day corpus: 5202 events collapsed to 2791 "distinct"
-# conditions — i.e. dedup was decorative. With this normalisation: 362.
+# This is the FALLBACK, taken only when the caller passes no --dedup-key. Scope
+# it honestly: on the measured corpus that is 6.8% of events (355 of 5202) —
+# the other 93.2% name their own condition and never reach this function. It
+# matters anyway, because a producer that names nothing gets the sane default
+# instead of a key that changes whenever a number does.
+#
+# The old fallback was sha1(source|text[:160]) — raw, so a repeat that only
+# moved a counter ("= 4.7 MB", "reconnect_attempt=591") became a brand-new
+# condition. Replayed over just those 355 no-key events: 167 -> 35 conditions.
 #
 # Identity is the FIRST SENTENCE of the FIRST LINE. Everything after it is
 # EVIDENCE (log tails, stack frames, counters) — unbounded variability that no
 # prefix truncation can reliably exclude, which is why we cut on structure.
+#
+# The same normalisation is what a producer with an UNSTABLE explicit key
+# should be passing (see sentinel, above) instead of a hash of its own text.
 _ID_SUBS = (
     (re.compile(r"<[^>]+>"), ""),                                # html tags
     (re.compile(r"\b\d{4}-\d{2}-\d{2}([T ][\d:.,+]*)?"), "#D"),  # dates
