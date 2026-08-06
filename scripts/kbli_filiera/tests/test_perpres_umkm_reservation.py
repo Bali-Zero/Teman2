@@ -32,10 +32,12 @@ from parse_perpres_lampiran2 import (  # noqa: E402
     SUBSTITUTIONS,
     content_words,
     decode,
+    governing_headings,
     parse,
 )
 from perpres_umkm_reservation_relation import (  # noqa: E402
     RELATION,
+    _PARENT_QUALIFIER_RE,
     classify,
     live_heirs,
     load_canonical,
@@ -589,6 +591,110 @@ def test_the_live_artifact_carries_the_parent_that_was_missing():
     assert {r["code"] for r in qualified} == {
         "01111", "01113", "01114", "01115", "01121", "01122",
     }
+
+
+def test_guilt_a_dotted_item_number_is_a_heading_like_any_other():
+    """The annex numbers items BOTH ways, two rows apart: `48.  Jasa Penginapan:`
+    and `49  Aktivitas konsultansi ...`. A rule that required whitespace right
+    after the digits saw only the second, and `Jasa Penginapan:` — the heading
+    that governs every hotel, homestay, guest house and villa row in Lampiran II
+    — was invisible."""
+    text = "  48.   Jasa Penginapan:\n       - Hotel Bintang I    55110    V\n"
+    h = governing_headings(text)
+    assert h[(1, 1)] == "Jasa Penginapan"
+
+
+def test_guilt_a_dotted_item_CLOSES_the_parent_above_it():
+    """The worse half, and the one that put a false fact in the data rather than
+    merely omitting a true one. A numbered item always ends the previous parent;
+    when the dotted form was not recognised as an item, its rows kept inheriting
+    the heading above. Live instance: `10214` (fish processing, item `3.`) was
+    carrying `Pemungutan hasil hutan` — forest harvesting, item 2."""
+    text = (
+        "   2   Pemungutan hasil hutan:\n"
+        "        Rotan                  02302   V\n"
+        "   3.   Industri pemindangan ikan   10214   V\n"
+    )
+    h = governing_headings(text)
+    assert h[(1, 1)] == "Pemungutan hasil hutan", "the child of item 2 keeps its parent"
+    assert h[(1, 2)] is None, "item 3. is its own item and inherits nothing"
+
+
+def test_innocence_the_undotted_form_still_governs_its_children():
+    """The fix must not trade one form for the other.
+
+    This one passes against the OLD rule too, and that is what an innocence test
+    is for — it pins behaviour the change must leave alone. It has no power to
+    catch a regression of the DOTTED form; do not read it as a guard for that.
+    The two `test_guilt_…` cases above are the guards.
+    """
+    text = "   4   Industri pengolahan kedelai:\n       Industri tempe kedelai  10391  V\n"
+    h = governing_headings(text)
+    assert h[(1, 1)] == "Industri pengolahan kedelai"
+
+
+def test_innocence_a_decimal_amount_at_the_head_of_a_line_is_not_an_item():
+    """The widened boundary's own hazard, exercised where it actually lives.
+
+    An earlier version of this test began the line with `Nilai`, so `^\\s*\\d`
+    never matched and it could not have failed however the rule was written — it
+    asserted a condition on a literal string instead of an outcome of the parser
+    (named by an independent review of this diff). These three lines all BEGIN
+    with digits, which is the only place the rule can be fooled:
+
+      `1.500  juta`  — a dot with no space after it is a decimal separator
+      `1. 500 juta:` — a dot WITH a space is the shape the fix admits, and the
+                       heading it would open starts with a digit, which no real
+                       item in this annex does
+      `12 Besar`     — a bare number needs two spaces, as it always did
+    """
+    text = (
+        "   1.500  juta rupiah:\n"
+        "   1. 500 juta rupiah:\n"
+        "   12 Besar saja:\n"
+        "        Sesuatu   12345   V\n"
+    )
+    h = governing_headings(text)
+    assert h[(1, 3)] is None, f"a row after three non-items must be parentless, got {h[(1, 3)]!r}"
+
+
+def test_guilt_a_bare_number_with_one_space_does_not_close_a_parent():
+    """The tightening, and why it is not cosmetic.
+
+    Written as `\\d{1,3}\\.?\\s{1,}` the rule admits a bare `2 body` — a line the
+    annex never numbered — and a numbered item ALWAYS closes the parent above it.
+    So the child on the following line would be orphaned by a false sibling. The
+    dotted form gets the single space; the bare form still demands two.
+    """
+    text = (
+        "   7   Jasa Penginapan:\n"
+        "   2 keterangan lanjutan\n"
+        "        Hotel Melati    55120   V\n"
+    )
+    h = governing_headings(text)
+    assert h[(1, 2)] == "Jasa Penginapan", (
+        "a line that is not an item number must not close the heading above it"
+    )
+
+
+def test_the_live_artifact_attributes_the_accommodation_family_and_not_the_fish():
+    """TRIPWIRE on the DATA for both halves of the dotted-number defect, on the
+    rows that carry commercial weight: the accommodation family is Bali Zero's
+    own market, and `Jasa Penginapan` is what says these rows are a family at
+    all. It carries NO restricting qualifier — which is the point: recovering a
+    parent is not the same as finding a restriction, and this test asserts the
+    parent is present AND that it does not narrow anything."""
+    rows = load_relation()["rows"]
+    by = {}
+    for r in rows:
+        by.setdefault(r["code"], []).append(r)
+    for code in ("55110", "55120", "55130", "55193", "55199"):
+        assert all(r.get("parent_heading") == "Jasa Penginapan" for r in by[code]), code
+    assert not _PARENT_QUALIFIER_RE.search("Jasa Penginapan"), (
+        "a recovered parent must not be assumed restrictive"
+    )
+    # …and the phantom is gone: item `3.` inherits nothing from item 2.
+    assert all(r.get("parent_heading") is None for r in by["10214"])
 
 
 # ---------------------------------------------------------------------------
