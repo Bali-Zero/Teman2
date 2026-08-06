@@ -116,13 +116,21 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     Replayed over the same 378 events (29.3 days) with the escalating ladder,
     scoring BOTH branches of `dedup_key or derived` — the named producers by
     their name, the unnamed ones through condition_identity() — sentinel drops
-    from 12.90 to 3.38 messages/day, and from 5.73 to 0.24/day on p0.
+    from 12.90 to 3.41 messages/day, and from 5.73 to 0.24/day on p0.
     """
-    # LOCAL fast-path only — an exact-text guard that saves a subprocess when a
-    # byte-identical message repeats inside DEDUP_WINDOW_S. It is deliberately
-    # NOT the suppression policy (the gateway owns that): its failure mode is
+    # LOCAL fast-path only — a guard that saves a subprocess when the SAME
+    # alert repeats inside DEDUP_WINDOW_S. It is deliberately NOT the
+    # suppression policy (the gateway owns that): its failure mode must be
     # "spawns a subprocess the gateway then dedups", never a lost alert.
-    dedup_key = hashlib.md5(message.encode()).hexdigest()
+    #
+    # It keys on (level, condition, message), not on the message alone. Text
+    # alone was a collider the moment `condition` existed: two workers whose
+    # only difference is the condition ("worker unavailable" for worker:a and
+    # worker:b) shared one md5, so the second returned False HERE and the
+    # gateway never saw worker:b at all. Same for an INFO that a CRITICAL then
+    # repeats verbatim — a severity upgrade is news, and this layer must not
+    # be the one that eats it.
+    dedup_key = hashlib.md5(f"{level}|{condition}|{message}".encode()).hexdigest()
     if _is_duplicate(dedup_key):
         return False
 
@@ -136,7 +144,15 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     # better than 3 urllib attempts: a lost send resurfaces in the next digest).
     argv = [sys.executable, _gateway_script(), "--tier", tier, "--source", "sentinel"]
     if condition:
-        argv += ["--dedup-key", f"sentinel:{condition}"]
+        # LEVEL is part of the identity. The gateway resolves the key BEFORE it
+        # looks at the tier (tg_notify.py: `key = dedup_key or ...`, then the
+        # dedup block returns "deduped" whatever the tier), so a key that spans
+        # severities lets a WARNING mute the CRITICAL that follows it. The
+        # tier-escalation family does exactly that: one job is classified
+        # UNKNOWN/WARNING and later DETERMINISTIC/CRITICAL, and the upgrade is
+        # the whole point of the alert. A repeat at the SAME severity still
+        # collapses, which is what the ladder is for.
+        argv += ["--dedup-key", f"sentinel:{condition}:{level.lower()}"]
     argv += ["--", full_message]
 
     try:

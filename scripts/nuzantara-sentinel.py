@@ -136,7 +136,11 @@ def load_registry() -> dict:
     if os.path.exists(REGISTRY_HALT_FILE) and not os.path.exists(REGISTRY_OVERRIDE_FILE):
         msg = open(REGISTRY_HALT_FILE).read().strip()
         logger.error(f"REGISTRY_HALT active — aborting sentinel: {msg}")
-        send_alert(f"🚨 Sentinel HALTED: registry checksum mismatch.\n{msg}\nResolve and touch REGISTRY_OVERRIDE to resume.")
+        send_alert(
+            f"🚨 Sentinel HALTED: registry checksum mismatch.\n{msg}\n"
+            f"Resolve and touch REGISTRY_OVERRIDE to resume.",
+            condition="halt:checksum-mismatch",
+        )
         sys.exit(1)
 
     try:
@@ -150,7 +154,10 @@ def load_registry() -> dict:
         halt_msg = f"JSON decode error in {REGISTRY_FILE}: {exc}"
         open(REGISTRY_HALT_FILE, "w").write(halt_msg)
         logger.error(f"Registry corrupt → HALT: {halt_msg}")
-        send_alert(f"🚨 Sentinel HALTED: corrupt registry.\n{halt_msg}")
+        send_alert(
+            f"🚨 Sentinel HALTED: corrupt registry.\n{halt_msg}",
+            condition="halt:corrupt-registry",
+        )
         sys.exit(1)
 
     jobs = data.get("jobs", {})
@@ -163,7 +170,10 @@ def load_registry() -> dict:
             halt_msg = f"Checksum mismatch: stored={stored_checksum[:16]}… actual={actual[:16]}…"
             open(REGISTRY_HALT_FILE, "w").write(halt_msg)
             logger.error(f"Registry checksum mismatch → HALT: {halt_msg}")
-            send_alert(f"🚨 Sentinel HALTED: {halt_msg}\nTouch REGISTRY_OVERRIDE to resume.")
+            send_alert(
+                f"🚨 Sentinel HALTED: {halt_msg}\nTouch REGISTRY_OVERRIDE to resume.",
+                condition="halt:checksum-mismatch",
+            )
             sys.exit(1)
 
     # Clear stale HALT + OVERRIDE if we got here cleanly
@@ -421,7 +431,11 @@ def check_and_repair_openclaw() -> bool:
 
     if ok:
         logger.info(f"Tier 0: OpenClaw gateway restarted OK — {output[:80]}")
-        send_alert(f"OpenClaw gateway auto-restarted ✅\n{output[:120]}", level="INFO")
+        send_alert(
+            f"OpenClaw gateway auto-restarted ✅\n{output[:120]}",
+            level="INFO",
+            condition="openclaw-restarted",
+        )
         return True
 
     logger.error(f"Tier 0: OpenClaw gateway restart FAILED — {output[:120]}")
@@ -794,13 +808,21 @@ def process_job(job_id: str, state: dict, registry: dict,
             logger.warning(f"{job_id}: phase advance to T3 rejected: {e}")
         add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
         if not check_escalation_cooldown(job_id):
-            send_alert(
+            # Mark ONLY on a real send. The 4h local cooldown and the gateway's
+            # 6h window are two clocks: at t=4h05 this branch reopens, the
+            # gateway can still answer "deduped", and marking regardless would
+            # record an escalation that nobody received — pushing the next real
+            # attempt out to t=8h05. `_check_blind_heal_loop` already had this
+            # right; these three sites did not, and naming the condition is
+            # exactly what makes the gateway start saying "deduped" here.
+            if send_alert(
                 f"CRITICAL non-idempotent failure — {job_id}\n"
                 f"Type: {failure_type}\nError: {last_error[:120]}\n"
                 f"Manual intervention required (non-idempotent — auto-retry UNSAFE)",
-                level="CRITICAL"
-            )
-            mark_escalation_sent(job_id)
+                level="CRITICAL",
+                condition=f"non-idempotent-failure:{job_id}",
+            ):
+                mark_escalation_sent(job_id)
         return {"action": "escalated_critical_non_idempotent", "tier": 3, "success": False}
 
     elif is_critical and is_idempotent and fail_count >= 3:
@@ -815,12 +837,13 @@ def process_job(job_id: str, state: dict, registry: dict,
                 record_success(job_id)
                 return {"action": "retried_ok", "tier": 1, "success": True}
         if not check_escalation_cooldown(job_id):
-            send_alert(
+            if send_alert(
                 f"Critical job repeated failure — {job_id}\n"
                 f"fail_count={fail_count}\nError: {last_error[:120]}",
-                level="WARNING"
-            )
-            mark_escalation_sent(job_id)
+                level="WARNING",
+                condition=f"repeated-failure:{job_id}",
+            ):
+                mark_escalation_sent(job_id)
         return {"action": "retried_with_alert", "tier": 1, "success": False}
 
     else:
@@ -833,14 +856,14 @@ def process_job(job_id: str, state: dict, registry: dict,
         add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
         level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
         if not check_escalation_cooldown(job_id):
-            send_alert(
+            if send_alert(
                 f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — {job_id}\n"
                 f"Type: {failure_type} / {classification.get('subtype')}\n"
                 f"Error: {last_error[:120]}",
                 level=level,
                 condition=f"tier-escalation:{job_id}",
-            )
-            mark_escalation_sent(job_id)
+            ):
+                mark_escalation_sent(job_id)
         return {"action": "escalated", "tier": 3, "success": False}
 
 

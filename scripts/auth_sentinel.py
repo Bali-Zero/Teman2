@@ -320,9 +320,16 @@ def emit_alert(probes: list[Probe]) -> bool:
     for p in actions:
         lines.append(f"\n• {p.arm} ({p.family}): {p.detail}\n  → {p.fix_cmd}")
     msg = "".join(lines)
+    # The condition is WHICH credentials need a gesture — the headline says only
+    # how many, and `condition_identity()` reads the first line with digits
+    # stripped. Without this, "1 credenziale" for Codex and "1 credenziale" for
+    # Agy two hours later derive the same identity and the second is muted: a
+    # different credential, needing a different gesture, silently lost. The set
+    # is sorted so the same two arms in either scan order stay one condition.
+    condition = "auth:" + ",".join(sorted(p.arm for p in actions))
     try:
         from sentinel_lib import alerter
-        return alerter.send_alert(msg, level="WARNING")
+        return alerter.send_alert(msg, level="WARNING", condition=condition)
     except Exception:  # noqa: BLE001 — fallback diretto al gateway
         tg = REPO / "scripts" / "tg_notify.py"
         if tg.exists():

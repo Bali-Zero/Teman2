@@ -15,30 +15,53 @@ STATE_DIR="$HOME/.agent/decisions"
 STATE_FILE="$STATE_DIR/claude-settings-last-md5"
 mkdir -p "$STATE_DIR"
 
-CURRENT_MD5=$(/sbin/md5 -q "$HOME/.claude/settings.json" 2>/dev/null)
+# macOS ships /sbin/md5, Linux ships md5sum. This used to hardcode /sbin/md5,
+# which is correct on Pro and silently yields an EMPTY hash anywhere else — so
+# a test executing this script on a Linux runner would compare "" to "" and
+# exit 0, measuring its own poverty rather than the script (W108).
+_md5() {
+    if [[ -x /sbin/md5 ]]; then /sbin/md5 -q "$1"
+    else md5sum "$1" 2>/dev/null | cut -d' ' -f1
+    fi
+}
+
+CURRENT_MD5=$(_md5 "$HOME/.claude/settings.json" 2>/dev/null)
 LAST_MD5=$(cat "$STATE_FILE" 2>/dev/null || echo "")
 
 if [[ "$CURRENT_MD5" == "$LAST_MD5" ]]; then
     exit 0
 fi
 
-# Write state BEFORE alert so dedup works even if Telegram is down (W55-class)
-echo "$CURRENT_MD5" > "$STATE_FILE"
-
+# State is advanced AFTER a confirmed delivery, not before (changed 2026-08-06).
+# The original comment claimed writing first meant "dedup works even if Telegram
+# is down". What it actually bought was at-most-once: if the import failed, or
+# the alerter raised, or the gateway refused the event, the next run compared
+# equal hashes and exited — the alert was gone for good, silently, exit 0.
+#
+# Writing after is safe precisely BECAUSE this script is launchd WatchPaths, not
+# a timer: it re-fires when settings.json CHANGES, so a stuck state file cannot
+# produce a storm, only a retry of news nobody received. And a retry of the same
+# transition carries the same key, so the gateway collapses it anyway.
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S WITA')
 MD5_SHORT="${CURRENT_MD5:0:12}"
 
-# The CONDITION is "settings.json now has content <md5>", NOT "the clock read
-# <timestamp>". Naming it keeps every genuine change audible while the gateway's
-# escalating mute ladder still collapses a re-announcement of the SAME content.
+# The CONDITION is the TRANSITION <old>-><new>, not the clock and not the new
+# state alone.
 #
-# This matters here more than anywhere: with no name, tg_notify derives an
-# identity from the message with digits stripped, and every change would share
-# one identity. Measured on the 2026-07-14..08-06 spool, 6 of the 11 gaps
-# between the 12 real changes are under the 6h first window — so the derived
-# identity would have muted 6 genuine "restart your session" alerts, and the
-# ladder would have escalated to 24h during the 17-18 July burst.
-export ALERT_CONDITION="settings-json:${MD5_SHORT}"
+#   - the clock would move on every fire: a key that moves defeats every window;
+#   - NO key lets tg_notify derive one, and with digits stripped every change
+#     collapses into a single identity. Measured on the 2026-07-14..08-06 spool,
+#     6 of the 11 gaps between the 12 real changes are under the 6h first
+#     window, so 6 genuine "restart your session" alerts would have gone silent;
+#   - the NEW STATE alone is a state, not an event, and the spool contains the
+#     counter-example: md5 7af809… at 18:05, 2555ea… at 20:39, 7af809… again at
+#     23:33. That third fire is a REAL change needing a real restart — the file
+#     came back to a content your session has since stopped running — and a
+#     state-keyed alert would have called it a duplicate of five hours earlier.
+#
+# A transition is unique to the change that produced it, and A->B->A yields
+# three distinct keys, which is the correct count of restarts.
+export ALERT_CONDITION="settings-json:${LAST_MD5:0:12}->${MD5_SHORT}"
 
 # Pass message via env-var to Python (avoids heredoc interpolation breakage on UTF-8/quotes)
 export ALERT_MSG="[settings.json] modified at ${TIMESTAMP}
@@ -49,25 +72,41 @@ md5: ${MD5_SHORT}
 
 If intentional and no hot-apply needed, ignore."
 
-/usr/bin/env python3 - <<'PYEOF'
-import sys, os
+DELIVERED=$(/usr/bin/env python3 - <<'PYEOF'
+import inspect, sys, os
 sys.path.insert(0, os.path.expanduser("~/scripts"))
 try:
     from sentinel_lib.alerter import send_alert
     msg = os.environ.get("ALERT_MSG", "settings.json modified — no msg env")
+    kwargs = {"level": "WARNING"}
+    # Inspect the SIGNATURE; do not catch a TypeError from the call. Catching
+    # the call cannot tell "this alerter predates the condition kwarg" from
+    # "send_alert raised a TypeError inside" (a non-numeric ts in the local
+    # dedup json does exactly that), and the retry would then paper over a real
+    # bug while the outer handler exits 0.
+    #
+    # NOTE: on an older alerter the fallback is NOT an unnamed alert — that
+    # alerter unconditionally sends `sentinel:<md5(message)>` of its own. The
+    # fallback buys delivery, not identity. Deploy the alerter first.
     try:
-        ok = send_alert(msg, level="WARNING", condition=os.environ.get("ALERT_CONDITION", ""))
-    except TypeError:
-        # An older ~/scripts/sentinel_lib/alerter.py has no `condition` kwarg.
-        # Without this the TypeError would fall into the outer handler and the
-        # alert would be LOST — a version skew must degrade to an unnamed alert,
-        # never to silence. Deploy order is alerter first, then this script.
-        ok = send_alert(msg, level="WARNING")
-    print(f"[alert] sent={ok}")
-    sys.exit(0)
+        accepts = "condition" in inspect.signature(send_alert).parameters
+    except (TypeError, ValueError):
+        accepts = False
+    if accepts:
+        kwargs["condition"] = os.environ.get("ALERT_CONDITION", "")
+    ok = send_alert(msg, **kwargs)
+    print("DELIVERED" if ok else "NOT_DELIVERED")
 except Exception as e:
     print(f"[alert-error] {type(e).__name__}: {e}", file=sys.stderr)
-    sys.exit(0)
+    print("NOT_DELIVERED")
+sys.exit(0)
 PYEOF
+)
+
+if [[ "$DELIVERED" == "DELIVERED" ]]; then
+    echo "$CURRENT_MD5" > "$STATE_FILE"
+else
+    echo "[alert] not delivered — state NOT advanced, the next change retries" >&2
+fi
 
 exit 0
