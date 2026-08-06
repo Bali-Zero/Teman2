@@ -180,7 +180,7 @@ def flush(dry_run: bool = False) -> int:
     if not records:
         # heartbeat for the self-probe even when silent-healthy;
         # claims are empty by construction here (anything with content was adopted)
-        (spool / "last_flush.json").write_text(
+        harden(spool / "last_flush.json").write_text(
             json.dumps({"ts": time.time(), "sent": False, "events": 0})
         )
         for c in claim_files:
@@ -205,7 +205,7 @@ def flush(dry_run: bool = False) -> int:
             _restore(spool, records)
         for c in claim_files:
             c.unlink(missing_ok=True)
-        (spool / "last_flush.json").write_text(
+        harden(spool / "last_flush.json").write_text(
             json.dumps({"ts": time.time(), "sent": False, "events": len(records), "error": "send-failed"})
         )
         print("tg_digest_flush: SEND FAILED — spool preserved", file=sys.stderr)
@@ -215,7 +215,7 @@ def flush(dry_run: bool = False) -> int:
         _archive(spool, records)
     for c in claim_files:
         c.unlink(missing_ok=True)
-    (spool / "last_flush.json").write_text(
+    harden(spool / "last_flush.json").write_text(
         json.dumps({"ts": time.time(), "sent": True, "events": len(records)})
     )
     print(f"tg_digest_flush: sent digest with {len(records)} events")
@@ -245,6 +245,10 @@ def selftest() -> int:
             {"ts": 2, "tier": "digest", "source": "fly-watcher", "text": "still green"},
             {"ts": 3, "tier": "p0", "source": "dlq", "text": "late", "p0_overflow": True},
         ]
+        # NOT hardened, and deliberately: every write below lands in the
+        # TemporaryDirectory above, never in the real spool. `harden` states a
+        # production invariant — using it on fixtures would blur which writes
+        # actually carry alert content.
         with (spool / "pending.jsonl").open("w") as fh:
             for r in recs:
                 fh.write(json.dumps(r) + "\n")
