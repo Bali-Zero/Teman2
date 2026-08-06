@@ -78,6 +78,22 @@ def mark_escalation_sent(job_id: str) -> None:
     _save_escalation_state(data)
 
 
+def _remember(key: str) -> None:
+    """Record the send WITHOUT letting a bookkeeping failure rewrite the verdict.
+
+    `_mark_sent` writes ~/.agent/decisions/alert_dedup.json. Called inside the
+    same try/except that decides the return value, a read-only or full disk
+    turns "the gateway spooled it" into `False` — and the callers now gate
+    their 4h cooldown on that boolean, so a filesystem problem would silently
+    re-arm every escalation. The local cache is an optimisation; it must never
+    be able to contradict what the gateway said.
+    """
+    try:
+        _mark_sent(key)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ALERT-WARN] local dedup cache not updated: {type(exc).__name__}: {exc}")
+
+
 def _gateway_script() -> str:
     """Locate scripts/tg_notify.py relative to this file, NUZANTARA_ROOT fallback."""
     here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tg_notify.py")
@@ -138,7 +154,14 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     # gateway never saw worker:b at all. Same for an INFO that a CRITICAL then
     # repeats verbatim — a severity upgrade is news, and this layer must not
     # be the one that eats it.
-    dedup_key = hashlib.md5(f"\x1f{level}\x1f{condition}\x1f{message}".encode()).hexdigest()
+    # Length-prefixed, not separator-joined. \x1f was better than `|` and still
+    # not injective: condition="a" with message="b\x1fc" serialises exactly like
+    # condition="a\x1fb" with message="c", and nothing validates that a message
+    # cannot contain the separator. A length prefix cannot be forged by data.
+    _parts = (level, condition, message)
+    dedup_key = hashlib.md5(
+        "".join(f"{len(x)}:{x}" for x in _parts).encode()
+    ).hexdigest()
     if _is_duplicate(dedup_key):
         # TRUE — the same answer the gateway gives for its own duplicate, and
         # for the same reason: this exact alert went out within the hour, so
@@ -182,7 +205,7 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
             if line.startswith("tg_notify:"):
                 outcome = line.split(":", 1)[1].strip().split(" ")[0]
         if outcome in ("sent", "spooled", "logged", "p0_overflow_spooled", "p0_unsent_spooled"):
-            _mark_sent(dedup_key)
+            _remember(dedup_key)
             return True
         if outcome == "deduped":
             # TRUE, and this is load-bearing (changed 2026-08-06 together with
@@ -199,7 +222,7 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
             #
             # False is now reserved for "it did not get through", which is the
             # only case where retrying in five minutes is the right behaviour.
-            _mark_sent(dedup_key)
+            _remember(dedup_key)
             return True
         print(f"[ALERT-FAILED] gateway outcome={outcome or 'empty'} rc={proc.returncode} err={(proc.stderr or '')[:200]}")
         return False

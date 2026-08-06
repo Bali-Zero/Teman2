@@ -4,8 +4,11 @@
 # Sends Telegram alert reminding session restart needed for hot-apply.
 #
 # Cicatrix: W1 T1.2 H1 — settings.json hooks NON hot-reload mid-session.
-# v2: env-var passing to Python (no heredoc interpolation pitfall),
-# state file written BEFORE alert (so dedup works even if alert fails).
+# v2: env-var passing to Python (no heredoc interpolation pitfall).
+# v3 (2026-08-06): state file written AFTER a confirmed delivery — see the long
+# comment at the write site. The v2 line here said the opposite and was still
+# describing v2 behaviour after the code changed; a header that narrates the
+# body is one more thing that can go stale, so it now points at the body.
 
 set -uo pipefail
 
@@ -40,8 +43,16 @@ fi
 #
 # Writing after is safe precisely BECAUSE this script is launchd WatchPaths, not
 # a timer: it re-fires when settings.json CHANGES, so a stuck state file cannot
-# produce a storm, only a retry of news nobody received. And a retry of the same
-# transition carries the same key, so the gateway collapses it anyway.
+# produce a storm.
+#
+# Be exact about what this buys, because the first draft of this comment
+# overclaimed it: recovery is NOT guaranteed, it is CONDITIONAL ON THE NEXT
+# CHANGE. If delivery fails and settings.json is never touched again, this alert
+# is still lost. What changes is the failure mode — at-most-once lost it
+# unconditionally and silently; at-least-once-on-next-change loses it only when
+# no further change ever arrives, and says so on stderr meanwhile. Strictly
+# better, not sufficient. (A timer would close the gap and open a storm; the
+# storm is the worse trade for a producer nobody is paged by.)
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S WITA')
 MD5_SHORT="${CURRENT_MD5:0:12}"
 
@@ -67,12 +78,27 @@ MD5_SHORT="${CURRENT_MD5:0:12}"
 # That is not the trauma repeating. The ladder exists to quieten a condition
 # that STAYS TRUE while being re-measured; this producer emits DISCRETE EVENTS
 # — each change is a separate fact that needs a separate restart — and there is
-# nothing to quieten. The bound is the volume: 12 changes in the last month, at
-# WARNING, so they arrive as lines inside the 2x/day digest, not as
-# interruptions. A producer that opts out must be able to say why, and must be
-# small enough that being wrong is cheap.
+# nothing to quieten.
+#
+# The bound is NOT "12 changes last month" — that is an observation, and an
+# observation is not a limit (a config manager rewriting this file every 30s
+# would emit ~2880 unique keys/day). The limit is STRUCTURAL and lives one layer
+# down: this producer is WARNING, so tg_notify spools it to the digest tier, and
+# tg_digest_flush groups records BY SOURCE (`by_source[r["source"]]`, printed as
+# `source ×N — <last>`). 12 events and 2880 events both cost exactly one line in
+# one of the 2 daily digests. Unique keys buy spool rows, never interruptions.
+# A producer that opts out of the ladder must be able to say why AND name what
+# bounds it instead.
 SEQ_FILE="$STATE_DIR/claude-settings-alert-seq"
-SEQ=$(( $(cat "$SEQ_FILE" 2>/dev/null || echo 0) + 1 ))
+# Read the counter as DIGITS or not at all. `$(( $(cat file) + 1 ))` on a
+# corrupt/hand-edited counter is not a wrong number, it is a dead script: a
+# value like `1 2` or `(` makes bash's arithmetic fail, SEQ never gets assigned,
+# and `set -u` then kills the script on the expansion below — permanently, on
+# every future change, exit before the alert. A guard that can be killed by its
+# own state file is a #2 (exists ≠ armed) waiting to happen.
+SEQ_RAW=$(cat "$SEQ_FILE" 2>/dev/null || echo 0)
+[[ "$SEQ_RAW" =~ ^[0-9]+$ ]] || SEQ_RAW=0
+SEQ=$(( SEQ_RAW + 1 ))
 echo "$SEQ" > "$SEQ_FILE"
 export ALERT_CONDITION="settings-json:${LAST_MD5:0:12}->${MD5_SHORT}#${SEQ}"
 

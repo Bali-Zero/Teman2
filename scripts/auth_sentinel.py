@@ -333,20 +333,28 @@ def emit_alert(probes: list[Probe]) -> bool:
     except Exception:  # noqa: BLE001 — fallback diretto al gateway
         tg = REPO / "scripts" / "tg_notify.py"
         if tg.exists():
-            # SAME identity as the primary path. A host-wide key here would undo
-            # the fix one line above: a Codex failure at 10:00 and a different
-            # Agy failure at 12:00 would both key on `auth-sentinel-<host>` and
-            # the gateway would mute the second. An exception branch is not a
-            # place where identity may be cheaper.
-            # _run returns (exit_code, output) — comparing the TUPLE to 0 is
-            # always False, which would make this branch report failure on every
-            # successful fallback send.
-            rc, _out = _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
-                             "--dedup-key", f"auth-sentinel-{host}-{condition}", "--", msg])
-            # ...and it must report what actually happened: returning True
-            # unconditionally told the caller an alert went out when the
-            # subprocess may have failed.
-            return rc == 0
+            # The SAME key string the primary path would have produced —
+            # literally, not "morally the same". The alerter builds
+            # `sentinel:<condition>:<level>`; a fallback that invents
+            # `auth-sentinel-<host>-<condition>` gives one condition two
+            # identities, so a first send through the primary and a second
+            # through the fallback both get through and walk past the ladder.
+            # An exception branch is not a place where identity may be cheaper,
+            # and "the same identity" has to mean the same bytes.
+            #
+            # `_run` returns (exit_code, output) — the earlier `rc = _run(...)`
+            # compared a TUPLE to 0 and was always False. And the exit code is
+            # not the verdict either: tg_notify.main() returns 0 even when both
+            # notify() and its emergency spool fail, so judge the OUTCOME LINE
+            # (W104 — read the reply, never the exit status).
+            _rc, out = _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
+                             "--dedup-key", f"sentinel:{condition}:warning", "--", msg])
+            outcome = ""
+            for line in (out or "").splitlines():
+                if line.startswith("tg_notify:"):
+                    outcome = line.split(":", 1)[1].strip().split(" ")[0]
+            return outcome in ("sent", "spooled", "logged", "deduped",
+                               "p0_overflow_spooled", "p0_unsent_spooled")
     return False
 
 

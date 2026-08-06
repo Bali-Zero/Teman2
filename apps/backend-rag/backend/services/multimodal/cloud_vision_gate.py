@@ -64,8 +64,10 @@ def note_cloud_ocr_blocked(context: str) -> None:
             f"ONLY for non-PII flows.",
             level="WARNING",
             # The context names WHICH surface degraded — portal document OCR,
-            # vision RAG, the CRM passport extractor. Six call sites, all stable
-            # literals. Dropping it fused them: portal blocked at 10:00 and
+            # vision RAG, the CRM passport extractor. 7 distinct literals reach
+            # here (measured by test_the_ocr_gate_names_which_surface_degraded,
+            # which counts contexts, not files — an earlier comment guessed
+            # "six"). Dropping it fused them: portal blocked at 10:00 and
             # vision RAG at 11:00 would share one identity, and the second
             # degraded service never reaches Telegram. A shared remediation does
             # not make the affected surfaces interchangeable.

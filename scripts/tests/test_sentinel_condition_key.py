@@ -313,6 +313,27 @@ def send_alert(message, level="INFO", condition=""):
 """
 
 
+@pytest.mark.parametrize("junk", ["1 2", "(", "", "abc", "-\n-"])
+def test_a_corrupt_sequence_counter_cannot_silence_the_watcher(tmp_path, junk):
+    """The counter file is state the script READS to build its own key, so it is
+    also state that can KILL it. `SEQ=$(( $(cat f) + 1 ))` on `1 2` or `(` makes
+    bash's arithmetic fail; SEQ is then never assigned, and `set -u` aborts on
+    the expansion below — before the alert, on this change and on every future
+    one. A hand-edit or a truncated write would mute the producer permanently at
+    exit 0, which is the exact shape of "exists but is not armed".
+
+    Guilt is asserted where it hurts: the ALERT must still go out.
+    """
+    home = tmp_path / str(abs(hash(junk)))
+    (home / ".agent" / "decisions").mkdir(parents=True, exist_ok=True)
+    (home / ".agent" / "decisions" / "claude-settings-alert-seq").write_text(junk)
+    out = _run_watcher(home, '{"hooks": {}}', _FAKE_ALERTER)
+    assert len(out["calls"]) == 1, f"corrupt counter {junk!r} silenced the watcher: {out}"
+    assert out["calls"][0]["condition"].endswith("#1"), (
+        f"the counter did not fall back to a usable value: {out['calls'][0]}")
+    assert out["state"], "delivery succeeded but the state was not advanced"
+
+
 def test_the_watcher_names_the_TRANSITION_not_the_new_state(tmp_path):
     """The fourth producer, where the same rule gives the OPPOSITE answer.
 
@@ -537,6 +558,33 @@ def _spooled_keys(alerter) -> list[str]:
     return out
 
 
+def test_the_local_key_cannot_be_forged_by_message_content(real_gateway):
+    """The LOCAL fast-path key is built from (level, condition, message), and
+    how those three are joined is load-bearing, not cosmetic.
+
+    Any separator-join is forgeable, because nothing forbids a message from
+    containing the separator. With `\\x1f` as the joiner these two alerts
+    serialise to the SAME bytes:
+
+        (WARNING, "worker:a",       "down\\x1fhard")
+        (WARNING, "worker:a\\x1fdown", "hard")
+
+    so the second one is swallowed HERE — it returns True and the gateway never
+    sees it, which is the original trauma reappearing one layer lower and
+    harder to see, since the argv assertions upstream all still pass. A length
+    prefix cannot be forged by data.
+
+    Asserted through the REAL gateway, on the observable that matters: two
+    distinct pieces of news, two records in the spool. This was the last
+    survivor of the mutation set — the cure was written and asserted by
+    nothing.
+    """
+    real_gateway.send_alert("down\x1fhard", level="WARNING", condition="worker:a")
+    real_gateway.send_alert("hard", level="WARNING", condition="worker:a\x1fdown")
+    keys = _spooled_keys(real_gateway)
+    assert len(keys) == 2, f"the second alert was eaten by a forged local key: {keys}"
+
+
 def test_real_gateway_keeps_two_conditions_apart(real_gateway):
     """End-to-end: two conditions, two keys, two records in the spool."""
     real_gateway.send_alert("Tier 4 needed — a", condition="tier-escalation:a")
@@ -678,9 +726,12 @@ def test_the_auth_fallback_keeps_the_identity_the_primary_path_fixed():
     assert handlers, "the fallback branch vanished — census broke"
     body = "\n".join(ast.unparse(h) for h in handlers)
     assert "--dedup-key" in body
-    key_line = next(l for l in body.splitlines() if "auth-sentinel-" in l)
+    key_line = next(l for l in body.splitlines() if "--dedup-key" in l)
     assert "condition" in key_line, (
         f"the fallback key drops the per-credential identity: {key_line.strip()}"
+    )
+    assert "sentinel:" in key_line, (
+        f"the fallback invents its own namespace instead of the alerter's: {key_line.strip()}"
     )
     assert "return True" not in body, "the fallback still claims success blindly"
 
@@ -698,11 +749,39 @@ def test_the_local_key_cannot_be_confused_by_a_separator_in_the_data(sentinel_wi
 
 
 def test_the_ocr_gate_names_which_surface_degraded():
-    """Six call sites, all stable literals: portal document OCR, vision RAG,
-    the CRM passport extractor... Dropping the context fused them, so a portal
-    block at 10:00 and a vision-RAG block at 11:00 shared one identity and the
-    second degraded service never reached Telegram. A shared remediation does
-    not make the affected surfaces interchangeable."""
+    """Seven DISTINCT context literals — portal document OCR, vision RAG, the
+    CRM passport extractor, intake, pdf_vision... Dropping the context fused
+    them, so a portal block at 10:00 and a vision-RAG block at 11:00 shared one
+    identity and the second degraded service never reached Telegram. A shared
+    remediation does not make the affected surfaces interchangeable.
+
+    The number is MEASURED, not narrated: the comment said "six", and counting
+    files says eight — neither is the entity. What sizes the key space is the
+    set of distinct literals the gate can be handed, so that is what is counted
+    here. The one non-literal call site is a forwarding wrapper, and it is
+    asserted to stay a forwarder: if it ever hardcoded its own context, two
+    surfaces would fuse again with the census still reading seven.
+    """
+    literals, forwarders = set(), []
+    for path in REPO.glob("apps/**/*.py"):
+        if "/tests/" in str(path):
+            continue
+        try:
+            tree = ast.parse(path.read_text())
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and getattr(node.func, "id", "")
+                    in ("note_cloud_ocr_blocked", "_note_cloud_ocr_blocked")):
+                continue
+            arg = node.args[0] if node.args else None
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                literals.add(arg.value)
+            else:
+                forwarders.append(f"{path}:{node.lineno} -> {ast.unparse(arg) if arg else '()'}")
+    assert len(literals) == 7, f"the OCR context census moved: {sorted(literals)}"
+    assert all("context" in f for f in forwarders), (
+        f"a wrapper stopped forwarding its caller's context — surfaces fuse: {forwarders}")
     src = (REPO / "apps" / "backend-rag" / "backend" / "services" / "multimodal"
            / "cloud_vision_gate.py").read_text()
     call = next(n for n in ast.walk(ast.parse(src))
@@ -752,7 +831,18 @@ def test_the_auth_fallback_reports_what_the_subprocess_actually_did(monkeypatch,
     auth = importlib.import_module("auth_sentinel")
 
     calls = []
-    monkeypatch.setattr(auth, "_run", lambda cmd, **kw: (calls.append(cmd) or (0, "ok")))
+    real_run = auth._run
+
+    def fake_run(cmd, **kw):
+        # Intercept ONLY the gateway call. Stubbing every _run also stubs the
+        # `hostname -s` probe, and the host then leaks into the key under test —
+        # a fixture measuring its own bluntness rather than the code (W108).
+        if any("tg_notify" in str(c) for c in cmd):
+            calls.append(cmd)
+            return (0, "tg_notify: spooled")
+        return real_run(cmd, **kw)
+
+    monkeypatch.setattr(auth, "_run", fake_run)
     # force the fallback: make the primary path raise
     import sentinel_lib.alerter as alerter
     monkeypatch.setattr(alerter, "send_alert",
@@ -765,8 +855,19 @@ def test_the_auth_fallback_reports_what_the_subprocess_actually_did(monkeypatch,
     # calls[0] is the `hostname -s` probe; the gateway call is the last one.
     gw = next(c for c in calls if "--dedup-key" in c)
     key = gw[gw.index("--dedup-key") + 1]
-    assert key.endswith("auth:codex"), key
 
+    # ...and the identity must be the SAME BYTES the primary path builds.
+    assert key == "sentinel:auth:codex:warning", key
+
+    # exit 0 with a failed gateway: tg_notify.main() returns 0 even when both
+    # notify() and the emergency spool fail, so the exit code is not the verdict.
     calls.clear()
-    monkeypatch.setattr(auth, "_run", lambda cmd, **kw: (calls.append(cmd) or (1, "err")))
-    assert auth.emit_alert([probe]) is False, "a failed fallback reported success"
+
+    def fake_run_broken(cmd, **kw):
+        if any("tg_notify" in str(c) for c in cmd):
+            calls.append(cmd)
+            return (0, "tg_notify: internal error")
+        return real_run(cmd, **kw)
+
+    monkeypatch.setattr(auth, "_run", fake_run_broken)
+    assert auth.emit_alert([probe]) is False, "exit 0 was mistaken for delivery"

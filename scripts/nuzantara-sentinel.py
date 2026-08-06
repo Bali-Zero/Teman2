@@ -416,15 +416,6 @@ def _last_openclaw_restart_ts() -> str:
         return "unknown"
 
 
-def _last_openclaw_restart_ts() -> str:
-    """The stamp `_record_openclaw_restart()` just wrote — this restart's episode id."""
-    try:
-        with open(OPENCLAW_RESTART_RECORD) as f:
-            return str(int(float(json.load(f).get("ts", 0))))
-    except Exception:  # noqa: BLE001 — an episode id must never break a restart
-        return "unknown"
-
-
 def check_and_repair_openclaw() -> bool:
     """
     Tier 0: verify OpenClaw gateway is alive before iterating jobs.
