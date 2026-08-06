@@ -57,6 +57,34 @@ Bali-scoped cells. So the label's SCOPE is resolved first and Bali-scoped cells
 are excluded by name, with the exclusion counted and reported rather than left
 silent.
 
+THERE IS ALREADY A GUARD FOR THIS, AND IT WATCHES THE OTHER DIRECTION
+---------------------------------------------------------------------
+`kbli_dataset_lint.py` rule L9 calls `validate_pma_consistency`, which is a
+blocking lint and looks like this module's twin. Measured on the live
+catalogue, the two sets are DISJOINT: L9 finds 2 codes, this module finds 27,
+and the overlap is empty.
+
+The reason is structural rather than a matter of degree. L9 is two literal
+substring tests:
+
+    pma_status == "TERTUTUP" and "100% foreign" in text     # record closed, prose open
+    pma_status == "TERBUKA"  and "closed to foreign" in text # record open, prose closed
+
+Its two live findings (`43110`, `86201`) are both TERBUKA/100 caught by the
+SECOND test — a page understating what a client may do, which costs him an
+opportunity he could ask about. The first test guards the expensive direction,
+and it cannot reach this population: 26 of the 27 are **TERBATAS**, a status the
+condition never admits, and the 27th says it in words the substring does not
+contain ("nationally open to full foreign ownership"). So a client told he may
+wholly own an arms factory was never in range of the guard that exists.
+
+Left in place rather than folded together, deliberately: L9 owns the mirror
+case, and widening it here would turn a blocking lint red on a 27-item backlog
+(W95 — a gate armed on live debt makes every unrelated PR red). Reconciling them
+so that two tools cannot answer the same question two ways (W105) is a
+follow-up, and it belongs on the side of the LINT consuming this report, the way
+`kbli_documents_cure.py` consumes `kbli_surface_conformance.py --json`.
+
 IT REPORTS, IT DOES NOT DECIDE
 ------------------------------
 `--check` exits 0 while divergences exist, like its siblings in this directory.

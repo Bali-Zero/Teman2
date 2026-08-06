@@ -322,6 +322,52 @@ def test_the_live_populations_are_pinned():
     }
 
 
+def test_this_module_is_not_a_twin_of_the_existing_L9_lint_rule():
+    """The anti-twin claim in the docstring, armed instead of asserted.
+
+    `kbli_dataset_lint.py` rule L9 (`validate_pma_consistency`) is a BLOCKING
+    lint that looks like this module's duplicate. It is not: measured here, the
+    two finding sets are disjoint. L9's reachable half of the dangerous
+    direction requires `pma_status == "TERTUTUP"` AND the literal substring
+    "100% foreign"; 26 of this module's 27 codes are TERBATAS, which that
+    condition never admits.
+
+    If this test ever fails, the two tools have started answering the same
+    question two different ways (W105) and the right response is to make the
+    lint consume this report — not to delete whichever assertion is
+    inconvenient.
+    """
+    scripts_dir = str(Path(__file__).resolve().parents[2])
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    from kbli_enrich_validate import validate_pma_consistency
+
+    records = E.load_records()
+    mine = {r["code"] for r in map(E.classify, records) if r["body_asserts_national_openness"]}
+    l9 = {
+        r["kode_kbli_2025"]
+        for r in records
+        if isinstance(r.get("intel_2026"), dict)
+        and r["kode_kbli_2025"] != "69101"  # the lint's documented profession-law override
+        and validate_pma_consistency(r["intel_2026"], r)
+    }
+
+    assert mine & l9 == set(), (
+        "L9 and this module now report overlapping codes — reconcile them so one "
+        f"consumes the other rather than both judging: {sorted(mine & l9)}"
+    )
+    assert l9 == {"43110", "86201"}, f"L9's live findings moved: {sorted(l9)}"
+    statuses = {
+        r["pma_status"]
+        for r in records
+        if r["kode_kbli_2025"] in mine
+    }
+    assert "TERBATAS" in statuses, (
+        "premise: this module's population is mostly TERBATAS, the status L9's "
+        "dangerous-direction test cannot reach"
+    )
+
+
 def test_the_worst_members_are_named_not_counted():
     """A population with only a size cannot be closed by the pass that comes for
     it. These three are the ones a client acts on money with."""
