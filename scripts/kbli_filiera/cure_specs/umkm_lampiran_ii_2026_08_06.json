@@ -28,7 +28,26 @@
     ],
     "count_tainted": 11,
     "count_total": 39,
-    "next": "Re-adjudicate from the corrected relation, which now carries parent_heading per row and a 'parent-qualified' bucket. Not a re-run of the same prompts: the 11 tainted codes need the parent's limit stated in the evidence, and the rest need re-confirming against rows they were judged on before the field existed."
+    "next": "Re-adjudicate from the corrected relation, which now carries parent_heading per row and a 'parent-qualified' bucket. Not a re-run of the same prompts: the 11 tainted codes need the parent's limit stated in the evidence, and the rest need re-confirming against rows they were judged on before the field existed.",
+    "evidence_delta_2026_08_06": {
+      "method": "compared each withdrawn verdict's annex row BEFORE the parent/fusion cures against the row now",
+      "restricting_parent_was_hidden": [
+        "01111",
+        "01113",
+        "01114",
+        "01115",
+        "01121",
+        "01122",
+        "43215",
+        "43221",
+        "43222",
+        "43224",
+        "43303"
+      ],
+      "row_text_changed_by_the_fusion_cure": ["42912", "95299"],
+      "evidence_unchanged": 26,
+      "meaning": "Re-adjudication is THIRTEEN codes, not sixty-eight. For the other 26 the lanes read exactly what the annex says and their verdicts rest on it. That is NOT an instruction to revive those 26: two known axes are still unchecked on them — whether a 1:1 crosswalk heir is the same ACTIVITY or only the same lineage, and the OCR-damaged locators. Naming the 13 keeps the re-adjudication from starting at 'recheck everything', which is how a small real defect turns into a large vague one."
+    }
   },
   "withdrawn_items": [
     {

@@ -221,3 +221,19 @@ def test_the_two_directions_are_different_questions():
     assert heirs["79111"] == ["79110"], "forward check passes: one heir"
     todo, refusals = run([item("79110", judged_as="79111")], records)
     assert todo == [] and refusals, "reverse check refuses"
+
+
+def test_the_readjudication_scope_is_named_and_small():
+    """The withdrawal's own follow-up scope, pinned so it cannot drift back into
+    "recheck all 68". Measured by diffing each verdict's annex row before and
+    after the parent/fusion cures: 11 had a restricting parent hidden from the
+    lane, 2 had their row text change, 26 read exactly what the annex says."""
+    d = json.loads(A.SPEC.read_text(encoding="utf-8"))["withdrawn"]["evidence_delta_2026_08_06"]
+    hidden = d["restricting_parent_was_hidden"]
+    changed = d["row_text_changed_by_the_fusion_cure"]
+    assert len(hidden) + len(changed) == 13, "the re-adjudication is thirteen codes"
+    assert d["evidence_unchanged"] == 26
+    assert "42912" in changed, "the fused-cell row is one of the two"
+    # …and 26 unchanged is NOT a licence to revive them; the spec has to keep
+    # saying which axes are still open on that group.
+    assert "same ACTIVITY" in d["meaning"] and "OCR" in d["meaning"]
