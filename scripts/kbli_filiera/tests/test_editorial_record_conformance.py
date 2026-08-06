@@ -335,6 +335,138 @@ def test_innocence_english_denies_by_contrast_as_well_as_by_not(sentence):
     assert E.classify(r)["body_asserts_national_openness"] is False
 
 
+@pytest.mark.parametrize(
+    ("sentence", "code"),
+    [
+        # military combat vehicles, capped at 49% by Perpres 49/2021
+        (
+            "KBLI 30400 covers the manufacture and rebuilding of military combat "
+            "vehicles, nationally open to PMA and not blocked by Bali's moratorium record",
+            "30400",
+        ),
+        # Umrah and Hajj travel, capped at 0%
+        (
+            "This activity covers the assembly and sale of Umrah and special-Hajj "
+            "travel packages, with a fully open national foreign-ownership position "
+            "and no Bali moratorium block",
+            "79122",
+        ),
+        # couriers, capped at 49%
+        (
+            "From parcel pickup to doorstep delivery, this activity spans domestic "
+            "and international courier work across every listed scale, with full "
+            "foreign ownership open nationally and no Bali moratorium block",
+            "53200",
+        ),
+    ],
+)
+def test_guilt_a_later_unrelated_negation_does_not_acquit_the_claim(sentence, code):
+    """The largest blind spot this module ever had, and it was found by accident.
+
+    A cross-family reviewer, asked to attack the CONTRAST rule, noted in passing
+    that scanning the whole sentence for a negation lets an unrelated clause
+    acquit the claim. The house style of this catalogue puts the two facts side
+    by side — "nationally open to PMA AND NOT blocked by Bali's moratorium" —
+    so the sentence asserts the falsehood in its first half and is excused by
+    its innocent second.
+
+    Measured before the rule changed: 42 sentences on 22 codes, every one a
+    genuine assertion of national openness on a record capped at 0 or 49, and
+    not one a denial. These three are live text, on codes whose caps come from
+    the Perpres annex adjudicated by this lane.
+    """
+    assert E.classify(rec(cap=49, body=sentence + "."))["body_asserts_national_openness"] is True
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "There is no national opening for a PT PMA that a Bali registration narrows",
+        "This activity is not open to foreign ownership nationally",
+        "That ceiling is the national limit: foreign participation is possible only "
+        "within that stated maximum, not on an unrestricted basis",
+    ],
+)
+def test_innocence_a_negation_that_precedes_the_claim_still_acquits(sentence):
+    """The other half of the same rule, and the reason it is POSITIONAL.
+
+    A negation before the claim is denying it; a negation after it is talking
+    about something else. All three of these are live text — `95291` and
+    `50121` say the true thing and must not be sent to an author.
+    """
+    assert E.classify(rec(cap=0, body=sentence + "."))["body_asserts_national_openness"] is False
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Rather than being capped, this activity is nationally open to full foreign ownership",
+        "The record, rather than confirming a cap, shows the activity is nationally "
+        "open to foreign investment",
+        # live on 41020: the contrast is between "aligned" and "contradictory",
+        # and a colon ends it before the openness is reached
+        "The honest conclusion is aligned rather than contradictory: nationally "
+        "open, and not blocked for PMA registration in Bali",
+    ],
+)
+def test_guilt_a_contrast_that_does_not_govern_the_claim_does_not_acquit_it(sentence):
+    """"After the marker" was not enough, and English is why.
+
+    The fronted contrast — "RATHER THAN being capped, this activity is
+    nationally open" — is ordinary English, not an edge case, and it puts the
+    ASSERTED side after the marker. What ends the contrast is a clause boundary:
+    a comma for the fronted form, a colon for `41020`. So the marker must
+    DIRECTLY govern the claim, with nothing between them that closes its clause.
+    """
+    assert E.classify(rec(cap=49, body=sentence + "."))["body_asserts_national_openness"] is True
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The national position is anything but open to foreign ownership",
+        "The national picture is hardly open to foreign ownership",
+        "Without being nationally open, the activity operates under a special permit",
+    ],
+)
+def test_innocence_english_also_denies_by_degree_not_only_by_not(sentence):
+    """Downtoners read as assertions to a pattern that only knows "not".
+
+    These acquit ZERO live sentences today — they are relief for prose not yet
+    written, and they are here rather than in a ledger because the alternative
+    is discovering them when a correct sentence is sent to an author. `without`
+    is deliberately only in its `without being` form: bare `without` would
+    acquit "without a local partner, this is nationally open to 100%", which is
+    the dangerous direction.
+    """
+    assert E.classify(rec(cap=49, body=sentence + "."))["body_asserts_national_openness"] is False
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The national rule per art. 12 states the activity is open to foreign ownership",
+        "Under national regulation No. 7 of 2025, the activity is open to foreign ownership",
+        "The national rate is 3.5 and the activity is open to foreign ownership",
+    ],
+)
+def test_guilt_an_abbreviation_or_a_decimal_does_not_end_the_sentence(sentence):
+    """A period that is not a full stop split the claim away from its scope.
+
+    This predicate needs the national scope word and the openness claim in the
+    SAME sentence, so "Perpres No. 7 of 2025" or "3.5" between them was a silent
+    miss — in the one direction that reaches a client. The corpus is regulatory
+    prose: 50 abbreviation dots and 109 decimal dots live.
+
+    The `No.` case is here for a second reason. Masking abbreviations so the
+    splitter keeps them newly put "regulation No. 7" INSIDE the sentence, where
+    a bare `\\bno\\b` read the regulation NUMBER as the word "no" and acquitted
+    the claim after it. Curing one half of superscar #3 handed the other half a
+    fresh instance in the same edit — so `no` now refuses a following period.
+    """
+    assert E.classify(rec(cap=49, body=sentence + "."))["body_asserts_national_openness"] is True
+
+
 def test_a_bali_sentence_that_also_states_the_national_position_is_still_guilty():
     """Not an over-match, and worth pinning because it looks like one.
 
@@ -403,16 +535,29 @@ def test_the_live_populations_are_pinned():
     # move, which is this module's whole subject.
     assert len(rep["needs_an_author"]["codes"]) == 34
 
-    # WHERE the prose lies. Pinned because the total alone hid the defect that
-    # produced these numbers: the first version read three fields and reported
-    # 20, and `whatYouNeed` — the field that carries a client's filing
-    # instructions — was the largest offender and was never opened.
+    # WHERE the prose lies, and this is the number that matters — not the code
+    # count above, which a cross-family refutation left UNMOVED at 34 while
+    # changing what a cure would have to touch by half:
+    #
+    #     editorial.standfirst   6 -> 22
+    #     editorial.pullQuote    0 -> 11      (an entire field, invisible)
+    #     whatYouNeed           23 -> 26
+    #     total field-hits      69 -> 102
+    #
+    # The 34 codes were already known. What was hidden is that most of them lie
+    # in MORE THAN ONE field, and a cure driven by the pre-refutation verdict
+    # would have rewritten 69 sentences and left 33 standing ON THE SAME PAGES —
+    # a page that reads cured with its standfirst still asserting the opposite.
+    # Pinned by field for that reason: the total alone hid the first defect too,
+    # when three fields were read and reported as "the bodies".
     assert rep["needs_an_author"]["by_field"] == {
-        "editorial.body": 26,
-        "whatYouNeed": 23,
-        "editorial.headline": 13,
-        "editorial.standfirst": 6,
+        "editorial.body": 27,
+        "whatYouNeed": 26,
+        "editorial.standfirst": 22,
+        "editorial.headline": 14,
+        "editorial.pullQuote": 11,
         "whoThisIsFor": 1,
+        "zantaraOpener": 1,
     }
 
 
