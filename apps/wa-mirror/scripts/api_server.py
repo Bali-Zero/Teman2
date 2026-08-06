@@ -33,8 +33,25 @@ PID_DIR = Path("/tmp/wa-mirror-pids")
 LOG_DIR = Path("/tmp/wa-mirror-logs")
 SCRIPT_DIR = HOME / "scripts" / "wa-mirror-launcher"
 
-# Database Configuration (Active secrets retrieved from Pro-dev)
-DB_DSN = "postgresql://backend_rag_v2:ivlC8QT5UdZhNwcBG3ALEvysMb7cxPdJbsSxxWYh@127.0.0.1:15432/nuzantara_rag?sslmode=disable"
+# Database configuration. Golden Rule #6: never a literal here.
+#
+# This file carried a hardcoded production DSN — user, password and all — for as
+# long as it lived HOME-only. Tracking it in a PUBLIC repo turns that literal into
+# a publication, so the credential is read from the environment and the process
+# refuses to start without it rather than falling back to anything.
+#
+# On the Pro the value is already in ~/.nuzantara-secrets.env (0600):
+#   set -a; . ~/.nuzantara-secrets.env; set +a
+# The port is the local proxy tunnel (`ssh -L 15432:localhost:15432 pro`), so this
+# never dials production directly.
+DB_DSN = os.environ.get("WA_LAUNCHER_DB_DSN") or os.environ.get("DATABASE_URL")
+if not DB_DSN:
+    raise SystemExit(
+        "FATAL: no database DSN. Export WA_LAUNCHER_DB_DSN (or DATABASE_URL) — "
+        "e.g. `set -a; . ~/.nuzantara-secrets.env; set +a` — and start again. "
+        "This server deliberately has no built-in fallback: a default here is how "
+        "a production credential ends up in a public repo."
+    )
 db_pool = None
 
 
