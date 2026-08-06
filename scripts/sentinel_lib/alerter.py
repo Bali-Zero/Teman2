@@ -90,10 +90,14 @@ def _gateway_script() -> str:
 def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     """
     Send Telegram alert via the notification gateway (tg_notify.py), with dedup.
-    Returns True when the operator HAS the news — sent, spooled for the digest,
-    or deduped because the gateway already delivered this condition inside its
-    mute window. False means it did not get through, and only then is retrying
-    in five minutes the right thing. level: INFO | WARNING | CRITICAL | DEADMAN.
+    Returns True when the GATEWAY HAS TAKEN RESPONSIBILITY for it — sent, or
+    durably spooled for the next digest, or deduped because it already carried
+    this condition inside its mute window. Deliberately not "the operator read
+    it": `spooled` means the durable queue owns it, which is the bar the whole
+    spool-on-failure design (W55) is built on, and the strongest promise a
+    caller can be given synchronously. False means the gateway did NOT take it,
+    and only then is retrying in five minutes right.
+    level: INFO | WARNING | CRITICAL | DEADMAN.
 
     Tier mapping: CRITICAL/DEADMAN → p0 (immediate, daily budget);
     WARNING/INFO → digest (ONE grouped message 2×/day).
@@ -134,9 +138,18 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     # gateway never saw worker:b at all. Same for an INFO that a CRITICAL then
     # repeats verbatim — a severity upgrade is news, and this layer must not
     # be the one that eats it.
-    dedup_key = hashlib.md5(f"{level}|{condition}|{message}".encode()).hexdigest()
+    dedup_key = hashlib.md5(f"\x1f{level}\x1f{condition}\x1f{message}".encode()).hexdigest()
     if _is_duplicate(dedup_key):
-        return False
+        # TRUE — the same answer the gateway gives for its own duplicate, and
+        # for the same reason: this exact alert went out within the hour, so
+        # the gateway has it. Returning False here while the gateway's dedup
+        # returns True would make one meaning wear two values, and the callers
+        # now gate their 4h cooldown on that value: a lost escalation-state
+        # file plus a warm local dedup would leave the cooldown permanently
+        # unmarked. The separator is \x1f (unit separator, never in a message)
+        # so `condition="a"|message="b|c"` cannot collide with
+        # `condition="a|b"|message="c"`.
+        return True
 
     prefix = {"INFO": "🔧", "WARNING": "🟡", "CRITICAL": "🔴", "DEADMAN": "⚫"}.get(level, "ℹ️")
     # Strip Markdown formatting — gateway sends plain text
@@ -176,8 +189,8 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
             # gating `mark_escalation_sent` on this return value).
             #
             # "deduped" does not mean the news failed — it means the gateway
-            # already carried THIS condition to the operator inside the current
-            # mute window. The caller's question is "does the operator know?",
+            # already took THIS condition inside the current mute window. The
+            # caller's question is "is this news the gateway's problem now?",
             # and the answer is yes. Returning False conflated it with a broken
             # pipe, and once the callers started gating their 4h cooldown on
             # this value, that conflation would have re-armed the alert every 5

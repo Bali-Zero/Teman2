@@ -570,6 +570,11 @@
       "live": "~/scripts/claude-settings-change-alert.sh",
       "repo": "scripts/claude-settings-change-alert.sh",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.claude-settings-watcher.plist",
+      "repo": "infra/launchagents/com.balizero.claude-settings-watcher.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [

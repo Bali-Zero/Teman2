@@ -59,9 +59,22 @@ MD5_SHORT="${CURRENT_MD5:0:12}"
 #     came back to a content your session has since stopped running — and a
 #     state-keyed alert would have called it a duplicate of five hours earlier.
 #
-# A transition is unique to the change that produced it, and A->B->A yields
-# three distinct keys, which is the correct count of restarts.
-export ALERT_CONDITION="settings-json:${LAST_MD5:0:12}->${MD5_SHORT}"
+# A transition is not unique over TIME either: A->B, B->A, A->B reuses the
+# first key on the third change, and that third change needs its own restart.
+# So a sequence number rides along, and this producer OPTS OUT of the mute
+# ladder by design.
+#
+# That is not the trauma repeating. The ladder exists to quieten a condition
+# that STAYS TRUE while being re-measured; this producer emits DISCRETE EVENTS
+# — each change is a separate fact that needs a separate restart — and there is
+# nothing to quieten. The bound is the volume: 12 changes in the last month, at
+# WARNING, so they arrive as lines inside the 2x/day digest, not as
+# interruptions. A producer that opts out must be able to say why, and must be
+# small enough that being wrong is cheap.
+SEQ_FILE="$STATE_DIR/claude-settings-alert-seq"
+SEQ=$(( $(cat "$SEQ_FILE" 2>/dev/null || echo 0) + 1 ))
+echo "$SEQ" > "$SEQ_FILE"
+export ALERT_CONDITION="settings-json:${LAST_MD5:0:12}->${MD5_SHORT}#${SEQ}"
 
 # Pass message via env-var to Python (avoids heredoc interpolation breakage on UTF-8/quotes)
 export ALERT_MSG="[settings.json] modified at ${TIMESTAMP}

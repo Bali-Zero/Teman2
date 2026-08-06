@@ -333,9 +333,17 @@ def emit_alert(probes: list[Probe]) -> bool:
     except Exception:  # noqa: BLE001 — fallback diretto al gateway
         tg = REPO / "scripts" / "tg_notify.py"
         if tg.exists():
-            _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
-                  "--dedup-key", f"auth-sentinel-{host}", msg])
-            return True
+            # SAME identity as the primary path. A host-wide key here would undo
+            # the fix one line above: a Codex failure at 10:00 and a different
+            # Agy failure at 12:00 would both key on `auth-sentinel-<host>` and
+            # the gateway would mute the second. An exception branch is not a
+            # place where identity may be cheaper.
+            rc = _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
+                       "--dedup-key", f"auth-sentinel-{host}-{condition}", "--", msg])
+            # ...and it must report what actually happened: returning True
+            # unconditionally told the caller an alert went out when the
+            # subprocess may have failed.
+            return rc == 0
     return False
 
 

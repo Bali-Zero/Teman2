@@ -36,6 +36,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -177,7 +178,9 @@ def test_the_local_fastpath_still_saves_the_second_subprocess(sentinel_with_loca
     one suppression layer off while renaming another."""
     a = sentinel_with_local_dedup
     assert a.send_alert("identical text", condition="c") is True
-    assert a.send_alert("identical text", condition="c") is False
+    # True, like the gateway's own duplicate: one meaning, one value. The
+    # short-circuit is proven by the ARGV count, not by the return.
+    assert a.send_alert("identical text", condition="c") is True
     assert len(_keys(a)) == 1, "the second identical message spawned a gateway anyway"
 
 
@@ -332,8 +335,9 @@ def test_the_watcher_names_the_TRANSITION_not_the_new_state(tmp_path):
     # above — assert the NEW side is really a hash. The md5 helper has two
     # branches (macOS /sbin/md5, Linux md5sum) and only one runs per platform,
     # so the other must not be free to return nothing (superscar #2).
-    new_side = c1.split("->", 1)[1]
+    new_side = c1.split("->", 1)[1].split("#")[0]
     assert len(new_side) == 12 and all(ch in "0123456789abcdef" for ch in new_side), c1
+    assert c1.rsplit("#", 1)[1].isdigit(), c1
 
     second = _run_watcher(home, '{"a": 2}', _FAKE_ALERTER)
     c2 = second["calls"][-1]["condition"]
@@ -343,6 +347,14 @@ def test_the_watcher_names_the_TRANSITION_not_the_new_state(tmp_path):
     third = _run_watcher(home, '{"a": 1}', _FAKE_ALERTER)
     c3 = third["calls"][-1]["condition"]
     assert c3 not in (c1, c2), f"A->B->A collapsed onto an earlier key: {c3}"
+
+    # ...and one step FURTHER, which is where a transition alone breaks: the
+    # fourth change repeats the transition of the second, and it is still a
+    # separate change needing a separate restart.
+    fourth = _run_watcher(home, '{"a": 2}', _FAKE_ALERTER)
+    c4 = fourth["calls"][-1]["condition"]
+    assert c4 not in (c1, c2, c3), f"A->B->A->B reused an earlier key: {c4}"
+    assert len({c1, c2, c3, c4}) == 4
 
 
 def test_the_watcher_stays_silent_when_nothing_changed(tmp_path):
@@ -401,8 +413,21 @@ def test_no_call_site_hands_a_hash_to_condition():
             if line.lstrip().startswith("#"):
                 continue
             names = ("condition=" in line) or ("ALERT_CONDITION=" in line)
-            hashy = any(h in line for h in ("md5", "sha1", "sha256", "hexdigest"))
-            if names and hashy:
+            low = line.lower()
+            # Case-insensitively — the watcher's variables are MD5_SHORT and
+            # LAST_MD5, so a lowercase-only scan walked straight past the one
+            # construction this test claims to judge.
+            hashy = any(h in low for h in ("md5", "sha1", "sha256", "hexdigest"))
+            # ...and the rule is about WHAT is hashed, not that a hash appears.
+            # Hashing the MESSAGE is the trauma: the message carries the
+            # measurement, so the key moves with it. Hashing an observed
+            # artifact (a settings file's content) names a real entity and is
+            # the opposite thing. Naming the distinction beats an allow-list,
+            # which would excuse the next offender by location (W109).
+            hashes_the_message = any(
+                t in low for t in ("message", "msg", "text", "alert_msg", "full_message")
+            )
+            if names and hashy and hashes_the_message:
                 offenders.append(f"{path.relative_to(REPO)}:{i}  {line.strip()[:80]}")
     assert not offenders, "a condition built from a hash is the trauma:\n  " + "\n  ".join(offenders)
 
@@ -611,3 +636,107 @@ def test_a_real_failure_still_reports_false(sentinel):
     broken.write_text("import sys; sys.exit(3)\n")
     sentinel._gateway_script = lambda: str(broken)
     assert sentinel.send_alert("x", condition="c") is False
+
+
+def test_the_watchers_launchagent_is_tracked_and_points_at_the_promoted_script():
+    """Promoting the script without its plist tracks the payload and not the
+    ACTIVATION: the corpus would stay green while nothing invoked it, which is
+    superscar #2 wearing a green test. The plist is the thing that says WHEN
+    this runs, and it is what makes the WatchPaths reasoning above (fires on
+    change, not on a timer, so a stuck state file retries rather than storms)
+    a fact about the deployment rather than an assumption in a comment."""
+    import plistlib
+
+    plist = REPO / "infra" / "launchagents" / "com.balizero.claude-settings-watcher.plist"
+    d = plistlib.loads(plist.read_bytes())
+    assert d["Label"] == "com.balizero.claude-settings-watcher"
+    assert any("claude-settings-change-alert.sh" in str(a) for a in d["ProgramArguments"])
+    assert d["WatchPaths"], "no WatchPaths — the retry-not-storm argument dies with it"
+    assert any(str(w).endswith(".claude/settings.json") for w in d["WatchPaths"])
+    # launchd will not start a second instance of a running job, and this adds
+    # a 30s floor on top — which is what bounds the unlocked read/write of the
+    # state file to a theoretical race rather than a live one.
+    assert int(d.get("ThrottleInterval", 0)) >= 30
+
+    pairs = json.loads((REPO / "infra" / "home-fork" / "declared-pairs.json").read_text())["pairs"]
+    declared = {p["repo"] for p in pairs}
+    assert "infra/launchagents/com.balizero.claude-settings-watcher.plist" in declared
+    assert "scripts/claude-settings-change-alert.sh" in declared
+
+
+def test_the_auth_fallback_keeps_the_identity_the_primary_path_fixed():
+    """OBJ: the except-branch keyed on `auth-sentinel-<host>`, host-wide, which
+    erases the per-credential identity one line above — a Codex failure and a
+    different Agy failure two hours later would share a key and the second
+    would be muted. An exception branch is not a place where identity is
+    cheaper. It also returned True without looking at the subprocess."""
+    src = (REPO / "scripts" / "auth_sentinel.py").read_text()
+    tree = ast.parse(src)
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "emit_alert")
+    handlers = [h for h in ast.walk(fn) if isinstance(h, ast.ExceptHandler)]
+    assert handlers, "the fallback branch vanished — census broke"
+    body = "\n".join(ast.unparse(h) for h in handlers)
+    assert "--dedup-key" in body
+    key_line = next(l for l in body.splitlines() if "auth-sentinel-" in l)
+    assert "condition" in key_line, (
+        f"the fallback key drops the per-credential identity: {key_line.strip()}"
+    )
+    assert "return True" not in body, "the fallback still claims success blindly"
+    assert "rc == 0" in body
+
+
+def test_the_local_key_cannot_be_confused_by_a_separator_in_the_data(sentinel_with_local_dedup):
+    """`f"{level}|{condition}|{message}"` is not injective: condition="worker:a"
+    with message="b|c" serialises identically to condition="worker:a|b" with
+    message="c", so the second alert would be swallowed locally. Nothing
+    forbids `|` in a job id. The separator is \\x1f (unit separator), which no
+    message carries."""
+    a = sentinel_with_local_dedup
+    assert a.send_alert("b|c", condition="worker:a") is True
+    assert a.send_alert("c", condition="worker:a|b") is True
+    assert len(_keys(a)) == 2, "two distinct alerts collapsed on the local key"
+
+
+def test_the_ocr_gate_names_which_surface_degraded():
+    """Six call sites, all stable literals: portal document OCR, vision RAG,
+    the CRM passport extractor... Dropping the context fused them, so a portal
+    block at 10:00 and a vision-RAG block at 11:00 shared one identity and the
+    second degraded service never reached Telegram. A shared remediation does
+    not make the affected surfaces interchangeable."""
+    src = (REPO / "apps" / "backend-rag" / "backend" / "services" / "multimodal"
+           / "cloud_vision_gate.py").read_text()
+    call = next(n for n in ast.walk(ast.parse(src))
+                if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "send_alert")
+    cond = next(k.value for k in call.keywords if k.arg == "condition")
+    rendered = ast.unparse(cond)
+    assert "context" in rendered, f"the OCR condition fuses every surface: {rendered}"
+
+
+def test_a_standing_halt_does_not_change_family_on_the_next_run():
+    """A JSON corruption announces itself as `halt:corrupt-registry` on the run
+    that DETECTS it; every later run takes the HALT-file branch instead. That
+    branch used to name one cause, so a single incident wore two families — and
+    the false checksum identity could then mute a real checksum mismatch. The
+    stored reason is already in the message; the identity is "a halt stands"."""
+    src = (REPO / "scripts" / "nuzantara-sentinel.py").read_text()
+    conds = re.findall(r'condition="(halt:[^"]+)"', src)
+    assert "halt:standing" in conds, f"the standing-halt branch names a cause: {conds}"
+    detectors = [c for c in conds if c != "halt:standing"]
+    assert "halt:standing" not in detectors
+    assert len(set(conds)) == len(set(detectors)) + 1, conds
+
+
+def test_each_openclaw_restart_is_its_own_episode():
+    """Two successful restarts two hours apart are two events, and a burst of
+    them IS the restart-loop signal. One stable name would hide exactly that,
+    then escalate the silence to a week. `_record_openclaw_restart()` stamps
+    the attempt; that stamp is the episode id."""
+    src = (REPO / "scripts" / "nuzantara-sentinel.py").read_text()
+    assert 'condition=f"openclaw-restarted:{_last_openclaw_restart_ts()}"' in src
+    assert "def _last_openclaw_restart_ts()" in src, "the episode id has no source"
+    # ...and it must read the record the restart path just wrote, not the clock:
+    fn = next(n for n in ast.walk(ast.parse(src))
+              if isinstance(n, ast.FunctionDef) and n.name == "_last_openclaw_restart_ts")
+    body = ast.unparse(fn)
+    assert "OPENCLAW_RESTART_RECORD" in body and "time.time()" not in body

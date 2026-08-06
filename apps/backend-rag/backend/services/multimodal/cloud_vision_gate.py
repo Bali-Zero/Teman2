@@ -63,7 +63,13 @@ def note_cloud_ocr_blocked(context: str) -> None:
             f"Action: restart Ollama vision (qwen2.5vl) or set OCR_ALLOW_CLOUD_VISION=true "
             f"ONLY for non-PII flows.",
             level="WARNING",
-            condition="ocr-cloud-fallback-blocked",
+            # The context names WHICH surface degraded — portal document OCR,
+            # vision RAG, the CRM passport extractor. Six call sites, all stable
+            # literals. Dropping it fused them: portal blocked at 10:00 and
+            # vision RAG at 11:00 would share one identity, and the second
+            # degraded service never reaches Telegram. A shared remediation does
+            # not make the affected surfaces interchangeable.
+            condition=f"ocr-cloud-fallback-blocked:{context}",
         )
     except Exception as exc:  # alerter import error / network / anything
         logger.debug("cloud_vision_gate: Telegram alert unavailable (%s)", exc)

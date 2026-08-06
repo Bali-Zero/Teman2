@@ -136,10 +136,16 @@ def load_registry() -> dict:
     if os.path.exists(REGISTRY_HALT_FILE) and not os.path.exists(REGISTRY_OVERRIDE_FILE):
         msg = open(REGISTRY_HALT_FILE).read().strip()
         logger.error(f"REGISTRY_HALT active — aborting sentinel: {msg}")
+        # This branch fires for ANY standing halt, so it must not name one
+        # cause: a JSON corruption announces itself as `halt:corrupt-registry`
+        # on the run that detects it and, from the next run on, was announced
+        # here as a checksum mismatch — one incident wearing two families, and
+        # a false checksum identity that could then mute a real one. The stored
+        # reason is already in {msg}; the identity is "a halt is standing".
         send_alert(
-            f"🚨 Sentinel HALTED: registry checksum mismatch.\n{msg}\n"
+            f"🚨 Sentinel HALTED: {msg}\n"
             f"Resolve and touch REGISTRY_OVERRIDE to resume.",
-            condition="halt:checksum-mismatch",
+            condition="halt:standing",
         )
         sys.exit(1)
 
@@ -401,6 +407,24 @@ def _record_openclaw_restart() -> None:
         json.dump({"ts": time.time()}, f)
 
 
+def _last_openclaw_restart_ts() -> str:
+    """The stamp `_record_openclaw_restart()` just wrote — this restart's episode id."""
+    try:
+        with open(OPENCLAW_RESTART_RECORD) as f:
+            return str(int(float(json.load(f).get("ts", 0))))
+    except Exception:  # noqa: BLE001 — an episode id must never break a restart
+        return "unknown"
+
+
+def _last_openclaw_restart_ts() -> str:
+    """The stamp `_record_openclaw_restart()` just wrote — this restart's episode id."""
+    try:
+        with open(OPENCLAW_RESTART_RECORD) as f:
+            return str(int(float(json.load(f).get("ts", 0))))
+    except Exception:  # noqa: BLE001 — an episode id must never break a restart
+        return "unknown"
+
+
 def check_and_repair_openclaw() -> bool:
     """
     Tier 0: verify OpenClaw gateway is alive before iterating jobs.
@@ -434,7 +458,12 @@ def check_and_repair_openclaw() -> bool:
         send_alert(
             f"OpenClaw gateway auto-restarted ✅\n{output[:120]}",
             level="INFO",
-            condition="openclaw-restarted",
+            # Per EPISODE, not per family: two successful restarts two hours
+            # apart are two events, and a burst of them IS the restart-loop
+            # signal. A single stable name would hide exactly that and then
+            # escalate the silence to a week. `_record_openclaw_restart()`
+            # just stamped this attempt — that stamp is the episode.
+            condition=f"openclaw-restarted:{_last_openclaw_restart_ts()}",
         )
         return True
 

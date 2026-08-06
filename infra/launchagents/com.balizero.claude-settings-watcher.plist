@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.balizero.claude-settings-watcher</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>echo "[$(date '+%H:%M:%S')] watcher-fire pid=$$" >> /Users/nuzantara/logs/claude-settings-watcher.log; exec /Users/nuzantara/scripts/claude-settings-change-alert.sh</string>
+  </array>
+  <key>WatchPaths</key>
+  <array>
+    <string>/Users/nuzantara/.claude/settings.json</string>
+  </array>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/claude-settings-watcher.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/claude-settings-watcher.err</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/nuzantara</string>
+  </dict>
+</dict>
+</plist>
