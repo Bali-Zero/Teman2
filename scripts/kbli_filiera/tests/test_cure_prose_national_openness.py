@@ -283,13 +283,63 @@ def test_the_six_are_gone_from_the_live_backlog_and_the_rest_are_untouched():
     run's own report — counting edits proves what a pass intended, not what it
     wrote.
 
-    The backlog went 34 -> 28 and the difference is exactly the spec's six. The
+    The backlog went 34 -> 28 -> 21 across the two specs, and the difference is
+    exactly the codes they name. The
     28 that remain are named in the detector's own pin, so a code leaving this
     list without a cure would show up there.
     """
-    spec = json.loads(C.SPEC.read_text(encoding="utf-8"))
-    cured = set(spec["codes"])
+    cured = set()
+    for sp in sorted(C.SPEC.parent.glob("prose_umkm_reserved_openness*.json")):
+        cured |= set(json.loads(sp.read_text(encoding="utf-8"))["codes"])
     rep = E.report(E.load_records())
     remaining = set(rep["needs_an_author"]["codes"])
-    assert len(remaining) == 28
+    assert len(remaining) == 21
     assert cured & remaining == set(), f"a cured code still lies: {sorted(cured & remaining)}"
+
+
+def test_no_cured_code_still_carries_a_numeric_openness_claim_the_other_lint_can_see():
+    """The antidote of class, and it exists because this bit once.
+
+    `editorial_record_conformance` requires a national scope word in the SAME
+    sentence as the openness claim. `55105` carried a field reading
+
+        **PMA Status:** Fully open (Terbuka) — 100% foreign ownership.
+
+    with no "national" anywhere near it, so the detector that owns this cure was
+    structurally blind to it — while the page's standfirst and body had just been
+    corrected. A page that reads cured and still prints the number a client acts
+    on is worse than one that is uniformly wrong.
+
+    It was found by the relationship pin between this module and lint rule L10
+    going red, not by the detector. So the check belongs here permanently: after
+    ANY prose cure, the neighbouring rule — which reads for a PERCENTAGE rather
+    than for an assertion — must find nothing on the codes just cured.
+
+    NOT asserted here: that L10 finds nothing anywhere. It still flags `41011`
+    and `52292`, both running the opposite direction (prose more restrictive than
+    the record), and those are a different adjudication.
+    """
+    import kbli_dataset_lint as lint
+
+    records = E.load_records()
+    by_code = {r["kode_kbli_2025"]: r for r in records}
+    maxa_by_code = {r["kode_kbli_2025"]: r.get("pma_max_asing") for r in records}
+
+    cured: set[str] = set()
+    for spec_path in sorted(C.SPEC.parent.glob("prose_umkm_reserved_openness*.json")):
+        cured |= set(json.loads(spec_path.read_text(encoding="utf-8"))["codes"])
+    assert cured, "no cure specs found — this test would pass vacuously"
+
+    survivors = []
+    for code in sorted(cured):
+        record = by_code[code]
+        maxa = record.get("pma_max_asing")
+        for field, text in lint.iter_prose(record):
+            hit = lint.l10_ownership_contradiction(text, code, maxa, maxa_by_code)
+            if hit:
+                survivors.append((code, field, hit[0], maxa))
+
+    assert survivors == [], (
+        "a cured page still states a foreign-ownership percentage its record denies: "
+        f"{survivors}"
+    )

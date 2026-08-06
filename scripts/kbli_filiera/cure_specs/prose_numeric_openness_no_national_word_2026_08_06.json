@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "spec": "prose_numeric_openness_no_national_word_2026_08_06",
+    "population": "One field, found by a pin rather than by the detector that owns this class.",
+    "why_it_was_missed": "`editorial_record_conformance` requires a national scope word in the SAME sentence as the openness claim. This field says '**PMA Status:** Fully open (Terbuka) — 100% foreign ownership.' with no 'national' anywhere near it, so the module is structurally blind to it. The neighbouring lint rule L10 reads for a PERCENTAGE instead and caught it — which is exactly the complementary blind spot the relationship test between them was written to pin, and the pin going red is how this was found.",
+    "why_it_matters_more_than_one_field": "55105 was CURED by the batch-2 spec: its standfirst and body now read correctly. This field would have left the page saying 'Fully open — 100% foreign ownership' underneath a corrected standfirst — a page that reads cured and still carries the number a client acts on. A half-cure is the failure mode this whole lane exists to avoid.",
+    "what_is_preserved": "Everything else in the field, verbatim: the scale/risk ladder, licence type, all four post-issuance obligations (Sertifikat Laik Sehat, hotel self-assessment, LSPr tourism standard, SKPL alcohol), the issuing authorities, and the source-regulation line. Only the stale PMA Status sentence is rewritten — the same relationship a byTheNumbers cell has to the field it copies.",
+    "declared_gap_NOT_closed_here": "L10 also flags `41011` (prose says 67%, record says 100) and `52292` (prose says 49%, record says 100). Both run the OPPOSITE direction — the prose is more restrictive than the record, understating what a client may do — and both may well be the prose being right and the record wrong. They are a different adjudication and are left named, not silently swept in."
+  },
+  "codes": {
+    "55105": {
+      "judul": "Aktivitas Hotel Bintang Satu",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "0b53d9f04e046ce3093fa6b2f62f09b99f28b33c3af10ea3b940f6911a84b8e3",
+          "old_excerpt": "**Small, Medium, Large**: Ranges from Medium-Low (Menengah Rendah) processed automatically (Otomatis), to Medi",
+          "new": "**Small, Medium, Large**: Ranges from Medium-Low (Menengah Rendah) processed automatically (Otomatis), to Medium-High (Menengah Tinggi) taking 14 days (14 Hari). No Micro scale tier exists for this code. **License Type:** NIB + Standard Certificate (Sertifikat Standar). **Post-issuance obligations:**\n- Obtain a Health Feasibility Certificate (Sertifikat Laik Sehat)\n- Submit a Self-Assessment Document for Hotel Standards (Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Hotel Bintang)\n- Obtain a Tourism Business Standard Certificate from an independent agency (Sertifikat Standar Usaha Pariwisata dari LSPr) for higher risks\n- Obtain an Alcohol Direct Sales Certificate (Surat Keterangan Penjualan Langsung Minuman Beralkohol / SKPL A, B, C) if applicable **Authority:** Regent/Mayor (Bupati/Walikota) for Medium-Low; Governor (Gubernur) for Medium-High. **PMA Status:** Allocated to Koperasi and UMKM (Perpres 49/2021 Lampiran II) — foreign ownership 0%, so a PT PMA cannot register this activity. **Source Regulation:** Perpres 10/2021, 49/2021, PP 28/2025."
+        }
+      }
+    }
+  }
+}
