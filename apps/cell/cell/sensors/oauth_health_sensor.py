@@ -1,21 +1,29 @@
-"""OAuthHealthSensor — Cell sensor for Google Drive OAuth token expiry.
+"""OAuthHealthSensor — Cell sensor for the Google Drive OAuth credential.
 
 Reads the watchdog state file written by `scripts/drive_token_watchdog.py`
-(no extra DB / fly ssh round-trip from the Cell pulse loop). Maps the
-last-classified tier to green/yellow/red per the P1-11 (zero-crash audit
-2026-04-29) tier table:
+(no extra DB / fly ssh round-trip from the Cell pulse loop) and maps its
+verdict to green/yellow/red:
 
-    TIER                  days_left      Cell color
-    --------------------  -------------  ------------
-    TIER_OK               > 30           green
-    TIER_30_DAYS          15..30         green   (heads-up only)
-    TIER_14_DAYS          8..14          yellow  (warning)
-    TIER_7_DAYS           2..7           red     (urgent — visible to organism)
-    TIER_1_DAY            0..1           red
-    TIER_EXPIRED          < 0            red
+    last_oauth_health   Cell color
+    -----------------   ------------
+    ok                  green
+    no-token            red    (no credential exists at all)
+    no-refresh          red    (cannot renew itself — re-auth required)
+
+REPLACED 2026-08-06 — this sensor used to read `last_oauth_tier` and
+`last_oauth_days_left` and paint a 30/14/7/1-**day** ladder. That ladder was
+derived from `google_drive_tokens.expires_at`, which is the **one-hour access
+token**, not a 90-day credential clock (measured: `expires_at - updated_at`
+is exactly 1h on every row). So `days_left` was 0 for a token refreshed one
+minute ago and negative for every idle row: this sensor would have painted
+Drive permanently red off a healthy credential. See
+`classify_oauth_health` in the watchdog for the full measurement.
+
+The old keys are not merely ignored, they are deleted by the watchdog when it
+writes — a state file from before today still contains them.
 
 State file: ``~/.agent/decisions/state/drive_oauth_watchdog.state.json``
-(written every ``drive_token_watchdog.py`` run on Air, every 6h).
+(written every ``drive_token_watchdog.py`` run, every 6h).
 
 If the state file is missing OR stale (no successful watchdog run within the
 last 18h = 3× the cron interval), the sensor returns ``yellow`` with reason
@@ -45,16 +53,20 @@ _DEFAULT_STATE_PATH = os.path.expanduser(
 # Watchdog cron runs every 6h; treat last_check older than 18h as stale.
 _DEFAULT_STALE_AFTER_HOURS = 18.0
 
-# Tier → (cell_color, reason_label). Mirrors the watchdog tier names so the
-# Cell pulse and the Telegram alerts agree on terminology.
-_TIER_TO_COLOR: dict[str, tuple[str, str]] = {
-    "ok": ("green", "token healthy (>30 days remaining)"),
-    "info_30d": ("green", "30d heads-up window"),
-    "warning_14d": ("yellow", "14d warning — re-auth this week"),
-    "urgent_7d": ("red", "7d urgent — re-auth NOW"),
-    "critical_1d": ("red", "1d critical — re-auth immediately"),
-    "critical_expired": ("red", "OAuth EXPIRED — Drive polling broken"),
+# Verdict → (cell_color, reason_label). Mirrors the watchdog's HEALTH_*
+# constants so the Cell pulse and the Telegram alerts agree on terminology.
+_HEALTH_TO_COLOR: dict[str, tuple[str, str]] = {
+    "ok": ("green", "credential present and renewable"),
+    "no-token": ("red", "no OAuth row in google_drive_tokens"),
+    "no-refresh": ("red", "no refresh_token — cannot renew, re-auth required"),
 }
+
+# Values the watchdog wrote before 2026-08-06, off the wrong scale. A state
+# file that still carries one is not evidence of anything: report unknown
+# rather than repainting a stale day-ladder verdict as if it were current.
+_RETIRED_TIER_VALUES = frozenset(
+    {"info_30d", "warning_14d", "urgent_7d", "critical_1d", "critical_expired"}
+)
 
 
 @dataclass
@@ -62,8 +74,7 @@ class OAuthHealthReading:
     """One sensor reading. ``status`` is green/yellow/red per Cell convention."""
 
     status: str  # "green", "yellow", "red", "unknown"
-    tier: str = ""  # watchdog tier string (e.g. "warning_14d") or empty
-    days_left: int | None = None  # extracted from state if present
+    health: str = ""  # watchdog verdict ("ok"/"no-token"/"no-refresh") or empty
     last_check_iso: str = ""  # last watchdog run ISO timestamp
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -106,12 +117,11 @@ class OAuthHealthSensor:
                 metadata={"reason": f"state read error: {e}", "path": self._state_path},
             )
 
-        tier = state.get("last_oauth_tier", "") or ""
+        health = state.get("last_oauth_health", "") or ""
         last_check_iso = state.get("last_oauth_check_iso", "") or ""
-        days_left = state.get("last_oauth_days_left")  # optional
 
         # Staleness check — if the watchdog hasn't successfully run recently,
-        # we don't trust the cached tier. Yellow ("visibility lost"), not red.
+        # we don't trust the cached verdict. Yellow ("visibility lost"), not red.
         if last_check_iso:
             try:
                 last_check_dt = datetime.fromisoformat(last_check_iso)
@@ -121,8 +131,7 @@ class OAuthHealthSensor:
                 if age_hours > self._stale_after_hours:
                     return OAuthHealthReading(
                         status="yellow",
-                        tier=tier,
-                        days_left=days_left,
+                        health=health,
                         last_check_iso=last_check_iso,
                         metadata={
                             "reason": f"watchdog state stale ({age_hours:.1f}h old)",
@@ -134,22 +143,44 @@ class OAuthHealthSensor:
                     f"OAuthHealthSensor: failed to parse last_check_iso "
                     f"{last_check_iso!r}: {e}"
                 )
-                # Fall through to tier-based classification.
+                # Fall through to verdict-based classification.
 
-        if not tier:
+        if not health:
+            # Includes every state file written before 2026-08-06: those carry
+            # `last_oauth_tier` and no `last_oauth_health`, and the watchdog has
+            # not run since the change. Unknown is the honest answer.
+            legacy = state.get("last_oauth_tier")
+            reason = "state file has no last_oauth_health yet"
+            if legacy:
+                reason = (
+                    f"pre-2026-08-06 state (last_oauth_tier={legacy!r}) — that "
+                    "ladder measured the 1h access token on a day scale; "
+                    "ignored, waiting for the next watchdog run"
+                )
             return OAuthHealthReading(
                 status="unknown",
                 last_check_iso=last_check_iso,
-                metadata={"reason": "state file has no last_oauth_tier yet"},
+                metadata={"reason": reason},
             )
 
-        color, reason = _TIER_TO_COLOR.get(
-            tier, ("unknown", f"unknown tier: {tier}")
+        if health in _RETIRED_TIER_VALUES:
+            # A retired ladder value in the CURRENT key: the only way here is a
+            # hand-edited or half-migrated state file. Never repaint it.
+            return OAuthHealthReading(
+                status="unknown",
+                health=health,
+                last_check_iso=last_check_iso,
+                metadata={
+                    "reason": f"retired day-ladder value in last_oauth_health: {health}"
+                },
+            )
+
+        color, reason = _HEALTH_TO_COLOR.get(
+            health, ("unknown", f"unknown verdict: {health}")
         )
         return OAuthHealthReading(
             status=color,
-            tier=tier,
-            days_left=days_left,
+            health=health,
             last_check_iso=last_check_iso,
             metadata={"reason": reason},
         )

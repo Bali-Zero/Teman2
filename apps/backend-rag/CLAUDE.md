@@ -354,10 +354,24 @@ Per-provider kill-switch (no redeploy, takes effect on next restart):
 - `LANGFUSE_INSTRUMENT_ANTHROPIC=false` — disable Anthropic auto-trace
 - `LANGFUSE_ENABLED=false` — disable everything (full kill-switch)
 
-### Drive OAuth lifecycle
+### Drive OAuth lifecycle (corrected 2026-08-06 — "expires ~90 days" was never true here)
 
-- Token in `google_drive_tokens` table — expires ~90 days
-- Watchdog: `scripts/drive_token_watchdog.py` alerts 7 days before
+- `google_drive_tokens.expires_at` is the **one-hour access token**, not a 90-day
+  credential clock: `google_drive_service.py:163` sets it to `now + expires_in`
+  (3600) and `:230` refreshes lazily on use with a 5-minute buffer. Measured on
+  both live rows, `expires_at - updated_at == 1h` exactly.
+- **No column records the refresh token's validity**, so no query against this
+  table distinguishes a live credential from a revoked one — on 2026-08-05
+  Google answered `invalid_grant: Token has been expired or revoked` while the
+  row looked fully populated. Only an attempt knows, and the consumers make one
+  every run: the ground truth is a **consumer's failure**, not a countdown.
+- `scripts/drive_token_watchdog.py` therefore alerts on the two states the table
+  CAN express (no row / no `refresh_token`) and **never on a day count**. A
+  day-scale reading of `expires_at` yields 0 or negative always — that is a
+  nightly false CRITICAL, not a warning.
+- Live Drive traffic does not use this table: 16 production files go through
+  `ServiceAccountDriveService` (domain-wide delegation), and `_refresh_token`
+  deliberately refuses to refresh the `SYSTEM` row since 2026-05-10.
 - Re-auth: `https://kita.balizero.com/settings/integrations`
 
 ### Local AI Ollama (CRITICAL detail)

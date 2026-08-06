@@ -1,56 +1,58 @@
-"""The tier ratchet advanced on classification, so verifying the cure muted it.
+"""The ratchet advanced on classification, and the ladder measured the wrong clock.
 
-TRAUMA (2026-08-06, found in PROVE-LIVE of #3690 — hours after it merged).
+Two traumas in one organ, both found on 2026-08-06, the second while proving
+the cure for the first.
 
-`should_alert` fires only on a strictly-more-severe transition. For a
-once-per-lifetime event like "the OAuth token expired" that means there is
-exactly ONE chance to speak, ever. And `main()` spent it in the wrong place:
+TRAUMA A — the ratchet. `should_alert` speaks only on a CHANGE of verdict, so
+for a once-per-lifetime event there is exactly ONE chance to speak, and `main()`
+spent it in the wrong place:
 
-    save_state(new_state)          # line 532 — ran FIRST, unconditionally
+    save_state(new_state)          # ran FIRST, unconditionally
     ...
-    sent = _send_telegram(...)     # line 538 — its bool was printed, then dropped
+    sent = _send_telegram(...)     # its bool was printed, then dropped
 
-So the ratchet recorded "I have told them about tier X" on the strength of
-having CLASSIFIED tier X, never on having DELIVERED it.
+The ratchet recorded "I have told them" on the strength of having CLASSIFIED,
+never of having DELIVERED. Measured: #3690 removed the PATH defect that had
+stopped this watchdog from ever reading the table, so the run that VERIFIED
+#3690 was the first ever to classify a failure. It wrote that to the state file
+and delivered nothing anyone read; the next run saw the value already recorded
+and printed "tutto OK" about a credential it had just declared dead. Curing a
+mute watchdog, then muting it with the act of proving the cure.
 
-The sequence, measured on Pro rather than reasoned about:
+TRAUMA B — the ladder. The verdict being ratcheted was itself derived from a
+30/14/7/1-**day** classification of `google_drive_tokens.expires_at`, which is
+the **one-hour access token**:
 
-  * `google_drive_tokens` — both rows expired, the live one on 2026-07-25
-    (`expires_at > now()` is false, 12 days ago);
-  * #3690 removed the PATH defect that had stopped the watchdog from ever
-    reading that row, and the run that VERIFIED #3690 was therefore the first
-    ever to classify `critical_expired`. It wrote that to the state file;
-  * the state file on Pro then read
-    `{"last_oauth_tier": "critical_expired", "last_oauth_days_left": -12}`;
-  * so the next run took the de-escalation branch and printed
-    **"tutto OK (token valido, SA key OK)"** about a dead credential.
+    google_drive_service.py:163   expires_at = now + expires_in (3600)
+    google_drive_service.py:230   refresh when expires_at <= now + 5min
 
-Curing a mute watchdog, and then muting it with the act of proving the cure.
-Same family as W96 (a test writing production state) and as the standing
-lesson that arming a guard before the entrance deletes the last true signal —
-here the "test" was a live verification run and the state it wrote was real.
+Measured live the same day, both rows: `expires_at - updated_at == 1h` exactly.
+So `days_left` was 0 for a token refreshed a minute ago and negative for every
+idle row — TIER_30/14/7 unreachable BY CONSTRUCTION, and the two reachable
+outcomes were "🚨 scade DOMANI" about a healthy credential and "🔴 SCADUTO"
+about one nobody had used today. It never showed only because the read always
+failed: curing the read is what would have armed the false alarm.
 
-Three ways the old order lost the one message, all covered below: a
-verification run, a send that fails, and a cron environment with no
-TELEGRAM_BOT_TOKEN (`_send_telegram` returns False on exactly that).
-
-    GUILT ×2     — a failed delivery must NOT advance the ratchet, and the
-                   very next run must still speak. Asserted on the real
-                   historical shape (first-ever `critical_expired`) and on an
-                   escalation between two live tiers.
-    INNOCENCE ×2 — a successful delivery DOES advance it (or the next run
-                   would spam), and a clean token still records TIER_OK so a
-                   later escalation reads as a transition.
-    ORDER        — send happens before the write. Pinned directly, because
-                   the fix is the ORDER and a future refactor that restores
-                   the old sequence would pass every value-level assertion
-                   above on the happy path.
+    GUILT ×2     — a failed delivery must NOT advance the ratchet, and the very
+                   next run must still speak.
+    GUILT (B)    — the REAL measured row shape must be SILENT. This is the case
+                   the old corpus could not have: it only ever fed invented
+                   day-scale numbers to a pure function, never a row.
+    SYMMETRY     — the SA lane carries the same ratchet and the same cure.
+    INNOCENCE ×2 — a delivered alert DOES advance it (or this spams every 6h),
+                   and a healthy verdict is still recorded so a later failure
+                   reads as a change.
+    ORDER        — send before write, pinned directly: every value-level
+                   assertion here passes on the happy path under the old
+                   sequence, which only diverges when the send fails.
+    SCAR-PIN     — the day ladder cannot come back by name.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -74,7 +76,7 @@ def _load():
 def wd(tmp_path, monkeypatch):
     """The watchdog with its state file redirected to tmp and every outbound
     path stubbed. W96: this corpus must never touch the real state file — the
-    real one is precisely what the trauma above corrupted."""
+    real one is precisely what trauma A corrupted."""
     mod = _load()
     monkeypatch.setattr(mod, "STATE_DIR", tmp_path)
     monkeypatch.setattr(mod, "STATE_FILE", tmp_path / "state.json")
@@ -87,25 +89,77 @@ def wd(tmp_path, monkeypatch):
     return mod
 
 
-def _token(expires_at: str):
-    return ({"expires_at": expires_at, "created_at": "2026-04-07 23:31:07+00"}, None)
+def _healthy_rows(mod):
+    """The shape measured on production 2026-08-06 — refreshed minutes ago,
+    access token good for another 59 minutes. This is what HEALTHY looks like,
+    and the old ladder called it "🚨 scade DOMANI"."""
+    now = mod.datetime.now(mod.timezone.utc)
+    return (
+        {
+            "rows": [
+                {
+                    "user_id": "SYSTEM",
+                    "has_refresh": True,
+                    "updated_at": (now - mod.timedelta(minutes=1)).strftime(
+                        "%Y-%m-%d %H:%M:%S+00"
+                    ),
+                    "expires_at": (now + mod.timedelta(minutes=59)).strftime(
+                        "%Y-%m-%d %H:%M:%S+00"
+                    ),
+                }
+            ]
+        },
+        None,
+    )
 
 
-def _saved_tier(mod):
+def _idle_rows(mod):
+    """Also healthy: nobody has used Drive for 12 days, so the access token in
+    the row is long expired. Lazy refresh-on-use means this predicts nothing —
+    it is the shape the old ladder screamed "🔴 SCADUTO" about."""
+    now = mod.datetime.now(mod.timezone.utc)
+    return (
+        {
+            "rows": [
+                {
+                    "user_id": "SYSTEM",
+                    "has_refresh": True,
+                    "updated_at": (now - mod.timedelta(days=12)).strftime(
+                        "%Y-%m-%d %H:%M:%S+00"
+                    ),
+                    "expires_at": (
+                        now - mod.timedelta(days=12) + mod.timedelta(hours=1)
+                    ).strftime("%Y-%m-%d %H:%M:%S+00"),
+                }
+            ]
+        },
+        None,
+    )
+
+
+def _no_refresh_rows(mod):
+    """The real failure: a row that can never renew itself."""
+    data, _ = _idle_rows(mod)
+    data["rows"][0]["has_refresh"] = False
+    return data, None
+
+
+def _no_rows(mod):
+    return {"rows": []}, None
+
+
+def _saved_health(mod):
     if not mod.STATE_FILE.exists():
         return None
-    return json.loads(mod.STATE_FILE.read_text()).get("last_oauth_tier")
+    return json.loads(mod.STATE_FILE.read_text()).get("last_oauth_health")
 
 
 # ------------------------------------------------------------------- guilt
-def test_a_failed_send_does_not_burn_the_one_expiry_alert(wd, monkeypatch):
-    """THE defect, in its exact historical shape.
-
-    First run ever to see the expired token; delivery fails. Under the old
-    order the ratchet advanced anyway and the next run went silent forever.
-    """
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token("2026-07-25 20:02:03+00"))
+def test_a_failed_send_does_not_burn_the_one_alert(wd, monkeypatch):
+    """TRAUMA A in its exact historical shape: first run ever to see the
+    failure, delivery fails. Under the old order the ratchet advanced anyway
+    and the next run went silent forever."""
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
     sends: list[str] = []
 
     def failing_send(text, bot_token, condition="alert"):
@@ -116,10 +170,11 @@ def test_a_failed_send_does_not_burn_the_one_expiry_alert(wd, monkeypatch):
 
     assert wd.main() == 0
     assert sends, "nothing was even attempted — the probe measured its own setup"
-    assert "SCADUTO" in sends[0], f"wrong alert body: {sends[0][:120]}"
-    assert _saved_tier(wd) != wd.TIER_EXPIRED, (
+    assert "refresh_token" in sends[0], f"wrong alert body: {sends[0][:160]}"
+    assert _saved_health(wd) != wd.HEALTH_NO_REFRESH, (
         "the ratchet advanced on a FAILED delivery — the next run will read "
-        "this as 'already told them' and print 'tutto OK' about a dead token")
+        "this as 'already told them' and stay silent about a dead credential"
+    )
 
     # And the proof that matters: the NEXT run still speaks.
     sends.clear()
@@ -127,20 +182,44 @@ def test_a_failed_send_does_not_burn_the_one_expiry_alert(wd, monkeypatch):
     assert sends, "the retry was silenced — the one alert that mattered is gone"
 
 
-def test_a_failed_send_of_an_escalation_still_retries(wd, monkeypatch):
-    """Not only the first-ever transition: any escalation whose delivery fails
-    must remain owed. 14 days -> 7 days with a dead gateway."""
-    wd.STATE_FILE.write_text(json.dumps({"last_oauth_tier": wd.TIER_14_DAYS}))
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token(
-                            (wd.datetime.now(wd.timezone.utc)
-                             + wd.timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S+00")))
-    monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token, condition="alert": False)
+def test_a_failed_send_of_a_changed_failure_still_retries(wd, monkeypatch):
+    """Not only the first-ever verdict: a failure that CHANGES is different
+    news with a different remedy, and it too must remain owed when the gateway
+    is dead."""
+    wd.STATE_FILE.write_text(json.dumps({"last_oauth_health": wd.HEALTH_NO_ROWS}))
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
+    monkeypatch.setattr(
+        wd, "_send_telegram", lambda text, bot_token, condition="alert": False
+    )
 
     assert wd.main() == 0
-    assert _saved_tier(wd) == wd.TIER_14_DAYS, (
-        f"tier moved to {_saved_tier(wd)} despite the send failing")
+    assert _saved_health(wd) == wd.HEALTH_NO_ROWS, (
+        f"verdict moved to {_saved_health(wd)} despite the send failing"
+    )
+
+
+@pytest.mark.parametrize("shape", ["fresh", "idle"])
+def test_a_live_shaped_row_never_speaks(wd, monkeypatch, shape):
+    """TRAUMA B, and the case the old corpus was structurally unable to have.
+
+    It tested `classify_tier(30)`, `classify_tier(14)`, `classify_tier(-1)` —
+    a pure function fed numbers nobody had ever measured. Feed it instead the
+    two shapes this table actually produces, both of them healthy, and the old
+    ladder alerts on BOTH: "scade DOMANI" on the fresh one (days_left == 0),
+    "SCADUTO" on the idle one.
+    """
+    rows = _healthy_rows(wd) if shape == "fresh" else _idle_rows(wd)
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: rows)
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert": pytest.fail(
+            f"a healthy {shape} row raised an alert: {text[:200]}"
+        ),
+    )
+
+    assert wd.main() == 0
+    assert _saved_health(wd) == wd.HEALTH_OK
 
 
 def test_the_sa_key_lane_has_the_same_defect_and_the_same_cure(wd, monkeypatch):
@@ -153,10 +232,7 @@ def test_the_sa_key_lane_has_the_same_defect_and_the_same_cure(wd, monkeypatch):
     delivered` from the SA branch is invisible: the OAuth tests stub
     `_check_sa_key_age` to None, so that branch never executes in them.
     """
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token(
-                            (wd.datetime.now(wd.timezone.utc)
-                             + wd.timedelta(days=80)).strftime("%Y-%m-%d %H:%M:%S+00")))
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _healthy_rows(wd))
     monkeypatch.setattr(wd, "_check_sa_key_age", lambda: wd.SA_KEY_MAX_AGE_DAYS + 5)
     sends: list[str] = []
 
@@ -171,45 +247,78 @@ def test_the_sa_key_lane_has_the_same_defect_and_the_same_cure(wd, monkeypatch):
     saved = json.loads(wd.STATE_FILE.read_text())
     assert saved.get("last_sa_alert_age") is None, (
         "the SA ratchet advanced on a FAILED delivery — the rotation warning "
-        "is owed and would never be re-sent at this age")
+        "is owed and would never be re-sent at this age"
+    )
 
     sends.clear()
     assert wd.main() == 0
     assert sends, "the SA retry was silenced"
 
 
+def test_an_undelivered_sa_alert_does_not_freeze_the_oauth_verdict(wd, monkeypatch):
+    """`delivered` is ONE boolean for the whole message, and the two lanes
+    share it.
+
+    Gating the HEALTHY OAuth verdict on it as well would let an undelivered
+    SA-key alert leave `last_oauth_health` stuck on the previous failure — and
+    then the next real occurrence of that same failure reads as a repeat and
+    stays silent. Nothing has to be delivered for "it is fine now".
+    """
+    wd.STATE_FILE.write_text(json.dumps({"last_oauth_health": wd.HEALTH_NO_REFRESH}))
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _healthy_rows(wd))
+    monkeypatch.setattr(wd, "_check_sa_key_age", lambda: wd.SA_KEY_MAX_AGE_DAYS + 5)
+    monkeypatch.setattr(
+        wd, "_send_telegram", lambda text, bot_token, condition="alert": False
+    )
+
+    assert wd.main() == 0
+    assert _saved_health(wd) == wd.HEALTH_OK, (
+        "recovery was not recorded because an unrelated SA alert failed to "
+        "send — the next genuine no-refresh will be swallowed as a repeat"
+    )
+
+
 # --------------------------------------------------------------- innocence
 def test_a_successful_send_does_advance_the_ratchet(wd, monkeypatch):
     """INNOCENCE, and it is load-bearing: if a delivered alert did NOT advance
-    the tier, this organ would re-send the same p0 every six hours. The fix
+    the verdict, this organ would re-send the same p0 every six hours. The fix
     must gate on delivery, not disable the ratchet."""
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token("2026-07-25 20:02:03+00"))
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
     sends: list[str] = []
-    monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token, condition="alert": (sends.append(text), True)[1])
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert": (sends.append(text), True)[1],
+    )
 
     assert wd.main() == 0
-    assert _saved_tier(wd) == wd.TIER_EXPIRED, "a delivered alert must be recorded"
+    assert _saved_health(wd) == wd.HEALTH_NO_REFRESH, "a delivered alert must be recorded"
 
     sends.clear()
     assert wd.main() == 0
-    assert not sends, "same tier re-sent — the ratchet stopped ratcheting"
+    assert not sends, "same verdict re-sent — the ratchet stopped ratcheting"
 
 
-def test_a_healthy_token_still_records_its_tier(wd, monkeypatch):
-    """INNOCENCE: with nothing to send there is nothing to deliver, so the
-    write must still happen — otherwise TIER_OK is never stored and a later
-    escalation has no baseline to be a transition FROM."""
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token(
-                            (wd.datetime.now(wd.timezone.utc)
-                             + wd.timedelta(days=80)).strftime("%Y-%m-%d %H:%M:%S+00")))
-    monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token, condition="alert": pytest.fail("nothing should be sent"))
+def test_the_old_day_ladder_keys_are_purged_from_the_state_file(wd, monkeypatch):
+    """A state file written before today carries `last_oauth_tier:
+    critical_expired` and `last_oauth_days_left: -12`, and the Cell's
+    oauth_health_sensor reads exactly those. Leaving them behind would paint
+    Drive red forever off a measurement whose scale was wrong."""
+    wd.STATE_FILE.write_text(
+        json.dumps({"last_oauth_tier": "critical_expired", "last_oauth_days_left": -12})
+    )
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _healthy_rows(wd))
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert": pytest.fail("nothing to send"),
+    )
 
     assert wd.main() == 0
-    assert _saved_tier(wd) == wd.TIER_OK
+    saved = json.loads(wd.STATE_FILE.read_text())
+    assert "last_oauth_tier" not in saved, saved
+    assert "last_oauth_days_left" not in saved, saved
+    assert saved["last_oauth_health"] == wd.HEALTH_OK
 
 
 # ------------------------------------------------------------------- order
@@ -222,16 +331,98 @@ def test_the_send_happens_before_the_state_write(wd, monkeypatch):
     and re-open the exact hole. This test fails the moment it does.
     """
     seq: list[str] = []
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token("2026-07-25 20:02:03+00"))
-    monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token, condition="alert": (seq.append("send"), True)[1])
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert": (seq.append("send"), True)[1],
+    )
     real_save = wd.save_state
-    monkeypatch.setattr(wd, "save_state",
-                        lambda st: (seq.append("save"), real_save(st))[1])
+    monkeypatch.setattr(
+        wd, "save_state", lambda st: (seq.append("save"), real_save(st))[1]
+    )
 
     assert wd.main() == 0
     assert seq == ["send", "save"], f"wrong order: {seq}"
+
+
+# ---------------------------------------------------------------- scar-pin
+def test_the_day_scale_ladder_cannot_come_back(wd):
+    """The ladder was not wrong in its thresholds; it was wrong in its UNIT.
+    A future edit that reintroduces a day-count over `expires_at` re-opens the
+    whole thing, and it would look perfectly reasonable in review.
+
+    The first draft of this pin banned `.days` file-wide and failed on
+    line 435 — the SA key age, where a day scale is exactly right, because
+    SA keys really do rotate on a 30-day policy. A guard on the FORM of the
+    expression instead of on the ENTITY it measures (#3, W109). Both halves
+    are asserted below: the OAuth clock may not be reduced to days, and the
+    SA clock must still be.
+    """
+    src = SCRIPT.read_text()
+    for banned in ("TIER_30_DAYS", "TIER_14_DAYS", "TIER_7_DAYS", "compute_days_left"):
+        assert banned not in src, (
+            f"{banned} is back — `expires_at` is a one-hour clock, any "
+            "day-scale classification of it is unreachable or false"
+        )
+
+    both = [
+        line
+        for line in src.splitlines()
+        if re.search(r"\.days\b", line) and "expires" in line
+    ]
+    assert not both, (
+        f"a day reduction over the OAuth clock reappeared: {both} — on a 1h "
+        "delta it yields 0 or -1, which is the false CRITICAL this cured"
+    )
+
+    body = src[src.index("def classify_oauth_health") : src.index("def load_state")]
+    assert ".days" not in body, (
+        "classify_oauth_health reduced a delta to days; the only clock it can "
+        "see is the one-hour access token"
+    )
+
+    # INNOCENCE, and it is what makes this a check on the entity rather than
+    # on the shape of the expression: the SA lane's day count is correct and
+    # must survive. A tidy-up that deletes it fails here.
+    assert re.search(r"age = \(now - key_dt\)\.days", src), (
+        "the SA key age lost its day reduction — SA keys DO rotate on a "
+        "30-day policy; this pin bans the OAuth clock, not the SA one"
+    )
+
+
+def test_the_remote_query_reads_every_row_and_every_field_the_classifier_uses(wd):
+    """The two halves of this script are separated by an `ssh` and a base64
+    blob: one builds a SQL string that runs on Fly, the other classifies the
+    JSON that comes back. Nothing executes both in a test, so drift between
+    them is invisible — W114, where a reader was written against a vocabulary
+    the wire never emitted.
+
+    Mutation found this hole: reverting the query to
+    `ORDER BY created_at DESC LIMIT 1` — the exact defect being cured, where
+    the watchdog guarded whichever row happened to be newest while the row the
+    code names by hand (`SYSTEM`) went unwatched — killed no test at all.
+
+    DECLARED LIMIT: this reads the SQL as text. It proves the query asks for
+    what the classifier consumes; it cannot prove Postgres answers.
+    """
+    src = SCRIPT.read_text()
+    start = src.index("code = (")
+    query = src[start : src.index("asyncio.run(m())", start)]
+
+    assert "LIMIT" not in query.upper(), (
+        "the remote query is back to a single row — a dead SYSTEM row hides "
+        "behind any per-user row that happens to be newer"
+    )
+    assert "c.fetch(" in query and "c.fetchrow(" not in query, (
+        "fetchrow returns one row; the classifier judges a list"
+    )
+    # Every key `classify_oauth_health` and `_age_text` read must be selected.
+    for field in ("user_id", "has_refresh", "updated_at"):
+        assert field in query, (
+            f"the classifier reads {field!r} but the query never selects it — "
+            "the reader would see None and judge on it"
+        )
 
 
 # --------------------------------------------- the key names the CONDITION
@@ -242,64 +433,71 @@ def test_the_send_happens_before_the_state_write(wd, monkeypatch):
 #   last_text = "🔴 Drive OAuth SCADUTO (12 giorni fa)"
 #
 # The `ts` is the 18:00 send — the LAST "impossibile connettersi" noise — so
-# the 18:42 expiry message was recorded and SUPPRESSED as a repeat of the very
-# noise it replaces. One key for two different facts: the loud condition's
+# the 18:42 message was recorded and SUPPRESSED as a repeat of the very noise
+# it replaces. One key for two different facts: the loud condition's
 # 6/24/72/168h ladder swallows the quiet one, and the quiet one is the whole
 # reason the organ exists.
 
 
-def _key_of(sends):
-    return sends[-1]
-
-
-def test_a_read_failure_and_an_expiry_do_not_share_a_dedup_key(wd, monkeypatch):
+def test_a_read_failure_and_a_credential_failure_do_not_share_a_dedup_key(
+    wd, monkeypatch
+):
     """THE defect. Two runs, two different facts; if the keys match, the
     second is swallowed by the first's ladder inside the gateway."""
     keys: list[str] = []
-    monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token, condition="alert":
-                        (keys.append(condition), True)[1])
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert": (keys.append(condition), True)[1],
+    )
 
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: (None, "fly ssh rifiutato"))
+    monkeypatch.setattr(
+        wd, "_check_drive_token_via_fly", lambda: (None, "fly ssh rifiutato")
+    )
     assert wd.main() == 0
 
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token("2026-07-25 20:02:03+00"))
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
     assert wd.main() == 0
 
     assert len(keys) == 2, f"expected both to alert, got {keys}"
     assert keys[0] != keys[1], (
-        f"read-failure and expiry share the condition {keys[0]!r} — the "
-        "expiry will be suppressed as a repeat of the noise it replaces")
-    assert "read-failure" in keys[0] and wd.TIER_EXPIRED in keys[1], keys
+        f"read-failure and credential-failure share the condition {keys[0]!r} — "
+        "the second will be suppressed as a repeat of the noise it replaces"
+    )
+    assert "read-failure" in keys[0] and wd.HEALTH_NO_REFRESH in keys[1], keys
 
 
-def test_the_key_carries_the_tier_but_never_the_day_count(wd, monkeypatch):
+def test_the_key_carries_the_verdict_but_never_a_measurement(wd, monkeypatch):
     """INNOCENCE + #3677: the key must be stable across runs of the SAME
-    condition. A tier is a condition; `days_left` is a measurement, and a
-    measurement in the key mints a fresh key per run and defeats every window.
-    """
+    condition. A verdict is a condition; an age or a count is a measurement,
+    and a measurement in the key mints a fresh key per run and defeats every
+    window."""
     keys: list[str] = []
-    monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token, condition="alert":
-                        (keys.append(condition), True)[1])
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token("2026-07-25 20:02:03+00"))
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert": (keys.append(condition), True)[1],
+    )
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
 
     assert wd.main() == 0
-    wd.STATE_FILE.write_text("{}")          # forget, so it alerts again
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
-                        lambda: _token("2026-07-20 20:02:03+00"))  # -17 days now
+    wd.STATE_FILE.write_text("{}")  # forget, so it alerts again
+
+    older, _ = _no_refresh_rows(wd)
+    older["rows"][0]["updated_at"] = "2026-01-02 03:04:05+00"
+    older["rows"][0]["expires_at"] = "2026-01-02 04:04:05+00"
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: (older, None))
     assert wd.main() == 0
 
     assert len(keys) == 2 and keys[0] == keys[1], (
-        f"the key moved with the day count: {keys}")
-    assert "-12" not in keys[0] and "-17" not in keys[1], (
-        f"a measurement leaked into the key: {keys}")
+        f"the key moved with the measurement: {keys}"
+    )
+    assert not re.search(r"\d", keys[0]), f"a measurement leaked into the key: {keys}"
 
 
-def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(wd, monkeypatch, tmp_path):
+def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(
+    wd, monkeypatch, tmp_path
+):
     """The two tests above assert the CONDITION main() computes. Mutation
     caught that this is not the same claim: deleting `{condition}` from the
     key that `_send_telegram` builds left them both green.
@@ -323,14 +521,15 @@ def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(wd, monkeypatc
     monkeypatch.setattr(wd.subprocess, "run", fake_run)
     monkeypatch.setattr(wd.Path, "is_file", lambda self: True)
 
-    assert wd._send_telegram("body", "token", "critical_expired") is True
+    assert wd._send_telegram("body", "token", "no-refresh") is True
     assert wd._send_telegram("body", "token", "read-failure") is True
 
     keys = [c[c.index("--dedup-key") + 1] for c in calls]
     assert len(keys) == 2, keys
-    assert "critical_expired" in keys[0], f"the condition never reached the key: {keys[0]}"
+    assert "no-refresh" in keys[0], f"the condition never reached the key: {keys[0]}"
     assert "read-failure" in keys[1], f"the condition never reached the key: {keys[1]}"
     assert keys[0] != keys[1], (
         f"both conditions produced the SAME key {keys[0]!r} — this is exactly "
-        "the state found on Pro, where the expiry was swallowed by the ladder "
-        "of the connection-error noise it replaces")
+        "the state found on Pro, where the real message was swallowed by the "
+        "ladder of the connection-error noise it replaces"
+    )
