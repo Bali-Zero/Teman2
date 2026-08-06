@@ -36,4 +36,5 @@ def test_c5a_renderer_defaults_to_desktop_archive() -> None:
     source = _read("research/visa/c5a-render-2026-05-26/render_c5a_report.py")
 
     assert "C5A_OUTPUT_DIR" in source
-    assert 'Path("/Users/nuzantara/Desktop/nuzantara' not in source
+    assert "Path.home()" in source
+    assert 'OUT_DIR = Path("/Users/' not in source
