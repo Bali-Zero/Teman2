@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "run_id": "my-client-launch-2026-08-04-wave0",
   "state": "WAVE_3_LOCAL_REAL_PATH_INDEPENDENTLY_VERIFIED_PRODUCTION_LIVE_PENDING_NO_GO",
-  "generated_at_utc": "2026-08-06T01:22:10Z",
+  "generated_at_utc": "2026-08-06T01:27:50Z",
   "coordinator": "Sol",
   "repository": {
     "path": "/Users/nuzantara/nuzantara",
@@ -19,6 +19,17 @@
     "origin_main_source_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
     "app_diff_base_to_current_origin": "CANDIDATE_AHEAD_WITH_REVIEWED_PORTAL_FIXES_AND_QA_HARNESS",
     "note": "The candidate was created through the worktree broker and never mutated the main checkout. The latest origin/main patch 26d33712d was contextually cherry-picked as 8117b1e2b. Its two-file Telegram environment-parser delta does not overlap apps/mouth or apps/backend-rag; an independent verifier confirmed the non-overlap, 9/9 dedicated tests and DOCSYNC OK."
+  },
+  "delivery": {
+    "branch": "agent/nuzantara/infra/my-portal-launch-delivery",
+    "base_sha": "26d33712d76302d6691721a55514dd2cea8ae520",
+    "source_commit_sha": "023c4540d482a6a102fe165ef7cbc033baf5ef0d",
+    "source_tree_sha": "04a4e431c559590ed193c5dd7a4794ebe10cb338",
+    "verified_artifact_receipt_sha": "070f663e15e2b707b832b5cdf4e3bee04a49fa03",
+    "verified_artifact_receipt_tree_sha": "04a4e431c559590ed193c5dd7a4794ebe10cb338",
+    "tree_equivalence": "EXACT_MATCH",
+    "history_shape": "ONE_CLEAN_SOURCE_COMMIT_ON_CURRENT_ORIGIN_MAIN_PLUS_ONE_ARTIFACT_ONLY_RECEIPT_COMMIT",
+    "draft_pr_only": true
   },
   "live": {
     "origin": "https://my.balizero.com",
