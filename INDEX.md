@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 33 · **Packages:** 6
+**Apps:** 32 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -129,7 +129,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `osint-nexus-ui` |  |
 | `remediator` |  |
 | `team-agent` |  |
-| `wa-dashboard-m1` | **The** team WhatsApp dashboard (live, port 7790, LaunchAgent `com.balizero.wa-dashboard-m1`). Reads the LOCAL Postgres `nuzantara_dev` on `127.0.0.1:5432` — the same DB wa-mirror writes to. |
+| `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`). Read-only: zero INSERT/UPDATE. |
 | `wa-meta-inbox` | Desktop-local UI for the **BALI ZERO WhatsApp Business (Meta API)** number |
 | `wa-mirror` | **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17) |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
