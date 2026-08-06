@@ -141,7 +141,18 @@ L10_PCT = re.compile(r"\b(\d{1,3})\s?%")
 L10_FOREIGN_CTX = re.compile(
     r"foreign\s+(?:ownership|owner|equity|shareholding|capital|investors?|stake|life\s+insurers?)"
     r"|own(?:ed|s)?\s+up\s+to|can\s+own|max\w*\s+foreign|capped\s+at|\basing\b"
-    r"|pma\s+cap|%\s*pma\b|pma\s+\d{1,3}\s?%",
+    r"|pma\s+cap|%\s*pma\b|pma\s+\d{1,3}\s?%"
+    # "ceiling" carries the ownership claim on its own in this corpus, and a
+    # sentence can state a ceiling without ever using the word "foreign": the
+    # pull quote "The national 100% ceiling does not automatically produce a Bali
+    # registration route" sat on a code whose ceiling is 0 and no probe could see
+    # it. Anchored — a bare "ceiling" is not enough; it must be an ownership/equity
+    # ceiling, or sit within 25 chars of ownership/foreign/PMA, or be the
+    # "national N% ceiling" idiom. Measured: 4 real contradictions unmasked
+    # (50125, 50221, 55105, 86201), 0 previously-reported findings lost.
+    r"|\b(?:ownership|equity)\s+ceiling"
+    r"|ceiling\b[^.]{0,25}\b(?:ownership|foreign|pma)\b"
+    r"|\bnational\s+\d{1,3}\s?%\s+ceiling",
     re.IGNORECASE,
 )
 # innocence: "100% closed" idiom (the % modifies closed-ness, consistent with TERTUTUP)
@@ -276,8 +287,32 @@ def l10_ownership_contradiction(text, code, maxa, maxa_by_code):
         win = text[max(0, m.start() - 80) : m.end() + 80]
         if L10_WORK_SHARE.search(win):
             continue
-        # BALI / regional cap: the figure is the l4_bali restriction, not national max
-        if L10_REGIONAL_CAP.search(win):
+        # BALI / regional cap: the figure is the l4_bali restriction, not national max.
+        #
+        # This used to search the whole ±80 window, so the mere PRESENCE of the word
+        # "Bali" anywhere near the number exonerated it — on a catalogue where every
+        # page is about Bali. "Nationally, this activity is 100% open to foreign
+        # ownership. However, in Bali, …" was read as a regional figure and waved
+        # through on a code whose ceiling is 0. Superscar #3 in its under-match form:
+        # the class judged a TOKEN's presence, not whether the region scopes the
+        # figure.
+        #
+        # A regional word exonerates only when it comes BEFORE the figure, which is
+        # the shape of a regional cap actually being stated — "in Bali the cap is
+        # 30%", "Bali's regime … caps foreign ownership at 67%". A region named
+        # AFTER the number is commentary on a national figure already asserted:
+        # "…100% open to foreign ownership. However, in Bali, the OSS system blocks…"
+        #
+        # A first draft also required no clause break between the region and the
+        # figure, and that was wrong: an introductory adverbial carries a comma by
+        # grammar ("On the ground in Bali, the record caps it at 49%") and the
+        # region still governs. Two innocence cases in the existing corpus said so
+        # immediately. Precedence alone is enough, because every case this unmasks
+        # names the region downstream.
+        #
+        # Measured over the whole catalogue: 8 real contradictions unmasked, 0
+        # previously-reported findings lost.
+        if L10_REGIONAL_CAP.search(text[max(0, m.start() - 80) : m.start()]):
             continue
         # "in practice" / no-Besar-tier operational figure — documented divergence
         # from the national OSS ceiling, not a contradiction of it

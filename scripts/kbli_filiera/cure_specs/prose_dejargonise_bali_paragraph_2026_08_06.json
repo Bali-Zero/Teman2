@@ -1,4 +1,5 @@
 {
+  "compiler": "cure_prose_national_openness",
   "_meta": {
     "spec": "prose_dejargonise_bali_paragraph_2026_08_06",
     "why": "A ratchet in apps/mouth/src/lib/kbli-internal-leak.test.ts counts codes whose reader-facing prose narrates a RAW FIELD NAME — `l4_bali_blocked`, `pma_max_asing` and friends. It may fall, never rise. My batch-2 Bali paragraphs pushed it from 392 to 394: `41016` and `41018` did not narrate a field name before and do now, because I wrote one into the replacement.",

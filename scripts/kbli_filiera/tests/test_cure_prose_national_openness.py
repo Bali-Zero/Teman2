@@ -64,9 +64,12 @@ def entry(old=OLD, new=NEW, cap=0, status="TERBATAS"):
     }
 
 
-def spec_file(tmp_path: Path, codes: dict) -> Path:
+def spec_file(tmp_path: Path, codes: dict, compiler: str | None = C.LANE) -> Path:
     p = tmp_path / "spec.json"
-    p.write_text(json.dumps({"_meta": {}, "codes": codes}, ensure_ascii=False), encoding="utf-8")
+    body: dict = {"_meta": {}, "codes": codes}
+    if compiler is not None:
+        body = {"compiler": compiler, **body}
+    p.write_text(json.dumps(body, ensure_ascii=False), encoding="utf-8")
     return p
 
 
@@ -93,6 +96,72 @@ def test_guilt_the_graded_replacement_is_written(tmp_path: Path, monkeypatch):
     after = json.loads(p.read_text(encoding="utf-8"))["data"][0]
     assert after["intel_2026"]["editorial"]["body"] == NEW
     assert E.classify(after)["body_asserts_national_openness"] is False
+
+
+def test_guilt_a_by_the_numbers_CELL_is_reachable_and_replaced(tmp_path: Path, monkeypatch):
+    """The number a reader meets first is not always in a paragraph.
+
+    Two of the fourteen transport codes state their (wrong) ceiling ONLY in an
+    `editorial.byTheNumbers` cell — a list element, invisible to a path language
+    that walks dicts. A cure that cannot address it leaves "Maximum foreign
+    ownership: 100%" sitting above prose that now says 49%, which is worse than
+    either alone: the page argues with itself and the reader picks.
+    """
+    monkeypatch.setattr(C, "run_sync_script", lambda: None)
+    monkeypatch.setattr(C, "reconcile_sidecar", lambda path: False)
+    record = rec()
+    record["intel_2026"]["editorial"]["byTheNumbers"] = [
+        {"label": "Maximum foreign ownership", "value": "100%"},
+        {"label": "Risk class", "value": "Low"},
+    ]
+    p = canonical_file(tmp_path, [record])
+    e = entry()
+    e["fields"]["editorial.byTheNumbers[0].value"] = {"old_sha256": sha("100%"), "new": "0%"}
+    s = spec_file(tmp_path, {"96210": e})
+
+    assert C.run(s, p, None, apply=True) == 0
+    cells = json.loads(p.read_text(encoding="utf-8"))["data"][0]["intel_2026"]["editorial"][
+        "byTheNumbers"
+    ]
+    assert cells[0]["value"] == "0%"
+    assert cells[1] == {"label": "Risk class", "value": "Low"}, "a sibling cell was disturbed"
+
+
+def test_refusal_when_a_spec_carries_no_compiler_marker(tmp_path: Path):
+    """The marker is what makes "everything this lane shipped" enumerable.
+
+    Guilt: an unmarked spec is refused (exit 2) and writes nothing. Innocence:
+    the same spec, marked, lands. Without the run-time refusal the marker is a
+    convention, and a convention is exactly what the filename prefix was.
+    """
+    p = canonical_file(tmp_path, [rec()])
+    before = p.read_bytes()
+    unmarked = spec_file(tmp_path, {"96210": entry()}, compiler=None)
+    assert C.main(["--spec", str(unmarked), "--canonical", str(p), "--apply"]) == 2
+    assert p.read_bytes() == before
+
+    other = tmp_path / "other"
+    other.mkdir()
+    wrong = spec_file(other, {"96210": entry()}, compiler="some_other_cure")
+    assert C.main(["--spec", str(wrong), "--canonical", str(p), "--apply"]) == 2
+    assert p.read_bytes() == before
+
+
+def test_an_indexed_path_that_does_not_resolve_is_a_REFUSAL_not_a_silent_skip(tmp_path: Path):
+    """An out-of-range cell must stop the run, not read as "nothing to do".
+
+    `read_field` returning None for a missing index would otherwise reach the
+    "field is NoneType, not prose" refusal — which is the correct outcome, and is
+    what this pins. The failure mode being excluded is a cure that writes the
+    prose half of a page and silently drops the number half.
+    """
+    p = canonical_file(tmp_path, [rec()])  # byTheNumbers is []
+    e = entry()
+    e["fields"]["editorial.byTheNumbers[0].value"] = {"old_sha256": sha("100%"), "new": "0%"}
+    s = spec_file(tmp_path, {"96210": e})
+    before = p.read_bytes()
+    assert C.main(["--spec", str(s), "--canonical", str(p), "--apply"]) == 2
+    assert p.read_bytes() == before
 
 
 def test_dry_run_writes_nothing(tmp_path: Path):
@@ -145,6 +214,31 @@ def test_refusal_when_the_reason_left_the_record(tmp_path: Path):
     p = canonical_file(tmp_path, [rec(kondisi="Reserved by a different instrument entirely")])
     s = spec_file(tmp_path, {"96210": entry()})
     assert C.main(["--spec", str(s), "--canonical", str(p), "--apply"]) == 2
+
+
+def test_refusal_when_any_cited_field_no_longer_carries_its_basis(tmp_path: Path):
+    """`<field>_contains` is generic, and it had to become generic.
+
+    The first spec only checked `pma_kondisi`, because the Koperasi/UMKM
+    allocation lives there. The transport batch cites `pma_official_basis`
+    instead — "Perpres 49/2021 Lampiran III … entry #22", a different number on
+    every code — and a premise check that cannot see the field a sentence quotes
+    is decoration.
+    """
+    r = rec()
+    r["pma_official_basis"] = "Perpres 49/2021 Lampiran III entry #22"
+    p = canonical_file(tmp_path, [r])
+    e = entry()
+    e["expect"]["pma_official_basis_contains"] = "Lampiran III entry #22"
+    assert C.main(["--spec", str(spec_file(tmp_path, {"96210": e})),
+                   "--canonical", str(p), "--apply"]) != 2, "premise holds, so it must not refuse"
+
+    r["pma_official_basis"] = "Perpres 49/2021 Lampiran III entry #99"
+    p2 = canonical_file(tmp_path, [r])
+    before = p2.read_bytes()
+    assert C.main(["--spec", str(spec_file(tmp_path, {"96210": e})),
+                   "--canonical", str(p2), "--apply"]) == 2
+    assert p2.read_bytes() == before
 
 
 def test_refusal_when_a_replacement_states_a_percentage_the_record_denies(tmp_path: Path):
@@ -220,6 +314,33 @@ def test_refusal_when_only_names_a_code_the_spec_does_not_carry(tmp_path: Path):
 # --------------------------------------------------------------------------
 
 
+def _lane_specs() -> list[Path]:
+    """Every spec THIS compiler has shipped, selected by a marker in the file.
+
+    It used to be `glob("prose_umkm_reserved_openness*.json")` — a filename
+    prefix, which is a proxy for authorship and lies the moment a batch is named
+    after something else. The transport batch is called
+    `prose_perpres_cap49_transport_*`, so the class guard below would have skipped
+    all fourteen codes and still passed, reporting a clean sweep of a population
+    it never looked at.
+
+    The first repair swapped the prefix for `prose_*` and demanded the marker on
+    every match — and it failed immediately on `prose_unverifiable_tier.json`,
+    which belongs to a different compiler entirely. The filename was still doing
+    the work. So the marker is enforced by `C.run` at apply time instead
+    (`test_refusal_when_a_spec_carries_no_compiler_marker`): an unmarked spec
+    cannot land, which makes the marked set on disk the complete set of specs this
+    lane has ever applied. Here it is only read.
+    """
+    marked = [
+        path
+        for path in sorted(C.SPEC.parent.glob("*.json"))
+        if json.loads(path.read_text(encoding="utf-8")).get("compiler") == C.LANE
+    ]
+    assert C.SPEC in marked, "the module's own default spec is unmarked — selection is broken"
+    return marked
+
+
 def test_the_cure_has_landed_and_the_six_now_carry_exactly_the_graded_text():
     """The pin that replaced "the spec still matches the live records".
 
@@ -289,11 +410,11 @@ def test_the_six_are_gone_from_the_live_backlog_and_the_rest_are_untouched():
     list without a cure would show up there.
     """
     cured = set()
-    for sp in sorted(C.SPEC.parent.glob("prose_umkm_reserved_openness*.json")):
+    for sp in _lane_specs():
         cured |= set(json.loads(sp.read_text(encoding="utf-8"))["codes"])
     rep = E.report(E.load_records())
     remaining = set(rep["needs_an_author"]["codes"])
-    assert len(remaining) == 21
+    assert len(remaining) == 7
     assert cured & remaining == set(), f"a cured code still lies: {sorted(cured & remaining)}"
 
 
@@ -326,9 +447,8 @@ def test_no_cured_code_still_carries_a_numeric_openness_claim_the_other_lint_can
     maxa_by_code = {r["kode_kbli_2025"]: r.get("pma_max_asing") for r in records}
 
     cured: set[str] = set()
-    for spec_path in sorted(C.SPEC.parent.glob("prose_umkm_reserved_openness*.json")):
+    for spec_path in _lane_specs():
         cured |= set(json.loads(spec_path.read_text(encoding="utf-8"))["codes"])
-    assert cured, "no cure specs found — this test would pass vacuously"
 
     survivors = []
     for code in sorted(cured):
