@@ -2,14 +2,18 @@
   "name": "wa-meta-inbox",
   "version": "0.1.0",
   "private": true,
-  "description": "Bali Zero WhatsApp Business (Meta API) local inbox — thin proxy to the Fly FastAPI backend. 127.0.0.1 only, no DB, no npm deps (Node builtins + native fetch).",
+  "description": "Bali Zero WhatsApp Business (Meta API) local inbox \u2014 thin proxy to the Fly FastAPI backend. 127.0.0.1 only, no DB, no npm deps (Node builtins + native fetch).",
   "main": "server.cjs",
   "scripts": {
     "start": "node server.cjs",
-    "dev": "WA_INBOX_PORT=7791 node server.cjs"
+    "dev": "WA_INBOX_PORT=7791 node server.cjs",
+    "test": "node render-threads.test.cjs"
   },
   "dependencies": {},
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "jsdom": "^28.0.0"
   }
 }

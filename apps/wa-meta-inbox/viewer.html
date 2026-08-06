@@ -333,16 +333,54 @@ function threadName(t) {
   return t.counterpart_name || t.counterpart_phone || ("Thread " + t.thread_id);
 }
 
+// ── Repaint guard (2026-08-06) ─────────────────────────────────────────────
+// pollThreads() runs every 5s and this function used to wipe the list and
+// rebuild all 50 rows every single time. Two consequences the reader feels:
+// scrollTop snaps back to the top, and — since the API returns threads ordered
+// by recency — a thread that just got a message jumps to the head of the list
+// while you are reading the one under it. Guard 1: if nothing that affects the
+// rendering changed, do not touch the DOM at all (most ticks). Guard 2: when it
+// does change, keep the row that was at the top edge of the viewport at the
+// same offset, so the reshuffle happens around the reader.
+function threadsSignature() {
+  return JSON.stringify(
+    state.threads.map((t) => [
+      t.thread_id, t.last_message_at, t.last_body,
+      t.unread_count, t.unread, t.human_handling, threadName(t),
+    ]),
+  ) + "|" + String(state.activeId);
+}
+
+let paintedThreadsSig = null;
+
 function renderThreads() {
+  const sig = threadsSignature();
+  if (sig === paintedThreadsSig) return;
+  paintedThreadsSig = sig;
+
   if (!state.threads.length) {
     els.threads.innerHTML = '<div class="empty" style="padding:20px">Nessuna conversazione.</div>';
     return;
   }
+
+  // Anchor on the first row at or below the top edge, so we can restore the
+  // reader's position even when the rows come back in a different order.
+  const prevTop = els.threads.scrollTop;
+  let anchorId = null;
+  let anchorDelta = 0;
+  if (prevTop > 0) {
+    for (const row of els.threads.querySelectorAll("[data-thread-id]")) {
+      const delta = row.offsetTop - prevTop;
+      if (delta >= 0) { anchorId = row.getAttribute("data-thread-id"); anchorDelta = delta; break; }
+    }
+  }
+
   els.threads.innerHTML = "";
   for (const t of state.threads) {
     const name = threadName(t);
     const unread = !!(t.unread_count > 0 || t.unread);
     const div = document.createElement("div");
+    div.dataset.threadId = t.thread_id;
     div.className = "thread"
       + (String(t.thread_id) === String(state.activeId) ? " active" : "")
       + (unread ? " unread" : "");
@@ -365,6 +403,16 @@ function renderThreads() {
       "</div>";
     div.addEventListener("click", () => openThread(t.thread_id));
     els.threads.appendChild(div);
+  }
+
+  if (anchorId !== null) {
+    let again = null;
+    for (const row of els.threads.querySelectorAll("[data-thread-id]")) {
+      if (row.getAttribute("data-thread-id") === anchorId) { again = row; break; }
+    }
+    els.threads.scrollTop = again ? Math.max(0, again.offsetTop - anchorDelta) : prevTop;
+  } else if (prevTop > 0) {
+    els.threads.scrollTop = prevTop;
   }
 }
 

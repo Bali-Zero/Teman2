@@ -1591,7 +1591,7 @@ function renderTeams() {
         </div>
       </div>`;
   }
-  colTeams.innerHTML = html;
+  if (!paintList(colTeams, html, "data-phone")) return;
   for (const el of colTeams.querySelectorAll(".team-item")) {
     el.addEventListener("click", () => selectTeam(el.dataset.phone));
   }
@@ -1599,16 +1599,16 @@ function renderTeams() {
 
 function renderConvs() {
   if (DATA && DATA.degraded) {
-    colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div>
+    paintList(colConvs, `<div class="col-header">2 · Conversazioni live</div>
       <div class="empty">
         DB locale non raggiungibile.<br/>
         ${escapeHtml(DATA.error || "Le conversazioni sono temporaneamente offline.")}
-      </div>`;
+      </div>`);
     return;
   }
   const pd = SELECTED_TEAM ? DATA.by_phone[SELECTED_TEAM] : null;
   if (!pd) {
-    colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div><div class="empty">Seleziona un team member</div>`;
+    paintList(colConvs, `<div class="col-header">2 · Conversazioni live</div><div class="empty">Seleziona un team member</div>`);
     return;
   }
   const convs = sortedConvsForTeam(pd);
@@ -1674,7 +1674,7 @@ function renderConvs() {
         </div>`;
     }
   }
-  colConvs.innerHTML = html;
+  if (!paintList(colConvs, html, "data-conv")) return;
   for (const el of colConvs.querySelectorAll(".conv-item")) {
     el.addEventListener("click", (e) => {
       if (e.target.tagName === "A") return;
@@ -1896,7 +1896,7 @@ async function refresh() {
     if (CURRENT_VIEW === "captain") renderCaptain();
 
   } catch (err) {
-    colTeams.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
+    paintList(colTeams, `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`);
   }
 }
 
@@ -1925,6 +1925,57 @@ let INTAKE_LOADING = false;
 let INTAKE_PROMISE = null;
 let CURRENT_VIEW = "convs";
 const VALID_VIEWS = new Set(["convs", "captain", "metrics", "intake", "training", "meta"]);
+
+
+// ── Repaint guards (2026-08-06) ────────────────────────────────────────────
+// These columns are rebuilt wholesale on every refresh tick. Assigning
+// innerHTML destroys every row and builds it again, which (a) throws scrollTop
+// back to the top and (b) — because rows are ordered by recency — makes a
+// conversation that just received a message jump to the top while you are
+// reading the one below it. Two guards, ordered by how often they save you:
+//   1. If the markup is identical to what is already on screen, do not touch
+//      the DOM at all. Most ticks change nothing, so most ticks become free.
+//   2. When it does change, remember which row sat at the top edge of the
+//      viewport and put it back at the same offset, so the reordering happens
+//      AROUND the reader rather than under them.
+// EVERY write to a guarded column goes through here, including the degraded and
+// empty states: a direct innerHTML assignment elsewhere would leave the cached
+// string describing markup that is no longer on screen, and the next identical
+// payload would be skipped — freezing an error message in place.
+// Returns true only when it actually repainted — callers MUST gate their
+// listener re-attach on that, or a skipped repaint would bind a second click
+// handler to nodes that already have one.
+function paintList(el, html, keyAttr) {
+  if (!el) return false;
+  if (el._paintedHtml === html) return false;
+
+  const prevTop = el.scrollTop;
+  let anchorKey = null;
+  let anchorDelta = 0;
+  if (keyAttr && prevTop > 0) {
+    for (const row of el.querySelectorAll("[" + keyAttr + "]")) {
+      const delta = row.offsetTop - prevTop;
+      if (delta >= 0) { anchorKey = row.getAttribute(keyAttr); anchorDelta = delta; break; }
+    }
+  }
+
+  el.innerHTML = html;
+  el._paintedHtml = html;
+
+  if (anchorKey !== null) {
+    // Match by comparing attribute values, never by building a selector out of
+    // the key: these keys are URL-encoded phone/counterpart strings and a
+    // selector built from data is a quoting bug waiting to happen.
+    let again = null;
+    for (const row of el.querySelectorAll("[" + keyAttr + "]")) {
+      if (row.getAttribute(keyAttr) === anchorKey) { again = row; break; }
+    }
+    el.scrollTop = again ? Math.max(0, again.offsetTop - anchorDelta) : prevTop;
+  } else if (prevTop > 0) {
+    el.scrollTop = prevTop;
+  }
+  return true;
+}
 
 function normalizeView(view) {
   return VALID_VIEWS.has(view) ? view : "convs";
