@@ -33,9 +33,8 @@ only surface that matters — asserting on a helper would prove the helper
 
 from __future__ import annotations
 
+import ast
 import json
-import os
-import subprocess
 import sys
 import textwrap
 from pathlib import Path
@@ -200,11 +199,65 @@ def test_the_blind_heal_loop_call_site_names_its_condition():
     )
 
 
-def test_the_tier_escalation_call_sites_name_the_job():
-    """Three sites; the job must be IN the condition or they collapse together."""
+def _sendalert_calls(path: Path):
+    """(lineno, first-arg template, names_a_condition) for every send_alert call."""
+    out = []
+    for node in ast.walk(ast.parse(path.read_text())):
+        if not (isinstance(node, ast.Call) and getattr(node.func, "id", "") == "send_alert"):
+            continue
+        if not node.args:
+            continue
+        parts = []
+
+        def walk(n):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str):
+                parts.append(n.value)
+            elif isinstance(n, ast.JoinedStr):
+                for v in n.values:
+                    walk(v)
+            elif isinstance(n, ast.FormattedValue):
+                parts.append("{" + ast.unparse(n.value) + "}")
+            elif isinstance(n, ast.BinOp):
+                walk(n.left)
+                walk(n.right)
+
+        walk(node.args[0])
+        named = any(k.arg == "condition" for k in node.keywords)
+        out.append((node.lineno, "".join(parts), named))
+    return out
+
+
+def test_every_escalation_call_site_names_the_job():
+    """A COUNT would pin my own blind spot. This asserts the CLASS.
+
+    First pass of this cure wired three `Tier N needed — <job>` sites and left a
+    fourth. Measured against the spool afterwards: all 161 recorded escalation
+    events came from the one left out (`process_job`, no backticks around the
+    job) and the three wired ones had fired ZERO times in 29 days. A hand-written
+    "expected 3" would have frozen exactly that mistake into the corpus, which is
+    W107 recurring inside its own cure. So: every call site of the escalation
+    family must name its condition, however many there turn out to be.
+    """
+    calls = _sendalert_calls(REPO / "scripts" / "nuzantara-sentinel.py")
+    family = [(ln, t, named) for ln, t, named in calls if "needed —" in t]
+    assert len(family) >= 4, f"escalation family shrank to {len(family)} — census changed"
+    unnamed = [ln for ln, _, named in family if not named]
+    assert not unnamed, (
+        f"escalation call sites at lines {unnamed} do not name their condition; "
+        f"every repeat of one job's escalation must share one identity"
+    )
+
+
+def test_the_escalation_condition_carries_the_job_and_nothing_measured():
+    """Innocence for the class rule: the condition must be the job, not the tier
+    number — `Tier 3` and `Tier 4` for one job are the same condition escalating."""
     src = (REPO / "scripts" / "nuzantara-sentinel.py").read_text()
-    found = src.count('condition=f"tier-escalation:{job_id}"')
-    assert found == 3, f"expected 3 tier-escalation sites naming the job, found {found}"
+    for bad in ('condition=f"tier-escalation:{failure_type}"', "tier-escalation:{new_phase}"):
+        assert bad not in src
+    assert src.count('condition=f"tier-escalation:{job_id}"') == len(
+        [1 for _, t, _ in _sendalert_calls(REPO / "scripts" / "nuzantara-sentinel.py")
+         if "needed —" in t]
+    ), "an escalation site names something other than the job"
 
 
 def test_the_settings_watcher_names_the_content_not_the_clock():

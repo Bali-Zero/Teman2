@@ -837,7 +837,8 @@ def process_job(job_id: str, state: dict, registry: dict,
                 f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — {job_id}\n"
                 f"Type: {failure_type} / {classification.get('subtype')}\n"
                 f"Error: {last_error[:120]}",
-                level=level
+                level=level,
+                condition=f"tier-escalation:{job_id}",
             )
             mark_escalation_sent(job_id)
         return {"action": "escalated", "tier": 3, "success": False}
