@@ -529,11 +529,17 @@ def test_the_live_populations_are_pinned():
     assert rep["mechanically_correctable"]["ceiling_cells"] == 0
     assert rep["mechanically_correctable"]["status_cells"] == 0
 
-    # The authored backlog, which only a human can shrink (Legge 5). It went
-    # 27 -> 31 when #3673 restricted four codes and left their prose saying the
-    # opposite — the cure moved the record and the sentences beside it did not
-    # move, which is this module's whole subject.
-    assert len(rep["needs_an_author"]["codes"]) == 34
+    # The authored backlog. It went 27 -> 31 when #3673 restricted four codes and
+    # left their prose saying the opposite, then 31 -> 34 when the claim
+    # vocabulary was widened to what the corpus actually says — and now 34 -> 28,
+    # the first six replaced by `cure_prose_national_openness.py`.
+    #
+    # "Only a human can shrink this" was the standing note here and it was WRONG,
+    # or rather it had stopped being true: 27 of the 31 bodies carry
+    # `_l3_regen.model = deepseek-v4-pro` at `confidence: LOW`. No human wrote
+    # them. The deference that left them standing was protecting an authorship
+    # that does not exist, and Zero withdrew it on 2026-08-06.
+    assert len(rep["needs_an_author"]["codes"]) == 28
 
     # WHERE the prose lies, and this is the number that matters — not the code
     # count above, which a cross-family refutation left UNMOVED at 34 while
@@ -551,13 +557,12 @@ def test_the_live_populations_are_pinned():
     # Pinned by field for that reason: the total alone hid the first defect too,
     # when three fields were read and reported as "the bodies".
     assert rep["needs_an_author"]["by_field"] == {
-        "editorial.body": 27,
-        "whatYouNeed": 26,
-        "editorial.standfirst": 22,
-        "editorial.headline": 14,
-        "editorial.pullQuote": 11,
+        "editorial.body": 25,
+        "whatYouNeed": 21,
+        "editorial.standfirst": 16,
+        "editorial.headline": 9,
+        "editorial.pullQuote": 9,
         "whoThisIsFor": 1,
-        "zantaraOpener": 1,
     }
 
 
