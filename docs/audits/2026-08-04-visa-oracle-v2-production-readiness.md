@@ -375,9 +375,10 @@ byte-equivalent.
 No production `ENFORCE` activation is authorized by this branch. Zero must
 provide or approve all of the following without application defaults:
 
-- a new signed RulePack/source ledger resolving the national/regional Calling
-  Visa conflict and partial-revocation locators;
-- source-specific freshness/applicability policy and an observation process;
+- immutable archives of the official implementing instruments still missing
+  from the reviewed evidence packet, plus final source-review sign-off;
+- an owner, scheduler and alerting cadence for the signed source-specific
+  freshness/applicability policy and observation process;
 - PricingTool catalogue validity/max-age and Bali Zero service-availability
   evidence;
 - decision and idempotency retention intervals, anchor, historical-row
@@ -404,10 +405,10 @@ no policy, duration, role, grant, scheduler or historical disposition.
 | G3 UI all states/categories           | PASS        | Five states, ten categories, EN/ID, edit/prune, 320 px, keyboard-only EN/ID, reduced-motion and Axe                                                   |
 | G4 mock removed from public authority | PASS        | Only strict verified `mode=ENGINE` responses expose candidates; preview/mock isolated                                                                 |
 | G5 requested automated suites         | PASS        | Typecheck, full Vitest, scoped pytest, desktop/mobile Playwright and unmocked disposable-DB smoke green                                               |
-| G6 independent review                 | BLOCKED     | Regrade pending on the refreshed/re-signed sequence 2; no activation is authorized until it closes                                                    |
+| G6 independent review                 | PASS        | Independent grader LGTM on review candidate `0f37138fc`; no code or signed-bundle BLOCKER/MEDIUM remains                                              |
 
 This branch is not a production activation approval. The product remains
 `NO-GO` while G1 and the operational retention/privacy/role gates are open.
-The independent grader has closed the implementation and TEST full-stack
-findings, but cannot close G6 while those product blockers remain. Nothing in
-this dossier authorizes production `ENFORCE`, merge or deployment.
+The independent grader has closed G6 for the implementation and signed review
+candidate. G1 and the declared operational gates remain independent blockers.
+Nothing in this dossier authorizes production `ENFORCE`, merge or deployment.

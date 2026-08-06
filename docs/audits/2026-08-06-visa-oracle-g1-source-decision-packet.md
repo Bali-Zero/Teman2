@@ -106,7 +106,7 @@ This regulation establishes who decides and how the category is reviewed. It doe
 - Primary publication claim: Kepmenkumham No. `M.HH-05.GR.01.06 Tahun 2023`, approved 2023-11-23, removed Cameroon from the Calling Visa list and ended the Cameroon clearing-house procedure.
 - The same publication says evaluation of Guinea's removal was in progress at that time.
 
-This national primary publication supports that the signed pack's inclusion of `CM` is stale relative to the 2023 decision. The signed decision PDF itself is not archived in the inspected repository/Drive evidence and remains a required immutable source artifact before a replacement RulePack is signed. Cameroon can therefore be removed from the new national overlay; the missing PDF remains a provenance/archive gap, not uncertainty about the published operational outcome.
+This national primary publication supports that the signed pack's inclusion of `CM` is stale relative to the 2023 decision. The signed decision PDF itself is not archived in the inspected repository/Drive evidence and remains a required immutable source artifact before G1 and production activation can close. Cameroon can therefore be removed from the new national overlay; the missing PDF remains a provenance/archive gap, not uncertainty about the published operational outcome.
 
 ### E5 - Guinea 2024 decision lead, not yet archived proof
 
@@ -242,7 +242,7 @@ The repair is forward-only:
 | Extension source mapping                        | PARTIAL | Sixteen uncited/ambiguous products are explicit `UNKNOWN`; no duration or positive extension claim is emitted pending product-specific locators. |
 | Extension cross-field contract                  | DONE    | Sequence 2 requires `VERIFIED` or `UNKNOWN`; unknown is neutral and verified shapes reject count/duration contradictions.                        |
 | Replacement RulePack                            | DONE    | Sequence 2, previous-hash chain, corrected national source record, clean compilation and production Ed25519 signature verified; inactive.        |
-| Independent G1 grader closure                   | MISSING | This packet intentionally makes no G1 closure claim.                                                                                             |
+| Independent implementation review               | DONE    | Independent grader LGTM on review candidate `0f37138fc`; G1 itself remains blocked by the explicitly listed source/policy approvals.             |
 
 ## Gate verdict
 
