@@ -62,7 +62,11 @@ python-magic>=0.4.27  # MIME type detection from file content
 
 # LangChain Ecosystem
 langgraph>=1.2.9
-langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful workflows
+langgraph-checkpoint-postgres>=3.1.1  # PostgreSQL checkpointing for stateful workflows
+# ^ floor is 3.1.1, not 2.0.0: CVE-2026-71433 affects 3.1.0 and pip-audit fails the
+#   build on it. The constraint belongs HERE and not only in the lock — a lock regen
+#   resolves against the manifest, so a floor left at 2.0.0 lets the vulnerable
+#   version back in on the next bump with every scanner green (W98).
 langchain-core>=1.4.9  # Updated 2026-03-14: patch fixes for streaming + callbacks
 langchain-anthropic>=1.4.8  # Required for KG LangGraph orchestrator
 langchain-openai>=1.3.5  # Required for KG LangGraph orchestrator fallback
