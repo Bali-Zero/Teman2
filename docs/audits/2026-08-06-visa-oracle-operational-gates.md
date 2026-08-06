@@ -65,7 +65,7 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 | G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                                                                 |
 | G4 public engine authority | PASS                   | PASS (unchanged)                                                                                                                 |
 | G5 automated suites        | PASS                   | PASS; backend Visa Engine/router suite, 417 pertinent Vitest tests, Mouth typecheck and desktop/320 px Playwright are green      |
-| G6 independent review      | PASS on base candidate | Final re-review pending after remediation of the public-pricing, 320 px overlap and details-dialog accessibility findings        |
+| G6 independent review      | PASS on base candidate | PASS on `20ba378ca`; independent runtime review at 1280×900 and 320×800 found no open BLOCKER or MEDIUM                          |
 
 ## Pricing and UI correction evidence
 
