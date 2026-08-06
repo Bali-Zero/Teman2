@@ -8,8 +8,8 @@
 
 ## PROMPT (da incollare)
 
-Leggi `HANDOFF-observability-block.md` in root. Contiene sei reperti misurati il 2026-08-06 e mai
-curati. Affrontali **in blocco** con un Workflow, non in sequenza a mano.
+Leggi `docs/operations/handoff-observability-block-2026-08-06.md`. Contiene sei reperti misurati il
+2026-08-06 e mai curati. Affrontali **in blocco** con un Workflow, non in sequenza a mano.
 
 Vincoli non negoziabili, tutti pagati con sangue nella sessione che ha scritto questo file:
 
