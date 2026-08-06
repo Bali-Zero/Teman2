@@ -212,11 +212,8 @@ def hostname() -> str:
     return socket.gethostname().split(".")[0]
 
 
-def emit_alert(stale: Sequence[LineStatus], host: str, stale_hours: float) -> bool:
+def send_to_gateway(message: str, host: str, dedup_suffix: str = "") -> bool:
     """Stessa catena degli altri sentinel: alerter (dedup) → tg_notify."""
-    if not stale:
-        return False
-    message = format_alert(stale, host, stale_hours)
     try:
         sys.path.insert(0, str(REPO / "scripts"))
         from sentinel_lib import alerter  # noqa: PLC0415
@@ -230,10 +227,33 @@ def emit_alert(stale: Sequence[LineStatus], host: str, stale_hours: float) -> bo
             return False
         subprocess.run(
             [sys.executable, str(gateway), "--tier", "p0", "--source", "wa-session-liveness",
-             "--dedup-key", f"wa-session-{host}", message],
+             "--dedup-key", f"wa-session-{host}{dedup_suffix}", message],
             check=False,
         )
         return True
+
+
+def emit_alert(stale: Sequence[LineStatus], host: str, stale_hours: float) -> bool:
+    if not stale:
+        return False
+    return send_to_gateway(format_alert(stale, host, stale_hours), host)
+
+
+def emit_blind_alert(reason: str, host: str) -> bool:
+    """CANNOT-VERIFY deve suonare DA SOLO, non per grazia di chi lo invoca.
+
+    Uscire 2 basta finche il chiamante e `cron-runner.sh`, che quel 2 lo legge
+    e allarma. Ma allora l'unico modo in cui questo organo si fa sentire e un
+    modo che appartiene a un ALTRO organo: spostarlo su un plist, o eseguirlo a
+    mano, e sarebbe muto senza che nulla cambi nel suo codice. Un guardiano che
+    delega la propria voce e gia mezzo decorativo (W108).
+    """
+    message = (
+        f"\U0001f691 wa-mirror [{host}] — CANNOT-VERIFY: {reason}"
+        "\n\nNessuna linea e stata giudicata: questo NON e un verdetto di salute."
+        "\nFinche dura, una sessione morta non la vedrebbe nessuno."
+    )
+    return send_to_gateway(message, host, dedup_suffix="-blind")
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +314,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(json.dumps(payload) if args.json else
               f"CANNOT-VERIFY [{host}]: {exc}\n"
               "Non e un verdetto di salute: questo organo non ha potuto guardare.")
+        if not (args.json or args.no_alert):
+            emit_blind_alert(str(exc), host)
         return EXIT_CANNOT_VERIFY
 
     stale = [s for s in statuses if s.status == STALE]
