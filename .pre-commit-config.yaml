@@ -93,6 +93,13 @@ repos:
         # The script accepts file paths as argv and exits 1 if any is not whitelisted.
         files: ^[^/]+$
 
+      - id: root-workspace-guard
+        name: "Physical root whitelist (include ignored/untracked state)"
+        entry: python scripts/root_guard.py --workspace
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # ── MYPY GATE on dependencies.py (cicatrix SPOF guard 2026-05-18) ───────
       # The "Rogue AI Import Removal" cicatrix (2026-04-21) documents how AI
       # refactors silently remove `Any` from typing imports in

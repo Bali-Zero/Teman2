@@ -36,7 +36,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-LOG_DIR="$PROJECT_ROOT/apps/evaluator/nlm_deep_research/output"
+DEFAULT_ARTIFACT_ROOT="$HOME/Desktop/Nuzantara-Repo-Archive/$(date +%Y-%m-%d)"
+ARTIFACT_ROOT="${NUZANTARA_ARTIFACT_ROOT:-$DEFAULT_ARTIFACT_ROOT}"
+LOG_DIR="${NLM_DEEP_RESEARCH_OUTPUT_DIR:-$ARTIFACT_ROOT/runtime/nlm-deep-research}"
 LOG_FILE="$LOG_DIR/multimodal_$(date +%Y%m%d_%H%M%S).log"
 
 mkdir -p "$LOG_DIR"

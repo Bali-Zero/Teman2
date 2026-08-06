@@ -53,8 +53,24 @@ BACKEND_RAG = SCRIPT_DIR.parent
 
 DATA_JSON = REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.json"
 GOLD_JSON = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-gold-all.json"
-CHECKPOINT_FILE = SCRIPT_DIR / "output" / "kbli_enrichment_state.json"
-OUTPUT_DIR = SCRIPT_DIR / "output"
+DEFAULT_RUNTIME_ROOT = (
+    Path.home() / "Desktop" / "Nuzantara-External-Data" / "runtime-state"
+)
+RUNTIME_ROOT = Path(
+    os.environ.get("NUZANTARA_RUNTIME_STATE_DIR", str(DEFAULT_RUNTIME_ROOT))
+).expanduser()
+OUTPUT_DIR = Path(
+    os.environ.get(
+        "KBLI_ENRICHMENT_OUTPUT_DIR",
+        str(RUNTIME_ROOT / "kbli-enrichment"),
+    )
+).expanduser()
+CHECKPOINT_FILE = Path(
+    os.environ.get(
+        "KBLI_ENRICHMENT_CHECKPOINT_FILE",
+        str(OUTPUT_DIR / "kbli_enrichment_state.json"),
+    )
+).expanduser()
 
 QDRANT_URL = "http://localhost:6333"
 QDRANT_COLLECTION = "kbli_2025_final_hybrid"

@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -39,9 +40,25 @@ BACKEND_RAG = SCRIPT_DIR.parent
 
 DATA_JSON = REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.json"
 GOLD_JSON = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-gold-all.json"
-CHECKPOINT_FILE = SCRIPT_DIR / "output" / "kbli_enrichment_state.json"
-SILVER_OUTPUT_DIR = SCRIPT_DIR / "output" / "silver_workers"
-OUTPUT_DIR = SCRIPT_DIR / "output"
+DEFAULT_RUNTIME_ROOT = (
+    Path.home() / "Desktop" / "Nuzantara-External-Data" / "runtime-state"
+)
+RUNTIME_ROOT = Path(
+    os.environ.get("NUZANTARA_RUNTIME_STATE_DIR", str(DEFAULT_RUNTIME_ROOT))
+).expanduser()
+OUTPUT_DIR = Path(
+    os.environ.get(
+        "KBLI_ENRICHMENT_OUTPUT_DIR",
+        str(RUNTIME_ROOT / "kbli-enrichment"),
+    )
+).expanduser()
+CHECKPOINT_FILE = Path(
+    os.environ.get(
+        "KBLI_ENRICHMENT_CHECKPOINT_FILE",
+        str(OUTPUT_DIR / "kbli_enrichment_state.json"),
+    )
+).expanduser()
+SILVER_OUTPUT_DIR = OUTPUT_DIR / "silver_workers"
 
 OLLAMA_URL = "http://localhost:11434"
 MODEL_FALLBACK = "gemma4:26b"
