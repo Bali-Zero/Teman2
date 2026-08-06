@@ -11,6 +11,45 @@ sources:
 
 # Lampiran II K-UMKM reservations: 85 codes adjudicated one by one
 
+> ## ⛔ WITHDRAWN THE SAME DAY — the 39-code patch was never applied
+>
+> An independent cross-family review of this finished document (Codex GPT-5.6,
+> instructed to refute) returned **DEFECTIVE**, and its first point held up at
+> the source PDF: the annex reserves food crops only **"dengan luas kurang dari
+> 25 Ha"**. Nothing in the evidence given to the 21 adjudicating agents said so
+> — because **Lampiran II is not a flat table**. A numbered PARENT bidang usaha
+> carries the scope, and the rows indented under it carry a bare name:
+>
+> ```
+> 1   Pertanian tanaman pangan dengan luas kurang dari 25 Ha:
+>        Padi hibrida        01121   V
+>        Jagung              01111   V
+> ```
+>
+> Our parser emitted the child cell only. A lane judging `01111` saw `"Jagung"`
+> and had no way to learn about the 25 hectares, so both families agreed to
+> reserve the whole code — agreement measuring fidelity to the evidence supplied,
+> exactly as W100 says. **Eleven of the 39 codes this document proposed to patch
+> sit under a restricting parent** (`01111 01113 01114 01115 01121 01122 43215
+> 43221 43222 43224 43303` — the 25-Ha crops, and the "teknologi sederhana dan
+> madya" installation/works grades). Publishing 0% on them would tell a client
+> they cannot run an activity they lawfully can.
+>
+> **Nothing reached a client**: the patch was withdrawn before merge and the
+> canonical dataset is untouched. What ships instead is the cure for the cause —
+> `parse_perpres_lampiran2` now emits `parent_heading` on every row, and the
+> classifier has a named **`parent-qualified`** bucket (17 rows), which moves
+> `whole-row` from **85 to 68**. Every count below that derives from 85 is
+> therefore superseded; the verdicts are kept as the record of what was decided
+> on what evidence, not as a queue to apply.
+>
+> The sharpest part is not that the parser was thin — it is that
+> `perpres_umkm_reservation_relation.py` **already said so**, in its own
+> docstring, and deliberately left such rows in `whole-row` so a human would ask
+> about them. That caveat was true, load-bearing, and invisible to every reader
+> who consumed the DATA instead of the module. A limitation that lives only in a
+> comment does not travel with the rows.
+
 ## What was found
 
 `perpres_umkm_reservation_relation.py` reads the annex that allocates activities
@@ -162,3 +201,54 @@ Both families agreed the 2025 code covers more than the annex reserves.
 Pasal 3(3): the requirement attaches to the named *bidang usaha*, never to the code number.
 
 Codes: `02302`, `02303`, `02304`, `02305`, `02306`, `02307`, `02308`, `02309`, `10750`, `13121`, `13122`, `13134`, `13912`, `14111`, `14131`, `16292`, `23932`, `25931`, `25932`, `25934`, `32201`, `35111`, `41017`, `43211`, `43299`, `47243`, `55199`, `71204`
+
+## Adversarial review
+
+**Seat**: Codex GPT-5.6 (`gpt-5.6-terra`, read-only sandbox), given this
+document, the cure spec and the applier, and told to refute the determination
+and default to DEFECTIVE. It did not write any of the work it reviewed
+(generator ≠ grader). **Verdict: DEFECTIVE.** Seven points; what happened to
+each, including the ones that did not survive:
+
+1. **The 25-Ha qualifier — UPHELD, and it withdrew the cure.** Re-verified here
+   at the vaulted PDF rather than taken on the reviewer's word (W65: a refuter's
+   verdict is a lead). `pdftotext -layout` page 1 shows the parent row verbatim.
+   Codex named 6 codes; the parent-aware re-parse measures **11**, because the
+   two "teknologi sederhana dan madya" headings restrict a second family the
+   reviewer did not reach. The refuter was right about the disease and short
+   about its extent — which is the normal shape, and the reason the count in a
+   finding gets re-derived rather than quoted.
+2. **Pasal 3(3) vs Pasal 5(5) — OPEN, not silently accepted.** Codex says the
+   granularity rule is Pasal 5(5). The locators written into the spec cite
+   3(1)(b) and 5; the surrounding prose cites 3(3). Both articles are cited
+   from secondary sources on both sides and the withdrawal makes it moot for
+   now, so it is recorded as a question for the re-adjudication rather than
+   "corrected" on an equally unverified basis — swapping one unchecked citation
+   for another is not a fix (W113: the sentence written while correcting is a
+   new claim).
+3. **`55106`/`55201`/`55203`/`79903` were in the spec while the text called them
+   HELD — UPHELD as a defect of the RECORD.** The hold was lifted deliberately
+   by the owner ("fai il tuo lavoro senza importartene dei clienti e di noi") and
+   that decision stands; the document simply never said so, so it contradicted
+   its own artifact. A reader would have found four 0% verdicts on codes the
+   text called unresolved. Moot under the withdrawal, fixed in the re-write.
+4. **Semantic check on the seven 2020→2025 mappings — UPHELD as insufficient.**
+   The applier verified cardinality (exactly one heir) and not identity of
+   perimeter. `55120` "Hotel Melati" → `55106` "Aktivitas Hotel Nonbintang" is a
+   single heir and not obviously the same activity.
+5. **`42912` — UPHELD on the evidence, and it is a second parser defect.** Its
+   activity cell reads `"pelabuhan bukan perikanan pelabuhan perikanan"`: two
+   distinct annex cells run together. Ledgered, not fixed here.
+6. **OCR-contaminated locators — PARTLY UPHELD.** The consistency argument is
+   sound (holding `47722` for illegible OCR while accepting other damaged
+   strings is incoherent), but the specific list was asserted, not measured; a
+   loose "over-long cell" probe flags 74 rows, which is too blunt to act on.
+   Recorded as a limit, not a finding.
+7. **Harden the applier — PARTLY ADOPTED.** It now refuses a withdrawn spec by
+   name (`test_guilt_a_withdrawn_spec_is_refused_before_anything_is_read`); the
+   perimeter and atomicity points belong with the re-adjudication.
+
+**What this review did not do**: it did not read the rendered annex images, so
+none of the above is image-grounded (W100 asks for that on content claims). The
+25-Ha finding was confirmed against the PDF text layer plus the parent-aware
+re-parse — two readings of the same artifact, not two independent witnesses.

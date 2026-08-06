@@ -519,3 +519,72 @@ def test_the_command_the_operator_runs_exits_zero():
     from perpres_umkm_reservation_relation import EXIT_OK, main  # noqa: PLC0415
 
     assert main(["--check", "--json"]) == EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# parent-qualified — the scope the annex writes ONCE, on the heading
+# ---------------------------------------------------------------------------
+
+
+def _row(code="01111", text="Jagung", parent=None):
+    r = {"code": code, "column": "dialokasikan", "page": 1, "text": text,
+         "read_from": "text-layer", "title_corroborated": True}
+    if parent is not None:
+        r["parent_heading"] = parent
+    return r
+
+
+def test_guilt_a_restricting_parent_takes_the_row_out_of_whole_row():
+    """The defect this bucket exists for: "Jagung" reads like a whole activity,
+    and it is reserved only as part of "…dengan luas kurang dari 25 Ha"."""
+    canon = {"01111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Jagung"}}
+    bucket, _, _ = classify(
+        _row(parent="Pertanian tanaman pangan dengan luas kurang dari 25 Ha"), canon, {}
+    )
+    assert bucket == "parent-qualified"
+
+
+def test_guilt_the_technology_grade_heading_qualifies_too():
+    canon = {"43215": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Instalasi"}}
+    bucket, _, _ = classify(
+        _row(code="43215", text="43215",
+             parent="Instalasi yang menggunakan teknologi sederhana dan madya"),
+        canon, {},
+    )
+    assert bucket == "parent-qualified"
+
+
+def test_innocence_an_unrestricting_parent_leaves_the_row_in_whole_row():
+    """A heading that merely GROUPS ("Pemungutan hasil hutan:") narrows nothing.
+    Treating every parent as a qualifier would empty the owner's list, which is
+    the error the prose caveat was right to fear."""
+    canon = {"02303": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Getah"}}
+    bucket, _, _ = classify(
+        _row(code="02303", text="Getah pinus", parent="Pemungutan hasil hutan"), canon, {}
+    )
+    assert bucket == "whole-row"
+
+
+def test_innocence_a_row_with_no_parent_is_unaffected():
+    canon = {"47111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Minimarket"}}
+    bucket, _, _ = classify(_row(code="47111", text="Minimarket", parent=None), canon, {})
+    assert bucket == "whole-row"
+
+
+def test_the_live_artifact_carries_the_parent_that_was_missing():
+    """TRIPWIRE on the DATA, not the classifier. The adjudication that had to be
+    withdrawn was handed rows whose cell said only "Jagung": the 25-Ha scope was
+    in the annex, visible to anyone reading the PDF, and absent from every row
+    we emitted. If a re-parse ever drops `parent_heading` again, this fails —
+    the classifier above would go on passing, because it takes the parent as an
+    argument."""
+    rows = load_relation()["rows"]
+    jagung = next(r for r in rows if r["code"] == "01111")
+    assert "kurang dari 25 Ha" in (jagung.get("parent_heading") or ""), jagung
+    # …and the field is emitted for every row, so "no parent" is distinguishable
+    # from "parents were never looked for".
+    assert all("parent_heading" in r for r in rows)
+    qualified = [r for r in rows if "kurang dari" in (r.get("parent_heading") or "")]
+    assert {r["code"] for r in qualified} == {
+        "01111", "01113", "01114", "01115", "01121", "01122",
+    }

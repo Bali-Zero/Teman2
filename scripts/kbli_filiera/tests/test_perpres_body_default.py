@@ -248,26 +248,32 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     A locator-partitioned reading found only 14; reading across every bucket
     found 23.
 
-    **19, not 23, since 2026-08-06.** The queue lost `55201` (homestay),
-    `55203` (villa), `79110` (travel agent) and `95291` (clothing alterations)
-    because the Lampiran II cure restricted them for a STRONGER and different
-    reason: the annex allocates those activities to Koperasi/UMKM, so they no
-    longer publish as open and the Pasal 7(1) question about them is moot.
+    It went to 19 for a few hours on 2026-08-06 and is back at 23, and the round
+    trip is worth more than either number. The Lampiran II cure had restricted
+    `55201` (homestay), `55203` (villa), `79110` (travel agent) and `95291`
+    (clothing alterations) for a stronger and different reason — the annex
+    allocates those activities to Koperasi/UMKM — so they stopped publishing as
+    open and their Pasal 7(1) question became moot. That cure was WITHDRAWN the
+    same day: a cross-family review of the finished determination found the
+    evidence it rested on had the scope qualifier stripped out (the annex
+    reserves food crops only "dengan luas kurang dari 25 Ha", and the rows we
+    emitted carried the bare crop name). See `apply_umkm_reservations.py` and
+    the `withdrawn` block in its spec.
 
-    That is the queue working, not shrinking: this list exists to hold codes
-    whose openness is unexplained, and four of them stopped being open. The
-    membership assertions below therefore moved to codes still IN the queue —
-    an assertion naming a code the cure removed would fail for the right
-    reason, which is precisely how this test caught the change.
+    So these four are back in the queue, where an unexplained openness belongs.
+    The queue is meant to hold codes whose openness nobody has justified — and
+    the honest state of these four is exactly that: not "reserved" and not
+    "cleared", but unadjudicated on evidence that was never complete.
     """
     rows = pasal7_review_flags(rep)
-    assert len(rows) == 19
+    assert len(rows) == 23
     codes = {r["code"] for r in rows}
     assert {"96210", "96220"} <= codes           # annex-named AND Besar-less
     assert {"56304", "70201", "86995"} <= codes  # residual AND Besar-less
-    assert not ({"55201", "55203", "79110", "95291"} & codes), (
-        "a Lampiran II code is publishing as open again — the cure regressed"
-    )
+    # The four the withdrawn cure had removed. Asserted as PRESENT, so that
+    # re-applying a Lampiran II verdict to them shows up here as a failure and
+    # gets read against the withdrawal above rather than landing unnoticed.
+    assert {"55201", "55203", "79110", "95291"} <= codes
     assert all(r["besar"] == "absent" for r in rows)
 
 

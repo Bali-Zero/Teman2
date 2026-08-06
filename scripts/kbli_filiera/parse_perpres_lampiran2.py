@@ -188,6 +188,51 @@ def cell_at(line: str, tick_x: int) -> str:
     return _LEADING_NUMBER_RE.sub("", left[:cut].strip(" -\t")).strip(" -\t")
 
 
+# A numbered item in the annex's leftmost column. The annex is not a flat table:
+# an item that ends in a colon is a PARENT bidang usaha whose scope governs the
+# indented rows beneath it, and those rows carry only a bare name.
+#
+#     1   Pertanian tanaman pangan dengan luas kurang dari 25 Ha:
+#            Padi hibrida        01121   V
+#            Jagung              01111   V
+#
+# Reading the child cell alone yields "Jagung" and loses "dengan luas kurang dari
+# 25 Ha" — the words that decide whether the reservation covers the whole KBLI
+# code or only smallholdings. Emitting the child WITHOUT its parent hands every
+# downstream reader an activity whose scope has been silently widened, and no
+# amount of care further down can recover what was never in the row. Measured
+# 2026-08-06 against the vaulted PDF: three parents carry such a qualifier
+# ("... kurang dari 25 Ha", and twice "... teknologi sederhana dan madya").
+_NUMBERED_ITEM_RE = re.compile(r"^\s{0,14}\d{1,3}\s{2,}(\S.*?)\s*$")
+
+
+def governing_headings(text: str) -> dict[tuple[int, int], str | None]:
+    """(page, line index) -> the numbered parent heading in force at that line.
+
+    A numbered item ALWAYS closes the previous parent: one that ends in a colon
+    opens a new one, one that does not is a standalone row and leaves the lines
+    after it parentless. Without that reset a parent leaks down the page and
+    adopts rows from the next section — a probe written for this defect did
+    exactly that and reported retail-trade codes as children of a construction
+    heading (W107: the probe that measures a disease can have it).
+
+    Declared limit: a heading that WRAPS across lines contributes only its first
+    line here. That truncates a parent's words, it never invents them, so a
+    qualifier can be missed but never fabricated — and `parent_heading` is
+    evidence for a reader, not an automatic verdict.
+    """
+    out: dict[tuple[int, int], str | None] = {}
+    parent: str | None = None
+    for page_no, page in enumerate(text.split("\f"), start=1):
+        for n, line in enumerate(page.splitlines()):
+            m = _NUMBERED_ITEM_RE.match(line)
+            if m:
+                label = m.group(1).rstrip()
+                parent = label[:-1].strip() if label.endswith(":") else None
+            out[(page_no, n)] = parent
+    return out
+
+
 def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> list[int]:
     """Which lines belong to the table row whose tick is on line `i`.
 
@@ -245,6 +290,8 @@ def parse(text: str, titles: dict[str, str], known: frozenset[str]) -> dict:
     tick_histogram: dict[int, int] = {}
     consumed: set[tuple[int, str]] = set()
 
+    headings = governing_headings(text)
+
     for page_no, page in enumerate(text.split("\f"), start=1):
         lines = page.splitlines()
         ticks = [n for n, line in enumerate(lines) if re.search(r"\bV\b", line)]
@@ -276,6 +323,11 @@ def parse(text: str, titles: dict[str, str], known: frozenset[str]) -> dict:
                     "column": column,
                     "page": page_no,
                     "text": activity,
+                    # The parent bidang usaha this row is indented under, or
+                    # None for a row that stands on its own. Emitted for EVERY
+                    # row, not only qualified ones, so a reader can tell "no
+                    # parent" from "parent not looked for".
+                    "parent_heading": headings.get((page_no, i)),
                     "read_from": read_from,
                     # True only when the row's own words independently corroborate the
                     # decoded digits. A row without it is not wrong — it is single-witness.

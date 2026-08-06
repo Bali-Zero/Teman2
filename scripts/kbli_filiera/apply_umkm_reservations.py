@@ -162,6 +162,21 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+
+    # A withdrawn spec is not an empty one, and the difference must not depend on
+    # a reader noticing that `items` happens to be []. The 2026-08-06 spec was
+    # withdrawn whole after a cross-family review found its evidence had the
+    # scope qualifier stripped out; running it would publish a 0% foreign cap on
+    # activities the annex reserves only below 25 Ha, or only at simple and
+    # intermediate technology grade. Refuse loudly, name the reason, write nothing.
+    withdrawn = spec.get("withdrawn")
+    if withdrawn:
+        print(f"REFUSING: this spec was withdrawn on {withdrawn.get('date')}.")
+        print(f"  by:     {withdrawn.get('by')}")
+        print(f"  reason: {withdrawn.get('reason')}")
+        print(f"  next:   {withdrawn.get('next')}")
+        return EXIT_REFUSED
+
     path = Path(args.dataset)
     payload, records, original = load(path)
 

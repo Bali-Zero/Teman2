@@ -142,12 +142,48 @@ def test_patch_states_zero_foreign_and_names_its_basis():
 def test_the_shipped_spec_carries_only_unanimous_verdicts():
     """Structural pin on the real artifact: the excluded populations must still
     be declared in it, so a future regeneration cannot quietly absorb the
-    disagreements into the patch set."""
+    disagreements into the patch set. Reads `withdrawn_items` when the spec has
+    been withdrawn — the verdicts are still a record worth pinning even though
+    none of them may be applied."""
     spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
     ex = spec["excluded"]
     assert ex["disagreements"] > 0 and ex["agreed_unclear"] > 0
     assert ex["ocr_illegible"], "the illegible row must stay named, not vanish"
-    codes = [i["code"] for i in spec["items"]]
+    verdicts = spec.get("items") or spec["withdrawn_items"]
+    codes = [i["code"] for i in verdicts]
     assert len(codes) == len(set(codes)), "a code patched twice"
-    for i in spec["items"]:
+    for i in verdicts:
         assert "Lampiran II" in i["locator"] and "Pasal 3(1)(b)" in i["locator"]
+
+
+def test_guilt_a_withdrawn_spec_is_refused_before_anything_is_read(tmp_path, capsys):
+    """The shipped spec IS withdrawn, so this is the live path. `items: []` alone
+    would make the run a silent no-op that prints "applied 0 codes" — which reads
+    like success. The refusal has to name itself."""
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps({
+        "withdrawn": {"date": "2026-08-06", "by": "review", "reason": "why", "next": "what"},
+        "items": [], "withdrawn_items": [], "excluded": {},
+    }), encoding="utf-8")
+    assert A.main(["--apply", "--spec", str(p)]) == A.EXIT_REFUSED
+    assert "REFUSING" in capsys.readouterr().out
+
+
+def test_innocence_a_spec_without_that_marker_still_runs():
+    """The guard must not turn every spec into a refusal — the tool has to stay
+    usable for the re-adjudicated spec that replaces this one."""
+    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    assert "withdrawn" in spec, "the shipped spec is the withdrawn one"
+    todo, refusals = run([item("01111")], [rec("01111")])
+    assert refusals == [] and [i["code"] for i in todo] == ["01111"]
+
+
+def test_the_withdrawal_names_the_codes_whose_evidence_was_short():
+    """Not a count: the eleven codes judged under a restricting parent are named,
+    so the re-adjudication cannot start from "39 codes, re-check them all" and
+    lose which ones were actually compromised."""
+    w = json.loads(A.SPEC.read_text(encoding="utf-8"))["withdrawn"]
+    tainted = w["codes_judged_under_a_restricting_parent"]
+    assert len(tainted) == w["count_tainted"] > 0
+    assert "01111" in tainted, "the 25-Ha food crops are the clearest members"
+    assert "43215" in tainted, "so is the simple/intermediate technology grade"

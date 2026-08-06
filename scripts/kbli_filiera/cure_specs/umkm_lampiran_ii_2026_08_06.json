@@ -9,7 +9,28 @@
     "contested_by_prior_in_repo_adjudication": ["79110"],
     "note_79110": "test_kbli_eye.test_travel_agency_terbatas_carries_full_cap asserts '79110 is TERBATAS but the adjudicated cap is 100% - never 0'. That determination lives in a TEST, not in pma_official_basis, so this applier's refuse-on-prior-basis rule could not see it. Two in-repo determinations disagree; resolving it needs #3317's history read, not a silent overwrite."
   },
-  "items": [
+  "withdrawn": {
+    "date": "2026-08-06",
+    "by": "cross-family adversarial review of the finished determination (Codex GPT-5.6), then re-verified at the source PDF",
+    "reason": "The evidence handed to the adjudicating lanes had the scope qualifier removed. Lampiran II is not a flat table: a numbered PARENT bidang usaha carries the scope and the rows indented under it carry a bare name. parse_perpres_lampiran2 emitted the child cell only, so a lane judging 01111 saw 'Jagung' and could not learn that the reservation reads 'Pertanian tanaman pangan dengan luas kurang dari 25 Ha'. Both model families agreed to reserve the whole code because neither was shown the limit.",
+    "codes_judged_under_a_restricting_parent": [
+      "01111",
+      "01113",
+      "01114",
+      "01115",
+      "01121",
+      "01122",
+      "43215",
+      "43221",
+      "43222",
+      "43224",
+      "43303"
+    ],
+    "count_tainted": 11,
+    "count_total": 39,
+    "next": "Re-adjudicate from the corrected relation, which now carries parent_heading per row and a 'parent-qualified' bucket. Not a re-run of the same prompts: the 11 tainted codes need the parent's limit stated in the evidence, and the rest need re-confirming against rows they were judged on before the field existed."
+  },
+  "withdrawn_items": [
     {
       "code": "01111",
       "judged_as": null,
@@ -439,5 +460,6 @@
         "pma_max_asing": 100
       }
     }
-  ]
+  ],
+  "items": []
 }
