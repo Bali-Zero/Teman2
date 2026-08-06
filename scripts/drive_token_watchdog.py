@@ -44,25 +44,12 @@ TELEGRAM_OWNER_CHAT_ID = "1125336968"  # Zero (archangelsamyaza) — corretto 20
 STATE_DIR = Path(os.path.expanduser("~/.agent/decisions/state"))
 STATE_FILE = STATE_DIR / "drive_oauth_watchdog.state.json"
 
-# Tier names (most-urgent first). Use string constants so state files written
-# by previous runs are forward-compatible.
-TIER_EXPIRED = "critical_expired"
-TIER_1_DAY = "critical_1d"
-TIER_7_DAYS = "urgent_7d"
-TIER_14_DAYS = "warning_14d"
-TIER_30_DAYS = "info_30d"
-TIER_OK = "ok"
-
-# Numerical severity for "is this a more urgent tier than last time?".
-# Higher number = more urgent. TIER_OK is the baseline (no alert).
-TIER_SEVERITY: dict[str, int] = {
-    TIER_OK: 0,
-    TIER_30_DAYS: 1,
-    TIER_14_DAYS: 2,
-    TIER_7_DAYS: 3,
-    TIER_1_DAY: 4,
-    TIER_EXPIRED: 5,
-}
+# OAuth health verdicts. There are exactly two failure modes this table can
+# express, and NO countdown — see `classify_oauth_health` for why the previous
+# 30/14/7/1-day tier ladder was unreachable by construction.
+HEALTH_OK = "ok"
+HEALTH_NO_ROWS = "no-token"
+HEALTH_NO_REFRESH = "no-refresh"
 
 # SA key threshold (separate from OAuth — SA keys never expire by default,
 # but rotation policy = 30 days)
@@ -76,103 +63,90 @@ DRY_RUN = False
 
 
 # ---------------------------------------------------------------------------
-# Tier classification — pure function, no I/O. Easy to unit-test.
+# OAuth health — pure function, no I/O. Easy to unit-test.
 # ---------------------------------------------------------------------------
 
 @dataclass
-class TierAlert:
-    """Result of classify_tier()."""
-    tier: str  # one of TIER_* constants
-    emoji: str
-    severity_label: str
-    message_template: str
-    days_left: int  # negative if already expired
+class OAuthHealth:
+    """Result of classify_oauth_health()."""
+    verdict: str  # one of HEALTH_* constants
+    message: str  # "" when healthy
+    detail: str   # one line of context for the log, always populated
 
 
-def classify_tier(days_left: int) -> TierAlert:
+def classify_oauth_health(rows: list[dict]) -> OAuthHealth:
     """
-    Map days remaining to a tier. Pure function.
+    Judge the OAuth credential from what `google_drive_tokens` can actually say.
 
-    days_left < 0     → TIER_EXPIRED (already expired)
-    days_left <= 1    → TIER_1_DAY    (critical, last day)
-    days_left <= 7    → TIER_7_DAYS   (urgent)
-    days_left <= 14   → TIER_14_DAYS  (warning)
-    days_left <= 30   → TIER_30_DAYS  (info heads-up)
-    days_left > 30    → TIER_OK       (no alert)
+    WHY THERE IS NO COUNTDOWN HERE (2026-08-06). This function replaces a
+    30/14/7/1-**day** tier ladder over `expires_at`, and that ladder could
+    never fire truthfully, because `expires_at` is not a 90-day credential
+    clock — it is the **one-hour access token**:
+
+        google_drive_service.py:163  expires_at = now + expires_in (3600)
+        google_drive_service.py:230  refresh when expires_at <= now + 5min
+
+    Measured on the live production table the same day, both rows:
+
+        SYSTEM      updated_at 2026-06-15 17:24:19  expires_at 18:24:18
+        7dfe56b2…   updated_at 2026-08-06 11:11:20  expires_at 12:11:19
+
+    `expires_at - updated_at == 1h` exactly, always. So `days_left` is 0 for a
+    token refreshed one minute ago and negative for every idle row — TIER_30,
+    TIER_14 and TIER_7 were unreachable **by construction**, and the only two
+    states the ladder could produce were "🚨 scade DOMANI" for a perfectly
+    healthy credential and "🔴 SCADUTO" for one nobody happened to use today.
+
+    It never showed because the read itself always failed (#3690 PATH, then the
+    fly credential). Curing the read is what would have armed the false alarm.
+
+    What the table CAN support:
+      - no rows                → the credential does not exist. Real P0.
+      - a row without a        → `get_valid_token` returns None forever; no
+        refresh_token            re-auth can happen by itself. Real P0.
+      - otherwise              → healthy. Refresh is lazy-on-use, so nothing
+                                 here predicts a future failure.
+
+    DECLARED LIMIT, deliberately not alarmed on: the age of `updated_at` does
+    NOT separate "unused" from "refresh is failing" — both look identical from
+    this table — and the SYSTEM row is left unrefreshed *on purpose* since
+    2026-05-10 (`_refresh_token` early-returns for it; Drive runs on
+    ServiceAccountDriveService). Alarming on that age would rebuild the same
+    false-positive one field to the left. It is reported as context only.
     """
-    if days_left < 0:
-        return TierAlert(
-            tier=TIER_EXPIRED,
-            emoji="🔴",
-            severity_label="CRITICAL — EXPIRED",
-            message_template=(
-                "🔴 <b>Drive OAuth SCADUTO</b> ({abs_days} giorni fa!)\n"
-                "Drive polling NON funziona. Re-auth IMMEDIATA:\n"
+    if not rows:
+        return OAuthHealth(
+            verdict=HEALTH_NO_ROWS,
+            message=(
+                "🔴 <b>Drive OAuth</b>: NESSUN TOKEN in DB\n"
+                "Nessuna credenziale OAuth esiste. Re-auth:\n"
                 "<code>https://kita.balizero.com/settings/integrations</code>"
             ),
-            days_left=days_left,
+            detail="0 righe in google_drive_tokens",
         )
-    if days_left <= 1:
-        return TierAlert(
-            tier=TIER_1_DAY,
-            emoji="🚨",
-            severity_label="CRITICAL",
-            message_template=(
-                "🚨 <b>Drive OAuth scade DOMANI</b> ({days} giorni rimasti)\n"
-                "Re-auth ORA per evitare interruzione Drive polling:\n"
+
+    broken = [r for r in rows if not r.get("has_refresh")]
+    if broken:
+        who = ", ".join(str(r.get("user_id", "?")) for r in broken)
+        return OAuthHealth(
+            verdict=HEALTH_NO_REFRESH,
+            message=(
+                f"🔴 <b>Drive OAuth</b>: riga senza refresh_token ({who})\n"
+                "Il token NON può più rinnovarsi da solo — ogni richiesta "
+                "riceve None finché non viene ri-autorizzato:\n"
                 "<code>https://kita.balizero.com/settings/integrations</code>"
             ),
-            days_left=days_left,
+            detail=f"{len(broken)}/{len(rows)} righe senza refresh_token: {who}",
         )
-    if days_left <= 7:
-        return TierAlert(
-            tier=TIER_7_DAYS,
-            emoji="⚠️",
-            severity_label="URGENT",
-            message_template=(
-                "⚠️ <b>Drive OAuth</b> scade in <b>{days} giorni</b> (URGENT)\n"
-                "Pianifica re-auth questa settimana:\n"
-                "<code>https://kita.balizero.com/settings/integrations</code>"
-            ),
-            days_left=days_left,
-        )
-    if days_left <= 14:
-        return TierAlert(
-            tier=TIER_14_DAYS,
-            emoji="🟡",
-            severity_label="WARNING",
-            message_template=(
-                "🟡 <b>Drive OAuth</b>: <b>{days} giorni</b> alla scadenza\n"
-                "Pianifica re-auth nei prossimi giorni:\n"
-                "<code>https://kita.balizero.com/settings/integrations</code>"
-            ),
-            days_left=days_left,
-        )
-    if days_left <= 30:
-        return TierAlert(
-            tier=TIER_30_DAYS,
-            emoji="🔵",
-            severity_label="INFO",
-            message_template=(
-                "🔵 <b>Drive OAuth</b>: heads-up — {days} giorni alla scadenza\n"
-                "Re-auth diventa urgente sotto i 14 giorni."
-            ),
-            days_left=days_left,
-        )
-    return TierAlert(
-        tier=TIER_OK,
-        emoji="✅",
-        severity_label="OK",
-        message_template="",
-        days_left=days_left,
+
+    ages = ", ".join(
+        f"{r.get('user_id', '?')} rinnovato {_age_text(r.get('updated_at'))}"
+        for r in rows
     )
-
-
-def render_alert_text(alert: TierAlert) -> str:
-    """Format alert.message_template with days_left / abs_days."""
-    return alert.message_template.format(
-        days=alert.days_left,
-        abs_days=abs(alert.days_left),
+    return OAuthHealth(
+        verdict=HEALTH_OK,
+        message="",
+        detail=f"{len(rows)} righe, tutte con refresh_token — {ages}",
     )
 
 
@@ -199,23 +173,20 @@ def save_state(state: dict) -> None:
         log(f"Failed to save state: {e}")
 
 
-def should_alert(current_tier: str, last_tier: Optional[str]) -> bool:
+def should_alert(current: str, last: Optional[str]) -> bool:
     """
-    Return True iff current_tier is *strictly more severe* than last_tier.
+    Return True iff the OAuth verdict is broken AND it is not a repeat.
 
-    Examples:
-        should_alert(TIER_30_DAYS, None)           → True   (first time ever)
-        should_alert(TIER_30_DAYS, TIER_OK)        → True   (just crossed 30d threshold)
-        should_alert(TIER_14_DAYS, TIER_30_DAYS)   → True   (escalation)
-        should_alert(TIER_14_DAYS, TIER_14_DAYS)   → False  (same tier — silent)
-        should_alert(TIER_14_DAYS, TIER_7_DAYS)    → False  (de-escalation, e.g. after re-auth)
-        should_alert(TIER_OK, TIER_7_DAYS)         → False  (recovered — no alert needed)
+    The severity ladder this replaced existed to rank six tiers. With two
+    failure modes and no countdown there is nothing to rank: speak when the
+    verdict is bad and it is not the same bad verdict we already sent.
+
+    A CHANGED failure (no-token → no-refresh) speaks again: it is different
+    news, and the remedy line differs. Recovery is silent, as before.
     """
-    if current_tier == TIER_OK:
-        return False  # never alert on recovery
-    current_sev = TIER_SEVERITY.get(current_tier, 0)
-    last_sev = TIER_SEVERITY.get(last_tier or TIER_OK, 0)
-    return current_sev > last_sev
+    if current == HEALTH_OK:
+        return False
+    return current != last
 
 
 # ---------------------------------------------------------------------------
@@ -337,20 +308,25 @@ def _check_drive_token_via_fly() -> tuple[dict | None, str | None]:
     nemmeno risolvibile. Una diagnosi che punta lontano dalla causa costa più
     del silenzio (W106: cura e messaggio scadono insieme).
     """
+    # EVERY row, not `ORDER BY created_at DESC LIMIT 1`. That old query guarded
+    # whichever row happened to be newest — today the per-user one, silently a
+    # different one the moment anybody authorises again — while the row the
+    # code names by hand (`SYSTEM`, read by crm_guardian and zantara-media's
+    # indexer) went unwatched. There are two rows; judge both.
     code = (
         "import asyncio, asyncpg, os, json\n"
         "async def m():\n"
         "    c = await asyncpg.connect(os.environ['DATABASE_URL'])\n"
-        "    r = await c.fetchrow(\n"
-        "        'SELECT expires_at, created_at FROM google_drive_tokens "
-        "ORDER BY created_at DESC LIMIT 1'\n"
+        "    rs = await c.fetch(\n"
+        "        'SELECT user_id, (refresh_token IS NOT NULL) AS has_refresh, "
+        "expires_at, updated_at FROM google_drive_tokens ORDER BY user_id'\n"
         "    )\n"
         "    await c.close()\n"
-        "    if r:\n"
-        "        print(json.dumps({'expires_at': str(r[\"expires_at\"]), "
-        "'created_at': str(r[\"created_at\"])}))\n"
-        "    else:\n"
-        "        print(json.dumps({'expires_at': None}))\n"
+        "    print(json.dumps({'rows': [\n"
+        "        {'user_id': r['user_id'], 'has_refresh': r['has_refresh'],\n"
+        "         'expires_at': str(r['expires_at']),\n"
+        "         'updated_at': str(r['updated_at'])} for r in rs\n"
+        "    ]}))\n"
         "asyncio.run(m())\n"
     )
     import base64
@@ -478,11 +454,24 @@ def parse_expires_at(expires_str: str) -> datetime:
     return datetime.fromisoformat(expires_str).replace(tzinfo=timezone.utc)
 
 
-def compute_days_left(expires_at: datetime, now_utc: datetime | None = None) -> int:
-    """Days remaining until expiry. Negative if already expired."""
-    if now_utc is None:
-        now_utc = datetime.now(timezone.utc)
-    return (expires_at - now_utc).days
+def _age_text(ts: object, now_utc: datetime | None = None) -> str:
+    """Human age of a timestamp, for CONTEXT lines only — never a verdict.
+
+    Returns "?" rather than raising: this feeds the log/detail string, and a
+    watchdog must not die describing itself. Deliberately not a number a
+    caller could threshold on — see `classify_oauth_health`'s declared limit.
+    """
+    if not isinstance(ts, str) or not ts:
+        return "?"
+    try:
+        when = parse_expires_at(ts)
+    except Exception:
+        return "?"
+    delta = (now_utc or datetime.now(timezone.utc)) - when
+    hours = delta.total_seconds() / 3600
+    if hours < 48:
+        return f"{hours:.0f}h fa"
+    return f"{hours / 24:.0f}g fa"
 
 
 # ---------------------------------------------------------------------------
@@ -500,69 +489,51 @@ def main() -> int:
     timestamp = now_wita.strftime("%Y-%m-%d %H:%M WITA")
 
     state = load_state()
-    last_oauth_tier: Optional[str] = state.get("last_oauth_tier")
+    last_oauth_health: Optional[str] = state.get("last_oauth_health")
     last_sa_alert_age: Optional[int] = state.get("last_sa_alert_age")
 
-    # --- Check 1: Drive OAuth token with tier system ---
+    # --- Check 1: Drive OAuth credential health ---
     log("Controllo Drive OAuth token...")
     token_data, token_read_error = _check_drive_token_via_fly()
 
-    new_oauth_tier: Optional[str] = None  # set if classification succeeds
-    new_oauth_days_left: Optional[int] = None  # last computed days_left (sensor input)
+    new_oauth_health: Optional[str] = None  # set if classification succeeds
 
     if token_data is None:
-        # Read failure — separate from the tier system; always alert.
+        # Read failure — separate from the health verdict; always alert.
         #
-        # The message NAMES the measured cause instead of prescribing a guess.
-        # It also says out loud what the reader cannot otherwise know: while
-        # this branch is firing, the expiry check is NOT running, so silence
-        # from the tier system means "blind", not "fine". That is the whole
-        # damage this defect did — the token expired 2026-07-25 and the one
-        # alert that mattered was never sent.
+        # The message NAMES the measured cause instead of prescribing a guess,
+        # and says out loud what the reader cannot otherwise know: while this
+        # branch fires, the credential is NOT being judged, so silence means
+        # "blind", not "fine".
         alert_kinds.append("read-failure")
         alerts.append(
             "⚠️ <b>Drive Watchdog</b>: non ho potuto LEGGERE lo stato del token\n"
             f"Causa: {token_read_error or 'sconosciuta'}\n"
-            "<b>Mentre vedi questo, la scadenza NON è sorvegliata.</b>"
+            "<b>Mentre vedi questo, la credenziale NON è sorvegliata.</b>"
         )
-    elif token_data.get("expires_at") is None:
-        # Same effect as expired — fold into TIER_EXPIRED with synthetic message.
-        new_oauth_tier = TIER_EXPIRED
-        if should_alert(new_oauth_tier, last_oauth_tier):
-            alert_kinds.append("no-token")
-            alerts.append(
-                "🔴 <b>Drive OAuth</b>: NESSUN TOKEN in DB\n"
-                "Drive polling disabilitato. Esegui re-auth:\n"
-                "<code>https://kita.balizero.com/settings/integrations</code>"
-            )
     else:
-        expires_str = token_data["expires_at"]
-        log(f"expires_at raw: {expires_str}")
         try:
-            expires_dt = parse_expires_at(expires_str)
-            days_left = compute_days_left(expires_dt, now_utc)
-            log(f"Token scade in {days_left} giorni")
+            rows = token_data["rows"]
+            if not isinstance(rows, list):
+                raise TypeError(f"'rows' non è una lista: {type(rows).__name__}")
 
-            tier_alert = classify_tier(days_left)
-            new_oauth_tier = tier_alert.tier
-            new_oauth_days_left = days_left
+            health = classify_oauth_health(rows)
+            new_oauth_health = health.verdict
+            log(f"OAuth: {health.verdict} — {health.detail}")
 
-            if should_alert(new_oauth_tier, last_oauth_tier):
-                alert_kinds.append(new_oauth_tier)
-                alerts.append(render_alert_text(tier_alert))
-                log(
-                    f"Tier transition: {last_oauth_tier or 'OK'} → {new_oauth_tier} "
-                    f"({tier_alert.severity_label})"
-                )
-            else:
-                log(
-                    f"Tier {new_oauth_tier} (last: {last_oauth_tier or 'OK'}) — "
-                    f"no alert (idempotent)"
-                )
+            if should_alert(new_oauth_health, last_oauth_health):
+                alert_kinds.append(new_oauth_health)
+                alerts.append(health.message)
+                log(f"Verdetto: {last_oauth_health or 'ok'} → {new_oauth_health}")
         except Exception as e:
-            log(f"Parse expires_at fallito: {e}")
+            # Payload the fly side did not produce — schema drift between the
+            # two halves of this script (#9). Name it; never read it as health.
+            log(f"Payload OAuth illeggibile: {e}")
             alert_kinds.append("parse-failure")
-            alerts.append(f"⚠️ <b>Drive Watchdog</b>: errore parsing expires_at: {e}")
+            alerts.append(
+                f"⚠️ <b>Drive Watchdog</b>: payload OAuth illeggibile: {e}\n"
+                "<b>Mentre vedi questo, la credenziale NON è sorvegliata.</b>"
+            )
 
     # --- Check 2: SA key age (kept simple — no tier system, single threshold) ---
     log("Controllo SA key age...")
@@ -585,19 +556,16 @@ def main() -> int:
     #
     # This order is the fix (2026-08-06). It used to be the other way round:
     # `save_state` ran first and `_send_telegram`'s return value was printed
-    # and discarded. The tier ratchet therefore advanced on CLASSIFICATION,
-    # not on DELIVERY — and `should_alert` only fires on a strictly-more-severe
-    # transition, so for a once-per-lifetime event like "the token expired"
-    # there is exactly ONE chance to speak.
+    # and discarded. The ratchet therefore advanced on CLASSIFICATION, not on
+    # DELIVERY — and it only speaks on a CHANGE of verdict, so for a
+    # once-per-lifetime event there is exactly ONE chance to speak.
     #
-    # Measured, and it is how this was found: the token expired 2026-07-25;
-    # #3690 cured the PATH defect that had kept the watchdog from ever reading
-    # it; and the run that VERIFIED that cure classified `critical_expired`,
-    # wrote it to the state file, and delivered nothing anyone read. The next
-    # cron then found `last_oauth_tier == critical_expired`, took the
-    # de-escalation branch, and printed "tutto OK (token valido)" about a
-    # credential that had been dead for twelve days. Curing a mute watchdog
-    # and then muting it with the act of verifying the cure.
+    # Measured, and it is how this was found: #3690 cured the PATH defect that
+    # had kept this watchdog from ever reading the table; the run that VERIFIED
+    # that cure classified a failure, wrote it to the state file, and delivered
+    # nothing anyone read. The next cron found the same value already recorded
+    # and stayed silent. Curing a mute watchdog and then muting it with the act
+    # of verifying the cure.
     #
     # Three ways the old order lost the message, all now closed: a
     # verification run, a send that fails, and a cron environment with no
@@ -626,11 +594,24 @@ def main() -> int:
     # --- Persist state (best-effort), only for what actually got through ---
     if not DRY_RUN:
         new_state = dict(state)
-        if new_oauth_tier is not None and delivered:
-            new_state["last_oauth_tier"] = new_oauth_tier
+        # The day-ladder keys are actively removed, not merely stopped: a state
+        # file written before today carries `last_oauth_tier: critical_expired`
+        # and `last_oauth_days_left: -12`, and the Cell's oauth_health_sensor
+        # reads exactly those. Left behind, they would paint Drive red forever
+        # off a measurement whose scale was wrong.
+        new_state.pop("last_oauth_tier", None)
+        new_state.pop("last_oauth_days_left", None)
+        # Recovery is recorded UNCONDITIONALLY; only a BROKEN verdict waits for
+        # delivery. `delivered` is one boolean for the whole message, so gating
+        # the healthy verdict on it too would let an undelivered SA-key alert
+        # leave `last_oauth_health` stuck on the old failure — and then the
+        # next real occurrence of that same failure reads as a repeat and stays
+        # silent. Nothing has to be delivered for "it is fine now".
+        if new_oauth_health is not None and (
+            new_oauth_health == HEALTH_OK or delivered
+        ):
+            new_state["last_oauth_health"] = new_oauth_health
             new_state["last_oauth_check_iso"] = now_utc.isoformat()
-            if new_oauth_days_left is not None:
-                new_state["last_oauth_days_left"] = new_oauth_days_left
         if new_sa_alert_age is not None and delivered:
             new_state["last_sa_alert_age"] = new_sa_alert_age
         save_state(new_state)
