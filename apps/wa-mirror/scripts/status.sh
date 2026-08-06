@@ -16,10 +16,23 @@ for NAME in $ALL_NAMES; do
     SESDIR="$(session_dir "$E164")"
 
     # Session status
+    # M4 (2026-07-20): a non-empty session dir does NOT mean linked — a 401
+    # logged_out leaves the dir in place and the bridge stops retrying by
+    # design, so status.sh used to show "🟢 RUNNING (linked)" for dead
+    # accounts (sahira/krisna case). Cross-check the log: if the last
+    # logged_out/401 event is newer than the last successful connect, the
+    # account needs a QR re-link.
     if [ ! -d "$SESDIR" ] || [ -z "$(ls -A "$SESDIR" 2>/dev/null)" ]; then
         SES="no-link"
     else
         SES="linked"
+        if [ -f "$LOGFILE" ]; then
+            LAST_LOGOUT=$(grep -nE "logged_out|code 401" "$LOGFILE" 2>/dev/null | tail -1 | cut -d: -f1)
+            LAST_CONN=$(grep -nE "session connected|session restored| connected:" "$LOGFILE" 2>/dev/null | tail -1 | cut -d: -f1)
+            if [ -n "$LAST_LOGOUT" ] && [ "$LAST_LOGOUT" -gt "${LAST_CONN:-0}" ]; then
+                SES="🔓LOGGED-OUT"
+            fi
+        fi
     fi
 
     # Process status

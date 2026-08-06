@@ -565,6 +565,54 @@
       "live": "~/Library/LaunchAgents/com.balizero.zoho-mail-loop.daily.plist",
       "repo": "infra/launchagents/com.balizero.zoho-mail-loop.daily.plist",
       "machines": ["all"]
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/_lib.sh",
+      "repo": "apps/wa-mirror/scripts/_lib.sh",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. AT DECLARATION THE LIVE COPY IS BEHIND THE REPO: it lacks the W77 lifecycle gate (get_expected_status/get_assigned_node). The lint is EXPECTED to report this on pro until the live side is realigned FROM the repo."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/start-all.sh",
+      "repo": "apps/wa-mirror/scripts/start-all.sh",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. AT DECLARATION THE LIVE COPY IS BEHIND THE REPO: it lacks the W77 expected_status/assigned_node gate, so the executed launcher cannot honour the roster's declared intent — the family #10 (split-brain) antidote is unreachable from the code path that runs. Realign live FROM repo."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/start-one.sh",
+      "repo": "apps/wa-mirror/scripts/start-one.sh",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/stop-all.sh",
+      "repo": "apps/wa-mirror/scripts/stop-all.sh",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/stop-one.sh",
+      "repo": "apps/wa-mirror/scripts/stop-one.sh",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/status.sh",
+      "repo": "apps/wa-mirror/scripts/status.sh",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. The repo side was brought up to the live M4 (2026-07-20) logged-out detection in the same commit as this declaration, so the pair is in sync from day one."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/api_server.py",
+      "repo": "apps/wa-mirror/scripts/api_server.py",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06."
+    },
+    {
+      "live": "~/scripts/wa-mirror-launcher/nuzantara_control_center.html",
+      "repo": "apps/wa-mirror/scripts/nuzantara_control_center.html",
+      "machines": ["pro"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06. Pro only: M5 carries a partial copy of this launcher that does not include this file at all."
     }
   ],
   "allow": [
