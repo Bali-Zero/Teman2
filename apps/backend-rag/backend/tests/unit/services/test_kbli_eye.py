@@ -189,10 +189,17 @@ def test_umkm_reserved_is_tri_state_and_rare(records: list[dict]) -> None:
     and not a guess. `None` does not move — the nine came out of the `False`
     population, which is the shape that says the reader changed its mind about
     codes it had positively examined, rather than filling silence.
+
+    11 -> 15 the same day: the SPLIT HEIRS. 96210 (barbering), 96220 (beauty
+    salons), 96100 (laundries) and 55105 (one-star hotels) each descend from an
+    annex-named 2020 code that fanned out into several 2025 codes, so the prior
+    cure's one-heir proof could not reach them; they were decided on the reverse
+    direction instead (each absorbs no OTHER 2020 code) by two independent
+    cross-family lanes. `None` again does not move, and for the same reason.
     """
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
-    assert verdicts.count(True) == 11
-    assert verdicts.count(False) == 1459
+    assert verdicts.count(True) == 15
+    assert verdicts.count(False) == 1455
     assert verdicts.count(None) == 89
     # The counts above are population pins and will move again with the data.
     # This one is the invariant underneath them, and it must not: `False` means
@@ -229,12 +236,15 @@ def test_the_cure_only_ever_shrinks_the_rejected_bucket(records: list[dict]) -> 
     new_rejected = {
         r["kode_kbli_2025"] for r in records if KBLIEye._foreign_cap(r)[0] == 0
     }
-    # 2026-08-06: both grew by the same nine (91->100, 64->73) because the
-    # Lampiran II re-adjudication moves a code out of TERBUKA *and* sets its cap
-    # to 0 in the same write. The DIFFERENCE is unchanged at 27, which is the
-    # real content of this test's name: nothing new became wrongly-rejected.
-    assert len(old_rejected) == 100
-    assert len(new_rejected) == 73
+    # 2026-08-06: both grew by the same nine (91->100, 64->73), then by the same
+    # four (100->104, 73->77), because a Lampiran II adjudication moves a code out
+    # of TERBUKA *and* sets its cap to 0 in the same write. The four are the SPLIT
+    # HEIRS — 96210 barbering, 96220 beauty salons, 96100 laundries, 55105 one-star
+    # hotels — whose 2020 ancestor fanned out, so the prior cure had to leave them.
+    # The DIFFERENCE is unchanged at 27 across both moves, and that is the real
+    # content of this test's name: nothing new became wrongly-rejected.
+    assert len(old_rejected) == 104
+    assert len(new_rejected) == 77
     assert len(old_rejected - new_rejected) == 27
     # The counts above move with the data; THIS is the property that must not.
     assert new_rejected <= old_rejected, "the cure must never REJECT something new"

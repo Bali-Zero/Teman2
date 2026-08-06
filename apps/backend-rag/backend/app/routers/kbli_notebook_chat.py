@@ -823,14 +823,14 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     },
     "96210": {
         "title": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
-        "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches.",
-        "pma_status": "TERBUKA",
+        "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Pangkas rambut/ barber shop' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha.",
+        "pma_status": "TERBATAS",
         "risk_category": "Rendah",
     },
     "96220": {
         "title": "AKTIVITAS PERAWATAN KECANTIKAN DAN PERAWATAN KECANTIKAN LAINNYA",
-        "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning.",
-        "pma_status": "TERBUKA",
+        "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Salon kecantikan' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha.",
+        "pma_status": "TERBATAS",
         "risk_category": "Verify at OSS",
     },
     "96230": {
@@ -841,8 +841,8 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     },
     "96100": {
         "title": "AKTIVITAS PENCUCIAN DAN PEMBERSIHAN PRODUK TEKSTIL DAN BULU",
-        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service. PMA: TERBUKA (open to foreigners, 100%). Risk level is SCALE-DEPENDENT: Mikro/Kecil/Menengah = Rendah (NIB only); Besar = Tinggi (NIB + Izin required).",
-        "pma_status": "TERBUKA",
+        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Penatu' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha. Risk level is SCALE-DEPENDENT: Mikro/Kecil/Menengah = Rendah (NIB only); Besar = Tinggi (NIB + Izin required).",
+        "pma_status": "TERBATAS",
         "risk_category": "Rendah (Mikro/Kecil/Menengah) — Tinggi (Besar)",
     },
     "96900": {

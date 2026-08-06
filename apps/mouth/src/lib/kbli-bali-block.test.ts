@@ -367,8 +367,29 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // Koperasi/UMKM" while the national layer published it 100% open. That
     // contradiction is what the cure closed. The code did not become freer; the
     // two layers stopped disagreeing, and the national one now carries it.
-    expect(notice.length).toBe(451);
-    expect(msme.length).toBe(6);
+    // 451 -> 448 and 6 -> 3 on 2026-08-06 (second movement the same day), and
+    // it is the same event argued once more rather than absorbed. The
+    // SPLIT-HEIR cure reserved four more codes at 0%; THREE of them — 96210
+    // barbering, 96220 beauty care, 96100 laundry — are Bali-blocked, so by the
+    // rule that removed 16221 and the previous four, they leave a notice whose
+    // job is to explain a BALI-specific cause. Theirs is national.
+    //
+    // The fourth cured code, 55105 (one-star hotel), is absent from every count
+    // in this file and that is correct, not an oversight: its l4_bali.blocked
+    // is false, so it was never in `blocked` to begin with. Four codes cured,
+    // three departures — twice over, since the Pasal 7(1) queue moved by three
+    // for its own unrelated reason.
+    //
+    // Read the two drops TOGETHER, because that is where the meaning is: all
+    // three left `notice` AND all three left `msme`, so the difference below is
+    // UNCHANGED at 445. That is the signature of the Bali layer and the
+    // national layer ceasing to disagree — each of the three carried
+    // CHIUSO_PMA_NO_BESAR, i.e. Bali already said "reserved for Koperasi/UMKM"
+    // while the national fields published 100% open. Nothing became freer. Had
+    // 445 moved, codes would have left the notice for some cause other than
+    // gaining a national one, and that would be a different event again.
+    expect(notice.length).toBe(448);
+    expect(msme.length).toBe(3);
     // 445 pages carry the notice for a cause other than an MSME reservation.
     expect(notice.length - msme.length).toBe(445);
   });
@@ -392,7 +413,13 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     for (const code of ["10214", "95220", "95291", "95299"]) {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
-    expect(blocked.length - excluded.length).toBe(451);
+    // …and the three the SPLIT-HEIR cure sent the same way on 2026-08-06. Named
+    // rather than counted, for the same reason as the four above: a population
+    // that only has a size cannot be checked by the pass that closes it.
+    for (const code of ["96210", "96220", "96100"]) {
+      expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
+    }
+    expect(blocked.length - excluded.length).toBe(448);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -478,8 +505,16 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // this particular cure, which writes both fields in one go, and not
     // evidence that the populations have merged. The subset test below still
     // proves they have not.
-    expect(answers.length).toBe(450);
-    expect(msme.length).toBe(6);
+    // 450 -> 447 and 6 -> 3 on 2026-08-06: the SAME three codes as the banner
+    // (96210, 96220, 96100) reaching this site by the OTHER predicate — there
+    // they left because their cap became 0, here because their status became
+    // TERBATAS. As with the previous cure, the two guards agreeing on all three
+    // is a property of a cure that writes both fields in one go, not evidence
+    // that the two populations have merged; the subset test below still proves
+    // they have not. And again the difference is UNCHANGED at 444, because the
+    // three left both sets together.
+    expect(answers.length).toBe(447);
+    expect(msme.length).toBe(3);
     // 444 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
     // site.
@@ -689,10 +724,41 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
     // only shrink: a new member means a code gained a national cause in the
     // Bali field while still publishing 100%, which is the bug this file is
     // about.
+    //
+    // 8 -> 5 on 2026-08-06: the split-heir cure fixed three more at the source
+    // (96210, 96220, 96100), each of which had carried CHIUSO_PMA_NO_BESAR
+    // while publishing 100%.
+    //
+    // The five that remain are NAMED below and not merely counted, because a
+    // population with only a size cannot be closed by the pass that comes for
+    // it — and these five are not one population at all:
+    //
+    //   64110 (Bank Indonesia) and 38122 (radioactive-waste collection) are
+    //     CHIUSO_REGOLATORE_SETTORIALE — shut by their own sector's regulator,
+    //     nothing to do with Lampiran II. They need their own adjudication and
+    //     have never had one. Writing them down here is the point: they have
+    //     been sitting inside an aggregate labelled "the remaining
+    //     contradiction" and would have left it only by accident.
+    //
+    //   55201 (homestay), 55203 (villa) and 79903 (tour guide) are the vintage
+    //     carries, adjudicated 2026-08-06 across two model families. 55203 is
+    //     due to be cured (three seats, two families, all SAME); 55201 and
+    //     79903 stay open on purpose — a cross-family seat withheld on 55201
+    //     because settling it needs the KBLI-2020 text for "Pondok Wisata",
+    //     which we do not hold, and 79903's own 2025 description adds
+    //     coordinating freelance guides for travel agencies, which the annex
+    //     row "Jasa pramuwisata" does not name.
     const stillContradictory = national.filter(
       (r) => r.pma_status === "TERBUKA" && r.pma_max_asing === 100,
     );
-    expect(stillContradictory.length).toBe(8);
+    expect(stillContradictory.length).toBe(5);
+    expect(stillContradictory.map((r) => r.kode_kbli_2025).sort()).toEqual([
+      "38122",
+      "55201",
+      "55203",
+      "64110",
+      "79903",
+    ]);
     expect(national.map((r) => r.kode_kbli_2025)).toContain("95291");
     expect(stillContradictory.map((r) => r.kode_kbli_2025)).not.toContain(
       "95291",

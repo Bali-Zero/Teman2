@@ -40,6 +40,18 @@ def item(code, judged_as=None, was=None, locator="L-II p1"):
     }
 
 
+def split_item(code, split, siblings, was=None, locator="L-II p1", judged_as=None, agreed_by=None):
+    it = item(code, judged_as=judged_as, was=was, locator=locator)
+    it["judged_as_split_heir"] = split
+    it["siblings_left_open"] = siblings
+    # Two lanes by DEFAULT, so that every other test in this file exercises the
+    # ordinary case and only the tests that mean to attack precondition 6 pass
+    # something else. A helper whose default is invalid makes every test a test
+    # of the same one check.
+    it["agreed_by"] = ["lane-a (proposer)", "lane-b (blind re-derivation)"] if agreed_by is None else agreed_by
+    return it
+
+
 def run(items, records):
     return A.check({"items": items}, records)
 
@@ -98,6 +110,201 @@ def test_refuses_when_the_2020_code_has_several_heirs():
 def test_refuses_when_the_2020_code_has_no_heir_at_all():
     todo, refusals = run([item("55203", judged_as="55193")], [rec("55203")])
     assert todo == [] and "no 2025 heir" in refusals[0]
+
+
+# --------------------------------------------------------------------------
+# The SPLIT-HEIR gate — a second, narrower door, not a hole in the first one
+#
+# `judged_as` refuses every split, and that refusal is correct for what it
+# guards: the crosswalk alone cannot name which heir the annex row means. This
+# gate admits the sub-case where the REVERSE direction can — the heir that
+# absorbs no other 2020 code cannot be wider than the row. Each mechanical
+# precondition below gets its own guilt test, because a gate whose conditions
+# are only tested in aggregate is a gate with untested conditions.
+# --------------------------------------------------------------------------
+
+
+def test_innocence_a_split_heir_that_absorbs_nothing_else_applies():
+    """`96111` (Pangkas rambut) fans out to barbering and to an intermediation
+    platform. Barbering absorbs only 96111, so it cannot over-reach."""
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"])],
+        [
+            rec("96210", ancestors=["96111"]),
+            rec("96400", ancestors=["96111", "96112", "96200"]),
+        ],
+    )
+    assert refusals == []
+    assert [i["code"] for i in todo] == ["96210"]
+
+
+def test_guilt_a_split_heir_that_absorbs_another_2020_code_is_refused():
+    """The whole point. `96400` is also an heir of 96111, and closing it would
+    bar the eight other activities it swallowed."""
+    todo, refusals = run(
+        [split_item("96400", "96111", ["96210"])],
+        [
+            rec("96400", ancestors=["96111", "96112", "96200"]),
+            rec("96210", ancestors=["96111"]),
+        ],
+    )
+    assert todo == []
+    assert "also absorbs" in refusals[0] and "96112" in refusals[0]
+
+
+def test_guilt_a_split_heir_whose_named_ancestor_is_not_an_ancestor_is_refused():
+    """A typo in the spec must not become a 0% verdict on an unrelated code."""
+    todo, refusals = run(
+        [split_item("96210", "96119", ["96400"])],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96119", "96129"])],
+    )
+    assert todo == []
+    assert "not among its ancestors" in refusals[0]
+
+
+def test_guilt_an_undeclared_sibling_is_refused():
+    """The siblings left open are the population this cure DROPS. A spec that
+    names one while the dataset says there are four is describing a different
+    world than the one being patched — and the drop would be invisible."""
+    todo, refusals = run(
+        [split_item("55105", "55110", ["55101"])],
+        [rec(c, ancestors=["55110"]) for c in ("55101", "55102", "55105")],
+    )
+    assert todo == []
+    assert "also went to" in refusals[0] and "55102" in refusals[0]
+
+
+def test_guilt_a_sibling_the_spec_calls_open_but_the_dataset_has_shut_is_refused():
+    """Precondition 5. Naming the siblings is not sparing them. `96400` is what
+    makes closing `96210` narrow — it carries the rest of what 96111 became. If
+    some other cure had already restricted 96400, the spec's sentence "the
+    sibling stays open" would be false about the catalogue, and the split it
+    describes would not be the split on disk.
+    """
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"])],
+        [
+            rec("96210", ancestors=["96111"]),
+            rec("96400", ancestors=["96111", "96112", "96200"], status="TERBATAS", maxa=0),
+        ],
+    )
+    assert todo == []
+    assert "does not show them open" in refusals[0] and "96400" in refusals[0]
+
+
+def test_guilt_a_sibling_whose_status_cannot_be_read_is_refused_not_assumed_open():
+    """The same precondition, from the direction that fails OPEN if it is written
+    as a negative. A record with no `pma_status` at all is not evidence that the
+    sibling is open; it is the absence of evidence, and this gate exists to
+    establish a positive fact. The first draft asked `not in (None, "TERBUKA")`
+    and would have waved this through.
+    """
+    silent = {"kode_kbli_2025": "96400", "bps_2020_ancestors": {"codes": ["96111", "96112"]}}
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"])],
+        [rec("96210", ancestors=["96111"]), silent],
+    )
+    assert todo == []
+    assert "does not show them open" in refusals[0]
+
+
+def test_guilt_a_split_heir_adjudicated_by_one_lane_is_refused():
+    """Precondition 6. Identity here is a judgment, not a crosswalk lookup, so
+    one lane's word is not an adjudication."""
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"], agreed_by=["lane-a (proposer)"])],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "two independent lanes" in refusals[0]
+
+
+def test_guilt_the_same_lane_written_twice_is_still_one_lane():
+    """Two entries are not two lanes. This is the shape a copy-paste produces,
+    and it is the one a length check would wave through."""
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"], agreed_by=["lane-a", " lane-a "])],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "two independent lanes" in refusals[0]
+
+
+def test_guilt_one_seat_wearing_two_role_labels_is_still_one_seat():
+    """The shape a whitespace-dedupe cannot see, and the one a spec author
+    actually produces: the same model named twice with different roles. A second
+    review pointed out that comparing whole strings ATTESTED independence rather
+    than enforcing it — the two entries differ, the seat does not."""
+    todo, refusals = run(
+        [
+            split_item(
+                "96210",
+                "96111",
+                ["96400"],
+                agreed_by=["claude-sonnet-5 (proposer)", "claude-sonnet-5 (grader)"],
+            )
+        ],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "two independent lanes" in refusals[0]
+
+
+def test_innocence_two_genuinely_different_seats_are_accepted():
+    """The other half: the real spec's shape must still pass, or the check would
+    be a blanket refusal rather than an independence test."""
+    todo, refusals = run(
+        [
+            split_item(
+                "96210",
+                "96111",
+                ["96400"],
+                agreed_by=["claude-sonnet-5 (proposer)", "codex-gpt-5.6 (blind re-derivation)"],
+            )
+        ],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert refusals == [] and [i["code"] for i in todo] == ["96210"]
+
+
+def test_guilt_an_absent_agreed_by_is_refused_rather_than_assumed():
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"], agreed_by=[])],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "found none" in refusals[0]
+
+
+def test_guilt_a_code_whose_ancestor_did_not_split_is_refused_from_this_gate():
+    """Not a split at all: it belongs on `judged_as`. Two gates that accept the
+    same item drift apart, and then a change to one silently spares the other."""
+    todo, refusals = run(
+        [split_item("55203", "55193", [])],
+        [rec("55203", ancestors=["55193"])],
+    )
+    assert todo == []
+    assert "no other heir" in refusals[0] and "judged_as case" in refusals[0]
+
+
+def test_guilt_an_item_claiming_both_gates_is_refused():
+    """Which gate judged it has to be answerable from the item alone."""
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"], judged_as="96111")],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "both judged_as and judged_as_split_heir" in refusals[0]
+
+
+def test_innocence_the_original_single_heir_gate_still_refuses_a_split():
+    """The new door must not have widened the old one: an item that still uses
+    `judged_as` on a split ancestor is refused exactly as before."""
+    todo, refusals = run(
+        [item("55203", judged_as="55110")],
+        [rec("55203", ancestors=["55110"]), rec("55201", ancestors=["55110"])],
+    )
+    assert todo == [] and "resolves to" in refusals[0]
 
 
 def test_refuses_a_record_already_adjudicated_by_hand():
@@ -193,13 +400,70 @@ def test_guilt_the_real_withdrawn_spec_on_disk_is_still_refused(tmp_path, capsys
     assert "REFUSING" in capsys.readouterr().out
 
 
-def test_innocence_the_default_spec_is_not_withdrawn_and_runs():
-    """The guard must not turn every spec into a refusal — the DEFAULT is now the
-    re-adjudicated replacement, and it has to be applicable."""
+def test_innocence_the_withdrawal_guard_does_not_refuse_a_spec_that_is_not_withdrawn():
+    """The guard must not turn EVERY spec into a refusal. Named for what it
+    actually exercises: the default spec is only read for the absence of a
+    `withdrawn` block, and the applicability check below runs on a synthetic
+    item. It used to be called `..._the_default_spec_is_not_withdrawn_and_runs`,
+    which claimed the live spec's own items were exercised here. They are not —
+    they are exercised by the test underneath, which had to be written for it.
+    """
     spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
     assert "withdrawn" not in spec, "the default spec must be the live one"
     todo, refusals = run([item("01111")], [rec("01111")])
     assert refusals == [] and [i["code"] for i in todo] == ["01111"]
+
+
+def test_the_live_spec_applies_in_the_world_it_was_written_against():
+    """The live spec CANNOT run against the cured catalogue — every item's `was`
+    demands TERBUKA/100 and the records now read TERBATAS/0. That is the
+    stale-world guard doing its job, not a defect: re-running an applied cure
+    must refuse. But it makes the obvious end-to-end test impossible, and the
+    cross-family review that observed the refusal was right that nothing else
+    covered the gap.
+
+    So: real ancestry from the real catalogue, with ONLY `pma_status` and
+    `pma_max_asing` rewound to each item's own `was`. Ancestry and the sibling
+    fan-out therefore come from the dataset, not from the spec, and this test
+    fails if the spec's `siblings_left_open`, its named 2020 ancestor, or its
+    `agreed_by` are wrong about the catalogue.
+    """
+    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    canonical = json.loads(A.CANONICAL.read_text(encoding="utf-8"))
+    records = canonical["data"]
+    by_code = {str(r["kode_kbli_2025"]): r for r in records}
+
+    codes = {i["code"] for i in spec["items"]}
+    siblings = {s for i in spec["items"] for s in i["siblings_left_open"]}
+    assert codes and siblings, "a spec with no split heirs would make this vacuous"
+
+    world = []
+    for c in sorted(codes | siblings):
+        r = dict(by_code[c])
+        if c in codes:
+            was = next(i["was"] for i in spec["items"] if i["code"] == c)
+            r["pma_status"], r["pma_max_asing"] = was["pma_status"], was["pma_max_asing"]
+            r.pop("pma_official_basis", None)
+        world.append(r)
+
+    todo, refusals = A.check(spec, world)
+    assert refusals == []
+    assert sorted(i["code"] for i in todo) == sorted(codes)
+
+
+def test_guilt_the_live_spec_is_refused_against_the_cured_catalogue():
+    """The other half of the same fact, asserted rather than left implicit: run
+    the live spec against the catalogue AS SHIPPED and every item must be
+    refused for having moved. An applied cure that re-applies is a cure that
+    could double-write, and the review read the refusal as a defect precisely
+    because no test said it was intended."""
+    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    canonical = json.loads(A.CANONICAL.read_text(encoding="utf-8"))
+    records = canonical["data"]
+    todo, refusals = A.check(spec, records)
+    assert todo == []
+    assert len(refusals) == len(spec["items"])
+    assert all("moved since adjudication" in r for r in refusals)
 
 
 def test_the_withdrawal_names_the_codes_whose_evidence_was_short():
@@ -285,11 +549,16 @@ def test_the_readjudication_overturned_eleven_of_the_thirteen():
 # --------------------------------------------------------------------------
 
 
-def test_the_live_spec_is_the_nine_that_survived_both_rounds():
+def test_the_prior_spec_is_the_nine_that_survived_both_rounds():
     """Of the 39 codes the withdrawn patch would have written, nine survive. The
     list is pinned by NAME, not by count: a count alone would let a substitution
-    pass, and every one of these publishes a 0%-foreign verdict to clients."""
-    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    pass, and every one of these publishes a 0%-foreign verdict to clients.
+
+    Pinned against `PRIOR_SPEC` and not `SPEC`: this cure was applied on
+    2026-08-06 (#3666) and `SPEC` has since moved on to the split heirs. An
+    applied spec stays pinned — "what did we assert about this code, and on
+    whose two signatures" outlives the run that asserted it."""
+    spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     codes = [i["code"] for i in spec["items"]]
     assert codes == [
         "10214", "10722", "22121", "41016", "41018", "41020",
@@ -301,10 +570,10 @@ def test_the_live_spec_is_the_nine_that_survived_both_rounds():
         assert len(i["agreed_by"]) == 2, "one lane's word is not an adjudication"
 
 
-def test_the_live_spec_names_every_population_it_left_behind():
+def test_the_prior_spec_names_every_population_it_left_behind():
     """The honest half of the cure. A spec that patches nine out of sixty-eight
     and does not say where the other fifty-nine went is a silent drop."""
-    ex = json.loads(A.SPEC.read_text(encoding="utf-8"))["excluded"]
+    ex = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))["excluded"]
     for key in (
         "refuse_segment_round2",
         "refuse_broader_round2",
@@ -327,7 +596,7 @@ def test_guilt_no_patched_code_is_also_on_a_refusal_list():
     """The tripwire that matters: a code cannot be both reserved and refused. If
     a future edit moves one back into `items` without taking it off its refusal
     list, this fails rather than shipping a contradiction to clients."""
-    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     patched = {i["code"] for i in spec["items"]}
     ex = spec["excluded"]
     refused = set()
@@ -343,10 +612,10 @@ def test_guilt_no_patched_code_is_also_on_a_refusal_list():
     assert not (patched & refused), f"both patched and refused: {sorted(patched & refused)}"
 
 
-def test_the_live_spec_supersedes_the_withdrawn_one_by_name():
+def test_the_prior_spec_supersedes_the_withdrawn_one_by_name():
     """A replacement that does not name what it replaces leaves the next reader
     to guess which of the two files on disk is the live one."""
-    spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     assert A.WITHDRAWN_SPEC.name in spec["supersedes"]
     assert "sibling" in spec["adjudicated"], "round 2's added evidence must be stated"
 

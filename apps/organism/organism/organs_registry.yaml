@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 7157617191529225852a401fc48566d3575898b0bfef50c3f661b6ed97a1eb58
+checksum: 0aa7a72d05a60e7a28f23b51a71a3cc857171b3eed1ef1bc8e9953144abeecbf
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -161,6 +161,23 @@ organs:
     path: ~/.organism/last_seen/auth-sentinel.json
     timestamp_field: ts
     status_field: status
+- id: pro.claude_settings_watcher
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2592000
+  owner_module: scripts/claude-settings-change-alert.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.claude-settings-watcher
+  severity_on_silence: info
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/claude-settings-watcher.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.modus_autoloop_nightly
   runtime: pro_launchd
   type: cron
@@ -193,6 +210,22 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.web_lead_funnel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: scripts/web_lead_funnel_report_run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.web-lead-funnel
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.web_lead_funnel.json
     timestamp_field: ts
     status_field: status
 - id: pro.cpu_monitor
