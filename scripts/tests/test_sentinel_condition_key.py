@@ -36,6 +36,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import plistlib
 import re
 import subprocess
 import sys
@@ -268,9 +269,10 @@ def test_the_escalation_condition_carries_the_job_and_nothing_measured():
 
 # ------------------------------------------ the watcher, EXECUTED not grepped
 WATCHER = REPO / "scripts" / "claude-settings-change-alert.sh"
+PLIST = REPO / "infra" / "launchagents" / "com.balizero.claude-settings-watcher.plist"
 
 
-def _run_watcher(home: Path, settings: str, alerter_body: str) -> dict:
+def _run_watcher(home: Path, settings: str, alerter_body: str, **extra_env) -> dict:
     """Run the real script against a throwaway HOME and a fake alerter module."""
     (home / ".claude").mkdir(parents=True, exist_ok=True)
     (home / ".claude" / "settings.json").write_text(settings)
@@ -280,14 +282,16 @@ def _run_watcher(home: Path, settings: str, alerter_body: str) -> dict:
     (lib / "alerter.py").write_text(alerter_body)
     (home / ".agent" / "decisions").mkdir(parents=True, exist_ok=True)
     calls = home / "calls.jsonl"
-    env = {**os.environ, "HOME": str(home), "FAKE_CALLS": str(calls)}
+    env = {**os.environ, "HOME": str(home), "FAKE_CALLS": str(calls), **extra_env}
     proc = subprocess.run(["bash", str(WATCHER)], capture_output=True, text=True, env=env)
     state = home / ".agent" / "decisions" / "claude-settings-last-md5"
+    hb = home / ".organism" / "last_seen" / "claude-settings-watcher.json"
     return {
         "rc": proc.returncode,
         "stderr": proc.stderr,
         "state": state.read_text().strip() if state.exists() else "",
         "calls": [json.loads(l) for l in calls.read_text().splitlines()] if calls.exists() else [],
+        "heartbeat": json.loads(hb.read_text()) if hb.exists() else None,
     }
 
 
@@ -311,6 +315,83 @@ _RAISING_ALERTER = """
 def send_alert(message, level="INFO", condition=""):
     raise TypeError("unsupported operand type(s) for -: 'float' and 'str'")
 """
+
+
+def test_the_heartbeat_gene_fires_and_is_decoupled_from_the_news(tmp_path):
+    """Promoting this plist made it an ORGAN, and an organ is born with genes.
+
+    G2 matters MORE here than for a timer, and for the opposite reason. A cron
+    that has not spoken in three days is broken; this one is fired by launchd on
+    a WatchPaths event, so "silent for three days" means Zero did not edit
+    settings.json — a fact about his week, not about the organ. Silence can
+    therefore NEVER be read as a fault, which is precisely how a dead watcher
+    stays invisible forever (superscar #2).
+
+    So the heartbeat is written on EVERY fire, before the change comparison, and
+    that is what is asserted: a run that finds nothing to report — the common
+    case, the one that would otherwise leave no trace — still leaves proof of
+    life. Grepping the wrapper for `.organism/last_seen` only proves the gene is
+    present; a present gene that never fires is decoration.
+    """
+    home = tmp_path / "quiet"
+    (home / ".agent" / "decisions").mkdir(parents=True, exist_ok=True)
+    settings = '{"hooks": {"x": 1}}'
+    first = _run_watcher(home, settings, _FAKE_ALERTER)
+    assert first["calls"], "setup failed: the first run should alert"
+
+    (home / ".organism" / "last_seen" / "claude-settings-watcher.json").unlink()
+    second = _run_watcher(home, settings, _FAKE_ALERTER)   # nothing changed
+    assert second["calls"] == first["calls"], "an unchanged file must not re-alert"
+    assert second["heartbeat"], "a quiet run left no proof of life — silence is unreadable"
+    assert second["heartbeat"]["status"] == "ok"
+    assert second["heartbeat"]["organ"] == "claude-settings-watcher"
+
+
+def test_the_heartbeat_carries_the_runs_real_verdict(tmp_path):
+    """A wrapper that writes `ok` unconditionally passes the G2 grep and lies:
+    it reports health for the run that failed to deliver. When the gateway does
+    not take the news, the sidecar must say so — that is the only signal
+    distinguishing "no changes to report" from "changes nobody received"."""
+    out = _run_watcher(tmp_path / "broken", '{"hooks": {}}', _RAISING_ALERTER)
+    assert not out["state"], "state advanced despite a failed delivery"
+    assert out["heartbeat"] and out["heartbeat"]["status"] == "error", (
+        f"the sidecar reported health for a run that delivered nothing: {out['heartbeat']}")
+
+
+def test_the_kill_switch_stops_the_organ_without_unloading_it(tmp_path):
+    """A WatchPaths organ cannot be quietened by editing a schedule, so without
+    a kill switch the only way to stop it is unloading the plist — the
+    "unarm to silence" move that turns a noisy organ into a dead one nobody
+    remembers to revive.
+
+    Deliberately disabled means NO heartbeat: an organ told not to work must not
+    report that it is working. The fire log still records the invocation, so the
+    silence remains explainable — the guard exits before the heartbeat but after
+    the log, and that order is the whole point.
+    """
+    out = _run_watcher(tmp_path / "off", '{"hooks": {}}', _FAKE_ALERTER,
+                       CLAUDE_SETTINGS_WATCHER_ENABLED="false")
+    assert out["calls"] == [], "the kill switch did not stop the alert"
+    assert out["heartbeat"] is None, "a disabled organ claimed it was working"
+    assert out["rc"] == 0, "a deliberate stop must not look like a crash"
+
+
+def test_the_launchagent_names_the_script_not_an_inline_shell(tmp_path):
+    """The plist used to be `bash -c 'echo …; exec <script>'`. That thin wrapper
+    decided what the organ-conformance gate was allowed to SEE: the gate read
+    the two-command inline string as the organ's body and found no heartbeat, no
+    kill switch and no `set -u` — genes that all existed one level down, in a
+    file it never opened. The gate was right and the plist was lying by framing.
+
+    So the payload is the script itself. Asserted here, not only in the gate,
+    because reintroducing an `echo … ; exec` for one debug line would silently
+    re-blind every content gene at once.
+    """
+    payload = plistlib.loads(PLIST.read_bytes())
+    argv = payload["ProgramArguments"]
+    assert argv == ["/Users/nuzantara/scripts/claude-settings-change-alert.sh"], (
+        f"the launchd payload stopped naming the script: {argv}")
+    assert payload["WatchPaths"] == ["/Users/nuzantara/.claude/settings.json"]
 
 
 @pytest.mark.parametrize("junk", ["1 2", "(", "", "abc", "-\n-"])

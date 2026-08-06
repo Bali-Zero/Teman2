@@ -16,7 +16,39 @@ set -uo pipefail
 
 STATE_DIR="$HOME/.agent/decisions"
 STATE_FILE="$STATE_DIR/claude-settings-last-md5"
-mkdir -p "$STATE_DIR"
+HEARTBEAT_DIR="$HOME/.organism/last_seen"     # G2 gene
+mkdir -p "$STATE_DIR" "$HEARTBEAT_DIR"
+
+_ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# Fire log — every invocation, INCLUDING the ones that exit early. This used to
+# live in the plist as `bash -c 'echo …; exec …'`, which made the launchd payload
+# an inline shell string: the organ-conformance gate then read THAT two-command
+# string as the organ's body and found no heartbeat, no kill switch and no
+# `set -u` — genes that were all one level down, in a file it never opened. A
+# wrapper thin enough to look harmless still decides what the guard is allowed
+# to see, so the diagnostic moved here and the plist now names the script.
+echo "[$(_ts)] watcher-fire pid=$$" >> "$HOME/logs/claude-settings-watcher.log" 2>/dev/null || true
+
+# G5 gene — kill switch. A WatchPaths organ cannot be quietened by a schedule;
+# without this the only way to stop it is unloading the plist, which is exactly
+# the "unarm to silence" move that turns a noisy organ into a dead one nobody
+# remembers to revive.
+if [[ "${CLAUDE_SETTINGS_WATCHER_ENABLED:-true}" == "false" ]]; then
+    exit 0
+fi
+
+# G2 gene — heartbeat. Load-bearing for THIS organ in a way it is not for a
+# timer: launchd fires it on a file event, so "it has not run in 3 days" is
+# indistinguishable from "settings.json has not changed in 3 days" and its
+# silence can never be read as a fault. The heartbeat is written on every fire,
+# so proof-of-life is decoupled from the news.
+_heartbeat() {
+    printf '{"organ":"claude-settings-watcher","host":"%s","ts":"%s","status":"%s"}\n' \
+        "$(hostname -s)" "$(_ts)" "${1:-ok}" \
+        > "$HEARTBEAT_DIR/claude-settings-watcher.json" 2>/dev/null || true
+}
+_heartbeat "ok"
 
 # macOS ships /sbin/md5, Linux ships md5sum. This used to hardcode /sbin/md5,
 # which is correct on Pro and silently yields an EMPTY hash anywhere else — so
@@ -145,6 +177,7 @@ PYEOF
 if [[ "$DELIVERED" == "DELIVERED" ]]; then
     echo "$CURRENT_MD5" > "$STATE_FILE"
 else
+    _heartbeat "error"
     echo "[alert] not delivered — state NOT advanced, the next change retries" >&2
 fi
 
