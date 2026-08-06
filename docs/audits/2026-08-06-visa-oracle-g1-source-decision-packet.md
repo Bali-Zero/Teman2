@@ -155,6 +155,35 @@ The source record cannot reproduce the current national list or explain why a na
 
 - Native repository and local source directories: no Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024` PDF found.
 - Connected Drive exact searches for the instrument number and Calling Visa/Guinea terms: no matching official decision PDF. The archived Perpres file was found separately.
+
+### E9 - M5 source recovery and immutable related-source archive
+
+The two PDFs identified in the M5 Downloads folder were recovered through a
+byte-preserving Finder/AppleScript read because direct SSH access to Downloads
+is blocked by macOS privacy controls. Both were text-extracted and visually
+checked before Drive upload.
+
+- `KEPMENKUMHAM-M-HH-03-GR-01-06-2023.pdf` is Kepmenkumham
+  `M.HH-03.GR.01.06 Tahun 2023`, **Indeks Visa**, established 8 June 2023. It
+  does not establish or amend the Calling Visa country list. SHA-256
+  `65e452cab706ca03aab496ee1ea7cbcf591df63f8d16c70095d0a4369cc03210`,
+  367,013 bytes, 9 pages; Drive file
+  `1p8qxLsu853aP7Em98OnfU8dhkooyhHPh`.
+- `permenkumham-no-2-tahun-2024.pdf` is the controlling Calling Visa procedure
+  regulation. Its bytes exactly match the official
+  `https://peraturan.go.id/files/permenkumham-no-2-tahun-2024.pdf` download.
+  SHA-256
+  `7c90dc281b1d625748f8719e90a0d954b7ca07eda113da99e32e5c0bb801905e`,
+  137,150 bytes, 8 pages; Drive file
+  `1Vuk5MktW6c2vL8Mj4kvbrvQcwmVcH6se`.
+
+The files are archived under
+`visa-oracle/official-sources/calling-visa-related-legislation`; the complete
+provenance record is
+`docs/audits/evidence/visa-oracle-v2/2026-08-06-source-archive-manifest.json`.
+This closes the procedure-regulation archive but not the two dispositive
+country-list archive requirements.
+
 - Qdrant `visa_oracle`: 90/90 points scrolled; one C11A service document mentions Calling Visa but contains neither the country list nor the 2024 decision.
 - Qdrant `legal_unified_2026` and `legal_unified_hybrid_hybrid`: reachable, but the read-only connector lacks filtered search/offset pagination; absence from those large collections is not asserted.
 - Backend Drive/Naga search endpoints returned HTTP 401 in this run. The connected Drive plugin supplied the read-only Drive evidence above.
@@ -240,7 +269,7 @@ steps are complete in the review candidate:
 | Current national display captured               | DONE    | Six countries, two captures, dynamic-field difference isolated, stable normalized hash recorded.                                                 |
 | Current regional display captured               | DONE    | Nine countries, two captures, dynamic-field difference isolated, stable normalized hash recorded.                                                |
 | Signed production set inspected                 | DONE    | Eight countries, signed-file/payload hashes, sequence and source record inspected.                                                               |
-| Calling Visa procedure authority                | DONE    | Permenkumham 2/2024 official PDF and decisive locators verified.                                                                                 |
+| Calling Visa procedure authority                | DONE    | Permenkumham 2/2024 official PDF is byte-verified against peraturan.go.id and archived in Drive with hash, size and provenance.                  |
 | Perpres 43/2011 classification/archive          | DONE    | Historical BVK source identified; local hash and Drive object recorded; explicitly non-dispositive.                                              |
 | Cameroon legal lineage                          | PARTIAL | National Ditjen Imigrasi primary publication, decision number and operative outcome verified; official decision PDF/immutable hash missing.      |
 | Guinea legal lineage                            | PARTIAL | Official national display and fifth-amendment identifier converge; operative official PDF and effective locator missing.                         |

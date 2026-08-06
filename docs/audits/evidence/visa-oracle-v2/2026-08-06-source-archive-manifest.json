@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "visa-oracle-v2-source-archive-2026-08-06",
+  "recorded_at": "2026-08-06T08:19:58Z",
+  "drive_root": {
+    "folder_id": "1DffcSm5Y0d3YYDYCpiYEASJMfRALlsa2",
+    "folder_url": "https://drive.google.com/drive/folders/1DffcSm5Y0d3YYDYCpiYEASJMfRALlsa2",
+    "official_sources_folder_id": "13M_x0tG9ZjjvsVM_i5RT-t1zkCwQdB5d",
+    "related_legislation_folder_id": "1BM42o0W4hTWJuiDLtqLCHGT5GwgVpcCQ",
+    "related_legislation_folder_url": "https://drive.google.com/drive/folders/1BM42o0W4hTWJuiDLtqLCHGT5GwgVpcCQ"
+  },
+  "artifacts": [
+    {
+      "instrument_number": "M.HH-03.GR.01.06 Tahun 2023",
+      "title": "Indeks Visa",
+      "issuer": "Menteri Hukum dan Hak Asasi Manusia Republik Indonesia",
+      "established_on": "2023-06-08",
+      "source_class": "MINISTERIAL_DECISION",
+      "original_filename": "KEPMENKUMHAM-M-HH-03-GR-01-06-2023.pdf",
+      "mime_type": "application/pdf",
+      "byte_size": 367013,
+      "page_count": 9,
+      "sha256": "65e452cab706ca03aab496ee1ea7cbcf591df63f8d16c70095d0a4369cc03210",
+      "acquisition": {
+        "method": "ZERO_SUPPLIED_LOCAL_FILE",
+        "origin": "Air-M5 user Downloads; byte-preserving AppleScript read into a non-protected legal inbox",
+        "acquisition_url": null,
+        "official_origin_verified": false,
+        "visually_verified": true,
+        "text_extraction_verified": true
+      },
+      "drive_archive": {
+        "file_id": "1p8qxLsu853aP7Em98OnfU8dhkooyhHPh",
+        "file_name": "KEPMENKUMHAM-M-HH-03-GR-01-06-2023-INDEKS-VISA.pdf",
+        "file_url": "https://drive.google.com/file/d/1p8qxLsu853aP7Em98OnfU8dhkooyhHPh/view?usp=drivesdk",
+        "created_at": "2026-08-06T08:16:51.371Z",
+        "modified_at": "2026-08-06T08:16:51.371Z",
+        "read_back_byte_size": 367013,
+        "parent_folder_id": "1BM42o0W4hTWJuiDLtqLCHGT5GwgVpcCQ"
+      },
+      "authority_scope": {
+        "dispositive_for_calling_visa_country_list": false,
+        "reason": "The operative text establishes visa indices and does not establish or amend the Calling Visa country list.",
+        "g1_effect": "RELATED_SOURCE_ARCHIVED_NO_GATE_CLOSURE"
+      }
+    },
+    {
+      "instrument_number": "Permenkumham Nomor 2 Tahun 2024",
+      "title": "Tata Cara Penetapan Negara Calling Visa serta Permohonan dan Pemberian Visa bagi Warga Negara dari Negara Calling Visa",
+      "issuer": "Menteri Hukum dan Hak Asasi Manusia Republik Indonesia",
+      "established_on": "2024-01-09",
+      "promulgated_on": "2024-01-15",
+      "effective_on": "2024-01-15",
+      "source_class": "CONTROLLING_REGULATION",
+      "original_filename": "permenkumham-no-2-tahun-2024.pdf",
+      "mime_type": "application/pdf",
+      "byte_size": 137150,
+      "page_count": 8,
+      "sha256": "7c90dc281b1d625748f8719e90a0d954b7ca07eda113da99e32e5c0bb801905e",
+      "acquisition": {
+        "method": "ZERO_SUPPLIED_LOCAL_FILE_AND_OFFICIAL_BYTE_COMPARISON",
+        "origin": "Air-M5 user Downloads",
+        "acquisition_url": "https://peraturan.go.id/files/permenkumham-no-2-tahun-2024.pdf",
+        "catalog_url": "https://peraturan.go.id/id/permenkumham-no-2-tahun-2024",
+        "official_origin_verified": true,
+        "official_download_sha256": "7c90dc281b1d625748f8719e90a0d954b7ca07eda113da99e32e5c0bb801905e",
+        "byte_identical_to_official_download": true,
+        "visually_verified": true,
+        "text_extraction_verified": true
+      },
+      "drive_archive": {
+        "file_id": "1Vuk5MktW6c2vL8Mj4kvbrvQcwmVcH6se",
+        "file_name": "PERMENKUMHAM-NO-2-TAHUN-2024-CALLING-VISA-PROCEDURE.pdf",
+        "file_url": "https://drive.google.com/file/d/1Vuk5MktW6c2vL8Mj4kvbrvQcwmVcH6se/view?usp=drivesdk",
+        "created_at": "2026-08-06T08:16:57.173Z",
+        "modified_at": "2026-08-06T08:16:57.173Z",
+        "read_back_byte_size": 137150,
+        "parent_folder_id": "1BM42o0W4hTWJuiDLtqLCHGT5GwgVpcCQ"
+      },
+      "authority_scope": {
+        "dispositive_for_calling_visa_country_list": false,
+        "reason": "The regulation assigns list authority to the Minister and governs procedure; it contains no country list.",
+        "recheck_rule": "Article 7 requires evaluation at least annually or whenever needed.",
+        "g1_effect": "PROCEDURE_AUTHORITY_ARCHIVE_CLOSED_COUNTRY_LIST_ARCHIVE_STILL_OPEN"
+      }
+    }
+  ],
+  "required_dispositive_artifacts_not_yet_archived": [
+    {
+      "instrument_number": "M.HH-05.GR.01.06 Tahun 2023",
+      "purpose": "Cameroon removal from the Calling Visa country list",
+      "status": "MISSING_OFFICIAL_PDF",
+      "known_official_publication": "https://www.imigrasi.go.id/siaran_pers/2023/11/29/siaran-pers-kamerun-dicabut-dari-daftar-calling-visa-dirjen-imigrasi-ada-pertimbangan-ekonomi-dan-keamanan?lang=id-ID"
+    },
+    {
+      "instrument_number": "M.HH-03.GR.01.06 Tahun 2024",
+      "purpose": "Fifth amendment to the Calling Visa country list, including Guinea treatment",
+      "status": "MISSING_OFFICIAL_PDF",
+      "known_official_publication": null
+    }
+  ],
+  "gate_effect": {
+    "g1": "BLOCKED",
+    "production_activation": "NO_GO",
+    "reason": "The two recovered files do not replace the missing dispositive Calling Visa decisions."
+  }
+}
