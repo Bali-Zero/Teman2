@@ -1,0 +1,101 @@
+{
+  "_meta": {
+    "spec": "prose_dejargonise_bali_paragraph_2026_08_06",
+    "why": "A ratchet in apps/mouth/src/lib/kbli-internal-leak.test.ts counts codes whose reader-facing prose narrates a RAW FIELD NAME — `l4_bali_blocked`, `pma_max_asing` and friends. It may fall, never rise. My batch-2 Bali paragraphs pushed it from 392 to 394: `41016` and `41018` did not narrate a field name before and do now, because I wrote one into the replacement.",
+    "why_the_fix_is_not_the_baseline": "Raising the baseline would record that a client may read `l4_bali_blocked` as the price of a cure. The names come out of all six replacements instead, which takes the count DOWN — the direction the ratchet was built to allow. A client reads 'the record does not mark this activity as blocked in Bali', which is the same fact without the schema.",
+    "also_removed": "`OK_or_HIGHER_RISK`, an internal enum token. Not in the ratchet's list — the enum check runs against gold, not canonical — so nothing was failing on it. It is jargon in client-facing prose either way, and leaving it because no test names it is how the next ratchet gets its baseline.",
+    "note_on_the_untouched_five": "10722, 22121, 41020 and 10214 already narrated `l4_bali_blocked` before this lane touched them, so removing it from their replacements lowers the debt rather than merely restoring it. The other ~386 leaking codes are untouched and remain the ratchet's standing backlog."
+  },
+  "codes": {
+    "10722": {
+      "judul": "Industri Gula Merah",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "9294007909e168acbc1c79c3a88e4a8adb4317a180fc79d62098e19717da5b22",
+          "old_excerpt": "KBLI 10722 is a manufacturing code for **pure brown sugar**. The record defines it through the making of gula ",
+          "new": "KBLI 10722 is a manufacturing code for **pure brown sugar**. The record defines it through the making of gula merah from sap as the raw material, whether the sap comes from sugarcane or from palm plants such as aren, coconut, and similar sources. The finished product can take several forms: moulded blocks, powder or granules, or liquid sugar. That makes the code less about retailing a sweetener and more about the production activity itself: transforming nira into a brown sugar product that remains within this defined manufacturing scope.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so it can describe a small producer formalising a traditional process as well as a larger industrial operation. The important point is that the code is organised around the activity and its raw material, not around a particular brand position, distribution model, or market segment. A business registering under this code should therefore be able to connect its declared operation back to the making of pure brown sugar from cane or palm sap, in one of the product forms named in the scope.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record does not mark this activity as blocked in Bali, and the reason it gives is precise: OSS risk at the large-business scale is medium-high or high — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "22121": {
+      "judul": "Industri Karet Asap",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "da68c7cded46c5d146aecf79b5fffd670e52226408a7dd9093b47dd2bf8c19c4",
+          "old_excerpt": "KBLI 22121 is a manufacturing activity, not a trading label or a broad plantation category. The record defines",
+          "new": "KBLI 22121 is a manufacturing activity, not a trading label or a broad plantation category. The record defines it as the processing of rubber by smoking, producing products such as smoked rubber or ribbed smoked sheet (RSS), including smoked rubber sheets. In plain English, this is the industrial step where rubber is transformed through a smoking process into sheet-form output. The commercial centre of the code is therefore the making of smoked rubber sheet itself: the process, the finished sheet, and the RSS-style product named in the scope.\n\nThe scale profile is unusually broad in the record. This activity is open to Mikro, Kecil, Menengah, and Besar businesses, which means the code is not framed only for large industrial operators. A smaller processor and a larger manufacturing plant can both sit inside the registered scale range, provided the business being registered is genuinely the smoking-based rubber-processing activity described above. The code should not be stretched into activities outside that scope; its editorial meaning comes from the specific act of smoking rubber into sheet products, not from every possible rubber-related business.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record does not mark this activity as blocked in Bali, and the reason it gives is precise: OSS risk at the large-business scale is medium-high or high — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "41016": {
+      "judul": "Konstruksi Konvensional Gedung Pendidikan",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "f3d37dc14a444ad47500e92d9ee9a4511b519d6663a57b0d710baf498196ebbd",
+          "old_excerpt": "KBLI 41016 is the construction code for conventional educational buildings. The record describes a practical, ",
+          "new": "KBLI 41016 is the construction code for conventional educational buildings. The record describes a practical, physical scope: building, maintaining, and rebuilding structures used for education, including school buildings, course venues, and laboratories. It also includes changes and renovations to educational buildings. In plain English, this is not an education-service code; it is the construction activity behind the facilities where education happens.\n\nThe construction method matters because the record is specific: this code is for conventional building construction. It carries the education-building construction subclassification references GT006 and BG006, and its scope stays inside the built environment of education facilities. A company using this code should be registering for the work of constructing, maintaining, reconstructing, altering, or renovating those buildings, not for operating a school, running a course, or providing laboratory services.\n\nThe scale picture is unusually broad. The slim record marks this activity as open to Besar, Mikro, Kecil, and Menengah, so the activity is not framed only for large contractors. It can describe education-building construction activity across the listed business scales, provided the registered activity remains faithful to the scope. That breadth should not be confused with a free pass to add adjacent education or service activities; the record only supports the construction work named here.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record does not mark this activity as blocked in Bali, and the reason it gives is precise: OSS risk at the large-business scale is medium-high or high — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "41018": {
+      "judul": "Konstruksi Konvensional Gedung Hiburan dan Olahraga",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "fe3adc9489ba1914ebe52a77f36ad8c43d9ee950dfe8429e653c01f1cf33933b",
+          "old_excerpt": "KBLI 41018 is a construction activity code for buildings made by conventional methods and used for entertainme",
+          "new": "KBLI 41018 is a construction activity code for buildings made by conventional methods and used for entertainment, culture, tourism, recreation, or sport. In practical terms, the record points to the physical work behind cinemas, cultural or arts buildings, tourism and recreation buildings, and sports buildings. The scope is not limited to new construction. It also includes maintenance, rebuilding, changes, and renovation of these entertainment and sports premises.\n\nThat breadth matters because this code is defined by the nature of the building and the construction method, not by the business that will later operate inside it. A developer, contractor, or project company using this classification is registering the activity of building or renewing the venue itself. The record also identifies the construction subclassification references for this activity as GT008 and BG008, which keeps the code anchored to the construction of entertainment and sports buildings rather than to event operation, cinema management, or hospitality activity.\n\nOn scale, the code is open across the full range listed in the record: Besar, Mikro, Kecil, and Menengah. That means the activity is not presented here as a scale-exclusive classification. A small contractor doing renovation work and a larger company taking on conventional construction of a sports or recreation building both sit within the same stated activity boundary, provided the work remains the construction, maintenance, rebuilding, alteration, or renovation of the relevant building type.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record does not mark this activity as blocked in Bali, and the reason it gives is precise: OSS risk at the large-business scale is medium-high or high — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "41020": {
+      "judul": "Konstruksi Prapabrikasi Bangunan Gedung",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "b4338d696cc2d71fc81a830ba4f852b2e45fdfbc0bc67aa375819e09e564f0ea",
+          "old_excerpt": "KBLI 41020 is not about manufacturing the components themselves. The record defines it as construction activit",
+          "new": "KBLI 41020 is not about manufacturing the components themselves. The record defines it as construction activity at the building site, using prefabricated building materials produced by another unit. In practical terms, this is the site-side work of putting factory-made building elements into a finished building structure: precast concrete, steel, plastic, rubber, wood, aluminium, sandwich panels, and other factory-produced materials installed through fabrication, erection, or assembly methods. The construction-work subclassification noted in the record is KP001.\n\nThat scope matters because this code sits in the execution phase of a building project. A company registering it is presenting itself as the party that installs and assembles prefabricated building systems on-site, rather than as the producer of the panels, frames, or other materials. The scale profile is unusually broad: the record opens it to Mikro, Kecil, Menengah, and Besar. That means the activity is not reserved only for large contractors in the classification record, even though actual project size and operational capacity may differ from one business to another.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record does not mark this activity as blocked in Bali, and the reason it gives is precise: OSS risk at the large-business scale is medium-high or high — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "10214": {
+      "judul": "Pengolahan dan Pengawetan Ikan dengan Pemindangan",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "02c8c9052d89cfdc5e3ce27988157c4669ee945aabe273a0dcc32151422a3876",
+          "old_excerpt": "This activity covers the processing and preservation of finfish through **pemindangan**, the Indonesian boilin",
+          "new": "This activity covers the processing and preservation of finfish through **pemindangan**, the Indonesian boiling-and-salting preservation method associated in the record with products such as pindang bandeng or paso, pindang tongkol, pindang cue, pindang naya, pindang lemuru or tembang, pindang layang, and pindang cakalang. In plain English, it is a food-processing classification for businesses that turn finfish into preserved pindang products, not a general seafood-trading label and not a catch-all for every form of fish processing.\n\nThe scale picture is broad. The slim record opens the activity to **Mikro, Kecil, Menengah, and Besar** businesses, which means it can describe anything from a very small pindang producer to a larger industrial operation, provided the registered activity is still the pemindangan-based processing and preservation of finfish described above. That matters because the classification is anchored in the production method and the resulting pindang product line. A company using this code should be able to recognise itself in that scope, rather than treating the title as a convenient umbrella for unrelated fish activities.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali adds a second restriction on top of the first. The record marks the activity as blocked in Bali, with the reason “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”, under the province-wide rule that blocks all Low and Medium-Low risk KBLI for PMA. Both restrictions apply at once, and only the second is provincial: registering in another province would not open the national allocation."
+        }
+      }
+    }
+  }
+}

@@ -529,14 +529,20 @@ def test_the_live_populations_are_pinned():
     assert rep["mechanically_correctable"]["ceiling_cells"] == 0
     assert rep["mechanically_correctable"]["status_cells"] == 0
 
-    # The authored backlog, which only a human can shrink (Legge 5). It went
-    # 27 -> 31 when #3673 restricted four codes and left their prose saying the
-    # opposite — the cure moved the record and the sentences beside it did not
-    # move, which is this module's whole subject.
-    assert len(rep["needs_an_author"]["codes"]) == 34
+    # The authored backlog. It went 27 -> 31 when #3673 restricted four codes and
+    # left their prose saying the opposite, then 31 -> 34 when the claim
+    # vocabulary was widened to what the corpus actually says — and now 34 -> 28,
+    # the first six replaced by `cure_prose_national_openness.py`.
+    #
+    # "Only a human can shrink this" was the standing note here and it was WRONG,
+    # or rather it had stopped being true: 27 of the 31 bodies carry
+    # `_l3_regen.model = deepseek-v4-pro` at `confidence: LOW`. No human wrote
+    # them. The deference that left them standing was protecting an authorship
+    # that does not exist, and Zero withdrew it on 2026-08-06.
+    assert len(rep["needs_an_author"]["codes"]) == 21
 
     # WHERE the prose lies, and this is the number that matters — not the code
-    # count above, which a cross-family refutation left UNMOVED at 34 while
+    # count above. A cross-family refutation left that count UNMOVED at 34 while
     # changing what a cure would have to touch by half:
     #
     #     editorial.standfirst   6 -> 22
@@ -550,14 +556,19 @@ def test_the_live_populations_are_pinned():
     # a page that reads cured with its standfirst still asserting the opposite.
     # Pinned by field for that reason: the total alone hid the first defect too,
     # when three fields were read and reported as "the bodies".
+    #
+    # 102 -> 81 -> 60 as `cure_prose_national_openness.py` replaced 21 fields on
+    # six codes, then 21 more on seven. The dict below is the CURRENT state, re-derived from the live
+    # catalogue when this pin and #3687's were merged — two branches moving the
+    # same monotone number conflict textually even when both are right, and the
+    # resolution is to re-measure, never to pick a side (W109b).
     assert rep["needs_an_author"]["by_field"] == {
-        "editorial.body": 27,
-        "whatYouNeed": 26,
-        "editorial.standfirst": 22,
-        "editorial.headline": 14,
-        "editorial.pullQuote": 11,
+        "editorial.body": 18,
+        "whatYouNeed": 16,
+        "editorial.standfirst": 12,
+        "editorial.headline": 7,
+        "editorial.pullQuote": 6,
         "whoThisIsFor": 1,
-        "zantaraOpener": 1,
     }
 
 
@@ -641,6 +652,16 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
     # closed `53200` — it stated a maximum as a bare number ("the maximum is
     # 100%"), a family the first vocabulary had no word for. The gap SHRANK by
     # being measured, not by being redefined.
+    #
+    # It then briefly grew to include `55105`, and THAT is what this pin is for.
+    # The prose cure corrected 55105's standfirst and body, and its `whatYouNeed`
+    # went on saying "**PMA Status:** Fully open (Terbuka) — 100% foreign
+    # ownership" — no "national" anywhere near it, so this module cannot see the
+    # sentence at all. L10 reads for a PERCENTAGE and caught it. A page that
+    # reads cured while still printing the number a client acts on is the worst
+    # of the three states, and only the disagreement between two rules surfaced
+    # it. Cured; the pin is back to the two codes that run the OPPOSITE direction
+    # (prose more restrictive than the record), which is a different adjudication.
     assert l10 - mine == {"41011", "52292"}, (
         "the DECLARED gap in this module — numeric claims L10 catches and a "
         f"sentence-level openness predicate does not: {sorted(l10 - mine)}"
