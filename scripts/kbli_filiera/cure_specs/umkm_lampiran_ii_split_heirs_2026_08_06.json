@@ -8,9 +8,11 @@
   "objection_raised_and_answered": {
     "objection": "A cross-family review of the finished determination (Codex GPT-5.6, instructed to refute, verdict DEFECTIVE) called `96100` a BLOCKER: the annex row says only 'Penatu', while the 2025 code's own uraian enumerates dry-cleaning, fur and textiles, carpets and rugs, curtains, combined rental-and-care, and reusable-diaper services. On that reading the reservation would be narrower than the code being closed, and a PMA dry-cleaning or carpet-cleaning business would be told 0% without proof.",
     "answer": "Two things the objection did not weigh. (1) The annex row's code column is the 2020 code `96200`, whose own BPS title is 'Aktivitas penatu' — so the row names the WHOLE 2020 code by its own name, not a slice of it, and Pasal 5(5) then attaches the allocation to that whole bidang usaha. (2) If the 2025 code had gained scope from somewhere else in the recatalogue, BPS's crosswalk would name that somewhere else as an ancestor; it names exactly one, `96200`. The enumerated services are the ISIC-9601 explanatory text that the class carries in both vintages, not new territory. The same objection, if it stood, would equally condemn `96210` — which covers colouring, perming and straightening, arguably beyond 'barber shop' — and `96220`, which covers nail art, eyelash extensions and tanning, arguably beyond 'salon kecantikan'. It was raised against `96100` because that code's uraian is the most enumerative of the three, not because its evidence is weaker.",
-    "what_this_rests_on_and_does_not_prove": "It rests on BPS's crosswalk being COMPLETE. We do not hold the KBLI-2020 catalogue text, so we cannot show directly that 2020 'Aktivitas penatu' already covered carpet and curtain cleaning; if BPS omitted an ancestor edge, the reverse test inherits that omission silently. This limit is not special to these four — it is load-bearing for the whole reverse-direction method, including the nine codes of #3666. Stated here rather than left implicit.",
+    "what_this_rests_on_and_does_not_prove": "A SECOND review (GLM 5.2, a third family) refuted the limit this field originally named, and it was right. The first version said the reasoning 'rests on BPS's crosswalk being complete' — a narrower limit that hides the real one. The crosswalk records MERGES: a 2025 code that absorbed several 2020 codes. It does not record DESCRIPTION REWRITES, and BPS can widen a code's scope without merging anything from anywhere, which no ancestor edge could capture even in a perfect crosswalk. There is visible evidence of rewriting here: 2020 'Aktivitas penatu' became 2025 'Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu', broader in plain language. So the honest limit is: the 2025 scope can exceed the 2020 scope with no edge to show it; we do not hold the KBLI-2020 catalogue text to rule that out; and the step 'annex label == BPS title == the code's whole scope' is circular exactly when the code's scope is what is in question. Load-bearing for the whole reverse-direction method, including the nine codes of #3666 — not special to these four. What the evidence DOES establish, and it is not nothing: no OTHER 2020 code feeds these heirs, so the heir did not swallow a second activity alongside the reserved one.",
     "a_field_that_looks_like_evidence_and_is_not": "The crosswalk edges carry `sebagian_2020` and `sebagian_2025` ('partial') flags, which would settle whole-versus-slice mechanically if they were populated. Measured across all 2,560 edges: True on ZERO of them, both fields. A field that is constant over the entire corpus carries no information, and it reads as a strong signal ('nothing is partial') precisely when it is none. Do not cite it.",
-    "why_55105_stands_on_different_ground": "For the other three the argument is 'the annex names the whole 2020 code'. For `55105` it cannot be: the annex text is 'Hotel Bintang I' while the 2020 title is 'Hotel Bintang', all grades — the row names something NARROWER than the code. The argument there is the other one, that the 2025 code IS exactly the named grade, which is also why 55101-55104 stay open. Note that the annex parser's `title_corroborated` flag reads True on that row, so it is a fuzzy match and cannot be used to tell 'names the whole code' from 'names a slice'."
+    "why_55105_stands_on_different_ground": "For the other three the argument is 'the annex names the whole 2020 code'. For `55105` it cannot be: the annex text is 'Hotel Bintang I' while the 2020 title is 'Hotel Bintang', all grades — the row names something NARROWER than the code. The argument there is the other one, that the 2025 code IS exactly the named grade, which is also why 55101-55104 stay open. Note that the annex parser's `title_corroborated` flag reads True on that row, so it is a fuzzy match and cannot be used to tell 'names the whole code' from 'names a slice'.",
+    "the_honesty_applied_unevenly": "The 55105 entry states plainly that the annex row is NARROWER than the 2020 code and switches to a different argument. The same structure recurs for 96100/96210/96220 and the first draft did not say so: an annex row is a plain-language LABEL, not a scope definition, so 'the row names the whole 2020 code' is a reading of the label rather than a fact read off the instrument. Recorded so a future reader weighs these three at the strength they actually have, and does not cite this spec as if identity had been proven mechanically for them.",
+    "corroboration_from_a_layer_that_judged_earlier_and_separately": "Not proof, and named as such — but 96210, 96220 and 96100 already carry l4_bali.status CHIUSO_PMA_NO_BESAR with blocked=true, confidence HIGH, each citing Lampiran II p.16 entry 57 and its own 2020 code. That determination was made by a different pass at a different time, and the live site has been publishing 'Reserved for MSME — closed to PT PMA' on those three while the national ceiling still read 100%. This cure makes the two halves agree. 55105 has no such corroboration: its l4_bali is an OSS-scope verdict (BLOCCATO_DIPENDE_SCOPE, blocked=false, MEDIUM) with nothing to do with Lampiran II."
   },
   "items": [
     {
@@ -19,7 +21,10 @@
       "siblings_left_open": ["96400"],
       "annex_row_text": "Pangkas rambut/ barber shop",
       "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Pangkas rambut/ barber shop\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
-      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
       "agreed_by": [
         "claude-sonnet-5 (proposer)",
         "codex-gpt-5.6 (blind re-derivation)"
@@ -32,7 +37,10 @@
       "siblings_left_open": ["96400"],
       "annex_row_text": "Salon kecantikan",
       "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Salon kecantikan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
-      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
       "agreed_by": [
         "claude-sonnet-5 (proposer)",
         "codex-gpt-5.6 (blind re-derivation)"
@@ -45,7 +53,10 @@
       "siblings_left_open": ["96400"],
       "annex_row_text": "Penatu",
       "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Penatu\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
-      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
       "agreed_by": [
         "claude-sonnet-5 (proposer)",
         "codex-gpt-5.6 (blind re-derivation)"
@@ -58,7 +69,10 @@
       "siblings_left_open": ["55101", "55102", "55103", "55104"],
       "annex_row_text": "Hotel Bintang I",
       "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p14, row \"Hotel Bintang I\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
-      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
       "agreed_by": [
         "claude-sonnet-5 (proposer)",
         "codex-gpt-5.6 (blind re-derivation)"

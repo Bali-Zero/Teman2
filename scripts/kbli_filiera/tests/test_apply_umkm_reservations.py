@@ -230,6 +230,43 @@ def test_guilt_the_same_lane_written_twice_is_still_one_lane():
     assert "two independent lanes" in refusals[0]
 
 
+def test_guilt_one_seat_wearing_two_role_labels_is_still_one_seat():
+    """The shape a whitespace-dedupe cannot see, and the one a spec author
+    actually produces: the same model named twice with different roles. A second
+    review pointed out that comparing whole strings ATTESTED independence rather
+    than enforcing it — the two entries differ, the seat does not."""
+    todo, refusals = run(
+        [
+            split_item(
+                "96210",
+                "96111",
+                ["96400"],
+                agreed_by=["claude-sonnet-5 (proposer)", "claude-sonnet-5 (grader)"],
+            )
+        ],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert todo == []
+    assert "two independent lanes" in refusals[0]
+
+
+def test_innocence_two_genuinely_different_seats_are_accepted():
+    """The other half: the real spec's shape must still pass, or the check would
+    be a blanket refusal rather than an independence test."""
+    todo, refusals = run(
+        [
+            split_item(
+                "96210",
+                "96111",
+                ["96400"],
+                agreed_by=["claude-sonnet-5 (proposer)", "codex-gpt-5.6 (blind re-derivation)"],
+            )
+        ],
+        [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
+    )
+    assert refusals == [] and [i["code"] for i in todo] == ["96210"]
+
+
 def test_guilt_an_absent_agreed_by_is_refused_rather_than_assumed():
     todo, refusals = run(
         [split_item("96210", "96111", ["96400"], agreed_by=[])],

@@ -321,7 +321,19 @@ def check(
             # 6. two independent adjudications, NAMED. One lane's word is not an
             #    adjudication, and the same lane written twice is one lane. This
             #    is the check the comment above used to claim `main()` performed.
-            lanes = {str(a).strip() for a in (item.get("agreed_by") or []) if str(a).strip()}
+            #    Compared on the SEAT, not on the whole string. The entries read
+            #    "claude-sonnet-5 (proposer)" / "codex-gpt-5.6 (blind
+            #    re-derivation)", and a set of whole strings would accept
+            #    "claude-sonnet-5 (proposer)" alongside "claude-sonnet-5
+            #    (grader)" — one model wearing two role labels, which is the
+            #    thing this check exists to forbid. A second review found that
+            #    the first version attested independence instead of enforcing
+            #    it. The seat is everything before " (".
+            lanes = {
+                str(a).strip().split(" (")[0].strip().lower()
+                for a in (item.get("agreed_by") or [])
+                if str(a).strip()
+            }
             if len(lanes) < 2:
                 refusals.append(
                     f"{code}: split-heir identity is a judgment and needs two "
