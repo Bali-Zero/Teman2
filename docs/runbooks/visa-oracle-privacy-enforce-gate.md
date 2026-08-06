@@ -103,6 +103,11 @@ PYTHONPATH=. VISA_ENGINE_PREFLIGHT_DATABASE_URL="$READ_ONLY_DSN" \
 
 Exit `0` is required. Exit `2` means ENFORCE remains blocked. The preflight is
 safe against production because it performs no writes and never logs a DSN.
+It evaluates an explicit EXECUTE allowlist across every activation,
+idempotency, retention, evidence, DSR and legal-hold function; an explicit DML
+allowlist across all governed Visa Oracle tables; and runtime membership in
+every operational capability role. A missing required grant and an unexpected
+grant both fail the gate.
 
 ### 3. Register Privacy Policy V1
 

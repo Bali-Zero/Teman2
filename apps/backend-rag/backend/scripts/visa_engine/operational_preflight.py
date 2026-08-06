@@ -15,12 +15,90 @@ logger = logging.getLogger("visa_engine.operational_preflight")
 
 PREFLIGHT_DSN_ENV = "VISA_ENGINE_PREFLIGHT_DATABASE_URL"
 
+ACTIVATION_FUNCTION = "public.visa_activate_rule_pack(uuid,text,text)"
+PREPARE_IDEMPOTENCY_FUNCTION = (
+    "public.prepare_visa_evaluate_idempotency_reservation(bytea,integer,text)"
+)
+RETENTION_FUNCTIONS = (
+    "public.purge_visa_evaluate_idempotency(integer,text)",
+    "public.purge_visa_decisions(integer,text)",
+    "public.visa_idempotency_retention_evidence()",
+    "public.visa_decision_retention_evidence()",
+)
+PRIVACY_FUNCTIONS = (
+    "public.erase_visa_decision_for_dsr(uuid,text,text)",
+    "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,"
+    "timestamp with time zone)",
+)
+SENSITIVE_FUNCTIONS = (
+    ACTIVATION_FUNCTION,
+    PREPARE_IDEMPOTENCY_FUNCTION,
+    *RETENTION_FUNCTIONS,
+    *PRIVACY_FUNCTIONS,
+)
+
+SENSITIVE_TABLES = (
+    "visa_rule_packs",
+    "visa_ruleset_activations",
+    "visa_decisions",
+    "visa_decision_payloads",
+    "visa_evaluate_idempotency",
+    "visa_decision_retention_policies",
+    "visa_decision_retention_batches",
+    "visa_idempotency_retention_batches",
+    "visa_decision_dsr_erasure_batches",
+)
+DIRECT_DML_PRIVILEGES = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
+CAPABILITY_ROLES = (
+    "visa_pack_writer",
+    "visa_activation_executor",
+    "visa_policy_writer",
+    "visa_retention_executor",
+    "visa_privacy_operator",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class PreflightCheck:
     name: str
     ok: bool
     detail: str
+
+
+def _function_allowlist(runtime_role: str) -> dict[str, frozenset[str]]:
+    return {
+        runtime_role: frozenset({PREPARE_IDEMPOTENCY_FUNCTION}),
+        "visa_pack_writer": frozenset(),
+        "visa_activation_executor": frozenset({ACTIVATION_FUNCTION}),
+        "visa_policy_writer": frozenset(),
+        "visa_retention_executor": frozenset(RETENTION_FUNCTIONS),
+        "visa_privacy_operator": frozenset(PRIVACY_FUNCTIONS),
+    }
+
+
+def _direct_dml_allowlist(
+    runtime_role: str,
+) -> dict[str, frozenset[tuple[str, str]]]:
+    return {
+        runtime_role: frozenset(
+            {
+                ("visa_decisions", "INSERT"),
+                ("visa_decision_payloads", "INSERT"),
+                ("visa_evaluate_idempotency", "INSERT"),
+                ("visa_evaluate_idempotency", "UPDATE"),
+            }
+        ),
+        "visa_pack_writer": frozenset({("visa_rule_packs", "INSERT")}),
+        "visa_activation_executor": frozenset(),
+        "visa_policy_writer": frozenset(
+            {
+                ("visa_decision_retention_policies", "INSERT"),
+                ("visa_decision_retention_policies", "UPDATE"),
+            }
+        ),
+        "visa_retention_executor": frozenset(),
+        "visa_privacy_operator": frozenset(),
+    }
 
 
 async def collect_preflight_checks(
@@ -62,19 +140,8 @@ async def collect_preflight_checks(
             )
         )
 
-    expected_tables = (
-        "visa_rule_packs",
-        "visa_ruleset_activations",
-        "visa_decisions",
-        "visa_decision_payloads",
-        "visa_evaluate_idempotency",
-        "visa_decision_retention_policies",
-        "visa_decision_retention_batches",
-        "visa_idempotency_retention_batches",
-        "visa_decision_dsr_erasure_batches",
-    )
     table_exists: dict[str, bool] = {}
-    for table in expected_tables:
+    for table in SENSITIVE_TABLES:
         owner = await connection.fetchval(
             """
             SELECT pg_get_userbyid(class.relowner)
@@ -95,18 +162,8 @@ async def collect_preflight_checks(
             )
         )
 
-    function_signatures = (
-        "public.visa_activate_rule_pack(uuid,text,text)",
-        "public.prepare_visa_evaluate_idempotency_reservation(bytea,integer,text)",
-        "public.purge_visa_evaluate_idempotency(integer,text)",
-        "public.purge_visa_decisions(integer,text)",
-        "public.visa_idempotency_retention_evidence()",
-        "public.visa_decision_retention_evidence()",
-        "public.erase_visa_decision_for_dsr(uuid,text,text)",
-        "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,timestamp with time zone)",
-    )
     function_exists: dict[str, bool] = {}
-    for signature in function_signatures:
+    for signature in SENSITIVE_FUNCTIONS:
         owner = await connection.fetchval(
             "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid = to_regprocedure($1)",
             signature,
@@ -122,111 +179,93 @@ async def collect_preflight_checks(
             )
         )
 
-    privilege_expectations = (
-        (
-            "activation-exec-only",
-            "visa_activation_executor",
-            "public.visa_activate_rule_pack(uuid,text,text)",
-            True,
-        ),
-        (
-            "runtime-cannot-activate",
-            runtime_role,
-            "public.visa_activate_rule_pack(uuid,text,text)",
-            False,
-        ),
-        (
-            "retention-purge-decisions",
-            "visa_retention_executor",
-            "public.purge_visa_decisions(integer,text)",
-            True,
-        ),
-        (
-            "retention-purge-idempotency",
-            "visa_retention_executor",
-            "public.purge_visa_evaluate_idempotency(integer,text)",
-            True,
-        ),
-        (
-            "privacy-dsr",
-            "visa_privacy_operator",
-            "public.erase_visa_decision_for_dsr(uuid,text,text)",
-            True,
-        ),
-        (
-            "privacy-hold",
-            "visa_privacy_operator",
-            "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,timestamp with time zone)",
-            True,
-        ),
-    )
-    for name, role, signature, expected in privilege_expectations:
-        actual = False
-        if role in roles and function_exists.get(signature, False):
-            actual = bool(
-                await connection.fetchval(
-                    "SELECT has_function_privilege($1, $2, 'EXECUTE')",
-                    role,
-                    signature,
+    function_allowlist = _function_allowlist(runtime_role)
+    for role, allowed_signatures in function_allowlist.items():
+        for signature in SENSITIVE_FUNCTIONS:
+            expected = signature in allowed_signatures
+            actual = False
+            if role in roles and function_exists.get(signature, False):
+                actual = bool(
+                    await connection.fetchval(
+                        "SELECT has_function_privilege($1, $2, 'EXECUTE')",
+                        role,
+                        signature,
+                    )
+                )
+            checks.append(
+                PreflightCheck(
+                    name=f"function:{role}:{signature}",
+                    ok=actual is expected,
+                    detail=f"EXECUTE={actual} expected={expected}",
                 )
             )
-        checks.append(
-            PreflightCheck(
-                name=f"privilege:{name}",
-                ok=actual is expected,
-                detail=f"EXECUTE={actual} expected={expected}",
-            )
-        )
 
-    table_privilege_expectations = (
-        (
-            "activation-no-pack-select",
-            "visa_activation_executor",
-            "visa_rule_packs",
-            "SELECT",
-            False,
-        ),
-        (
-            "activation-no-pack-insert",
-            "visa_activation_executor",
-            "visa_rule_packs",
-            "INSERT",
-            False,
-        ),
-        ("runtime-no-activation-insert", runtime_role, "visa_ruleset_activations", "INSERT", False),
-        (
-            "policy-writer-insert",
-            "visa_policy_writer",
-            "visa_decision_retention_policies",
-            "INSERT",
-            True,
-        ),
-        ("privacy-no-decision-delete", "visa_privacy_operator", "visa_decisions", "DELETE", False),
-        ("privacy-no-decision-update", "visa_privacy_operator", "visa_decisions", "UPDATE", False),
-        (
-            "retention-no-decision-delete",
-            "visa_retention_executor",
-            "visa_decisions",
-            "DELETE",
-            False,
-        ),
+    direct_dml_allowlist = _direct_dml_allowlist(runtime_role)
+    for role, allowed_privileges in direct_dml_allowlist.items():
+        for table in SENSITIVE_TABLES:
+            for privilege in DIRECT_DML_PRIVILEGES:
+                expected = (table, privilege) in allowed_privileges
+                actual = False
+                if role in roles and table_exists.get(table, False):
+                    actual = bool(
+                        await connection.fetchval(
+                            "SELECT has_table_privilege($1, $2, $3)",
+                            role,
+                            f"public.{table}",
+                            privilege,
+                        )
+                    )
+                checks.append(
+                    PreflightCheck(
+                        name=f"table:{role}:public.{table}:{privilege}",
+                        ok=actual is expected,
+                        detail=f"{privilege}={actual} expected={expected}",
+                    )
+                )
+
+    required_select_privileges = (
+        (runtime_role, "visa_rule_packs"),
+        (runtime_role, "visa_ruleset_activations"),
+        (runtime_role, "visa_decisions"),
+        (runtime_role, "visa_decision_payloads"),
+        (runtime_role, "visa_evaluate_idempotency"),
+        (runtime_role, "visa_decision_retention_policies"),
+        ("visa_pack_writer", "visa_rule_packs"),
+        ("visa_policy_writer", "visa_decision_retention_policies"),
     )
-    for name, role, table, privilege, expected in table_privilege_expectations:
+    for role, table in required_select_privileges:
         actual = False
         if role in roles and table_exists.get(table, False):
             actual = bool(
                 await connection.fetchval(
-                    "SELECT has_table_privilege($1, $2, $3)",
+                    "SELECT has_table_privilege($1, $2, 'SELECT')",
                     role,
                     f"public.{table}",
-                    privilege,
                 )
             )
         checks.append(
             PreflightCheck(
-                name=f"privilege:{name}",
-                ok=actual is expected,
-                detail=f"{privilege}={actual} expected={expected}",
+                name=f"table:{role}:public.{table}:SELECT",
+                ok=actual,
+                detail=f"SELECT={actual} expected=True",
+            )
+        )
+
+    for capability_role in CAPABILITY_ROLES:
+        runtime_is_member = False
+        if runtime_role in roles and capability_role in roles:
+            runtime_is_member = bool(
+                await connection.fetchval(
+                    "SELECT pg_has_role($1, $2, 'MEMBER')",
+                    runtime_role,
+                    capability_role,
+                )
+            )
+        checks.append(
+            PreflightCheck(
+                name=f"membership:{runtime_role}-not-{capability_role}",
+                ok=not runtime_is_member,
+                detail=f"runtime_member={runtime_is_member} expected=False",
             )
         )
 

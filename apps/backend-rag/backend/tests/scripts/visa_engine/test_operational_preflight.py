@@ -1,0 +1,189 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from backend.scripts.visa_engine import operational_preflight
+
+RUNTIME_ROLE = "backend_rag_v2"
+
+
+class FakePreflightConnection:
+    """In-memory privilege catalog for exhaustive fail-closed preflight tests."""
+
+    def __init__(self) -> None:
+        role_names = {
+            "visa_ledger_owner",
+            *operational_preflight.CAPABILITY_ROLES,
+            RUNTIME_ROLE,
+        }
+        self.roles = {
+            role: {"rolname": role, "rolcanlogin": role == RUNTIME_ROLE, "rolsuper": False}
+            for role in role_names
+        }
+        self.table_owners = dict.fromkeys(
+            operational_preflight.SENSITIVE_TABLES, "visa_ledger_owner"
+        )
+        self.function_owners = dict.fromkeys(
+            operational_preflight.SENSITIVE_FUNCTIONS, "visa_ledger_owner"
+        )
+        self.function_privileges = {
+            (role, signature)
+            for role, allowed in operational_preflight._function_allowlist(RUNTIME_ROLE).items()
+            for signature in allowed
+        }
+        self.table_privileges = {
+            (role, table, privilege)
+            for role, allowed in operational_preflight._direct_dml_allowlist(RUNTIME_ROLE).items()
+            for table, privilege in allowed
+        }
+        self.table_privileges.update(
+            {
+                (RUNTIME_ROLE, "visa_rule_packs", "SELECT"),
+                (RUNTIME_ROLE, "visa_ruleset_activations", "SELECT"),
+                (RUNTIME_ROLE, "visa_decisions", "SELECT"),
+                (RUNTIME_ROLE, "visa_decision_payloads", "SELECT"),
+                (RUNTIME_ROLE, "visa_evaluate_idempotency", "SELECT"),
+                (RUNTIME_ROLE, "visa_decision_retention_policies", "SELECT"),
+                ("visa_pack_writer", "visa_rule_packs", "SELECT"),
+                ("visa_policy_writer", "visa_decision_retention_policies", "SELECT"),
+            }
+        )
+        self.memberships: set[tuple[str, str]] = set()
+        self.dual_capability_login: str | None = None
+
+    async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        if "FROM pg_roles WHERE rolname = ANY" not in query:
+            raise AssertionError(f"unexpected fetch query: {query}")
+        requested_roles = args[0]
+        return [self.roles[role] for role in requested_roles if role in self.roles]
+
+    async def fetchval(self, query: str, *args: Any) -> Any:
+        if "FROM pg_class AS class" in query:
+            return self.table_owners.get(str(args[0]))
+        if "FROM pg_proc" in query:
+            return self.function_owners.get(str(args[0]))
+        if "has_function_privilege" in query:
+            return (str(args[0]), str(args[1])) in self.function_privileges
+        if "has_table_privilege" in query:
+            role = str(args[0])
+            table = str(args[1]).removeprefix("public.")
+            privilege = str(args[2]) if len(args) == 3 else "SELECT"
+            return (role, table, privilege) in self.table_privileges
+        if "SELECT pg_has_role" in query:
+            return (str(args[0]), str(args[1])) in self.memberships
+        if "string_agg" in query:
+            return self.dual_capability_login
+        raise AssertionError(f"unexpected fetchval query: {query}")
+
+
+def _by_name(
+    checks: tuple[operational_preflight.PreflightCheck, ...],
+) -> dict[str, operational_preflight.PreflightCheck]:
+    return {check.name: check for check in checks}
+
+
+@pytest.mark.asyncio
+async def test_complete_least_privilege_catalog_passes() -> None:
+    checks = await operational_preflight.collect_preflight_checks(
+        FakePreflightConnection(),  # type: ignore[arg-type]
+        runtime_role=RUNTIME_ROLE,
+    )
+
+    assert checks
+    assert all(check.ok for check in checks), [check for check in checks if not check.ok]
+
+
+@pytest.mark.asyncio
+async def test_every_forbidden_sensitive_function_grant_fails_its_named_check() -> None:
+    allowlist = operational_preflight._function_allowlist(RUNTIME_ROLE)
+    for role, allowed in allowlist.items():
+        for signature in operational_preflight.SENSITIVE_FUNCTIONS:
+            if signature in allowed:
+                continue
+            connection = FakePreflightConnection()
+            connection.function_privileges.add((role, signature))
+
+            checks = _by_name(
+                await operational_preflight.collect_preflight_checks(
+                    connection,  # type: ignore[arg-type]
+                    runtime_role=RUNTIME_ROLE,
+                )
+            )
+
+            name = f"function:{role}:{signature}"
+            assert checks[name].ok is False, (role, signature)
+
+
+@pytest.mark.asyncio
+async def test_missing_required_function_grant_fails_its_named_check() -> None:
+    allowlist = operational_preflight._function_allowlist(RUNTIME_ROLE)
+    for role, allowed in allowlist.items():
+        for signature in allowed:
+            connection = FakePreflightConnection()
+            connection.function_privileges.remove((role, signature))
+
+            checks = _by_name(
+                await operational_preflight.collect_preflight_checks(
+                    connection,  # type: ignore[arg-type]
+                    runtime_role=RUNTIME_ROLE,
+                )
+            )
+
+            name = f"function:{role}:{signature}"
+            assert checks[name].ok is False, (role, signature)
+
+
+@pytest.mark.asyncio
+async def test_every_forbidden_runtime_retention_and_privacy_dml_grant_fails() -> None:
+    allowlist = operational_preflight._direct_dml_allowlist(RUNTIME_ROLE)
+    for role in (RUNTIME_ROLE, "visa_retention_executor", "visa_privacy_operator"):
+        for table in operational_preflight.SENSITIVE_TABLES:
+            for privilege in operational_preflight.DIRECT_DML_PRIVILEGES:
+                if (table, privilege) in allowlist[role]:
+                    continue
+                connection = FakePreflightConnection()
+                connection.table_privileges.add((role, table, privilege))
+
+                checks = _by_name(
+                    await operational_preflight.collect_preflight_checks(
+                        connection,  # type: ignore[arg-type]
+                        runtime_role=RUNTIME_ROLE,
+                    )
+                )
+
+                name = f"table:{role}:public.{table}:{privilege}"
+                assert checks[name].ok is False, (role, table, privilege)
+
+
+@pytest.mark.asyncio
+async def test_runtime_membership_in_each_operational_capability_fails() -> None:
+    for capability_role in operational_preflight.CAPABILITY_ROLES:
+        connection = FakePreflightConnection()
+        connection.memberships.add((RUNTIME_ROLE, capability_role))
+
+        checks = _by_name(
+            await operational_preflight.collect_preflight_checks(
+                connection,  # type: ignore[arg-type]
+                runtime_role=RUNTIME_ROLE,
+            )
+        )
+
+        name = f"membership:{RUNTIME_ROLE}-not-{capability_role}"
+        assert checks[name].ok is False, capability_role
+
+
+@pytest.mark.asyncio
+async def test_pack_writer_activation_combination_still_fails() -> None:
+    connection = FakePreflightConnection()
+    connection.dual_capability_login = "compromised_operator"
+
+    checks = _by_name(
+        await operational_preflight.collect_preflight_checks(
+            connection,  # type: ignore[arg-type]
+            runtime_role=RUNTIME_ROLE,
+        )
+    )
+
+    assert checks["membership:no-pack-writer-activation-combination"].ok is False
