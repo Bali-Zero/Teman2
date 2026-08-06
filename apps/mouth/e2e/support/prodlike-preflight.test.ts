@@ -58,10 +58,7 @@ test("known production endpoints are rejected without echoing their value", asyn
       const message = capturePreflightError(environment);
 
       assert.match(message, /production endpoint is forbidden/);
-      assert.doesNotMatch(
-        message,
-        new RegExp(productionHost.replaceAll(".", "\\.")),
-      );
+      assert.ok(!message.includes(productionHost));
       assert.doesNotMatch(message, new RegExp(SYNTHETIC_SECRET_SENTINEL));
     });
   }

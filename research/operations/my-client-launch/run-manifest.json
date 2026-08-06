@@ -28,8 +28,22 @@
     "verified_artifact_receipt_sha": "070f663e15e2b707b832b5cdf4e3bee04a49fa03",
     "verified_artifact_receipt_tree_sha": "04a4e431c559590ed193c5dd7a4794ebe10cb338",
     "tree_equivalence": "EXACT_MATCH",
-    "history_shape": "ONE_CLEAN_SOURCE_COMMIT_ON_CURRENT_ORIGIN_MAIN_PLUS_ONE_ARTIFACT_ONLY_RECEIPT_COMMIT",
-    "draft_pr_only": true
+    "history_shape": "ONE_CLEAN_SOURCE_COMMIT_ON_CURRENT_ORIGIN_MAIN_PLUS_ONE_ARTIFACT_ONLY_RECEIPT_COMMIT_PLUS_ONE_CI_REMEDIATION_COMMIT",
+    "draft_pr_only": true,
+    "draft_pr": {
+      "number": 3662,
+      "url": "https://github.com/Bali-Zero/Teman2/pull/3662",
+      "state": "OPEN_DRAFT",
+      "merge_or_deploy_performed": false
+    },
+    "ci_remediation": {
+      "status": "PENDING_REMOTE_RETEST",
+      "codeql_hostname_regex": "REPLACED_WITH_LITERAL_SUBSTRING_ASSERTION",
+      "generic_playwright_discovery": "PRODLIKE_SMOKE_EXCLUDED_FROM_GENERIC_CONFIG_AND_RETAINED_IN_DEDICATED_CONFIG",
+      "author_preflight_tests": "13/13 PASS",
+      "author_generic_playwright_discovery": "1020 tests in 50 files PASS_WITH_CREDENTIALS_ABSENT",
+      "author_prodlike_playwright_discovery": "1 test in 1 file PASS_WITH_SYNTHETIC_CONTRACT_NAMES"
+    }
   },
   "live": {
     "origin": "https://my.balizero.com",
