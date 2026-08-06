@@ -404,17 +404,22 @@ def test_the_six_are_gone_from_the_live_backlog_and_the_rest_are_untouched():
     run's own report — counting edits proves what a pass intended, not what it
     wrote.
 
-    The backlog went 34 -> 28 -> 21 across the two specs, and the difference is
-    exactly the codes they name. The
-    28 that remain are named in the detector's own pin, so a code leaving this
-    list without a cure would show up there.
+    The backlog went 34 -> 28 -> 21 -> 7 -> 0 across the four lots, and the
+    difference at each step is exactly the codes they name.
+
+    With the backlog at zero the intersection below is empty for a trivial
+    reason, so the assertion that carries the weight is the other one: every
+    code this lane CLAIMS to have cured must be absent from the live backlog.
+    That still fails if a spec names a code it did not actually fix, which is
+    the failure this test was written for.
     """
     cured = set()
     for sp in _lane_specs():
         cured |= set(json.loads(sp.read_text(encoding="utf-8"))["codes"])
+    assert cured, "the lane marker matched no spec — this test would pass on nothing"
     rep = E.report(E.load_records())
     remaining = set(rep["needs_an_author"]["codes"])
-    assert len(remaining) == 7
+    assert len(remaining) == 0
     assert cured & remaining == set(), f"a cured code still lies: {sorted(cured & remaining)}"
 
 

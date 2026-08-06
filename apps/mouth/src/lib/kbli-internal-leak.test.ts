@@ -242,7 +242,11 @@ describe("internal-leak gate (real canonical)", () => {
     // baseline would have recorded that a client may read a field name as the
     // price of a cure — so the names came out of all six replacements instead,
     // which took four codes off this list that were already on it.
-    const BASELINE = 388;
+    // 388 -> 386 with the final prose lot (7 codes, 25 fields). Re-derived from
+    // the canonical with this file's own regex rather than subtracted from the
+    // previous number: two branches lowering the same monotone ratchet conflict
+    // even when both are right, and the resolution is to re-measure (W109b).
+    const BASELINE = 386;
     const leaking = records.filter((r) =>
       readerFacingStrings(r.intel_2026).some((s) => FIELD_RE.test(s)),
     );
