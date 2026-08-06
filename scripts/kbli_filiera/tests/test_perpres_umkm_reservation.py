@@ -657,3 +657,52 @@ def test_the_kbli_tooling_and_prose_carry_no_bare_phantom_citation():
         "Pasal 3(3) does not exist. Lampiran II -> Pasal 5(5); "
         f"Lampiran III -> Pasal 6(3). Found: {offenders}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Row fusion — two rows cannot both own the lines between their ticks
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_a_row_no_longer_swallows_the_next_rows_cell():
+    """`42912` (pelabuhan bukan perikanan) had recorded its own activity PLUS
+    the whole of `42913`'s (pelabuhan perikanan), which reads as one activity
+    wider than the annex reserves — the direction that turns a segment into a
+    whole code."""
+    rows = {r["code"]: r for r in load_relation()["rows"]}
+    assert rows["42912"]["text"] == "pelabuhan bukan perikanan"
+    assert rows["42913"]["text"] == "pelabuhan perikanan"
+
+
+def test_innocence_a_cell_that_wraps_past_its_tick_keeps_its_qualifier():
+    """The bound is a BLANK LINE, the annex's own row separator — not "stop at
+    the tick". Two narrower rules were measured and discarded because they cut
+    real wraps: `42209` and `71102` carry "teknologi sederhana dan madya" on
+    lines BELOW their tick, and losing those words produces a wrong bucket in
+    the dangerous direction."""
+    rows = load_relation()["rows"]
+    # Keyed by (code, column), NOT by code: `71102` sits in the annex TWICE
+    # under different bidang usaha — dialokasikan on p15 and kemitraan on p21 —
+    # and a dict keyed by code alone keeps only the last, which made the first
+    # draft of this test report a loss the parser had not caused (W107).
+    by_pair = {(r["code"], r["column"]): r for r in rows}
+    for code in ("42209", "71102", "71202", "71204", "43905"):
+        r = by_pair[(code, "dialokasikan")]
+        blob = (r["text"] or "") + (r.get("parent_heading") or "")
+        assert "madya" in blob, f"{code} lost its grade qualifier: {r['text']!r}"
+    # `16101` carries a CAPACITY limit ("kurang dari 2000 m3 per tahun") and sits
+    # in the KEMITRAAN column — a partnership duty, not a reservation. Named with
+    # its real column rather than assumed into the other one: the two columns are
+    # the over-match this whole module is built to keep apart.
+    assert "kurang dari" in (by_pair[("16101", "kemitraan")]["text"] or "")
+
+
+def test_the_parse_still_accounts_for_every_tick():
+    """A span rule that cuts too early drops rows silently. One discarded
+    attempt lost `41020` entirely and turned 0 unresolved into 1 — measured
+    before shipping, which is the only reason it is not in the artifact."""
+    rel = load_relation()
+    assert rel["counts"]["ticks"] == 180
+    assert rel["counts"]["rows_emitted"] == 181  # annex row 13 carries two codes
+    assert rel["counts"]["unresolved"] == 0
+    assert rel["unresolved"] == []

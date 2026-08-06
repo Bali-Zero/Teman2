@@ -216,8 +216,20 @@ def governing_headings(text: str) -> dict[tuple[int, int], str | None]:
     exactly that and reported retail-trade codes as children of a construction
     heading (W107: the probe that measures a disease can have it).
 
-    Declared limit: a heading that WRAPS across lines contributes only its first
-    line here. That truncates a parent's words, it never invents them, so a
+    THE COLON IS A FORM AND PARENTHOOD IS AN ENTITY, and this rule knowingly
+    judges by the form. `42  Dekorasi yang menggunakan teknologi sederhana dan
+    madya` has no colon and governs `43304`/`43305` all the same, so those two
+    lose their qualifier here. The entity rule was written and MEASURED — "a
+    numbered item carrying no KBLI code of its own is a heading" — and discarded:
+    a standalone row often carries its code on a LATER line, so that rule adopted
+    50 parents where there are 8, and would have moved ~41 rows out of the
+    owner's list on a bad inference. That is the harm this module's own caveat
+    warned about, in the direction it warned about. Eight verified parents beat
+    fifty guessed ones; the miss is declared here and `43304` currently lands in
+    `split-heirs`, where nothing acts on it.
+
+    Second declared limit: a heading that WRAPS across lines contributes only its
+    first line. That truncates a parent's words, it never invents them, so a
     qualifier can be missed but never fabricated — and `parent_heading` is
     evidence for a reader, not an automatic verdict.
     """
@@ -266,7 +278,30 @@ def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> li
 
     span = [i]
     seen_code = has_code(i)
+    # A line between two ticks cannot belong to both rows, and until 2026-08-06
+    # both claimed it: this row walked DOWN over it and the next row walked UP
+    # over it. In this annex the activity sits ABOVE its code+tick line, so the
+    # next row is usually the rightful owner — measured, SEVEN rows had eaten
+    # their neighbour's cell, e.g. `42912` recorded as "pelabuhan bukan perikanan
+    # pelabuhan perikanan", which is its own activity plus the whole of `42913`'s.
+    #
+    # …and a BLANK LINE, which is the annex's own row separator. Without it two
+    # rows both claimed the lines between their ticks — measured, SEVEN rows had
+    # eaten their neighbour's cell, `42912` recorded as "pelabuhan bukan
+    # perikanan pelabuhan perikanan", its own activity plus the whole of
+    # `42913`'s, which then reads as one wider activity than the annex reserves.
+    #
+    # Two narrower rules were tried first and MEASURED before shipping, because
+    # this is the function whose docstring warns that truncating produces a WRONG
+    # bucket rather than a missing one: (a) cede the whole gap whenever the next
+    # row walks upward — killed the fusion and truncated six legitimate wraps
+    # (`42209`, `71102` lost "teknologi sederhana dan madya" off their own tails)
+    # and dropped `41020` entirely; (b) up XOR down — same six casualties, since
+    # the annex really does wrap a cell ACROSS its tick line. Only the blank line
+    # separates rows without cutting a wrap, because it is what the DOCUMENT uses.
     for j in range(i + 1, following):
+        if not lines[j].strip():
+            break
         if _ROW_START_RE.match(lines[j]) or _PAGE_FURNITURE_RE.match(lines[j]):
             break
         if has_code(j):
@@ -276,7 +311,7 @@ def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> li
         span.append(j)
     if not cell_at(lines[i], tick_x):
         for j in range(i - 1, previous, -1):
-            if _PAGE_FURNITURE_RE.match(lines[j]):
+            if _PAGE_FURNITURE_RE.match(lines[j]) or not lines[j].strip():
                 break
             span.insert(0, j)
             if _ROW_START_RE.match(lines[j]) or has_code(j):

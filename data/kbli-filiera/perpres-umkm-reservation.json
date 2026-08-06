@@ -37,7 +37,7 @@
   "unresolved": 0,
   "dialokasikan": 124,
   "kemitraan": 57,
-  "title_corroborated": 159,
+  "title_corroborated": 158,
   "text_cell_missing": 0
  },
  "tick_x_histogram": {
@@ -573,7 +573,7 @@
    "code": "42911",
    "column": "dialokasikan",
    "page": 9,
-   "text": "Konstruksi bangunan yang menggunakan teknologi sederhana dan madya: sumber daya air pelabuhan bukan perikanan",
+   "text": "Konstruksi bangunan yang menggunakan teknologi sederhana dan madya: sumber daya air",
    "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
@@ -582,7 +582,7 @@
    "code": "42912",
    "column": "dialokasikan",
    "page": 9,
-   "text": "pelabuhan bukan perikanan pelabuhan perikanan",
+   "text": "pelabuhan bukan perikanan",
    "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
@@ -636,7 +636,7 @@
    "code": "43212",
    "column": "dialokasikan",
    "page": 10,
-   "text": "Instalasi yang menggunakan teknologi sederhana dan madya: telekomunikasi sinyal dan telekomunikasi kereta api",
+   "text": "telekomunikasi sinyal dan telekomunikasi kereta api",
    "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
@@ -690,7 +690,7 @@
    "code": "43223",
    "column": "dialokasikan",
    "page": 11,
-   "text": "11 DIALO U I[o.                          BIDA!5G USNIA                                KBLI KOPER T minyak dan gas pendingin dan ventilasi udara",
+   "text": "DIALO U I[o.                          BIDA!5G USNIA                                KBLI KOPER T minyak dan gas pendingin dan ventilasi udara",
    "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
@@ -726,7 +726,7 @@
    "code": "43301",
    "column": "dialokasikan",
    "page": 11,
-   "text": "Pengerjaan yang menggunakan teknologi sederhana dan madya: pemasangan kaca dan aluminium lantai, dinding, peralatan saniter dan plafon",
+   "text": "pemasangan kaca dan aluminium lantai, dinding, peralatan saniter dan plafon",
    "parent_heading": "Pengerjaan yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
@@ -753,10 +753,10 @@
    "code": "43304",
    "column": "dialokasikan",
    "page": 12,
-   "text": "Dekorasi yang menggunakan teknologi sederhana dan madya lnterior Eksterior",
+   "text": "lnterior Eksterior",
    "parent_heading": null,
    "read_from": "text-layer",
-   "title_corroborated": true
+   "title_corroborated": false
   },
   {
    "code": "43305",
@@ -1131,7 +1131,7 @@
    "code": "95299",
    "column": "dialokasikan",
    "page": 16,
-   "text": "Industri reparasi barang rumah tangga dan pribadi lainnya St( No 054256 C",
+   "text": "Industri reparasi barang rumah tangga dan pribadi lainnya",
    "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
@@ -1590,7 +1590,7 @@
    "code": "41013",
    "column": "kemitraan",
    "page": 20,
-   "text": "gedung industri SK tJo 05,1024C",
+   "text": "gedung industri",
    "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
