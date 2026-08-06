@@ -8,7 +8,6 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import UTC
 from pathlib import Path
 
 
@@ -66,24 +65,32 @@ async def async_main(worker_name: str, dry_run: bool) -> int:
                 f"⚠️ GARUDA indexer: {consecutive} errors in last run (worker={worker_name})"
             )
 
-        # Check OAuth token expiry
-        try:
-            import asyncpg
-            pg = await asyncpg.connect(dsn=os.environ.get("DATABASE_URL", ""))
-            row = await pg.fetchrow(
-                "SELECT expires_at FROM google_drive_tokens ORDER BY created_at DESC LIMIT 1"
-            )
-            if row and row["expires_at"]:
-                from datetime import datetime
-                days_left = (row["expires_at"] - datetime.now(tz=UTC)).days
-                if days_left < 7:
-                    await send_critical_alert(
-                        f"⚠️ GARUDA: Google Drive OAuth token expires in {days_left} days!\n"
-                        f"Re-auth: https://kita.balizero.com/settings/integrations"
-                    )
-            await pg.close()
-        except Exception as e:
-            logger.warning("Could not check OAuth expiry: %s", e)
+        # The OAuth expiry check that used to live here is DELETED, 2026-08-06.
+        #
+        # It read `SELECT expires_at ... ORDER BY created_at DESC LIMIT 1` and
+        # alerted when `(expires_at - now).days < 7`. But `expires_at` is the
+        # **one-hour access token**, not a 90-day credential clock
+        # (google_drive_service.py:163 — `now + expires_in (3600)`; measured
+        # live, `expires_at - updated_at == 1h` on every row). So `days_left`
+        # was 0 at best and negative the rest of the time: the condition was
+        # **always true**, and the only reason this did not fire nightly is
+        # that the indexer crashes upstream before reaching it.
+        #
+        # It is not replaced here, for two reasons.
+        #
+        # 1. This check cannot see the failure it was written for. A REVOKED
+        #    refresh token still sits in the column: on 2026-08-05 Google
+        #    answered `invalid_grant: Token has been expired or revoked` while
+        #    the row looked perfectly populated. No query against this table
+        #    can tell a live credential from a dead one — only an attempt can,
+        #    and this indexer already makes one every night.
+        # 2. One owner per condition. `scripts/drive_token_watchdog.py` owns
+        #    the credential's health; a second organ guessing at it in
+        #    parallel, on the wrong scale, is noise that trains the reader to
+        #    ignore the real thing.
+        #
+        # What DOES report the credential here is the crash path below — the
+        # RefreshError propagates and `send_critical_alert` names it.
 
         return 0
     except Exception as e:

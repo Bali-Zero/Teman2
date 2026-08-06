@@ -35,6 +35,7 @@ was fine. A diagnosis aimed away from the cause costs more than silence
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -44,6 +45,31 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "scripts" / "drive_token_watchdog.py"
+
+
+def _wire_payload(expires_at: str, updated_at: str) -> str:
+    """One `echo` line in the shape the fly side ACTUALLY prints.
+
+    W114: a fake built at the service boundary in the vocabulary the reader
+    imagines confirms the reader instead of testing it. These fakes stand in
+    for the remote `python3 -c` and must speak its wire format — a `rows`
+    list carrying `user_id` / `has_refresh` / `expires_at` / `updated_at`. An
+    earlier version of this corpus echoed a flat `{"expires_at": ...}` object
+    that the remote side had stopped producing, and stayed green.
+    """
+    payload = json.dumps(
+        {
+            "rows": [
+                {
+                    "user_id": "SYSTEM",
+                    "has_refresh": True,
+                    "expires_at": expires_at,
+                    "updated_at": updated_at,
+                }
+            ]
+        }
+    )
+    return f"echo '{payload}'\n"
 
 
 def _load():
@@ -110,14 +136,14 @@ def test_a_healthy_environment_still_returns_the_token(wd, monkeypatch, tmp_path
     fake.write_text(
         "#!/bin/sh\n"
         "echo 'Connecting to fdaa:...'\n"
-        "echo '{\"expires_at\": \"2026-12-01 00:00:00+00:00\", \"created_at\": \"2026-09-01\"}'\n"
+        + _wire_payload("2026-12-01 00:00:00+00:00", "2026-11-30 23:00:00+00:00")
     )
     fake.chmod(0o755)
     monkeypatch.setattr(wd, "_resolve_fly", lambda: str(fake))
 
     data, reason = wd._check_drive_token_via_fly()
     assert reason is None, reason
-    assert data["expires_at"].startswith("2026-12-01")
+    assert data["rows"][0]["expires_at"].startswith("2026-12-01")
 
 
 def test_an_installed_fly_on_path_wins_over_the_fallback(wd, monkeypatch, tmp_path):
@@ -146,8 +172,8 @@ def test_the_alert_text_no_longer_prescribes_checking_fly_ssh():
     src = SCRIPT.read_text()
     assert "Verifica che <code>fly ssh</code> funzioni" not in src, (
         "the misdirecting diagnosis is back")
-    assert "la scadenza NON è sorvegliata" in src, (
-        "the alert must say the expiry check is blind while this fires")
+    assert "la credenziale NON è sorvegliata" in src, (
+        "the alert must say the credential check is blind while this fires")
 
 
 # ------------------------------------------- second cause: the CREDENTIAL
@@ -177,7 +203,7 @@ def _fly_that_needs_no_token(tmp_path, name="flyctl"):
         "  echo 'Error: Could not find App \"nuzantara-rag\"' >&2\n"
         "  exit 1\n"
         "fi\n"
-        "echo '{\"expires_at\": \"2026-07-25 20:02:03+00:00\", \"created_at\": \"2026-04-07\"}'\n"
+        + _wire_payload("2026-07-25 20:02:03+00:00", "2026-07-25 19:02:03+00:00")
     )
     fake.chmod(0o755)
     return fake
@@ -194,7 +220,7 @@ def test_a_wrongly_scoped_env_token_falls_back_to_the_config_credential(
 
     data, reason = wd._check_drive_token_via_fly()
     assert reason is None, f"the fallback credential was never tried: {reason}"
-    assert data["expires_at"].startswith("2026-07-25")
+    assert data["rows"][0]["expires_at"].startswith("2026-07-25")
 
 
 def test_when_every_credential_refuses_the_reason_names_each_one(
@@ -230,7 +256,7 @@ def test_a_working_env_token_is_used_and_the_fallback_is_never_reached(
     fake.write_text(
         "#!/bin/sh\n"
         f"echo x >> {counter}\n"
-        "echo '{\"expires_at\": \"2026-12-01 00:00:00+00:00\", \"created_at\": \"2026-09-01\"}'\n"
+        + _wire_payload("2026-12-01 00:00:00+00:00", "2026-11-30 23:00:00+00:00")
     )
     fake.chmod(0o755)
     monkeypatch.setattr(wd, "_resolve_fly", lambda: str(fake))
@@ -238,7 +264,7 @@ def test_a_working_env_token_is_used_and_the_fallback_is_never_reached(
 
     data, reason = wd._check_drive_token_via_fly()
     assert reason is None, reason
-    assert data["expires_at"].startswith("2026-12-01")
+    assert data["rows"][0]["expires_at"].startswith("2026-12-01")
     assert counter.read_text().count("x") == 1, (
         "fly was invoked twice — the first credential worked and the fallback "
         "must not have run")
