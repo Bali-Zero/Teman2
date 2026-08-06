@@ -90,6 +90,32 @@ def test_the_alert_says_the_pid_is_not_the_proof() -> None:
     assert "re-pair" in message
 
 
+def test_the_alert_names_the_restart_before_the_qr() -> None:
+    """La prima stesura indicava il re-pair QR come LA cura. Misurato il 6/8:
+    vino e tornata a specchiare 17 minuti dopo che il supervisore aveva
+    RILANCIATO il suo processo — nessun QR. Ari invece il QR l'aveva richiesto.
+    Sono due guasti diversi, e mandare qualcuno al telefono quando bastava un
+    riavvio blocca la cura dietro un gesto fisico che non serviva.
+    """
+    message = wa.format_alert([wa.classify("vino", None, NOW)], "Nuzantara", 72)
+    assert message.index("RIAVVIA") < message.index("re-pair"), (
+        "la cura economica va nominata PRIMA di quella che blocca su una persona"
+    )
+    assert "already running" in message, (
+        "senza il perche — il supervisore salta un PID vivo — il consiglio e un rito"
+    )
+
+
+def test_the_alert_never_suggests_pkill_f() -> None:
+    """`pkill -f --employee=vino` matcha anche la riga di comando di chi la
+    scrive: e la stessa over-match che ha gia falsato due sonde in questa
+    lane. Un allarme che suggerisce un comando cosi arma il prossimo incidente.
+    """
+    message = wa.format_alert([wa.classify("vino", None, NOW)], "Nuzantara", 72)
+    assert "pkill -f`" in message or "mai `pkill -f`" in message, "deve METTERNE IN GUARDIA"
+    assert "\n    pkill" not in message, "non deve PRESCRIVERLO come comando"
+
+
 # --------------------------------------------------- CANNOT-VERIFY (la parte critica)
 
 
@@ -176,6 +202,58 @@ def test_stale_lines_still_exit_0_because_the_verdict_travels_by_alert(
 
     assert rc == wa.EXIT_OK
     assert payload["stale"] == 1
+
+
+def test_cannot_verify_rings_the_alarm_itself(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Il 2 lo legge cron-runner e allarma — ma solo finche il chiamante e lui.
+    Un organo che per farsi sentire dipende da CHI lo invoca e muto appena lo
+    sposti su un plist, senza che una riga del suo codice cambi.
+    """
+    sent: list[str] = []
+    monkeypatch.setattr(wa, "send_to_gateway",
+                        lambda msg, host, dedup_suffix="": sent.append(msg) or True)
+    monkeypatch.setattr(wa, "run", lambda _h: (_ for _ in ()).throw(
+        wa.CannotVerify("query mirror fallita (ConnectionError)")))
+
+    assert wa.main([]) == wa.EXIT_CANNOT_VERIFY
+    capsys.readouterr()
+    assert len(sent) == 1
+    assert "CANNOT-VERIFY" in sent[0]
+    assert "NON e un verdetto di salute" in sent[0]
+
+
+def test_a_healthy_run_never_rings_the_blind_alarm(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """INNOCENZA del test sopra, stesso meccanismo: senza questa, un
+    emit_blind_alert cablato a sparare sempre passerebbe il test di sopra.
+    """
+    sent: list[str] = []
+    monkeypatch.setattr(wa, "send_to_gateway",
+                        lambda msg, host, dedup_suffix="": sent.append(msg) or True)
+    monkeypatch.setattr(wa, "run", lambda _h: [wa.classify("ari", NOW, NOW)])
+
+    assert wa.main([]) == wa.EXIT_OK
+    capsys.readouterr()
+    assert sent == []
+
+
+def test_no_alert_suppresses_the_blind_alarm_too(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """--no-alert e un dry-run: deve valere su ENTRAMBE le voci, non solo su
+    quella che avevo in mente quando l'ho scritto."""
+    sent: list[str] = []
+    monkeypatch.setattr(wa, "send_to_gateway",
+                        lambda msg, host, dedup_suffix="": sent.append(msg) or True)
+    monkeypatch.setattr(wa, "run", lambda _h: (_ for _ in ()).throw(
+        wa.CannotVerify("DSN assente")))
+
+    assert wa.main(["--no-alert"]) == wa.EXIT_CANNOT_VERIFY
+    capsys.readouterr()
+    assert sent == []
 
 
 def test_selftest_passes_on_a_healthy_organ(capsys: pytest.CaptureFixture) -> None:

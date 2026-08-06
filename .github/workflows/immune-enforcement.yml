@@ -126,6 +126,10 @@ jobs:
               scripts/tests/test_prepush_tip_drift.sh|\
               scripts/verify_connectome_run.sh|\
               scripts/tests/test_connectome_alert_honesty.sh|\
+              scripts/wa_session_liveness.py|\
+              scripts/tests/test_wa_session_liveness.py|\
+              infra/launchagents/wrappers/wa-session-liveness.sh|\
+              scripts/tests/test_wa_session_liveness_wrapper.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
@@ -234,6 +238,7 @@ jobs:
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
+            scripts/tests/test_wa_session_liveness.py \
             scripts/tests/test_prepush_classify.py \
             scripts/tests/test_husky_pii_pass_overmatch.py \
             scripts/tests/test_docs_audit.py \
@@ -375,6 +380,22 @@ jobs:
           #                bare path is unreachable, not merely unused.
           # Mutation-verified: reverting each cure turns the matching case red.
           bash scripts/tests/test_connectome_alert_honesty.sh
+
+      - name: wa-mirror liveness wrapper corpus (a cron armed to nothing must say so)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Two wa-mirror sessions died 8 and 10 days with every probe green: the
+          # PID survives a revoked WhatsApp session, so `ps` and the LaunchAgent
+          # both agreed while nothing was being mirrored. The organ asks the only
+          # question that distinguishes them — when did this line last write a row.
+          # This corpus judges its WRAPPER, in a fake repo, because reading a
+          # wrapper cannot tell "it did not fire" from "it never got there" (W107):
+          #   payload/interpreter missing → exit 2, never 0 (W81)
+          #   the organ's exit code CAPTURED, not inferred from surviving (W101)
+          # Mounted piece by piece on purpose: with organ and interpreter torn out
+          # together, disarming the first guard still exited 2 via the second, and
+          # the mutant survived — to judge a guard it has to be the only thing broken.
+          bash scripts/tests/test_wa_session_liveness_wrapper.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
