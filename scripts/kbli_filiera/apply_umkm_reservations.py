@@ -235,14 +235,27 @@ def check(
             #      on `judged_as`, and two gates that overlap drift apart;
             #   4. the siblings left open are NAMED in the spec and match what
             #      the dataset says they are, so the drop is visible rather than
-            #      implied.
+            #      implied;
+            #   5. those siblings are in fact still OPEN in the dataset — the
+            #      spec's sentence about them has to be true of the catalogue;
+            #   6. two independent lanes are NAMED in `agreed_by`.
             #
             # What this gate does NOT do is decide identity. Whether 96210 IS
             # "Pangkas rambut/barber shop" is a judgment; it is made by two
             # independent lanes and recorded per item in `agreed_by`, and
-            # `main()` requires two of them. The mechanics here only guarantee
-            # that a wrong identity call cannot ALSO over-reach into activities
-            # the annex never named.
+            # precondition 6 below refuses the item if two are not recorded.
+            # That sentence used to end "and `main()` requires two of them",
+            # which was simply false — nothing read the field, so an item with
+            # `agreed_by: []` would have been written. A cross-family review of
+            # this gate found it. The stricter evidence rule lives HERE and not
+            # on the 1:1 gate above for a reason that is not arbitrary: there,
+            # identity is mechanical (a single heir IS the ancestor), so the
+            # crosswalk carries it. Here identity is a judgment, so the gate
+            # that admits a judgment is the one that must prove it was made
+            # twice.
+            #
+            # The mechanics here only guarantee that a wrong identity call
+            # cannot ALSO over-reach into activities the annex never named.
             ancestors = [
                 str(a) for a in (record.get("bps_2020_ancestors") or {}).get("codes") or []
             ]
@@ -271,6 +284,40 @@ def check(
                 refusals.append(
                     f"{code}: spec leaves open {declared or 'nothing'}, but 2020 "
                     f"{split} also went to {siblings}"
+                )
+                continue
+
+            # 5. …and "left open" has to be TRUE of the catalogue, not merely
+            #    written in the spec. The check above compares NAMES; it never
+            #    asked the dataset whether those siblings are still open, so a
+            #    sibling already restricted by some other cure would pass while
+            #    the sentence "why_the_sibling_stays_open" asserted the
+            #    opposite. That matters beyond tidiness: the reason this heir is
+            #    narrow enough to close is that the siblings carry the REST of
+            #    the ancestor's activity. A sibling that has itself been closed
+            #    is no longer carrying anything, and the split the spec
+            #    describes is not the split on disk. Raised by a cross-family
+            #    review of this gate.
+            shut = [
+                s
+                for s in siblings
+                if (by_code.get(s) or {}).get("pma_status") not in (None, "TERBUKA")
+            ]
+            if shut:
+                refusals.append(
+                    f"{code}: spec says it leaves {shut} open, but the dataset "
+                    f"already restricts them — re-adjudicate, do not stack"
+                )
+                continue
+
+            # 6. two independent adjudications, NAMED. One lane's word is not an
+            #    adjudication, and the same lane written twice is one lane. This
+            #    is the check the comment above used to claim `main()` performed.
+            lanes = {str(a).strip() for a in (item.get("agreed_by") or []) if str(a).strip()}
+            if len(lanes) < 2:
+                refusals.append(
+                    f"{code}: split-heir identity is a judgment and needs two "
+                    f"independent lanes in `agreed_by`, found {sorted(lanes) or 'none'}"
                 )
                 continue
 
