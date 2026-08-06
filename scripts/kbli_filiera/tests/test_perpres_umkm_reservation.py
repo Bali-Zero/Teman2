@@ -847,3 +847,51 @@ def test_known_gap_exactly_one_annex_row_is_an_orphaned_continuation_clause():
         "the set of annex rows that are a bare continuation clause with no parent "
         f"has changed: {orphans}"
     )
+
+
+def test_known_limit_a_third_of_annex_rows_carry_a_truncated_activity_text():
+    """You cannot argue "the annex names this code WITHOUT a qualifier" from here.
+
+    54 of the 181 rows have a `text` that begins mid-phrase — lowercase, no
+    subject, continuing a sentence that started in the row above. `41015` reads
+    "dan gedung pelayanan kesehatan"; `43110` reads "madya"; `16294` reads
+    "bambu". The annex's activity column wraps across many printed lines and the
+    parse cut it per code.
+
+    What this is NOT, checked before it was written up: a row SHIFT. On pages 6
+    and 7 every fragment still describes its own code — `41017` (Gedung
+    Penginapan) carries "gedung penginapan meliputi hostel dan losmen", `41019`
+    (Gedung Lainnya) carries "gedung lainnya meliputi tempat ibadah...". So
+    membership is sound and the code-to-activity association is sound; it is the
+    COMPLETENESS of each text that is not.
+
+    Why it matters enough to pin. A fragment can also run ON into the next item:
+    `16299`'s text ends "...lainnya YTDL t7 Usaha bidang obat tradisional (usaha
+    kecil obat", which is the opening of the row `21022` continues. So a row's
+    text may be missing its own qualifier AND carrying someone else's words. The
+    inference this forbids is a specific one, and it is the inference an
+    adjudicator most wants to make: absence of a scope qualifier in a row's text
+    is NOT evidence that the annex reserves the whole code. That is the same
+    error that produced the #3659 withdrawal, arriving by a different route.
+
+    The four codes this branch cures are deliberately asserted CLEAN against
+    this limit — "Pangkas rambut/ barber shop", "Salon kecantikan", "Penatu",
+    "Hotel Bintang I" are complete activity names — so the cure does not rest on
+    a truncated reading. If a future parse improves the artifact this test fails
+    and the number moves; that is the point of pinning it rather than counting
+    it once in a commit message.
+    """
+    rows = json.loads(RELATION.read_text(encoding="utf-8"))["rows"]
+    truncated = [r for r in rows if re.match(r"^\s*[a-z]", r["text"])]
+    assert (len(truncated), len(rows)) == (54, 181), (
+        "the truncated-text population moved; re-read whether any adjudication "
+        "in flight was arguing from the absence of a qualifier"
+    )
+
+    cured_ancestors = {"96111", "96112", "96200", "55110"}
+    by_code = {r["code"]: r for r in rows}
+    assert cured_ancestors <= set(by_code), "premise: all four ancestors are annex rows"
+    dirty = sorted(cured_ancestors & {r["code"] for r in truncated})
+    assert dirty == [], (
+        f"this branch's cure would be resting on a truncated annex text: {dirty}"
+    )
