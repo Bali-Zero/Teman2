@@ -34,7 +34,22 @@ ENV_FILE = Path.home() / ".wa-mirror.env"
 
 
 def read_env_file(path: Path) -> dict[str, str]:
+    """Missing file = empty config, not an import-time crash.
+
+    This used to be a bare `path.read_text()`, so importing this module on any
+    machine without ~/.wa-mirror.env raised FileNotFoundError before a single
+    line of logic ran. That is why this file had NO test corpus and why a PII
+    leak sat in it unreviewed: the module could not be imported to be examined
+    except on the one host that happens to have the file.
+
+    Degrading is safe here because every consumer already has a fallback:
+    DASHBOARD_URL goes through first_nonempty() to a literal default, and
+    DB_URL being None fails loudly at the asyncpg call — a clear "no database
+    configured" instead of a stack trace at line 38 of an import.
+    """
     values: dict[str, str] = {}
+    if not path.is_file():
+        return values
     for raw_line in path.read_text().splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -52,7 +67,16 @@ def first_nonempty(*values: str | None) -> str:
 
 
 ENV_VALUES = read_env_file(ENV_FILE)
-DB_URL = ENV_VALUES.get("WA_MIRROR_DATABASE_URL")
+# os.environ FIRST, matching how DASHBOARD_URL is already resolved below. Only
+# the env FILE was consulted here, so there was no way to point this module at
+# anything but the one host's live database — which, combined with the hard
+# sys.exit(2) under it, made the module impossible to import for inspection
+# anywhere else. A file that cannot be imported cannot be reviewed, and this
+# one carried an unreviewed PII leak for a month.
+DB_URL = first_nonempty(
+    os.environ.get("WA_MIRROR_DATABASE_URL"),
+    ENV_VALUES.get("WA_MIRROR_DATABASE_URL"),
+)
 if not DB_URL:
     print("ERR: WA_MIRROR_DATABASE_URL missing", file=sys.stderr)
     sys.exit(2)
@@ -69,10 +93,42 @@ DEDUP_WINDOW = timedelta(hours=4)
 
 
 def mask_phone(phone: str) -> str:
-    """+62812****7456 — keep prefix(4) + suffix(4)."""
-    if not phone or len(phone) < 6:
-        return f"+{phone}"
+    """+62812****7456 — keep prefix(4) + suffix(4).
+
+    A number too SHORT for that rule gets masked MORE, not less. The previous
+    branch returned `f"+{phone}"` — the whole thing, in the clear, out of
+    the function whose only job is not to do that. The masker was defeated by
+    its own fallback, which is the same defect its callers had.
+    """
+    if not phone:
+        return "+?"
+    if len(phone) < 6:
+        return "+" + "*" * len(phone)
     return f"+{phone[:4]}****{phone[-4:]}"
+
+
+def contact_label(item: dict) -> str:
+    """How a contact is NAMED in an alert. One rule, one place.
+
+    Both compose paths (single contact / roster) inlined
+    `display = crm_name or f"+{phone}"` and then printed `mask_phone(phone)`
+    right after it. For a contact the CRM does not know — a NEW LEAD, i.e.
+    exactly the case this alerter exists to surface — that rendered the FULL
+    number and its masked form side by side:
+
+        +6281312415572 — +6281****5572
+
+    The masking was not bypassed; it was made pointless by the fallback
+    standing next to it. This file's own docstring already promised "phone
+    (last 4 digits masked)", so the leak breached its declared contract — it
+    is not a judgement call (UU PDP Art. 67-68 / SYMBIOSIS Law 2).
+
+    Two writers of one field means the rule lives in ONE function, so a third
+    call site cannot reintroduce the leak by copying the old inline form.
+    """
+    masked = mask_phone(item.get("phone") or "")
+    name = item.get("crm_name")
+    return f"{name} — {masked}" if name else masked
 
 
 def send_telegram(text: str, tier: str = "p0", dedup_key: str = "") -> bool:
@@ -193,6 +249,13 @@ async def cmd_realtime(force: bool = False):
         if not critical:
             continue
         phone = it["phone"]
+        # DELIBERATE, not an oversight: this key is the LOCAL 4h dedup state in
+        # ~/.cache/wa-mirror-attention-state.json. It never reaches Telegram and
+        # never reaches the gateway spool — the wire key is the sha256 set
+        # signature below. CLAUDE.md §14 / SYMBIOSIS Law 2 draw the line at
+        # OUTPUT, not at local processing: "il processing PII resta
+        # locale-sovrano sul Pro". Recorded here so the next reader can tell a
+        # considered boundary from a missed one.
         key = f"{phone}:{sorted(critical)[0]}"
         last_ts_str = last_alerted.get(key)
         if last_ts_str and not force:
@@ -232,23 +295,19 @@ def _compose_realtime_alert(due: list) -> str:
     """
     if len(due) == 1:
         _, it, critical = due[0]
-        phone = it["phone"]
-        display = it.get("crm_name") or f"+{phone}"
         crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
         return (
             "🚨 HIGH attention\n"
-            f"{display} — {mask_phone(phone)}\n"
+            f"{contact_label(it)}\n"
             f"{crm_tag} · {it['n_high']} unresolved msg\n"
             f"Reasons: {', '.join(critical)}\n"
             f"→ {DASHBOARD_URL}"
         )
     lines = [f"🚨 HIGH attention — {len(due)} contacts"]
     for _, it, critical in due:
-        phone = it["phone"]
-        display = it.get("crm_name") or f"+{phone}"
         crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
         lines.append(
-            f"• {display} — {mask_phone(phone)}\n"
+            f"• {contact_label(it)}\n"
             f"  {crm_tag} · {it['n_high']} unresolved · {', '.join(critical)}"
         )
     lines.append(f"→ {DASHBOARD_URL}")
@@ -279,7 +338,15 @@ async def cmd_digest():
         lines.append("")
         lines.append("🚨 Needs your attention:")
         for it in items[:8]:  # cap to 8 to keep msg readable
-            name = it.get("crm_name") or f"+{it['phone']}"
+            # The digest path had the SAME leak as the realtime one and was
+            # worse: here there is no mask_phone() alongside, so for a contact
+            # the CRM does not know the raw number was the ONLY rendering — and
+            # this mode "always sends", twice a day. It survived the first pass
+            # because the census looked for the FORM of the line already found
+            # (`display` / `phone`); this one says `name` / `it['phone']`.
+            # A pattern written from the instance you found catches the
+            # instance you found.
+            name = contact_label(it)
             crm_marker = "" if it["crm_id"] else " (new lead)"
             crit = [r for r in (it["reasons"] or []) if r in CRITICAL_REASONS]
             unanswered = "unanswered_thread_3plus" in (it["reasons"] or [])
