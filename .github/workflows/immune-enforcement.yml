@@ -83,6 +83,7 @@ jobs:
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
+              scripts/tests/test_home_fork_skipped_visibility.py|\
               scripts/tests/test_proprioception_home_fork_merge.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
@@ -213,6 +214,7 @@ jobs:
           for t in \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
+            scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
