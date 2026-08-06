@@ -16,7 +16,14 @@ Design contracts (scar families they answer):
   - NEVER fails the caller: any internal error → spool best-effort, exit 0 (#7).
   - Fail-VISIBLE, not silent: unsendable P0 is spooled as `p0_unsent` and the
     next digest/organism_digest surfaces it (#2 esiste≠armato).
-  - Dedup: same key within TG_DEDUP_HOURS collapses to a counter (#flapping).
+  - Identity ≠ measurement: the derived dedup key is the condition's first
+    sentence with numbers/sizes/dates/hashes stripped, so a repeat that only
+    moved a counter is the SAME condition (#3 under-match — the raw key made
+    dedup decorative for its whole life).
+  - A persisting condition gets QUIETER: each further send mutes it for the
+    next rung of TG_REPEAT_LADDER_H (first rung = TG_DEDUP_HOURS). Silence
+    past two windows means it died, so the ladder restarts. A re-sent repeat
+    always declares how many it swallowed — muting must not hide magnitude.
   - Budget: max TG_P0_BUDGET P0/day/machine; overflow → digest + ONE meta-P0.
   - Stdlib only, no repo imports: runs from launchd, HOME copies, any machine.
   - Token chain: env → ~/.nuzantara-secrets.env → ssh relay (M5) → spool-only.
@@ -69,6 +76,45 @@ P0_BUDGET = _env_num("TG_P0_BUDGET", 12, int)
 # the channel. See the comment at the budget decision below for the measurement.
 CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
+# A condition that PERSISTS is not news each time it is re-measured. After the
+# first send, each further send of the same live condition mutes it for longer.
+# Replayed over the real corpus (5202 events / 29.5d, 1525 of them p0) modelling
+# BOTH branches of `dedup_key or identity` — recorded key where the producer
+# supplied one, the new identity where it did not:
+#
+#   all tiers   176.1/day -> 42.4/day        p0   51.6/day -> 22.8/day
+#   wa-attention 20.45 -> 1.49   system-doctor 2.27 -> 0.14
+#   log-size-watchdog 60.9 -> 4.2   wa-mirror-bridge 48.9 -> 4.5
+#
+# Replaying with recorded keys ONLY (i.e. ignoring the identity branch) gives
+# 28.6 p0/day. That is the control, not the result: it is what the ladder alone
+# would buy. A replay is only worth its digits if it models the branch the code
+# actually takes, and this one has two.
+#
+# The control that makes this trustworthy: replaying a FLAT 6h window over the
+# same keys reproduces the observed rate exactly (176.1 -> 176.1). The old
+# window was not broken and was not being bypassed — 93.2% of events carry a
+# producer-supplied dedup_key, and what the archive holds is precisely what
+# survived a working 6h window. Four sends a day, forever, of a condition that
+# is simply still true. That is what the ladder is for, and it is where all of
+# the reduction above comes from.
+#
+# Where it does NOT bite: sentinel, 12.8 -> 10.6/day, because its producer key
+# is md5(the whole message) and the message carries a counter — 378 events, 255
+# distinct keys. A producer key that MOVES is worse than no key at all: it
+# bypasses condition_identity() below (explicit key wins) and then defeats every
+# window, because each re-measurement is a brand-new condition. Those producers
+# need fixing at the source; the gateway cannot rescue them.
+#
+# The FIRST rung is TG_DEDUP_HOURS: this replaces a flat window with a growing
+# one, it does not retire the knob that names the first window. Deriving the
+# default instead of writing a literal 6 is the whole point — an operator who
+# tightens TG_DEDUP_HOURS to hear a condition sooner must not be silently
+# ignored by a hardcoded ladder (a knob that parses and does nothing is
+# superscar #2 wearing a config file).
+REPEAT_LADDER_H = [
+    float(x) for x in os.environ.get("TG_REPEAT_LADDER_H", "").split(",") if x.strip()
+] or [DEDUP_HOURS, 24.0, 72.0, 168.0]
 DRY_RUN = os.environ.get("TG_DRY_RUN", "") == "1"
 RELAY_SSH = os.environ.get("TG_RELAY_SSH", "")  # e.g. "pro" on M5
 RELAY_GATEWAY = os.environ.get(
@@ -77,6 +123,54 @@ RELAY_GATEWAY = os.environ.get(
 
 TIERS = ("p0", "digest", "log")
 API_TIMEOUT = 6
+
+
+# ---------------------------------------------------------------- identity
+# A condition's IDENTITY must not contain its MEASUREMENTS.
+#
+# This is the FALLBACK, taken only when the caller passes no --dedup-key. Scope
+# it honestly: on the measured corpus that is 6.8% of events (355 of 5202) —
+# the other 93.2% name their own condition and never reach this function. It
+# matters anyway, because a producer that names nothing gets the sane default
+# instead of a key that changes whenever a number does.
+#
+# The old fallback was sha1(source|text[:160]) — raw, so a repeat that only
+# moved a counter ("= 4.7 MB", "reconnect_attempt=591") became a brand-new
+# condition. Replayed over just those 355 no-key events: 167 -> 35 conditions.
+#
+# Identity is the FIRST SENTENCE of the FIRST LINE. Everything after it is
+# EVIDENCE (log tails, stack frames, counters) — unbounded variability that no
+# prefix truncation can reliably exclude, which is why we cut on structure.
+#
+# The same normalisation is what a producer with an UNSTABLE explicit key
+# should be passing (see sentinel, above) instead of a hash of its own text.
+_ID_SUBS = (
+    (re.compile(r"<[^>]+>"), ""),                                # html tags
+    (re.compile(r"\b\d{4}-\d{2}-\d{2}([T ][\d:.,+]*)?"), "#D"),  # dates
+    (re.compile(r"\b\d{1,2}:\d{2}(:\d{2})?\b"), "#T"),           # clock
+    (re.compile(r"\b[0-9a-f]{8,}\b"), "#H"),                     # hashes / uuids
+    (re.compile(r"\b\d[\d.,]*\s*(MB|GB|KB|B|s|ms|%|h|d|min)\b"), "#S"),  # sizes / durations
+    (re.compile(r"\b\d[\d.,]*\b"), "#N"),                        # bare numbers
+)
+
+
+def condition_identity(source: str, text: str) -> str:
+    """Stable identity for one CONDITION, independent of how it is measured."""
+    t = str(text or "")
+    t = _ID_SUBS[0][0].sub("", t)
+    t = t.split("\n")[0]                        # first line
+    t = re.split(r"(?<=[.!?])\s", t)[0]         # first sentence
+    t = " ".join(t.split())
+    for rx, rep in _ID_SUBS[1:]:
+        t = rx.sub(rep, t)
+    return f"{source}|{t[:120]}"
+
+
+def _mute_window_h(streak: int) -> float:
+    """Hours to stay silent after the streak-th consecutive send of a condition."""
+    if streak <= 0:
+        return 0.0
+    return REPEAT_LADDER_H[min(streak - 1, len(REPEAT_LADDER_H) - 1)]
 
 
 # ---------------------------------------------------------------- token chain
@@ -222,7 +316,7 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
     spool = _spool_dir()
     now = time.time()
     machine = socket.gethostname().split(".")[0]
-    key = dedup_key or hashlib.sha1(f"{source}|{text[:160]}".encode()).hexdigest()[:16]
+    key = dedup_key or hashlib.sha1(condition_identity(source, text).encode()).hexdigest()[:16]
 
     record = {
         "ts": now,
@@ -241,14 +335,45 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
         state = _load_state(spool)
         dedup = state.setdefault("dedup", {})
         entry = dedup.get(key)
-        if entry and now - entry.get("ts", 0) < DEDUP_HOURS * 3600:
-            entry["count"] = entry.get("count", 1) + 1
-            entry["last_text"] = text[:200]
-            _save_state(spool, state)
-            return "deduped"
-        dedup[key] = {"ts": now, "count": 1, "last_text": text[:200]}
-        # prune dedup entries older than 2 windows so state.json never balloons
-        horizon = now - 2 * DEDUP_HOURS * 3600
+        suppressed = 0
+        streak = 1
+        if entry:
+            streak = int(entry.get("streak", 1))
+            # Window grows with the streak: a condition that keeps being true
+            # gets quieter, it does not get louder.
+            win = _mute_window_h(streak) * 3600
+            since = now - entry.get("ts", 0)
+            if since < win:
+                entry["count"] = entry.get("count", 1) + 1
+                entry["last_text"] = text[:200]
+                _save_state(spool, state)
+                return "deduped"
+            # Silent for more than two windows => the condition DIED. The next
+            # occurrence is a new birth, so the ladder restarts from the top.
+            if since > 2 * win:
+                streak = 1
+                suppressed = 0
+            else:
+                streak += 1
+                suppressed = max(0, entry.get("count", 1) - 1)
+        dedup[key] = {
+            "ts": now,
+            "count": 1,
+            "streak": streak,
+            "first_ts": (entry or {}).get("first_ts", now) if streak > 1 else now,
+            "last_text": text[:200],
+        }
+        # A repeat must carry HOW MUCH it repeated while muted, or suppressing it
+        # silently would hide the magnitude of a worsening condition.
+        if suppressed:
+            hrs = (now - dedup[key]["first_ts"]) / 3600
+            record["suppressed"] = suppressed
+            record["streak"] = streak
+            text = f"{text}\n\n(ripetuta {suppressed}× nelle ultime {hrs:.0f}h — silenziata fino a +{_mute_window_h(streak):.0f}h)"
+            record["text"] = text
+        # Prune only beyond the LONGEST window, else a chronic condition loses
+        # its streak and the ladder silently restarts at 6h forever.
+        horizon = now - 2 * max(REPEAT_LADDER_H) * 3600
         state["dedup"] = {k: v for k, v in dedup.items() if v.get("ts", 0) >= horizon}
 
         if tier == "log":
@@ -361,9 +486,16 @@ def selftest() -> int:
         check("digest spools", notify("digest", "t", "hello") == "spooled")
         check("dup deduped", notify("digest", "t", "hello") == "deduped")
         check("log stays on disk", notify("log", "t", "beat") == "logged")
-        check("p0 sends (dry)", notify("p0", "t", "fire-1") == "sent")
-        check("p0 sends (dry) 2", notify("p0", "t", "fire-2") == "sent")
-        check("p0 over budget → spool", notify("p0", "t", "fire-3") == "p0_overflow_spooled")
+        # Distinct CONDITIONS, not the same condition re-measured. The old
+        # fixtures were "fire-1"/"fire-2"/"fire-3", which differ only by a
+        # number — under the identity rule those ARE one condition, and the
+        # test was silently asserting that dedup does not work.
+        check("p0 sends (dry)", notify("p0", "t", "the disk is full") == "sent")
+        check("p0 sends (dry) 2", notify("p0", "t", "the token was revoked") == "sent")
+        check(
+            "p0 over budget → spool",
+            notify("p0", "t", "the backup did not run") == "p0_overflow_spooled",
+        )
         pending = (spool / "pending.jsonl").read_text().strip().splitlines()
         check("pending has digest+overflow", len(pending) == 2)
         check("log-only file exists", (spool / "log-only.jsonl").exists())
@@ -394,7 +526,28 @@ def selftest() -> int:
         )
         check(
             "a non-cron P0 is NOT let through by the reserve",
-            notify("p0", "t", "fire-4", "other:thing") == "p0_overflow_spooled",
+            notify("p0", "t", "an unrelated failure", "other:thing") == "p0_overflow_spooled",
+        )
+
+        # ---- identity: measurements are not identity (2026-08-06) ----------
+        # GUILT: the three loudest sources on the live fleet each embed a
+        # changing number in their text; under the old raw key every repeat
+        # hashed anew and the dedup window never applied even once.
+        check(
+            "same condition, different measurement → deduped",
+            notify("digest", "lsw", "Log size alert: ~/logs/a.log = 4.5 MB (>1MB threshold). tail A")
+            == "spooled"
+            and notify(
+                "digest", "lsw", "Log size alert: ~/logs/a.log = 9.9 MB (>1MB threshold). tail Z"
+            )
+            == "deduped",
+        )
+        # INNOCENCE: two DIFFERENT logs stay two conditions — the normalisation
+        # strips measurements, never nouns.
+        check(
+            "different log → still its own condition",
+            notify("digest", "lsw", "Log size alert: ~/logs/b.log = 2.5 MB (>1MB threshold). x")
+            == "spooled",
         )
         state = json.loads((spool / "state.json").read_text())
         check("reserve counted exactly twice", state["p0_budget"].get("cron_reserve") == 2)
