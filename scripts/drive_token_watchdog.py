@@ -351,23 +351,61 @@ def _check_drive_token_via_fly() -> tuple[dict | None, str | None]:
         "--command",
         f"python3 -c \"import base64,os; exec(base64.b64decode('{code_b64}').decode())\"",
     ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        output = result.stdout.strip()
-        log(f"fly ssh output: {output[:200]}")
-        # Cerca JSON nella output (potrebbe avere banner ssh)
-        for line in output.splitlines():
-            line = line.strip()
-            if line.startswith("{"):
-                return json.loads(line), None
-        # Ran, produced no JSON: report what it actually said, never a guess.
-        detail = (result.stderr or result.stdout).strip().replace("\n", " ")[:180]
-        return None, f"<code>fly ssh</code> è uscito {result.returncode}: {detail or '(nessun output)'}"
-    except subprocess.TimeoutExpired:
-        return None, "<code>fly ssh</code> non ha risposto entro 60s"
-    except Exception as e:
-        log(f"fly ssh fallito: {e}")
-        return None, f"{type(e).__name__}: {e}"
+    # TWO credentials, and only one of them works — probe, never assume (W106).
+    #
+    # Measured on Pro 2026-08-06, running the REAL command rather than
+    # `auth whoami` (which passes for a token scoped to a different app and
+    # only dies later, on the work):
+    #
+    #   with FLY_API_TOKEN from ~/.nuzantara-secrets.env
+    #       -> Could not find App "nuzantara-rag"
+    #   with FLY_API_TOKEN unset, falling back to ~/.fly/config.yml
+    #       -> PROBE_OK
+    #
+    # This is a SECOND, independent cause of the same blindness #3690 cured,
+    # and it is the one that bites in production: cron reaches this script
+    # through `cron-wrapper.sh`, which sources the secrets file, so the live
+    # path always carried the credential that cannot see this app. The earlier
+    # verification runs succeeded only because they ran under `env -i`, which
+    # stripped it — the mirror of W108's dev machine that was structurally
+    # unable to reproduce the red.
+    #
+    # Deliberately NOT hardcoded as "the env token is stale, so always unset
+    # it". That is exactly the frozen measurement W106 is about: the fly-backup
+    # script hardcoded `unset FLY_API_TOKEN` when it was true, the world
+    # inverted, and the cure threw away the only working credential for 27h.
+    # Try each credential the environment actually offers, in order, and LOG
+    # which one was accepted.
+    attempts: list[tuple[str, dict]] = [("env/inherited", dict(os.environ))]
+    if os.environ.get("FLY_API_TOKEN"):
+        fallback = dict(os.environ)
+        fallback.pop("FLY_API_TOKEN", None)
+        attempts.append(("~/.fly/config.yml", fallback))
+
+    failures: list[str] = []
+    for source, env in attempts:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    timeout=60, env=env)
+            output = result.stdout.strip()
+            log(f"fly ssh via {source}: exit={result.returncode} {output[:160]}")
+            for line in output.splitlines():
+                line = line.strip()
+                if line.startswith("{"):
+                    log(f"credential accepted: {source}")
+                    return json.loads(line), None
+            detail = (result.stderr or result.stdout).strip().replace("\n", " ")[:150]
+            failures.append(f"{source}: exit {result.returncode} — {detail or '(nessun output)'}")
+        except subprocess.TimeoutExpired:
+            failures.append(f"{source}: nessuna risposta entro 60s")
+        except Exception as e:  # noqa: BLE001 — the reason is reported, never guessed
+            log(f"fly ssh via {source} fallito: {e}")
+            failures.append(f"{source}: {type(e).__name__}: {e}")
+
+    # Every credential refused. Name each one and what IT said — a diagnosis
+    # that points away from the cause costs more than silence (W106).
+    return None, "<code>fly ssh</code> rifiutato da ogni credenziale — " + " | ".join(failures)
+
 
 
 def _check_sa_key_age() -> int | None:
