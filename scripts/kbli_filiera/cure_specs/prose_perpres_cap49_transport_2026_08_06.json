@@ -1,0 +1,387 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "The 14 transport codes whose recorded ceiling is 49% (Perpres 49/2021 Lampiran III) while their prose told a client the activity was nationally open to full foreign ownership. Each replacement names the annex entry the record itself carries.",
+  "codes": {
+    "50124": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #15"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "62d6cce998993c521d151ba18f10da3c587b045beb6a2d85be375d623f48fcc3",
+          "old_excerpt": "**A defined domestic transport operation.** KBLI 50124 covers domestic maritime transport intended to carry goods and/or animals. It names a particula",
+          "new": "**A defined domestic transport operation.** KBLI 50124 covers domestic maritime transport intended to carry goods and/or animals. It names a particular fleet: sailing vessels, traditional motor vessels, and motor-sailing vessels of specified sizes. The scope also includes hiring out that maritime transport with its operator. Read together, those elements identify a live transport activity whose substance is the carriage of goods or animals; the operator-inclusive hire is also expressly within its perimeter. The wording is operational: it tells the reader what is moved, the vessel forms used, and that the transport may be rented with the person operating it.\n\n**Scale is not a narrowing device here.** Registration is open to Mikro, Kecil, Menengah, and Besar enterprises. That is the full scale range presented in the record, so the activity is not confined to a single business size. The scope stays the same across that range: domestic sea transport for goods and/or animals using the named traditional and sailing vessel forms, alongside operator-inclusive rental. Scale is relevant to how the record frames the Bali risk position, but it does not replace the core activity definition. The essential question is whether the actual operation fits that stated transport-and-hire scope, then the scale at which it will be registered.\n\n**Foreign ownership here is capped at 49%.** Domestic sea carriage of goods and animals by traditional and sailing vessels is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #15, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\n**Bali does not add a second obstacle.** The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.headline": {
+          "old_sha256": "a41919db4cd29f6675deafef6ac1ebac7a135147c5261fc961015a70077df5e9",
+          "old_excerpt": "Domestic Sea Freight, Open Nationally and Not Blocked in Bali",
+          "new": "Domestic Sea Freight: Foreign Ownership Capped at 49%, Not Blocked in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "aafcb495311232403c440006cc4b81a08dd01d30d2fe9389a31f18ce1873ee7b",
+          "old_excerpt": "A domestic sea-freight activity for goods and animals using specified traditional vessel types, including operator-inclusive hire, with full national ",
+          "new": "A domestic sea-freight activity for goods and animals using specified traditional vessel types, including operator-inclusive hire — foreign ownership is capped at 49%."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "3a40b0d40abe7ba80cbbf4f6088ecfb50d8fc75be502a034709f4729c2ad0929",
+          "old_excerpt": "The honest Bali conclusion is therefore clean: it is open to PMA nationally, and it is not blocked for PMA registration in Bali.",
+          "new": "The foreign side of the shareholding stops at 49%; what Bali does not do is add a registration block on top of that ceiling."
+        },
+        "whatYouNeed": {
+          "old_sha256": "ebaeb700dfc46994a49fc47fde6be8c8b655ef87b01eef1a000cb9fc68c7eec2",
+          "old_excerpt": "Nationally, this activity is open to 100% foreign ownership, but in Bali it is classified as medium-high risk, meaning while not blocked by the genera",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #15, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50125": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #16"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "cae52169613942f8a613c1c4a9c3dfb4e95a3e550e3fc496c04c5ec9e454b751",
+          "old_excerpt": "General cargo moving between Indonesian ports and ports abroad has its own clear operational frame here: sea transport carried by vessel across intern",
+          "new": "General cargo moving between Indonesian ports and ports abroad has its own clear operational frame here: sea transport carried by vessel across international port routes. It includes both the regularity of liner services, operating on fixed and scheduled routes, and the flexibility of tramper services, whose routes and schedules are not fixed. The scope also includes chartered sea transport provided together with its operator. In practical terms, this is an activity for businesses whose work is the organised maritime carriage of goods beyond Indonesia’s borders—not merely the ownership or hire of a vessel in isolation.\n\nRegistration is open at **Menengah** and **Besar** scales. That matters because the record positions the activity within operating businesses capable of undertaking international freight movements, whether through predictable scheduled services or less regular charter-based deployment. The distinction between liner and tramper activity is not decorative: it captures two legitimate ways a general-cargo operator may organise its service, while keeping the underlying activity focused on transport by sea between domestic and foreign ports.\n\nForeign ownership here is capped at 49%. International general-cargo shipping between Indonesian and overseas ports is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #16, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "97e90d31973e195131f0de1669b3cdd291bf0acbb188688d84a5f9d480ab1a27",
+          "old_excerpt": "International general-cargo shipping is open to PMA nationally, and Bali does not impose a moratorium block on that basis.",
+          "new": "The foreign side of an international general-cargo operator stops at 49%; Bali's moratorium does not block the registration."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "8c1e5597a96d3a4d6f8195a049450b4ef866615f4843a9c0e723cfffed227a55",
+          "old_excerpt": "This activity covers scheduled and chartered general-cargo shipping between Indonesian and overseas ports, open nationally to foreign investment and n",
+          "new": "This activity covers scheduled and chartered general-cargo shipping between Indonesian and overseas ports — foreign ownership is capped at 49% nationwide, and Bali's moratorium does not bar registration."
+        },
+        "whatYouNeed": {
+          "old_sha256": "7e7377be8730be9f979ac5819985f96c56def661cf367048c788f6370317b5d9",
+          "old_excerpt": "In Bali, this activity is open to 100% foreign ownership but is classified as higher risk (medium-high/high). It is not blocked by the moratorium, but",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #16, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50131": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #18"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "f861a1aa5e09d351c725d79791d467ef3938d5f38b8716aa66a11f27edd64092",
+          "old_excerpt": "Interprovincial public ferry passenger transport is the business of carrying passengers from one province to another on ferries operating on establish",
+          "new": "Interprovincial public ferry passenger transport is the business of carrying passengers from one province to another on ferries operating on established routes. The route-bound character matters: this is public passenger movement organised through a ferry service, rather than an incidental voyage or a loosely defined maritime activity. Its commercial identity is shaped by regular interprovincial connection and the practical work of moving people across provincial boundaries by ferry.\n\nThe record opens this activity at the **Besar** scale. That places the code in a large-business setting: an operator registering under it is entering the public ferry transport field at that stated scale, with the focus on passenger carriage across provinces and on services tied to designated routes. The classification does not broaden into a general account of every kind of water transport; its centre of gravity is specific, public, scheduled ferry travel between provinces.\n\nForeign ownership here is capped at 49%. Interprovincial public passenger ferry transport is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #18, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "0f10b9ee88d873418b212c672c88f76aef7610dbb33d1c7417dff8a8fb4e8462",
+          "old_excerpt": "For large-scale interprovincial public ferry passenger transport, Bali’s moratorium does not displace the national 100% foreign-ownership position.",
+          "new": "For large-scale interprovincial ferry transport, Bali's moratorium is not the constraint — the 49% ceiling on foreign shareholding is."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "e80657ec38feb96c7d0ffd0a1b2e95953d44c7822a1ae706f9e13c1f5aa4120f",
+          "old_excerpt": "This is the large-scale, route-bound public ferry business moving passengers between Indonesian provinces—and it remains open to full foreign ownershi",
+          "new": "This is the large-scale, route-bound public ferry business moving passengers between Indonesian provinces — foreign ownership in it is capped at 49%."
+        },
+        "whatYouNeed": {
+          "old_sha256": "b7c4b4e593a55156e49604c05a7a123bb133a534278a2ad57245c33a94db4429",
+          "old_excerpt": "Nationally, this KBLI is fully open (100% PMA), but in Bali it falls under a higher-risk category due to the nature of sea transportation. While not b",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #18, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50132": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #20"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "5084e3181a22b03a70a8cd2c7f0fd78b702e0e07d56a673cf15e8be2d71d0ade",
+          "old_excerpt": "Passenger ferry transport is sometimes described as a route across water. This activity is more specific: it covers passenger crossings between design",
+          "new": "Passenger ferry transport is sometimes described as a route across water. This activity is more specific: it covers passenger crossings between designated ferry ports in different regencies or cities, whether across seas, straits or bays. The ferry is understood here as a moving bridge between two particular places, extending a road and/or rail network rather than sitting apart from it. The scope also includes hiring out ferry transport together with its operator.\n\nThat definition gives the activity a clear operational centre of gravity. It is for businesses conducting the crossing itself, as well as businesses making ferry transport available with the operator who runs it. The eligible business scale in the record is **Besar**. The focus is therefore not simply on being near a port or serving passengers generally, but on the organised provision of passenger ferry crossings between the specified places and ports.\n\nForeign ownership here is capped at 49%. Public passenger ferry crossings between regencies or cities is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #20, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nFor a founder, the distinction is worth holding precisely. The ceiling is the national position and Bali does not soften it; equally, Bali does not stack a registration block on top of it. The practical reading is straightforward: a Besar-scale passenger ferry crossing business, including ferry hire with its operator, can be registered in Bali, with the foreign side of the shareholding stopping at 49% and the rest outside foreign hands."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "40717969ea6d5bf7593bb65ec4a60d87797b83f7a97da8fe93def2b373a0ae14",
+          "old_excerpt": "A Besar-scale passenger ferry crossing business may be structured with up to full foreign ownership and is not prevented from PMA registration in Bali",
+          "new": "A Besar-scale ferry crossing business can be registered in Bali; the foreign side of its shareholding stops at 49%."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "4d5dcdd513530cbf645b565f0c6fe7320686e5501ed527b7669a3ade8d957279",
+          "old_excerpt": "This activity covers intercity and inter-regency passenger ferry transport—and remains open to full foreign ownership, including for PMA registration ",
+          "new": "This activity covers intercity and inter-regency passenger ferry transport — foreign ownership is capped at 49%, and Bali's moratorium does not block registration."
+        },
+        "whatYouNeed": {
+          "old_sha256": "07803b2f60d12534fb0b5a75e617dbaf01fe2159141f0c44f0db8fa59f747a24",
+          "old_excerpt": "Nationally, this business line is 100% open to foreign ownership. In Bali, it’s not blocked by the general moratorium, but it’s flagged as medium-high",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #20, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50133": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #22"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "8c3e035b82661e372fdadab7ac1f8a13c4cf5b74956d936161bab54ded286d91",
+          "old_excerpt": "KBLI 50133 covers public passenger ferry transport between ferry ports within the same regency or city. Its arena is the sea, straits and bays; its ro",
+          "new": "KBLI 50133 covers public passenger ferry transport between ferry ports within the same regency or city. Its arena is the sea, straits and bays; its role is unusually terrestrial. The ferry is conceived as a moving bridge between two specified places, carrying forward a road and/or rail network rather than operating as a detached maritime service. The scope also includes the rental of ferry transport when supplied together with its operator. Put simply, the activity is defined by a local crossing and by the connection it completes within that local network.\n\nThat definition gives the code a clear operational shape. The journey is not merely waterborne movement from one port to another: it is a crossing structured around a particular link in the local transport network. Passenger transport is central to the designation, and the geography is bounded inside a regency or city. The record makes the scale equally clear: it is open to businesses classified as Besar. It also encompasses ferry rental when an operator is part of the provision. The commercial identity comes from that combination—public passenger crossings, a defined local corridor, and a large-scale operating frame.\n\nForeign ownership here is capped at 49%. Public passenger ferry crossings within one regency or city is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #22, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "c8124f010b8057eff18cfbe2c2d1a86c6d5cbfd2688340269657d99406b622fc",
+          "old_excerpt": "This is nationally open to 100% foreign ownership, and its large-scale Bali case is not blocked by the stated moratorium.",
+          "new": "Registration in Bali is available for this ferry activity; what limits the foreign side is the 49% ceiling on shareholding."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "c5484473618edb1f6bd89c88e7d789e57226a00d625c4f5f4d7371a7cf31f90f",
+          "old_excerpt": "A large-scale passenger-ferry activity linking ports within one regency or city, open to full foreign ownership nationally and not blocked for PMA in ",
+          "new": "A large-scale passenger-ferry activity linking ports within one regency or city — foreign ownership is capped at 49%, and Bali's moratorium does not block it."
+        },
+        "whatYouNeed": {
+          "old_sha256": "acefc9e8a9e2a14c81c18a907456979222cfe3ee1cb32e32815f1c2bc5b1b11c",
+          "old_excerpt": "**Large scale**: Medium-High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #22, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk. At the large-business scale, that is the risk class the record carries for this activity."
+        }
+      }
+    },
+    "50134": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #19"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "16f8c9dc14e3620b911f6594ac825e9da9918b7193a11f874d3a01f57f8554e2",
+          "old_excerpt": "KBLI 50134 covers passenger ferry transport between provinces across seas, straits and bays. Its stated purpose gives the activity a particular connec",
+          "new": "KBLI 50134 covers passenger ferry transport between provinces across seas, straits and bays. Its stated purpose gives the activity a particular connection role: it links remote areas, and areas that have potential but remain undeveloped and commercially unprofitable to serve, with developed areas. The scope also reaches the chartering of ferry transport when the operator is provided. It combines the transport service and a charter arrangement only where the operator accompanies the ferry. This is passenger crossing transport shaped around connecting the places specified in its scope to more developed destinations. The wording matters because the service is defined by both its inter-provincial route and the places it is meant to connect.\n\nThe definition should be read as a whole. It names passenger transport by ferry, the inter-provincial passage across the stated waters, and the connection of remote or not-yet-commercially-profitable areas to developed areas. It does not detach the charter element from the transport service: that element is included when the ferry is chartered with its operator. In a code meant to define an activity, those elements give the operation its precise perimeter.\n\nThe registration picture is deliberately narrow on scale. The record lists Besar as the scale open to this activity. For a founder assessing whether the code fits, that is part of the core boundary: the activity is presented here at the large-business scale, alongside ferry crossings, passenger transport, and operator-inclusive chartering. Foreign ownership here is capped at 49%. Pioneer interprovincial passenger ferry transport is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #19, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.headline": {
+          "old_sha256": "278d0fafa4e98083a94d4981bf6ab9c3e6158dd0ce30dbf4b9a2229bd7244a30",
+          "old_excerpt": "Pioneer Passenger Ferries Across Provinces: Open Nationally, Clear in Bali",
+          "new": "Pioneer Passenger Ferries Across Provinces: Foreign Ownership Capped at 49%"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "7d372807a27890404c9f0a98d187124bf31add7065df9d01e35ed0f70f1010e9",
+          "old_excerpt": "A large-scale passenger-ferry activity linking remote and not-yet-profitable areas between provinces to developed areas, nationally open to 100% forei",
+          "new": "A large-scale passenger-ferry activity linking remote and not-yet-profitable areas between provinces to developed areas — foreign ownership is capped at 49%, and Bali's moratorium does not block registration."
+        }
+      }
+    },
+    "50135": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #21"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "b35931d2d81107748efec321c8f41192d78a2c790cc0b148acccbe3424d81bd3",
+          "old_excerpt": "KBLI 50135 covers pioneer passenger-crossing transport over seas, straits and bays between regencies or cities. Its purpose is expressly connective: i",
+          "new": "KBLI 50135 covers pioneer passenger-crossing transport over seas, straits and bays between regencies or cities. Its purpose is expressly connective: it brings remote areas, and areas with potential that are still undeveloped or not yet commercially worthwhile to serve, into contact with developed areas. The scope also includes renting this crossing transport with its operator. The wording matters because the service is tied not merely to remote endpoints, but to their link with areas already developed.\n\nThe record opens this activity at **Besar** scale. That is therefore the scale at which an enterprise registers this line of business—whether it operates the passenger crossing itself or rents the relevant crossing transport together with an operator. The scale designation is not incidental; it is the record’s stated operating frame for the activity. Its centre of gravity remains passenger-crossing transport on the routes described: a service connecting areas whose commercial and developmental conditions are not the same.\n\n**Foreign ownership here is capped at 49%.** Pioneer passenger-crossing transport between regencies or cities is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #21, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\n**Bali does not add a second obstacle.** The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.byTheNumbers[0].value": {
+          "old_sha256": "32e48995f98ce3b76f2d3f5e2d2acddfeff6650b7b18628cfa739bfef4a03312",
+          "old_excerpt": "100%",
+          "new": "49%"
+        },
+        "whatYouNeed": {
+          "old_sha256": "ce5ee874885c8c241efb5cce9142c0ed0b4507aed7b711d3df8ce6dd03f59015",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership. In Bali, it is not blocked by the usual moratorium on certain maritime activities, but it is ",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #21, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50211": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #23"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "411833d92c6582756890a6cfb9e31b3ccf29cc0f0ee475556814c6b69edf4fb8",
+          "old_excerpt": "This activity is for passenger transport on rivers, canals, lakes, swamps and other inland waters when it operates through a fixed and regular route n",
+          "new": "This activity is for passenger transport on rivers, canals, lakes, swamps and other inland waters when it operates through a fixed and regular route network with a set timetable. The defining character is scheduled service: passengers are carried on established routes rather than through an ad hoc arrangement. Its scope reaches local services within a regency or city, services between regencies or cities within a province, interprovincial services, and cross-border international inland-water routes.\n\nThe registration is open across the full business-scale range recorded here: Micro, Small, Medium and Large. That matters because the activity is not framed as the preserve of only one type of operator. A business can be registered for this scheduled inland passenger-transport activity at any of those scales, provided its actual operation remains within the scope of fixed, regular routes and scheduled passenger services on inland waters.\n\nForeign ownership here is capped at 49%. Scheduled passenger transport on inland waters is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #23, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.headline": {
+          "old_sha256": "6a45225aee0d8dc35da58bfebdc28b3ac18f9271709ef8ce627e03bbca29cee7",
+          "old_excerpt": "Scheduled Inland Passenger Routes: Open Nationally and in Bali",
+          "new": "Scheduled Inland Passenger Routes: Foreign Ownership Capped at 49%"
+        },
+        "whatYouNeed": {
+          "old_sha256": "c3f6c63ed69a442fc4d4b91edb50c41849671b1025d23640eaa47c4ab35c7f6a",
+          "old_excerpt": "Nationally, this activity is fully open (100% foreign ownership). In Bali, it's not blocked by any regional moratorium, but it's flagged as a higher-r",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #23, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50212": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #24"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "9433c36b1eed79821e019df8b8a8df0ba579fb1bacc2327dfce75c6b67531cda",
+          "old_excerpt": "This activity is for carrying passengers across rivers, canals, lakes, swamps and other inland waters where the route is neither fixed nor scheduled. ",
+          "new": "This activity is for carrying passengers across rivers, canals, lakes, swamps and other inland waters where the route is neither fixed nor scheduled. Its defining character is flexibility: the service does not operate on a permanent route or a regular timetable. Just as importantly, the scope expressly excludes tourism. The code therefore describes passenger transport on inland waterways as a transport activity in its own right, rather than a tourism offering.\n\nRegistration is open at every stated business scale: Micro, Small, Medium and Large. That breadth matters because the activity is not framed as the preserve of one particular size of operator. A founder considering this code should begin with the real operating model—passenger carriage on inland waters, without fixed or regular routes—and then identify the scale at which the business will be registered. The activity’s scope is precise about the mode of transport and the irregular nature of its service, which is where the classification’s practical centre of gravity lies.\n\nForeign ownership here is capped at 49%. Unscheduled passenger transport on inland waters is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #24, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nThe distinction is worth keeping clean. Bali's position here is not a second ownership cap and not an invented local condition: it is a risk-based reading, and at the large scale the risk assessment places the activity outside the moratorium. For an investor the honest conclusion is straightforward — the activity can be registered in Bali across the listed scales, and the foreign stake in the company that holds it stops at 49%."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "adcf1053637da699415c57a3475732e74622952536eb630929a122c7948a51bc",
+          "old_excerpt": "Nationally, the activity is open to PMA up to 100%, and Bali does not block it under the stated risk-based moratorium reading.",
+          "new": "The activity can be registered in Bali; the foreign stake in the company that holds it stops at 49%."
+        },
+        "whatYouNeed": {
+          "old_sha256": "253a0d9223f6873ce27ad4777e9e148fb6e1746b4bc1dec0882e65778c6291d9",
+          "old_excerpt": "Nationally, this activity is 100% open to foreign ownership (PMA). In Bali, it falls under a higher-risk category that is not blocked by the moratoriu",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #24, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50213": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #25"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "1700c5630506e63f4f97520731ae25fa6b0bb54e8e8f3ef5a179a5ac706722f9",
+          "old_excerpt": "This activity is about carrying passengers for tourism across Indonesia’s inland waters: rivers, canals, lakes, swamps and other inland waterways. Its",
+          "new": "This activity is about carrying passengers for tourism across Indonesia’s inland waters: rivers, canals, lakes, swamps and other inland waterways. Its scope is deliberately broader than a single type of excursion or customer. It can serve an individual traveller, an organised group, a family, or a social purpose, provided the journey is tourist passenger transport on those waters. The organising idea is not the destination alone, but the movement of visitors by inland water.\n\nA business registering this activity is therefore placing tourist passenger transport at the centre of its operation. The record opens it to Menengah and Besar scales, making scale an explicit part of the registration picture rather than an afterthought. That matters because the activity is defined by both its tourism purpose and its setting: inland waterways, not a generic transport category. The wording also accommodates the different ways tourism is experienced—privately, collectively, with family, or through social activity—without narrowing the activity to only one kind of passenger.\n\nForeign ownership here is capped at 49%. Tourist passenger transport on inland waters is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #25, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "fda757c5017500477d90b0da4432a68524c8ea4deafb25a97a137459ed61b469",
+          "old_excerpt": "This activity covers tourist passenger journeys on inland waterways, open to PMA nationally and not blocked by Bali’s PMA moratorium.",
+          "new": "This activity covers tourist passenger journeys on inland waterways — foreign ownership is capped at 49%, and Bali's moratorium does not block registration."
+        },
+        "whatYouNeed": {
+          "old_sha256": "450b6c21bcd5c4466e0463c67015952573fddf19bb7d44dc53aa6c061b939947",
+          "old_excerpt": "Nationally it is fully open to 100% foreign ownership, but in Bali it is classified as medium‑high risk. It is not blocked by the current moratorium, ",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #25, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50221": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #26"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "501ac717866c10971bfa1be455caa8dcbaf42580ac0600d028e7c6e6728017f5",
+          "old_excerpt": "KBLI 50221 covers the carriage of general goods across Indonesia’s inland waters: rivers, canals, lakes, swamps and other internal waterways. Its focu",
+          "new": "KBLI 50221 covers the carriage of general goods across Indonesia’s inland waters: rivers, canals, lakes, swamps and other internal waterways. Its focus is freight transport, not a single specialised cargo stream; the goods carried may comprise more than one type. The boundary is equally clear. Hazardous goods, special goods and heavy equipment sit outside the activity described here. The result is a classification for general inland-water freight, defined by both its route and the ordinary character of the cargo.\n\nThe activity is open at every listed business scale: Micro, Small, Medium and Large. That breadth matters because the record does not confine this form of freight transport to a single size of enterprise. A business using this activity is situated in the practical movement of general goods on inland waters, whether the operation is registered at the smallest listed scale or at the largest. The classification’s scope remains consistent across those scales: transporting general freight by river, canal, lake, swamp or another inland waterway, while excluding the specified categories of cargo.\n\nForeign ownership here is capped at 49%. General freight transport on inland waters is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #26, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali does not add a second obstacle. The island-wide moratorium suspends new PMA registration only for activities assessed at low or medium-low risk. This one is recorded at medium-high risk, so the moratorium does not reach it and the company can be registered here. Bali states no percentage of its own and no local partnership requirement; what limits the foreign side is the 49% ceiling, in Bali exactly as anywhere else in Indonesia."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "9c6e68d1494407ca76ca2673486469eba73d0dd277f1f0906319dfc57001dee9",
+          "old_excerpt": "A clear route for general freight by river, canal, lake, swamp and other inland waters—with a nationally open PMA position and no Bali moratorium bloc",
+          "new": "A clear route for general freight by river, canal, lake, swamp and other inland waters — foreign ownership is capped at 49%, with no Bali moratorium block in this record."
+        },
+        "whatYouNeed": {
+          "old_sha256": "9026fc17e04cf762d3fdabab41b32ccbb219bc48340d459ba6cb529c44d3a377",
+          "old_excerpt": "Nationally, a PMA can be 100% foreign-owned. In Bali, this activity is not blocked by local moratoriums but is classified as higher risk, so you must ",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #26, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50222": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #27"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "bc03de9ca81271c6db3b9ad8ebbc40f9008e72f0832c1bb163195dbdfb2f383f",
+          "old_excerpt": "**KBLI 50222** covers the movement of specialised cargo on rivers, canals, lakes, swamps and other inland waters. It is not a general-cargo descriptio",
+          "new": "**KBLI 50222** covers the movement of specialised cargo on rivers, canals, lakes, swamps and other inland waters. It is not a general-cargo description: the vessel or cargo boat is specially modified and carries only one type of goods. The recorded scope includes logs; pipes, steel bars or rails; bulk cargo; liquids; goods requiring refrigeration; plants and live animals; containers; heavy equipment; and other specialised goods. The vessel must meet the technical and seaworthiness requirements appropriate to the particular cargo it carries.\n\nThe activity is open across the stated business spectrum: Mikro, Kecil, Menengah and Besar. That breadth does not dilute the defining feature of the code. What matters is the dedicated nature of the transport operation—the craft is adapted to its cargo and operates on inland waters, rather than being described as a vessel for mixed or general freight. For a business selecting this activity, the fit lies in that close relationship between vessel design, cargo type and inland-waterway transport.\n\nForeign ownership here is capped at 49%. Specialised cargo transport on inland waters is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #27, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nThe practical reading is deliberately narrow. A company undertaking this specialised inland cargo activity can be registered in Bali, and the foreign shareholding in it stops at 49% — there, and everywhere else in Indonesia. The activity itself remains defined by specialised vessels, a single cargo category and transport across inland waters."
+        },
+        "editorial.byTheNumbers[0].value": {
+          "old_sha256": "32e48995f98ce3b76f2d3f5e2d2acddfeff6650b7b18628cfa739bfef4a03312",
+          "old_excerpt": "100%",
+          "new": "49%"
+        },
+        "editorial.headline": {
+          "old_sha256": "d66e5303cce9a9b6de4147fd921d00f92b546cbce6a5caf3bd17fd133056d88c",
+          "old_excerpt": "Specialised Inland Cargo Transport: Open Nationally, Clear in Bali",
+          "new": "Specialised Inland Cargo Transport: Foreign Ownership Capped at 49%"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "cc899b8036237efe677d4a1eb4252c1aa24260b3733c0cc947bfebfb6dfed64a",
+          "old_excerpt": "This activity is for purpose-modified vessels carrying one specialised cargo type on Indonesia’s inland waterways, with full foreign ownership open na",
+          "new": "This activity is for purpose-modified vessels carrying one specialised cargo type on Indonesia's inland waterways — foreign ownership is capped at 49%, with no Bali moratorium block."
+        },
+        "whatYouNeed": {
+          "old_sha256": "c90e7a5891468f625bcd1a43736f63fd3d9153a027025fecaa5dd6e9701cd68e",
+          "old_excerpt": "Nationally, 100% foreign ownership is open. In Bali, this KBLI is not caught by the general moratorium that blocks many businesses, but it's classifie",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #27, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "50223": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #28"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "e7e182b67d72280399737142a3044721bc255ad78b641c22b11c0b8725301ce7",
+          "old_excerpt": "This activity is a specialist inland-water freight operation: carrying dangerous goods on rivers, canals, lakes, swamps and other inland waters, from ",
+          "new": "This activity is a specialist inland-water freight operation: carrying dangerous goods on rivers, canals, lakes, swamps and other inland waters, from the loading point through to final unloading. Its stated cargo scope is substantial and specific. It includes hazardous and toxic waste, fuel oil, petroleum, processed petroleum products, and liquefied or compressed gas categories including LPG, LNG and CNG. The work described here is the movement itself across inland waters, with the transport chain running from loading to final discharge.\n\nIt is available to businesses registered at micro, small, medium and large scale. That breadth matters because the activity is not framed as a large-operator category alone; the record expressly lists every scale. Foreign ownership here is capped at 49%. Dangerous-goods transport on inland waters is listed in Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #28, and that entry limits foreign shareholding to 49%. A PT PMA can hold up to that 49% and no more; the rest of the shares cannot be in foreign hands. The record carries the ceiling and nothing beyond it: no named partner, no minimum stake for any single shareholder, and no recorded route for exceeding the cap. The ceiling is national — registering the company somewhere other than Bali does not change it.\n\nBali requires an equally direct reading. The island-wide moratorium suspends new PMA registration for activities assessed at low or medium-low risk, and at the large scale this one is recorded at medium-high risk. It therefore sits outside that restriction: a foreign investor seeking to register this inland-water transport activity in Bali does not face a moratorium block.\n\nThe two readings answer different questions. The ceiling answers how much of the company foreign shareholders may hold — 49%, with the rest outside foreign hands. Bali answers whether the company can be registered on the island at all, and here it can. No separate Bali percentage or local-partnership condition is recorded. Taken together: this is a registrable activity for a foreign-invested company, in Bali as elsewhere, provided the foreign side of the shareholding respects the 49% ceiling."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "c709cd169d3e0076ba6118479f460aa1b24dbc7384b074d464a9cb21aca43241",
+          "old_excerpt": "This activity covers hazardous cargo carried by inland waterway, open to foreign investment nationally and not blocked for PMA registration in Bali.",
+          "new": "This activity covers hazardous cargo carried by inland waterway — foreign ownership is capped at 49%, and registration in Bali is not blocked by the moratorium."
+        },
+        "whatYouNeed": {
+          "old_sha256": "65a6049e08c44b78bee80752762bfc675ab2ce7d7d408580e275910f105a94ef",
+          "old_excerpt": "Nationally, this activity is 100% open to foreign ownership. In Bali, it is not blocked by the foreign investment moratorium, but it is classified as ",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #28, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "53200": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #32"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "8ffa384005165aa738fad5afb2fa2cb9557b4461d711b94ec6730e15cb1d51d0",
+          "old_excerpt": "Courier activity concerns the organised journey of a consignment, from collection or pickup through sorting or processing, transport and final deliver",
+          "new": "Courier activity concerns the organised journey of a consignment, from collection or pickup through sorting or processing, transport and final delivery. The materials expressly within scope are letters, documents, parcels, goods and packages. The service can operate domestically or internationally, with one or more transport modes, using either transport owned by the operator or public transport. Its line of definition is equally important: this is activity outside the universal-service obligation, with the operator’s work framed as collection, processing, carriage and delivery.\n\nThe food element is carefully limited but real. Door-to-door delivery is included, as is food delivery. The record also brings in non-prepared meals only when they are preserved or packed so they can undergo further processing and are not easily perishable during collection, processing, transport and distribution within a package service. Read plainly, this is a scope that follows the delivery chain rather than stopping at a single leg: pickup and preparation for dispatch are part of the picture alongside transport and the doorstep handover.\n\nRegistration is not reserved for one end of the enterprise spectrum. The activity is open to Mikro, Kecil, Menengah and Besar scale businesses—the complete range supplied in the record. Each scale belongs in the same listed range. That breadth gives the operational description room to serve a business from its smallest listed category through its largest, while remaining the same courier activity in the record.\n\nForeign ownership in courier activity is capped at 49%. The cap comes from Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — at entry #32, so a PT PMA can hold up to 49% of a courier company and the rest cannot be in foreign hands. Bali does not add a second obstacle to that. The island-wide moratorium suspends new PMA registration only for low and medium-low risk lines, and the record puts courier work at high risk at every scale, so it is not caught. The essential distinction is straightforward: registration in Bali is available, and what limits the foreign side is the 49% ceiling, nationally."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "5437bd0995baa7f83e85c0c6c12a4ca47d0733602f6973be551818f9d3e6bede",
+          "old_excerpt": "Full foreign ownership is open nationally, and this activity is not moratorium-blocked for PMA registration in Bali.",
+          "new": "Registration in Bali is available for courier work; the foreign side of the shareholding stops at 49%."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "0fc12a2c31b7f7c1028e45cf2253cbd98359b46115bfe4974c8c708a81fb82cc",
+          "old_excerpt": "From parcel pickup to doorstep delivery, this activity spans domestic and international courier work across every listed scale, with full foreign owne",
+          "new": "From parcel pickup to doorstep delivery, this activity spans domestic and international courier work across every listed scale — foreign ownership is capped at 49%, with no Bali moratorium block."
+        },
+        "whatYouNeed": {
+          "old_sha256": "362c467f381ef9dab77ee0cb993e52548e2ee031561006c57bf27d80aa07469c",
+          "old_excerpt": "Nationally, this KBLI is fully open (100% PMA). In Bali, the island-wide moratorium (in force since 13 May 2026) only halts PMA registrations for Low ",
+          "new": "Foreign ownership in this activity is capped at 49%: a PT PMA can hold up to 49% of the company, and the rest of the shares cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #32, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at high risk. The moratorium has been in force since 13 May 2026."
+        }
+      }
+    }
+  }
+}

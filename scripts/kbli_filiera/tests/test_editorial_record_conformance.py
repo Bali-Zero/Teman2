@@ -490,21 +490,61 @@ def test_a_bali_sentence_that_also_states_the_national_position_is_still_guilty(
 
 def test_the_two_buckets_are_reported_separately_and_are_not_the_same_set():
     """A single "N codes are wrong" would hide that one bucket is a
-    find-and-replace on a field we own and the other needs a human to write a
-    sentence — and the live data now proves the split was real rather than
-    tidy: the mechanical bucket has been CURED to empty by
-    `cure_editorial_cells_from_record.py` while the authored one still holds
-    31 codes, untouched, because replacing a sentence means writing one.
+    find-and-replace on a field we own and the other needs a sentence written.
 
-    `50135` remains the specimen: clean cells, wrong prose. It was in the
-    authored bucket before the cure and it is there now, which is the whole
-    point of not having merged the two counts."""
+    BOTH buckets are now empty on the live catalogue — the mechanical one by
+    `cure_editorial_cells_from_record.py`, the authored one by the four prose
+    lots of `cure_prose_national_openness.py`. That is the good news and it is
+    also the danger this test now has to survive: two empty sets are equal, so
+    an assertion that they DIFFER would pass on a detector that had gone blind.
+    The separation is therefore proved on constructed records, where each
+    bucket can be entered on purpose, and the live catalogue is asserted as a
+    tripwire at zero rather than as a specimen.
+
+    The specimen this test used to name went `50135` -> `84231` as each was
+    cured; there is no third, because there is no live member left to name."""
     rep = E.report(E.load_records())
     mech = set(rep["mechanically_correctable"]["codes"])
     auth = set(rep["needs_an_author"]["codes"])
     assert mech == set(), "the mechanical bucket is cured; a new member is a regression"
-    assert auth, "the authored backlog is not empty and must not be quietly emptied"
-    assert "50135" in auth
+    assert auth == set(), "the authored backlog is cured; a new member is a regression"
+
+    # The split itself, on records built to enter one bucket and not the other.
+    # A wrong CELL with honest prose is mechanical; wrong PROSE with honest
+    # cells needs an author. If these ever collapse into one bucket the report
+    # above stops meaning anything, and two empty sets would not have said so.
+    mechanical_only = E.classify(
+        rec(cap=49, status="TERBATAS", cells=[{"label": "Foreign ceiling", "value": "100%"}])
+    )
+    assert mechanical_only["ceiling_cells"] != []
+    assert mechanical_only["body_asserts_national_openness"] is False
+
+    authored_only = E.classify(
+        rec(
+            cap=49,
+            status="TERBATAS",
+            cells=[{"label": "Foreign ceiling", "value": "49%"}],
+            body="The national reading is direct: a foreign-owned company may "
+            "hold the activity with full foreign ownership, rather than under a "
+            "lower foreign-equity ceiling.",
+        )
+    )
+    assert authored_only["ceiling_cells"] == []
+    assert authored_only["body_asserts_national_openness"] is True
+
+
+def _mine_and_l10(record, lint_mod):
+    """Both predicates' verdicts on ONE record, so their reach can be compared
+    without a live population to compare it on."""
+    caps = {record["kode_kbli_2025"]: record.get("pma_max_asing")}
+    mine = E.classify(record)["body_asserts_national_openness"]
+    l10 = any(
+        lint_mod.l10_ownership_contradiction(
+            text, record["kode_kbli_2025"], record.get("pma_max_asing"), caps
+        )
+        for _field, text in lint_mod.iter_prose(record)
+    )
+    return mine, l10
 
 
 def test_the_bali_exclusion_is_large_enough_to_matter_and_is_declared():
@@ -539,7 +579,12 @@ def test_the_live_populations_are_pinned():
     # `_l3_regen.model = deepseek-v4-pro` at `confidence: LOW`. No human wrote
     # them. The deference that left them standing was protecting an authorship
     # that does not exist, and Zero withdrew it on 2026-08-06.
-    assert len(rep["needs_an_author"]["codes"]) == 21
+    #
+    # 7 -> 0 with the fourth and last lot. This is now a TRIPWIRE, not a
+    # backlog: any number above zero is a contradiction authored after the
+    # lane closed. It is deliberately an equality — `<= 7` would have let the
+    # backlog refill halfway and still read green.
+    assert len(rep["needs_an_author"]["codes"]) == 0
 
     # WHERE the prose lies, and this is the number that matters — not the code
     # count above. A cross-family refutation left that count UNMOVED at 34 while
@@ -557,19 +602,24 @@ def test_the_live_populations_are_pinned():
     # Pinned by field for that reason: the total alone hid the first defect too,
     # when three fields were read and reported as "the bodies".
     #
-    # 102 -> 81 -> 60 as `cure_prose_national_openness.py` replaced 21 fields on
-    # six codes, then 21 more on seven. The dict below is the CURRENT state, re-derived from the live
-    # catalogue when this pin and #3687's were merged — two branches moving the
+    # 102 -> 81 -> 60 -> 20 as `cure_prose_national_openness.py` replaced 21 fields
+    # on six codes, 21 more on seven, then 51 on the fourteen transport codes whose
+    # ceiling is 49%. The dict below is the CURRENT state, re-derived from the live
+    # catalogue rather than arithmetic on the previous one — two branches moving the
     # same monotone number conflict textually even when both are right, and the
     # resolution is to re-measure, never to pick a side (W109b).
-    assert rep["needs_an_author"]["by_field"] == {
-        "editorial.body": 18,
-        "whatYouNeed": 16,
-        "editorial.standfirst": 12,
-        "editorial.headline": 7,
-        "editorial.pullQuote": 6,
-        "whoThisIsFor": 1,
-    }
+    #
+    # This histogram counts only what THIS module's predicate sees. The transport
+    # batch was cured against the UNION of this predicate and the lint's numeric
+    # one, because four of its fields — a "By the numbers" cell, a standfirst
+    # reading "full national foreign ownership", two pull quotes — carried the
+    # falsehood in a form no sentence-level openness predicate matches. A pin on
+    # one predicate is a pin on one predicate.
+    # 102 -> 81 -> 60 -> 20 -> 0. The histogram is empty because the population
+    # is, and it stays here rather than being deleted: an empty dict asserted
+    # by EQUALITY is the only form of this pin that still fails when a single
+    # field starts lying again. A deleted histogram would fail nothing.
+    assert rep["needs_an_author"]["by_field"] == {}
 
 
 def test_the_relationship_to_both_existing_lint_rules_is_pinned():
@@ -585,10 +635,17 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
     * **L9** is disjoint. Its reachable half of the dangerous direction needs
       `pma_status == "TERTUTUP"` AND the literal "100% foreign", which no live
       record satisfies; its two findings are the mirror case.
-    * **L10** is a partial twin: 31 here, 17 there, 14 shared, and each side
-      holds real findings the other misses. Asserted in BOTH directions, so
-      neither can be retired as redundant on the strength of the other, and the
-      three codes only L10 sees stay a declared gap rather than a silent one.
+    * **L10** is a partial twin: it was 31 here, 17 there, 14 shared, and each
+      side held real findings the other missed.
+
+    THE OVERLAP IS NO LONGER MEASURABLE ON LIVE DATA, and pretending otherwise
+    is how this test would rot. This module's live population is now zero, so
+    every `mine & l10` / `mine - l10` assertion that used to carry the claim is
+    vacuously true or trivially false — an empty set intersects nothing and
+    subtracts to nothing. The complementary blind spots are therefore asserted
+    on CONSTRUCTED records, where each predicate's reach is permanent, and the
+    live catalogue keeps only the assertions that still have something to say:
+    this module clean, L9's two findings, L10's three.
 
     A failure here means the tools have started answering one question two ways
     (W105); the response is to make the lint consume this report, not to delete
@@ -614,15 +671,26 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
         f"consumes the other rather than both judging: {sorted(mine & l9)}"
     )
     assert l9 == {"43110", "86201"}, f"L9's live findings moved: {sorted(l9)}"
-    statuses = {
-        r["pma_status"]
-        for r in records
-        if r["kode_kbli_2025"] in mine
-    }
-    assert "TERBATAS" in statuses, (
-        "premise: this module's population is mostly TERBATAS, the status L9's "
-        "dangerous-direction test cannot reach"
+    assert mine == set(), (
+        "this module's live population is zero and the assertions below are "
+        f"written for that: {sorted(mine)}"
     )
+
+    # The premise that used to be checked here — "this module's population is
+    # mostly TERBATAS, the status L9's dangerous-direction test cannot reach" —
+    # read the statuses of `mine`, so with `mine` empty it asserted membership
+    # in an empty set and could only fail. Kept as a property of L9's REACH
+    # instead, which is what it was always about: a TERBATAS record stating full
+    # foreign ownership in words is invisible to L9, whatever else is true.
+    l9_blind = rec(
+        cap=49,
+        status="TERBATAS",
+        body="The national reading is direct: a foreign-owned company may hold "
+        "the activity with full foreign ownership, rather than under a lower "
+        "foreign-equity ceiling.",
+    )
+    assert not validate_pma_consistency(l9_blind["intel_2026"], l9_blind)
+    assert E.classify(l9_blind)["body_asserts_national_openness"] is True
 
     # L10 is the rule that actually resembles this module, and the first version
     # of this test did not look at it — it checked the rule whose NAME matched
@@ -643,10 +711,35 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
         ):
             l10.add(code)
 
-    assert mine & l10, "L10 and this module used to agree on 14 codes; agreeing on none means one went blind"
-    assert mine - l10, (
-        "this module no longer finds anything L10 misses — if that is real, it is "
-        "redundant and should be retired rather than maintained"
+    # The two blind spots, on records built to sit in exactly one predicate.
+    # These used to be read off the live overlap (14 shared, 3 only-L10); with
+    # this module's population at zero that reading is gone, and asserting
+    # `mine & l10` on an empty set would fail for a reason that has nothing to
+    # do with either rule. Constructed, the property is permanent — and it is
+    # the property that justifies keeping both rules.
+    only_mine = rec(
+        cap=49,
+        status="TERBATAS",
+        body="The national reading is direct: a foreign-owned company may hold "
+        "the activity with full foreign ownership, rather than under a lower "
+        "foreign-equity ceiling.",
+    )
+    assert _mine_and_l10(only_mine, lint) == (True, False), (
+        "this module no longer finds what L10 misses — a claim carried in WORDS "
+        "with no percentage. If that is real it is redundant and should be "
+        "retired rather than maintained"
+    )
+
+    only_l10 = rec(
+        cap=49,
+        status="TERBATAS",
+        body="Foreign investors may hold up to 100% of the equity in this line "
+        "of business.",
+    )
+    assert _mine_and_l10(only_l10, lint) == (False, True), (
+        "L10 no longer finds what this module misses — a percentage stated with "
+        "no national-scope word beside it. Agreeing everywhere means one of the "
+        "two went blind"
     )
     # Was {41011, 52292, 53200}. Widening the claim vocabulary on 2026-08-06
     # closed `53200` — it stated a maximum as a bare number ("the maximum is
@@ -662,9 +755,15 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
     # of the three states, and only the disagreement between two rules surfaced
     # it. Cured; the pin is back to the two codes that run the OPPOSITE direction
     # (prose more restrictive than the record), which is a different adjudication.
-    assert l10 - mine == {"41011", "52292"}, (
-        "the DECLARED gap in this module — numeric claims L10 catches and a "
-        f"sentence-level openness predicate does not: {sorted(l10 - mine)}"
+    # With `mine` empty this is now just L10's live population, and it is
+    # asserted as such rather than dressed up as a difference. `86201` joined
+    # 41011 and 52292 when the transport lot landed: all three run the OPPOSITE
+    # direction — prose MORE restrictive than the record — which is a different
+    # adjudication and deliberately not cured by this lane. `86201` also steers
+    # a foreign doctor to "code 86103 (klinik) … 67%", and 86103's cap is 100.
+    assert l10 == {"41011", "52292", "86201"}, (
+        "L10's live findings moved — these are the mirror-direction cases this "
+        f"lane declared rather than cured: {sorted(l10)}"
     )
 
 
@@ -697,7 +796,13 @@ def test_the_worst_members_are_named_not_counted():
         )
     assert set(rep["mechanically_correctable"]["codes"]) == set()
 
-    # Umrah/Hajj travel: the CARD is cured, the PROSE still reads as an opening
-    # and needs an author. Both halves named, because "79122 is fixed" would be
-    # a comfortable half-truth.
-    assert "79122" in set(rep["needs_an_author"]["codes"])
+    # Umrah/Hajj travel: the card was cured first and the prose stood for
+    # weeks — "79122 is fixed" was the comfortable half-truth this line was
+    # written to refuse. Both halves are cured now, so the assertion inverts,
+    # and it is asserted by CONTENT on the page rather than by absence from a
+    # bucket, for the same reason as the cards above.
+    prose_79122 = json.dumps(by_code["79122"]["intel_2026"], ensure_ascii=False).lower()
+    assert "79122" not in set(rep["needs_an_author"]["codes"])
+    assert "0%" in prose_79122 or "no foreign" in prose_79122 or "closed" in prose_79122, (
+        "79122's prose no longer states the closure anywhere a client reads"
+    )

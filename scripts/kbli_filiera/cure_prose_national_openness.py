@@ -88,6 +88,8 @@ if _FILIERA not in sys.path:
 
 import editorial_record_conformance as E  # noqa: E402
 
+import scripts.kbli_dataset_lint as _lint  # noqa: E402
+
 from scripts.kbli_filiera.cure_l4_withdrawn_umkm_prose import (  # noqa: E402
     reconcile_sidecar,
     run_sync_script,
@@ -102,6 +104,12 @@ SPEC = (
 
 logger = logging.getLogger("cure_prose_national_openness")
 
+# The lane marker every spec must carry. A literal, NOT `__name__`: run as a
+# script this module is called `__main__`, so a marker derived from it would
+# demand a different value from the CLI than from a test import — and the guard
+# proved that on its first invocation.
+LANE = "cure_prose_national_openness"
+
 _PERCENT = re.compile(r"(\d+)\s*%")
 
 
@@ -109,12 +117,33 @@ class CureError(RuntimeError):
     """Raised when a premise the spec rests on is no longer true."""
 
 
+_INDEXED = re.compile(r"^(?P<name>[^\[\]]+)\[(?P<idx>\d+)\]$")
+
+
+def _step(node: Any, key: str) -> Any:
+    """One segment of a dotted path, which may address a list element.
+
+    `editorial.byTheNumbers[0].value` is not decoration: two of the fourteen
+    transport codes state their (wrong) ceiling in a "By the numbers" CELL and
+    nowhere else in that field, so a path language that only walks dicts is blind
+    to the one place a reader sees the number first.
+    """
+    m = _INDEXED.match(key)
+    if m:
+        seq = node.get(m.group("name")) if isinstance(node, dict) else None
+        if not isinstance(seq, list):
+            return None
+        idx = int(m.group("idx"))
+        return seq[idx] if idx < len(seq) else None
+    return node.get(key) if isinstance(node, dict) else None
+
+
 def read_field(record: dict[str, Any], path: str) -> Any:
     cur: Any = record.get("intel_2026") or {}
     for key in path.split("."):
-        if not isinstance(cur, dict):
+        cur = _step(cur, key)
+        if cur is None:
             return None
-        cur = cur.get(key)
     return cur
 
 
@@ -122,8 +151,13 @@ def write_field(record: dict[str, Any], path: str, value: str) -> None:
     cur = record["intel_2026"]
     keys = path.split(".")
     for key in keys[:-1]:
-        cur = cur[key]
-    cur[keys[-1]] = value
+        cur = _step(cur, key)
+    last = keys[-1]
+    m = _INDEXED.match(last)
+    if m:
+        cur[m.group("name")][int(m.group("idx"))] = value
+    else:
+        cur[last] = value
 
 
 def check_premise(record: dict[str, Any], code: str, expect: dict[str, Any]) -> None:
@@ -136,13 +170,20 @@ def check_premise(record: dict[str, Any], code: str, expect: dict[str, Any]) -> 
                 f"holds {got!r}. Re-read and re-grade rather than writing prose onto a "
                 "record it no longer describes."
             )
-    needle = expect.get("pma_kondisi_contains")
-    if needle and needle not in (record.get("pma_kondisi") or ""):
-        raise CureError(
-            f"{code}: `pma_kondisi` no longer contains {needle!r}. Every replacement in "
-            "this spec names the Koperasi/UMKM allocation as the REASON the ceiling is "
-            "zero; without it on the record the sentences would assert their own basis."
-        )
+    # A `<field>_contains` key for every field a replacement CITES. The first
+    # spec only needed `pma_kondisi`, because the Koperasi/UMKM allocation lives
+    # there. The transport batch cites `pma_official_basis` instead — "Perpres
+    # 49/2021 Lampiran III … entry #22", a different number on every code — and
+    # a premise check that cannot see the field a sentence quotes is decoration.
+    for key in sorted(k for k in expect if k.endswith("_contains")):
+        field = key[: -len("_contains")]
+        needle = expect[key]
+        if needle and needle not in (record.get(field) or ""):
+            raise CureError(
+                f"{code}: `{field}` no longer contains {needle!r}. A replacement in this "
+                f"spec quotes that field as its BASIS; without it on the record the "
+                "sentence would be asserting its own authority."
+            )
 
 
 def plan_for(record: dict[str, Any], code: str, entry: dict[str, Any]) -> list[dict[str, Any]]:
@@ -179,6 +220,18 @@ def plan_for(record: dict[str, Any], code: str, entry: dict[str, Any]) -> list[d
 
 def run(spec_path: Path, canonical_path: Path, only: list[str] | None, apply: bool) -> int:
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    # Which specs belong to THIS lane is not answerable from a filename. The class
+    # checks over "everything this cure has shipped" used to glob a name prefix,
+    # so the transport batch — named after its instrument rather than its
+    # population — dropped out of every one of them and still read clean. The
+    # marker is required HERE, at the only door a spec can come through, so the
+    # marked set on disk is provably the set that has ever been applied.
+    if spec.get("compiler") != LANE:
+        raise CureError(
+            f"{spec_path.name}: missing `\"compiler\": \"{LANE}\"`. Without it this "
+            "spec is invisible to every check that enumerates this lane's shipped "
+            "cures, and a cure nobody enumerates is a cure nobody can re-verify."
+        )
     wanted: dict[str, Any] = spec["codes"]
     if only:
         unknown = sorted(set(only) - set(wanted))
@@ -189,6 +242,7 @@ def run(spec_path: Path, canonical_path: Path, only: list[str] | None, apply: bo
     doc = json.loads(canonical_path.read_text(encoding="utf-8"))
     records = doc["data"]
     by_code = {r.get("kode_kbli_2025"): r for r in records}
+    caps_by_code = {r.get("kode_kbli_2025"): r.get("pma_max_asing") for r in records}
 
     missing = sorted(set(wanted) - set(by_code))
     if missing:
@@ -231,6 +285,32 @@ def run(spec_path: Path, canonical_path: Path, only: list[str] | None, apply: bo
             "A half-cure leaves a page consistent enough to be believed and wrong where "
             "it counts.",
             still_lying,
+        )
+        return 1
+
+    # The SECOND opinion, and it is not this module's own. `editorial_record_
+    # conformance` reads for an ASSERTION and needs a national-scope word in the
+    # same sentence; the lint's L10 reads for a NUMBER against `pma_max_asing` and
+    # needs neither. Curing a page that satisfies one and not the other is how
+    # `55105` shipped saying 0% in one field and 100% in another. Living in the
+    # test file was not enough — a class check catches it after it has landed, and
+    # the point of a refusal is that it never lands.
+    numeric_survivors = []
+    for code in wanted:
+        record = patched_by_code[code]
+        cap = record.get("pma_max_asing")
+        for field, text in _lint.iter_prose(record):
+            hit = _lint.l10_ownership_contradiction(text, code, cap, caps_by_code)
+            if hit:
+                numeric_survivors.append(f"{code}.{field} says {hit[0]}% (record: {cap})")
+                break
+    if numeric_survivors:
+        logger.error(
+            "refusing to write: %d cured page(s) still state a foreign-ownership "
+            "percentage the record denies — %s. The assertion was removed and the "
+            "number left behind, which is the shape a reader trusts most.",
+            len(numeric_survivors),
+            numeric_survivors[:8],
         )
         return 1
 
