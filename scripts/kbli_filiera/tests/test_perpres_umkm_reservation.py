@@ -621,17 +621,60 @@ def test_guilt_a_dotted_item_CLOSES_the_parent_above_it():
 
 
 def test_innocence_the_undotted_form_still_governs_its_children():
-    """The fix must not trade one form for the other."""
+    """The fix must not trade one form for the other.
+
+    This one passes against the OLD rule too, and that is what an innocence test
+    is for — it pins behaviour the change must leave alone. It has no power to
+    catch a regression of the DOTTED form; do not read it as a guard for that.
+    The two `test_guilt_…` cases above are the guards.
+    """
     text = "   4   Industri pengolahan kedelai:\n       Industri tempe kedelai  10391  V\n"
     h = governing_headings(text)
     assert h[(1, 1)] == "Industri pengolahan kedelai"
 
 
-def test_innocence_a_dotted_line_that_is_not_an_item_number_is_not_a_heading():
-    """`1.500` in a row's text, or a page number, must not become a parent."""
-    text = "        Nilai investasi 1. 500 juta rupiah:\n        Sesuatu   12345   V\n"
+def test_innocence_a_decimal_amount_at_the_head_of_a_line_is_not_an_item():
+    """The widened boundary's own hazard, exercised where it actually lives.
+
+    An earlier version of this test began the line with `Nilai`, so `^\\s*\\d`
+    never matched and it could not have failed however the rule was written — it
+    asserted a condition on a literal string instead of an outcome of the parser
+    (named by an independent review of this diff). These three lines all BEGIN
+    with digits, which is the only place the rule can be fooled:
+
+      `1.500  juta`  — a dot with no space after it is a decimal separator
+      `1. 500 juta:` — a dot WITH a space is the shape the fix admits, and the
+                       heading it would open starts with a digit, which no real
+                       item in this annex does
+      `12 Besar`     — a bare number needs two spaces, as it always did
+    """
+    text = (
+        "   1.500  juta rupiah:\n"
+        "   1. 500 juta rupiah:\n"
+        "   12 Besar saja:\n"
+        "        Sesuatu   12345   V\n"
+    )
     h = governing_headings(text)
-    assert h[(1, 0)] is None and h[(1, 1)] is None
+    assert h[(1, 3)] is None, f"a row after three non-items must be parentless, got {h[(1, 3)]!r}"
+
+
+def test_guilt_a_bare_number_with_one_space_does_not_close_a_parent():
+    """The tightening, and why it is not cosmetic.
+
+    Written as `\\d{1,3}\\.?\\s{1,}` the rule admits a bare `2 body` — a line the
+    annex never numbered — and a numbered item ALWAYS closes the parent above it.
+    So the child on the following line would be orphaned by a false sibling. The
+    dotted form gets the single space; the bare form still demands two.
+    """
+    text = (
+        "   7   Jasa Penginapan:\n"
+        "   2 keterangan lanjutan\n"
+        "        Hotel Melati    55120   V\n"
+    )
+    h = governing_headings(text)
+    assert h[(1, 2)] == "Jasa Penginapan", (
+        "a line that is not an item number must not close the heading above it"
+    )
 
 
 def test_the_live_artifact_attributes_the_accommodation_family_and_not_the_fish():

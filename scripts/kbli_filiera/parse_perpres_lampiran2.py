@@ -213,11 +213,27 @@ def cell_at(line: str, tick_x: int) -> str:
 # processing, item `3.`) was carrying `Pemungutan hasil hutan` — forest
 # harvesting, item 2 — as its parent.
 #
-# Measured before the fix, both directions: of 76 line-positions whose
-# governing parent changes, ZERO lose a restricting parent and ZERO gain one.
-# So no verdict moved — the defect was live and had not yet bitten. That is the
-# reason to fix it now rather than the reason not to.
-_NUMBERED_ITEM_RE = re.compile(r"^\s{0,14}\d{1,3}\.?\s{1,}(\S.*?)\s*$")
+# Measured on the emitted artifact, both directions, and re-derived independently
+# by a cross-family review of this diff: of the 13 ROWS whose governing parent
+# changes, ZERO lose a restricting parent and ZERO gain one; `parent-qualified`
+# is 19 before and 19 after. So no verdict moved — the defect was live and had
+# not yet bitten. That is the reason to fix it now rather than the reason not to.
+# (An earlier draft of this note said "76 line-positions". That is a different
+# unit — positions inside `governing_headings`, not emitted rows — and it was
+# never re-measured, so it is stated here in the unit the claim is checked in.)
+# Two admitted forms, and they do NOT share a spacing rule. `48.` may be followed
+# by a single space; a bare `49` still demands two, exactly as before. Collapsing
+# both to `\.?\s{1,}` was the first draft and an independent review named the
+# cost: it also admits `"2 body"` under a parent, which closes that parent on a
+# line the annex never numbered. Zero such lines exist in the vaulted PDF today —
+# which is the argument for spending one alternation now rather than discovering
+# it in a re-issue.
+#
+# `(?!\d)` on the heading is the second half of the same care: `1. 500 juta
+# rupiah:` would otherwise become a parent named "500 juta rupiah". No real item
+# heading in this annex begins with a digit — asserted on the artifact, not
+# assumed.
+_NUMBERED_ITEM_RE = re.compile(r"^\s{0,14}\d{1,3}(?:\.\s{1,}|\s{2,})(?!\d)(\S.*?)\s*$")
 
 
 def governing_headings(text: str) -> dict[tuple[int, int], str | None]:
