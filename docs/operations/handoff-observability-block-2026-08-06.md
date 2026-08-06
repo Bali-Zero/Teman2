@@ -8,7 +8,7 @@
 
 ## PROMPT (da incollare)
 
-Leggi `docs/operations/handoff-observability-block-2026-08-06.md`. Contiene sei reperti misurati il
+Leggi `docs/operations/handoff-observability-block-2026-08-06.md`. Contiene sette reperti misurati il
 2026-08-06 e mai curati. Affrontali **in blocco** con un Workflow, non in sequenza a mano.
 
 Vincoli non negoziabili, tutti pagati con sangue nella sessione che ha scritto questo file:
@@ -41,11 +41,11 @@ sull'exit code.
 
 Tre fasi, con una barriera sola dove serve davvero.
 
-**Fase 1 — GROUND (fan-out, letture indipendenti, nessuna scrittura).** Un agent per reperto, sei
+**Fase 1 — GROUND (fan-out, letture indipendenti, nessuna scrittura).** Un agent per reperto, sette
 in parallelo. Ognuno ha UN compito: ri-misurare il proprio reperto sul mondo di oggi e tornare uno
 schema `{finding_id, still_real: bool, numbers: {...}, blast_radius, by_design: bool, evidence:
 [comando → output]}`. Nessuno propone cure in questa fase. La `by_design` è la domanda più
-importante: due dei sei probabilmente NON vanno curati (§6).
+importante: due dei sette probabilmente NON vanno curati (§6).
 
 **BARRIERA qui, ed è giustificata**: §3 e §4 riguardano lo stesso organo, e §1/§2/§7 sono tutte
 famiglia #1 — la mappa completa cambia quali cure sono indipendenti. Senza la barriera rischi due
@@ -206,6 +206,46 @@ ora zero), la **rilevazione** no: `secrets_permissions_audit.py` cerca per NOME 
 contenuti — scelta deliberata e documentata, quindi «audit pulito» non va letto come «nessun
 segreto su disco».
 
+### §8 — `refs_in` conta per SUBSTRING del basename, e quel numero decide chi è orfano `[famiglia #3]`
+
+Trovato spedendo questo file, non cercandolo: `inventory-check` mi ha bocciato, ho rigenerato
+`docs/DOCS_INVENTORY.md` come chiede, e il diff toccava **19 righe** — la mia più AI_ONBOARDING
+(che cito davvero) più **17 README che non cito affatto**.
+
+Controllo positivo, stesso meccanismo: tolto il mio file e rilanciato lo STESSO regen, le righe
+README che si muovono sono **0**. Quindi le causo io. Ma il documento contiene il token `README.md`
+**una volta sola**, dentro un blocco di output verbatim di `docs_sync.py` (§5) — non è un link.
+
+La regola la nominano le eccezioni: dei 20 README dell'inventario se ne muovono 17, e i **3 fermi**
+sono esattamente quelli il cui basename non è letteralmente `README.md` — due sotto
+`docs/audits/2026-04-29-zero-crash-audit/prompts/` con un prefisso numerico davanti al nome, e uno
+in `docs/` con un prefisso maiuscolo. **Non li scrivo per esteso, e il motivo È la prova**:
+nominarli qui li accrediterebbe, e per il terzo la prima stesura di questa sezione lo aveva già
+fatto — il regen lo portava da `ARCHIVED` a `LIVE`, `refs_in` 0→1, e gli **cancellava**
+`orphan_flipped_on: 2026-07-26`, cioè la data in cui era stato dichiarato orfano. La frase che lo
+citava come esempio di file senza riferimenti entranti è ciò che lo rendeva riferito. Per
+riprodurlo: scrivi il suo nome in un qualunque `.md` sotto `docs/` e rilancia il regen.
+
+Il meccanismo è dichiarato nel sorgente: `scripts/docs_audit.py:340` documenta «count other .md
+files that contain target's basename» e `:365` lo esegue come `if basename in c.read_text(...)` —
+**substring, non path risolto né word-boundary**. Conseguenza: qualunque doc che nomini `README.md`
+in prosa accredita in un colpo tutti i README dell'albero. E la stessa forma morde in generale — un
+doc chiamato `sync.md` incassa un riferimento da ogni testo che scriva `docs_sync.md`.
+
+**Perché non è cosmesi:** `refs_in` non è decorativo, è il predicato dell'orfanità.
+`docs_audit.py:895` fa `structurally_eligible = row.refs_in == 0 and rel not in whitelist`, e `:1094`
+titola «Orphans (past orphan_eligible_on AND refs_in==0)». Un `refs_in` gonfiato **sopprime la flag
+di orfano**: 17 README risultano referenziati da un token che non li nomina.
+
+**Cosa NON fare:** riscrivere la mia riga per non emettere il token. È output verbatim di un tool —
+alterarlo sarebbe fabbricare l'output di un tool, che è la sola cosa che qui non si fa mai. Il
+difetto è nel contatore, non nella prosa che lo inciampa.
+
+**Cura vera** (PR propria, non da infilare qui): contare per **link risolto** — o almeno per
+basename ancorato ai delimitatori di un path/markdown-link — con corpus di colpevolezza (un link
+vero conta) **e** di innocenza (una menzione in prosa, e un basename che è sotto-stringa di un
+altro, NON contano). Finché non è curato, `refs_in` è un proxy e va letto come tale (W88).
+
 ---
 
 ## Ordine consigliato
@@ -213,6 +253,10 @@ segreto su disco».
 **Prima** la riconciliazione di §3 (blocca tutto il resto di §3) e §1 (job quotidiano su codice
 forkato). **Poi** §2 e §4 in parallelo, indipendenti. **Poi** §5, meccanico. **Infine** §6 e §7,
 che sono decisioni da mettere a verbale, non diff.
+
+**§8 sta fuori da quest'ordine**: è una guardia difettosa, non un organo derivato, e vuole la sua PR
+con corpus di colpevolezza e innocenza propri. Non infilarlo in una cura d'altro — è precisamente
+così che una #3 si cura sul solo payload che ti ha morso.
 
 Uno solo di questi è client-facing: §3, perché `fr`/`ru` sono ancora **servite**. Lì il gate
 adversariale va alzato, e la decisione «cosa facciamo delle 967» è Legge 5 — si porta a Zero
