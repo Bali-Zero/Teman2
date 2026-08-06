@@ -67,7 +67,9 @@ async def run_gc(dry_run: bool = False, batch_size: int = 100) -> dict:
 
         # Send Telegram summary only if something was archived
         if stats["archived"] > 0:
-            await send_critical_alert(msg)
+            # A routine summary, not a failure: its own condition, so the ladder
+            # of a nightly "files archived" note can never swallow a crash.
+            await send_critical_alert(msg, condition="gc-summary")
 
     finally:
         await qdrant.close()

@@ -170,6 +170,8 @@ jobs:
               scripts/drive_token_watchdog.py|\
               scripts/tests/test_drive_watchdog_fly_path.py|\
               scripts/tests/test_drive_watchdog_tier_ratchet.py|\
+              apps/zantara-media/zantara_media/alerts.py|\
+              apps/zantara-media/tests/test_alerts_gateway.py|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
               scripts/tests/test_lint_workflow_errexit_decap.py|\
               scripts/lint_workflow_errexit_decap.py|\
@@ -264,6 +266,20 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: garuda alert gateway guilt+innocence (apps/zantara-media)
+        if: steps.paths.outputs.relevant == 'true'
+        # Its own step, not the loop above: the loop runs `pytest <path>` from
+        # the repo root and this corpus imports `zantara_media`, which lives
+        # under apps/. Both files ARE sentinel trigger paths, so a PR that
+        # guts either one runs this.
+        #
+        # DECLARED GAP: test_immune_enforcement_trigger_symmetry.py only reads
+        # the loop's `scripts/**.py` entries, so it cannot vouch for this step.
+        # Armed here at birth precisely because nothing else runs
+        # apps/zantara-media's tests — no workflow did, which is how the alert
+        # path stayed mute for 141 nights.
+        run: PYTHONPATH=apps/zantara-media python -m pytest apps/zantara-media/tests/test_alerts_gateway.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'
