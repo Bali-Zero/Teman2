@@ -57,12 +57,39 @@ Bali-scoped cells. So the label's SCOPE is resolved first and Bali-scoped cells
 are excluded by name, with the exclusion counted and reported rather than left
 silent.
 
-THERE IS ALREADY A GUARD FOR THIS, AND IT WATCHES THE OTHER DIRECTION
----------------------------------------------------------------------
-`kbli_dataset_lint.py` rule L9 calls `validate_pma_consistency`, which is a
-blocking lint and looks like this module's twin. Measured on the live
-catalogue, the two sets are DISJOINT: L9 finds 2 codes, this module finds 27,
-and the overlap is empty.
+THE GUARDS THAT ALREADY EXIST — ONE IS UNRELATED, ONE IS A PARTIAL TWIN
+------------------------------------------------------------------------
+CORRECTION, and the way the mistake was made is the useful part. An earlier
+version of this section said "there is already a guard for this, and it watches
+the other direction", naming only rule L9. That was written after checking the
+lint rule whose NAME matched (`validate_pma_consistency`) and never opening
+rule **L10**, whose BEHAVIOUR matched — even though the first lint run printed
+`L10: 28` in plain sight. Checking the guard whose name matches instead of the
+one whose behaviour matches is the same form-over-entity habit this module's
+Bali exclusion exists to avoid, committed while writing the paragraph about it.
+
+**L9 — unrelated.** Two literal substring tests. Its two live findings
+(`43110`, `86201`) are both TERBUKA/100 caught by the "record open, prose says
+closed" branch — a page understating what a client may do. The branch guarding
+the expensive direction requires `pma_status == "TERTUTUP"` AND the literal
+string "100% foreign", which no live record satisfies. Disjoint from this
+module, measured.
+
+**L10 — a partial twin with complementary blind spots**, and NOT to be treated
+as redundant in either direction. It walks the same prose via `iter_prose` and
+compares a percentage claim against `pma_max_asing`, with a real SSOT
+(`l10_ownership_contradiction`) carrying innocence idioms this module does not
+have ("100% closed", "not 100% open"). Measured on the live catalogue:
+
+    this module 31 · L10 17 · overlap 14 · this-module-only 17 · L10-only 3
+
+So each finds real contradictions the other misses. This module reads sentences
+for an openness ASSERTION, which catches "nationally open to full foreign
+ownership" with no number in it; L10 reads for a PERCENTAGE, which catches
+numeric claims phrased in ways no sentence-level openness predicate matches
+(`41011`, `52292`, `53200` are live examples this module does not see, and they
+are a DECLARED gap here, not a fixed one — closing them means widening a
+predicate, which needs its own guilt and innocence).
 
 The reason is structural rather than a matter of degree. L9 is two literal
 substring tests:
@@ -70,20 +97,15 @@ substring tests:
     pma_status == "TERTUTUP" and "100% foreign" in text     # record closed, prose open
     pma_status == "TERBUKA"  and "closed to foreign" in text # record open, prose closed
 
-Its two live findings (`43110`, `86201`) are both TERBUKA/100 caught by the
-SECOND test — a page understating what a client may do, which costs him an
-opportunity he could ask about. The first test guards the expensive direction,
-and it cannot reach this population: 26 of the 27 are **TERBATAS**, a status the
-condition never admits, and the 27th says it in words the substring does not
-contain ("nationally open to full foreign ownership"). So a client told he may
-wholly own an arms factory was never in range of the guard that exists.
-
-Left in place rather than folded together, deliberately: L9 owns the mirror
-case, and widening it here would turn a blocking lint red on a 27-item backlog
-(W95 — a gate armed on live debt makes every unrelated PR red). Reconciling them
-so that two tools cannot answer the same question two ways (W105) is a
-follow-up, and it belongs on the side of the LINT consuming this report, the way
-`kbli_documents_cure.py` consumes `kbli_surface_conformance.py --json`.
+Nothing is folded together here. Both lint rules stay exactly as they are: L10
+is BLOCKING and already carries a long-standing backlog (28 findings before
+2026-08-06, 31 after `#3673`, 23 after the stat-card cure), and rewiring a
+blocking lint while its backlog is live is how an unrelated PR turns red (W95).
+Reconciling them so two tools cannot answer one question two ways (W105) belongs
+on the LINT's side, consuming this report the way `kbli_documents_cure.py`
+consumes `kbli_surface_conformance.py --json`. The relationship is pinned by
+`test_this_module_is_not_a_twin_of_the_existing_L9_lint_rule` so that it cannot
+drift unnoticed again.
 
 IT REPORTS, IT DOES NOT DECIDE
 ------------------------------
