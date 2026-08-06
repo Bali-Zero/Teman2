@@ -135,6 +135,28 @@ def check(
                 )
                 continue
 
+            # …and the OTHER direction, which the rule above cannot see. "One
+            # heir" says the 2020 activity did not split; it says nothing about
+            # whether the 2025 code MERGED several 2020 activities, in which
+            # case the code is BROADER than the one row the annex reserves and
+            # belongs with the 28 refused for exactly that (Pasal 5(5): the
+            # allocation attaches to the named bidang usaha).
+            #
+            # Measured on the seven vintage rows: six are 1:1, and `79110`
+            # (Aktivitas Agen Perjalanan) absorbs THREE 2020 codes — 79111,
+            # 79112, 79119 — so reserving all of it on 79111's row would close
+            # an activity the annex never named. That one was already out of the
+            # spec, but for an unrelated reason (a competing determination in a
+            # test), i.e. it was luck, not this rule. Now it is this rule.
+            ancestors = (record.get("bps_2020_ancestors") or {}).get("codes") or []
+            others = [str(a) for a in ancestors if str(a) != judged]
+            if others:
+                refusals.append(
+                    f"{code}: judged on 2020 {judged}, but this 2025 code also "
+                    f"absorbs {others} — broader than the reserved activity"
+                )
+                continue
+
         existing = record.get("pma_official_basis")
         if existing and existing != item["locator"]:
             refusals.append(f"{code}: already carries a different pma_official_basis")
