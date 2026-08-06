@@ -116,34 +116,119 @@ def _parse_change(change_data: dict) -> Change:
 # ---------------------------------------------------------------------------
 
 
+SA_DEFAULT_PATH = os.path.expanduser("~/.nuzantara-drive-sa.json")
+
+# The Workspace user the service account impersonates. Same identity the
+# backend uses (ServiceAccountDriveService), and the GARUDA folders — owned by
+# a personal account — are shared with it. Verified against the live API on
+# 2026-08-06 before this path was made preferred: root/photos/published all
+# resolve for this subject.
+SA_SUBJECT_DEFAULT = "zero@balizero.com"
+
+# ONLY `drive`, deliberately — not the `drive` + `drive.readonly` pair the
+# legacy OAuth path below asks for. Domain-wide delegation grants scopes
+# explicitly in the Workspace admin console, and this service account has just
+# the one; requesting an ungranted scope fails the token exchange outright with
+# `unauthorized_client`, which reads like a broken key rather than a missing
+# grant. Same single scope the backend's ServiceAccountDriveService uses.
+SA_SCOPES = ["https://www.googleapis.com/auth/drive"]
+
+
 async def get_drive_service():  # type: ignore[return]
     """
     Build and return a Google Drive v3 service object.
 
-    Token resolution order:
-    1. ``GOOGLE_DRIVE_CREDENTIALS_FILE`` env var → path to OAuth2 JSON file.
-    2. ``google_drive_tokens`` Postgres table (asyncpg, DATABASE_URL).
+    Credential resolution order, most-preferred first:
+
+    1. **Service account** at ``GARUDA_DRIVE_SA_FILE`` (default
+       ``~/.nuzantara-drive-sa.json``), impersonating ``GARUDA_DRIVE_SUBJECT``
+       via domain-wide delegation.
+    2. ``GOOGLE_DRIVE_CREDENTIALS_FILE`` → JSON file (OAuth2 *or* SA).
+    3. ``google_drive_tokens`` Postgres row — legacy per-user OAuth.
+
+    WHY THE SERVICE ACCOUNT IS FIRST (2026-08-06). Path 3 is a user OAuth
+    token, and a user token can be REVOKED. On 2026-07-25 this one was, and
+    the indexer then crashed nightly for eleven nights with
+    ``invalid_grant: Token has been expired or revoked`` — 141 occurrences —
+    until a human re-authorised it by hand. The backend abandoned this same
+    credential class on 2026-05-10 for exactly that reason
+    (``GoogleDriveService._refresh_token`` refuses to refresh the SYSTEM row;
+    16 production files use ``ServiceAccountDriveService`` instead). A service
+    account key does not expire and needs no consent screen.
+
+    Path 3 is kept, not deleted: it is the rollback. ``GARUDA_DRIVE_FORCE_OAUTH=1``
+    skips the service account entirely, so a bad SA can be backed out without
+    a deploy.
 
     The blocking ``build()`` call is wrapped in run_in_executor.
     """
     loop = asyncio.get_event_loop()
 
-    creds_file = os.environ.get("GOOGLE_DRIVE_CREDENTIALS_FILE")
-    if creds_file:
-        creds = await loop.run_in_executor(None, _load_creds_from_file, creds_file)
+    sa_path = os.environ.get("GARUDA_DRIVE_SA_FILE", SA_DEFAULT_PATH)
+    force_oauth = os.environ.get("GARUDA_DRIVE_FORCE_OAUTH") == "1"
+
+    if not force_oauth and os.path.isfile(sa_path):
+        creds = await loop.run_in_executor(None, _load_sa_credentials, sa_path)
+        # W106: say WHICH source was accepted. When this organ next misleads
+        # someone, the log should not make them guess which credential ran.
+        logger.info("Drive credentials: service account file %s", sa_path)
     else:
-        creds = await _load_creds_from_db()
+        creds_file = os.environ.get("GOOGLE_DRIVE_CREDENTIALS_FILE")
+        if creds_file:
+            creds = await loop.run_in_executor(None, _load_creds_from_file, creds_file)
+            logger.info("Drive credentials: file %s", creds_file)
+        else:
+            creds = await _load_creds_from_db()
+            logger.warning(
+                "Drive credentials: legacy user OAuth from google_drive_tokens "
+                "(revocable — see get_drive_service docstring). force_oauth=%s "
+                "sa_path_present=%s",
+                force_oauth,
+                os.path.isfile(sa_path),
+            )
 
     service = await loop.run_in_executor(None, _build_drive_service, creds)
     return service
 
 
+def _load_sa_credentials(path: str):
+    """Build delegated service-account credentials from a JSON key file."""
+    with open(path) as fh:
+        info = json.load(fh)
+
+    # Validated BEFORE the import: rejecting the wrong file should not depend
+    # on a heavy optional library being installed, and the reason a caller
+    # gets back should name what was actually on disk.
+    if info.get("type") != "service_account":
+        raise ValueError(
+            f"{path!r} is not a service-account key (type={info.get('type')!r})"
+        )
+
+    from google.oauth2 import service_account  # type: ignore[import]
+
+    subject = os.environ.get("GARUDA_DRIVE_SUBJECT", SA_SUBJECT_DEFAULT)
+    return service_account.Credentials.from_service_account_info(
+        info, scopes=SA_SCOPES
+    ).with_subject(subject)
+
+
 def _load_creds_from_file(path: str):
     """Load OAuth2 credentials from a JSON file (blocking)."""
-    from google.oauth2.credentials import Credentials  # type: ignore[import]
-
     with open(path) as fh:
         data = json.load(fh)
+
+    # A service-account key handed to this path is routed to the SA builder
+    # rather than rejected: the docstring of get_drive_service promises this
+    # entry accepts either kind, and a promise a function does not keep is the
+    # defect this whole change is about.
+    #
+    # Routed BEFORE the OAuth import, deliberately: importing the user-token
+    # library on the way to a branch that never uses it makes the SA path
+    # depend on a package it has nothing to do with.
+    if data.get("type") == "service_account":
+        return _load_sa_credentials(path)
+
+    from google.oauth2.credentials import Credentials  # type: ignore[import]
 
     # Support both raw token JSON and "installed" / "web" client-secret format.
     if "token" in data:
