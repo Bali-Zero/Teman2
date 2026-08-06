@@ -37,8 +37,13 @@ THE UNIT IS THE (bidang usaha, KBLI) PAIR — NEVER THE CODE
 -----------------------------------------------------------
 Entry 7 gives `30111` a 49% foreign cap as a WARSHIP yard; entry 8 gives the SAME
 code a 0% cap as a builder of pinisi/cadik/traditional wooden vessels. The body
-says so explicitly (art. 3(3): where one KBLI spans several bidang usaha, the
-Lampiran III requirement applies only to the bidang usaha named in the column).
+says so explicitly — **Pasal 6 ayat (3)**, the article that governs Lampiran III:
+where one KBLI covers more than one bidang usaha, the Lampiran III requirement
+applies only to the bidang usaha named in that column. (Read at the source
+2026-08-06. This cited `art. 3(3)` until then, which does not exist: Pasal 3 has
+two ayat. The granularity rule is written once PER ANNEX — 5(5) for Lampiran II,
+6(3) for Lampiran III — so one remembered number cannot serve both, which is how
+the phantom propagated to five places.)
 A code -> cap join is therefore structurally wrong for such a code, and a single
 `pma_max_asing` integer cannot represent it. Same for phase-dependent caps
 (`58130`: 0% at establishment, 49% via the capital market for expansion) and for

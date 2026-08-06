@@ -16,6 +16,7 @@ is not a bar, and asserting one on those 57 rows is the same over-match
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -588,3 +589,71 @@ def test_the_live_artifact_carries_the_parent_that_was_missing():
     assert {r["code"] for r in qualified} == {
         "01111", "01113", "01114", "01115", "01121", "01122",
     }
+
+
+# ---------------------------------------------------------------------------
+# The phantom article — Pasal 3(3) names nothing
+# ---------------------------------------------------------------------------
+
+_PHANTOM_RE = re.compile(r"Pasal 3\s*(?:ayat\s*)?\(3\)|art\.?\s*3\(3\)", re.IGNORECASE)
+# A mention is absolved only when the SAME line disowns it. "Pasal 3(3)" written
+# beside "does not exist" is a correction; written alone it is a citation, and a
+# citation of an article that has no third ayat supports nothing. Deliberately
+# same-line: a window would let the colpevole sentence borrow an absolution from
+# a neighbouring paragraph, which is how the retracted-claims guard first failed.
+_DISOWNED_RE = re.compile(r"does not exist|phantom|no third ayat|names nothing", re.IGNORECASE)
+
+
+def phantom_citations(text: str) -> list[int]:
+    """1-indexed lines citing Pasal 3(3) without disowning it on the same line."""
+    return [
+        n for n, line in enumerate(text.splitlines(), 1)
+        if _PHANTOM_RE.search(line) and not _DISOWNED_RE.search(line)
+    ]
+
+
+def test_guilt_a_bare_citation_of_the_phantom_is_caught():
+    assert phantom_citations("the rule is Pasal 3(3): it attaches to the named bidang usaha") == [1]
+    assert phantom_citations("the body says so explicitly (art. 3(3): where one KBLI") == [1]
+
+
+def test_innocence_a_sentence_that_disowns_it_is_allowed():
+    """Correcting the phantom requires writing it. A guard that forbids naming
+    what it bans makes the correction uncommittable — and this one bit its own
+    author on the first run, which is how the rule got written down."""
+    assert phantom_citations("This cited `art. 3(3)` until then, which does not exist.") == []
+    assert phantom_citations("`Pasal 3(3)` does not exist. It was a phantom.") == []
+
+
+def test_innocence_the_real_articles_are_not_touched():
+    for ok in ("Pasal 5 ayat (5)", "Pasal 6(3)", "Pasal 3 ayat (1) huruf b", "Pasal 3(1)(b)"):
+        assert phantom_citations(f"the rule is {ok} and it governs the annex") == [], ok
+
+
+def test_the_kbli_tooling_and_prose_carry_no_bare_phantom_citation():
+    """Perpres 10/2021 writes the "one KBLI, several bidang usaha" rule ONCE PER
+    ANNEX — Pasal 5(5) for Lampiran II, Pasal 6(3) for Lampiran III — and Pasal 3
+    has only two ayat.
+
+    The phantom sat in five files for five days, including the corner skill every
+    KBLI session loads, because one remembered number was reused for both
+    annexes. Lexical guard, and it knows it: it cannot tell a right citation from
+    a wrong one, only a citation that cannot exist from everything else.
+    """
+    root = Path(__file__).resolve().parents[2].parent
+    targets = [root / "scripts" / "kbli_filiera", root / "research" / "compliance",
+               root / ".agents" / "skills" / "kbli-navigator"]
+    scanned, offenders = 0, []
+    for base in (b for b in targets if b.exists()):
+        for f in list(base.rglob("*.py")) + list(base.rglob("*.md")):
+            if f.name == Path(__file__).name:
+                continue  # this file writes the phantom in order to ban it
+            scanned += 1
+            for n in phantom_citations(f.read_text(encoding="utf-8", errors="replace")):
+                offenders.append(f"{f.relative_to(root)}:{n}")
+    # A blind scan must not look like a clean one (W84).
+    assert scanned > 5, f"only {scanned} files scanned — the scan, not the repo, is empty"
+    assert not offenders, (
+        "Pasal 3(3) does not exist. Lampiran II -> Pasal 5(5); "
+        f"Lampiran III -> Pasal 6(3). Found: {offenders}"
+    )

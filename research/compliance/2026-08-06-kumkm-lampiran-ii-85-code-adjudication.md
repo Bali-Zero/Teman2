@@ -198,7 +198,8 @@ what differs is the consequence of being wrong, in both directions.
 ## D. Refused as broader than the reserved activity (28 codes)
 
 Both families agreed the 2025 code covers more than the annex reserves.
-Pasal 3(3): the requirement attaches to the named *bidang usaha*, never to the code number.
+**Pasal 5 ayat (5)**: where one KBLI covers more than one *bidang usaha*, the Lampiran II
+allocation applies only to the *bidang usaha* named in that column — never to the code number.
 
 Codes: `02302`, `02303`, `02304`, `02305`, `02306`, `02307`, `02308`, `02309`, `10750`, `13121`, `13122`, `13134`, `13912`, `14111`, `14131`, `16292`, `23932`, `25931`, `25932`, `25934`, `32201`, `35111`, `41017`, `43211`, `43299`, `47243`, `55199`, `71204`
 
@@ -218,14 +219,35 @@ each, including the ones that did not survive:
    reviewer did not reach. The refuter was right about the disease and short
    about its extent — which is the normal shape, and the reason the count in a
    finding gets re-derived rather than quoted.
-2. **Pasal 3(3) vs Pasal 5(5) — OPEN, not silently accepted.** Codex says the
-   granularity rule is Pasal 5(5). The locators written into the spec cite
-   3(1)(b) and 5; the surrounding prose cites 3(3). Both articles are cited
-   from secondary sources on both sides and the withdrawal makes it moot for
-   now, so it is recorded as a question for the re-adjudication rather than
-   "corrected" on an equally unverified basis — swapping one unchecked citation
-   for another is not a fix (W113: the sentence written while correcting is a
-   new claim).
+2. **The granularity article — UPHELD, and SETTLED at the source the same day:
+   the `Pasal 3(3)` this document cited does not exist; the rule is Pasal 5(5).** Read in the vaulted body of Perpres 10/2021 (`154474`) rather than
+   swapped for the reviewer's number, because replacing one unchecked citation
+   with another is not a fix (W113). What the text says:
+
+   - **Pasal 3 has two ayat.** `Pasal 3(3)` does not exist. It was a phantom.
+   - **Pasal 5(5)** — *"Dalam hal Klasifikasi Baku Lapangan Usaha Indonesia …
+     meliputi lebih dari satu Bidang Usaha, ketentuan mengenai alokasi dan
+     kemitraan … dalam **Lampiran II** hanya berlaku bagi Bidang Usaha yang
+     tercantum dalam kolom Bidang Usaha tersebut."* This is our article.
+   - **Pasal 6(3)** is its twin for **Lampiran III** (the foreign-cap annex),
+     word-for-word the same rule with `persyaratan` in place of `alokasi dan
+     kemitraan`.
+
+   So the granularity rule is written **once per annex**, and one remembered
+   number cannot serve both — which is exactly how the phantom propagated to
+   **five** places: this document, `apply_umkm_reservations.py`, the
+   already-merged `perpres_foreign_cap_relation.py` (2026-08-01), the
+   `kbli-navigator` corner skill that every KBLI session loads, and the modus
+   ledger. All five corrected to the article of their own annex, with a
+   tripwire (`test_the_granularity_article_is_per_annex`) so the phantom cannot
+   come back. Inherited, not invented here — and it had been in the corner
+   skill for five days.
+
+   Pasal 5(2) also explains WHY the annex headings carry the qualifiers this
+   review turned on: allocation to K-UMKM is defined by criteria — *no or
+   simple technology*, special/labour-intensive/heritage processes, or capital
+   not exceeding Rp10bn excluding land and buildings. "teknologi sederhana dan
+   madya" in a heading is that criterion, written into the list.
 3. **`55106`/`55201`/`55203`/`79903` were in the spec while the text called them
    HELD — UPHELD as a defect of the RECORD.** The hold was lifted deliberately
    by the owner ("fai il tuo lavoro senza importartene dei clienti e di noi") and

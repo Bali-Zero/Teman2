@@ -34,7 +34,7 @@ it is a different error").
 Excluded by construction, and none of it is a silent drop: 13 codes where the
 two families disagreed, 3 both called unclear, 1 whose annex text the OCR
 destroyed on the token that sets its scope, and 28 both refused as BROADER than
-the reserved activity — Pasal 3 ayat (3) attaches the requirement to the named
+the reserved activity — Pasal 5 ayat (5) attaches the allocation to the named
 bidang usaha, never to the code number.
 
 Seven spec rows were judged on a KBLI-2020 number that is not a 2025 code
