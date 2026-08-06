@@ -2,13 +2,16 @@
 
 **Status:** `SIGNED / ACTIVATION BLOCKED` - national authority and country
 treatment are approved and production sequence 2 is signed; immutable
-instrument archive, independent final review, and activation remain pending
+instrument archive and activation remain pending; independent review is LGTM
 
 **Observed:** 2026-08-06 11:52-12:01 WITA (2026-08-06 03:52-04:01 UTC)
 
 **Candidate base:** `7452e05cc9d8a6a6090052b958b1d05275613a80`
 
-**Product consequence:** keep source conflicts and unverified country-specific changes fail-closed. This packet does not choose an authority, modify a rule, sign a pack, or close G1.
+**Product consequence:** the recorded national-authority decision and signed
+sequence-2 candidate resolve the product country set. Missing immutable
+instruments and expired or unverified evidence remain fail-closed. This packet
+does not close G1 or authorize activation.
 
 ## Executive decision record
 
@@ -43,14 +46,19 @@ Set differences are exact:
 - national minus signed: empty;
 - signed minus regional: empty.
 
-No authority or applicability rule in the repository resolves these differences. The regional page is an official Immigration surface, but official status alone does not establish that a regional display overrides, supplements, or merely lags the national consolidated list.
+At the initial AS-IS inspection, no authority or applicability rule in the
+repository resolved these differences. The Zero decision recorded above now
+makes the national list controlling for the sequence-2 product overlay. The
+regional page remains evidence of source drift, not a separate regional legal
+regime.
 
 ### Conflict-safe runtime consequence
 
-Until Zero approves a source-authority and freshness policy and a replacement pack is signed:
+Following Zero's authority/freshness approval and sequence-2 signing, the
+conflict-safe consequence until activation is:
 
-- `AF`, `IL`, `KP`, `LR`, `NG`, `SO`: the replacement national overlay will retain the Calling Visa review, subject to ordinary source-freshness gates.
-- `GN`, `CM`, `NE`: the replacement national overlay will exclude these countries. The current sequence-1 pack must not be edited; until sequence 2 is activated, any result still governed by the old pack remains conservative `HUMAN_REVIEW_REQUIRED` where freshness or source conflict is unresolved.
+- `AF`, `IL`, `KP`, `LR`, `NG`, `SO`: sequence 2 retains the Calling Visa review, subject to signed source-freshness gates.
+- `GN`, `CM`, `NE`: sequence 2 excludes these countries. The current sequence-1 pack must not be edited; until sequence 2 is activated, any result still governed by the old pack remains conservative `HUMAN_REVIEW_REQUIRED` where freshness or source conflict is unresolved.
 - A source retrieval failure, unknown effective date, missing official instrument, or expired observation must never resolve the conflict in favour of a recommendation.
 
 This is a source conflict, not evidence of a regional legal regime. No regional divergence is assumed.
@@ -174,32 +182,32 @@ Conflict-safe consequence:
 - do not convert `null` to zero, an assumed stay duration, or a default extension;
 - do not call `allowed=true, maximum_extensions=0` a supported extension.
 
-## Zero approval questions
+## Zero decision record and remaining G1 approvals
 
-G1 cannot close until Zero records explicit answers to all questions below.
+G1 cannot close until the items explicitly marked **REMAINING** are complete.
 
 1. **Authority — DECIDED:** the national Ditjen consolidated list is canonical; a Kanwil page is non-controlling for the national product and cannot add a country.
-2. **Guinea:** Approve removal only after the official Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024` PDF is archived and verified. Does its operative text remove Guinea, on what effective date, and does it supersede every earlier list?
-3. **Cameroon:** Approve the official 2023 removal lineage and require archival of Kepmenkumham No. `M.HH-05.GR.01.06 Tahun 2023`, including its operative locator and effective date.
+2. **Guinea — COUNTRY TREATMENT DECIDED / ARCHIVE REMAINING:** exclude `GN` under the national-canonical rule; archive and verify Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024`, including operative text, effective date and supersession lineage, before G1/activation.
+3. **Cameroon — COUNTRY TREATMENT DECIDED / ARCHIVE REMAINING:** exclude `CM`; archive Kepmenkumham No. `M.HH-05.GR.01.06 Tahun 2023`, including its operative locator and effective date, before G1/activation.
 4. **Niger — DECIDED:** exclude `NE` from the replacement national overlay. Do not mutate sequence 1; cases governed by sequence 1 remain conservative until sequence 2 activation.
-5. **Conflict behaviour:** Approve `SOURCE_CONFLICT -> HUMAN_REVIEW_REQUIRED` for country-specific conflict and define whether a global conflict must abstain all otherwise conclusive results or only affected nationalities.
-6. **Freshness:** Approve, per source class, maximum observation age, mandatory recheck cadence, retrieval-failure grace (if any), effective-date rule, emergency-revocation behaviour, and the owner/SLA for renewal.
-7. **Content identity:** Approve a deterministic extraction/canonicalization method for dynamic official pages. Raw HTML hashes alone are non-reproducible because of CSRF/cache-buster values.
-8. **Source lineage:** Require separate `effective_at`, `observed_at`, `retrieved_at`, `verified_at`, locators, immutable capture hash, publisher, and supersession links for every decisive source.
-9. **Extensions:** For each of the 16 products, approve whether the correct meaning is non-extendable, extendable for a fixed cited duration/count, renewable with a different model, or unknown pending human review. No default is permitted.
-10. **Schema:** If renewable/variable-duration semantics are real, approve an explicit contract model and engine contract-version bump rather than overloading `maximum_extensions=0` or `days_per_extension=null`.
+5. **Conflict behaviour — DECIDED:** country/product conflict produces `HUMAN_REVIEW_REQUIRED`; source-integrity or global-provenance failure blocks the complete evaluation.
+6. **Freshness — POLICY DECIDED / OPERATIONS REMAINING:** portal evidence is current for 7 days with daily recheck; primary law/implementing regulation for 365 days with monthly recheck. Zero must still assign the production owner/SLA, scheduler and alerting.
+7. **Content identity — DECIDED:** dynamic Calling Visa pages use the deterministic normalized-list artifact; raw HTML hashes remain supporting captures only.
+8. **Source lineage — DONE / ARCHIVE REMAINING:** sequence 2 records temporal fields, locators, hashes, publisher and forward lineage; the two official Kepmen artifacts remain unarchived.
+9. **Extensions — DECIDED:** all 16 uncited policies are explicit neutral `UNKNOWN` with reason `EXTENSION_POLICY_NOT_VERIFIED`; no duration or positive claim is inferred.
+10. **Schema — DONE:** sequence 2 requires explicit `VERIFIED` or `UNKNOWN` extension status and rejects contradictory shapes.
 
-## Inputs required for the signed freshness policy
+## Signed freshness policy record
 
-The policy must be signed data, not an undocumented runtime constant. At minimum it needs:
+The policy is signed data in all 28 sequence-2 source records, not an undocumented runtime constant:
 
 | Input                      | Required decision                                                                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `source_class`             | Controlling regulation, ministerial decision, consolidated national list, regional operational page, product page, official press release. |
 | `authority_rank`           | Explicit precedence and applicability condition; equal rank must conflict, not silently tie-break.                                         |
-| `max_observation_age`      | Approved duration per source class. No duration is proposed in this packet.                                                                |
-| `recheck_cadence`          | Scheduled owner and evidence of successful observation.                                                                                    |
-| `retrieval_failure_policy` | Fail-closed result, escalation owner, and any strictly bounded grace.                                                                      |
+| `max_observation_age`      | 7 days for official portals; 365 days for primary law and implementing regulations.                                                        |
+| `recheck_cadence`          | Daily for portals and monthly for law/regulation; production owner, scheduler and alerting remain operational gates.                       |
+| `retrieval_failure_policy` | Fail closed with no fabricated recommendation; escalation ownership remains an operational gate.                                           |
 | `effective_date_policy`    | How publication, enactment, promulgation, and stated effective dates are selected.                                                         |
 | `conflict_scope`           | Affected nationality/product only or global safety gate.                                                                                   |
 | `canonicalization`         | Deterministic extraction version and normalized payload format.                                                                            |
@@ -208,21 +216,22 @@ The policy must be signed data, not an undocumented runtime constant. At minimum
 
 An unknown or expired value for any decisive field must produce abstention or human review. It must never inherit the previous answer merely because a URL still resolves.
 
-## Replacement RulePack sequence and signature requirements
+## Replacement RulePack completion checklist
 
-The repair is forward-only:
+The repair is forward-only. Items 1 and 11 remain activation gates; the other
+steps are complete in the review candidate:
 
-1. Acquire the official 2023 and 2024 ministerial decisions from an official origin. Verify the full operative text, annexes, dates, issuer, and provenance; record PDF SHA-256 and byte size. A visible handwritten signature is provenance evidence, not an Ed25519 RulePack signature.
-2. Archive raw national and regional captures plus deterministic normalized list artifacts. Give each independent authority surface its own source record; never collapse conflicting pages into one `VERIFIED` record.
-3. Record decisive locators and bitemporal fields. Do not use retrieval date as legal effective date unless the instrument itself supports that equality.
-4. Obtain Zero's authority, conflict-scope, freshness, Niger, Guinea, Cameroon, and extension decisions above.
-5. Author a new source JSON. Do not edit either `rulepack-prod-001.source.json` or `rulepack-prod-001.signed.json` in place.
-6. Use sequence greater than 1 and set `previous_payload_sha256` to `47a97c32045c1f58798c8661473c265decbab5d8427e0e606406a29402db5fda`. Preserve anti-rollback and make the new legal/recorded periods explicit.
-7. Correct the country overlay and all 16 extension policies only from approved primary-source locators. If the extension data model changes, bump the engine contract compatibly and reject old ambiguous shapes at compilation/activation rather than guessing at evaluation time.
-8. Compile deterministically, validate every rule/source reference, and produce a semantic diff against sequence 1. Add golden vectors for `AF`, `GN`, `CM`, `NE`, all-agree countries, unknown nationality, conflicting sources, stale sources, and all 16 extension records.
-9. Sign the exact compiled payload with the approved production Ed25519 key (`kid=prod-2026-07-1` only if still valid, otherwise an explicitly approved successor). Keep RFC 8785 canonicalization, domain binding, environment binding, signing-key validity, and no unsigned production fallback.
-10. Independently verify signature, payload hash, previous hash, sequence monotonicity, validity windows, source freshness, and test evidence. Generator and grader must be different reviewers.
-11. Insert the new signed pack inactive, run shadow parity/adversarial evaluation, then activate through the forward-only activation path. Do not mutate sequence 1, bypass anti-rollback, or call a database edit a RulePack activation.
+1. **REMAINING:** acquire and archive the official 2023 and 2024 ministerial decisions from an official origin; verify operative text, annexes, dates, issuer and provenance; record PDF SHA-256 and byte size.
+2. **DONE:** archive reproducible national/regional observations and the normalized national-list artifact as separate evidence surfaces.
+3. **DONE:** record decisive locators and bitemporal fields without treating retrieval time as legal effective time.
+4. **DONE:** record Zero's national authority, conflict-scope, freshness, country-treatment and neutral-extension decisions above.
+5. **DONE:** author a new source JSON without mutating sequence 1.
+6. **DONE:** use sequence 2 and chain `previous_payload_sha256` to `47a97c32045c1f58798c8661473c265decbab5d8427e0e606406a29402db5fda`.
+7. **DONE:** correct the country overlay and make all 16 unverified extensions explicit neutral `UNKNOWN`.
+8. **DONE:** compile deterministically, validate references and add golden/adversarial vectors.
+9. **DONE:** sign the exact canonical payload with the production Ed25519 key `kid=prod-2026-07-1`, preserving domain/environment binding and no unsigned fallback.
+10. **DONE:** independently verify signature, hashes, sequence, compatibility, freshness, compilation and test evidence; generator and grader are distinct.
+11. **REMAINING:** insert inactive, complete operational approvals/shadow evidence and activate only through the forward-only path. Do not mutate sequence 1 or bypass anti-rollback.
 
 ## G1 matrix
 
