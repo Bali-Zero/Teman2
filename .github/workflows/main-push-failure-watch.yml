@@ -66,6 +66,7 @@ on:
     # note and why fixing the two source name: lines is a separate PR.
     workflows:
       - actionlint
+      - alarm/cure alignment (log-size watchdog vs rotator)
       - adversarial-review-gate
       - AI PR review (advisory)
       - asyncpg-lint
