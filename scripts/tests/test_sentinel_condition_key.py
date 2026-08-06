@@ -526,8 +526,10 @@ def test_real_gateway_mutes_the_repeat_of_one_condition(real_gateway):
     whole design, and what the md5 key made impossible."""
     assert real_gateway.send_alert("BLIND HEAL-LOOP: 3 cycles",
                                    condition="blind_heal_loop") is True
+    # True, not False: the operator HAS this news. What proves the suppression
+    # is the spool holding one record, not the return value.
     assert real_gateway.send_alert("BLIND HEAL-LOOP: 99 cycles",
-                                   condition="blind_heal_loop") is False
+                                   condition="blind_heal_loop") is True
     assert len(_spooled_keys(real_gateway)) == 1
 
 
@@ -547,7 +549,7 @@ def test_real_gateway_derives_an_identity_when_nothing_is_named(real_gateway):
     derived identity — proving the fallback is really condition_identity() and
     not something this corpus re-implemented."""
     assert real_gateway.send_alert("Pro machine heartbeat STALE — last seen 3h ago.") is True
-    assert real_gateway.send_alert("Pro machine heartbeat STALE — last seen 9h ago.") is False
+    assert real_gateway.send_alert("Pro machine heartbeat STALE — last seen 9h ago.") is True
     assert len(_spooled_keys(real_gateway)) == 1
 
 
@@ -584,3 +586,28 @@ def test_auth_sentinel_names_which_credentials_not_how_many():
         f"the condition must name WHICH credentials, sorted so scan order is not "
         f"an identity: got {rendered}"
     )
+
+
+def test_deduped_reports_the_operator_HAS_the_news(real_gateway):
+    """The return contract, on the real gateway.
+
+    Once callers gate their 4h cooldown on this value, "deduped" must not read
+    as failure: it means the gateway already carried this condition to the
+    operator inside the mute window. Reporting False there re-arms the alert
+    every 5 minutes for the whole window — a subprocess storm that changes no
+    message, because every one of them is deduped again. False is reserved for
+    "it did not get through".
+    """
+    assert real_gateway.send_alert("Tier 4 needed — j", condition="tier-escalation:j") is True
+    assert real_gateway.send_alert("Tier 4 needed — j, now 9 fails",
+                                   condition="tier-escalation:j") is True
+    assert len(_spooled_keys(real_gateway)) == 1, "the second one must be suppressed, not sent"
+
+
+def test_a_real_failure_still_reports_false(sentinel):
+    """INNOCENCE for the line above: a broken gateway must still say False, or
+    `mark_escalation_sent` would record an escalation nobody received."""
+    broken = Path(sentinel._argv_log).parent / "broken.py"
+    broken.write_text("import sys; sys.exit(3)\n")
+    sentinel._gateway_script = lambda: str(broken)
+    assert sentinel.send_alert("x", condition="c") is False

@@ -4,7 +4,9 @@ Since 2026-07-07 (cohort-2, PR #2067 follow-up) the network send is delegated
 to scripts/tg_notify.py: CRITICAL/DEADMAN → tier p0 (immediate, daily budget),
 WARNING/INFO → tier digest (grouped 2×/day). The gateway owns token resolution
 (env → secrets file → ssh relay) and its own 6h dedup; the local md5 dedup here
-stays as a 1h fast-path so callers keep the sent/deduped return contract.
+stays as a 1h fast-path that saves a subprocess. Return contract: True when
+the operator has the news (sent / spooled / already delivered inside the mute
+window), False only when it did not get through.
 """
 import hashlib
 import json
@@ -88,8 +90,10 @@ def _gateway_script() -> str:
 def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     """
     Send Telegram alert via the notification gateway (tg_notify.py), with dedup.
-    Returns True if the gateway accepted it (sent / spooled for the digest),
-    False if deduped or failed. level: INFO | WARNING | CRITICAL | DEADMAN.
+    Returns True when the operator HAS the news — sent, spooled for the digest,
+    or deduped because the gateway already delivered this condition inside its
+    mute window. False means it did not get through, and only then is retrying
+    in five minutes the right thing. level: INFO | WARNING | CRITICAL | DEADMAN.
 
     Tier mapping: CRITICAL/DEADMAN → p0 (immediate, daily budget);
     WARNING/INFO → digest (ONE grouped message 2×/day).
@@ -168,7 +172,22 @@ def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
             _mark_sent(dedup_key)
             return True
         if outcome == "deduped":
-            return False
+            # TRUE, and this is load-bearing (changed 2026-08-06 together with
+            # gating `mark_escalation_sent` on this return value).
+            #
+            # "deduped" does not mean the news failed — it means the gateway
+            # already carried THIS condition to the operator inside the current
+            # mute window. The caller's question is "does the operator know?",
+            # and the answer is yes. Returning False conflated it with a broken
+            # pipe, and once the callers started gating their 4h cooldown on
+            # this value, that conflation would have re-armed the alert every 5
+            # minutes for the whole window — a subprocess storm that changes no
+            # message, because the gateway would dedup every one of them.
+            #
+            # False is now reserved for "it did not get through", which is the
+            # only case where retrying in five minutes is the right behaviour.
+            _mark_sent(dedup_key)
+            return True
         print(f"[ALERT-FAILED] gateway outcome={outcome or 'empty'} rc={proc.returncode} err={(proc.stderr or '')[:200]}")
         return False
     except Exception as e:
