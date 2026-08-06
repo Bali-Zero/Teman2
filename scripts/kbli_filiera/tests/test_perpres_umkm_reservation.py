@@ -812,3 +812,38 @@ def test_the_parse_still_accounts_for_every_tick():
     assert rel["counts"]["rows_emitted"] == 181  # annex row 13 carries two codes
     assert rel["counts"]["unresolved"] == 0
     assert rel["unresolved"] == []
+
+
+def test_known_gap_exactly_one_annex_row_is_an_orphaned_continuation_clause():
+    """A row whose text begins with `yang` is grammatically a CONTINUATION of a
+    heading above it, so a row that starts that way with no `parent_heading` is
+    a row whose reserved activity we cannot name.
+
+    Exactly one exists — `45407`, whose entire text is "yang terintegrasi dengan
+    bidang usaha penjualan sepeda motor" (integrated with the motorcycle-sales
+    business). Motorcycle repair is the activity; the annex never gets to say so
+    in anything we parsed.
+
+    Pinned as a KNOWN GAP rather than asserted to be zero, for two reasons. It
+    fires if a future parser change orphans MORE rows, which is the failure that
+    produced the #3659 withdrawal (the scope qualifier lives on the parent and
+    only the child was read) and the #3667 fix (the annex numbers its items two
+    ways). And it fires when this one is RESOLVED, so a fix cannot land silently
+    and leave this docstring describing a world that no longer exists.
+
+    Found because an independent session, adjudicating this row, reported its
+    parent as an unresolved placeholder. That was true of an evidence pack and
+    not of the committed artifact — but the artifact turned out to have the same
+    hole in a different shape, which is the sort of thing a second reader finds
+    and the author does not.
+    """
+    rows = json.loads(RELATION.read_text(encoding="utf-8"))["rows"]
+    orphans = sorted(
+        r["code"]
+        for r in rows
+        if re.match(r"^\s*yang\b", r["text"], re.I) and not r.get("parent_heading")
+    )
+    assert orphans == ["45407"], (
+        "the set of annex rows that are a bare continuation clause with no parent "
+        f"has changed: {orphans}"
+    )

@@ -92,7 +92,16 @@
       "annex_rows": ["47911", "47912", "47913", "43304", "43305", "45407"],
       "verdicts": 47,
       "outcome": "every candidate refused as BROADER (one as SEGMENT). Nothing to patch.",
-      "note": "In the orchestrated run the grader lane for these rows received the literal string 'undefined' as its evidence path — an unfilled variable in the workflow script — and REFUSED to reason from files it had not been given rather than inventing verdicts. They were re-derived afterwards against the real path; the verdicts recorded here are the re-derived ones."
+      "note": "In the orchestrated run the grader lane for these rows received the literal string 'undefined' as its evidence path — an unfilled variable in the workflow script — and REFUSED to reason from files it had not been given rather than inventing verdicts. They were re-derived afterwards against the real path; the verdicts recorded here are the re-derived ones.",
+      "the_one_segment_refusal_named": {
+        "code_2025": "95320",
+        "annex_row_2020_code": "45407",
+        "verdict": "REFUSE_SEGMENT",
+        "why": "The annex reserves motorcycle repair only 'yang terintegrasi dengan bidang usaha penjualan sepeda motor' — integrated with the motorcycle-SALES business. 95320's own uraian is general motorcycle repair and maintenance with no such restriction, so it plainly also covers standalone workshops the annex never reserved. Pasal 5(5): the allocation attaches to the named (qualified) bidang usaha, not to the code number. Left open, and belongs to the grade/segment-qualified population whose deliverable is a page disclosure, not a cap flip.",
+        "why_it_is_named_here": "It was previously covered only by the aggregate 'every candidate refused as BROADER (one as SEGMENT)'. An unnamed member of a population cannot be picked up by the pass that closes it — the same reason the withdrawn spec names its eleven tainted codes one by one instead of saying 'thirty-nine, re-check them all'.",
+        "corroborated_by": "An independent peer session re-derived all seven verdicts for the 43305 and 45407 rows from the dataset; its absorption counts were re-checked here against bps_2020_ancestors and match exactly (43301 -> [43301,43304] besides the annex code, 43400 -> 29 others, 95400 -> 9 others, 95320 -> none)."
+      },
+      "a_row_whose_reserved_activity_we_cannot_name": "The 45407 annex row's text is ONLY a qualifier — 'yang terintegrasi dengan bidang usaha penjualan sepeda motor' — with no activity noun and no parent_heading captured. A row beginning with 'yang' is grammatically a continuation of a heading above it, so the heading was lost. Measured: exactly 1 such orphan in the annex's 181 rows, pinned by a test so a parser change that creates more is caught and a fix that resolves this one is noticed. It changes no verdict here (the row is refused either way, and a segment reservation is not expressible in a single cap anyway), but we are holding a reservation whose reserved activity we cannot state."
     },
     "agreed_to_refuse_but_labelled_differently": {
       "codes": ["55101", "55102", "55103", "55104"],
