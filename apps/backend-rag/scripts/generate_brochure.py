@@ -89,6 +89,17 @@ OUTPUT_PATH = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "brochure_bal
 # that impossible to reintroduce silently.
 CTA_PHONE_DIGITS = "628213454721"  # +62 821 3454 721, digits only
 
+# The ONLY email address the brochure may print (Zero, 2026-08-06). Enumerated
+# and compared as a set, like the phone number, rather than checked against a
+# list of addresses we hope are gone — the one that slips through is the one
+# nobody thought to forbid.
+#
+# NOT the same thing as the Brevo sending identity, which stays zantara@ by the
+# standing rule: this is what the document SHOWS a client, not who sends it.
+# `zantara.balizero.com` is the AI assistant's hostname, not an address, and is
+# deliberately untouched — which is why this is matched on the '@' form only.
+CONTACT_EMAILS_ALLOWED = {"zero@balizero.com"}
+
 # ─────────────────────────────────────────────────────────
 # PRICES
 # ─────────────────────────────────────────────────────────
@@ -419,6 +430,18 @@ def verify(pdf_path: Path, expected_pages: int, resolved: dict[str, str] | None 
     if CTA_PHONE_DIGITS not in phones:
         problems.append("the public CTA number is not in the document at all")
 
+    # Same shape for the address: enumerate what IS printed, don't hunt for what
+    # should be absent. Extraction can break a line mid-address, so the local part
+    # is allowed to carry the wrap.
+    emails = {m.lower().replace("\n", "") for m in re.findall(r"[\w.+-]+@[\w.-]+\.\w+", text)}
+    wrong = sorted(emails - CONTACT_EMAILS_ALLOWED)
+    if wrong:
+        problems.append(
+            f"email addresses other than {sorted(CONTACT_EMAILS_ALLOWED)}: {wrong}"
+        )
+    if not emails & CONTACT_EMAILS_ALLOWED:
+        problems.append("the contact address is not in the document at all")
+
     if problems:
         raise SystemExit(
             "\n❌ BROCHURE REJECTED — written, then read back and found wrong:\n"
@@ -428,7 +451,7 @@ def verify(pdf_path: Path, expected_pages: int, resolved: dict[str, str] | None 
     brand = sorted({f for f in fonts if "montserrat" in f.lower()})
     print(
         f"  ✓ {pages} pages · {len(brand)} Montserrat faces embedded "
-        f"· CTA number present, no stray numbers"
+        f"· only the CTA number and {sorted(CONTACT_EMAILS_ALLOWED)[0]}"
     )
 
 

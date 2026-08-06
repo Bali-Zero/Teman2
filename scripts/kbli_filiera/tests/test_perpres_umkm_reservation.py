@@ -16,6 +16,7 @@ is not a bar, and asserting one on those 57 rows is the same over-match
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -519,3 +520,189 @@ def test_the_command_the_operator_runs_exits_zero():
     from perpres_umkm_reservation_relation import EXIT_OK, main  # noqa: PLC0415
 
     assert main(["--check", "--json"]) == EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# parent-qualified — the scope the annex writes ONCE, on the heading
+# ---------------------------------------------------------------------------
+
+
+def _row(code="01111", text="Jagung", parent=None):
+    r = {"code": code, "column": "dialokasikan", "page": 1, "text": text,
+         "read_from": "text-layer", "title_corroborated": True}
+    if parent is not None:
+        r["parent_heading"] = parent
+    return r
+
+
+def test_guilt_a_restricting_parent_takes_the_row_out_of_whole_row():
+    """The defect this bucket exists for: "Jagung" reads like a whole activity,
+    and it is reserved only as part of "…dengan luas kurang dari 25 Ha"."""
+    canon = {"01111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Jagung"}}
+    bucket, _, _ = classify(
+        _row(parent="Pertanian tanaman pangan dengan luas kurang dari 25 Ha"), canon, {}
+    )
+    assert bucket == "parent-qualified"
+
+
+def test_guilt_the_technology_grade_heading_qualifies_too():
+    canon = {"43215": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Instalasi"}}
+    bucket, _, _ = classify(
+        _row(code="43215", text="43215",
+             parent="Instalasi yang menggunakan teknologi sederhana dan madya"),
+        canon, {},
+    )
+    assert bucket == "parent-qualified"
+
+
+def test_innocence_an_unrestricting_parent_leaves_the_row_in_whole_row():
+    """A heading that merely GROUPS ("Pemungutan hasil hutan:") narrows nothing.
+    Treating every parent as a qualifier would empty the owner's list, which is
+    the error the prose caveat was right to fear."""
+    canon = {"02303": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Getah"}}
+    bucket, _, _ = classify(
+        _row(code="02303", text="Getah pinus", parent="Pemungutan hasil hutan"), canon, {}
+    )
+    assert bucket == "whole-row"
+
+
+def test_innocence_a_row_with_no_parent_is_unaffected():
+    canon = {"47111": {"pma_status": "TERBUKA", "pma_max_asing": 100, "judul": "Minimarket"}}
+    bucket, _, _ = classify(_row(code="47111", text="Minimarket", parent=None), canon, {})
+    assert bucket == "whole-row"
+
+
+def test_the_live_artifact_carries_the_parent_that_was_missing():
+    """TRIPWIRE on the DATA, not the classifier. The adjudication that had to be
+    withdrawn was handed rows whose cell said only "Jagung": the 25-Ha scope was
+    in the annex, visible to anyone reading the PDF, and absent from every row
+    we emitted. If a re-parse ever drops `parent_heading` again, this fails —
+    the classifier above would go on passing, because it takes the parent as an
+    argument."""
+    rows = load_relation()["rows"]
+    jagung = next(r for r in rows if r["code"] == "01111")
+    assert "kurang dari 25 Ha" in (jagung.get("parent_heading") or ""), jagung
+    # …and the field is emitted for every row, so "no parent" is distinguishable
+    # from "parents were never looked for".
+    assert all("parent_heading" in r for r in rows)
+    qualified = [r for r in rows if "kurang dari" in (r.get("parent_heading") or "")]
+    assert {r["code"] for r in qualified} == {
+        "01111", "01113", "01114", "01115", "01121", "01122",
+    }
+
+
+# ---------------------------------------------------------------------------
+# The phantom article — Pasal 3(3) names nothing
+# ---------------------------------------------------------------------------
+
+_PHANTOM_RE = re.compile(r"Pasal 3\s*(?:ayat\s*)?\(3\)|art\.?\s*3\(3\)", re.IGNORECASE)
+# A mention is absolved only when the SAME line disowns it. "Pasal 3(3)" written
+# beside "does not exist" is a correction; written alone it is a citation, and a
+# citation of an article that has no third ayat supports nothing. Deliberately
+# same-line: a window would let the colpevole sentence borrow an absolution from
+# a neighbouring paragraph, which is how the retracted-claims guard first failed.
+_DISOWNED_RE = re.compile(r"does not exist|phantom|no third ayat|names nothing", re.IGNORECASE)
+
+
+def phantom_citations(text: str) -> list[int]:
+    """1-indexed lines citing Pasal 3(3) without disowning it on the same line."""
+    return [
+        n for n, line in enumerate(text.splitlines(), 1)
+        if _PHANTOM_RE.search(line) and not _DISOWNED_RE.search(line)
+    ]
+
+
+def test_guilt_a_bare_citation_of_the_phantom_is_caught():
+    assert phantom_citations("the rule is Pasal 3(3): it attaches to the named bidang usaha") == [1]
+    assert phantom_citations("the body says so explicitly (art. 3(3): where one KBLI") == [1]
+
+
+def test_innocence_a_sentence_that_disowns_it_is_allowed():
+    """Correcting the phantom requires writing it. A guard that forbids naming
+    what it bans makes the correction uncommittable — and this one bit its own
+    author on the first run, which is how the rule got written down."""
+    assert phantom_citations("This cited `art. 3(3)` until then, which does not exist.") == []
+    assert phantom_citations("`Pasal 3(3)` does not exist. It was a phantom.") == []
+
+
+def test_innocence_the_real_articles_are_not_touched():
+    for ok in ("Pasal 5 ayat (5)", "Pasal 6(3)", "Pasal 3 ayat (1) huruf b", "Pasal 3(1)(b)"):
+        assert phantom_citations(f"the rule is {ok} and it governs the annex") == [], ok
+
+
+def test_the_kbli_tooling_and_prose_carry_no_bare_phantom_citation():
+    """Perpres 10/2021 writes the "one KBLI, several bidang usaha" rule ONCE PER
+    ANNEX — Pasal 5(5) for Lampiran II, Pasal 6(3) for Lampiran III — and Pasal 3
+    has only two ayat.
+
+    The phantom sat in five files for five days, including the corner skill every
+    KBLI session loads, because one remembered number was reused for both
+    annexes. Lexical guard, and it knows it: it cannot tell a right citation from
+    a wrong one, only a citation that cannot exist from everything else.
+    """
+    root = Path(__file__).resolve().parents[2].parent
+    targets = [root / "scripts" / "kbli_filiera", root / "research" / "compliance",
+               root / ".agents" / "skills" / "kbli-navigator"]
+    scanned, offenders = 0, []
+    for base in (b for b in targets if b.exists()):
+        for f in list(base.rglob("*.py")) + list(base.rglob("*.md")):
+            if f.name == Path(__file__).name:
+                continue  # this file writes the phantom in order to ban it
+            scanned += 1
+            for n in phantom_citations(f.read_text(encoding="utf-8", errors="replace")):
+                offenders.append(f"{f.relative_to(root)}:{n}")
+    # A blind scan must not look like a clean one (W84).
+    assert scanned > 5, f"only {scanned} files scanned — the scan, not the repo, is empty"
+    assert not offenders, (
+        "Pasal 3(3) does not exist. Lampiran II -> Pasal 5(5); "
+        f"Lampiran III -> Pasal 6(3). Found: {offenders}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Row fusion — two rows cannot both own the lines between their ticks
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_a_row_no_longer_swallows_the_next_rows_cell():
+    """`42912` (pelabuhan bukan perikanan) had recorded its own activity PLUS
+    the whole of `42913`'s (pelabuhan perikanan), which reads as one activity
+    wider than the annex reserves — the direction that turns a segment into a
+    whole code."""
+    rows = {r["code"]: r for r in load_relation()["rows"]}
+    assert rows["42912"]["text"] == "pelabuhan bukan perikanan"
+    assert rows["42913"]["text"] == "pelabuhan perikanan"
+
+
+def test_innocence_a_cell_that_wraps_past_its_tick_keeps_its_qualifier():
+    """The bound is a BLANK LINE, the annex's own row separator — not "stop at
+    the tick". Two narrower rules were measured and discarded because they cut
+    real wraps: `42209` and `71102` carry "teknologi sederhana dan madya" on
+    lines BELOW their tick, and losing those words produces a wrong bucket in
+    the dangerous direction."""
+    rows = load_relation()["rows"]
+    # Keyed by (code, column), NOT by code: `71102` sits in the annex TWICE
+    # under different bidang usaha — dialokasikan on p15 and kemitraan on p21 —
+    # and a dict keyed by code alone keeps only the last, which made the first
+    # draft of this test report a loss the parser had not caused (W107).
+    by_pair = {(r["code"], r["column"]): r for r in rows}
+    for code in ("42209", "71102", "71202", "71204", "43905"):
+        r = by_pair[(code, "dialokasikan")]
+        blob = (r["text"] or "") + (r.get("parent_heading") or "")
+        assert "madya" in blob, f"{code} lost its grade qualifier: {r['text']!r}"
+    # `16101` carries a CAPACITY limit ("kurang dari 2000 m3 per tahun") and sits
+    # in the KEMITRAAN column — a partnership duty, not a reservation. Named with
+    # its real column rather than assumed into the other one: the two columns are
+    # the over-match this whole module is built to keep apart.
+    assert "kurang dari" in (by_pair[("16101", "kemitraan")]["text"] or "")
+
+
+def test_the_parse_still_accounts_for_every_tick():
+    """A span rule that cuts too early drops rows silently. One discarded
+    attempt lost `41020` entirely and turned 0 unresolved into 1 — measured
+    before shipping, which is the only reason it is not in the artifact."""
+    rel = load_relation()
+    assert rel["counts"]["ticks"] == 180
+    assert rel["counts"]["rows_emitted"] == 181  # annex row 13 carries two codes
+    assert rel["counts"]["unresolved"] == 0
+    assert rel["unresolved"] == []

@@ -354,10 +354,23 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // they are all still Bali-blocked, so this is a re-attribution, not an
     // opening. If a future change moves `notice` too, that is a different
     // event and this test should fail rather than absorb it.
-    expect(notice.length).toBe(455);
-    expect(msme.length).toBe(7);
-    // 448 pages carry the notice for a cause other than an MSME reservation.
-    expect(notice.length - msme.length).toBe(448);
+    //
+    // 455 -> 451 and 7 -> 6 on 2026-08-06, and this is the "different event"
+    // the paragraph above demanded be argued rather than absorbed. The Lampiran
+    // II re-adjudication reserved nine codes at 0% foreign; FOUR of them
+    // (10214, 95220, 95291, 95299) are also Bali-blocked, so by the same rule
+    // that removed 16221 they now leave a notice whose whole job is to explain
+    // a BALI-specific cause — theirs is national.
+    //
+    // The msme drop is the one worth reading: 95291 carried
+    // CHIUSO_PMA_NO_BESAR, i.e. the Bali layer already said "reserved for
+    // Koperasi/UMKM" while the national layer published it 100% open. That
+    // contradiction is what the cure closed. The code did not become freer; the
+    // two layers stopped disagreeing, and the national one now carries it.
+    expect(notice.length).toBe(451);
+    expect(msme.length).toBe(6);
+    // 445 pages carry the notice for a cause other than an MSME reservation.
+    expect(notice.length - msme.length).toBe(445);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -374,7 +387,12 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     const blocked = RECORDS.filter((r) => r.l4_bali?.blocked === true);
     const excluded = blocked.filter(nationallyClosed);
     expect(excluded.map((r) => r.kode_kbli_2025)).toContain("16221");
-    expect(blocked.length - excluded.length).toBe(455);
+    // …and the four the Lampiran II cure sent the same way, for the same
+    // reason: a 0% national cap outranks a Bali-scoped explanation.
+    for (const code of ["10214", "95220", "95291", "95299"]) {
+      expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
+    }
+    expect(blocked.length - excluded.length).toBe(451);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -452,12 +470,20 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // no-Usaha-Besar-row inference was withdrawn and each of the 39 codes was
     // adjudicated against the annex. This site reaches the SAME seven, by a
     // different predicate — which is what makes it worth pinning separately.
-    expect(answers.length).toBe(454);
-    expect(msme.length).toBe(7);
-    // 447 answers carry the block for a cause other than an MSME reservation —
+    //
+    // 454 -> 450 and 7 -> 6 on 2026-08-06: the SAME four codes as the banner
+    // (10214, 95220, 95291, 95299), and again by the other predicate — there
+    // they left because their cap became 0, here because their status became
+    // TERBATAS. The two guards agreeing on all four is once more a property of
+    // this particular cure, which writes both fields in one go, and not
+    // evidence that the populations have merged. The subset test below still
+    // proves they have not.
+    expect(answers.length).toBe(450);
+    expect(msme.length).toBe(6);
+    // 444 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
     // site.
-    expect(answers.length - msme.length).toBe(447);
+    expect(answers.length - msme.length).toBe(444);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
@@ -651,11 +677,26 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
     expect(national.length).toBeGreaterThan(0);
     for (const r of national) {
       expect(isNationalClosure(r.l4_bali?.status)).toBe(true);
-      // …and each one is exactly the shape that fooled the old derivation:
-      // the national signals still read open.
-      expect(r.pma_status).toBe("TERBUKA");
-      expect(r.pma_max_asing).toBe(100);
     }
+    // The shape that fooled the old derivation was: a national cause recorded
+    // in the Bali field while the NATIONAL signals still read wide open. That
+    // used to be all nine. On 2026-08-06 the Lampiran II re-adjudication fixed
+    // exactly one of them at the source — 95291 now reads TERBATAS/0 — so the
+    // property is no longer universal, and asserting it as universal would make
+    // this test fail every time the catalogue gets MORE honest.
+    //
+    // What is pinned instead is the size of the remaining contradiction. It may
+    // only shrink: a new member means a code gained a national cause in the
+    // Bali field while still publishing 100%, which is the bug this file is
+    // about.
+    const stillContradictory = national.filter(
+      (r) => r.pma_status === "TERBUKA" && r.pma_max_asing === 100,
+    );
+    expect(stillContradictory.length).toBe(8);
+    expect(national.map((r) => r.kode_kbli_2025)).toContain("95291");
+    expect(stillContradictory.map((r) => r.kode_kbli_2025)).not.toContain(
+      "95291",
+    );
   });
 
   it("INNOCENCE: no Bali-scoped block is turned into a national one", () => {

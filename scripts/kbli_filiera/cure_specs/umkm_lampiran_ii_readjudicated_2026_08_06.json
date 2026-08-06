@@ -1,0 +1,182 @@
+{
+  "instrument": "Perpres 10/2021 as amended by 49/2021, Lampiran II",
+  "adjudicated": "2026-08-06, two rounds, generator!=grader, cross-family (Claude proposes from the annex row, Codex re-derives blind). Round 2 evidence carried, for the first time, BOTH the parent bidang usaha and the sibling 2025 codes sharing each ancestor.",
+  "supersedes": "umkm_lampiran_ii_2026_08_06.json, withdrawn whole",
+  "items": [
+    {
+      "code": "10214",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p2, row \"Industri pemindangan ikan\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "10722",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p2, row \"Industri gula merah\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "22121",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p4, row \"Industri pengasapan karet\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "41016",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p7, row \"gedung pendidikan meliputi sarana pendidikan, tempat kursus, laboratorium dan bangunan penunjang pendidikan lainnya\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "41018",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p7, row \"gedung tempat hiburan dan olahraga meliputi bioskop, gedung kebudayaan/kesenian, gedung wisata dan rekreasi serta gedung olahraga\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "41020",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p7, row \"jasa pekerjaan konstruksi prafabrikasi bangunan gedung meliputi pemasangan bahan hasil produksi pabrik seperti beton pracetak, baja, plastik, karet, dan hasil produksi pabrik lainnya dengan metode pabrikasi, erection, dan/atau perakitan untuk bangunan gedung\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "95220",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Reparasi peralatan: Peralatan rumah tangga dan Peralatan rumah dan kebun\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "95291",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Vermak pakaian\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 2,
+      "parent_heading": null
+    },
+    {
+      "code": "95299",
+      "judged_as": null,
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p16, row \"Industri reparasi barang rumah tangga dan pribadi lainnya\" — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (proposer)",
+        "codex-gpt-5.6 (blind re-derivation)"
+      ],
+      "round": 1,
+      "parent_heading": null
+    }
+  ],
+  "excluded": {
+    "disagreements": 13,
+    "agreed_unclear": 3,
+    "ocr_illegible": ["47722"],
+    "refuse_segment_round2": [
+      "01111",
+      "01113",
+      "01114",
+      "01115",
+      "01121",
+      "01122",
+      "43215",
+      "43221",
+      "43222",
+      "43224",
+      "43303"
+    ],
+    "refuse_broader_round2": [
+      "10794",
+      "42202",
+      "43309",
+      "47241",
+      "47242",
+      "47244",
+      "47249",
+      "47712",
+      "42912"
+    ],
+    "diverged_round2": ["42913", "43902"],
+    "unclear_round2": ["43904", "16293"],
+    "vintage_carry_not_yet_semantically_checked": [
+      "10307",
+      "10308",
+      "55106",
+      "55201",
+      "55203",
+      "79903"
+    ]
+  },
+  "bias_stated_to_both_lanes": "A wrongly-restricted code costs a client a business they could lawfully run; that is not a safer error, it is a different error. REFUSE_UNCLEAR was a real option. Refusing is NOT the safe direction — the opposite error tells a client he may wholly own a reserved activity."
+}
