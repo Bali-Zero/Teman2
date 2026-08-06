@@ -8,6 +8,35 @@ from backend.scripts.visa_engine import operational_preflight
 
 RUNTIME_ROLE = "backend_rag_v2"
 
+# Independent schema inventory: do not derive these from operational_preflight.
+# A new governed table or SECURITY DEFINER capability requires a deliberate
+# update here and in the preflight allowlists.
+CANONICAL_SENSITIVE_FUNCTIONS = {
+    "public.visa_activate_rule_pack(uuid,text,text)",
+    "public.prepare_visa_evaluate_idempotency_reservation(bytea,integer,text)",
+    "public.purge_visa_evaluate_idempotency(integer,text)",
+    "public.purge_visa_decisions(integer,text)",
+    "public.visa_idempotency_retention_evidence()",
+    "public.visa_idempotency_key_usage_evidence()",
+    "public.visa_decision_retention_evidence()",
+    "public.erase_visa_decision_for_dsr(uuid,text,text)",
+    "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,"
+    "timestamp with time zone)",
+}
+CANONICAL_SENSITIVE_TABLES = {
+    "visa_rule_packs",
+    "visa_ruleset_activations",
+    "visa_decisions",
+    "visa_decision_payloads",
+    "visa_source_records",
+    "visa_evaluate_idempotency",
+    "visa_decision_retention_policies",
+    "visa_decision_legal_hold_events",
+    "visa_decision_retention_batches",
+    "visa_idempotency_retention_batches",
+    "visa_decision_dsr_erasure_batches",
+}
+
 
 class FakePreflightConnection:
     """In-memory privilege catalog for exhaustive fail-closed preflight tests."""
@@ -82,6 +111,11 @@ def _by_name(
     checks: tuple[operational_preflight.PreflightCheck, ...],
 ) -> dict[str, operational_preflight.PreflightCheck]:
     return {check.name: check for check in checks}
+
+
+def test_preflight_inventory_matches_independently_frozen_schema_authority() -> None:
+    assert set(operational_preflight.SENSITIVE_FUNCTIONS) == CANONICAL_SENSITIVE_FUNCTIONS
+    assert set(operational_preflight.SENSITIVE_TABLES) == CANONICAL_SENSITIVE_TABLES
 
 
 @pytest.mark.asyncio

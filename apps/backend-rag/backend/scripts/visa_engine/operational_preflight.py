@@ -23,6 +23,7 @@ RETENTION_FUNCTIONS = (
     "public.purge_visa_evaluate_idempotency(integer,text)",
     "public.purge_visa_decisions(integer,text)",
     "public.visa_idempotency_retention_evidence()",
+    "public.visa_idempotency_key_usage_evidence()",
     "public.visa_decision_retention_evidence()",
 )
 PRIVACY_FUNCTIONS = (
@@ -42,8 +43,10 @@ SENSITIVE_TABLES = (
     "visa_ruleset_activations",
     "visa_decisions",
     "visa_decision_payloads",
+    "visa_source_records",
     "visa_evaluate_idempotency",
     "visa_decision_retention_policies",
+    "visa_decision_legal_hold_events",
     "visa_decision_retention_batches",
     "visa_idempotency_retention_batches",
     "visa_decision_dsr_erasure_batches",
