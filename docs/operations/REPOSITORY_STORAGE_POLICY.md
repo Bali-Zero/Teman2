@@ -38,6 +38,26 @@ corpora still need an explicit home outside the checkout.
 | WhatsApp, OSINT, client documents, or other UU PDP material | Pro only: `~/Desktop/Nuzantara-PII-Quarantine/<YYYY-MM-DD>-<batch>/` or the owning Pro service store | Never copy raw material to Air or a cloud prompt.                                                                                                                                                          |
 | WR3 accumulated voice corpus                                | Pro only: `~/Desktop/Zantara-Voice-Corpus/`                                                          | Voice samples are biometric material. Rendering and corpus growth happen on Pro.                                                                                                                           |
 | Worktree recovery patches                                   | `~/Desktop/Nuzantara-Repo-Archive/<YYYY-MM-DD>/recovery/.agent-receipts/`                            | The checkout keeps an ignored `.agent-receipts` compatibility symlink because recovery writers still resolve that exact path. Remove the symlink only after those writers gain an external-state contract. |
+| Local static/reference payloads needed at legacy paths      | `~/Desktop/Nuzantara-External-Data/<YYYY-MM-DD>/repo-relative/`                                      | An ignored symlink may preserve local compatibility. It does not make the payload available to CI, Vercel, Fly, or a clean clone.                                                                          |
+
+## Known placement debt
+
+The following ignored inputs were deliberately retained because removing them
+would make a current coding or deployment path less reproducible:
+
+| Path family                                                                 | Why it stays                                                               | Required follow-up                                                                                                 |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `apps/backend-rag/data/curated_qa/`                                         | Vetted QA corpus and manifests used by evaluation workflows                | Put the reviewed corpus under version control in a dedicated data change, as its own documentation requires.       |
+| `apps/backend-rag/training-data/`                                           | The backend Docker build copies this directory into the image              | Version it, generate it deterministically, or fetch it from an authenticated artifact store during the build.      |
+| `apps/mouth/scripts/kbli_data_backup.json` and `kbli_english_keywords.json` | Generator scripts read these files directly                                | Make them reviewed source inputs or replace them with a deterministic canonical-data import.                       |
+| Ignored lockfiles such as `uv.lock` and `package-lock.json`                 | They pin coding dependencies                                               | Review and commit the canonical lockfile per application; do not archive it as cache.                              |
+| `.env*` files and credential-bearing tool config                            | Operator-controlled secrets; project rules forbid general cleanup mutation | Audit and rotate through the approved secrets workflow on the owning host. Never move them into a general archive. |
+
+Static assets under ignored `public/` paths have the same clean-checkout debt.
+The 2026-08-06 Air cleanup preserves local paths with ignored symlinks, but a
+deployment-safe owner must choose Git/LFS, object storage, or a documented build
+fetch. A symlink to a Desktop path must never be treated as the deployment
+contract.
 
 ## Current operational exception
 
@@ -72,6 +92,9 @@ Before moving a non-versioned item:
 3. Preserve a repo-relative destination and a README in the external archive.
 4. Compare file count and SHA-256 manifest before removing the source copy.
 5. Re-run both root guards and the narrow consumer tests.
+
+After moving a path-bound public asset, also verify a clean-checkout build or a
+production URL. Local symlink success alone is insufficient evidence.
 
 ## Contributor handoff
 
