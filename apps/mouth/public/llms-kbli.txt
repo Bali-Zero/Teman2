@@ -1043,7 +1043,7 @@
 55102 | Aktivitas Hotel Bintang Empat | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 55103 | Aktivitas Hotel Bintang Tiga | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 55104 | Aktivitas Hotel Bintang Dua | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
-55105 | Aktivitas Hotel Bintang Satu | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+55105 | Aktivitas Hotel Bintang Satu | TERBATAS | 0% | Menengah Rendah / Menengah Tinggi
 55106 | Aktivitas Hotel Nonbintang | TERBUKA | 100% | Menengah Tinggi / Menengah Rendah
 55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | TERBUKA | 100% | Menengah Rendah
 55202 | Aktivitas Hostel Remaja (Youth Hostel) | TERBUKA | 100% | Menengah Rendah
@@ -1558,9 +1558,9 @@
 95312 | Pencucian dan Salon Mobil | TERBUKA | 100% | Rendah
 95320 | Reparasi dan Perawatan Sepeda Motor | TERBUKA | 100% | Menengah Rendah
 95400 | Jasa Intermediasi Reparasi dan Perawatan Komputer, Barang Pribadi dan Rumah Tangga, Mobil, serta Sepeda Motor | TERBUKA | 100% | Menengah Rendah / Rendah / Tinggi / Menengah Tinggi
-96100 | Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu | TERBUKA | 100% | Rendah
-96210 | Aktivitas Penataan dan Pangkas Rambut | TERBUKA | 100% | Rendah
-96220 | Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya | TERBUKA | 100% | Rendah
+96100 | Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu | TERBATAS | 0% | Rendah
+96210 | Aktivitas Penataan dan Pangkas Rambut | TERBATAS | 0% | Rendah
+96220 | Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya | TERBATAS | 0% | Rendah
 96230 | Aktivitas Sante Par Aqua (SPA) Harian, Sauna, dan Pemandian Uap | TERBUKA | 100% | Tinggi / Menengah Tinggi
 96300 | Aktivitas Pemakaman dan Kegiatan Terkait | TERBUKA | 100% | Rendah
 96400 | Aktivitas Jasa Intermediasi untuk Jasa Perorangan | TERBUKA | 100% | Rendah / Tinggi / Menengah Rendah / Menengah Tinggi
