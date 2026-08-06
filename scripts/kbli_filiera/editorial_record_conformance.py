@@ -152,12 +152,51 @@ _STATUSES = frozenset({"TERBUKA", "TERTUTUP", "TERBATAS"})
 # because the sidebar cells are checked independently.
 _SENTENCE = re.compile(r"[^.!?\n]+")
 _NATIONAL_SCOPE = re.compile(r"national(?:ly)?", re.IGNORECASE)
+
+# The second half of the claim vocabulary, added 2026-08-06 after enumerating
+# what the corpus ACTUALLY says instead of imagining phrasings. The first list
+# was built from the sentences the first version happened to catch, which is
+# circular — a pattern written from the instances you found catches the
+# instances you found (W113). Reading the not-yet-caught sentences on capped
+# records surfaced four families it had no words for:
+#
+#   TERBUKA as a bare status word   "the record marks the activity as TERBUKA"   (18)
+#   a maximum stated as a number    "the code is PMA-open up to 100%"            (10)
+#   "fully open"                    "Nationally, foreign ownership is fully open" (8)
+#   openness as a NOUN              "the real line between a national opening…"   (1)
+#
+# `\bTERBUKA\b` is deliberately not scoped to "national TERBUKA": the sentence
+# predicate already requires a national scope word, and a Bali-scoped sentence
+# that also says "nationally TERBUKA" on a capped record is making exactly the
+# claim this module exists to find.
 _OPENNESS_CLAIM = re.compile(
     r"open\s+(?:to|nationally|for)|nationally\s+open|open\s+national|"
-    r"100\s*%\s*(?:national|foreign)|full\s+foreign\s+ownership",
+    r"100\s*%\s*(?:national|foreign)|full\s+foreign\s+ownership|"
+    r"\bTERBUKA\b|fully\s+open|national\s+opening|PMA[-\s]open|"
+    r"maximum\s+is\s+100\s*%|up\s+to\s+100\s*%",
     re.IGNORECASE,
 )
+
 _NEGATION = re.compile(r"\b(?:not|no|never|cannot|can't|isn't|does\s+not|nor)\b", re.IGNORECASE)
+
+# English denies a claim by CONTRAST as often as by "not", and the contrastive
+# forms carried no weight here at all — so widening the claim list newly
+# convicted `50126`, which says the true thing:
+#
+#   "…foreign ownership is capped at 49%, RATHER THAN being fully open"
+#
+# But adding these to `_NEGATION` was an over-match the moment it was written,
+# and this module's own test caught it on `50135`:
+#
+#   "…may hold the activity with full foreign ownership, RATHER THAN under a
+#    lower foreign-equity ceiling"
+#
+# Same two words, opposite meanings. What separates them is not the marker, it
+# is WHICH SIDE of it the openness claim sits on: before the contrast it is the
+# alternative being ASSERTED, after it the one being REJECTED. So the marker is
+# matched positionally rather than as a blanket acquittal — the entity, not the
+# form, one layer below where that rule usually gets applied.
+_CONTRAST = re.compile(r"\b(?:rather\s+than|instead\s+of|as\s+opposed\s+to)\b", re.IGNORECASE)
 
 
 def load_records(path: Path = CANONICAL) -> list[dict[str, Any]]:
@@ -270,6 +309,10 @@ def classify(record: dict[str, Any]) -> dict[str, Any]:
                 if not (_NATIONAL_SCOPE.search(sentence) and _OPENNESS_CLAIM.search(sentence)):
                     continue
                 if _NEGATION.search(sentence):
+                    continue
+                contrast = _CONTRAST.search(sentence)
+                if contrast and not _OPENNESS_CLAIM.search(sentence[: contrast.start()]):
+                    # the openness is the alternative being REJECTED, not asserted
                     continue
                 out["body_asserts_national_openness"] = True
                 out["offending_fields"].append(

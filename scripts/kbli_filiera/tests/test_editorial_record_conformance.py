@@ -18,6 +18,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 _FILIERA = str(Path(__file__).resolve().parents[1])
 if _FILIERA not in sys.path:
     sys.path.insert(0, _FILIERA)
@@ -160,12 +162,14 @@ def test_the_capped_narrowing_now_protects_exactly_one_live_code():
             return False
         for _path, text in E._prose_fields(record):
             for sentence in E._SENTENCE.findall(text):
-                if (
-                    E._NATIONAL_SCOPE.search(sentence)
-                    and E._OPENNESS_CLAIM.search(sentence)
-                    and not E._NEGATION.search(sentence)
-                ):
-                    return True
+                if not (
+                    E._NATIONAL_SCOPE.search(sentence) and E._OPENNESS_CLAIM.search(sentence)
+                ) or E._NEGATION.search(sentence):
+                    continue
+                contrast = E._CONTRAST.search(sentence)
+                if contrast and not E._OPENNESS_CLAIM.search(sentence[: contrast.start()]):
+                    continue
+                return True
         return False
 
     protected = {r["kode_kbli_2025"] for r in records if broad(r)} - narrow
@@ -275,6 +279,79 @@ def test_the_walk_reaches_prose_nested_below_the_top_level():
 
 
 # --------------------------------------------------------------------------
+# THE CLAIM VOCABULARY — widened from the corpus, not from imagination
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # the status word asserted bare — 18 live sentences, the largest family
+        "Nationally, the foreign-investment position is clean: the record marks the activity as TERBUKA",
+        # a maximum stated as a number, with no "open to" anywhere
+        "Nationally, the code is PMA-open up to 100%",
+        "For a foreign-owned registration, the national picture is simple: it is open and the maximum is 100%",
+        # "fully open"
+        "Nationally, foreign ownership is fully open",
+        # openness as a NOUN
+        "That is the real line between a national opening and a Bali filing",
+    ],
+)
+def test_guilt_the_four_phrasings_the_first_vocabulary_had_no_words_for(sentence):
+    """Each of these is live text on a capped record, and each used to pass.
+
+    The first claim list was assembled from the sentences it already caught,
+    which cannot find a family it has no word for — a pattern written from the
+    instances you found catches the instances you found (W113). These five come
+    from reading the sentences on capped records that the predicate did NOT
+    flag, which is the only place a missing family can be seen.
+    """
+    r = rec(cap=0, status="TERTUTUP", body=sentence + ".")
+    assert E.classify(r)["body_asserts_national_openness"] is True
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # THE live sentence that made the negation list grow with the claim list
+        "Nationally, the activity is TERBATAS: foreign ownership is capped at 49%, "
+        "rather than being fully open",
+        "The national position is a 49% cap instead of full foreign ownership",
+        "It is treated as restricted, as opposed to nationally open",
+    ],
+)
+def test_innocence_english_denies_by_contrast_as_well_as_by_not(sentence):
+    """Widening the claim list without handling contrast convicts correct prose.
+
+    `50126` says the true thing — capped at 49%, RATHER THAN fully open — and
+    `fully\\s+open` made it newly catchable. But a BLANKET acquittal on the
+    contrastive marker was itself an over-match, caught by this file's own
+    `50135` test: there the same two words introduce the REJECTED alternative,
+    so "full foreign ownership, rather than a lower ceiling" asserts openness.
+    The marker is therefore read positionally — see `_CONTRAST` — and these
+    three are innocent because the claim sits AFTER it.
+    """
+    r = rec(cap=49, status="TERBATAS", body=sentence + ".")
+    assert E.classify(r)["body_asserts_national_openness"] is False
+
+
+def test_a_bali_sentence_that_also_states_the_national_position_is_still_guilty():
+    """Not an over-match, and worth pinning because it looks like one.
+
+    "Nationally TERBUKA, but blocked in Bali" on a capped record is making the
+    false national claim inside a sentence whose subject is Bali. The Bali
+    exclusion in this module is about CELL LABELS — a `Bali PMA status` cell
+    describes a different fact — and does not extend to prose that asserts the
+    national position while discussing Bali."""
+    r = rec(
+        cap=0,
+        status="TERBATAS",
+        body="Nationally the activity is TERBUKA, but Bali blocks PMA registration.",
+    )
+    assert E.classify(r)["body_asserts_national_openness"] is True
+
+
+# --------------------------------------------------------------------------
 # THE LIVE CATALOGUE — populations, and the separation that is the product
 # --------------------------------------------------------------------------
 
@@ -324,15 +401,15 @@ def test_the_live_populations_are_pinned():
     # 27 -> 31 when #3673 restricted four codes and left their prose saying the
     # opposite — the cure moved the record and the sentences beside it did not
     # move, which is this module's whole subject.
-    assert len(rep["needs_an_author"]["codes"]) == 31
+    assert len(rep["needs_an_author"]["codes"]) == 34
 
     # WHERE the prose lies. Pinned because the total alone hid the defect that
     # produced these numbers: the first version read three fields and reported
     # 20, and `whatYouNeed` — the field that carries a client's filing
     # instructions — was the largest offender and was never opened.
     assert rep["needs_an_author"]["by_field"] == {
-        "whatYouNeed": 19,
-        "editorial.body": 16,
+        "editorial.body": 26,
+        "whatYouNeed": 23,
         "editorial.headline": 13,
         "editorial.standfirst": 6,
         "whoThisIsFor": 1,
@@ -415,7 +492,11 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
         "this module no longer finds anything L10 misses — if that is real, it is "
         "redundant and should be retired rather than maintained"
     )
-    assert l10 - mine == {"41011", "52292", "53200"}, (
+    # Was {41011, 52292, 53200}. Widening the claim vocabulary on 2026-08-06
+    # closed `53200` — it stated a maximum as a bare number ("the maximum is
+    # 100%"), a family the first vocabulary had no word for. The gap SHRANK by
+    # being measured, not by being redefined.
+    assert l10 - mine == {"41011", "52292"}, (
         "the DECLARED gap in this module — numeric claims L10 catches and a "
         f"sentence-level openness predicate does not: {sorted(l10 - mine)}"
     )
