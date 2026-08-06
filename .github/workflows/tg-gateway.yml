@@ -95,9 +95,17 @@ jobs:
           # workflow at all: the guard that cost Mini its voice for a day had
           # no executor that could go red. Superscar #2, in the file that fixed
           # a superscar #2.
+          #
+          # test_sentinel_condition_key.py belongs here for the same reason and
+          # one more: it is about the PRODUCER side of the same rule. The
+          # gateway's `key = dedup_key or derived` means a producer's explicit
+          # key WINS, so a producer that keys on md5(message) silently disables
+          # every guard tested one line above. The two halves of that rule
+          # cannot be allowed to drift into different executors.
           python3 -m pip -q install pytest
           python3 -m pytest scripts/tests/test_tg_notify_env_parse.py \
-                            scripts/tests/test_tg_notify_identity_ladder.py -q
+                            scripts/tests/test_tg_notify_identity_ladder.py \
+                            scripts/tests/test_sentinel_condition_key.py -q
 
       - name: Direct-sender lint (anti-regrowth + monotone grandfather)
         run: python3 scripts/lint_tg_direct_senders.py

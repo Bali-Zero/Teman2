@@ -63,6 +63,7 @@ def note_cloud_ocr_blocked(context: str) -> None:
             f"Action: restart Ollama vision (qwen2.5vl) or set OCR_ALLOW_CLOUD_VISION=true "
             f"ONLY for non-PII flows.",
             level="WARNING",
+            condition="ocr-cloud-fallback-blocked",
         )
     except Exception as exc:  # alerter import error / network / anything
         logger.debug("cloud_vision_gate: Telegram alert unavailable (%s)", exc)

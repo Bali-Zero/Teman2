@@ -85,7 +85,7 @@ def _gateway_script() -> str:
     return os.path.join(root, "scripts", "tg_notify.py")
 
 
-def send_alert(message: str, level: str = "INFO") -> bool:
+def send_alert(message: str, level: str = "INFO", condition: str = "") -> bool:
     """
     Send Telegram alert via the notification gateway (tg_notify.py), with dedup.
     Returns True if the gateway accepted it (sent / spooled for the digest),
@@ -93,9 +93,35 @@ def send_alert(message: str, level: str = "INFO") -> bool:
 
     Tier mapping: CRITICAL/DEADMAN → p0 (immediate, daily budget);
     WARNING/INFO → digest (ONE grouped message 2×/day).
+
+    `condition` NAMES what is wrong, independently of how it is being measured
+    right now ("blind_heal_loop", not "16 jobs parked for 99 cycles"). Pass it
+    wherever a call site knows its own condition — a name survives rewording of
+    the message, which a derived key cannot.
+
+    KEY, and why this changed (2026-08-06, measured on the live 31-day spool):
+    this function used to pass `--dedup-key sentinel:<md5(message)>`, and the
+    message carries the counter. 378 sentinel events produced 255 DISTINCT keys
+    — 36 real conditions wearing 255 identities. An explicit key that MOVES with
+    the measurement is worse than no key at all: it wins over the gateway's own
+    `condition_identity()` (explicit beats derived) and then defeats every mute
+    window, because each re-measurement looks like a brand-new condition.
+
+    So: a named `condition` → `sentinel:<condition>`, stable by construction.
+    No name → pass NO key, and let the gateway derive one from the message with
+    measurements stripped. That is one implementation of the rule, living where
+    the policy lives; re-implementing the normaliser here would create the very
+    two-constants-that-must-agree drift this organism keeps relapsing into.
+
+    Replayed over the same 378 events (29.3 days) with the escalating ladder,
+    scoring BOTH branches of `dedup_key or derived` — the named producers by
+    their name, the unnamed ones through condition_identity() — sentinel drops
+    from 12.90 to 3.38 messages/day, and from 5.73 to 0.24/day on p0.
     """
-    # Dedup key = md5 of message content (not timestamp). Local 1h fast-path
-    # keeps the historical return contract; the gateway adds its own 6h window.
+    # LOCAL fast-path only — an exact-text guard that saves a subprocess when a
+    # byte-identical message repeats inside DEDUP_WINDOW_S. It is deliberately
+    # NOT the suppression policy (the gateway owns that): its failure mode is
+    # "spawns a subprocess the gateway then dedups", never a lost alert.
     dedup_key = hashlib.md5(message.encode()).hexdigest()
     if _is_duplicate(dedup_key):
         return False
@@ -108,13 +134,13 @@ def send_alert(message: str, level: str = "INFO") -> bool:
 
     # W55 retry lives inside the gateway now (spool-on-failure is strictly
     # better than 3 urllib attempts: a lost send resurfaces in the next digest).
+    argv = [sys.executable, _gateway_script(), "--tier", tier, "--source", "sentinel"]
+    if condition:
+        argv += ["--dedup-key", f"sentinel:{condition}"]
+    argv += ["--", full_message]
+
     try:
-        proc = subprocess.run(
-            [sys.executable, _gateway_script(),
-             "--tier", tier, "--source", "sentinel",
-             "--dedup-key", f"sentinel:{dedup_key}", "--", full_message],
-            capture_output=True, text=True, timeout=90,
-        )
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=90)
         # tg_notify prints "tg_notify: <outcome>" on STDERR (stdout stays clean
         # for callers) — scan both streams, last line wins.
         raw = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()

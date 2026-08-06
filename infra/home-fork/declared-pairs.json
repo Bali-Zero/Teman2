@@ -565,6 +565,11 @@
       "live": "~/Library/LaunchAgents/com.balizero.zoho-mail-loop.daily.plist",
       "repo": "infra/launchagents/com.balizero.zoho-mail-loop.daily.plist",
       "machines": ["all"]
+    },
+    {
+      "live": "~/scripts/claude-settings-change-alert.sh",
+      "repo": "scripts/claude-settings-change-alert.sh",
+      "machines": ["pro"]
     }
   ],
   "allow": [

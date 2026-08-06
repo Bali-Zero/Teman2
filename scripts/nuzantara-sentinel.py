@@ -512,7 +512,8 @@ def _process_openclaw_job(
         send_alert(
             f"Tier 3 needed — `{job_id}`\nError: {last_error[:100]}\n"
             f"Aider failed: {aider_out[:80]}\n\nCheck DLQ: `~/.agent/decisions/dlq.json`",
-            level="CRITICAL"
+            level="CRITICAL",
+            condition=f"tier-escalation:{job_id}",
         )
         return {"action": "escalated_tier3", "tier": 3, "success": False}
 
@@ -529,7 +530,8 @@ def _process_openclaw_job(
         f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — `{job_id}`\n"
         f"Type: {failure_type} / {classification.get('subtype')}\n"
         f"Error: {last_error[:120]}",
-        level=level
+        level=level,
+        condition=f"tier-escalation:{job_id}",
     )
     return {"action": "escalated", "tier": 3, "success": False}
 
@@ -779,7 +781,8 @@ def process_job(job_id: str, state: dict, registry: dict,
         send_alert(
             f"Tier 3 needed — {job_id}\nError: {last_error[:100]}\n"
             f"Aider failed: {output[:80]}\nCheck DLQ: ~/.agent/decisions/dlq.json",
-            level="CRITICAL"
+            level="CRITICAL",
+            condition=f"tier-escalation:{job_id}",
         )
         return {"action": "escalated_tier3", "tier": 3, "success": False}
 
@@ -945,7 +948,7 @@ def _check_blind_heal_loop(status_obj: dict) -> None:
                 f"cycles. The heal-loop is idle — these jobs will never recover "
                 f"on their own. Run: dlq requeue <job_id> after fixing root cause."
             )
-            if send_alert(msg, level="CRITICAL"):
+            if send_alert(msg, level="CRITICAL", condition=cooldown_key):
                 mark_escalation_sent(cooldown_key)
             logger.warning(
                 f"W70 blind-loop alert fired: dlq_terminal={dlq_terminal}, "
