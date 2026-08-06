@@ -129,6 +129,7 @@ curl https://nuzantara-rag.fly.dev/health
 | `docs/AI_ONBOARDING.md`            | Technical reference for AI assistants        |
 | `docs/LIVING_ARCHITECTURE.md`      | Auto-generated API + service catalog         |
 | `docs/RAG_ARCHITECTURE_DIAGRAM.md` | Search pipeline diagrams                     |
+| `docs/operations/REPOSITORY_STORAGE_POLICY.md` | Repo vs external storage rules      |
 
 ## Prerequisites
 

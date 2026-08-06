@@ -12,6 +12,10 @@ Modes:
   - CI / standalone:  `python scripts/root_guard.py --check`
                        scans `git ls-files .` vs whitelist; exits 1 if any
                        tracked root file is not whitelisted
+  - Local workspace:  `python scripts/root_guard.py --workspace`
+                       scans the physical repo root, including ignored and
+                       untracked entries, while allowing documented local
+                       development dependencies and tool state
 
 Rationale: historical reactive gitignore (which requires listing every new
 junk pattern) misses new one-off names like `debug_20260425.py` or
@@ -146,6 +150,46 @@ WHITELIST_DOTDIRS: set[str] = {
     ".kimi-code",
 }
 
+# Local-only entries that may exist in a developer checkout. These are not
+# candidates for Git: they are dependencies, isolated worktrees, secrets, or
+# project-scoped state used by an installed development tool. Keep this list
+# narrow. Generated deliverables, handoff notes, archives, and ad-hoc drafts do
+# not belong here; see docs/operations/REPOSITORY_STORAGE_POLICY.md.
+LOCAL_WORKSPACE_DIRS: set[str] = {
+    ".agent",
+    ".agent-receipts",
+    ".antigravity",
+    ".clawhub",
+    ".codex",
+    ".cursor",
+    ".gemini",
+    ".idea",
+    ".mcp-servers",
+    ".openclaw",
+    ".opencode",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".hypothesis",
+    ".secrets",
+    ".serena",
+    ".superpowers",
+    ".venv",
+    ".venv-wr2-html",
+    ".vercel",
+    ".windsurf",
+    ".worktrees",
+    "node_modules",
+    "venv",
+}
+
+LOCAL_WORKSPACE_FILES: set[str] = {
+    ".agent-task.json",
+    ".env.worktree",
+    ".mcp.json",
+    "opencode.json",
+}
+
 
 def is_whitelisted(rel_path: str) -> bool:
     """Return True if `rel_path` is allowed at repo root (or inside an allowed dir)."""
@@ -236,6 +280,41 @@ def check_paths(paths: Iterable[str]) -> list[str]:
     return offenders
 
 
+def tracked_root_entries(repo_root: Path) -> set[str]:
+    """Return the first path component of every tracked file."""
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(
+            f"git ls-files -z failed: {result.stderr.decode('utf-8', 'replace')}\n"
+        )
+        return set()
+    raw = result.stdout.decode("utf-8", errors="replace")
+    return {item.split("/", 1)[0] for item in raw.split("\0") if item}
+
+
+def check_workspace(repo_root: Path) -> list[str]:
+    """List undocumented physical entries at the repository root.
+
+    Unlike ``check_all_tracked``, this intentionally sees ignored and
+    untracked paths. It remains root-scoped: generated files nested under an
+    application are governed by that application's runtime contract.
+    """
+    tracked = tracked_root_entries(repo_root)
+    allowed_local = LOCAL_WORKSPACE_DIRS | LOCAL_WORKSPACE_FILES
+    offenders: list[str] = []
+    for entry in repo_root.iterdir():
+        name = entry.name
+        if name == ".git" or name in tracked or name in allowed_local:
+            continue
+        offenders.append(name + "/" if entry.is_dir() else name)
+    return sorted(offenders)
+
+
 def render_error(offenders: list[str]) -> str:
     lines = ["", "\033[31m✘ root_guard: blocked files at repo root\033[0m", ""]
     for o in offenders:
@@ -248,6 +327,8 @@ def render_error(offenders: list[str]) -> str:
         "  • Documentation    → move into  docs/",
         "  • One-off script   → move into  scripts/  (or delete)",
         "  • App/service code → move into  apps/ or packages/",
+        "  • Generated/local  → move outside the repo per",
+        "    docs/operations/REPOSITORY_STORAGE_POLICY.md",
         "  • Genuinely root-level? → add the name to WHITELIST_FILES in",
         "    scripts/root_guard.py in the same commit.",
         "",
@@ -264,6 +345,9 @@ def main() -> int:
     if argv and argv[0] == "--check":
         # Audit mode: scan all tracked root-level entries
         offenders = check_all_tracked(repo_root)
+    elif argv and argv[0] == "--workspace":
+        # Local audit mode: include ignored and untracked root entries.
+        offenders = check_workspace(repo_root)
     else:
         # Hook mode: pre-commit passes file paths as argv
         offenders = check_paths(argv)

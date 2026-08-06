@@ -18,6 +18,7 @@
 | Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)                      | Dispatch, fallback, timeout                                              |
 | Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md)                  | Trauma + antibody per file chiave                                        |
 | Stato della documentazione (live/stale)?      | [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)                                    | Auto-generato, refresh settimanale via docs-guardian                     |
+| Dove mettere output, archivi e dati locali?   | [docs/operations/REPOSITORY_STORAGE_POLICY.md](docs/operations/REPOSITORY_STORAGE_POLICY.md) | Confine repo, storage esterno e guardia workspace              |
 
 ## Organi principali (top of mind)
 
