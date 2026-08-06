@@ -1,0 +1,56 @@
+# Alarm/cure alignment — the log-size watchdog must not alarm below the rotator
+# ----------------------------------------------------------------------------
+# An alarm must name a condition some organ will act on. `log_size_watchdog.sh`
+# alarmed on error logs above 1 MB; `log-rotate-run.sh` trims them at 10 MB.
+# Between two independently-maintained constants sat a dead zone, and on
+# 2026-08-06 the entire observed population lived in it — all 11 files over the
+# alert line were 1.1-7.1 MB, permanently loud and permanently ineligible for
+# the cure. Three had stopped being written months earlier. That single script
+# produced 1798 of the organism's 5202 Telegram events in 29.5 days (34.6%),
+# none of it actionable.
+#
+# The gap had already been found once: log-rotate-run.sh's own 2026-07-20
+# comment names the "1-50MB dead zone" and lowers its threshold 50 -> 10 to
+# close it. That closed half of it, and NOTHING DETECTED THE HALF LEFT. This
+# workflow is what was missing — the link between two files that must agree.
+#
+# Deliberately NOT a required context, matching tg-gateway.yml's reasoning: a
+# required check that goes permanently red blocks the entire merge queue, which
+# is a worse failure mode than an unread one. What matters is that an executor
+# exists that CAN go red — `scripts/tests/ sweep` is continue-on-error and gates
+# nothing, which is the superscar #2 shape this whole family keeps producing.
+#
+# Measurement: research/operations/2026-08-06-telegram-messaging-study.md
+
+name: "alarm/cure alignment (log-size watchdog vs rotator)"
+
+on:
+  pull_request:
+    paths:
+      # BOTH sides. The 2026-07-20 half-fix moved the ROTATOR, so a trigger
+      # watching only the watchdog would not have started on the diff that
+      # reopened the zone.
+      - "scripts/log_size_watchdog.sh"
+      - "infra/launchagents/wrappers/log-rotate-run.sh"
+      - "scripts/tests/test_log_watchdog_dead_zone.py"
+      - ".github/workflows/alarm-cure-alignment.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  dead-zone:
+    name: no dead zone between the alarm line and the cure line
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tripwire (stdlib + bash only)
+        run: |
+          python3 -m pip -q install pytest
+          python3 -m pytest scripts/tests/test_log_watchdog_dead_zone.py -q
+
+      - name: The watchdog still parses
+        run: bash -n scripts/log_size_watchdog.sh
