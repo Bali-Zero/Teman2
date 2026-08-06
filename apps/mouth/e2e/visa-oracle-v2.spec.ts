@@ -1,9 +1,15 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
 import { makeVisaOracleResponse } from "../src/app/(visa-oracle)/visa-oracle/_lib/visa-oracle-test-fixture";
 
 const RESUME_KEY = "visa-oracle:v2:resume:v1";
+const SCREENSHOT_DIR = path.resolve(
+  process.cwd(),
+  "../../docs/audits/screenshots/visa-oracle-v2",
+);
 const VERDICT_FACTS = {
   in_indonesia: "no",
   overstay_days: "0",
@@ -32,7 +38,10 @@ const VERDICT_HISTORY = [
 
 type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
-async function seedVerdictResume(page: Page): Promise<void> {
+async function seedVerdictResume(
+  page: Page,
+  facts: Record<string, string> = VERDICT_FACTS,
+): Promise<void> {
   const savedAtIso = new Date().toISOString();
   const expiresAtIso = new Date(Date.now() + 2 * 60 * 60 * 1_000).toISOString();
   await page.addInitScript(
@@ -58,7 +67,7 @@ async function seedVerdictResume(page: Page): Promise<void> {
       savedAt: savedAtIso,
       expiresAt: expiresAtIso,
       history: VERDICT_HISTORY,
-      facts: VERDICT_FACTS,
+      facts,
     },
   );
 }
@@ -584,6 +593,89 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     expect(await qr.getAttribute("data-qr-value")).toBe(
       await link.getAttribute("href"),
     );
+  });
+
+  test("minor handoff requires guardian confirmation before separate WhatsApp consent", async ({
+    page,
+  }) => {
+    await seedVerdictResume(page, {
+      ...VERDICT_FACTS,
+      birth_date: "2012-01-01",
+    });
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED")),
+    );
+    await page.goto("/visa-oracle");
+    await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
+
+    const guardian = page.getByRole("checkbox", {
+      name: /i confirm that i am the parent or legal guardian/i,
+    });
+    const whatsapp = page.getByRole("checkbox", {
+      name: /i consent to open whatsapp with a minimal visa oracle receipt/i,
+    });
+    await expect(guardian).not.toBeChecked();
+    await expect(whatsapp).toBeDisabled();
+    await guardian.check();
+    await expect(whatsapp).toBeEnabled();
+    await expect(
+      page.getByRole("link", { name: /open whatsapp/i }),
+    ).toHaveCount(0);
+    await whatsapp.check();
+    await expect(
+      page.getByRole("link", { name: /open whatsapp/i }),
+    ).toBeVisible();
+  });
+
+  test("bilingual Privacy Policy V1 is WCAG-clean at desktop and 320px", async ({
+    page,
+  }) => {
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    for (const viewport of [
+      { name: "desktop", width: 1280, height: 900 },
+      { name: "mobile-320", width: 320, height: 720 },
+    ]) {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
+      await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+      await page.goto("/visa-oracle/privacy");
+      await expect(
+        page.getByRole("heading", { name: "Your Visa Oracle data" }),
+      ).toBeVisible();
+      await expect(page.getByText(/retained for 30 days/)).toBeVisible();
+      const dimensions = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }));
+      expect(dimensions.scrollWidth).toBeLessThanOrEqual(
+        dimensions.clientWidth + 1,
+      );
+      await expectNoWcagViolations(page);
+      // Next.js' development-only status portal is not part of the product and
+      // otherwise covers policy text in full-page evidence screenshots.
+      await page.evaluate(() => {
+        document
+          .querySelectorAll("nextjs-portal")
+          .forEach((portal) => portal.remove());
+      });
+      await page.screenshot({
+        path: path.join(
+          SCREENSHOT_DIR,
+          `visa-oracle-privacy-v1-${viewport.name}.png`,
+        ),
+        fullPage: true,
+      });
+    }
+
+    await page
+      .getByRole("button", { name: /switch to bahasa indonesia/i })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Data Visa Oracle Anda" }),
+    ).toBeVisible();
+    await expectNoWcagViolations(page);
   });
 
   test("fresh framing offers sensitive local retention without enabling it", async ({

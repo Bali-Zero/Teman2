@@ -29,6 +29,7 @@ export interface ConsentHandoffProps {
   state: VisaOracleTelemetryState;
   /** Engine-generated opaque reference only; never facts or candidate copy. */
   assessmentReference?: string | null;
+  guardianConsentRequired?: boolean;
   whatsappNumber?: string;
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   now?: () => Date;
@@ -40,6 +41,10 @@ const COPY = {
     title: "Continue with Bali Zero",
     consent:
       "I consent to open WhatsApp with a minimal Visa Oracle receipt. My interview answers are not included.",
+    guardian:
+      "I confirm that I am the parent or legal guardian and consent to this handoff for the minor.",
+    guardianFirst:
+      "Confirm parent or guardian authority before WhatsApp consent.",
     localReceipt:
       "This consent receipt stays in this browser session for up to 2 hours. No CRM record is created by this screen.",
     open: "Open WhatsApp",
@@ -55,6 +60,10 @@ const COPY = {
     title: "Lanjutkan dengan Bali Zero",
     consent:
       "Saya setuju membuka WhatsApp dengan tanda terima Visa Oracle yang minimal. Jawaban wawancara saya tidak disertakan.",
+    guardian:
+      "Saya mengonfirmasi bahwa saya adalah orang tua atau wali sah dan menyetujui handoff ini untuk anak.",
+    guardianFirst:
+      "Konfirmasikan kewenangan orang tua atau wali sebelum persetujuan WhatsApp.",
     localReceipt:
       "Tanda terima persetujuan ini tersimpan di sesi browser ini hingga 2 jam. Layar ini tidak membuat catatan CRM.",
     open: "Buka WhatsApp",
@@ -139,12 +148,14 @@ export function ConsentHandoff({
   language,
   state,
   assessmentReference,
+  guardianConsentRequired = false,
   whatsappNumber = process.env.NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER,
   storage,
   now = systemNow,
   createReceiptId = systemReceiptId,
 }: ConsentHandoffProps) {
   const [receipt, setReceipt] = useState<LocalConsentReceipt | null>(null);
+  const [guardianConfirmed, setGuardianConfirmed] = useState(false);
   const number = configuredWhatsAppNumber(whatsappNumber);
   const copy = COPY[language];
   const publicReference = validatedAssessmentReference(assessmentReference);
@@ -159,8 +170,14 @@ export function ConsentHandoff({
       : null;
 
   useEffect(() => {
+    if (guardianConsentRequired) {
+      clearLocalConsentReceipt({ storage });
+      setReceipt(null);
+      setGuardianConfirmed(false);
+      return;
+    }
     setReceipt(loadLocalConsentReceipt(scope, { storage, now: now() }));
-  }, [now, scope, storage]);
+  }, [guardianConsentRequired, now, scope, storage]);
 
   useEffect(() => {
     if (!activeReceipt) return;
@@ -225,6 +242,8 @@ export function ConsentHandoff({
       return;
     }
 
+    if (guardianConsentRequired && !guardianConfirmed) return;
+
     const nextReceipt = createLocalConsentReceipt(
       now(),
       createReceiptId(),
@@ -274,10 +293,28 @@ export function ConsentHandoff({
         </p>
       ) : (
         <>
+          {guardianConsentRequired ? (
+            <label className="oracle-checklist__item">
+              <input
+                type="checkbox"
+                checked={guardianConfirmed}
+                onChange={(event) => {
+                  const confirmed = event.currentTarget.checked;
+                  setGuardianConfirmed(confirmed);
+                  if (!confirmed) {
+                    setReceipt(null);
+                    clearLocalConsentReceipt({ storage });
+                  }
+                }}
+              />
+              {copy.guardian}
+            </label>
+          ) : null}
           <label className="oracle-checklist__item">
             <input
               type="checkbox"
               checked={activeReceipt !== null}
+              disabled={guardianConsentRequired && !guardianConfirmed}
               onChange={(event) => setGranted(event.currentTarget.checked)}
               aria-describedby="oracle-handoff-receipt-note"
             />
@@ -288,7 +325,9 @@ export function ConsentHandoff({
             className="oracle-question__hint"
             style={{ marginTop: "var(--space-2)" }}
           >
-            {copy.localReceipt}
+            {guardianConsentRequired && !guardianConfirmed
+              ? copy.guardianFirst
+              : copy.localReceipt}
           </p>
           {whatsappUrl ? (
             <div

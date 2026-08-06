@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const trackEvent = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/analytics", () => ({ trackEvent }));
+const trackPiiFreeEvent = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/analytics", () => ({ trackPiiFreeEvent }));
 
 import { emitVisaOracleTelemetry, nonReversibleHash } from "./telemetry";
 
 describe("Visa Oracle PII-free telemetry boundary", () => {
-  beforeEach(() => trackEvent.mockReset());
+  beforeEach(() => trackPiiFreeEvent.mockReset());
 
   it("hashes correlators without exposing the input", async () => {
     const hash = await nonReversibleHash(
@@ -26,10 +26,13 @@ describe("Visa Oracle PII-free telemetry boundary", () => {
       state: "NEEDS_INPUT",
       correlationHash: hash,
     });
-    expect(trackEvent).toHaveBeenCalledWith("visa_oracle_v2_engine_result", {
-      state: "NEEDS_INPUT",
-      correlation_hash: hash,
-    });
+    expect(trackPiiFreeEvent).toHaveBeenCalledWith(
+      "visa_oracle_v2_engine_result",
+      {
+        state: "NEEDS_INPUT",
+        correlation_hash: hash,
+      },
+    );
   });
 
   it("drops an invalid correlator instead of forwarding it", () => {
@@ -38,8 +41,11 @@ describe("Visa Oracle PII-free telemetry boundary", () => {
       state: "TEMPORARILY_UNAVAILABLE",
       correlationHash: "raw-payload",
     });
-    expect(trackEvent).toHaveBeenCalledWith("visa_oracle_v2_network_failure", {
-      state: "TEMPORARILY_UNAVAILABLE",
-    });
+    expect(trackPiiFreeEvent).toHaveBeenCalledWith(
+      "visa_oracle_v2_network_failure",
+      {
+        state: "TEMPORARILY_UNAVAILABLE",
+      },
+    );
   });
 });

@@ -1982,6 +1982,107 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
     assert reviewed.review_reasons[0].source_refs == ()
 
 
+def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
+    """A minor cannot inherit an automated supported outcome from any path."""
+
+    compiled = gold_loader.load_and_compile_rule_pack()
+    adult_facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    wire = adult_facts.model_dump(mode="json", by_alias=True)
+    wire["facts"]["person.birth_date"] = {
+        "status": "KNOWN",
+        "value": "2012-01-01",
+    }
+    # This avoids relying on the fixture pack's narrower family-sponsor rule;
+    # the privacy adapter must independently cover every product family.
+    wire["facts"]["family.sponsor_confirmed"] = {
+        "status": "KNOWN",
+        "value": True,
+    }
+    minor_facts = ApplicantFacts.model_validate(wire)
+    baseline = evaluate(
+        minor_facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+    held = evaluate_path._apply_minor_privacy_hold(baseline, minor_facts)
+    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert held.candidates == ()
+    assert [reason.code for reason in held.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
+    assert held.review_reasons[0].source_refs == ()
+
+
+def test_unknown_minor_status_cannot_preserve_supported_candidates() -> None:
+    compiled = gold_loader.load_and_compile_rule_pack()
+    adult_facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    baseline = evaluate(
+        adult_facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+    wire = adult_facts.model_dump(mode="json", by_alias=True)
+    wire["facts"]["person.birth_date"] = {
+        "status": "UNKNOWN",
+        "reason": "NOT_PROVIDED",
+    }
+    unknown_age_facts = ApplicantFacts.model_validate(wire)
+
+    held = evaluate_path._apply_minor_privacy_hold(baseline, unknown_age_facts)
+    assert held.state is DecisionState.NEEDS_INPUT
+    assert held.candidates == ()
+    assert FactPath.PERSON_BIRTH_DATE in held.missing_facts
+
+
+async def test_public_evaluation_applies_minor_privacy_hold_before_persistence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    monkeypatch.setenv(evaluate_path.EVALUATE_ENVIRONMENT_ENV, "TEST")
+    save_calls, _, _ = _patch_engine_chain(monkeypatch)
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_safety_critical_source_hold",
+        lambda decision, compiled: decision,
+    )
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_decisive_source_authority_hold",
+        lambda decision, compiled: decision,
+    )
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    wire = facts.model_dump(mode="json", by_alias=True)
+    wire["facts"]["person.birth_date"] = {
+        "status": "KNOWN",
+        "value": "2012-01-01",
+    }
+    wire["facts"]["family.sponsor_confirmed"] = {
+        "status": "KNOWN",
+        "value": True,
+    }
+
+    body = await evaluate_path.run_evaluation(
+        object(),
+        facts=ApplicantFacts.model_validate(wire),
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-minor-privacy-hold",
+        evaluation_time=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+
+    assert body["decision"]["state"] == "HUMAN_REVIEW_REQUIRED"
+    assert body["decision"]["candidates"] == []
+    assert [reason["code"] for reason in body["decision"]["review_reasons"]] == [
+        "MINOR_GUARDIAN_PRIVACY_REVIEW"
+    ]
+    assert body["display"] == {"candidates": []}
+    assert len(save_calls) == 1
+    assert save_calls[0]["decision"].state is DecisionState.HUMAN_REVIEW_REQUIRED
+
+
 @pytest.mark.parametrize(
     ("currently_in_indonesia", "overstay_fact", "expected_overstay", "expect_conflict"),
     [
@@ -2935,7 +3036,7 @@ async def test_runtime_openapi_and_exported_contract_share_five_decision_conditi
 
 # ---------------------------------------------------------------------------
 # §8 — DB integration: the real write path
-# (migrations 252+255+256+257+262+263+264+265).
+# (migrations 252+255+256+257+262+263+264+265+266).
 # Fixture ordering mirrors shadow_evidence_schema's documented ordering note
 # (257's rollback re-validates surviving rows, so it always runs AFTER 252's
 # table drop).
@@ -2961,7 +3062,12 @@ async def evaluate_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIter
     forward_263, rollback_263 = _read_migration(263, "visa_evaluate_response_hmac")
     forward_264, rollback_264 = _read_migration(264, "visa_decision_retention_policy")
     forward_265, rollback_265 = _read_migration(265, "visa_decision_trace_integrity")
+    forward_266, rollback_266 = _read_migration(266, "visa_retention_evidence")
     async with db_pool.acquire() as conn:
+        if await conn.fetchval(
+            "SELECT to_regprocedure('public.visa_decision_retention_evidence()') IS NOT NULL"
+        ):
+            await conn.execute(rollback_266)
         if await conn.fetchval(
             "SELECT 1 FROM information_schema.columns "
             "WHERE table_schema = 'public' AND table_name = 'visa_decisions' "
@@ -2985,8 +3091,10 @@ async def evaluate_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIter
         await conn.execute(forward_263)
         await conn.execute(forward_264)
         await conn.execute(forward_265)
+        await conn.execute(forward_266)
     yield
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_266)
         await conn.execute(rollback_265)
         await conn.execute(rollback_264)
         await conn.execute(rollback_263)
@@ -3010,10 +3118,12 @@ async def _insert_retention_policy(
         """
         INSERT INTO public.visa_decision_retention_policies (
             environment, policy_version, retention_interval,
-            idempotency_retention_interval, retention_anchor,
+            idempotency_retention_interval, legal_hold_review_interval,
+            retention_anchor,
             effective_period, approved_by, approval_reference
         ) VALUES (
-            'TEST', $1, $2, $3, $4, tstzrange($5, NULL, '[)'),
+            'TEST', $1, $2, $3, INTERVAL '30 days', $4,
+            tstzrange($5, NULL, '[)'),
             'zero-test-approver', 'ZERO-RETENTION-TEST-APPROVAL'
         )
         RETURNING id
@@ -3023,6 +3133,32 @@ async def _insert_retention_policy(
         idempotency_retention_interval,
         retention_anchor,
         effective_from,
+    )
+
+
+async def _set_test_legal_hold(
+    conn: asyncpg.Connection,
+    *,
+    decision_row_id: uuid.UUID,
+    legal_hold: bool,
+    reason_code: str,
+) -> bool:
+    domain_decision_id = await conn.fetchval(
+        "SELECT decision_id FROM public.visa_decisions WHERE id = $1",
+        decision_row_id,
+    )
+    review_due_at = datetime.now(timezone.utc) + timedelta(days=29) if legal_hold else None
+    return bool(
+        await conn.fetchval(
+            "SELECT public.set_visa_decision_legal_hold($1, $2, $3, $4, $5, $6, $7)",
+            domain_decision_id,
+            legal_hold,
+            "privacy.test.operator",
+            "PRIVACY-TEST-CASE",
+            reason_code,
+            "zero-test-approver",
+            review_due_at,
+        )
     )
 
 
@@ -3462,9 +3598,11 @@ async def test_payload_deadline_and_legal_hold_are_parent_authoritative(
         assert payload["purge_after"] == decision["retention_until"]
         assert payload["legal_hold"] is False
 
-        await conn.execute(
-            "UPDATE public.visa_decisions SET legal_hold = TRUE WHERE id = $1",
-            decision["id"],
+        assert await _set_test_legal_hold(
+            conn,
+            decision_row_id=decision["id"],
+            legal_hold=True,
+            reason_code="TEST-HOLD",
         )
         assert await conn.fetchval(
             "SELECT legal_hold FROM public.visa_decision_payloads WHERE decision_id = $1",
@@ -3482,9 +3620,11 @@ async def test_payload_deadline_and_legal_hold_are_parent_authoritative(
                 )
         finally:
             await conn.execute("RESET visa.parent_hold_sync")
-        await conn.execute(
-            "UPDATE public.visa_decisions SET legal_hold = FALSE WHERE id = $1",
-            decision["id"],
+        assert await _set_test_legal_hold(
+            conn,
+            decision_row_id=decision["id"],
+            legal_hold=False,
+            reason_code="TEST-RELEASE",
         )
         assert not await conn.fetchval(
             "SELECT legal_hold FROM public.visa_decision_payloads WHERE decision_id = $1",
@@ -3614,9 +3754,11 @@ async def test_runtime_role_cannot_spoof_retention_capability_gucs(
                 decision_id=decision["id"],
                 purge_after=decision["retention_until"],
             )
-        await conn.execute(
-            "UPDATE public.visa_decisions SET legal_hold = TRUE WHERE id = $1",
-            held_decision["id"],
+        assert await _set_test_legal_hold(
+            conn,
+            decision_row_id=held_decision["id"],
+            legal_hold=True,
+            reason_code="TEST-BOUNDARY-HOLD",
         )
         hold_event_id = await conn.fetchval(
             "SELECT id FROM public.visa_decision_legal_hold_events WHERE decision_row_id = $1",
@@ -3720,15 +3862,22 @@ async def test_retention_binding_legal_hold_and_bounded_purge_are_audited(
             decision_id=expired_held["id"],
             purge_after=expired_held["retention_until"],
         )
-        await conn.execute(
-            "UPDATE public.visa_decisions SET legal_hold = TRUE WHERE id = $1",
-            expired_held["id"],
+        assert await _set_test_legal_hold(
+            conn,
+            decision_row_id=expired_held["id"],
+            legal_hold=True,
+            reason_code="TEST-RETENTION-HOLD",
         )
         assert await conn.fetchval(
             "SELECT legal_hold FROM public.visa_decision_payloads WHERE decision_id = $1",
             expired_held["id"],
         )
         await asyncio.sleep(3.5)
+        evidence = await retention.decision_retention_evidence(db_pool)
+        assert evidence.expired_rows == 1
+        assert evidence.expired_held_rows == 1
+        assert evidence.max_lag_seconds > 0
+        assert evidence.observed_at.tzinfo is not None
         fresh_at = datetime.now(timezone.utc)
         fresh = await _insert_temp_decision(
             conn,
@@ -3781,9 +3930,11 @@ async def test_retention_binding_legal_hold_and_bounded_purge_are_audited(
     async with db_pool.acquire() as conn:
         remaining = set(await conn.fetch("SELECT id FROM public.visa_decisions"))
         assert {row["id"] for row in remaining} == {expired_held["id"], fresh["id"]}
-        await conn.execute(
-            "UPDATE public.visa_decisions SET legal_hold = FALSE WHERE id = $1",
-            expired_held["id"],
+        assert await _set_test_legal_hold(
+            conn,
+            decision_row_id=expired_held["id"],
+            legal_hold=False,
+            reason_code="TEST-RETENTION-RELEASE",
         )
         assert not await conn.fetchval(
             "SELECT legal_hold FROM public.visa_decision_payloads WHERE decision_id = $1",
@@ -3866,6 +4017,182 @@ async def test_retention_binding_legal_hold_and_bounded_purge_are_audited(
                 "SELECT public.purge_visa_decisions($1, $2)",
                 1_001,
                 "retention-worker-test",
+            )
+
+
+@pytest.mark.integration
+@pytest.mark.database
+async def test_dsr_erasure_is_early_bounded_idempotent_and_blocked_by_hold(
+    db_pool: asyncpg.Pool,
+    evaluate_schema: None,
+) -> None:
+    now = datetime.now(timezone.utc)
+    domain_decision_id: uuid.UUID
+    async with db_pool.acquire() as conn:
+        await _insert_retention_policy(
+            conn,
+            effective_from=now - timedelta(days=1),
+            retention_interval=timedelta(days=30),
+            idempotency_retention_interval=timedelta(hours=24),
+        )
+        decision = await _insert_temp_decision(
+            conn,
+            engine_mode="ENFORCE",
+            evaluated_at=now,
+        )
+        domain_decision_id = await conn.fetchval(
+            "SELECT decision_id FROM public.visa_decisions WHERE id = $1",
+            decision["id"],
+        )
+        await _insert_temp_payload(
+            conn,
+            decision_id=decision["id"],
+            purge_after=decision["retention_until"],
+        )
+        replay_key = b"d" * 32
+        await conn.execute(
+            """
+            INSERT INTO public.visa_evaluate_idempotency (
+                key_sha256, request_hmac, request_hmac_key_id, environment
+            ) VALUES ($1, $2, 'dsr-test-key', 'TEST')
+            """,
+            replay_key,
+            b"r" * 32,
+        )
+        await conn.execute(
+            """
+            UPDATE public.visa_evaluate_idempotency
+               SET response_body = jsonb_build_object(
+                       'decision', jsonb_build_object('decision_id', $2::text)
+                   ),
+                   response_sha256 = $3,
+                   response_hmac = $4,
+                   response_hmac_key_id = 'dsr-response-key',
+                   completed_at = clock_timestamp()
+             WHERE key_sha256 = $1
+            """,
+            replay_key,
+            str(domain_decision_id),
+            b"s" * 32,
+            b"h" * 32,
+        )
+
+        with pytest.raises(asyncpg.RaiseError, match="bounded retention purge"):
+            await conn.execute(
+                "DELETE FROM public.visa_decisions WHERE id = $1",
+                decision["id"],
+            )
+
+    with pytest.raises(asyncpg.RaiseError, match="exceeds the approved interval"):
+        await retention.set_decision_legal_hold(
+            db_pool,
+            decision_id=domain_decision_id,
+            legal_hold=True,
+            requested_by="privacy.operator",
+            case_reference="DSR-2026-001",
+            reason_code="DSR-IDENTITY-VERIFICATION",
+            approved_by="privacy.approver",
+            review_due_at=now + timedelta(days=31),
+        )
+
+    assert await retention.set_decision_legal_hold(
+        db_pool,
+        decision_id=domain_decision_id,
+        legal_hold=True,
+        requested_by="privacy.operator",
+        case_reference="DSR-2026-001",
+        reason_code="DSR-IDENTITY-VERIFICATION",
+        approved_by="privacy.approver",
+        review_due_at=now + timedelta(days=29),
+    )
+    async with db_pool.acquire() as conn:
+        hold_event = await conn.fetchrow(
+            """
+            SELECT case_reference, reason_code, approved_by, review_due_at
+              FROM public.visa_decision_legal_hold_events
+             WHERE decision_row_id = $1 AND event_type = 'LEGAL_HOLD_SET'
+            """,
+            decision["id"],
+        )
+    assert hold_event is not None
+    assert hold_event["case_reference"] == "DSR-2026-001"
+    assert hold_event["reason_code"] == "DSR-IDENTITY-VERIFICATION"
+    assert hold_event["approved_by"] == "privacy.approver"
+    assert hold_event["review_due_at"] == now + timedelta(days=29)
+    with pytest.raises(asyncpg.RaiseError, match="blocked by active legal hold"):
+        await retention.erase_decision_for_dsr(
+            db_pool,
+            decision_id=domain_decision_id,
+            case_reference="DSR-2026-001",
+            requested_by="privacy.operator",
+        )
+    assert await retention.set_decision_legal_hold(
+        db_pool,
+        decision_id=domain_decision_id,
+        legal_hold=False,
+        requested_by="privacy.operator",
+        case_reference="DSR-2026-001",
+        reason_code="DSR-RELEASE-AFTER-VERIFICATION",
+        approved_by="privacy.approver",
+        review_due_at=None,
+    )
+    assert (
+        await retention.erase_decision_for_dsr(
+            db_pool,
+            decision_id=domain_decision_id,
+            case_reference="DSR-2026-001",
+            requested_by="privacy.operator",
+        )
+        == 1
+    )
+    assert (
+        await retention.erase_decision_for_dsr(
+            db_pool,
+            decision_id=domain_decision_id,
+            case_reference="DSR-2026-001",
+            requested_by="privacy.operator",
+        )
+        == 0
+    )
+
+    async with db_pool.acquire() as conn:
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM public.visa_decisions WHERE decision_id = $1",
+                domain_decision_id,
+            )
+            == 0
+        )
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM public.visa_decision_payloads WHERE decision_id = $1",
+                decision["id"],
+            )
+            == 0
+        )
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM public.visa_evaluate_idempotency WHERE key_sha256 = $1",
+                replay_key,
+            )
+            == 0
+        )
+        batch = await conn.fetchrow(
+            """
+            SELECT case_reference, decision_rows_deleted, payload_rows_deleted,
+                   idempotency_rows_deleted
+              FROM public.visa_decision_dsr_erasure_batches
+            """
+        )
+        assert dict(batch) == {
+            "case_reference": "DSR-2026-001",
+            "decision_rows_deleted": 1,
+            "payload_rows_deleted": 1,
+            "idempotency_rows_deleted": 1,
+        }
+        with pytest.raises(asyncpg.RaiseError, match="is append-only"):
+            await conn.execute(
+                "UPDATE public.visa_decision_dsr_erasure_batches SET case_reference = 'tampered'"
             )
 
 

@@ -26,6 +26,8 @@ CREATE TABLE public.visa_decision_retention_policies (
     retention_interval  INTERVAL NOT NULL
         CHECK (retention_interval > INTERVAL '0 seconds'),
     idempotency_retention_interval INTERVAL NOT NULL,
+    legal_hold_review_interval INTERVAL NOT NULL
+        CHECK (legal_hold_review_interval > INTERVAL '0 seconds'),
     retention_anchor    TEXT NOT NULL
         CHECK (retention_anchor IN ('EVALUATED_AT', 'CREATED_AT')),
     effective_period    TSTZRANGE NOT NULL,
@@ -174,10 +176,12 @@ SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
     requested_by TEXT;
+    dsr_requested_by TEXT;
     table_owner NAME;
 BEGIN
     IF TG_OP = 'DELETE' THEN
         requested_by := current_setting('visa.idempotency_retention_requested_by', TRUE);
+        dsr_requested_by := current_setting('visa.dsr_requested_by', TRUE);
         SELECT pg_get_userbyid(relation.relowner)
           INTO table_owner
           FROM pg_class AS relation
@@ -185,9 +189,15 @@ BEGIN
             ON namespace.oid = relation.relnamespace
          WHERE namespace.nspname = 'public'
            AND relation.relname = 'visa_evaluate_idempotency';
+        IF current_user <> table_owner THEN
+            RAISE EXCEPTION 'idempotency delete must use a bounded retention capability';
+        END IF;
+        IF dsr_requested_by IS NOT NULL
+           AND dsr_requested_by ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
+            RETURN OLD;
+        END IF;
         IF requested_by IS NULL
-           OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
-           OR current_user <> table_owner THEN
+           OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
             RAISE EXCEPTION 'idempotency delete must use a bounded retention capability';
         END IF;
         IF clock_timestamp() < OLD.expires_at THEN
@@ -506,11 +516,25 @@ CREATE TABLE public.visa_decision_legal_hold_events (
     executor_label      TEXT NOT NULL CHECK (
         executor_label ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$'
     ),
+    case_reference      TEXT NOT NULL CHECK (
+        case_reference ~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$'
+    ),
+    reason_code         TEXT NOT NULL CHECK (
+        reason_code ~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$'
+    ),
+    approved_by         TEXT NOT NULL CHECK (
+        approved_by ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
+    ),
+    review_due_at       TIMESTAMPTZ,
     occurred_at         TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     CHECK (
         (event_type = 'LEGAL_HOLD_SET' AND old_legal_hold = FALSE AND new_legal_hold = TRUE)
         OR
         (event_type = 'LEGAL_HOLD_RELEASED' AND old_legal_hold = TRUE AND new_legal_hold = FALSE)
+    ),
+    CHECK (
+        (event_type = 'LEGAL_HOLD_SET' AND review_due_at IS NOT NULL)
+        OR (event_type = 'LEGAL_HOLD_RELEASED' AND review_due_at IS NULL)
     )
 );
 
@@ -524,12 +548,14 @@ SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
     requested_by TEXT;
+    dsr_requested_by TEXT;
     table_owner NAME;
 BEGIN
     IF TG_OP = 'UPDATE' THEN
         RAISE EXCEPTION 'visa_decision_legal_hold_events is append-only';
     END IF;
     requested_by := current_setting('visa.retention_requested_by', TRUE);
+    dsr_requested_by := current_setting('visa.dsr_requested_by', TRUE);
     SELECT pg_get_userbyid(relation.relowner)
       INTO table_owner
       FROM pg_class AS relation
@@ -537,9 +563,15 @@ BEGIN
         ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = 'public'
        AND relation.relname = 'visa_decision_legal_hold_events';
+    IF current_user <> table_owner THEN
+        RAISE EXCEPTION 'legal-hold history deletion requires the parent retention purge';
+    END IF;
+    IF dsr_requested_by IS NOT NULL
+       AND dsr_requested_by ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
+        RETURN OLD;
+    END IF;
     IF requested_by IS NULL
-       OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
-       OR current_user <> table_owner THEN
+       OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
         RAISE EXCEPTION 'legal-hold history deletion requires the parent retention purge';
     END IF;
     RETURN OLD;
@@ -574,6 +606,31 @@ FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
 
 CREATE TRIGGER visa_decision_retention_batches_no_wipe
 BEFORE TRUNCATE ON public.visa_decision_retention_batches
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+
+CREATE TABLE public.visa_decision_dsr_erasure_batches (
+    id                       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    case_reference           TEXT NOT NULL CHECK (
+        case_reference ~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$'
+    ),
+    decision_rows_deleted    INTEGER NOT NULL CHECK (decision_rows_deleted = 1),
+    payload_rows_deleted     INTEGER NOT NULL CHECK (payload_rows_deleted BETWEEN 0 AND 1),
+    idempotency_rows_deleted INTEGER NOT NULL CHECK (idempotency_rows_deleted >= 0),
+    executor_label           TEXT NOT NULL CHECK (
+        executor_label ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$'
+    ),
+    occurred_at              TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+COMMENT ON TABLE public.visa_decision_dsr_erasure_batches IS
+    'Append-only aggregate DSR erasure evidence; contains no applicant or decision identifier.';
+
+CREATE TRIGGER visa_decision_dsr_erasure_batches_immutable
+BEFORE UPDATE OR DELETE ON public.visa_decision_dsr_erasure_batches
+FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+
+CREATE TRIGGER visa_decision_dsr_erasure_batches_no_wipe
+BEFORE TRUNCATE ON public.visa_decision_dsr_erasure_batches
 FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
 
 ALTER TABLE public.visa_decisions
@@ -717,11 +774,13 @@ SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
     requested_by TEXT;
+    dsr_requested_by TEXT;
     parent RECORD;
     table_owner NAME;
 BEGIN
     IF TG_OP = 'DELETE' THEN
         requested_by := current_setting('visa.retention_requested_by', TRUE);
+        dsr_requested_by := current_setting('visa.dsr_requested_by', TRUE);
         SELECT pg_get_userbyid(relation.relowner)
           INTO table_owner
           FROM pg_class AS relation
@@ -729,9 +788,16 @@ BEGIN
             ON namespace.oid = relation.relnamespace
          WHERE namespace.nspname = 'public'
            AND relation.relname = 'visa_decision_payloads';
+        IF current_user <> table_owner THEN
+            RAISE EXCEPTION 'payload delete must use the bounded retention purge';
+        END IF;
+        IF dsr_requested_by IS NOT NULL
+           AND dsr_requested_by ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
+           AND OLD.legal_hold = FALSE THEN
+            RETURN OLD;
+        END IF;
         IF requested_by IS NULL
-           OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
-           OR current_user <> table_owner THEN
+           OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
             RAISE EXCEPTION 'payload delete must use the bounded retention purge';
         END IF;
         IF OLD.purge_after <= clock_timestamp() AND OLD.legal_hold = FALSE THEN
@@ -779,10 +845,18 @@ SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
     requested_by TEXT;
+    dsr_requested_by TEXT;
     audit_actor TEXT;
+    hold_case_reference TEXT;
+    hold_reason_code TEXT;
+    hold_approved_by TEXT;
+    hold_review_due_at_text TEXT;
+    hold_review_due_at TIMESTAMPTZ;
+    hold_review_interval INTERVAL;
     table_owner NAME;
 BEGIN
     requested_by := current_setting('visa.retention_requested_by', TRUE);
+    dsr_requested_by := current_setting('visa.dsr_requested_by', TRUE);
     audit_actor := session_user;
     IF requested_by IS NOT NULL AND requested_by <> '' THEN
         audit_actor := audit_actor || ':' || requested_by;
@@ -796,9 +870,16 @@ BEGIN
             ON namespace.oid = relation.relnamespace
          WHERE namespace.nspname = 'public'
            AND relation.relname = 'visa_decisions';
+        IF current_user <> table_owner THEN
+            RAISE EXCEPTION 'visa_decisions delete must use the bounded retention purge';
+        END IF;
+        IF dsr_requested_by IS NOT NULL
+           AND dsr_requested_by ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
+           AND OLD.legal_hold = FALSE THEN
+            RETURN OLD;
+        END IF;
         IF requested_by IS NULL
-           OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
-           OR current_user <> table_owner THEN
+           OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
             RAISE EXCEPTION 'visa_decisions delete must use the bounded retention purge';
         END IF;
         IF OLD.retention_until IS NOT NULL
@@ -814,16 +895,57 @@ BEGIN
         RAISE EXCEPTION 'visa_decisions update may only change legal_hold';
     END IF;
 
+    hold_case_reference := current_setting('visa.legal_hold_case_reference', TRUE);
+    hold_reason_code := current_setting('visa.legal_hold_reason_code', TRUE);
+    hold_approved_by := current_setting('visa.legal_hold_approved_by', TRUE);
+    hold_review_due_at_text := current_setting('visa.legal_hold_review_due_at', TRUE);
+    IF requested_by IS NULL
+       OR requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'
+       OR hold_case_reference IS NULL
+       OR hold_case_reference !~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$'
+       OR hold_reason_code IS NULL
+       OR hold_reason_code !~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$'
+       OR hold_approved_by IS NULL
+       OR hold_approved_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
+        RAISE EXCEPTION 'legal hold transition requires the bounded privacy capability';
+    END IF;
+    IF NEW.legal_hold THEN
+        IF hold_review_due_at_text IS NULL OR hold_review_due_at_text = '' THEN
+            RAISE EXCEPTION 'legal hold requires a review deadline';
+        END IF;
+        BEGIN
+            hold_review_due_at := hold_review_due_at_text::TIMESTAMPTZ;
+        EXCEPTION
+            WHEN invalid_datetime_format THEN
+                RAISE EXCEPTION 'legal hold review deadline has invalid format';
+        END;
+        SELECT policy.legal_hold_review_interval
+          INTO STRICT hold_review_interval
+          FROM public.visa_decision_retention_policies AS policy
+         WHERE policy.id = OLD.retention_policy_id;
+        IF hold_review_due_at <= clock_timestamp()
+           OR hold_review_due_at > clock_timestamp() + hold_review_interval THEN
+            RAISE EXCEPTION 'legal hold review deadline exceeds the approved interval';
+        END IF;
+    ELSIF hold_review_due_at_text IS NOT NULL AND hold_review_due_at_text <> '' THEN
+        RAISE EXCEPTION 'legal hold release must not create a future review deadline';
+    END IF;
+
     INSERT INTO public.visa_decision_legal_hold_events (
         decision_row_id, retention_policy_id, event_type,
-        old_legal_hold, new_legal_hold, executor_label
+        old_legal_hold, new_legal_hold, executor_label,
+        case_reference, reason_code, approved_by, review_due_at
     ) VALUES (
         OLD.id,
         OLD.retention_policy_id,
         CASE WHEN NEW.legal_hold THEN 'LEGAL_HOLD_SET' ELSE 'LEGAL_HOLD_RELEASED' END,
         OLD.legal_hold,
         NEW.legal_hold,
-        audit_actor
+        audit_actor,
+        hold_case_reference,
+        hold_reason_code,
+        hold_approved_by,
+        hold_review_due_at
     );
     RETURN NEW;
 END;
@@ -921,15 +1043,173 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION public.erase_visa_decision_for_dsr(
+    p_decision_id UUID,
+    p_case_reference TEXT,
+    p_requested_by TEXT
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    target_row_id UUID;
+    target_legal_hold BOOLEAN;
+    payload_deleted INTEGER := 0;
+    idempotency_deleted INTEGER := 0;
+    decision_deleted INTEGER := 0;
+BEGIN
+    IF p_decision_id IS NULL THEN
+        RAISE EXCEPTION 'DSR erasure requires a decision_id';
+    END IF;
+    IF p_case_reference IS NULL
+       OR p_case_reference !~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$' THEN
+        RAISE EXCEPTION 'DSR case_reference has invalid format';
+    END IF;
+    IF p_requested_by IS NULL
+       OR p_requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
+        RAISE EXCEPTION 'DSR requested_by has invalid format';
+    END IF;
+
+    SELECT decision.id, decision.legal_hold
+      INTO target_row_id, target_legal_hold
+      FROM public.visa_decisions AS decision
+     WHERE decision.decision_id = p_decision_id
+     FOR UPDATE;
+    IF target_row_id IS NULL THEN
+        RETURN 0;
+    END IF;
+    IF target_legal_hold THEN
+        RAISE EXCEPTION 'DSR erasure blocked by active legal hold';
+    END IF;
+
+    PERFORM set_config('visa.dsr_requested_by', p_requested_by, TRUE);
+
+    DELETE FROM public.visa_evaluate_idempotency AS replay
+     WHERE replay.response_body #>> '{decision,decision_id}' = p_decision_id::TEXT;
+    GET DIAGNOSTICS idempotency_deleted = ROW_COUNT;
+
+    DELETE FROM public.visa_decision_payloads
+     WHERE decision_id = target_row_id AND legal_hold = FALSE;
+    GET DIAGNOSTICS payload_deleted = ROW_COUNT;
+
+    DELETE FROM public.visa_decisions
+     WHERE id = target_row_id AND legal_hold = FALSE;
+    GET DIAGNOSTICS decision_deleted = ROW_COUNT;
+    IF decision_deleted <> 1 THEN
+        RAISE EXCEPTION 'DSR decision deletion did not complete atomically';
+    END IF;
+
+    INSERT INTO public.visa_decision_dsr_erasure_batches (
+        case_reference, decision_rows_deleted, payload_rows_deleted,
+        idempotency_rows_deleted, executor_label
+    ) VALUES (
+        p_case_reference, decision_deleted, payload_deleted,
+        idempotency_deleted, session_user || ':' || p_requested_by
+    );
+    RETURN decision_deleted;
+END;
+$$;
+
+CREATE FUNCTION public.set_visa_decision_legal_hold(
+    p_decision_id UUID,
+    p_legal_hold BOOLEAN,
+    p_requested_by TEXT,
+    p_case_reference TEXT,
+    p_reason_code TEXT,
+    p_approved_by TEXT,
+    p_review_due_at TIMESTAMPTZ
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    target_row_id UUID;
+    target_policy_id UUID;
+    changed_count INTEGER;
+BEGIN
+    IF p_decision_id IS NULL OR p_legal_hold IS NULL THEN
+        RAISE EXCEPTION 'legal hold requires decision_id and state';
+    END IF;
+    IF p_requested_by IS NULL
+       OR p_requested_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
+        RAISE EXCEPTION 'legal hold requested_by has invalid format';
+    END IF;
+    IF p_case_reference IS NULL
+       OR p_case_reference !~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$' THEN
+        RAISE EXCEPTION 'legal hold case_reference has invalid format';
+    END IF;
+    IF p_reason_code IS NULL
+       OR p_reason_code !~ '^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$' THEN
+        RAISE EXCEPTION 'legal hold reason_code has invalid format';
+    END IF;
+    IF p_approved_by IS NULL
+       OR p_approved_by !~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$' THEN
+        RAISE EXCEPTION 'legal hold approved_by has invalid format';
+    END IF;
+    IF p_legal_hold AND p_review_due_at IS NULL THEN
+        RAISE EXCEPTION 'legal hold requires a review deadline';
+    END IF;
+    IF NOT p_legal_hold AND p_review_due_at IS NOT NULL THEN
+        RAISE EXCEPTION 'legal hold release must not create a review deadline';
+    END IF;
+
+    SELECT decision.id, decision.retention_policy_id
+      INTO target_row_id, target_policy_id
+      FROM public.visa_decisions AS decision
+     WHERE decision.decision_id = p_decision_id
+     FOR UPDATE;
+    IF target_row_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    IF target_policy_id IS NULL THEN
+        RAISE EXCEPTION 'legacy decision requires explicit disposition before legal hold';
+    END IF;
+
+    PERFORM set_config('visa.retention_requested_by', p_requested_by, TRUE);
+    PERFORM set_config('visa.legal_hold_case_reference', p_case_reference, TRUE);
+    PERFORM set_config('visa.legal_hold_reason_code', p_reason_code, TRUE);
+    PERFORM set_config('visa.legal_hold_approved_by', p_approved_by, TRUE);
+    PERFORM set_config(
+        'visa.legal_hold_review_due_at',
+        COALESCE(p_review_due_at::TEXT, ''),
+        TRUE
+    );
+    UPDATE public.visa_decisions
+       SET legal_hold = p_legal_hold
+     WHERE id = target_row_id
+       AND legal_hold IS DISTINCT FROM p_legal_hold;
+    GET DIAGNOSTICS changed_count = ROW_COUNT;
+    RETURN changed_count = 1;
+END;
+$$;
+
 -- PUBLIC revocation does not remove the owner's implicit EXECUTE privilege.
 -- The owner/runtime separation and narrow grant described above are mandatory
 -- activation prerequisites; this migration does not pretend to provision them.
 REVOKE ALL ON FUNCTION public.purge_visa_decisions(INTEGER, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.erase_visa_decision_for_dsr(UUID, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.set_visa_decision_legal_hold(
+    UUID, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ
+) FROM PUBLIC;
 COMMENT ON FUNCTION public.purge_visa_decisions(INTEGER, TEXT) IS
     'Bounded Visa Oracle purge primitive; requires an explicit operator grant and scheduler.';
+COMMENT ON FUNCTION public.erase_visa_decision_for_dsr(UUID, TEXT, TEXT) IS
+    'Bounded, legal-hold-aware DSR erasure; requires a separated privacy operator grant.';
+COMMENT ON FUNCTION public.set_visa_decision_legal_hold(
+    UUID, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ
+) IS
+    'Bounded legal-hold transition with append-only event evidence; privacy operator grant required.';
 
 -- === ROLLBACK ===
 
+DROP FUNCTION IF EXISTS public.set_visa_decision_legal_hold(
+    UUID, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ
+);
+DROP FUNCTION IF EXISTS public.erase_visa_decision_for_dsr(UUID, TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.purge_visa_decisions(INTEGER, TEXT);
 DROP FUNCTION IF EXISTS public.prepare_visa_evaluate_idempotency_reservation(
     BYTEA, INTEGER, TEXT
@@ -1047,6 +1327,7 @@ END;
 $$;
 
 DROP TABLE IF EXISTS public.visa_idempotency_retention_batches;
+DROP TABLE IF EXISTS public.visa_decision_dsr_erasure_batches;
 DROP TABLE IF EXISTS public.visa_decision_retention_batches;
 DROP TABLE IF EXISTS public.visa_decision_legal_hold_events;
 DROP FUNCTION IF EXISTS public.guard_visa_decision_legal_hold_events_mutation();

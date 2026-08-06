@@ -53,7 +53,7 @@ DEFAULT_ADMIN_DSN = "postgresql://nuzantara@127.0.0.1:5432/postgres"
 DATABASE_PREFIX = "visa_oracle_smoke_"
 DATABASE_NAME_RE = re.compile(r"^visa_oracle_smoke_[a-z0-9_]{8,80}$")
 LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-MIGRATION_NUMBERS = (250, 251, 252, 253, 254, 255, 256, 257, 262, 263, 264, 265)
+MIGRATION_NUMBERS = (250, 251, 252, 253, 254, 255, 256, 257, 262, 263, 264, 265, 266)
 TEST_RULE_PACK_ID = "8a57d996-c7f2-5abc-9c31-4128a29ed848"
 
 # Public verification material for the checked-in TEST fixture.  This is an
@@ -74,10 +74,11 @@ TEST_TRUST_STORE_JSON = json.dumps(TEST_TRUST_STORE, separators=(",", ":"))
 POLICY_SQL = """
 INSERT INTO public.visa_decision_retention_policies (
     environment, policy_version, retention_interval,
-    idempotency_retention_interval, retention_anchor,
+    idempotency_retention_interval, legal_hold_review_interval,
+    retention_anchor,
     effective_period, approved_by, approval_reference
 ) VALUES (
-    'TEST', 'zero-test-v1', INTERVAL '1 day', INTERVAL '1 hour',
+    'TEST', 'zero-test-v1', INTERVAL '1 day', INTERVAL '1 hour', INTERVAL '30 days',
     'EVALUATED_AT', tstzrange(clock_timestamp() - INTERVAL '1 day', NULL, '[)'),
     'zero-test-approver', 'ZERO-RETENTION-TEST-APPROVAL'
 )
@@ -235,7 +236,8 @@ async def _activate_test_pack(database_dsn: str, backend_root: Path) -> None:
         current_sequence=0,
         current_payload_sha256=None,
         engine_version="1.0.0",
-        database_url_env=env_name,
+        pack_writer_database_url_env=env_name,
+        activation_database_url_env=env_name,
         yes=True,
     )
     try:

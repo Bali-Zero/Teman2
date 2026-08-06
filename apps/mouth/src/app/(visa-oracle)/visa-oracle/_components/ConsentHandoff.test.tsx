@@ -45,6 +45,37 @@ describe("ConsentHandoff", () => {
     expect(screen.getByRole("img")).toBeVisible();
   });
 
+  it("requires separate guardian confirmation before a minor handoff", () => {
+    render(
+      <ConsentHandoff
+        language="en"
+        state="HUMAN_REVIEW_REQUIRED"
+        whatsappNumber="628123456789"
+        guardianConsentRequired
+      />,
+    );
+
+    const [guardian, whatsapp] = screen.getAllByRole("checkbox");
+    expect(guardian).not.toBeChecked();
+    expect(whatsapp).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Confirm parent or guardian authority before WhatsApp consent.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(guardian);
+    expect(whatsapp).toBeEnabled();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+
+    fireEvent.click(whatsapp);
+    expect(screen.getByRole("link", { name: "Open WhatsApp" })).toBeVisible();
+
+    fireEvent.click(guardian);
+    expect(whatsapp).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+  });
+
   it("revokes active consent at its wall-clock expiry without a remount", () => {
     vi.useFakeTimers();
     const grantedAt = new Date("2026-08-03T12:00:00.000Z");

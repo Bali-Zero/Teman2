@@ -86,6 +86,7 @@ from backend.services.visa_engine.api_models import (
     VisaOracleEvaluateRequest,
     VisaOracleEvaluateResponse,
 )
+from backend.services.visa_engine.ast import UnknownFact
 from backend.services.visa_engine.bundle import StaticTrustStore, verify_rule_pack
 from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.crypto import (
@@ -98,6 +99,7 @@ from backend.services.visa_engine.enums import (
     EngineMode,
     EngineSurface,
     Environment,
+    FactPath,
     SourceAuthorityType,
     SourceStatus,
     VisaPurpose,
@@ -110,6 +112,7 @@ from backend.services.visa_engine.errors import (
     RulePackVerificationError,
 )
 from backend.services.visa_engine.evaluator import evaluate_with_trace
+from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.services.visa_engine.idempotency import (
     IdempotencyConflictError,
     hash_idempotency_key,
@@ -896,6 +899,70 @@ _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = Map
 )
 
 
+def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Decision:
+    """Apply Privacy Policy V1's non-eligibility guardian safety boundary.
+
+    The public evaluation contract has no guardian-identity/consent fact, so a
+    known minor can never prove that an automated supported outcome is safe.
+    This deterministic adapter may only abstain: it cannot create, retain or
+    reorder a candidate. Empty citations are intentional because this is a
+    product/privacy workflow control, not a claim of legal visa ineligibility.
+    """
+
+    if decision.state is DecisionState.TEMPORARILY_UNAVAILABLE:
+        return decision
+    snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=decision.effective_at)
+    minor_fact = snapshot.values[FactPath.DERIVED_IS_MINOR]
+    if isinstance(minor_fact, UnknownFact):
+        if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+            return decision
+        missing = tuple(
+            sorted(
+                {*decision.missing_facts, FactPath.PERSON_BIRTH_DATE},
+                key=lambda path: path.value,
+            )
+        )
+        payload = decision.model_dump(mode="python")
+        payload.update(
+            {
+                "state": "NEEDS_INPUT",
+                "candidates": (),
+                "missing_facts": missing,
+                "review_reasons": (),
+                "no_path_reasons": (),
+                "outage": None,
+                "quotes": (),
+                "decision_integrity": None,
+            }
+        )
+        return Decision.model_validate(payload)
+    if minor_fact.value is not True:
+        return decision
+
+    reason = Reason(
+        code="MINOR_GUARDIAN_PRIVACY_REVIEW",
+        rule_ids=("system.privacy.minor-guardian-review",),
+        source_refs=(),
+    )
+    existing_reasons = (
+        decision.review_reasons if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED else ()
+    )
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "state": "HUMAN_REVIEW_REQUIRED",
+            "candidates": (),
+            "missing_facts": (),
+            "review_reasons": (*existing_reasons, reason),
+            "no_path_reasons": (),
+            "outage": None,
+            "quotes": (),
+            "decision_integrity": None,
+        }
+    )
+    return Decision.model_validate(payload)
+
+
 def _apply_decisive_source_authority_hold(
     decision: Decision,
     compiled: CompiledRulePack,
@@ -1389,6 +1456,7 @@ async def run_evaluation(
             identity_provider=identity_provider,
         )
         decision = evaluation.decision
+        decision = _apply_minor_privacy_hold(decision, facts)
         decision = _apply_decisive_source_authority_hold(decision, compiled)
         decision = _apply_safety_critical_source_hold(decision, compiled)
         decision = _apply_disclosed_review_flags(decision, disclosed_review_flags)

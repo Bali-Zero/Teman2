@@ -718,6 +718,7 @@ const en = {
 
   "footer.disclaimer":
     "Visa Oracle is private decision support. It is not a government service, approval, or filing — Ditjen Imigrasi decides. Unknown or complex cases go to human review.",
+  "footer.privacy": "Visa Oracle privacy policy",
 } as const;
 
 type Keys = keyof typeof en;
@@ -1434,6 +1435,7 @@ const id: Record<Keys, string> = {
 
   "footer.disclaimer":
     "Visa Oracle adalah alat bantu keputusan privat. Ini bukan layanan pemerintah, persetujuan, atau pengajuan — Ditjen Imigrasi yang memutuskan. Kasus yang tidak diketahui atau kompleks ditinjau manusia.",
+  "footer.privacy": "Kebijakan privasi Visa Oracle",
 };
 
 export const dict = { en, id };

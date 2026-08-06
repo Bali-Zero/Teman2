@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from uuid import UUID
 
 import asyncpg
 
@@ -35,6 +36,16 @@ class IdempotencyKeyUsageEvidence:
     key_id: str
     active_rows: int
     latest_expiry: datetime
+    observed_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionRetentionEvidence:
+    """Decision-identifier-free evidence for purge backlog/lag alerting."""
+
+    expired_rows: int
+    expired_held_rows: int
+    max_lag_seconds: float
     observed_at: datetime
 
 
@@ -117,6 +128,78 @@ async def purge_expired_idempotency(
     return int(deleted)
 
 
+async def erase_decision_for_dsr(
+    db_pool: asyncpg.Pool,
+    *,
+    decision_id: UUID,
+    case_reference: str,
+    requested_by: str,
+) -> int:
+    """Erase one decision through the bounded, legal-hold-aware DSR path."""
+
+    if not isinstance(decision_id, UUID):
+        raise ValueError("decision_id must be a UUID")
+    if not isinstance(case_reference, str) or _REQUESTED_BY_RE.fullmatch(case_reference) is None:
+        raise ValueError("case_reference has an invalid format")
+    if not isinstance(requested_by, str) or _REQUESTED_BY_RE.fullmatch(requested_by) is None:
+        raise ValueError("requested_by has an invalid format")
+    async with db_pool.acquire() as conn:
+        deleted = await conn.fetchval(
+            "SELECT public.erase_visa_decision_for_dsr($1, $2, $3)",
+            decision_id,
+            case_reference,
+            requested_by,
+        )
+    return int(deleted)
+
+
+async def set_decision_legal_hold(
+    db_pool: asyncpg.Pool,
+    *,
+    decision_id: UUID,
+    legal_hold: bool,
+    requested_by: str,
+    case_reference: str,
+    reason_code: str,
+    approved_by: str,
+    review_due_at: datetime | None,
+) -> bool:
+    """Set/release one hold through the audited bounded capability."""
+
+    if not isinstance(decision_id, UUID):
+        raise ValueError("decision_id must be a UUID")
+    if type(legal_hold) is not bool:
+        raise ValueError("legal_hold must be a boolean")
+    if not isinstance(requested_by, str) or _REQUESTED_BY_RE.fullmatch(requested_by) is None:
+        raise ValueError("requested_by has an invalid format")
+    if not isinstance(case_reference, str) or _REQUESTED_BY_RE.fullmatch(case_reference) is None:
+        raise ValueError("case_reference has an invalid format")
+    if not isinstance(reason_code, str) or _REQUESTED_BY_RE.fullmatch(reason_code) is None:
+        raise ValueError("reason_code has an invalid format")
+    if not isinstance(approved_by, str) or _REQUESTED_BY_RE.fullmatch(approved_by) is None:
+        raise ValueError("approved_by has an invalid format")
+    if legal_hold and (
+        not isinstance(review_due_at, datetime)
+        or review_due_at.tzinfo is None
+        or review_due_at.utcoffset() is None
+    ):
+        raise ValueError("a timezone-aware review_due_at is required for a legal hold")
+    if not legal_hold and review_due_at is not None:
+        raise ValueError("review_due_at must be absent when releasing a legal hold")
+    async with db_pool.acquire() as conn:
+        changed = await conn.fetchval(
+            "SELECT public.set_visa_decision_legal_hold($1, $2, $3, $4, $5, $6, $7)",
+            decision_id,
+            legal_hold,
+            requested_by,
+            case_reference,
+            reason_code,
+            approved_by,
+            review_due_at,
+        )
+    return bool(changed)
+
+
 async def idempotency_retention_evidence(
     db_pool: asyncpg.Pool,
 ) -> IdempotencyRetentionEvidence:
@@ -128,6 +211,23 @@ async def idempotency_retention_evidence(
         raise RuntimeError("idempotency retention evidence unavailable")
     return IdempotencyRetentionEvidence(
         expired_rows=int(row["expired_rows"]),
+        max_lag_seconds=float(row["max_lag_seconds"]),
+        observed_at=row["observed_at"],
+    )
+
+
+async def decision_retention_evidence(
+    db_pool: asyncpg.Pool,
+) -> DecisionRetentionEvidence:
+    """Read aggregate decision backlog, legal holds and maximum purge lag."""
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM public.visa_decision_retention_evidence()")
+    if row is None:  # pragma: no cover - SQL function always returns one row
+        raise RuntimeError("decision retention evidence unavailable")
+    return DecisionRetentionEvidence(
+        expired_rows=int(row["expired_rows"]),
+        expired_held_rows=int(row["expired_held_rows"]),
         max_lag_seconds=float(row["max_lag_seconds"]),
         observed_at=row["observed_at"],
     )
@@ -153,11 +253,15 @@ async def idempotency_key_usage_evidence(
 
 
 __all__ = [
+    "DecisionRetentionEvidence",
     "IdempotencyKeyUsageEvidence",
     "IdempotencyRetentionEvidence",
     "active_policy_available",
+    "decision_retention_evidence",
+    "erase_decision_for_dsr",
     "idempotency_key_usage_evidence",
     "idempotency_retention_evidence",
     "purge_expired_decisions",
     "purge_expired_idempotency",
+    "set_decision_legal_hold",
 ]

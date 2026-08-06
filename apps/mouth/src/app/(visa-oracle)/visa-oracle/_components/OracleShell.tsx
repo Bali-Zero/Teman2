@@ -62,6 +62,24 @@ import { LanguageToggle } from "./LanguageToggle";
 
 const HIDE_COUNTER_ON = new Set(["in_indonesia", "permit_expiry"]);
 
+function isMinorForHandoff(
+  birthDateValue: string | undefined,
+  evaluatedAtIso: string | undefined,
+): boolean {
+  if (!birthDateValue || !evaluatedAtIso) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDateValue);
+  const evaluatedAt = new Date(evaluatedAtIso);
+  if (!match || Number.isNaN(evaluatedAt.valueOf())) return false;
+  const birthYear = Number(match[1]);
+  const birthMonth = Number(match[2]);
+  const birthDay = Number(match[3]);
+  let age = evaluatedAt.getUTCFullYear() - birthYear;
+  const month = evaluatedAt.getUTCMonth() + 1;
+  const day = evaluatedAt.getUTCDate();
+  if (month < birthMonth || (month === birthMonth && day < birthDay)) age -= 1;
+  return age >= 0 && age < 18;
+}
+
 const SESSION_COPY = {
   en: {
     loading: "Restoring your private browser session…",
@@ -589,6 +607,12 @@ function OracleShellRuntime({
   const lane = useMemo(() => getLane(state.facts), [state.facts]);
   const outcomeAssessmentReference =
     outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
+  const guardianConsentRequired = isMinorForHandoff(
+    state.facts.birth_date,
+    outcome?.provenance === "ENGINE"
+      ? outcome.assessment.evaluatedAtIso
+      : restoreToday.toISOString(),
+  );
 
   return (
     <div className="oracle-root" data-oracle-theme={theme} data-funnel="visa">
@@ -731,6 +755,7 @@ function OracleShellRuntime({
                         language={language}
                         state={outcome.state as VisaOracleTelemetryState}
                         assessmentReference={outcomeAssessmentReference}
+                        guardianConsentRequired={guardianConsentRequired}
                       />
                     }
                   />
@@ -775,6 +800,9 @@ function OracleShellRuntime({
 
         <footer className="oracle-footer">
           <p>{translate(language, "footer.disclaimer")}</p>
+          <a href="/visa-oracle/privacy">
+            {translate(language, "footer.privacy")}
+          </a>
         </footer>
       </div>
     </div>

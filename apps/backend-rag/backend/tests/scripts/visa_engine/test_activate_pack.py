@@ -13,7 +13,9 @@ from pathlib import Path
 
 import pytest
 
+from backend.scripts.visa_engine import activate_pack
 from backend.scripts.visa_engine.activate_pack import (
+    _assert_production_separation,
     _b64url_nopad_decode,
     _build_insert_kwargs,
     _validate_token,
@@ -88,3 +90,29 @@ def test_b64url_nopad_decode_roundtrip() -> None:
 
     encoded = base64.urlsafe_b64encode(raw).decode().rstrip("=")
     assert _b64url_nopad_decode(encoded) == raw
+
+
+@pytest.mark.asyncio
+async def test_production_activation_rejects_one_combined_database_login(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def same_identity(_pool: object) -> tuple[str, bool]:
+        return "combined_operator", False
+
+    monkeypatch.setattr(activate_pack, "_database_identity", same_identity)
+    with pytest.raises(RuntimeError, match="distinct database logins"):
+        await _assert_production_separation(object(), object())  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_production_activation_rejects_superuser(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identities = iter((("pack_writer", True), ("activator", False)))
+
+    async def next_identity(_pool: object) -> tuple[str, bool]:
+        return next(identities)
+
+    monkeypatch.setattr(activate_pack, "_database_identity", next_identity)
+    with pytest.raises(RuntimeError, match="refuses superuser"):
+        await _assert_production_separation(object(), object())  # type: ignore[arg-type]

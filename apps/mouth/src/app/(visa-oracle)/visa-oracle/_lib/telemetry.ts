@@ -1,4 +1,4 @@
-import { trackEvent } from "@/lib/analytics";
+import { trackPiiFreeEvent } from "@/lib/analytics";
 
 export const VISA_ORACLE_TELEMETRY_EVENTS = [
   "visa_oracle_v2_engine_result",
@@ -44,5 +44,5 @@ export function emitVisaOracleTelemetry(input: VisaOracleTelemetry): void {
   if (input.correlationHash && SHA256_HEX.test(input.correlationHash)) {
     properties.correlation_hash = input.correlationHash;
   }
-  trackEvent(input.event, properties);
+  trackPiiFreeEvent(input.event, properties);
 }
