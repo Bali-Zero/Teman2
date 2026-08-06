@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 7157617191529225852a401fc48566d3575898b0bfef50c3f661b6ed97a1eb58
+checksum: b5432081068d9c29e60315355b61366db0b2d4b22dc703a4189bd5d869a83d04
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -193,6 +193,27 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.web_lead_funnel
+  runtime: pro_launchd
+  type: cron
+  # Weekly (Monday 09:00 WITA) + a day of slack: a report whose subject moves
+  # on the scale of weeks does not need a tighter silence alarm, and a tighter
+  # one would cry wolf every Tuesday.
+  expected_hb_seconds: 691200
+  owner_module: scripts/web_lead_funnel_report_run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.web-lead-funnel
+  # Warning, not critical: this organ REPORTS on the funnel, it does not carry
+  # it. Its silence costs visibility, never a lead.
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.web_lead_funnel.json
     timestamp_field: ts
     status_field: status
 - id: pro.cpu_monitor
