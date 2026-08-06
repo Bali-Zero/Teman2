@@ -239,6 +239,10 @@
   .kind-badge.team_bayu     { background: #3b82f6; color: #ffffff; }   /* blue bg + white text 4.6:1 */
   .kind-badge.client        { background: #10b981; color: #ffffff; }   /* green bg + white text 4.5:1 */
   .kind-badge.prospect      { background: #a855f7; color: #ffffff; }   /* purple bg + white text 4.5:1 */
+  /* 2026-08-06: web-lead provenance. Deliberately NOT one of the 5 contact
+     kinds — a web lead can also be a client or a prospect, so this rides
+     alongside the kind badge rather than replacing it. */
+  .kind-badge.weblead       { background: #f97316; color: #ffffff; }   /* orange bg + white text 4.5:1 */
   /* Secondary tag — company / department text */
   .company-badge {
     display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px;
@@ -1606,7 +1610,14 @@ function renderConvs() {
   const headerExtra = pd.attention.high || pd.attention.medium
     ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} urgenti</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} da gestire</span>` : ""}`
     : "";
-  let html = `<div class="col-header">2 · ${convs.length} conversazioni${headerExtra}</div>`;
+  // Web leads visible in THIS list, counted from the same rows that get the
+  // badge — so the number and the badges can never disagree. It is a floor:
+  // a lead who retyped the prefilled message carries no token and is not here.
+  const webLeadCount = convs.filter((c) => c.web_lead).length;
+  const webLeadExtra = webLeadCount
+    ? ` <span style="color:#f97316;font-weight:600" title="Conversazioni aperte da una nostra superficie (minimo: chi ha riscritto il messaggio non è contato)">· ${webLeadCount} web</span>`
+    : "";
+  let html = `<div class="col-header">2 · ${convs.length} conversazioni${headerExtra}${webLeadExtra}</div>`;
   if (!convs.length) {
     html += `<div class="empty">Nessuna conversazione</div>`;
   } else {
@@ -1628,6 +1639,12 @@ function renderConvs() {
       const kindBadge = c.contact_label
         ? `<span class="kind-badge ${c.contact_kind}" title="${escapeHtml(c.contact_company || '')}${c.contact_department ? ' · ' + escapeHtml(c.contact_department) : ''}">${escapeHtml(c.contact_label)}</span>`
         : "";
+      // 2026-08-06: this conversation opened with a deeplink token from one of
+      // our own surfaces. It sits BEFORE the kind badge because provenance is
+      // what the eye is scanning for on a line that also carries private work.
+      const webLeadBadge = c.web_lead
+        ? `<span class="kind-badge weblead" title="Arrivato da una nostra superficie${c.web_lead_surface ? ' · ' + escapeHtml(c.web_lead_surface) : ''}">WEB${c.web_lead_surface ? ' · ' + escapeHtml(c.web_lead_surface) : ''}</span>`
+        : "";
       const extra = [];
       if (c.client_id) extra.push(`<a href="${KITA_BASE}/clients/${c.client_id}" target="_blank" class="meta-pill">CRM #${c.client_id} ↗</a>`);
       if (c.assigned_to) extra.push(`<span class="meta-pill">→ ${escapeHtml(c.assigned_to.replace('@balizero.com',''))}</span>`);
@@ -1637,7 +1654,7 @@ function renderConvs() {
           <div class="conv-avatar ${avatarClass}">${tag === "group" ? "👥" : (c.client_id ? avatarInner(c.display_name, `/client-avatar/${c.client_id}`) : initials(c.display_name))}</div>
           <div class="conv-body">
             <div class="conv-row">
-              ${kindBadge}<span class="conv-name${attClass}">${escapeHtml(humanName(c.display_name))}</span>
+              ${webLeadBadge}${kindBadge}<span class="conv-name${attClass}">${escapeHtml(humanName(c.display_name))}</span>
               <span class="conv-time${attTimeClass}">${fmtTime(c.last_at)}</span>
             </div>
             ${company}
