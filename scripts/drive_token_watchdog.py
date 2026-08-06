@@ -519,30 +519,60 @@ def main() -> int:
         else:
             new_sa_alert_age = last_sa_alert_age
 
-    # --- Persist state (best-effort) ---
+    # --- Invia alerts, THEN persist ---
+    #
+    # This order is the fix (2026-08-06). It used to be the other way round:
+    # `save_state` ran first and `_send_telegram`'s return value was printed
+    # and discarded. The tier ratchet therefore advanced on CLASSIFICATION,
+    # not on DELIVERY — and `should_alert` only fires on a strictly-more-severe
+    # transition, so for a once-per-lifetime event like "the token expired"
+    # there is exactly ONE chance to speak.
+    #
+    # Measured, and it is how this was found: the token expired 2026-07-25;
+    # #3690 cured the PATH defect that had kept the watchdog from ever reading
+    # it; and the run that VERIFIED that cure classified `critical_expired`,
+    # wrote it to the state file, and delivered nothing anyone read. The next
+    # cron then found `last_oauth_tier == critical_expired`, took the
+    # de-escalation branch, and printed "tutto OK (token valido)" about a
+    # credential that had been dead for twelve days. Curing a mute watchdog
+    # and then muting it with the act of verifying the cure.
+    #
+    # Three ways the old order lost the message, all now closed: a
+    # verification run, a send that fails, and a cron environment with no
+    # TELEGRAM_BOT_TOKEN (`_send_telegram` returns False on exactly that).
+    #
+    # The obvious worry about retrying forever is already handled, by the
+    # component whose job it is: the alert goes through tg_notify with a
+    # STABLE dedup key, so the 6/24/72/168h repeat ladder collapses a
+    # persistent failure to about four messages a week. That split is the
+    # point — the ratchet answers "has this been DELIVERED", the gateway
+    # answers "how often may it repeat". One mechanism each, instead of the
+    # ratchet doing both and doing the second one wrong.
+    delivered = True
+    if alerts:
+        header = f"🔔 <b>Drive Watchdog</b> — {timestamp}\n\n"
+        message = header + "\n\n".join(alerts)
+        delivered = _send_telegram(message, bot_token)
+        print(f"[drive-watchdog] {len(alerts)} alert{'s' if len(alerts) > 1 else ''} inviato: {delivered}")
+    else:
+        print(f"[drive-watchdog] {timestamp} — tutto OK (token valido, SA key OK)")
+
+    # --- Persist state (best-effort), only for what actually got through ---
     if not DRY_RUN:
         new_state = dict(state)
-        if new_oauth_tier is not None:
+        if new_oauth_tier is not None and delivered:
             new_state["last_oauth_tier"] = new_oauth_tier
             new_state["last_oauth_check_iso"] = now_utc.isoformat()
             if new_oauth_days_left is not None:
                 new_state["last_oauth_days_left"] = new_oauth_days_left
-        if new_sa_alert_age is not None:
+        if new_sa_alert_age is not None and delivered:
             new_state["last_sa_alert_age"] = new_sa_alert_age
         save_state(new_state)
 
-    # --- Invia alerts ---
-    if alerts:
-        header = f"🔔 <b>Drive Watchdog</b> — {timestamp}\n\n"
-        message = header + "\n\n".join(alerts)
-        sent = _send_telegram(message, bot_token)
-        print(f"[drive-watchdog] {len(alerts)} alert{'s' if len(alerts) > 1 else ''} inviato: {sent}")
-        # Always exit 0 after successful alert delivery — the watchdog's job is done.
-        # Exit 1 would cause cron-wrapper to retry, sending duplicate alerts.
-        return 0
-    else:
-        print(f"[drive-watchdog] {timestamp} — tutto OK (token valido, SA key OK)")
-        return 0
+    # Always exit 0 — the cron wrapper would retry on non-zero, and a retry
+    # duplicates the alert. Undelivered state is carried by the ratchet not
+    # advancing, not by the exit code.
+    return 0
 
 
 if __name__ == "__main__":
