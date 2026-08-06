@@ -3,7 +3,13 @@
 **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17)
 **Runs on**: Mini-Pro2 (24/7 server)
 **Language**: Node.js 22 + `@whiskeysockets/baileys`
-**Data store**: PostgreSQL `nuzantara_rag` (tables `whatsapp_*`, migrations 173/175/177)
+**Data store**: PostgreSQL **`nuzantara_dev` su `127.0.0.1:5432`** (tables `whatsapp_*`,
+migrations 173/175/177). ATTENZIONE: il bridge NON legge `apps/wa-mirror/.env` — il
+launcher (`~/scripts/wa-mirror-launcher/start-one.sh`) sovrascrive
+`WA_MIRROR_DATABASE_URL` da `~/.wa-mirror.env`. Il `.env` in questa cartella punta al
+prod `nuzantara_rag` via `:15432` ed e' un DEPISTAGGIO: quella tabella e' ferma al
+2026-05-25, data in cui il mirror e' passato al DB locale. Verifica sempre sul processo:
+`ps eww -p <pid> | tr ' ' '\n' | grep WA_MIRROR_DATABASE_URL`
 
 ## Goal
 

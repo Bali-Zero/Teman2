@@ -589,56 +589,6 @@ jobs:
           name: frontend-${{ matrix.app }}-coverage
           path: apps/${{ matrix.app }}/coverage/
 
-  wa-dashboard-tests:
-    name: WA Dashboard Tests
-    runs-on: ubuntu-latest
-    env:
-      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: apps/wa-dashboard/package.json
-
-      - name: Install WA Dashboard dependencies
-        run: |
-          cd apps/wa-dashboard
-          npm install --no-fund
-
-      - name: Type-check WA Dashboard
-        run: |
-          cd apps/wa-dashboard
-          npm run typecheck
-
-      - name: Run WA Dashboard coverage gate
-        run: |
-          cd apps/wa-dashboard
-          npm run test:coverage
-
-      - name: Upload WA Dashboard coverage to Codecov
-        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: apps/wa-dashboard/coverage/lcov.info
-          flags: wa-dashboard
-          name: wa-dashboard-coverage
-
-      - name: Upload WA Dashboard coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: wa-dashboard-coverage
-          path: apps/wa-dashboard/coverage/
-
   packages-core-tests:
     name: Shared Core Package Tests
     runs-on: ubuntu-latest
@@ -881,7 +831,6 @@ jobs:
       - mcp-tests
       - evaluator-critical-tests
       - frontend-tests
-      - wa-dashboard-tests
       - packages-core-tests
       - e2e-tests
     if: always()
@@ -901,7 +850,6 @@ jobs:
           MCP_RESULT: ${{ needs.mcp-tests.result }}
           EVALUATOR_RESULT: ${{ needs.evaluator-critical-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
-          WA_DASHBOARD_RESULT: ${{ needs.wa-dashboard-tests.result }}
           PACKAGES_CORE_RESULT: ${{ needs.packages-core-tests.result }}
           E2E_RESULT: ${{ needs.e2e-tests.result }}
         with:
@@ -922,7 +870,6 @@ jobs:
               "MCP server": process.env.MCP_RESULT,
               "Evaluator critical": process.env.EVALUATOR_RESULT,
               "Frontend matrix": process.env.FRONTEND_RESULT,
-              "WA Dashboard": process.env.WA_DASHBOARD_RESULT,
               "Shared core package": process.env.PACKAGES_CORE_RESULT,
               "E2E page-load smoke": process.env.E2E_RESULT,
             };

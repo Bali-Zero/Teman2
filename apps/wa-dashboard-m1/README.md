@@ -1,8 +1,14 @@
 # wa-dashboard-m1 — Bali Zero WhatsApp local read-only webapp
 
-Replica del pattern M1 single-page (`~/bin/wa-viewer/`) puntata al DB di produzione
-(Fly Postgres `nuzantara-postgres.flycast`) via il proxy locale `fly-pg-proxy` su
-`127.0.0.1:15432`. Read-only: zero INSERT/UPDATE.
+Replica del pattern M1 single-page (`~/bin/wa-viewer/`). Read-only: zero INSERT/UPDATE.
+
+**DB (verificato sul processo vivo, 2026-08-06):** legge il Postgres **LOCALE**
+`nuzantara_dev` su `127.0.0.1:5432`, lo stesso in cui scrive il bridge wa-mirror.
+La variabile e' `WA_DASHBOARD_DATABASE_URL`, passata dal LaunchAgent
+`com.balizero.wa-dashboard-m1` — NON dal repo. Una versione precedente di questo
+README diceva "DB di produzione via fly-pg-proxy su :15432": era falso, e la tabella
+prod `whatsapp_message_context` e' ferma al 2026-05-25 (data di migrazione al locale).
+Per sapere con cosa parla il processo: `ps eww -p <pid> | tr ' ' '\n' | grep DATABASE_URL`.
 
 ## Layout
 

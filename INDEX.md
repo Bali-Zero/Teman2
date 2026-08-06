@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 33 · **Packages:** 6
+**Apps:** 32 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -129,8 +129,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `osint-nexus-ui` |  |
 | `remediator` |  |
 | `team-agent` |  |
-| `wa-dashboard` | Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox. |
-| `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`) puntata al DB di produzione |
+| `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`). Read-only: zero INSERT/UPDATE. |
 | `wa-meta-inbox` | Desktop-local UI for the **BALI ZERO WhatsApp Business (Meta API)** number |
 | `wa-mirror` | **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17) |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
