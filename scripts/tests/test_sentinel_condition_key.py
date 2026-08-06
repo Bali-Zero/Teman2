@@ -683,7 +683,6 @@ def test_the_auth_fallback_keeps_the_identity_the_primary_path_fixed():
         f"the fallback key drops the per-credential identity: {key_line.strip()}"
     )
     assert "return True" not in body, "the fallback still claims success blindly"
-    assert "rc == 0" in body
 
 
 def test_the_local_key_cannot_be_confused_by_a_separator_in_the_data(sentinel_with_local_dedup):
@@ -740,3 +739,34 @@ def test_each_openclaw_restart_is_its_own_episode():
               if isinstance(n, ast.FunctionDef) and n.name == "_last_openclaw_restart_ts")
     body = ast.unparse(fn)
     assert "OPENCLAW_RESTART_RECORD" in body and "time.time()" not in body
+
+
+def test_the_auth_fallback_reports_what_the_subprocess_actually_did(monkeypatch, tmp_path):
+    """EXECUTED, not grepped. The first version of this cure wrote `rc = _run(...)`
+    and `return rc == 0` — but `_run` returns a TUPLE `(exit_code, output)`, so the
+    comparison was always False and every successful fallback reported failure.
+    The test that shipped with it asserted the STRING "rc == 0" was present, which
+    is true of the broken code: it proved the text, not the behaviour (W116)."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import importlib
+    auth = importlib.import_module("auth_sentinel")
+
+    calls = []
+    monkeypatch.setattr(auth, "_run", lambda cmd, **kw: (calls.append(cmd) or (0, "ok")))
+    # force the fallback: make the primary path raise
+    import sentinel_lib.alerter as alerter
+    monkeypatch.setattr(alerter, "send_alert",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(auth, "REPO", REPO)
+
+    probe = auth.Probe(arm="codex", family="openai", status=auth.ACTION,
+                       detail="token revoked", fix_cmd="codex login")
+    assert auth.emit_alert([probe]) is True, "a successful fallback reported failure"
+    # calls[0] is the `hostname -s` probe; the gateway call is the last one.
+    gw = next(c for c in calls if "--dedup-key" in c)
+    key = gw[gw.index("--dedup-key") + 1]
+    assert key.endswith("auth:codex"), key
+
+    calls.clear()
+    monkeypatch.setattr(auth, "_run", lambda cmd, **kw: (calls.append(cmd) or (1, "err")))
+    assert auth.emit_alert([probe]) is False, "a failed fallback reported success"

@@ -338,8 +338,11 @@ def emit_alert(probes: list[Probe]) -> bool:
             # Agy failure at 12:00 would both key on `auth-sentinel-<host>` and
             # the gateway would mute the second. An exception branch is not a
             # place where identity may be cheaper.
-            rc = _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
-                       "--dedup-key", f"auth-sentinel-{host}-{condition}", "--", msg])
+            # _run returns (exit_code, output) — comparing the TUPLE to 0 is
+            # always False, which would make this branch report failure on every
+            # successful fallback send.
+            rc, _out = _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
+                             "--dedup-key", f"auth-sentinel-{host}-{condition}", "--", msg])
             # ...and it must report what actually happened: returning True
             # unconditionally told the caller an alert went out when the
             # subprocess may have failed.
