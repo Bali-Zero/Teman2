@@ -207,9 +207,20 @@ def test_apply_writes_and_the_result_reports_zero_stale_cells(tmp_path: Path, mo
 # --------------------------------------------------------------------------
 
 
-def test_the_live_dry_run_reaches_zero_and_refuses_nothing():
-    """If this fails, a real cell has a shape the planner cannot rewrite — read
-    the refusal rather than loosening the planner."""
+def test_the_live_catalogue_holds_no_stale_cell_and_none_it_could_not_rewrite():
+    """The standing guard, and it is worth more than the backlog it replaced.
+
+    This test used to pin "38 cells on 31 codes". That number was a measure of
+    debt, and debt is exactly what a pin should not preserve: it goes green
+    again the moment someone cures it and tells you nothing afterwards. The cure
+    has now run, so the assertion is the property we actually want to keep —
+    the catalogue holds NO stale stat card, and no card whose shape this pass
+    would have to guess at.
+
+    A failure here has two readings and both need a human eye: either a new
+    contradiction was authored, or a cure moved a field and left the card
+    behind, which is precisely how the original 31 came to exist.
+    """
     records = E.load_records()
     edits, refusals = [], []
     for record in records:
@@ -219,8 +230,11 @@ def test_the_live_dry_run_reaches_zero_and_refuses_nothing():
             edits += e
             refusals += r
     assert refusals == [], f"the live catalogue holds a cell this cannot rewrite: {refusals}"
-    assert len(edits) == 34, "34 cells on 27 codes — measured, not carried over from a plan"
-    assert len({e["code"] for e in edits}) == 27
+    assert edits == [], (
+        "a stat card disagrees with its record again — either newly authored, or "
+        f"a cure moved a field and left the card behind: "
+        f"{[(e['code'], e['label'], e['was']) for e in edits]}"
+    )
 
 
 def test_the_live_run_writes_the_real_catalogue_into_a_copy_and_changes_only_cells(
@@ -243,8 +257,12 @@ def test_the_live_run_writes_the_real_catalogue_into_a_copy_and_changes_only_cel
     p.write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
 
     authored_before = E.report(original["data"])["needs_an_author"]["codes"]
-    assert len(authored_before) == 27
+    assert len(authored_before) == 31, "the prose backlog only a human can shrink"
 
+    # The catalogue is already cured, so this run is the IDEMPOTENCE check: a
+    # second pass must find nothing, write nothing, and leave the document
+    # byte-identical. A cure that keeps finding work on its own output is
+    # rewriting something it should not have touched.
     assert C.run(p, apply=True) == 0
 
     after = json.loads(p.read_text(encoding="utf-8"))["data"]

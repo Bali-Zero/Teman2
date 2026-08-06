@@ -282,14 +282,20 @@ def test_the_walk_reaches_prose_nested_below_the_top_level():
 def test_the_two_buckets_are_reported_separately_and_are_not_the_same_set():
     """A single "N codes are wrong" would hide that one bucket is a
     find-and-replace on a field we own and the other needs a human to write a
-    sentence. `50135` is the proof they are different sets: clean cells, wrong
-    prose."""
+    sentence — and the live data now proves the split was real rather than
+    tidy: the mechanical bucket has been CURED to empty by
+    `cure_editorial_cells_from_record.py` while the authored one still holds
+    31 codes, untouched, because replacing a sentence means writing one.
+
+    `50135` remains the specimen: clean cells, wrong prose. It was in the
+    authored bucket before the cure and it is there now, which is the whole
+    point of not having merged the two counts."""
     rep = E.report(E.load_records())
     mech = set(rep["mechanically_correctable"]["codes"])
     auth = set(rep["needs_an_author"]["codes"])
-    assert mech and auth
-    assert auth - mech, "if every prose case had a bad cell, one check would do"
-    assert "50135" in auth - mech
+    assert mech == set(), "the mechanical bucket is cured; a new member is a regression"
+    assert auth, "the authored backlog is not empty and must not be quietly emptied"
+    assert "50135" in auth
 
 
 def test_the_bali_exclusion_is_large_enough_to_matter_and_is_declared():
@@ -304,38 +310,56 @@ def test_the_live_populations_are_pinned():
     land; a rise means a new contradiction was authored, which is the whole
     thing this file is about."""
     rep = E.report(E.load_records())
-    assert len(rep["mechanically_correctable"]["codes"]) == 27
-    assert rep["mechanically_correctable"]["ceiling_cells"] == 27
-    assert rep["mechanically_correctable"]["status_cells"] == 7
-    assert len(rep["needs_an_author"]["codes"]) == 27
+
+    # ZERO, and this is a tripwire rather than a backlog size now: the 31 stale
+    # cells this module first reported were cured by
+    # `cure_editorial_cells_from_record.py`, so any number above zero means a
+    # NEW stale copy was authored or a cure moved a field and left the card
+    # behind. That is exactly how these 31 were born.
+    assert rep["mechanically_correctable"]["codes"] == []
+    assert rep["mechanically_correctable"]["ceiling_cells"] == 0
+    assert rep["mechanically_correctable"]["status_cells"] == 0
+
+    # The authored backlog, which only a human can shrink (Legge 5). It went
+    # 27 -> 31 when #3673 restricted four codes and left their prose saying the
+    # opposite — the cure moved the record and the sentences beside it did not
+    # move, which is this module's whole subject.
+    assert len(rep["needs_an_author"]["codes"]) == 31
 
     # WHERE the prose lies. Pinned because the total alone hid the defect that
     # produced these numbers: the first version read three fields and reported
     # 20, and `whatYouNeed` — the field that carries a client's filing
     # instructions — was the largest offender and was never opened.
     assert rep["needs_an_author"]["by_field"] == {
-        "whatYouNeed": 18,
+        "whatYouNeed": 19,
         "editorial.body": 16,
-        "editorial.headline": 10,
-        "editorial.standfirst": 5,
+        "editorial.headline": 13,
+        "editorial.standfirst": 6,
         "whoThisIsFor": 1,
     }
 
 
-def test_this_module_is_not_a_twin_of_the_existing_L9_lint_rule():
-    """The anti-twin claim in the docstring, armed instead of asserted.
+def test_the_relationship_to_both_existing_lint_rules_is_pinned():
+    """Two lint rules could be this module's twin. One is not; one partly is.
 
-    `kbli_dataset_lint.py` rule L9 (`validate_pma_consistency`) is a BLOCKING
-    lint that looks like this module's duplicate. It is not: measured here, the
-    two finding sets are disjoint. L9's reachable half of the dangerous
-    direction requires `pma_status == "TERTUTUP"` AND the literal substring
-    "100% foreign"; 26 of this module's 27 codes are TERBATAS, which that
-    condition never admits.
+    This test was first written as "not a twin of L9" and stopped there, because
+    L9 is the rule whose NAME matches (`validate_pma_consistency`). The rule
+    whose BEHAVIOUR matches is L10, and it was not opened at all — so the
+    conclusion drawn was true about L9 and misleading about the lint.
 
-    If this test ever fails, the two tools have started answering the same
-    question two different ways (W105) and the right response is to make the
-    lint consume this report — not to delete whichever assertion is
-    inconvenient.
+    Both are pinned now:
+
+    * **L9** is disjoint. Its reachable half of the dangerous direction needs
+      `pma_status == "TERTUTUP"` AND the literal "100% foreign", which no live
+      record satisfies; its two findings are the mirror case.
+    * **L10** is a partial twin: 31 here, 17 there, 14 shared, and each side
+      holds real findings the other misses. Asserted in BOTH directions, so
+      neither can be retired as redundant on the strength of the other, and the
+      three codes only L10 sees stay a declared gap rather than a silent one.
+
+    A failure here means the tools have started answering one question two ways
+    (W105); the response is to make the lint consume this report, not to delete
+    whichever assertion has become inconvenient.
     """
     scripts_dir = str(Path(__file__).resolve().parents[2])
     if scripts_dir not in sys.path:
@@ -367,15 +391,66 @@ def test_this_module_is_not_a_twin_of_the_existing_L9_lint_rule():
         "dangerous-direction test cannot reach"
     )
 
+    # L10 is the rule that actually resembles this module, and the first version
+    # of this test did not look at it — it checked the rule whose NAME matched
+    # and missed the one whose BEHAVIOUR matched. Pinned as a partial twin with
+    # complementary blind spots, in BOTH directions, so neither can be retired as
+    # redundant on the strength of the other.
+    import kbli_dataset_lint as lint
+
+    maxa_by_code = {r["kode_kbli_2025"]: r.get("pma_max_asing") for r in records}
+    l10 = set()
+    for record in records:
+        code, maxa = record["kode_kbli_2025"], record.get("pma_max_asing")
+        if code in lint.L10_SECTOR_LAW_OVERRIDE or not isinstance(maxa, int):
+            continue
+        if any(
+            lint.l10_ownership_contradiction(text, code, maxa, maxa_by_code)
+            for _field, text in lint.iter_prose(record)
+        ):
+            l10.add(code)
+
+    assert mine & l10, "L10 and this module used to agree on 14 codes; agreeing on none means one went blind"
+    assert mine - l10, (
+        "this module no longer finds anything L10 misses — if that is real, it is "
+        "redundant and should be retired rather than maintained"
+    )
+    assert l10 - mine == {"41011", "52292", "53200"}, (
+        "the DECLARED gap in this module — numeric claims L10 catches and a "
+        f"sentence-level openness predicate does not: {sorted(l10 - mine)}"
+    )
+
 
 def test_the_worst_members_are_named_not_counted():
     """A population with only a size cannot be closed by the pass that comes for
     it. These three are the ones a client acts on money with."""
-    rep = E.report(E.load_records())
-    mech = set(rep["mechanically_correctable"]["codes"])
-    # arms and ammunition, capped at 49% — sidebar says 100%
-    assert "25200" in mech
-    # military vehicles, capped at 49%
-    assert "30400" in mech
-    # Umrah/Hajj travel, capped at 0% — its prose still reads as an opening
+    records = E.load_records()
+    rep = E.report(records)
+    by_code = {r["kode_kbli_2025"]: r for r in records}
+
+    def ceiling_cells(code):
+        editorial = (by_code[code].get("intel_2026") or {}).get("editorial") or {}
+        return [
+            c
+            for c in (editorial.get("byTheNumbers") or [])
+            if isinstance(c, dict)
+            and "ceiling" in str(c.get("label", "")).lower()
+            and "bali" not in str(c.get("label", "")).lower()
+        ]
+
+    # The three a client acts on money with. Asserted by CONTENT rather than by
+    # absence from a bucket — "not in the mechanical list" would also be true if
+    # the detector had gone blind, which is the failure this file exists to
+    # catch (W107: the probe can carry the disease it measures).
+    for code, expected in (("25200", "49%"), ("30400", "49%"), ("79122", "0%")):
+        cells = ceiling_cells(code)
+        assert cells, f"{code} lost its national ceiling card entirely"
+        assert all(c["value"] == expected for c in cells), (
+            f"{code} ceiling card says {[c['value'] for c in cells]}, record says {expected}"
+        )
+    assert set(rep["mechanically_correctable"]["codes"]) == set()
+
+    # Umrah/Hajj travel: the CARD is cured, the PROSE still reads as an opening
+    # and needs an author. Both halves named, because "79122 is fixed" would be
+    # a comfortable half-truth.
     assert "79122" in set(rep["needs_an_author"]["codes"])
