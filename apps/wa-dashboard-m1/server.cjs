@@ -2,6 +2,7 @@
 "use strict";
 
 const express = require("express");
+const nodeHttp = require("http");
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
@@ -1294,6 +1295,58 @@ app.use((req, res, next) => {
 app.get("/favicon.ico", (_req, res) => {
   res.status(204).end();
 });
+
+// ── Meta Inbox (numero aziendale Meta) montato dentro questa dashboard ──
+// Perche' un proxy e non un iframe verso 127.0.0.1:7791: questa dashboard
+// ascolta su 0.0.0.0 ed e' raggiungibile dalla LAN Tailscale, mentre il
+// meta-inbox ascolta SOLO su localhost. Un iframe verso 127.0.0.1 si
+// risolverebbe sul browser del visitatore e apparirebbe vuoto da ogni
+// macchina che non sia il Pro. Il proxy fa la richiesta lato server, quindi
+// funziona da ovunque la dashboard sia raggiungibile.
+// Il suo HTML chiama path ASSOLUTI (/api/threads, /api/send, ...), per questo
+// serve anche /api/* — prefisso che questa dashboard non usa per nulla.
+const META_INBOX_URL = process.env.WA_META_INBOX_URL || "http://127.0.0.1:7791";
+
+function proxyToMetaInbox(req, res, targetPath) {
+  const target = new URL(targetPath, META_INBOX_URL);
+  const headers = { ...req.headers };
+  delete headers.host; // altrimenti il target vede l'host di questa dashboard
+  const upstream = nodeHttp.request(
+    {
+      protocol: target.protocol,
+      hostname: target.hostname,
+      port: target.port,
+      path: target.pathname + target.search,
+      method: req.method,
+      headers,
+    },
+    (up) => {
+      res.status(up.statusCode || 502);
+      for (const [k, v] of Object.entries(up.headers)) {
+        if (k.toLowerCase() === "transfer-encoding") continue;
+        res.setHeader(k, v);
+      }
+      up.pipe(res);
+    },
+  );
+  upstream.on("error", (err) => {
+    // Fallire in modo LEGGIBILE: un 502 muto qui si legge come "il Meta Inbox
+    // non ha messaggi", che e' esattamente il fraintendimento da evitare.
+    if (res.headersSent) return res.end();
+    res
+      .status(502)
+      .type("text/plain")
+      .send(
+        `Meta Inbox non raggiungibile su ${META_INBOX_URL} (${err.code || err.message}).\n` +
+          `Il LaunchAgent com.balizero.wa-meta-inbox e' spento o in errore.\n` +
+          `Questo NON significa che non ci siano conversazioni.`,
+      );
+  });
+  req.pipe(upstream);
+}
+
+app.get("/meta", (req, res) => proxyToMetaInbox(req, res, "/"));
+app.all(/^\/api\//, (req, res) => proxyToMetaInbox(req, res, req.originalUrl));
 
 function dbUrlHost() {
   try {

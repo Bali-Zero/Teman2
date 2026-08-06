@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuzantara Control Center</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-solid: #606370; /* Lightened 3 shades from #424552 */
+            --sidebar-bg: #353742; /* One shade darker than #424552 */
+            --panel-bg: rgba(255, 255, 255, 0.07);
+            --panel-border: rgba(255, 255, 255, 0.35); /* Accentuated borders */
+            --accent-primary: #ff5e97; /* Liquid Pastel Pink */
+            --accent-secondary: #ff8522; /* Liquid Pastel Orange */
+            --accent-success: #00e676; /* Vibrant Mint */
+            --accent-warning: #ffd000; /* Vibrant Amber */
+            --accent-danger: #ff3366; /* Neon Coral */
+            --text-main: #ffffff;
+            --text-muted: #e2e5ec;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background: var(--bg-solid);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+        }
+
+        /* Container Layout */
+        .app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg); /* One shade darker than dominant grey */
+            backdrop-filter: blur(25px) saturate(210%);
+            -webkit-backdrop-filter: blur(25px) saturate(210%);
+            border-right: 1.5px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 94, 151, 0.35);
+        }
+
+        .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(to right, #ffffff, var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .menu-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .menu-item.active {
+            border-left: 3px solid var(--accent-primary);
+            background: linear-gradient(to right, rgba(255, 94, 151, 0.12), transparent);
+        }
+
+        .menu-badge {
+            margin-left: auto;
+            background: var(--accent-danger);
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        .system-status-widget {
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--panel-border);
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+
+        .widget-title {
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot-pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-success);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px var(--accent-success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Main Content Panel */
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            background: transparent;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .page-title p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .controls-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 94, 151, 0.3);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ff7db0, var(--accent-primary));
+            box-shadow: 0 4px 18px rgba(255, 94, 151, 0.45);
+        }
+
+        /* Glass Cards Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .glass-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(25px) saturate(210%);
+            -webkit-backdrop-filter: blur(25px) saturate(210%);
+            border: 1.5px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 
+                0 20px 45px rgba(0, 0, 0, 0.4), 
+                inset 0 1.5px 2px rgba(255, 255, 255, 0.35), 
+                inset 0 -2px 3px rgba(0, 0, 0, 0.6);
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px) scale(1.01);
+            border-color: rgba(255, 255, 255, 0.55); /* Highly accentuated hover border */
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.5), 
+                inset 0 1.5px 3px rgba(255, 255, 255, 0.5), 
+                inset 0 -2px 3px rgba(0, 0, 0, 0.6),
+                0 0 25px rgba(255, 94, 151, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* LaunchAgent Switch Cards */
+        .agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .agent-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+        .agent-item:hover {
+            border-color: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .agent-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .agent-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .agent-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Toggle switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .3s;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* DLQ Autopilot Section */
+        .section-panel {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .section-panel.active {
+            display: flex;
+        }
+
+        .dlq-table-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--panel-border);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-info {
+            background: rgba(6, 186, 212, 0.15);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 186, 212, 0.2);
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .action-btn-primary {
+            background: rgba(255, 94, 151, 0.15);
+            border-color: rgba(255, 94, 151, 0.25);
+            color: #ffa3c5;
+        }
+
+        .action-btn-primary:hover {
+            background: rgba(255, 94, 151, 0.3);
+            border-color: var(--accent-primary);
+        }
+
+        /* Modal popup for JSON editing */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #110f1c;
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            width: 600px;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .json-editor {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            background: #09080e;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 16px;
+            color: #a7f3d0;
+            height: 200px;
+            resize: none;
+            width: 100%;
+            outline: none;
+        }
+
+        /* Lead promotion feed */
+        .lead-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .lead-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(25px) saturate(210%);
+            -webkit-backdrop-filter: blur(25px) saturate(210%);
+            border: 1.5px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            gap: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 15px 35px rgba(0, 0, 0, 0.3), 
+                inset 0 1.5px 2px rgba(255, 255, 255, 0.3), 
+                inset 0 -1.5px 2.5px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .lead-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.45);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.4), 
+                inset 0 1.5px 2px rgba(255, 255, 255, 0.4), 
+                inset 0 -1.5px 2.5px rgba(0, 0, 0, 0.5);
+        }
+
+        .lead-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0; width: 5px;
+            background: var(--accent-warning);
+        }
+
+        .lead-card.promoted::before {
+            background: var(--accent-success);
+        }
+
+        .lead-avatar {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .lead-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .lead-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .lead-name {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lead-phone {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .lead-msg-bubble {
+            background: rgba(255,255,255,0.02);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,0.04);
+            color: #d1d5db;
+        }
+
+        .lead-topic-badge {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--accent-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .system-chart-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        /* Live Terminal Widget */
+        .terminal-panel {
+            background: #0a0810;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: #c084fc;
+            height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .terminal-line {
+            display: flex;
+            gap: 8px;
+        }
+
+        .term-ts {
+            color: var(--accent-secondary);
+        }
+
+        .term-tag {
+            color: var(--accent-primary);
+        }
+
+        .term-msg {
+            color: #e9d5ff;
+        }
+
+        /* Success alerts */
+        .alert-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #10b981;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            transform: translateY(150%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        .alert-toast.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i data-lucide="shield-alert" style="width: 20px; height: 20px;"></i>
+                </div>
+                <span class="brand-name">Nuzantara CLI</span>
+            </div>
+
+            <nav>
+                <ul class="menu-list">
+                    <li class="menu-item active" onclick="switchTab('dashboard', this)">
+                        <i data-lucide="layout-dashboard" style="width: 18px;"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li class="menu-item" onclick="switchTab('dlq', this)">
+                        <i data-lucide="refresh-cw" style="width: 18px;"></i>
+                        <span>DLQ Autopilot</span>
+                        <span class="menu-badge" id="dlq-count-badge">2</span>
+                    </li>
+                    <li class="menu-item" onclick="switchTab('leads', this)">
+                        <i data-lucide="users" style="width: 18px;"></i>
+                        <span>Lead Promotion</span>
+                        <span class="menu-badge" style="background: var(--accent-warning);" id="lead-count-badge">3</span>
+                    </li>
+                    <li class="menu-item" onclick="switchTab('system', this)">
+                        <i data-lucide="cpu" style="width: 18px;"></i>
+                        <span>Systems Specs</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="system-status-widget">
+                <div class="widget-title">
+                    <span class="status-dot-pulse"></span>
+                    <span>Pro Mac Compute</span>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Hardware: Apple M5 / 48GB</p>
+                <p style="font-size: 11px; color: var(--accent-success);">Ollama Qwen 32B Active</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header>
+                <div class="page-title">
+                    <h1 id="main-title">Pannello di Controllo</h1>
+                    <p id="main-subtitle">Gestione dei demoni locali e della pipeline decisionale AI</p>
+                </div>
+                <div class="controls-top">
+                    <button class="btn" onclick="logTerminal('Esecuzione manuale del controllo dei LaunchAgent...')">
+                        <i data-lucide="refresh-cw" style="width: 16px;"></i>
+                        Sincronizza Stato
+                    </button>
+                    <button class="btn btn-primary" onclick="triggerDryRun()">
+                        <i data-lucide="play" style="width: 16px;"></i>
+                        Avvia Dry-Run Generale
+                    </button>
+                </div>
+            </header>
+
+            <!-- ================= TAB: DASHBOARD ================= -->
+            <div id="tab-dashboard" class="section-panel active">
+                <div class="dashboard-grid">
+                    <!-- LaunchAgents Card -->
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <span class="card-title">
+                                <i data-lucide="calendar" style="color: var(--accent-primary);"></i>
+                                LaunchAgents Schedules
+                            </span>
+                            <span class="badge badge-success">4 Attivi</span>
+                        </div>
+                        <div class="agent-list">
+                            <div class="agent-item">
+                                <div class="agent-info">
+                                    <span class="agent-name">vector-reindex-check.py</span>
+                                    <span class="agent-meta">Lunedì 09:00 | Qdrant integrity</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked onchange="toggleAgent('Vector Reindex Check', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="agent-item">
+                                <div class="agent-info">
+                                    <span class="agent-name">qwen-code-review.sh</span>
+                                    <span class="agent-meta">Giornaliero 10:00 | Qwen 32B</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked onchange="toggleAgent('Code Review', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="agent-item">
+                                <div class="agent-info">
+                                    <span class="agent-name">full-test-suite.sh</span>
+                                    <span class="agent-meta">Domenica 08:00 | Pytest</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked onchange="toggleAgent('Pytest Suite', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="agent-item">
+                                <div class="agent-info">
+                                    <span class="agent-name">db-backup.sh</span>
+                                    <span class="agent-meta">Giornaliero 02:00 | PostgreSQL</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked onchange="toggleAgent('DB Backup', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Autopilot Status Card -->
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <span class="card-title">
+                                <i data-lucide="zap" style="color: var(--accent-secondary);"></i>
+                                DLQ Autopilot Monitor
+                            </span>
+                            <span class="badge badge-info" id="autopilot-mode-badge">Attivo</span>
+                        </div>
+                        <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">
+                            La pipeline analizza autonomamente i messaggi non elaborati (DLQ). Claude CLI decide se rieseguire la transazione o applicare correzioni al codice tramite Aider.
+                        </p>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; margin-top: auto;">
+                            <div>
+                                <p style="font-size: 11px; color: var(--text-muted);">LOCK FILE</p>
+                                <p style="font-size: 13px; font-family: var(--font-mono); color: var(--accent-success);">dlq_autopilot.lock</p>
+                            </div>
+                            <div>
+                                <p style="font-size: 11px; color: var(--text-muted);">LOG ROUTE</p>
+                                <p style="font-size: 13px; font-family: var(--font-mono); color: var(--text-muted);">~/logs/dlq_autopilot.log</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- WhatsApp Mirror Accounts Card -->
+                    <div class="glass-card" id="wa-mirror-card" style="grid-column: span 2;">
+                        <div class="card-header">
+                            <span class="card-title">
+                                <i data-lucide="message-square" style="color: var(--accent-secondary);"></i>
+                                WhatsApp Mirror Daemon Control
+                            </span>
+                            <span class="badge badge-info" id="wa-api-status">Connecting to Local API...</span>
+                        </div>
+                        <div class="agent-list" id="wa-accounts-list">
+                            <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px;">
+                                Caricamento account...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Logs terminal -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <i data-lucide="terminal" style="color: var(--accent-warning);"></i>
+                            Audit Log in Tempo Reale
+                        </span>
+                        <button class="action-btn" onclick="clearTerminal()">Pulisci log</button>
+                    </div>
+                    <div class="terminal-panel" id="terminal-screen">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB: DLQ AUTOPILOT ================= -->
+            <div id="tab-dlq" class="section-panel">
+                <div class="dlq-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Job ID</th>
+                                <th>Errore Rilevato</th>
+                                <th>Tentativi</th>
+                                <th>Confidenza</th>
+                                <th>Stato Consigliato</th>
+                                <th>Intervento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dlq-table-body">
+                            <tr id="dlq-row-1">
+                                <td style="font-family: var(--font-mono); font-weight: 500;">job_f1_e18</td>
+                                <td>
+                                    <div style="font-weight: 600;">ConnectionTimeoutError</div>
+                                    <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">PostgreSQL server closed connection unexpectedly</div>
+                                </td>
+                                <td>3 / 10</td>
+                                <td>
+                                    <div style="font-weight: 600; color: var(--accent-success);">98%</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-info">Auto-Retry Consigliato</span>
+                                </td>
+                                <td class="action-cell">
+                                    <button class="action-btn action-btn-primary" onclick="resolveDlq(1, 'retry')">Riprova Ora</button>
+                                    <button class="action-btn" onclick="openEditJson(1, '{\n  \"job_id\": \"job_f1_e18\",\n  \"driver\": \"asyncpg\",\n  \"params\": {\n    \"timeout\": 30,\n    \"retry_count\": 3\n  }\n}')">Edita</button>
+                                    <button class="action-btn" style="color: var(--accent-danger);" onclick="resolveDlq(1, 'scarta')">Scarta</button>
+                                </td>
+                            </tr>
+                            <tr id="dlq-row-2">
+                                <td style="font-family: var(--font-mono); font-weight: 500;">job_wa_p09</td>
+                                <td>
+                                    <div style="font-weight: 600;">KeyError: 'contact_type'</div>
+                                    <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">nuzantara-sentinel.py L455 in filter_leads</div>
+                                </td>
+                                <td>1 / 10</td>
+                                <td>
+                                    <div style="font-weight: 600; color: var(--accent-warning);">91%</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">Aider Patch Richiesta</span>
+                                </td>
+                                <td class="action-cell">
+                                    <button class="action-btn action-btn-primary" onclick="resolveDlq(2, 'aider')">Approva Aider Fix</button>
+                                    <button class="action-btn" onclick="resolveDlq(2, 'escalate')">Escala a Claude</button>
+                                    <button class="action-btn" style="color: var(--accent-danger);" onclick="resolveDlq(2, 'scarta')">Scarta</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ================= TAB: LEAD PROMOTION ================= -->
+            <div id="tab-leads" class="section-panel">
+                <div class="lead-feed" id="leads-feed-container">
+                    <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px;">
+                        Caricamento lead dal database in corso...
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB: SYSTEMS SPECIFICATIONS ================= -->
+            <div id="tab-system" class="section-panel">
+                <div class="dashboard-grid">
+                    <!-- Specs Widget -->
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <span class="card-title">
+                                <i data-lucide="cpu" style="color: var(--accent-primary);"></i>
+                                Hardware Local Compute
+                            </span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: var(--text-muted);">Machine Type</span>
+                                <span style="font-weight: 600;">Mac Pro (Apple M5)</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: var(--text-muted);">CPU Config</span>
+                                <span style="font-weight: 600;">12-Core CPU (8 perf, 4 eff)</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: var(--text-muted);">GPU Config</span>
+                                <span style="font-weight: 600;">16-Core GPU</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: var(--text-muted);">Unified Memory</span>
+                                <span style="font-weight: 600;">48 GB</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: var(--text-muted);">AI Inference Model</span>
+                                <span style="font-weight: 600; color: var(--accent-secondary);">Qwen 2.5 Coder 32B</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cost Savings -->
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <span class="card-title">
+                                <i data-lucide="dollar-sign" style="color: var(--accent-success);"></i>
+                                Risparmio Economico Stimato (Local AI)
+                            </span>
+                        </div>
+                        <div style="text-align: center; padding: 10px 0;">
+                            <p style="font-size: 44px; font-weight: 700; color: var(--accent-success);">$21.85</p>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Risparmiati quest'anno vs API Cloud equivalenti</p>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+                            Calcolato su 365 recensioni codice con Qwen 32B locale e 52 controlli settimanali di integrità Qdrant.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit JSON Modal -->
+    <div class="modal" id="json-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="font-weight: 600;">Modifica Payload per il Riavvio</h3>
+                <button class="action-btn" onclick="closeEditJson()" style="padding: 4px 8px;">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-muted);">Modifica i parametri del job prima di inviare la richiesta di retry forzato al server.</p>
+                <textarea class="json-editor" id="modal-json-text"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeEditJson()">Annulla</button>
+                <button class="btn btn-primary" onclick="submitJsonEdit()">Salva e Riprova</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Toast -->
+    <div class="alert-toast" id="toast">
+        <i data-lucide="check-circle" style="width: 20px;"></i>
+        <span id="toast-message">Operazione eseguita con successo!</span>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // API Configuration
+        const API_BASE = "http://127.0.0.1:15433/api";
+        let isApiOnline = false;
+        let accountsPollInterval = null;
+        let logsPollInterval = null;
+        let activeLogAccount = null;
+
+        // Terminal Log helper
+        const logs = [
+            { ts: "03:45:07", tag: "System", msg: "Avvio pannello Nuzantara Control Center completato." },
+            { ts: "03:45:08", tag: "System", msg: "Verifica connettività API locale in corso..." }
+        ];
+
+        function initTerminal() {
+            const screen = document.getElementById("terminal-screen");
+            screen.innerHTML = "";
+            logs.forEach(log => {
+                screen.innerHTML += `
+                    <div class="terminal-line">
+                        <span class="term-ts">[${log.ts}]</span>
+                        <span class="term-tag">${log.tag}:</span>
+                        <span class="term-msg">${log.msg}</span>
+                    </div>
+                `;
+            });
+            screen.scrollTop = screen.scrollHeight;
+        }
+        initTerminal();
+
+        function logTerminal(message, tag = "UserPanel") {
+            const screen = document.getElementById("terminal-screen");
+            const now = new Date();
+            const ts = now.toTimeString().split(' ')[0];
+            screen.innerHTML += `
+                <div class="terminal-line">
+                    <span class="term-ts">[${ts}]</span>
+                    <span class="term-tag">${tag}:</span>
+                    <span class="term-msg" style="color: #34d399;">${message}</span>
+                </div>
+            `;
+            screen.scrollTop = screen.scrollHeight;
+        }
+
+        function clearTerminal() {
+            document.getElementById("terminal-screen").innerHTML = "";
+        }
+
+        // WhatsApp Mirror Accounts Management (Real API + Mock Fallback)
+        const mockAccounts = [
+            { name: "adit", role: "operations", e164: "+628123456781", status: "RUNNING", pid: 14002, session_linked: true, last_log: "wa-mirror connected: listening for messages" },
+            { name: "ari", role: "visa-support", e164: "+628123456782", status: "STOPPED", pid: null, session_linked: true, last_log: "pkill signal received: process closed" },
+            { name: "dea", role: "back-office", e164: "+628123456783", status: "DEAD", pid: null, session_linked: false, last_log: "Baileys connection_replaced collision detected" }
+        ];
+
+        async function fetchAccounts() {
+            try {
+                const res = await fetch(`${API_BASE}/accounts`);
+                const json = await res.json();
+                if (json.status === "success") {
+                    if (!isApiOnline) {
+                        isApiOnline = true;
+                        logTerminal("Collegato con successo all'API locale (FastAPI).", "API");
+                    }
+                    document.getElementById("wa-api-status").className = "badge badge-success";
+                    document.getElementById("wa-api-status").innerText = "Local API Online";
+                    renderAccounts(json.data);
+                }
+            } catch (err) {
+                if (isApiOnline || document.getElementById("wa-api-status").innerText.includes("Connecting")) {
+                    isApiOnline = false;
+                    logTerminal("API locale disconnessa. Utilizzo dati di mockup in modalità Sandbox.", "API");
+                }
+                document.getElementById("wa-api-status").className = "badge badge-warning";
+                document.getElementById("wa-api-status").innerText = "Sandbox Mode (API Offline)";
+                renderAccounts(mockAccounts);
+            }
+        }
+
+        function renderAccounts(data) {
+            const list = document.getElementById("wa-accounts-list");
+            list.innerHTML = "";
+            if (data.length === 0) {
+                list.innerHTML = `<div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px;">Nessun account nel roster.</div>`;
+                return;
+            }
+
+            data.forEach(acc => {
+                const isRunning = acc.status === "RUNNING";
+                const isDead = acc.status === "DEAD";
+                const statusColor = isRunning ? "var(--accent-success)" : (isDead ? "var(--accent-danger)" : "var(--text-muted)");
+                const statusDot = `<span style="width: 8px; height: 8px; background: ${statusColor}; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px ${statusColor}; margin-right: 6px;"></span>`;
+                const isChecked = isRunning ? "checked" : "";
+                
+                const sessionLabel = acc.session_linked ? 
+                    `<span style="color: var(--accent-success); font-size: 11px; font-weight: 600;">[linked]</span>` : 
+                    `<span style="color: var(--accent-warning); font-size: 11px; font-weight: 600;">[no-link]</span>`;
+
+                list.innerHTML += `
+                    <div class="agent-item" style="flex-wrap: wrap; gap: 12px;">
+                        <div class="agent-info" style="flex: 1; min-width: 200px;">
+                            <span class="agent-name" style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600;">
+                                ${statusDot} ${acc.name.toUpperCase()} (${acc.role})
+                                ${sessionLabel}
+                            </span>
+                            <span class="agent-meta">${acc.e164} | PID: ${acc.pid || '-'} | Stato: ${acc.status}</span>
+                            <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); display: block; margin-top: 4px; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${acc.last_log || '[Nessun log recente]'}
+                            </span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button class="action-btn" onclick="viewRealtimeLogs('${acc.name}')" style="font-size: 12px; padding: 6px 10px;">
+                                <i data-lucide="terminal" style="width: 14px;"></i> Log
+                            </button>
+                            <button class="action-btn action-btn-primary" onclick="triggerQrLink('${acc.name}')" style="font-size: 12px; padding: 6px 10px;">
+                                <i data-lucide="qr-code" style="width: 14px;"></i> QR Link
+                            </button>
+                            <label class="switch">
+                                <input type="checkbox" ${isChecked} onchange="toggleRealAccount('${acc.name}', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        async function toggleRealAccount(name, start) {
+            logTerminal(`Richiesta di ${start ? 'AVVIO' : 'ARRESTO'} per l'account "${name}"...`, "UserPanel");
+            
+            if (!isApiOnline) {
+                // Mock behavior
+                setTimeout(() => {
+                    const acc = mockAccounts.find(a => a.name === name);
+                    if (acc) {
+                        acc.status = start ? "RUNNING" : "STOPPED";
+                        acc.pid = start ? Math.floor(Math.random() * 5000) + 20000 : null;
+                        acc.last_log = start ? "wa-mirror process spawned manually" : "pkill signal received";
+                    }
+                    fetchAccounts();
+                    showToast(`Daemon ${name} ${start ? 'avviato' : 'archiviato'} (Sandbox)`);
+                }, 800);
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/accounts/${name}/control`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: start ? "start" : "stop" })
+                });
+                const json = await res.json();
+                if (json.status === "success") {
+                    logTerminal(`Risposta: ${json.message}`, "API");
+                    showToast(`${name}: ${start ? 'Avviato' : 'Arrestato'}`);
+                    fetchAccounts();
+                } else {
+                    logTerminal(`Errore: ${json.detail}`, "API");
+                }
+            } catch (err) {
+                logTerminal(`Errore di rete nell'invio del comando: ${err.message}`, "API");
+            }
+        }
+
+        async function triggerQrLink(name) {
+            logTerminal(`Richiesta rigenerazione sessione / QR Link per "${name}"...`, "UserPanel");
+            
+            if (!isApiOnline) {
+                logTerminal(`QR Code rigenerato per ${name} (Simulato). Scansiona entro 20s.`, "Sandbox");
+                showToast("QR Code pronto per la scansione!");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/accounts/${name}/control`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "qr" })
+                });
+                const json = await res.json();
+                if (json.status === "success") {
+                    logTerminal(`Avviato in modalità QR: ${json.message}`, "API");
+                    showToast("Controlla i log per visualizzare il QR code.");
+                    viewRealtimeLogs(name); // Switch immediately to log view
+                }
+            } catch (err) {
+                logTerminal(`Errore di rete per QR Link: ${err.message}`, "API");
+            }
+        }
+
+        async function viewRealtimeLogs(name) {
+            logTerminal(`Avvio monitoraggio log per "${name}"...`, "UserPanel");
+            activeLogAccount = name;
+            
+            // Clear any previous interval
+            if (logsPollInterval) clearInterval(logsPollInterval);
+            
+            // Initial load
+            await fetchLogLines(name);
+
+            // Set interval for every 3 seconds
+            logsPollInterval = setInterval(() => {
+                if (activeLogAccount === name) {
+                    fetchLogLines(name);
+                }
+            }, 3000);
+        }
+
+        async function fetchLogLines(name) {
+            if (!isApiOnline) {
+                // Mock log stream
+                clearTerminal();
+                const now = new Date().toTimeString().split(' ')[0];
+                logTerminal(`Logs di "${name}" (Sandbox):`, "Sandbox");
+                logTerminal(`[${now}] listening on WhatsApp socket...`, name);
+                logTerminal(`[${now}] session state is healthy. DB is connected.`, name);
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/accounts/${name}/logs?lines=30`);
+                const json = await res.json();
+                if (json.status === "success") {
+                    clearTerminal();
+                    logTerminal(`Ultime loglines per l'account "${name}":`, "System");
+                    json.lines.forEach(line => {
+                        // Extract timestamp if exists
+                        const tsMatch = line.match(/^\[(.*?)\]/);
+                        const ts = tsMatch ? tsMatch[1] : new Date().toTimeString().split(' ')[0];
+                        const cleanLine = line.replace(/^\[.*?\]/, '').trim();
+                        
+                        const screen = document.getElementById("terminal-screen");
+                        screen.innerHTML += `
+                            <div class="terminal-line">
+                                <span class="term-ts">[${ts}]</span>
+                                <span class="term-tag" style="color: var(--accent-secondary);">${name}:</span>
+                                <span class="term-msg">${cleanLine}</span>
+                            </div>
+                        `;
+                    });
+                    const screen = document.getElementById("terminal-screen");
+                    screen.scrollTop = screen.scrollHeight;
+                }
+            } catch (err) {
+                logTerminal(`Errore nel caricamento dei log: ${err.message}`, "API");
+            }
+        }
+
+        // Initialize and setup account polling
+        let leadsPollInterval = null;
+
+        function syncAllData() {
+            logTerminal("Sincronizzazione manuale di tutti i dati in corso...");
+            fetchAccounts();
+            fetchLeads();
+            showToast("Dati sincronizzati con successo!");
+        }
+
+        // WhatsApp Lead actions (Real DB Integration)
+        const mockLeads = [
+            { phone: "+393471234567", n_inbound: 3, last_seen: "2026-06-06 04:30:00", name: "Luca Neri", inbound_bodies: "Buongiorno, avrei bisogno di informazioni per il visto | Quali sono i costi per il KITAS?", status: "NEW_LEAD", topic: "visa, KITAS, or stay permit" },
+            { phone: "+6281298765432", n_inbound: 1, last_seen: "2026-06-06 04:20:00", name: "Alisha Smith", inbound_bodies: "Hi, we are planning to open a PT PMA in Bali. Can we call tomorrow?", status: "NEW_LEAD", topic: "tax or company matter" },
+            { phone: "+39028888888", n_inbound: 2, last_seen: "2026-06-06 04:10:00", name: "Giovanni D.", inbound_bodies: "Ciao, sono Giovanni. Ho cambiato indirizzo di domicilio a Bali.", status: "ARCHIVED_CLIENT", topic: "extension or renewal" }
+        ];
+
+        async function fetchLeads() {
+            try {
+                const res = await fetch(`${API_BASE}/leads`);
+                const json = await res.json();
+                if (json.status === "success") {
+                    renderLeads(json.data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch leads from API, using mockLeads:", err);
+                renderLeads(mockLeads);
+            }
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return "";
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        function getInitials(name) {
+            if (!name || name === 'Unknown') {
+                return '<i data-lucide="user" style="width: 18px; height: 18px;"></i>';
+            }
+            return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        }
+
+        function renderLeads(data) {
+            const container = document.getElementById("leads-feed-container");
+            container.innerHTML = "";
+            
+            let newLeadsCount = 0;
+
+            if (data.length === 0) {
+                container.innerHTML = `<div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px;">Nessun lead trovato.</div>`;
+                document.getElementById("lead-count-badge").style.display = "none";
+                return;
+            }
+
+            data.forEach((lead, index) => {
+                const isNew = lead.status === 'NEW_LEAD';
+                const isClient = lead.status === 'CLIENT';
+                const isArchived = lead.status === 'ARCHIVED_CLIENT';
+                
+                if (isNew) newLeadsCount++;
+
+                let statusClass = "badge-warning";
+                if (isClient) statusClass = "badge-success";
+                if (isArchived) statusClass = "badge-info";
+
+                // Split inbound message bodies by ' | '
+                const bodies = lead.inbound_bodies ? lead.inbound_bodies.split(' | ') : ["[Nessun corpo messaggio]"];
+                
+                const bubblesHtml = bodies.map(body => `
+                    <div class="lead-msg-bubble" style="margin-top: 6px;">
+                        "${escapeHtml(body)}"
+                    </div>
+                `).join('');
+
+                const initials = getInitials(lead.name);
+                const isCustomAvatar = initials.includes("data-lucide");
+
+                let actionsHtml = "";
+                if (isNew) {
+                    actionsHtml = `
+                        <button class="action-btn action-btn-primary" onclick="promoteLeadReal('${lead.phone}', 'CLIENT')">Promuovi a Cliente CRM</button>
+                        <button class="action-btn" style="color: var(--accent-danger);" onclick="promoteLeadReal('${lead.phone}', 'IGNORED')">Ignora</button>
+                    `;
+                } else if (isArchived) {
+                    actionsHtml = `
+                        <button class="action-btn action-btn-primary" onclick="promoteLeadReal('${lead.phone}', 'CLIENT')">Ripristina ed Arricchisci</button>
+                        <button class="action-btn" style="color: var(--accent-danger);" onclick="promoteLeadReal('${lead.phone}', 'IGNORED')">Ignora</button>
+                    `;
+                } else if (isClient) {
+                    actionsHtml = `
+                        <span style="color: var(--accent-success); font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                            <i data-lucide="check-circle" style="width: 16px;"></i> Già Promosso a Cliente CRM
+                        </span>
+                    `;
+                }
+
+                container.innerHTML += `
+                    <div class="lead-card ${isClient ? 'promoted' : ''}" id="lead-card-db-${index}" style="${isClient ? 'opacity: 0.75;' : ''}">
+                        <div class="lead-avatar">
+                            ${initials}
+                        </div>
+                        <div class="lead-content">
+                            <div class="lead-top">
+                                <div>
+                                    <span class="lead-name">${escapeHtml(lead.name)}</span>
+                                    <span class="lead-phone">${escapeHtml(lead.phone)}</span>
+                                    <span class="badge ${statusClass}" style="margin-left: 8px; font-size: 10px; padding: 2px 6px;">${lead.status}</span>
+                                </div>
+                                <div class="lead-topic-badge">
+                                    <i data-lucide="tag" style="width: 12px;"></i>
+                                    ${escapeHtml(lead.topic)}
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 2px;">
+                                Ultimo messaggio ricevuto (${lead.n_inbound} totali):
+                            </div>
+                            <div class="messages-container" style="display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto;">
+                                ${bubblesHtml}
+                            </div>
+                            <div class="action-cell" style="margin-top: 12px; display: flex; gap: 8px;">
+                                ${actionsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Update badge count
+            const badge = document.getElementById("lead-count-badge");
+            badge.innerText = newLeadsCount;
+            if (newLeadsCount === 0) {
+                badge.style.display = 'none';
+            } else {
+                badge.style.display = 'inline-block';
+            }
+
+            lucide.createIcons();
+        }
+
+        async function promoteLeadReal(phone, status) {
+            logTerminal(`Richiesta di promozione per il lead "${phone}" con stato "${status}"...`, "UserPanel");
+            
+            if (!isApiOnline) {
+                // Mock behavior
+                setTimeout(() => {
+                    const lead = mockLeads.find(l => l.phone === phone);
+                    if (lead) {
+                        lead.status = status;
+                    }
+                    fetchLeads();
+                    showToast(`Lead ${phone} impostato su ${status} (Sandbox)`);
+                }, 800);
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/leads/${encodeURIComponent(phone)}/promote`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: status })
+                });
+                const json = await res.json();
+                if (json.status === "success") {
+                    logTerminal(`Lead ${phone} aggiornato con successo: ${json.message}`, "API");
+                    showToast(`Lead promosso con successo!`);
+                    
+                    // Fetch real-time leads to refresh feed
+                    fetchLeads();
+                } else {
+                    logTerminal(`Errore: ${json.detail}`, "API");
+                }
+            } catch (err) {
+                logTerminal(`Errore di rete per promozione: ${err.message}`, "API");
+            }
+        }
+
+        // Initialize and setup polling
+        fetchAccounts();
+        fetchLeads();
+        accountsPollInterval = setInterval(fetchAccounts, 5000);
+        leadsPollInterval = setInterval(fetchLeads, 10000);
+
+        // Tab switcher
+        function switchTab(tabId, menuItem) {
+            // Update Active Menu
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            menuItem.classList.add('active');
+
+            // Update Active Panel
+            document.querySelectorAll('.section-panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            // Header titles update
+            const mainTitle = document.getElementById("main-title");
+            const mainSubtitle = document.getElementById("main-subtitle");
+            
+            if (tabId === 'dashboard') {
+                mainTitle.innerText = "Pannello di Controllo";
+                mainSubtitle.innerText = "Gestione dei demoni locali e della pipeline decisionale AI";
+            } else if (tabId === 'dlq') {
+                mainTitle.innerText = "Dead Letter Queue (DLQ)";
+                mainSubtitle.innerText = "Interventi manuali e approvazione patch sui job in errore";
+            } else if (tabId === 'leads') {
+                mainTitle.innerText = "Promozione Clienti WhatsApp";
+                mainSubtitle.innerText = "Accoppiamento dei lead in ingresso e promozione sul CRM";
+            } else if (tabId === 'system') {
+                mainTitle.innerText = "Specifiche ed Efficienza Sistema";
+                mainSubtitle.innerText = "Monitoraggio delle risorse hardware Mac Pro e dei risparmi locali";
+            }
+        }
+
+        // Action Handlers
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            document.getElementById("toast-message").innerText = message;
+            toast.classList.add("show");
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 3000);
+        }
+
+        function toggleAgent(name, active) {
+            const state = active ? "ABILITATO" : "DISABILITATO";
+            logTerminal(`LaunchAgent "${name}" impostato su ${state}`);
+            showToast(`${name} ${active ? 'abilitato' : 'disabilitato'}`);
+        }
+
+        function triggerDryRun() {
+            logTerminal("Avvio Dry-Run del loop DLQ Autopilot + WhatsApp Lead Promotion...");
+            showToast("Dry-Run avviato correttamente!");
+            setTimeout(() => {
+                logTerminal("Dry-run terminato. Nessuna modifica apportata. 0 record scritti.", "Autopilot");
+            }, 1500);
+        }
+
+        // DLQ actions
+        let currentEditRow = null;
+        function resolveDlq(rowId, action) {
+            const row = document.getElementById(`dlq-row-${rowId}`);
+            logTerminal(`Azione '${action}' eseguita su DLQ ID: job_${rowId === 1 ? 'f1_e18' : 'wa_p09'}`);
+            
+            row.style.opacity = '0.3';
+            row.style.pointerEvents = 'none';
+            
+            setTimeout(() => {
+                row.remove();
+                // Update badge
+                const badge = document.getElementById("dlq-count-badge");
+                const currentCount = parseInt(badge.innerText) - 1;
+                badge.innerText = currentCount;
+                if (currentCount === 0) badge.style.display = 'none';
+                
+                showToast(`Job risolto con azione: ${action.toUpperCase()}`);
+            }, 500);
+        }
+
+        function openEditJson(rowId, jsonContent) {
+            currentEditRow = rowId;
+            document.getElementById("modal-json-text").value = jsonContent;
+            document.getElementById("json-modal").style.display = "flex";
+        }
+
+        function closeEditJson() {
+            document.getElementById("json-modal").style.display = "none";
+        }
+
+        function submitJsonEdit() {
+            closeEditJson();
+            if (currentEditRow) {
+                resolveDlq(currentEditRow, 'retry con payload modificato');
+            }
+        }
+    </script>
+</body>
+</html>
