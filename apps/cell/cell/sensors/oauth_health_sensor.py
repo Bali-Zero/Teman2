@@ -59,6 +59,11 @@ _HEALTH_TO_COLOR: dict[str, tuple[str, str]] = {
     "ok": ("green", "credential present and renewable"),
     "no-token": ("red", "no OAuth row in google_drive_tokens"),
     "no-refresh": ("red", "no refresh_token — cannot renew, re-auth required"),
+    # Yellow, not red: a frozen `updated_at` means either the credential was
+    # revoked or nobody used Drive, and this table cannot tell them apart. The
+    # organ that knows is the consumer's own failure. Yellow is "look", which
+    # is exactly what it is worth.
+    "stale-refresh": ("yellow", "no refresh in 3+ days — revoked, or unused"),
 }
 
 # Values the watchdog wrote before 2026-08-06, off the wrong scale. A state

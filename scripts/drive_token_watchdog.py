@@ -50,6 +50,19 @@ STATE_FILE = STATE_DIR / "drive_oauth_watchdog.state.json"
 HEALTH_OK = "ok"
 HEALTH_NO_ROWS = "no-token"
 HEALTH_NO_REFRESH = "no-refresh"
+HEALTH_STALE_REFRESH = "stale-refresh"
+
+# A row whose consumer runs daily refreshes daily — refresh is lazy-on-use, so
+# `updated_at` advancing IS the consumer succeeding. Three days = three missed
+# runs, past any single-night flake.
+STALE_REFRESH_DAYS = 3
+
+# Excluded from the staleness check, by ENTITY and not by shape: this exact row
+# is left unrefreshed ON PURPOSE since 2026-05-10 —
+# `GoogleDriveService._refresh_token` early-returns for it because Drive moved
+# to ServiceAccountDriveService. Its `updated_at` has been frozen since
+# 2026-06-15 and that is the intended state, not a fault.
+UNREFRESHED_BY_DESIGN = frozenset({"SYSTEM"})
 
 # SA key threshold (separate from OAuth — SA keys never expire by default,
 # but rotation policy = 30 days)
@@ -74,7 +87,9 @@ class OAuthHealth:
     detail: str   # one line of context for the log, always populated
 
 
-def classify_oauth_health(rows: list[dict]) -> OAuthHealth:
+def classify_oauth_health(
+    rows: list[dict], now_utc: datetime | None = None
+) -> OAuthHealth:
     """
     Judge the OAuth credential from what `google_drive_tokens` can actually say.
 
@@ -104,15 +119,35 @@ def classify_oauth_health(rows: list[dict]) -> OAuthHealth:
       - no rows                → the credential does not exist. Real P0.
       - a row without a        → `get_valid_token` returns None forever; no
         refresh_token            re-auth can happen by itself. Real P0.
-      - otherwise              → healthy. Refresh is lazy-on-use, so nothing
-                                 here predicts a future failure.
+      - a refreshable row      → its consumer has not succeeded in that long.
+        frozen for 3+ days       Not a P0; a digest note. See below.
+      - otherwise              → healthy.
 
-    DECLARED LIMIT, deliberately not alarmed on: the age of `updated_at` does
-    NOT separate "unused" from "refresh is failing" — both look identical from
-    this table — and the SYSTEM row is left unrefreshed *on purpose* since
-    2026-05-10 (`_refresh_token` early-returns for it; Drive runs on
-    ServiceAccountDriveService). Alarming on that age would rebuild the same
-    false-positive one field to the left. It is reported as context only.
+    THE STALENESS RULE, and why it is here rather than in the "declared limit"
+    where an earlier draft of this function put it. Refresh is lazy-on-use, so
+    `updated_at` advancing IS a consumer succeeding — and when a refresh token
+    is REVOKED the column simply stops moving, because every attempt now fails.
+    That is exactly what happened, and it is the only trace the table kept:
+
+        row 7dfe56b2…  last successful refresh  2026-07-25 19:02
+        GARUDA indexer (daily 20:36, GARUDA_DRIVE_USER_ID = that row):
+            `invalid_grant: Token has been expired or revoked`, every night
+        re-authorised by hand                   2026-08-06 11:11
+
+    Twelve days frozen, twelve nights of a real outage, and nothing said so.
+    A revoked token still has `refresh_token IS NOT NULL`, so the P0 above
+    cannot see this; the freeze can.
+
+    DECLARED LIMITS on that rule, both deliberate:
+      - It cannot distinguish "the credential is dead" from "nobody used
+        Drive". That is why it is a DIGEST note, not a P0 — the ground truth
+        is a consumer's own failure (`zantara_media.alerts`), and this is the
+        cheap early hint, not a replacement for it.
+      - It assumes a consumer that runs at least every STALE_REFRESH_DAYS. One
+        that ran weekly would read stale while perfectly healthy. Today the one
+        non-SYSTEM row has a daily consumer; a weekly one would need its own
+        threshold rather than a blanket raise.
+      - `SYSTEM` is excluded: unrefreshed on purpose since 2026-05-10.
     """
     if not rows:
         return OAuthHealth(
@@ -140,9 +175,37 @@ def classify_oauth_health(rows: list[dict]) -> OAuthHealth:
         )
 
     ages = ", ".join(
-        f"{r.get('user_id', '?')} rinnovato {_age_text(r.get('updated_at'))}"
+        f"{r.get('user_id', '?')} rinnovato {_age_text(r.get('updated_at'), now_utc)}"
         for r in rows
     )
+
+    frozen = []
+    for r in rows:
+        if str(r.get("user_id")) in UNREFRESHED_BY_DESIGN:
+            continue
+        age = _age_days(r.get("updated_at"), now_utc)
+        # An unparseable timestamp is NOT staleness: it is a read we could not
+        # make, and calling it a fault would put a false digest note on a
+        # healthy row every six hours. The parse failure surfaces as "?" in
+        # `detail`, where a human sees it.
+        if age is not None and age >= STALE_REFRESH_DAYS:
+            frozen.append((str(r.get("user_id", "?")), age))
+
+    if frozen:
+        who = ", ".join(f"{u} ({a:.0f}g)" for u, a in frozen)
+        return OAuthHealth(
+            verdict=HEALTH_STALE_REFRESH,
+            message=(
+                f"🟡 <b>Drive OAuth</b>: nessun rinnovo da {STALE_REFRESH_DAYS}+ "
+                f"giorni ({who})\n"
+                "Il rinnovo avviene all'uso: o il consumatore è fermo, o il "
+                "refresh_token è stato REVOCATO (in DB sembra identico).\n"
+                "Conferma nel log del consumatore — un <code>invalid_grant</code> "
+                "lì è la prova."
+            ),
+            detail=f"stale: {who} — {len(rows)} righe, {ages}",
+        )
+
     return OAuthHealth(
         verdict=HEALTH_OK,
         message="",
@@ -177,9 +240,9 @@ def should_alert(current: str, last: Optional[str]) -> bool:
     """
     Return True iff the OAuth verdict is broken AND it is not a repeat.
 
-    The severity ladder this replaced existed to rank six tiers. With two
-    failure modes and no countdown there is nothing to rank: speak when the
-    verdict is bad and it is not the same bad verdict we already sent.
+    The severity ladder this replaced existed to rank six tiers. With three
+    verdicts and no countdown there is nothing to rank: speak when the verdict
+    is bad and it is not the same bad verdict we already sent.
 
     A CHANGED failure (no-token → no-refresh) speaks again: it is different
     news, and the remedy line differs. Recovery is silent, as before.
@@ -210,8 +273,14 @@ def _load_env() -> dict[str, str]:
     return env
 
 
-def _send_telegram(text: str, bot_token: str, condition: str = "alert") -> bool:
+def _send_telegram(
+    text: str, bot_token: str, condition: str = "alert", tier: str = "p0"
+) -> bool:
     """Route via the tg_notify gateway (2026-07-11 migration, cohort-5).
+
+    `tier` is a parameter and not a constant since 2026-08-06: the staleness
+    note is a "look at this", not a "act now", and sending it p0 would spend
+    the daily budget of the two verdicts that ARE actionable.
 
     p0 tier: alerts only fire on an escalating tier (URGENT/CRITICAL) or an
     expired SA key — actionable now, Drive polling either already broke or
@@ -252,7 +321,7 @@ def _send_telegram(text: str, bot_token: str, condition: str = "alert") -> bool:
     dedup_key = f"drive-token-watchdog:{condition}:{socket.gethostname().split('.')[0]}"
     try:
         proc = subprocess.run(
-            [sys.executable, str(gateway), "--tier", "p0",
+            [sys.executable, str(gateway), "--tier", tier,
              "--source", "drive-token-watchdog",
              "--dedup-key", dedup_key, "--", text],
             capture_output=True, text=True, timeout=30,
@@ -454,24 +523,34 @@ def parse_expires_at(expires_str: str) -> datetime:
     return datetime.fromisoformat(expires_str).replace(tzinfo=timezone.utc)
 
 
-def _age_text(ts: object, now_utc: datetime | None = None) -> str:
-    """Human age of a timestamp, for CONTEXT lines only — never a verdict.
+def _age_days(ts: object, now_utc: datetime | None = None) -> float | None:
+    """Age of a timestamp in days, or None if it cannot be read.
 
-    Returns "?" rather than raising: this feeds the log/detail string, and a
-    watchdog must not die describing itself. Deliberately not a number a
-    caller could threshold on — see `classify_oauth_health`'s declared limit.
+    None is not zero and not "fresh": callers must treat it as "unknown" and
+    never as a fault, or an unparseable row becomes a recurring false alarm.
     """
     if not isinstance(ts, str) or not ts:
-        return "?"
+        return None
     try:
         when = parse_expires_at(ts)
     except Exception:
+        return None
+    return ((now_utc or datetime.now(timezone.utc)) - when).total_seconds() / 86400
+
+
+def _age_text(ts: object, now_utc: datetime | None = None) -> str:
+    """Human age of a timestamp, for CONTEXT lines only.
+
+    Returns "?" rather than raising: this feeds the log/detail string, and a
+    watchdog must not die describing itself.
+    """
+    days = _age_days(ts, now_utc)
+    if days is None:
         return "?"
-    delta = (now_utc or datetime.now(timezone.utc)) - when
-    hours = delta.total_seconds() / 3600
+    hours = days * 24
     if hours < 48:
         return f"{hours:.0f}h fa"
-    return f"{hours / 24:.0f}g fa"
+    return f"{days:.0f}g fa"
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +596,7 @@ def main() -> int:
             if not isinstance(rows, list):
                 raise TypeError(f"'rows' non è una lista: {type(rows).__name__}")
 
-            health = classify_oauth_health(rows)
+            health = classify_oauth_health(rows, now_utc)
             new_oauth_health = health.verdict
             log(f"OAuth: {health.verdict} — {health.detail}")
 
@@ -586,7 +665,17 @@ def main() -> int:
         # same combination always yields the same key, and joined so a message
         # that carries two facts cannot be mistaken for either one alone.
         condition = "+".join(sorted(set(alert_kinds))) or "alert"
-        delivered = _send_telegram(message, bot_token, condition)
+        # One message carries every fact of this run, so the tier is decided by
+        # the LOUDEST of them: digest only when staleness is all there is.
+        # Anything actionable in the bundle pulls the whole thing to p0 —
+        # burying a "no refresh_token" inside a digest flush would be the same
+        # class of mistake as shouting the staleness note.
+        tier = (
+            "digest"
+            if set(alert_kinds) == {HEALTH_STALE_REFRESH}
+            else "p0"
+        )
+        delivered = _send_telegram(message, bot_token, condition, tier)
         print(f"[drive-watchdog] {len(alerts)} alert{'s' if len(alerts) > 1 else ''} inviato: {delivered}")
     else:
         print(f"[drive-watchdog] {timestamp} — tutto OK (token valido, SA key OK)")
