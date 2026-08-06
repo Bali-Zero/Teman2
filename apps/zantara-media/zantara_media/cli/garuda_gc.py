@@ -44,7 +44,7 @@ async def async_main(dry_run: bool, batch_size: int) -> int:
         return 0
     except Exception as e:
         logger.exception("GC failed: %s", e)
-        await send_critical_alert(f"💥 GARUDA GC FAILED: {e}")
+        await send_critical_alert(f"💥 GARUDA GC FAILED: {e}", condition="gc-crash")
         return 1
 
 

@@ -62,7 +62,8 @@ async def async_main(worker_name: str, dry_run: bool) -> int:
         consecutive = result.get("errors", 0)
         if consecutive >= 3:
             await send_critical_alert(
-                f"⚠️ GARUDA indexer: {consecutive} errors in last run (worker={worker_name})"
+                f"⚠️ GARUDA indexer: {consecutive} errors in last run (worker={worker_name})",
+                condition="indexer-errors",
             )
 
         # The OAuth expiry check that used to live here is DELETED, 2026-08-06.
@@ -95,7 +96,9 @@ async def async_main(worker_name: str, dry_run: bool) -> int:
         return 0
     except Exception as e:
         logger.exception("Fatal error in indexer: %s", e)
-        await send_critical_alert(f"💥 GARUDA indexer CRASHED: {e}")
+        await send_critical_alert(
+            f"💥 GARUDA indexer CRASHED: {e}", condition="indexer-crash"
+        )
         return 1
 
 
