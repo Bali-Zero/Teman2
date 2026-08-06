@@ -37,6 +37,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -336,21 +337,64 @@ def render_text(reports: list[WindowReport]) -> str:
     return "\n".join(lines)
 
 
-def send_telegram(text: str) -> None:
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+# For `--tier digest` the HEALTHY verdict is `spooled`: tg_digest_flush.py sends
+# one grouped message per slot, so demanding `sent` here would paint a permanent
+# false red on a working organ. `deduped` and `logged` are equally benign gateway
+# decisions. Everything else — above all NO verdict at all, which is exactly what
+# a missing, unreadable or crashed gateway looks like — means this organ computed
+# its numbers and then lost its voice, which is the failure that matters.
+_GATEWAY_DELIVERED = frozenset({"spooled", "sent", "deduped", "logged"})
+
+
+def send_telegram(text: str) -> str:
+    """Hand the digest to the gateway and return ITS verdict, never a guess.
+
+    The gateway always exits 0 on purpose ("NEVER fail the caller" is written
+    into it) and prints `tg_notify: <status>` on stderr. Judging it by the exit
+    code therefore reads every refusal as a success (W104), and dropping its
+    output leaves an undelivered digest with no trace of not having been
+    delivered (W108). So: read the verdict, and hand it back.
+    """
     gateway = Path(__file__).resolve().parent / "tg_notify.py"
+    if not gateway.is_file():
+        return f"no gateway at {gateway}"
     cmd = [
+        # Absolute interpreter, not a PATH lookup: the alarm must not share a
+        # failure mode with the thing it reports (W108).
         sys.executable,
         str(gateway),
         "--tier",
         "digest",
         "--source",
         "web-lead-funnel",
+        # Keyed to this organ's real cadence. The gateway collapses a repeated
+        # key inside TG_DEDUP_HOURS (6h default), so a weekly report never
+        # collides with itself — but a key that lies about the cadence would
+        # mislead the next person who changes it.
         "--dedup-key",
-        "web-lead-funnel:daily",
+        "web-lead-funnel:weekly",
         "--",
         f"📈 Web leads | {text}",
     ]
-    subprocess.run(cmd, capture_output=True, timeout=30, check=False)
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30, check=False
+        )
+    except subprocess.TimeoutExpired:
+        return "gateway timed out after 30s"
+    except OSError as exc:
+        return f"gateway not runnable: {type(exc).__name__}: {exc}"
+
+    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    if not match:
+        tail = " ".join((proc.stderr or "").split())[-160:]
+        return (
+            f"gateway printed no verdict (rc={proc.returncode}): "
+            f"{tail or '<no stderr>'}"
+        )
+    return match.group(1)
 
 
 def main() -> int:
@@ -397,11 +441,18 @@ def main() -> int:
         print(text)
         if args.telegram:
             summary = next((r for r in reports if r.label == "7d"), reports[0])
-            send_telegram(
+            status = send_telegram(
                 f"7d: {summary.clicks} clicks (ceiling), "
                 f"{_fmt_arrived(summary.arrived)} arrived (floor), "
                 f"{summary.matched} matched"
             )
+            print(f"telegram: {status}", file=sys.stderr)
+            if status not in _GATEWAY_DELIVERED:
+                # The numbers are computed and printed above, so the run is not
+                # worthless — but nobody was told, and a weekly organ whose only
+                # job is to be read has failed at the only thing it does. Say so
+                # in the exit code, which is what the wrapper's heartbeat reports.
+                return 75  # EX_TEMPFAIL
     return 0
 
 

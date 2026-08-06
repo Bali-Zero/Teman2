@@ -22,6 +22,10 @@ Guilt and innocence are both asserted:
 - innocence  no mirror DSN  -> arrived is UNKNOWN, never 0
 - innocence  mirror raises  -> arrived is UNKNOWN, never 0, and the reason survives
 - innocence  a body that merely CONTAINS "li_" is not a lead
+- guilt      a gateway that is missing, silent or crashing is NOT delivery,
+             even though it exits 0 — the organ must know it lost its voice
+- innocence  `spooled` (the healthy verdict for a digest) and `deduped` are
+             gateway decisions, not failures, and must raise nothing
 """
 
 from __future__ import annotations
@@ -291,3 +295,100 @@ def test_rendered_report_always_names_ceiling_and_floor(monkeypatch):
     assert "ceiling" in text and "floor" in text
     # The reader must be told, in the artefact itself, why the two differ.
     assert "retyped it in their own words" in text
+
+
+# ── the organ's voice: it must know whether it actually spoke ────────────────
+#
+# `tg_notify.py` exits 0 by design — "NEVER fail the caller" is written into it
+# — and prints its verdict on stderr. So the exit code carries no information
+# about delivery, and a caller that reads it (or drops the output) reports a
+# digest nobody received as a success: W104's shape, with W108's consequence of
+# leaving no trace of not having spoken.
+#
+# These run a REAL subprocess against a REAL fake gateway on disk. Mocking
+# `subprocess.run` would only prove that the parser agrees with my imagination
+# of what the gateway prints (W114) — the fake belongs at the real boundary.
+
+
+def _fake_gateway(tmp_path, body: str):
+    """Plant a runnable stand-in gateway next to a stand-in module file."""
+    (tmp_path / "tg_notify.py").write_text(body)
+    return str(tmp_path / "web_lead_funnel_report.py")
+
+
+def test_a_missing_gateway_is_reported_not_assumed_delivered(monkeypatch, tmp_path):
+    # Nothing planted: the gateway simply is not there.
+    monkeypatch.setattr(wlr, "__file__", str(tmp_path / "web_lead_funnel_report.py"))
+    status = wlr.send_telegram("7d: 0 clicks")
+    assert status not in wlr._GATEWAY_DELIVERED
+    assert "no gateway" in status
+
+
+def test_a_gateway_that_exits_zero_in_silence_is_not_delivery(monkeypatch, tmp_path):
+    # The exact trap: success by exit code, silence by verdict.
+    monkeypatch.setattr(
+        wlr, "__file__", _fake_gateway(tmp_path, "import sys\nsys.exit(0)\n")
+    )
+    status = wlr.send_telegram("7d: 0 clicks")
+    assert status not in wlr._GATEWAY_DELIVERED
+    assert "no verdict" in status
+
+
+def test_a_gateway_that_crashes_is_reported_with_its_own_words(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        wlr,
+        "__file__",
+        _fake_gateway(tmp_path, "raise SystemExit('token file unreadable')\n"),
+    )
+    status = wlr.send_telegram("7d: 0 clicks")
+    assert status not in wlr._GATEWAY_DELIVERED
+    # The reason survives into the caller's log rather than being swallowed.
+    assert "token file unreadable" in status
+
+
+def test_spooled_is_the_healthy_verdict_for_a_digest(monkeypatch, tmp_path):
+    # INNOCENCE, and the load-bearing one: tier=digest is spooled by design and
+    # flushed later by tg_digest_flush.py. Demanding "sent" here would paint a
+    # permanent red on a perfectly healthy organ.
+    monkeypatch.setattr(
+        wlr,
+        "__file__",
+        _fake_gateway(
+            tmp_path, "import sys\nprint('tg_notify: spooled', file=sys.stderr)\n"
+        ),
+    )
+    assert wlr.send_telegram("7d: 0 clicks") == "spooled"
+    assert "spooled" in wlr._GATEWAY_DELIVERED
+
+
+def test_deduped_is_a_gateway_decision_not_a_failure(monkeypatch, tmp_path):
+    # INNOCENCE: a collapsed repeat is the gateway working, not the organ failing.
+    monkeypatch.setattr(
+        wlr,
+        "__file__",
+        _fake_gateway(
+            tmp_path, "import sys\nprint('tg_notify: deduped', file=sys.stderr)\n"
+        ),
+    )
+    assert wlr.send_telegram("7d: 0 clicks") in wlr._GATEWAY_DELIVERED
+
+
+def test_the_dedup_key_names_this_organs_real_cadence(monkeypatch, tmp_path):
+    # The gateway collapses a repeated key inside TG_DEDUP_HOURS. A weekly organ
+    # keyed ":daily" never actually collides, so nothing breaks today — which is
+    # precisely why the lie would survive until someone changed the cadence.
+    monkeypatch.setattr(
+        wlr,
+        "__file__",
+        _fake_gateway(
+            tmp_path,
+            "import sys\n"
+            "print('ARGV ' + ' '.join(sys.argv), file=sys.stderr)\n"
+            "print('tg_notify: spooled', file=sys.stderr)\n",
+        ),
+    )
+    import inspect
+
+    src = inspect.getsource(wlr.send_telegram)
+    assert "web-lead-funnel:weekly" in src
+    assert "web-lead-funnel:daily" not in src
