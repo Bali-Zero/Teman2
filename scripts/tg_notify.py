@@ -78,9 +78,16 @@ CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 # A condition that PERSISTS is not news each time it is re-measured. After the
 # first send, each further send of the same live condition mutes it for longer.
-# Measured on the real 31-day corpus (research/operations/2026-08-06-...):
-# flat 6h leaves 28.9 P0/day, this ladder leaves 12.6, and re-tiering the
-# timer-driven sources takes it to ~3 — the actual alarm rate.
+# Replayed over the real corpus (5202 events / 29.5d, 1525 of them P0, today
+# 51.6 P0/day): identity alone with a flat 6h window leaves 28.9 P0/day, this
+# ladder leaves 15.9, and re-tiering the 24 timer-driven sources to digest
+# leaves 4.7 — which IS the real alarm rate (138 of 1525 P0 are alarms; the
+# other 1387 are scheduled reports wearing an alarm's clothes).
+#
+# An earlier replay of this same line said 12.6 and "~3". It simulated a streak
+# that never resets, so windows grew without bound and it under-counted; the
+# shipped rule restarts the ladder when a condition goes quiet. The numbers
+# above are from the replay that models what this file actually does.
 #
 # The FIRST rung is TG_DEDUP_HOURS: this replaces a flat window with a growing
 # one, it does not retire the knob that names the first window. Deriving the
