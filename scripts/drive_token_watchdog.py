@@ -275,10 +275,49 @@ def _send_telegram(text: str, bot_token: str) -> bool:
         return False
 
 
-def _check_drive_token_via_fly() -> dict | None:
+# Cron's PATH is /usr/bin:/bin:/usr/sbin:/sbin — Homebrew is NOT on it, and
+# flyctl lives in /opt/homebrew/bin. Calling bare "fly" therefore worked in
+# every interactive test and failed on every scheduled run, which is how this
+# watchdog sent 65 identical "impossibile connettersi" alerts over 24 days
+# while the thing it guards silently expired underneath (2026-08-06).
+# Reproduced both ways before fixing, on Pro:
+#   PATH=/usr/bin:/bin:/usr/sbin:/sbin      -> None
+#   PATH=/opt/homebrew/bin:/usr/bin:/bin    -> {'expires_at': '2026-07-25 ...'}
+# `which` first so an operator's own install still wins; the absolute list is
+# the fallback for exactly the impoverished environment cron provides.
+_FLY_CANDIDATES = (
+    "/opt/homebrew/bin/flyctl",
+    "/opt/homebrew/bin/fly",
+    "/usr/local/bin/flyctl",
+    "/usr/local/bin/fly",
+    str(Path.home() / ".fly" / "bin" / "flyctl"),
+    str(Path.home() / ".fly" / "bin" / "fly"),
+)
+
+
+def _resolve_fly() -> str | None:
+    """Absolute path to flyctl, or None if it genuinely is not installed."""
+    import shutil
+
+    found = shutil.which("fly") or shutil.which("flyctl")
+    if found:
+        return found
+    for cand in _FLY_CANDIDATES:
+        if os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
+def _check_drive_token_via_fly() -> tuple[dict | None, str | None]:
     """
     Interroga google_drive_tokens via fly ssh console sul backend Fly.io.
-    Restituisce dict con expires_at (ISO string) oppure None.
+
+    Restituisce `(data, failure_reason)`: esattamente uno dei due è non-None.
+    La ragione esiste perché il messaggio d'allarme deve NOMINARE la causa —
+    quello vecchio diceva "verifica che fly ssh funzioni", indirizzando chi
+    legge verso l'autenticazione mentre il problema era che `fly` non era
+    nemmeno risolvibile. Una diagnosi che punta lontano dalla causa costa più
+    del silenzio (W106: cura e messaggio scadono insieme).
     """
     code = (
         "import asyncio, asyncpg, os, json\n"
@@ -298,8 +337,16 @@ def _check_drive_token_via_fly() -> dict | None:
     )
     import base64
     code_b64 = base64.b64encode(code.encode()).decode()
+
+    fly = _resolve_fly()
+    if fly is None:
+        return None, (
+            "il binario <code>fly</code> non è sul PATH di questo processo "
+            f"(PATH={os.environ.get('PATH', '')[:120]})"
+        )
+
     cmd = [
-        "fly", "ssh", "console",
+        fly, "ssh", "console",
         "--app", "nuzantara-rag",
         "--command",
         f"python3 -c \"import base64,os; exec(base64.b64decode('{code_b64}').decode())\"",
@@ -312,10 +359,15 @@ def _check_drive_token_via_fly() -> dict | None:
         for line in output.splitlines():
             line = line.strip()
             if line.startswith("{"):
-                return json.loads(line)
+                return json.loads(line), None
+        # Ran, produced no JSON: report what it actually said, never a guess.
+        detail = (result.stderr or result.stdout).strip().replace("\n", " ")[:180]
+        return None, f"<code>fly ssh</code> è uscito {result.returncode}: {detail or '(nessun output)'}"
+    except subprocess.TimeoutExpired:
+        return None, "<code>fly ssh</code> non ha risposto entro 60s"
     except Exception as e:
         log(f"fly ssh fallito: {e}")
-    return None
+        return None, f"{type(e).__name__}: {e}"
 
 
 def _check_sa_key_age() -> int | None:
@@ -396,16 +448,24 @@ def main() -> int:
 
     # --- Check 1: Drive OAuth token with tier system ---
     log("Controllo Drive OAuth token...")
-    token_data = _check_drive_token_via_fly()
+    token_data, token_read_error = _check_drive_token_via_fly()
 
     new_oauth_tier: Optional[str] = None  # set if classification succeeds
     new_oauth_days_left: Optional[int] = None  # last computed days_left (sensor input)
 
     if token_data is None:
-        # Connection failure — separate from tier system; always alert.
+        # Read failure — separate from the tier system; always alert.
+        #
+        # The message NAMES the measured cause instead of prescribing a guess.
+        # It also says out loud what the reader cannot otherwise know: while
+        # this branch is firing, the expiry check is NOT running, so silence
+        # from the tier system means "blind", not "fine". That is the whole
+        # damage this defect did — the token expired 2026-07-25 and the one
+        # alert that mattered was never sent.
         alerts.append(
-            "⚠️ <b>Drive Watchdog</b>: impossibile connettersi al backend Fly.io\n"
-            "Verifica che <code>fly ssh</code> funzioni."
+            "⚠️ <b>Drive Watchdog</b>: non ho potuto LEGGERE lo stato del token\n"
+            f"Causa: {token_read_error or 'sconosciuta'}\n"
+            "<b>Mentre vedi questo, la scadenza NON è sorvegliata.</b>"
         )
     elif token_data.get("expires_at") is None:
         # Same effect as expired — fold into TIER_EXPIRED with synthetic message.
