@@ -128,17 +128,28 @@ def test_innocence_terbatas_at_one_hundred_percent_may_truthfully_say_one_hundre
     assert E.classify(r)["body_asserts_national_openness"] is False
 
 
-def test_known_limit_the_capped_narrowing_changes_no_live_verdict_today():
-    """Honest statement of how much the fix above is currently worth: on the
-    live catalogue, NOTHING. Every record that the old over-broad predicate
-    would additionally admit (TERBATAS or TERTUTUP at a 100% ceiling) happens to
-    carry a negated sentence, so the negation guard already acquits it and both
-    predicates report the same twenty codes.
+def test_the_capped_narrowing_now_protects_exactly_one_live_code():
+    """It used to be worth nothing on live data. Reading the fields apart changed that.
 
-    Pinned rather than glossed, because the alternative is a reader believing
-    the narrowing is load-bearing on today's data when it is a guard against a
-    record shape that does not exist yet — and because if this assertion ever
-    fails, the narrowing has started to matter and someone should read why.
+    This test previously asserted the OPPOSITE — that the `capped` narrowing
+    changed no live verdict, because every record the broad predicate would
+    additionally admit (TERBATAS/TERTUTUP at a 100% ceiling) happened to carry a
+    negated sentence somewhere in the JOINED headline+standfirst+body blob, so
+    the negation guard acquitted it either way. Its docstring said that if the
+    assertion ever failed, the narrowing had started to matter and someone
+    should read why. Judging each field on its own made it fail, and this is the
+    why.
+
+    `79110` is TERBATAS with a ceiling of 100. Its denial and its openness
+    sentence live in DIFFERENT fields, so once the fields stopped being glued
+    together the denial could no longer acquit the claim — and the claim is
+    TRUE of it: restricted by conditions that are not a percentage still means a
+    100% foreign-ownership ceiling. Only `capped` keeps it innocent now, which
+    is precisely the record shape the narrowing was written for.
+
+    Kept as an equality against a NAMED set rather than a count, so that a
+    second code drifting into this position is a failure someone must read
+    rather than a number quietly becoming two.
     """
     records = E.load_records()
     narrow = {r["code"] for r in map(E.classify, records) if r["body_asserts_national_openness"]}
@@ -147,16 +158,24 @@ def test_known_limit_the_capped_narrowing_changes_no_live_verdict_today():
         cap, status = record.get("pma_max_asing"), (record.get("pma_status") or "").upper()
         if not (status in {"TERBATAS", "TERTUTUP"} or (isinstance(cap, int) and cap < 100)):
             return False
-        for sentence in E._SENTENCE.findall(E._body(record)):
-            if (
-                E._NATIONAL_SCOPE.search(sentence)
-                and E._OPENNESS_CLAIM.search(sentence)
-                and not E._NEGATION.search(sentence)
-            ):
-                return True
+        for _path, text in E._prose_fields(record):
+            for sentence in E._SENTENCE.findall(text):
+                if (
+                    E._NATIONAL_SCOPE.search(sentence)
+                    and E._OPENNESS_CLAIM.search(sentence)
+                    and not E._NEGATION.search(sentence)
+                ):
+                    return True
         return False
 
-    assert {r["kode_kbli_2025"] for r in records if broad(r)} == narrow
+    protected = {r["kode_kbli_2025"] for r in records if broad(r)} - narrow
+    assert protected == {"79110"}, (
+        "the `capped` narrowing is the only thing standing between these codes "
+        "and a conviction — read each one before changing this set"
+    )
+    assert [r for r in records if r["kode_kbli_2025"] == "79110"][0][
+        "pma_max_asing"
+    ] == 100, "premise: 79110 is capped at 100, so an openness claim is true of it"
 
 
 def test_guilt_a_body_denying_the_cap_in_words_is_caught_even_when_the_cells_agree():
@@ -179,6 +198,80 @@ def test_guilt_a_body_denying_the_cap_in_words_is_caught_even_when_the_cells_agr
 def test_innocence_an_open_code_saying_it_is_open_is_not_a_contradiction():
     r = rec(cap=100, status="TERBUKA", body="This activity is nationally open to full foreign ownership.")
     assert E.classify(r)["body_asserts_national_openness"] is False
+
+
+# --------------------------------------------------------------------------
+# THE TWO FIELDS-OF-THIRTEEN DEFECTS
+# --------------------------------------------------------------------------
+
+
+def test_guilt_a_sibling_prose_key_is_read_not_just_the_editorial_block():
+    """`whatYouNeed` reaches Qdrant exactly as the body does, and held MORE lies.
+
+    The first version read `editorial.{headline,standfirst,body}` and called
+    the result "the bodies". `intel_2026` carries eight further prose keys, all
+    stringified into the embedding text by `reindex_kbli_2025_final.py`. On the
+    live catalogue eighteen offending sentences sit in `whatYouNeed` — the
+    field that tells a client what to file — and none of them were ever read.
+    """
+    r = rec(cap=0, status="TERTUTUP")
+    r["intel_2026"]["whatYouNeed"] = (
+        "Nationally, 100% foreign ownership is permitted for this activity."
+    )
+    out = E.classify(r)
+    assert out["body_asserts_national_openness"] is True
+    assert [f["field"] for f in out["offending_fields"]] == ["whatYouNeed"]
+
+
+def test_guilt_a_headline_is_judged_alone_not_glued_to_the_standfirst():
+    """A headline has no full stop, so joining made it one sentence with the next.
+
+    The splitter breaks on `.!?\\n`. `"Open to Foreign Ownership Nationally" + " "
+    + standfirst` is therefore a SINGLE sentence, and a standfirst that opens
+    with the Bali caveat supplies a negation — which acquitted the headline on
+    the strength of a denial belonging to a different assertion. Three headlines
+    on the live catalogue were acquitted exactly this way.
+    """
+    r = rec(
+        cap=0,
+        status="TERTUTUP",
+        headline="Open Nationally to Full Foreign Ownership",
+        body="Bali does not permit it.",
+    )
+    r["intel_2026"]["editorial"]["standfirst"] = (
+        "Bali is not the same question, and permission does not follow."
+    )
+    out = E.classify(r)
+    assert out["body_asserts_national_openness"] is True
+    assert "editorial.headline" in [f["field"] for f in out["offending_fields"]]
+
+
+def test_innocence_a_negation_still_acquits_within_its_own_field():
+    """The fix must not turn every caveat into a conviction.
+
+    Splitting the fields apart makes each denial local. A field whose sentence
+    denies openness is still innocent — that is `59121` above — and this pins
+    that the per-field change did not quietly drop the negation guard."""
+    r = rec(cap=0, status="TERTUTUP")
+    r["intel_2026"]["whatYouNeed"] = (
+        "This is not an activity open to foreign ownership at the national level."
+    )
+    assert E.classify(r)["body_asserts_national_openness"] is False
+
+
+def test_the_walk_reaches_prose_nested_below_the_top_level():
+    """Depth is not a reason to be unread: `tkaInfo` is a dict of dicts.
+
+    A key list would have to be extended for every new nesting; the walk covers
+    them the day they appear, which is the point of walking instead of listing.
+    """
+    r = rec(cap=0, status="TERTUTUP")
+    r["intel_2026"]["tkaInfo"] = {
+        "positions": [{"note": "Nationally open to full foreign ownership."}]
+    }
+    out = E.classify(r)
+    assert out["body_asserts_national_openness"] is True
+    assert out["offending_fields"][0]["field"] == "tkaInfo.positions[0].note"
 
 
 # --------------------------------------------------------------------------
@@ -214,7 +307,19 @@ def test_the_live_populations_are_pinned():
     assert len(rep["mechanically_correctable"]["codes"]) == 27
     assert rep["mechanically_correctable"]["ceiling_cells"] == 27
     assert rep["mechanically_correctable"]["status_cells"] == 7
-    assert len(rep["needs_an_author"]["codes"]) == 20
+    assert len(rep["needs_an_author"]["codes"]) == 27
+
+    # WHERE the prose lies. Pinned because the total alone hid the defect that
+    # produced these numbers: the first version read three fields and reported
+    # 20, and `whatYouNeed` — the field that carries a client's filing
+    # instructions — was the largest offender and was never opened.
+    assert rep["needs_an_author"]["by_field"] == {
+        "whatYouNeed": 18,
+        "editorial.body": 16,
+        "editorial.headline": 10,
+        "editorial.standfirst": 5,
+        "whoThisIsFor": 1,
+    }
 
 
 def test_the_worst_members_are_named_not_counted():

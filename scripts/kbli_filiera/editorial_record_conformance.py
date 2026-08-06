@@ -2,11 +2,20 @@
 """Where the ARTICLE contradicts the RECORD it was written from.
 
 Every KBLI code page leads with an authored article — `intel_2026.editorial`:
-a headline, a standfirst, a "By the numbers" sidebar of label/value cells, and
-a markdown body. It was written by narrating the JSON record, and the renderer
-prints it VERBATIM. So it is not a consumer of the PMA fields in the ordinary
-sense; it is a SECOND, INDEPENDENT ASSERTION of the same facts, stored beside
-them.
+a headline, a standfirst, a pull quote, a "By the numbers" sidebar of
+label/value cells, and a markdown body. It was written by narrating the JSON
+record, and the renderer prints it VERBATIM. So it is not a consumer of the PMA
+fields in the ordinary sense; it is a SECOND, INDEPENDENT ASSERTION of the same
+facts, stored beside them.
+
+And `editorial` is not where the prose ends. `intel_2026` carries eight further
+authored keys — `whatItMeans`, `whatYouNeed`, `whatChanged`, `zantaraOpener`,
+`baliContext`, `whoThisIsFor`, `youllAlsoNeed`, `tkaInfo` — thirteen prose
+fields in all, every one of them stringified into the embedding text. Auditing
+three of them and reporting the result as "the bodies" was this module's own
+first defect: it named a population of 20 where the population is 27, and the
+single largest offender was `whatYouNeed`, the field that tells a client what
+to file. See `_prose_fields` for both halves of that mistake.
 
 That is the whole problem. A consumer that READS a field moves when the field
 moves. A parallel assertion never moves at all. Nine codes were restricted on
@@ -60,6 +69,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -109,11 +119,54 @@ def _cells(record: dict[str, Any]) -> list[dict[str, Any]]:
     return [c for c in (editorial.get("byTheNumbers") or []) if isinstance(c, dict)]
 
 
-def _body(record: dict[str, Any]) -> str:
-    editorial = (record.get("intel_2026") or {}).get("editorial") or {}
-    return " ".join(
-        str(editorial.get(k) or "") for k in ("headline", "standfirst", "body")
-    )
+def _prose_fields(record: dict[str, Any]) -> list[tuple[str, str]]:
+    """Every authored string under `intel_2026`, with the path that holds it.
+
+    Two defects in the first version, both the same shape, both measured on the
+    live catalogue rather than reasoned about:
+
+    1. **It read three fields of thirteen.** `intel_2026` carries
+       `whatItMeans`, `whatYouNeed`, `whatChanged`, `zantaraOpener`,
+       `baliContext`, `whoThisIsFor`, `youllAlsoNeed`, a `tkaInfo` block and an
+       `editorial` block whose own `pullQuote` was also unread — and
+       `reindex_kbli_2025_final.py` stringifies the WHOLE dict into the
+       embedding text, so all of them reach Qdrant and the RAG exactly as the
+       body does. Auditing `headline`/`standfirst`/`body` and reporting the
+       result as "the bodies that need an author" measured the fields that were
+       convenient to read. Nineteen of the offending sentences live in
+       `whatYouNeed` alone. Hence: walk every string, whatever its depth, so a
+       prose key added next month is covered on the day it appears rather than
+       whenever someone remembers to extend a list.
+
+    2. **It JOINED the three before splitting into sentences.** A headline
+       carries no terminal full stop, so `"Open to Foreign Investment" + " " +
+       standfirst` becomes ONE sentence for the splitter — and if the standfirst
+       opens with the Bali caveat ("...but this is not permitted at scale"), the
+       negation guard acquits the headline on the strength of a denial that
+       belongs to a different assertion. Each field is now judged alone, which
+       is what it is: a separate claim, separately authored.
+
+    `byTheNumbers` cells are walked too. Their values ("100%", "TERBATAS") can
+    never satisfy the sentence predicate, which needs a national scope word and
+    an openness claim together, so the overlap with the cell check costs
+    nothing and the alternative — excluding a key by name — is the very habit
+    that produced defect 1.
+    """
+    out: list[tuple[str, str]] = []
+
+    def walk(node: Any, path: str) -> None:
+        if isinstance(node, str):
+            if node.strip():
+                out.append((path, node))
+        elif isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, f"{path}.{k}" if path else str(k))
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                walk(v, f"{path}[{i}]")
+
+    walk(record.get("intel_2026") or {}, "")
+    return out
 
 
 def classify(record: dict[str, Any]) -> dict[str, Any]:
@@ -128,6 +181,7 @@ def classify(record: dict[str, Any]) -> dict[str, Any]:
         "status_cells": [],
         "bali_scoped_skipped": 0,
         "body_asserts_national_openness": False,
+        "offending_fields": [],
     }
 
     for cell in _cells(record):
@@ -161,14 +215,17 @@ def classify(record: dict[str, Any]) -> dict[str, Any]:
     # this module's business.
     capped = isinstance(cap, int) and cap < 100
     if capped:
-        for sentence in _SENTENCE.findall(_body(record)):
-            if not (_NATIONAL_SCOPE.search(sentence) and _OPENNESS_CLAIM.search(sentence)):
-                continue
-            if _NEGATION.search(sentence):
-                continue
-            out["body_asserts_national_openness"] = True
-            out["body_sentence"] = sentence.strip()[:300]
-            break
+        for path, text in _prose_fields(record):
+            for sentence in _SENTENCE.findall(text):
+                if not (_NATIONAL_SCOPE.search(sentence) and _OPENNESS_CLAIM.search(sentence)):
+                    continue
+                if _NEGATION.search(sentence):
+                    continue
+                out["body_asserts_national_openness"] = True
+                out["offending_fields"].append(
+                    {"field": path, "sentence": sentence.strip()[:300]}
+                )
+                break  # one sentence per field is enough to name the field
 
     return out
 
@@ -190,6 +247,17 @@ def report(records: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "needs_an_author": {
             "codes": sorted(r["code"] for r in editorial),
+            # WHERE the prose lies, not just how much of it: the cure is a
+            # different job in `whatYouNeed` (a filing instruction) than in a
+            # `headline` (a promise), and a bare total hides that.
+            "by_field": dict(
+                sorted(
+                    Counter(
+                        f["field"] for r in editorial for f in r["offending_fields"]
+                    ).items(),
+                    key=lambda kv: (-kv[1], kv[0]),
+                )
+            ),
         },
         "bali_scoped_cells_excluded": sum(r["bali_scoped_skipped"] for r in rows),
         "rows": mechanical,
