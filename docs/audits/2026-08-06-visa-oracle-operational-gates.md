@@ -65,7 +65,7 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 | G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                                                                                                                                                                                  |
 | G4 public engine authority | PASS                   | PASS (unchanged)                                                                                                                                                                                                                                  |
 | G5 automated suites        | PASS                   | PASS on current privacy candidate: 1,656 backend Visa Engine/router tests passed with one expected provisioning skip; 3,178 Mouth Vitest tests, typecheck, 15/15 desktop/320 px Playwright and the unmocked disposable full-stack smoke are green |
-| G6 independent review      | PASS on base candidate | **PENDING on current privacy candidate.** Prior review on `20ba378ca` remains historical evidence; policy/retention/DSR changes require a fresh independent gate                                                                                  |
+| G6 independent review      | PASS on base candidate | **PASS on `6558afaa1`.** Independent adversarial review closed with 0 BLOCKER and 0 MEDIUM after two preflight-inventory findings were reproduced, fixed and independently re-tested                                                              |
 
 ## Privacy Policy V1 implementation evidence
 
@@ -95,6 +95,10 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
   [privacy desktop](screenshots/visa-oracle-v2/visa-oracle-privacy-v1-desktop.png)
   and
   [privacy 320 px](screenshots/visa-oracle-v2/visa-oracle-privacy-v1-mobile-320.png).
+- Independent G6 review on `6558afaa1` proved that unexpected function grants,
+  direct DML grants, runtime capability membership and combined pack-write /
+  activation authority all fail the production preflight. Its final verdict
+  was 0 BLOCKER and 0 MEDIUM.
 
 ## Pricing and UI correction evidence
 
