@@ -45,13 +45,23 @@ corpora still need an explicit home outside the checkout.
 The following ignored inputs were deliberately retained because removing them
 would make a current coding or deployment path less reproducible:
 
-| Path family                                                                 | Why it stays                                                               | Required follow-up                                                                                                 |
-| --------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `apps/backend-rag/data/curated_qa/`                                         | Vetted QA corpus and manifests used by evaluation workflows                | Put the reviewed corpus under version control in a dedicated data change, as its own documentation requires.       |
-| `apps/backend-rag/training-data/`                                           | The backend Docker build copies this directory into the image              | Version it, generate it deterministically, or fetch it from an authenticated artifact store during the build.      |
-| `apps/mouth/scripts/kbli_data_backup.json` and `kbli_english_keywords.json` | Generator scripts read these files directly                                | Make them reviewed source inputs or replace them with a deterministic canonical-data import.                       |
-| Ignored lockfiles such as `uv.lock` and `package-lock.json`                 | They pin coding dependencies                                               | Review and commit the canonical lockfile per application; do not archive it as cache.                              |
-| `.env*` files and credential-bearing tool config                            | Operator-controlled secrets; project rules forbid general cleanup mutation | Audit and rotate through the approved secrets workflow on the owning host. Never move them into a general archive. |
+| Path family                                                                 | Why it stays                                                                | Required follow-up                                                                                                 |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `apps/backend-rag/data/curated_qa/`                                         | Vetted QA corpus and manifests used by evaluation workflows                 | Put the reviewed corpus under version control in a dedicated data change, as its own documentation requires.       |
+| `apps/backend-rag/training-data/`                                           | The backend Docker build copies this directory into the image               | Version it, generate it deterministically, or fetch it from an authenticated artifact store during the build.      |
+| `apps/mouth/scripts/kbli_data_backup.json` and `kbli_english_keywords.json` | Generator scripts read these files directly                                 | Make them reviewed source inputs or replace them with a deterministic canonical-data import.                       |
+| Ignored lockfiles such as `uv.lock` and `package-lock.json`                 | They pin coding dependencies                                                | Review and commit the canonical lockfile per application; do not archive it as cache.                              |
+| `.env*` files and credential-bearing tool config                            | Operator-controlled secrets; project rules forbid general cleanup mutation  | Audit and rotate through the approved secrets workflow on the owning host. Never move them into a general archive. |
+| `apps/bali-intel-scraper/scripts/translate_articles.py`                     | The post-publish webhook and freshness tests still call this ignored script | Review it as source code and commit or retire it deliberately; do not misclassify active code as generated output. |
+| `research/marketing/zantara-visual-dataset/v1/`                             | WR3 tools hardcode its ingredient paths and tracked manifests reference it  | Add a configurable external corpus root, then keep only the reviewed runtime ingredients reproducible in Git.      |
+
+Tracked, hash-identical static assets are not automatically safe to deduplicate.
+Several `apps/mouth/public/` URLs intentionally resolve through different
+paths, while the Zantara visual dataset preserves raw, candidate, rejected, and
+approved provenance. Git already stores identical blobs once in its object
+database. Do not replace working-tree copies with hardlinks: editing one name
+would silently mutate every linked name. Consolidation requires an explicit URL
+or corpus-source refactor followed by a clean-checkout build and consumer audit.
 
 Static assets under ignored `public/` paths have the same clean-checkout debt.
 The 2026-08-06 Air cleanup preserves local paths with ignored symlinks, but a
@@ -92,6 +102,24 @@ Before moving a non-versioned item:
 3. Preserve a repo-relative destination and a README in the external archive.
 4. Compare file count and SHA-256 manifest before removing the source copy.
 5. Re-run both root guards and the narrow consumer tests.
+
+Worktree removal has a stricter local gate. Release a worktree only when all
+three statements are proven in the same pass:
+
+1. No live process has its working directory or an open file inside it.
+2. Its work is present in `origin/main` by content (blob or patch comparison),
+   not merely by branch ancestry or a merged-looking name.
+3. The Redis lease registry is observable and reports no matching holder.
+
+An authentication error, unavailable Redis client, or fail-open lease check is
+not evidence that no lease exists. Keep the worktree and record the blocked
+cleanup instead. Loose review logs also do not belong directly under
+`.worktrees/`; move them to the dated archive once no process references them.
+
+Ignored does not mean harmless. If an ignored executable contains cleartext
+credentials, do not place it in the general archive. Preserve it only on the
+owning host under restricted permissions, remove thin-client copies after
+hash verification, and open a separate refactor-and-rotation follow-up.
 
 After moving a path-bound public asset, also verify a clean-checkout build or a
 production URL. Local symlink success alone is insufficient evidence.
