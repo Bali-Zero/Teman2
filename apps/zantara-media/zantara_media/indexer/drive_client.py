@@ -185,12 +185,23 @@ async def get_drive_service():  # type: ignore[return]
             logger.info("Drive credentials: file %s", creds_file)
         else:
             creds = await _load_creds_from_db()
+            # Say WHY the preferred path was skipped, in words. Two booleans a
+            # reader has to recombine is worse, and echoing the env value back
+            # is worse still: `GARUDA_DRIVE_FORCE_OAUTH` matches CodeQL's
+            # sensitive-name heuristic (it contains "AUTH") and logging it
+            # raises py/clear-text-logging-sensitive-data — a false positive on
+            # the entity, since the flag is a bool, but the honest answer is
+            # that a reason belongs in the log, not a flag dump.
+            reason = (
+                "forced by GARUDA_DRIVE_FORCE_OAUTH"
+                if force_oauth
+                else "no service-account key on disk"
+            )
             logger.warning(
                 "Drive credentials: legacy user OAuth from google_drive_tokens "
-                "(revocable — see get_drive_service docstring). force_oauth=%s "
-                "sa_path_present=%s",
-                force_oauth,
-                os.path.isfile(sa_path),
+                "— REVOCABLE, dies when the grant is withdrawn and nothing here "
+                "can renew it (see get_drive_service docstring). Reason: %s.",
+                reason,
             )
 
     service = await loop.run_in_executor(None, _build_drive_service, creds)
