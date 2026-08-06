@@ -24,24 +24,38 @@ Two articles that are NOT this one, and must not be conflated with it:
 
 WHAT IS IN THE SPEC, AND WHAT DELIBERATELY IS NOT
 --------------------------------------------------
-`cure_specs/umkm_lampiran_ii_2026_08_06.json` carries only codes where two
-INDEPENDENT passes of different model families agreed on PATCH — a Claude lane
-proposing from the annex row and an OpenAI lane re-deriving the same codes
-blind, with the bias stated against restricting ("a wrongly-restricted code
-costs a client a business they could lawfully run; that is not a safer error,
-it is a different error").
+`cure_specs/umkm_lampiran_ii_readjudicated_2026_08_06.json` carries NINE codes,
+each one where two INDEPENDENT passes of different model families agreed on
+PATCH — a Claude lane proposing from the annex row and an OpenAI lane
+re-deriving the same code blind, with the bias stated against restricting ("a
+wrongly-restricted code costs a client a business they could lawfully run; that
+is not a safer error, it is a different error" — and refusing is NOT the safe
+direction either: the opposite error tells a client he may wholly own an
+activity the annex reserves).
 
-Excluded by construction, and none of it is a silent drop: 13 codes where the
-two families disagreed, 3 both called unclear, 1 whose annex text the OCR
-destroyed on the token that sets its scope, and 28 both refused as BROADER than
-the reserved activity — Pasal 5 ayat (5) attaches the allocation to the named
-bidang usaha, never to the code number.
+It replaces `umkm_lampiran_ii_2026_08_06.json`, which was WITHDRAWN whole before
+merge: the evidence handed to its 21 adjudicating agents had the scope qualifier
+stripped out, because Lampiran II writes the scope on a numbered PARENT row and
+the parser emitted only the indented child. That spec stays on disk, still
+carrying its verdicts, and this tool refuses it BY NAME (see `WITHDRAWN_SPEC`).
 
-Seven spec rows were judged on a KBLI-2020 number that is not a 2025 code
-(`55193` villa, `10391` tempe, …). Each resolves to EXACTLY ONE 2025 heir with
-the same activity name, so the determination is applied to the heir and the
-row records `judged_as`. This tool re-derives that heir itself and refuses if
-the spec's target disagrees — the vintage trap has bitten this catalogue twice
+The re-adjudication ran in two rounds over the 68 `whole-row` codes and kept
+what survived both: 11 refused as SEGMENT-only (reserved just below 25 Ha, or
+only at simple/intermediate technology grade), 9 refused as BROADER than the
+reserved activity, 13 where the families disagreed, 3+2 called unclear, 1 whose
+annex text the OCR destroyed on the token that sets its scope, and 6 vintage
+carries whose 1:1 heir has not yet been checked for ACTIVITY identity (lineage
+is not identity). None of that is a silent drop — every population is named in
+the spec's `excluded` block and pinned by a test.
+
+Round 2's evidence pack carried, for the first time, BOTH the parent bidang
+usaha and the SIBLING 2025 codes that share each ancestor. That second field is
+what moved eight verdicts from PATCH to REFUSE_BROADER: a 2025 code that also
+absorbs 2020 activities the annex never named is wider than the reservation.
+
+A spec row judged on a KBLI-2020 number that is not a 2025 code records
+`judged_as`. This tool re-derives that heir itself, in BOTH directions, and
+refuses if either disagrees — the vintage trap has bitten this catalogue twice
 in one day and a written-down mapping is a proxy, not the fact.
 
 REFUSES RATHER THAN GUESSES
@@ -52,18 +66,40 @@ a spec row's `judged_as` does not resolve to its stated target through
 (someone adjudicated it by hand and this tool is not the later word); or the
 observed `pma_status`/`pma_max_asing` differ from what the spec recorded when it
 was built, which means the world moved under the adjudication.
+
+AND IT REACHES THE CONSUMERS, WHICH IT USED NOT TO
+---------------------------------------------------
+Writing canonical is not shipping. `apps/mouth` (balizero.com/kbli),
+`apps/kbli-navigator` and the RAG's own copy each hold a physical duplicate, and
+a vitest guard fails when the dataset hash moves without the sidecar version
+file moving with it. Every sibling cure compiler runs `sync_kbli_dataset.sh` and
+re-hashes that sidecar; this one did not, so its cure landed on canonical alone
+and the drift check would have failed the NEXT innocent PR (W86). `--apply` now
+does both, and refuses if a consumer copy still differs afterwards.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
-SPEC = Path(__file__).resolve().parent / "cure_specs" / "umkm_lampiran_ii_2026_08_06.json"
+CURE_SPECS = Path(__file__).resolve().parent / "cure_specs"
+SPEC = CURE_SPECS / "umkm_lampiran_ii_readjudicated_2026_08_06.json"
+
+# Kept on disk on purpose. It still carries the 39 verdicts and the record of WHY
+# they were withdrawn; `main()` refuses it by its own `withdrawn` marker, so
+# pointing `--spec` at it is a loud refusal rather than a silent 39-code write.
+WITHDRAWN_SPEC = CURE_SPECS / "umkm_lampiran_ii_2026_08_06.json"
+
+SYNC_SCRIPT = REPO_ROOT / "scripts" / "sync_kbli_dataset.sh"
+SIDECAR_VERSION = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-dataset-version.json"
+SIDECAR_DATASET = REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json"
 
 VINTAGE = "2021-05-25"
 KONDISI = (
@@ -176,6 +212,46 @@ def check(
     return todo, refusals
 
 
+def propagate(dry: bool = False) -> list[str]:
+    """Push canonical to every consumer copy and re-stamp the version sidecar.
+
+    Returns the list of problems; empty means the fleet agrees with canonical.
+    Separated from `main()` so a test can drive it without a 37MB write.
+    """
+    problems: list[str] = []
+    result = subprocess.run(
+        ["bash", str(SYNC_SCRIPT), "sync"], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        problems.append(f"sync_kbli_dataset.sh exited {result.returncode}: {result.stderr[-400:]}")
+        return problems
+
+    # Prove the propagation instead of trusting the exit code (superscar #2).
+    check = subprocess.run(
+        ["bash", str(SYNC_SCRIPT), "--check"], capture_output=True, text=True
+    )
+    if check.returncode != 0:
+        problems.append(f"consumer copies still differ after sync: {check.stdout[-400:]}")
+        return problems
+
+    if not SIDECAR_DATASET.exists():
+        problems.append(f"sidecar dataset copy missing: {SIDECAR_DATASET}")
+        return problems
+
+    digest = "sha256:" + hashlib.sha256(SIDECAR_DATASET.read_bytes()).hexdigest()
+    sidecar = json.loads(SIDECAR_VERSION.read_text(encoding="utf-8"))
+    if sidecar.get("datasetSha256") == digest:
+        return problems  # content did not move; nothing to bump
+
+    if not dry:
+        sidecar["datasetSha256"] = digest
+        SIDECAR_VERSION.write_text(
+            json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+    print(f"  sidecar version -> {digest}")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true", help="write (default: dry-run)")
@@ -240,6 +316,24 @@ def main(argv: list[str] | None = None) -> int:
         print(f"WROTE BUT READ BACK WRONG on {len(wrong)}: {wrong[:10]}")
         return EXIT_REFUSED
     print(f"\napplied and verified on re-read: {len(todo)} code(s)")
+
+    # Propagation is a statement about CANONICAL. Run against any other dataset —
+    # a test sandbox, a scratch copy — pushing canonical to the fleet would be a
+    # side effect nobody asked for, and under `--check` it would report on a file
+    # this run never touched. Say so instead of doing it.
+    if path.resolve() != CANONICAL.resolve():
+        print(f"not canonical ({path}) — skipping consumer propagation")
+        return EXIT_OK
+
+    problems = propagate()
+    for p in problems:
+        print(f"  PROPAGATION FAILED: {p}")
+    if problems:
+        # Canonical is already cured; stopping here is honest, not tidy. A cure
+        # that reached one store and not the others is exactly the state that
+        # must be visible rather than reported as success.
+        return EXIT_REFUSED
+    print("consumer copies in sync with canonical")
     return EXIT_OK
 
 

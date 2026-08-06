@@ -248,8 +248,8 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     A locator-partitioned reading found only 14; reading across every bucket
     found 23.
 
-    It went to 19 for a few hours on 2026-08-06 and is back at 23, and the round
-    trip is worth more than either number. The Lampiran II cure had restricted
+    It went to 19 for a few hours on 2026-08-06, back to 23, and now sits at 22.
+    The round trip is worth more than any of the three numbers. The Lampiran II cure had restricted
     `55201` (homestay), `55203` (villa), `79110` (travel agent) and `95291`
     (clothing alterations) for a stronger and different reason — the annex
     allocates those activities to Koperasi/UMKM — so they stopped publishing as
@@ -266,7 +266,7 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     "cleared", but unadjudicated on evidence that was never complete.
     """
     rows = pasal7_review_flags(rep)
-    assert len(rows) == 23
+    assert len(rows) == 22
     codes = {r["code"] for r in rows}
     assert {"96210", "96220"} <= codes           # annex-named AND Besar-less
     assert {"56304", "70201", "86995"} <= codes  # residual AND Besar-less
@@ -282,7 +282,23 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     # TERBATAS, so it is not "barred but open" and this list has no claim on it.
     # A code can leave a queue for a reason that has nothing to do with the cure
     # you are writing about.
-    assert {"55201", "55203", "95291"} <= codes
+    #
+    # 2026-08-06, second movement: `95291` is OUT again, and this time on
+    # evidence that was complete. The re-adjudication re-ran the annex rows with
+    # the parent bidang usaha attached AND with the sibling 2025 codes sharing
+    # each ancestor; two families agreed independently that the whole of `95291`
+    # (Reparasi Pakaian dan Tekstil) is the reserved activity, with no
+    # restricting parent and no absorbed sibling to widen it. So it is reserved,
+    # not merely unadjudicated, and it does not belong in a queue for
+    # unexplained openness. `55201` (homestay) and `55203` (villa) STAY here:
+    # both are vintage carries whose 1:1 crosswalk edge proves lineage and not
+    # activity identity, and that check has not been done.
+    #
+    # This assertion existing is why the movement had to be argued rather than
+    # absorbed: the tripwire fired on the apply and sent the reader back to the
+    # withdrawal, which is exactly the job it was written for.
+    assert {"55201", "55203"} <= codes
+    assert "95291" not in codes
     assert "79110" not in codes
     assert all(r["besar"] == "absent" for r in rows)
 

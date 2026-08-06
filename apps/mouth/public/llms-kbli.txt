@@ -184,7 +184,7 @@
 10211 | Pengolahan dan Pengawetan Ikan dengan Penggaraman atau Pengeringan | TERBUKA | 100% | Menengah Rendah
 10212 | Pengolahan dan Pengawetan Ikan dengan Pengasapan atau Pemanggangan | TERBUKA | 100% | Menengah Rendah
 10213 | Pengolahan dan Pengawetan Ikan dengan Pembekuan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
-10214 | Pengolahan dan Pengawetan Ikan dengan Pemindangan | TERBUKA | 100% | Menengah Rendah
+10214 | Pengolahan dan Pengawetan Ikan dengan Pemindangan | TERBATAS | 0% | Menengah Rendah
 10215 | Pengolahan dan Pengawetan Ikan dengan Fermentasi | TERBUKA | 100% | Rendah / Tinggi
 10216 | Pengolahan dan Pengawetan Ikan dengan Pelumatan | TERBUKA | 100% | Menengah Rendah / Tinggi
 10217 | Pengolahan dan Pengawetan Ikan dengan Pengalengan | TERBUKA | 100% | Menengah Tinggi / Tinggi
@@ -247,7 +247,7 @@
 10636 | Industri Minyak dari Beras dan Jagung | TERBUKA | 100% | Menengah Rendah / Tinggi
 10710 | Industri Produk Bakeri | TERBUKA | 100% | Rendah / Tinggi
 10721 | Industri Gula Pasir | TERBUKA | 100% | Tinggi
-10722 | Industri Gula Merah | TERBUKA | 100% | Rendah / Tinggi
+10722 | Industri Gula Merah | TERBATAS | 0% | Rendah / Tinggi
 10723 | Industri Sirop | TERBUKA | 100% | Menengah Tinggi
 10729 | Industri Gula Lainnya | TERBUKA | 100% | Rendah / Tinggi
 10731 | Industri Pengolahan Kakao | TERBUKA | 100% | Tinggi
@@ -422,7 +422,7 @@
 21024 | Industri Bahan Baku Obat Bahan Alam untuk Hewan | TERBUKA | 100% | Tinggi
 22111 | Industri Ban Luar dan Ban Dalam | TERBUKA | 100% | Menengah Tinggi
 22112 | Industri Pembentukan Kembali Ban dan Vulkanisasi Ban | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
-22121 | Industri Karet Asap | TERBUKA | 100% | Rendah / Tinggi
+22121 | Industri Karet Asap | TERBATAS | 0% | Rendah / Tinggi
 22122 | Industri Karet Lembaran dan Crepe Rubber | TERBUKA | 100% | Rendah / Tinggi
 22123 | Industri Karet Remah (Crumb Rubber) | TERBUKA | 100% | Rendah / Tinggi
 22129 | Industri Karet Setengah Jadi Lainnya | TERBUKA | 100% | Rendah / Tinggi
@@ -680,11 +680,11 @@
 41013 | Konstruksi Konvensional Gedung Industri | TERBUKA | 100% | Menengah Tinggi
 41014 | Konstruksi Konvensional Gedung Perbelanjaan | TERBUKA | 100% | Menengah Tinggi
 41015 | Konstruksi Konvensional Gedung Kesehatan | TERBUKA | 100% | Menengah Tinggi
-41016 | Konstruksi Konvensional Gedung Pendidikan | TERBUKA | 100% | Menengah Tinggi
+41016 | Konstruksi Konvensional Gedung Pendidikan | TERBATAS | 0% | Menengah Tinggi
 41017 | Konstruksi Konvensional Gedung Penginapan | TERBUKA | 100% | Menengah Tinggi
-41018 | Konstruksi Konvensional Gedung Hiburan dan Olahraga | TERBUKA | 100% | Menengah Tinggi
+41018 | Konstruksi Konvensional Gedung Hiburan dan Olahraga | TERBATAS | 0% | Menengah Tinggi
 41019 | Konstruksi Konvensional Gedung Lainnya | TERBUKA | 100% | Menengah Tinggi
-41020 | Konstruksi Prapabrikasi Bangunan Gedung | TERBUKA | 100% | Menengah Tinggi
+41020 | Konstruksi Prapabrikasi Bangunan Gedung | TERBATAS | 0% | Menengah Tinggi
 42101 | Konstruksi Jalan pada Permukaan Tanah | TERBUKA | 100% | Menengah Tinggi
 42102 | Konstruksi Bangunan Sipil Jembatan, Jalan Layang, Fly Over, dan Underpass | TERBUKA | 100% | Menengah Tinggi
 42103 | Konstruksi Jalan Rel | TERBUKA | 100% | Menengah Tinggi
@@ -1549,11 +1549,11 @@
 95101 | Reparasi dan Pemeliharaan Komputer dan Peralatan Sejenisnya | TERBUKA | 100% | Rendah / Menengah Rendah
 95102 | Reparasi dan Pemeliharaan Peralatan Komunikasi | TERBUKA | 100% | Rendah / Menengah Rendah
 95210 | Reparasi dan Pemeliharaan Alat-alat Elektronik Konsumen | TERBUKA | 100% | Rendah / Menengah Rendah
-95220 | Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun | TERBUKA | 100% | Rendah / Menengah Rendah
+95220 | Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun | TERBATAS | 0% | Rendah / Menengah Rendah
 95230 | Reparasi dan Pemeliharaan Alas Kaki dan Barang dari Kulit | TERBUKA | 100% | Rendah / Menengah Rendah
 95240 | Reparasi dan Pemeliharaan Furnitur Dan Perlengkapan Rumah | TERBUKA | 100% | Rendah / Menengah Rendah
-95291 | Aktivitas Vermak Pakaian | TERBUKA | 100% | Rendah
-95299 | Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya | TERBUKA | 100% | Rendah
+95291 | Aktivitas Vermak Pakaian | TERBATAS | 0% | Rendah
+95299 | Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya | TERBATAS | 0% | Rendah
 95311 | Reparasi Mobil | TERBUKA | 100% | Menengah Rendah
 95312 | Pencucian dan Salon Mobil | TERBUKA | 100% | Rendah
 95320 | Reparasi dan Perawatan Sepeda Motor | TERBUKA | 100% | Menengah Rendah
