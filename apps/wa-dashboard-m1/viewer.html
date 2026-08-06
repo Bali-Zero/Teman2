@@ -749,6 +749,7 @@
     <button class="view-tab" data-view="training">Training academy</button>
     <button class="view-tab" data-view="metrics">Team</button>
     <button class="view-tab" data-view="intake">Intake</button>
+    <button class="view-tab" data-view="meta">Meta Inbox</button>
 
   </div>
   <div class="meta">
@@ -851,6 +852,10 @@
   <div id="t-root">
     <div class="loader">Caricamento training…</div>
   </div>
+</section>
+<section id="view-meta" class="meta-view" style="display:none">
+  <iframe id="meta-frame" title="Meta Inbox — numero aziendale BALI ZERO"
+          style="width:100%;height:calc(100vh - 132px);border:0;background:#fff"></iframe>
 </section>
 <script>
 let DATA = null;
@@ -1919,7 +1924,7 @@ let METRICS = null;
 let INTAKE_LOADING = false;
 let INTAKE_PROMISE = null;
 let CURRENT_VIEW = "convs";
-const VALID_VIEWS = new Set(["convs", "captain", "metrics", "intake", "training"]);
+const VALID_VIEWS = new Set(["convs", "captain", "metrics", "intake", "training", "meta"]);
 
 function normalizeView(view) {
   return VALID_VIEWS.has(view) ? view : "convs";
@@ -1949,12 +1954,14 @@ function switchView(view, options = {}) {
   document.getElementById("view-metrics").style.display = view === "metrics" ? "" : "none";
   document.getElementById("view-intake").style.display = view === "intake" ? "" : "none";
   document.getElementById("view-training").style.display = view === "training" ? "" : "none";
+  document.getElementById("view-meta").style.display = view === "meta" ? "" : "none";
 
   for (const b of document.querySelectorAll(".view-tab")) b.classList.toggle("active", b.dataset.view === view);
   if (view === "captain") renderCaptain();
   if (view === "metrics") renderMetrics();
   if (view === "intake") renderIntake();
   if (view === "training") renderTraining();
+  if (view === "meta") renderMetaInbox();
 
 }
 
@@ -2418,6 +2425,18 @@ function renderTrainingPanel() {
     </div>`;
   subEl.textContent = `${filtered.length} di ${TRAINING.artifact_count || 0} summary · ${TRAINING.categories.length || 0} categorie · ${TRAINING.base_dir}`;
   wireTrainingControls();
+}
+
+// Il Meta Inbox e' servito da questa stessa origine via il proxy /meta del
+// server, quindi le sue chiamate assolute (/api/threads, /api/send, ...)
+// atterrano sul proxy e non su questa dashboard. Carichiamo il riquadro solo
+// alla prima apertura della scheda: e' un'altra app, non deve girare a vuoto
+// dietro le altre viste.
+function renderMetaInbox() {
+  const frame = document.getElementById("meta-frame");
+  if (!frame || frame.dataset.loaded === "1") return;
+  frame.dataset.loaded = "1";
+  frame.src = "/meta";
 }
 
 async function renderTraining(force) {
