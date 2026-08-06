@@ -126,14 +126,21 @@ def test_a_brand_new_archive_file_is_born_private(spool):
 def test_an_existing_loose_file_is_repaired(spool):
     """33 days of 0644 archives are already on Pro. The fix must heal them on
     the next write, not only protect what it creates — otherwise the exposure
-    survives the cure and needs a separate repair pass nobody will run."""
-    from tg_notify import harden
+    survives the cure and needs a separate repair pass nobody will run.
+
+    The loose file is made the way the REAL ones were made — an ordinary write
+    under the 0022 umask, not an explicit chmod. That is both truer to the
+    trauma and avoids planting a world-readable literal in the corpus. The
+    setup assertion is load-bearing: if the umask ever stopped producing 0644
+    this test would otherwise pass while measuring nothing (W108).
+    """
+    import tg_notify
 
     victim = spool / "already-loose.jsonl"
     victim.write_text("{}\n")
-    os.chmod(victim, 0o644)
-    assert _group_or_other_readable(victim), "setup failed: the file is not loose"
-    harden(victim)
+    assert _group_or_other_readable(victim), (
+        f"setup failed: born {_mode(victim)}, not loose — nothing was measured")
+    tg_notify.harden(victim)
     assert not _group_or_other_readable(victim), f"still {_mode(victim)}"
 
 
@@ -157,11 +164,11 @@ def test_harden_does_not_truncate(spool):
     """INNOCENCE: harden() opens the file to create it privately. O_CREAT
     without O_TRUNC — if that ever became O_TRUNC the spool would be silently
     emptied on every append, which is worse than the leak it fixes."""
-    from tg_notify import harden
+    import tg_notify
 
     f = spool / "has-content.jsonl"
     f.write_text('{"a": 1}\n{"b": 2}\n')
-    harden(f)
+    tg_notify.harden(f)
     assert f.read_text() == '{"a": 1}\n{"b": 2}\n', "harden() ate the spool"
 
 

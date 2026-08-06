@@ -304,6 +304,12 @@ def harden(path: Path) -> Path:
         if path.stat().st_mode & 0o077:
             os.chmod(path, 0o600)
     except OSError:
+        # Swallowed ON PURPOSE, and pinned by an innocence test
+        # (test_hardening_never_takes_down_the_alert_it_carries): a spool the
+        # process cannot chmod — foreign owner, read-only mount — must degrade
+        # to a looser file, never abort the send. An alerter that dies because
+        # it could not tidy its own permissions has traded a privacy defect for
+        # a silence defect, which is the worse of the two.
         pass
     return path
 
