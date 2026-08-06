@@ -6,6 +6,7 @@ const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
 const metrics = require("./metrics.cjs");
+const webLead = require("./web-lead-sql.cjs");
 const {
   actionBucketForRow,
   buildAutocatalogPlanSummary,
@@ -374,7 +375,12 @@ async function fetchOverview() {
           -- (lid map is per-team-member; same lid can have different pushname across team members per cicatrix LID collision)
           lpm.pushname AS lid_pushname,
           m.body, m.media_type, m.message_date, m.raw_baileys_event, m.direction, m.client_id,
-          m.attention_priority, m.attention_resolved_at
+          m.attention_priority, m.attention_resolved_at,
+          -- message_text is the fallback the mirror uses when body is empty.
+          -- Read here only so the web-lead detection below asks the SAME
+          -- question as scripts/lead_intent_matcher.py; two organs deciding
+          -- "is this a lead" on different columns would drift apart silently.
+          m.message_text
         FROM whatsapp_message_context m
         LEFT JOIN wa_lid_phone_resolution lpr ON lpr.counterpart_lid = m.counterpart_lid
         LEFT JOIN whatsapp_lid_phone_map lpm
@@ -436,6 +442,29 @@ async function fetchOverview() {
         FROM keyed
         WHERE direction = 'inbound' AND raw_baileys_event->>'pushName' IS NOT NULL
         ORDER BY conv_key, message_date DESC NULLS LAST
+      ),
+      -- Web-lead provenance. Ari's line carries both our inbound leads and his
+      -- own working traffic, so the only thing that distinguishes a lead is the
+      -- li_ token our deeplink prefills into the very first message.
+      --
+      -- The match is WORD-BOUNDED on purpose. The matcher's cheap SQL prefilter
+      -- (strpos(body,'li_')>0) also fires on ordinary Indonesian and Italian
+      -- prose; measured on this mirror 2026-08-06 it returns 7 rows where only
+      -- 4 are leads. Badging those 3 would mark real private conversations as
+      -- web leads (scar family #3, guard-over-match).
+      --
+      -- EARLIEST inbound token wins: a conversation's provenance is where it
+      -- began, and a later re-click must not overwrite it.
+      web_lead AS (
+        SELECT DISTINCT ON (conv_key)
+               conv_key,
+               ${webLead.TOKEN_SQL} AS lead_token,
+               ${webLead.SURFACE_SQL} AS lead_surface,
+               message_date AS lead_at
+        FROM keyed
+        WHERE direction IN ('inbound', 'received')
+          AND ${webLead.IS_LEAD_SQL}
+        ORDER BY conv_key, message_date ASC NULLS LAST
       )
       SELECT g.conv_key, g.direct_phone, g.lid, g.lid_pushname, g.client_id, g.n, g.last_at,
              g.attention_priority, g.unread_count,
@@ -453,10 +482,12 @@ async function fetchOverview() {
              (cli_id.id IS NULL AND cli_phone.id IS NULL AND cli_archived.id IS NOT NULL) AS crm_archived,
              cli_archived.deleted_at AS archived_at,
              wc.name AS wa_contact_name,
-             wc.business_name AS wa_business_name
+             wc.business_name AS wa_business_name,
+             wl.lead_token, wl.lead_surface, wl.lead_at
       FROM grouped g
       LEFT JOIN last_msg lm USING (conv_key)
       LEFT JOIN last_push lp USING (conv_key)
+      LEFT JOIN web_lead wl USING (conv_key)
       LEFT JOIN clients cli_id
         ON cli_id.id = g.client_id AND cli_id.deleted_at IS NULL
       -- FIX (2026-06-30, cicatrix #9 fan-out): same phone has N duplicate rows
@@ -674,6 +705,11 @@ async function fetchOverview() {
           company_name: r.company_name,
           wa_contact_name: waName,
           wa_business_name: businessName,
+          // Web-lead provenance: this conversation opened with a deeplink token
+          // from one of our own surfaces. Null on every ordinary conversation.
+          web_lead: !!r.lead_token,
+          web_lead_surface: r.lead_surface || null,
+          web_lead_at: r.lead_at || null,
           pushname: push,
           attention_priority: r.attention_priority,
           n: parseInt(r.n, 10),
@@ -1560,6 +1596,68 @@ app.post("/metrics-rollup", async (req, res) => {
   } catch (err) {
     console.error("[metrics-rollup]", err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// === Web leads (leads arriving from our own surfaces) ===
+// Counts DISTINCT deeplink tokens seen inbound, split by where they landed.
+//
+// The split is not a nicety, it is the finding that produced it. Measured on
+// this mirror 2026-08-06: all four tokens the system has ever seen arrived with
+// chat_type='group' — team members forwarding a lead into an internal group,
+// because the deeplink then pointed at a phone that is not mirrored at all. A
+// single total would have reported those forwards as four leads reaching us.
+//
+//   direct    a lead actually opened a chat on a mirrored line  <- the real thing
+//   forwarded the token was seen in a group: somebody relayed it <- NOT an arrival
+//
+// Both are a FLOOR, never the whole funnel: a lead who deleted the prefilled
+// message and typed their own words carries no token and is invisible here.
+// The click side (the ceiling) lives in `lead_intents` on Fly, which this box
+// cannot reach — `scripts/web_lead_funnel_report.py` reads both and is the only
+// place the two numbers appear together.
+app.get("/web-leads.json", async (req, res) => {
+  try {
+    const days = parseInt(req.query.days, 10) || 30;
+    const r = await pool.query(
+      `
+      WITH t AS (
+        SELECT DISTINCT
+               ${webLead.TOKEN_SQL} AS token,
+               ${webLead.SURFACE_SQL} AS surface,
+               CASE WHEN chat_type = 'direct' THEN 'direct' ELSE 'forwarded' END AS landed
+          FROM whatsapp_message_context
+         WHERE direction IN ('inbound', 'received')
+           AND COALESCE(message_date, created_at) >= NOW() - ($1 || ' days')::interval
+           AND ${webLead.IS_LEAD_SQL}
+      )
+      SELECT landed, COALESCE(lower(surface), '(unlabelled)') AS surface, COUNT(*) AS n
+        FROM t
+       GROUP BY 1, 2
+       ORDER BY n DESC, surface
+      `,
+      [String(days)],
+    );
+    const rows = r.rows.map((x) => ({
+      landed: x.landed,
+      surface: x.surface,
+      n: parseInt(x.n, 10),
+    }));
+    const sum = (kind) =>
+      rows.filter((x) => x.landed === kind).reduce((a, b) => a + b.n, 0);
+    res.json({
+      window_days: days,
+      direct: sum("direct"),
+      forwarded: sum("forwarded"),
+      measures:
+        "distinct deeplink tokens seen inbound. direct = a lead opened a chat on " +
+        "a mirrored line; forwarded = the token was relayed into a group and is " +
+        "NOT an arrival. Both are floors — clicks live on Fly.",
+      by_surface: rows,
+    });
+  } catch (err) {
+    console.error("[web-leads.json]", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

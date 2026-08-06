@@ -187,7 +187,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri pemindangan ikan",
-   "parent_heading": "Pemungutan hasil hutan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -979,7 +979,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Hotel Bintang I",
-   "parent_heading": null,
+   "parent_heading": "Jasa Penginapan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -988,7 +988,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Hotel Melati",
-   "parent_heading": null,
+   "parent_heading": "Jasa Penginapan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -997,7 +997,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Pondok Wisata",
-   "parent_heading": null,
+   "parent_heading": "Jasa Penginapan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1006,7 +1006,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Vila",
-   "parent_heading": null,
+   "parent_heading": "Jasa Penginapan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1015,7 +1015,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Guest House",
-   "parent_heading": null,
+   "parent_heading": "Jasa Penginapan",
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1276,7 +1276,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Pengalengan ikan",
-   "parent_heading": "Usaha pengolahan hasil perikanan (UPI)",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1366,7 +1366,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri               briket kela",
-   "parent_heading": null,
+   "parent_heading": "Industri kelapa",
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1420,7 +1420,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri serat sabut kelapa",
-   "parent_heading": null,
+   "parent_heading": "Industri kelapa",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1582,7 +1582,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "gedung perkantoran gedung industri",
-   "parent_heading": null,
+   "parent_heading": "Konstruksi gedung",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1591,7 +1591,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "gedung industri",
-   "parent_heading": null,
+   "parent_heading": "Konstruksi gedung",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1600,7 +1600,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Konstruksi jembatan dan jalan layang yang menggunakan",
-   "parent_heading": null,
+   "parent_heading": "Konstruksi gedung",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1681,7 +1681,7 @@
    "column": "dialokasikan",
    "page": 22,
    "text": "Peralatan komunikasi",
-   "parent_heading": null,
+   "parent_heading": "Rqprasi peralatan",
    "read_from": "text-layer",
    "title_corroborated": true
   }
