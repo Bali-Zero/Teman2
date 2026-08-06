@@ -13,16 +13,91 @@
 # Responsibilities:
 #   1. Source ~/.nuzantara-secrets.env for Telegram + misc creds.
 #   2. Resolve DATABASE_URL from Fly (nuzantara-rag) once per invocation.
-#   3. cd into apps/backend-rag, activate venv, exec python -m <module>.
+#   3. cd into apps/backend-rag, activate venv, run python -m <module>, and
+#      exit with the module's own code (it used to `exec`; see "Voice" below).
 #
 # Exception: newsletter_cli.py runs entirely INSIDE Fly (see step 1.5) —
 # DATABASE_URL, NOTIFICATIONS_API_KEY, and the notifications endpoint only
 # exist there; Pro is just the scheduler.
 #
-# Designed for macOS launchd (Pro). Fails loud (exit != 0) if any required
-# piece is missing so missed-runs alerter can pick it up.
+# Designed for macOS launchd (Pro). Exits non-zero if any required piece is
+# missing, AND says so through the Telegram gateway — see "Alert on failure".
+#
+# That second half is new (2026-08-06) and the sentence it replaces is why:
+# this header used to read "so missed-runs alerter can pick it up", and that
+# claim excused the silence of 14 launchd jobs for months. Measured on the
+# live database this turn: `war_room_missed_runs` holds 0 rows and always
+# has (max(created_at) is NULL), because `record_missed_run` — the only
+# writer — has no callers anywhere outside its own definition. The alerter
+# itself is healthy and runs every 6h inside the hardening chain, reporting
+# `pending_count: 0` since April; it is reading a table nobody writes. A
+# guardian pointed at an empty population is not coverage, and naming one in
+# a comment is how a whole cohort ends up with no voice at all (superscar #2).
+# Found by asking whether the named guardian was armed, not by a failure.
 
 set -euo pipefail
+
+# ── Voice: alert on ANY non-zero exit (2026-08-06) ──────────────────────────
+# A TRAP rather than a call at the one failing site, deliberately. This wrapper
+# has FIVE ways to exit non-zero — usage 64, missing fly CLI 74, unresolvable
+# fly credential 74, DATABASE_URL_LOCAL unset 74, pg-proxy unreachable 74 —
+# plus the module's own code, and every one of them was mute. W107 is exactly
+# the mistake of curing the exit you happened to look at: it does not cut the
+# risk, it only moves which failure dies quietly. A trap covers the five that
+# exist today and the sixth someone adds next year.
+#
+# Same gateway, tier and `cron-fail:` key family as cron-runner.sh /
+# cron-state.sh / cron-wrapper.sh, so this joins the family instead of coining
+# a fifth dialect: a flapping job collapses to ONE alert per ladder window
+# (6/24/72/168h), the reserved p0 lane applies, and with no credentials the
+# alert lands in the digest spool instead of vanishing. A permanently broken
+# module costs ~4 messages a week, not 4 a day.
+#
+# The interpreter is ABSOLUTE and system, never "$VENV_PY", never a bare
+# `python3`. W108: by the time the module runs this script has activated a
+# venv, so a PATH-resolved python3 IS the venv's — the alarm would run on the
+# very interpreter whose breakage is a leading reason the module it must report
+# on failed. An alarm that shares the failure mode of what it reports is not an
+# alarm. (This is the one line that is NOT a copy of cron-runner.sh, which
+# sources no venv and can afford PATH.)
+#
+# Fail-open by construction: the exit code is the contract this wrapper exists
+# to preserve. Every step below is `|| true`-equivalent and the trap re-exits
+# with the code it was handed, never its own.
+WR2_STAGE="startup"
+MODULE="${1:-<none>}"
+_wr2_alerted=0
+
+_wr2_alert_exit() {
+    local rc="$1"
+    [[ "$rc" -eq 0 ]] && return 0
+    [[ "${WR2_CRON_ALERT:-true}" == "false" ]] && return 0
+    [[ "$_wr2_alerted" -eq 1 ]] && return 0   # a trap must not re-enter itself
+    _wr2_alerted=1
+    local gateway py key
+    gateway="$(dirname "$0")/tg_notify.py"
+    [[ -f "$gateway" ]] || gateway="${REPO_ROOT:-$HOME/nuzantara}/scripts/tg_notify.py"
+    [[ -f "$gateway" ]] || return 0
+    # Key names the CONDITION (module + stage), never a measurement: a message
+    # carrying the exit code or a duration would mint a new key per failure and
+    # defeat every window — the defect #3677 cured at the sentinel.
+    key="cron-fail:wr2.${MODULE##*.}.${WR2_STAGE}"
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        [[ -x "$py" ]] || continue
+        "$py" "$gateway" \
+            --tier p0 \
+            --source "wr2:${MODULE##*.}" \
+            --dedup-key "$key" \
+            -- "CRON FAIL $(hostname -s 2>/dev/null || echo '?')
+Job: wr2 ${MODULE}
+Stage: ${WR2_STAGE}
+Exit: ${rc}
+Log: ${LOG_DIR:-<unset>}" >/dev/null 2>&1 || true
+        return 0
+    done
+    return 0
+}
+trap '_wr2_alert_exit $?' EXIT
 
 if [[ $# -lt 1 ]]; then
     echo "usage: $0 <python module>" >&2
@@ -45,6 +120,7 @@ if [[ "${WR2_CRON_ENABLED:-true}" == "false" || "${!ORGAN_VAR:-true}" == "false"
     exit 0
 fi
 
+WR2_STAGE="guard"
 REPO_ROOT="${NUZANTARA_REPO_ROOT:-$HOME/nuzantara}"
 # Resolved above for our own `cd` below, but never re-exported for the child
 # python process — every module reading NUZANTARA_REPO_ROOT via os.environ
@@ -105,7 +181,15 @@ if [[ "$MODULE" == "backend.services.newsletter.newsletter_cli" ]]; then
     if [[ -n "${NEWSLETTER_SUBJECT_PREFIX:-}" ]]; then
         remote_cmd="NEWSLETTER_SUBJECT_PREFIX=$(printf '%q' "$NEWSLETTER_SUBJECT_PREFIX") $remote_cmd"
     fi
-    exec fly ssh console -a nuzantara-rag -g api -C "$remote_cmd"
+    # Run-and-judge, not exec: the same one-way door as the module exec
+    # below. This path dispatches the CLIENT-FACING newsletter, so it is the
+    # last one that should fail silently. errexit disarmed per W101.
+    WR2_STAGE="newsletter-dispatch"
+    set +e
+    fly ssh console -a nuzantara-rag -g api -C "$remote_cmd"
+    _nl_rc=$?
+    set -e
+    exit $_nl_rc
 fi
 
 # 1.7 Heartbeat lib (best-effort; never blocks the wrapper — same idiom as
@@ -180,4 +264,26 @@ if [[ "$MODULE" == "backend.services.measurer.scheduler_cli" ]]; then
     fi
 fi
 
-exec env PYTHONPATH=. "$VENV_PY" -m "$MODULE" "$@"
+# `exec` was the structural reason this wrapper could never speak: it replaces
+# the process, so there is no "after" in which to read the exit code. Running
+# the module as a child and re-exiting with its code preserves exactly the
+# contract launchd sees (LastExitStatus is still the module's) and buys the one
+# thing exec cannot give — an observation point, here the EXIT trap installed
+# at the top.
+#
+# On the errexit disarming, stated as measured rather than as folklore: with
+# an EXIT trap installed, removing `set +e`/`set -e` here changes NOTHING —
+# errexit aborts at the call, the trap fires anyway, and $? is still the
+# module's code. Mutation-verified: that mutant survives the whole corpus, so
+# it is declared equivalent and removed from the set rather than left as a
+# fake red. W101 is a scar about captures written after a bare pipeline being
+# dead code; the trap is what actually defuses it. The explicit capture stays
+# because it makes `exit $MODULE_RC` the readable contract and because any
+# line a future edit inserts between the call and the exit WOULD be dead code
+# under errexit — which is exactly how W101 reached its fourth generation.
+WR2_STAGE="module"
+set +e
+env PYTHONPATH=. "$VENV_PY" -m "$MODULE" "$@"
+MODULE_RC=$?
+set -e
+exit $MODULE_RC

@@ -4,17 +4,20 @@
     {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
-      "machines": ["all"]
+      "machines": ["m5"],
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name no plist references it on Pro at all), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/.nuzantara-cron/agent_worktree_cleanup_cron.sh",
       "repo": "scripts/agent_worktree_cleanup_cron.sh",
-      "machines": ["all"]
+      "machines": ["m5"],
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara/scripts/agent_worktree_cleanup_cron.sh), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/.nuzantara-cron/verify_connectome_run.sh",
       "repo": "scripts/verify_connectome_run.sh",
-      "machines": ["all"]
+      "machines": ["m5"],
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara-deploy/scripts/verify_connectome_run.sh), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/scripts/regulatory-watcher-run.sh",
@@ -605,14 +608,8 @@
     {
       "live": "~/scripts/wa-mirror-launcher/api_server.py",
       "repo": "apps/wa-mirror/scripts/api_server.py",
-      "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06."
-    },
-    {
-      "live": "~/scripts/wa-mirror-launcher/nuzantara_control_center.html",
-      "repo": "apps/wa-mirror/scripts/nuzantara_control_center.html",
-      "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06. Pro only: M5 carries a partial copy of this launcher that does not include this file at all."
+      "machines": ["m5"],
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06. Rescoped pro->m5 the same day: Pro's live copy was moved to ~/scripts/.attic-20260806/ (sha-identical to what #3671 committed), so the declared path is empty there; M5 still has one and it was still the PRE-CURE file — 14253B, no roster_account(), the startswith() containment, and a hardcoded production DSN at mode 0644 — i.e. #3671 cured the repo and left the running copy vulnerable. Realigned to origin/main 2026-08-06 (0 credential literals, roster_account present). The html twin of this pair was REMOVED, not rescoped: after Pro's attic it exists on no machine, and a declared pair with no live copy anywhere is the false-drift chase this file already warns about."
     },
     {
       "live": "~/Library/LaunchAgents/com.nuzantara.web-lead-funnel.plist",

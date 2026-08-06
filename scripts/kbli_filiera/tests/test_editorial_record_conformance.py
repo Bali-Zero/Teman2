@@ -542,7 +542,7 @@ def test_the_live_populations_are_pinned():
     assert len(rep["needs_an_author"]["codes"]) == 28
 
     # WHERE the prose lies, and this is the number that matters — not the code
-    # count above, which a cross-family refutation left UNMOVED at 34 while
+    # count above. A cross-family refutation left that count UNMOVED at 34 while
     # changing what a cure would have to touch by half:
     #
     #     editorial.standfirst   6 -> 22
@@ -556,6 +556,12 @@ def test_the_live_populations_are_pinned():
     # a page that reads cured with its standfirst still asserting the opposite.
     # Pinned by field for that reason: the total alone hid the first defect too,
     # when three fields were read and reported as "the bodies".
+    #
+    # 102 -> 81 after `cure_prose_national_openness.py` replaced 21 fields on
+    # six codes. The dict below is the CURRENT state, re-derived from the live
+    # catalogue when this pin and #3687's were merged — two branches moving the
+    # same monotone number conflict textually even when both are right, and the
+    # resolution is to re-measure, never to pick a side (W109b).
     assert rep["needs_an_author"]["by_field"] == {
         "editorial.body": 25,
         "whatYouNeed": 21,
