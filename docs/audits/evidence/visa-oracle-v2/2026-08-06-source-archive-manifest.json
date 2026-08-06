@@ -6,6 +6,8 @@
     "folder_id": "1DffcSm5Y0d3YYDYCpiYEASJMfRALlsa2",
     "folder_url": "https://drive.google.com/drive/folders/1DffcSm5Y0d3YYDYCpiYEASJMfRALlsa2",
     "official_sources_folder_id": "13M_x0tG9ZjjvsVM_i5RT-t1zkCwQdB5d",
+    "official_announcements_folder_id": "1xFjrpHfQZ5FQUzwHjKYOdBBR2-zgGzDe",
+    "official_announcements_folder_url": "https://drive.google.com/drive/folders/1xFjrpHfQZ5FQUzwHjKYOdBBR2-zgGzDe",
     "related_legislation_folder_id": "1BM42o0W4hTWJuiDLtqLCHGT5GwgVpcCQ",
     "related_legislation_folder_url": "https://drive.google.com/drive/folders/1BM42o0W4hTWJuiDLtqLCHGT5GwgVpcCQ"
   },
@@ -85,23 +87,63 @@
       }
     }
   ],
-  "required_dispositive_artifacts_not_yet_archived": [
+  "official_announcement_archive": {
+    "local_path": "docs/audits/evidence/visa-oracle-v2/2026-08-06-calling-visa-official-announcements.json",
+    "mime_type": "application/json",
+    "byte_size": 3533,
+    "sha256": "02ee0ef8291d8500c1c17d488219a5c8ce797b1aa0696b68b50e60578c2d1239",
+    "drive_archive": {
+      "file_id": "1wAuF5L14gg-yKzaEzqaqD5-v0IlkPHZz",
+      "file_name": "2026-08-06-calling-visa-official-announcements-v2.json",
+      "file_url": "https://drive.google.com/file/d/1wAuF5L14gg-yKzaEzqaqD5-v0IlkPHZz/view?usp=drivesdk",
+      "created_at": "2026-08-06T09:34:20.558Z",
+      "modified_at": "2026-08-06T09:34:20.558Z",
+      "read_back_byte_size": 3533,
+      "parent_folder_id": "1xFjrpHfQZ5FQUzwHjKYOdBBR2-zgGzDe"
+    },
+    "raw_html_archives": [
+      {
+        "country_code": "GN",
+        "local_path": "docs/audits/evidence/visa-oracle-v2/2026-08-06-guinea-removal-official.html",
+        "byte_size": 139052,
+        "sha256": "aabb363075e653c766a67f7ea7fc1b4224dac29cbc09031f95c4099d34378696",
+        "drive_file_id": "1jli20E-kEw47vUsRPK9y_JB-pkdLn_5m",
+        "drive_file_url": "https://drive.google.com/file/d/1jli20E-kEw47vUsRPK9y_JB-pkdLn_5m/view?usp=drivesdk",
+        "drive_read_back_byte_size": 139052
+      },
+      {
+        "country_code": "CM",
+        "local_path": "docs/audits/evidence/visa-oracle-v2/2026-08-06-cameroon-removal-official.html",
+        "byte_size": 47761,
+        "sha256": "484898b22629c3ca6850156054c3c2e320038f884754d8d12962ae20b22c377c",
+        "drive_file_id": "1yUos6FMJMX1wj3T4YnvniJ1eEYCy5mbB",
+        "drive_file_url": "https://drive.google.com/file/d/1yUos6FMJMX1wj3T4YnvniJ1eEYCy5mbB/view?usp=drivesdk",
+        "drive_read_back_byte_size": 47761
+      }
+    ],
+    "authority_scope": {
+      "dispositive_for_calling_visa_country_treatment": true,
+      "approval_basis": "Zero approved the two official Immigration announcements as sufficient primary evidence on 2026-08-06.",
+      "g1_effect": "CALLING_VISA_COUNTRY_TREATMENT_CLOSED"
+    }
+  },
+  "optional_corroborating_artifacts_not_yet_archived": [
     {
       "instrument_number": "M.HH-05.GR.01.06 Tahun 2023",
       "purpose": "Cameroon removal from the Calling Visa country list",
-      "status": "MISSING_OFFICIAL_PDF",
+      "status": "OPTIONAL_OFFICIAL_PDF_NOT_LOCATED",
       "known_official_publication": "https://www.imigrasi.go.id/siaran_pers/2023/11/29/siaran-pers-kamerun-dicabut-dari-daftar-calling-visa-dirjen-imigrasi-ada-pertimbangan-ekonomi-dan-keamanan?lang=id-ID"
     },
     {
       "instrument_number": "M.HH-03.GR.01.06 Tahun 2024",
       "purpose": "Fifth amendment to the Calling Visa country list, including Guinea treatment",
-      "status": "MISSING_OFFICIAL_PDF",
-      "known_official_publication": null
+      "status": "OPTIONAL_OFFICIAL_PDF_NOT_LOCATED",
+      "known_official_publication": "https://tarakan.imigrasi.go.id/2024/06/negara-guinea-dihapus-dari-daftar-negara-yang-memerlukan-calling-visa/"
     }
   ],
   "gate_effect": {
-    "g1": "BLOCKED",
+    "g1": "DONE",
     "production_activation": "NO_GO",
-    "reason": "The two recovered files do not replace the missing dispositive Calling Visa decisions."
+    "reason": "The official Immigration announcements close the Calling Visa country treatment under Zero's explicit source approval. Production remains gated by the separate operational, privacy, pricing-integration, provisioning and smoke-test conditions."
   }
 }

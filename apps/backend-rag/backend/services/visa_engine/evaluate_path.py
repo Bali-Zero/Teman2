@@ -129,6 +129,7 @@ from backend.services.visa_engine.models import (
 from backend.services.visa_engine.pricing_adapter import (
     ExactPricingCatalog,
     UnavailablePricingCatalog,
+    build_price_quote,
     resolve_candidate_pricing,
 )
 from backend.services.visa_engine.retention import (
@@ -580,9 +581,7 @@ def _evaluate_source_freshness(
     within_policy = age_whole_seconds < policy.max_age_seconds or (
         age_whole_seconds == policy.max_age_seconds and age.microseconds == 0
     )
-    status = (
-        SourceFreshnessStatus.CURRENT if within_policy else SourceFreshnessStatus.STALE
-    )
+    status = SourceFreshnessStatus.CURRENT if within_policy else SourceFreshnessStatus.STALE
     return SourceFreshnessDTO(
         status=status,
         reason_code=(
@@ -658,10 +657,7 @@ def _source_is_authoritative_and_applicable(
         and applicability is SourceApplicabilityStatus.APPLICABLE
         and source.recorded_period.from_ <= source.retrieved_at
         and source.retrieved_at <= source.verified_at
-        and (
-            source.recorded_period.to is None
-            or source.verified_at < source.recorded_period.to
-        )
+        and (source.recorded_period.to is None or source.verified_at < source.recorded_period.to)
         and source.verified_at <= compiled.source_pack.protected.signed_at
     )
 
@@ -846,6 +842,39 @@ def _build_display(
             request_trace,
         )
     return {"candidates": entries}
+
+
+def _attach_price_quotes(
+    decision: Decision,
+    compiled: CompiledRulePack,
+    *,
+    pricing_catalog: ExactPricingCatalog,
+) -> Decision:
+    """Attach exact-key PricingTool quotes before decision sealing/persistence."""
+
+    if decision.state is not DecisionState.SUPPORTED_CANDIDATES:
+        return decision
+    if decision.decision_id is None:  # pragma: no cover - evaluated-state invariant
+        return decision
+    products = {
+        product.product_version_id: product for product in compiled.source_pack.payload.products
+    }
+    quotes = []
+    for candidate in decision.candidates:
+        product = products.get(candidate.product_version_id)
+        if product is None:
+            continue
+        resolution = resolve_candidate_pricing(
+            product,
+            pricing_catalog=pricing_catalog,
+            evaluated_at=decision.evaluated_at,
+        )
+        quote = build_price_quote(product, resolution, decision_id=decision.decision_id)
+        if quote is not None:
+            quotes.append(quote)
+    payload = decision.model_dump(mode="python")
+    payload["quotes"] = tuple(quotes)
+    return Decision.model_validate(payload)
 
 
 _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(
@@ -1339,6 +1368,18 @@ async def run_evaluation(
         return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE", mode=engine_mode)
 
     try:
+        pricing_catalog: ExactPricingCatalog = await asyncio.to_thread(get_pricing_service)
+    except Exception as exc:
+        # Pricing availability cannot overwrite a legal decision. Log only the
+        # type: adapter exceptions may include catalog payloads or paths.
+        logger.warning(
+            "evaluate path: pricing catalog acquisition failed: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        pricing_catalog = UnavailablePricingCatalog()
+
+    try:
         identity_provider = resolve_identity_provider()
         evaluation = evaluate_with_trace(
             facts,
@@ -1351,6 +1392,19 @@ async def run_evaluation(
         decision = _apply_decisive_source_authority_hold(decision, compiled)
         decision = _apply_safety_critical_source_hold(decision, compiled)
         decision = _apply_disclosed_review_flags(decision, disclosed_review_flags)
+        try:
+            decision = _attach_price_quotes(
+                decision,
+                compiled,
+                pricing_catalog=pricing_catalog,
+            )
+        except Exception as exc:
+            logger.warning(
+                "evaluate path: price quote projection failed: %s (trace=%s)",
+                type(exc).__name__,
+                request_trace,
+            )
+            pricing_catalog = UnavailablePricingCatalog()
         keyring = resolve_engine_hmac_keyring(compiled.environment, now)
         decision = seal_decision(
             decision,
@@ -1417,19 +1471,6 @@ async def run_evaluation(
                 code="DECISION_PERSISTENCE_UNAVAILABLE",
                 mode=engine_mode,
             )
-
-    try:
-        pricing_catalog: ExactPricingCatalog = await asyncio.to_thread(get_pricing_service)
-    except Exception as exc:
-        # Pricing availability cannot overwrite an already approved and
-        # persisted legal decision. Log only the type: adapter exceptions may
-        # include catalog payloads or connection details.
-        logger.warning(
-            "evaluate path: pricing catalog acquisition failed: %s (trace=%s)",
-            type(exc).__name__,
-            request_trace,
-        )
-        pricing_catalog = UnavailablePricingCatalog()
 
     try:
         envelope = {

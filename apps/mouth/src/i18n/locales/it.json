@@ -383,7 +383,7 @@
       "q5": "La mia famiglia può aggregarsi con il visto Second Home?",
       "a5": "È disponibile un add-on famiglia — i familiari idonei possono aggregarsi tramite i percorsi per dipendenti. Regole e costi aggiornati vengono confermati individualmente nel fit memo gratuito.",
       "q6": "Quanto costa il visto Second Home con Bali Zero?",
-      "a6": "IDR 39.000.000 tutto incluso per l'E33 base — una cifra sola, tutto compreso. Il fit memo che valuta il tuo percorso è gratuito."
+      "a6": "{{price}} tutto incluso per l'E33 base — una cifra sola, tutto compreso. Il fit memo che valuta il tuo percorso è gratuito."
     },
     "cta": {
       "title": "Inizia con un fit memo gratuito",

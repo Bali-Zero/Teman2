@@ -1,17 +1,18 @@
 # Visa Oracle V2 - G1 source decision packet
 
-**Status:** `SIGNED / ACTIVATION BLOCKED` - national authority and country
-treatment are approved and production sequence 2 is signed; immutable
-instrument archive and activation remain pending; independent review is LGTM
+**Status:** `G1 PASS / ACTIVATION BLOCKED` - national authority and country
+treatment are approved, the official Immigration announcements are immutably
+recorded, and production sequence 2 is signed; separate operational activation
+gates remain pending
 
 **Observed:** 2026-08-06 11:52-12:01 WITA (2026-08-06 03:52-04:01 UTC)
 
 **Candidate base:** `7452e05cc9d8a6a6090052b958b1d05275613a80`
 
-**Product consequence:** the recorded national-authority decision and signed
-sequence-2 candidate resolve the product country set. Missing immutable
-instruments and expired or unverified evidence remain fail-closed. This packet
-does not close G1 or authorize activation.
+**Product consequence:** the recorded national-authority decision, approved
+official announcements and signed sequence-2 candidate resolve the product
+country set. Expired or unverified future evidence remains fail-closed. This
+packet closes G1 but does not authorize activation.
 
 ## Executive decision record
 
@@ -22,8 +23,9 @@ Visa Oracle. Regional displays cannot add or retain a country that is absent
 from the national list. Therefore the replacement national Calling Visa
 overlay shall contain only `AF IL KP LR NG SO`; `GN` (Guinea), `CM` (Cameroon),
 and `NE` (Niger) are excluded. This is a product authority decision for the
-new signed RulePack, not a mutation of `rulepack-prod-001` and not a claim that
-the missing Kepmen PDFs have been archived.
+new signed RulePack, not a mutation of `rulepack-prod-001`. Zero approved the
+official Immigration announcements as sufficient primary evidence; the Kepmen
+PDFs have not been located and remain optional corroboration.
 
 Until sequence 2 is activated, the current sequence-1 pack remains
 immutable and runtime freshness gates continue to abstain conservatively.
@@ -59,7 +61,7 @@ conflict-safe consequence until activation is:
 
 - `AF`, `IL`, `KP`, `LR`, `NG`, `SO`: sequence 2 retains the Calling Visa review, subject to signed source-freshness gates.
 - `GN`, `CM`, `NE`: sequence 2 excludes these countries. The current sequence-1 pack must not be edited; until sequence 2 is activated, any result still governed by the old pack remains conservative `HUMAN_REVIEW_REQUIRED` where freshness or source conflict is unresolved.
-- A source retrieval failure, unknown effective date, missing official instrument, or expired observation must never resolve the conflict in favour of a recommendation.
+- A source retrieval failure, unknown effective date, or expired observation must never resolve a future conflict in favour of a recommendation.
 
 This is a source conflict, not evidence of a regional legal regime. No regional divergence is assumed.
 
@@ -110,21 +112,27 @@ This regulation establishes who decides and how the category is reviewed. It doe
 
 - Official national Ditjen Imigrasi press release: <https://www.imigrasi.go.id/siaran_pers/2023/11/29/siaran-pers-kamerun-dicabut-dari-daftar-calling-visa-dirjen-imigrasi-ada-pertimbangan-ekonomi-dan-keamanan?lang=id-ID>.
 - Retrieval: HTTP 200 at 2026-08-06 (direct HTTP capture; browser fetch may return 403).
-- Raw HTML SHA-256: `6eae2f0d09278c64ce6d11d908dbb7dc47b11377d687e4ee3682081d9bff0681`.
+- Archived raw HTML SHA-256: `484898b22629c3ca6850156054c3c2e320038f884754d8d12962ae20b22c377c`, 47,761 bytes; Drive file `1yUos6FMJMX1wj3T4YnvniJ1eEYCy5mbB`.
 - Primary publication claim: Kepmenkumham No. `M.HH-05.GR.01.06 Tahun 2023`, approved 2023-11-23, removed Cameroon from the Calling Visa list and ended the Cameroon clearing-house procedure.
 - The same publication says evaluation of Guinea's removal was in progress at that time.
 
-This national primary publication supports that the signed pack's inclusion of `CM` is stale relative to the 2023 decision. The signed decision PDF itself is not archived in the inspected repository/Drive evidence and remains a required immutable source artifact before G1 and production activation can close. Cameroon can therefore be removed from the new national overlay; the missing PDF remains a provenance/archive gap, not uncertainty about the published operational outcome.
+This national primary publication establishes that the signed pack's inclusion
+of `CM` is stale relative to the 2023 decision. Zero approved the official
+publication as sufficient primary evidence on 2026-08-06. The ministerial PDF
+remains optional corroboration, not a G1 or activation blocker.
 
-### E5 - Guinea 2024 decision lead, not yet archived proof
+### E5 - Guinea removal official announcement
 
-- Official Immigration Bandung page: <https://bandung.imigrasi.go.id/layanan-3/warga-negara-asing-wna/daftar-negara-voa-bvk-calling-visa>.
-- The official page identifies Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024` as the fifth amendment to Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2012` on Calling Visa countries.
-- Direct page capture timed out in this verification run; no defensible raw hash was produced.
-- The national six-country list, the 2023 official statement that Guinea removal was under evaluation, and the 2024 fifth-amendment identifier are converging evidence that Guinea may have been removed. That is an inference, not a substitute for the signed/issued decision text.
-- No official PDF of Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024` was found in the repository, exact Google Drive searches, or the fully scrolled 90-point `visa_oracle` Qdrant collection.
+- Official Immigration Tarakan announcement: <https://tarakan.imigrasi.go.id/2024/06/negara-guinea-dihapus-dari-daftar-negara-yang-memerlukan-calling-visa/>.
+- Published 2024-06-19 by Kantor Imigrasi Kelas II TPI Tarakan.
+- The announcement identifies Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024`, established and effective 2024-06-12, as the fifth amendment to Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2012`.
+- It explicitly removes Guinea and identifies the remaining list as Afghanistan, Israel, North Korea, Liberia, Nigeria and Somalia.
+- Archived raw HTTP capture observed 2026-08-06: 139,052 bytes, SHA-256 `aabb363075e653c766a67f7ea7fc1b4224dac29cbc09031f95c4099d34378696`; Drive file `1jli20E-kEw47vUsRPK9y_JB-pkdLn_5m`.
+- The normalized Guinea/Cameroon announcement record is archived in Drive file `1wAuF5L14gg-yKzaEzqaqD5-v0IlkPHZz`, local SHA-256 `02ee0ef8291d8500c1c17d488219a5c8ce797b1aa0696b68b50e60578c2d1239`.
 
-Consequence: Guinea remains `HUMAN_REVIEW_REQUIRED` under `SOURCE_CONFLICT` until the official decision PDF is acquired, its provenance and complete contents are verified, and it is archived with a reproducible hash. An unofficial document-hosting copy is not admissible as RulePack authority.
+Consequence: `GN` is excluded from the national Calling Visa overlay. Zero
+approved this official announcement as sufficient primary evidence; the
+ministerial PDF is optional corroboration and does not trigger human review.
 
 ### E6 - Perpres 43/2011 is archived but unrelated historical evidence
 
@@ -181,8 +189,8 @@ The files are archived under
 `visa-oracle/official-sources/calling-visa-related-legislation`; the complete
 provenance record is
 `docs/audits/evidence/visa-oracle-v2/2026-08-06-source-archive-manifest.json`.
-This closes the procedure-regulation archive but not the two dispositive
-country-list archive requirements.
+This closes the procedure-regulation archive. The separately archived official
+Immigration announcements close the Cameroon and Guinea country treatment.
 
 - Qdrant `visa_oracle`: 90/90 points scrolled; one C11A service document mentions Calling Visa but contains neither the country list nor the 2024 decision.
 - Qdrant `legal_unified_2026` and `legal_unified_hybrid_hybrid`: reachable, but the read-only connector lacks filtered search/offset pagination; absence from those large collections is not asserted.
@@ -213,16 +221,17 @@ Conflict-safe consequence:
 
 ## Zero decision record and remaining G1 approvals
 
-G1 cannot close until the items explicitly marked **REMAINING** are complete.
+The Calling Visa G1 decisions are complete. Items explicitly marked
+**OPERATIONS REMAINING** belong to activation, not source approval.
 
 1. **Authority — DECIDED:** the national Ditjen consolidated list is canonical; a Kanwil page is non-controlling for the national product and cannot add a country.
-2. **Guinea — COUNTRY TREATMENT DECIDED / ARCHIVE REMAINING:** exclude `GN` under the national-canonical rule; archive and verify Kepmenkumham No. `M.HH-03.GR.01.06 Tahun 2024`, including operative text, effective date and supersession lineage, before G1/activation.
-3. **Cameroon — COUNTRY TREATMENT DECIDED / ARCHIVE REMAINING:** exclude `CM`; archive Kepmenkumham No. `M.HH-05.GR.01.06 Tahun 2023`, including its operative locator and effective date, before G1/activation.
+2. **Guinea — DONE:** exclude `GN`; the official Tarakan Immigration announcement records the decision number, fifth-amendment lineage, operative outcome, six-country remainder and 2024-06-12 effective date. Zero approved the announcement as sufficient primary evidence.
+3. **Cameroon — DONE:** exclude `CM`; the national Ditjen Imigrasi announcement records the decision number, 2023-11-23 approval and end of the clearing-house procedure. Zero approved the announcement as sufficient primary evidence.
 4. **Niger — DECIDED:** exclude `NE` from the replacement national overlay. Do not mutate sequence 1; cases governed by sequence 1 remain conservative until sequence 2 activation.
 5. **Conflict behaviour — DECIDED:** country/product conflict produces `HUMAN_REVIEW_REQUIRED`; source-integrity or global-provenance failure blocks the complete evaluation.
 6. **Freshness — POLICY DECIDED / OPERATIONS REMAINING:** portal evidence is current for 7 days with daily recheck; primary law/implementing regulation for 365 days with monthly recheck. Zero must still assign the production owner/SLA, scheduler and alerting.
 7. **Content identity — DECIDED:** dynamic Calling Visa pages use the deterministic normalized-list artifact; raw HTML hashes remain supporting captures only.
-8. **Source lineage — DONE / ARCHIVE REMAINING:** sequence 2 records temporal fields, locators, hashes, publisher and forward lineage; the two official Kepmen artifacts remain unarchived.
+8. **Source lineage — DONE:** sequence 2 records temporal fields, locators, hashes, publisher and forward lineage; the official announcement record is content-addressed and archived. The two Kepmen PDFs remain optional corroboration if later located.
 9. **Extensions — DECIDED:** all 16 uncited policies are explicit neutral `UNKNOWN` with reason `EXTENSION_POLICY_NOT_VERIFIED`; no duration or positive claim is inferred.
 10. **Schema — DONE:** sequence 2 requires explicit `VERIFIED` or `UNKNOWN` extension status and rejects contradictory shapes.
 
@@ -247,10 +256,10 @@ An unknown or expired value for any decisive field must produce abstention or hu
 
 ## Replacement RulePack completion checklist
 
-The repair is forward-only. Items 1 and 11 remain activation gates; the other
+The repair is forward-only. Item 11 remains an activation gate; the other
 steps are complete in the review candidate:
 
-1. **REMAINING:** acquire and archive the official 2023 and 2024 ministerial decisions from an official origin; verify operative text, annexes, dates, issuer and provenance; record PDF SHA-256 and byte size.
+1. **DONE:** archive the official Cameroon and Guinea Immigration announcements with URL, publisher, publication and effective dates, operative facts, raw HTTP hashes and Drive read-back. The ministerial PDFs are optional corroboration under Zero's explicit approval.
 2. **DONE:** archive reproducible national/regional observations and the normalized national-list artifact as separate evidence surfaces.
 3. **DONE:** record decisive locators and bitemporal fields without treating retrieval time as legal effective time.
 4. **DONE:** record Zero's national authority, conflict-scope, freshness, country-treatment and neutral-extension decisions above.
@@ -264,35 +273,36 @@ steps are complete in the review candidate:
 
 ## G1 matrix
 
-| G1 element                                      | Status  | Evidence / missing closure                                                                                                                       |
-| ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Current national display captured               | DONE    | Six countries, two captures, dynamic-field difference isolated, stable normalized hash recorded.                                                 |
-| Current regional display captured               | DONE    | Nine countries, two captures, dynamic-field difference isolated, stable normalized hash recorded.                                                |
-| Signed production set inspected                 | DONE    | Eight countries, signed-file/payload hashes, sequence and source record inspected.                                                               |
-| Calling Visa procedure authority                | DONE    | Permenkumham 2/2024 official PDF is byte-verified against peraturan.go.id and archived in Drive with hash, size and provenance.                  |
-| Perpres 43/2011 classification/archive          | DONE    | Historical BVK source identified; local hash and Drive object recorded; explicitly non-dispositive.                                              |
-| Cameroon legal lineage                          | PARTIAL | National Ditjen Imigrasi primary publication, decision number and operative outcome verified; official decision PDF/immutable hash missing.      |
-| Guinea legal lineage                            | PARTIAL | Official national display and fifth-amendment identifier converge; operative official PDF and effective locator missing.                         |
-| Niger legal status                              | DECIDED | Excluded from the replacement national overlay; regional-only inclusion is non-controlling.                                                      |
-| Source authority/applicability policy           | DECIDED | National Ditjen list is canonical for the national product; regional pages cannot add countries.                                                 |
-| Signed freshness policy                         | DONE    | All 28 sequence-2 source records carry approved max ages; cadence and conflict scope are recorded; production signature verified.                |
-| Reproducible current Calling Visa source record | DONE    | Sequence 2 uses the normalized national six-country artifact hash, locator, observation clock, freshness policy and forward source lineage.      |
-| Extension source mapping                        | PARTIAL | Sixteen uncited/ambiguous products are explicit `UNKNOWN`; no duration or positive extension claim is emitted pending product-specific locators. |
-| Extension cross-field contract                  | DONE    | Sequence 2 requires `VERIFIED` or `UNKNOWN`; unknown is neutral and verified shapes reject count/duration contradictions.                        |
-| Replacement RulePack                            | DONE    | Sequence 2, previous-hash chain, corrected national source record, clean compilation and production Ed25519 signature verified; inactive.        |
-| Independent implementation review               | DONE    | Independent grader LGTM on review candidate `0f37138fc`; G1 itself remains blocked by the explicitly listed source/policy approvals.             |
+| G1 element                                      | Status  | Evidence / missing closure                                                                                                                         |
+| ----------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current national display captured               | DONE    | Six countries, two captures, dynamic-field difference isolated, stable normalized hash recorded.                                                   |
+| Current regional display captured               | DONE    | Nine countries, two captures, dynamic-field difference isolated, stable normalized hash recorded.                                                  |
+| Signed production set inspected                 | DONE    | Eight countries, signed-file/payload hashes, sequence and source record inspected.                                                                 |
+| Calling Visa procedure authority                | DONE    | Permenkumham 2/2024 official PDF is byte-verified against peraturan.go.id and archived in Drive with hash, size and provenance.                    |
+| Perpres 43/2011 classification/archive          | DONE    | Historical BVK source identified; local hash and Drive object recorded; explicitly non-dispositive.                                                |
+| Cameroon legal lineage                          | DONE    | National Ditjen Imigrasi publication, decision number, approval date and operative outcome are verified, hashed, archived and explicitly approved. |
+| Guinea legal lineage                            | DONE    | Official Tarakan Immigration publication records the decision, fifth-amendment lineage, effective date, removal and resulting six-country set.     |
+| Niger legal status                              | DECIDED | Excluded from the replacement national overlay; regional-only inclusion is non-controlling.                                                        |
+| Source authority/applicability policy           | DECIDED | National Ditjen list is canonical for the national product; regional pages cannot add countries.                                                   |
+| Signed freshness policy                         | DONE    | All 28 sequence-2 source records carry approved max ages; cadence and conflict scope are recorded; production signature verified.                  |
+| Reproducible current Calling Visa source record | DONE    | Sequence 2 uses the normalized national six-country artifact hash, locator, observation clock, freshness policy and forward source lineage.        |
+| Extension source mapping                        | PARTIAL | Sixteen uncited/ambiguous products are explicit `UNKNOWN`; no duration or positive extension claim is emitted pending product-specific locators.   |
+| Extension cross-field contract                  | DONE    | Sequence 2 requires `VERIFIED` or `UNKNOWN`; unknown is neutral and verified shapes reject count/duration contradictions.                          |
+| Replacement RulePack                            | DONE    | Sequence 2, previous-hash chain, corrected national source record, clean compilation and production Ed25519 signature verified; inactive.          |
+| Independent implementation review               | DONE    | Independent grader LGTM on review candidate `0f37138fc`; the announcement-archive amendment requires a fresh independent review.                   |
 
 ## Gate verdict
 
-`G1: PARTIAL / ACTIVATION BLOCKED`.
+`G1: PASS / ACTIVATION BLOCKED`.
 
 The national authority and replacement country treatment are now decided:
 `AF IL KP LR NG SO`, with `GN CM NE` excluded. The signed replacement pack and
 freshness policy are complete. The 16 ambiguous extension policies now remain
 explicitly `UNKNOWN`, with no invented duration or positive extension claim.
-Activation still requires the missing official instrument archives,
-independent verification, and the operational production gates. The existing
-sequence-1 pack remains immutable and cannot be silently edited.
+Activation still requires independent verification and the operational
+production gates. The existing sequence-1 pack remains immutable and cannot be
+silently edited. The two ministerial PDFs remain a non-blocking corroboration
+gap if an official download becomes available later.
 
 The signed sequence-2 candidate records the approved observation policy:
 official portal pages are current for 7 days and rechecked daily; primary law

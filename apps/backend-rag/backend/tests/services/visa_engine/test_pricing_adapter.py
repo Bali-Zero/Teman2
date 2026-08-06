@@ -1,14 +1,18 @@
-"""Deterministic PricingTool adapter tests: exact lookup, no amount leakage."""
+"""Deterministic PricingTool adapter tests: exact lookup and strict amounts."""
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 import pytest
 
 from backend.services.visa_engine.models import PricingKey, VisaProductVersion
-from backend.services.visa_engine.pricing_adapter import resolve_candidate_pricing
+from backend.services.visa_engine.pricing_adapter import (
+    build_price_quote,
+    resolve_candidate_pricing,
+)
 from backend.tests.services.visa_engine.gold_harness import loader as gold_loader
 
 _NOW = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
@@ -36,6 +40,7 @@ class _Catalog:
 
     def get_all_prices(self) -> dict[str, Any]:
         return {
+            "version": "test-2026.1",
             "metadata": {"last_updated": "2026-05-06", "currency": "IDR"},
             "services": {"single_entry_visas": {}},
         }
@@ -108,13 +113,64 @@ def test_missing_exact_item_or_category_requires_contact(row: dict[str, Any] | N
     _assert_no_amount(result.as_json())
 
 
-def test_exact_row_with_no_freshness_policy_still_requires_contact() -> None:
+def test_exact_row_emits_approved_all_inclusive_amount() -> None:
     catalog = _Catalog(
         loaded=True,
         row={
             "key": "C1 exact",
             "category": "single_entry_visas",
-            "price": "test-only-redacted-value",
+            "price": "2.300.000 IDR",
+        },
+    )
+    result = resolve_candidate_pricing(
+        _product(PricingKey(category="single_entry_visas", item_key="C1 exact")),
+        pricing_catalog=catalog,
+        evaluated_at=_NOW,
+    )
+    assert result.status == "AVAILABLE"
+    assert result.reason_code == "PRICE_AVAILABLE"
+    assert result.amount == 2_300_000
+    assert result.catalog_version == "test-2026.1"
+    assert result.catalog_last_updated is not None
+    assert result.catalog_sha256 is not None
+    assert result.row_sha256 is not None
+    _assert_no_amount(result.as_json())
+    product = _product(PricingKey(category="single_entry_visas", item_key="C1 exact"))
+    decision_id = uuid.UUID("00000000-0000-4000-8000-000000000001")
+    quote = build_price_quote(product, result, decision_id=decision_id)
+    assert quote is not None
+    assert quote.amount == 2_300_000
+    assert quote.catalog_version == "test-2026.1"
+    quote_again = build_price_quote(
+        product,
+        result,
+        decision_id=decision_id,
+    )
+    assert quote_again is not None
+    assert quote.quote_id == quote_again.quote_id
+
+
+@pytest.mark.parametrize(
+    "raw_price",
+    [
+        "Contact",
+        "1.800.000 – 2.000.000 IDR",
+        "USD 100",
+        "2.3 million IDR",
+        "IDR 2.300.000 IDR",
+        "2.300,000 IDR",
+        "-2.300.000 IDR",
+        "9,007,199,254,740,992 IDR",
+        None,
+    ],
+)
+def test_non_exact_or_non_idr_price_requires_contact(raw_price: object) -> None:
+    catalog = _Catalog(
+        loaded=True,
+        row={
+            "key": "C1 exact",
+            "category": "single_entry_visas",
+            "price": raw_price,
         },
     )
     result = resolve_candidate_pricing(
@@ -123,8 +179,6 @@ def test_exact_row_with_no_freshness_policy_still_requires_contact() -> None:
         evaluated_at=_NOW,
     )
     assert result.status == "CONTACT_REQUIRED"
-    assert result.reason_code == "PRICING_FRESHNESS_UNKNOWN"
-    assert result.catalog_last_updated is not None
-    assert result.catalog_sha256 is not None
+    assert result.reason_code == "PRICING_ROW_NOT_EXACT_AMOUNT"
+    assert result.amount is None
     assert result.row_sha256 is not None
-    _assert_no_amount(result.as_json())

@@ -9,7 +9,8 @@ import { CONTACTS } from "./book-data";
 interface ServicePricingCardProps {
   title: string;
   tagline: string;
-  serviceKey: string;
+  pricingCategory?: string;
+  pricingItemKey?: string;
   features: string[];
   waMessage: string;
   badge?: string;
@@ -19,14 +20,18 @@ interface ServicePricingCardProps {
 export function ServicePricingCard({
   title,
   tagline,
-  serviceKey,
+  pricingCategory,
+  pricingItemKey,
   features,
   waMessage,
   badge,
   ctaLabel = "Ask on WhatsApp",
 }: ServicePricingCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const { price, isLoading } = usePricingData(serviceKey);
+  const { price, isLoading } = usePricingData(
+    pricingItemKey ?? null,
+    pricingCategory ?? null,
+  );
 
   const visible = features.slice(0, 3);
   const hidden = features.slice(3);
@@ -42,20 +47,20 @@ export function ServicePricingCard({
           </div>
         )}
 
-        <div className="flex items-start justify-between mb-4 mt-1">
-          <div className="flex-1 min-w-0 pr-3">
+        <div className="flex flex-col items-start justify-between gap-2 mb-4 mt-1 sm:flex-row sm:gap-0">
+          <div className="w-full min-w-0 sm:flex-1 sm:pr-3">
             <h3 className="font-[family-name:var(--font-spartan)] text-white font-bold text-lg leading-tight">
               {title}
             </h3>
-            <p className="font-[family-name:var(--font-montserrat)] text-white/45 text-sm mt-0.5">
+            <p className="font-[family-name:var(--font-montserrat)] text-white/45 text-sm mt-0.5 line-clamp-5">
               {tagline}
             </p>
           </div>
-          <div className="text-right flex-shrink-0">
+          <div className="text-left flex-shrink-0 sm:text-right">
             {isLoading ? (
               <div className="h-6 w-20 bg-white/10 rounded-lg animate-pulse" />
             ) : (
-              <span className="font-[family-name:var(--font-spartan)] text-accent-warm font-bold text-xl">
+              <span className="font-[family-name:var(--font-spartan)] text-accent-warm font-bold text-lg sm:text-xl">
                 {price ?? "—"}
               </span>
             )}

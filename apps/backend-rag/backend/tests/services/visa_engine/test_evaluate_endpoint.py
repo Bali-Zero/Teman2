@@ -1724,7 +1724,7 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
         assert entry["processing_timeline"]["status"] == "UNKNOWN"
         assert entry["processing_timeline"]["anchor_date"] is None
         assert entry["pricing"]["status"] == "CONTACT_REQUIRED"
-        assert entry["pricing"]["reason_code"] == "PRICING_FRESHNESS_UNKNOWN"
+        assert entry["pricing"]["reason_code"] == "PRICING_ROW_NOT_EXACT_AMOUNT"
         assert entry["pricing"]["evaluated_at"] == body["decision"]["evaluated_at"]
         assert entry["pricing"]["catalog_last_updated"] == "2026-05-06"
         assert len(entry["pricing"]["catalog_sha256"]) == 64
@@ -1736,6 +1736,70 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
     assert saved["request_category"] == "long_tourism"
     assert saved["request_fingerprint"] == bytes.fromhex(digest)
     assert str(saved["decision"].decision_id) == body["decision"]["decision_id"]
+
+
+async def test_exact_pricingtool_rows_are_signed_and_persisted_as_quotes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    save_calls, _, compiled = _patch_engine_chain(monkeypatch)
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_safety_critical_source_hold",
+        lambda decision, _compiled: decision,
+    )
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_decisive_source_authority_hold",
+        lambda decision, _compiled: decision,
+    )
+    pricing_rows = {
+        product.pricing_key.item_key: product.pricing_key.category
+        for product in compiled.source_pack.payload.products
+        if product.pricing_key is not None
+    }
+
+    class _ExactPricingCatalog:
+        loaded = True
+
+        def get_all_prices(self) -> dict[str, object]:
+            return {
+                "version": "test-2026.1",
+                "metadata": {"last_updated": "2026-05-06", "currency": "IDR"},
+                "services": {},
+            }
+
+        def get_service_by_key(self, key: str) -> dict[str, object] | None:
+            category = pricing_rows.get(key)
+            if category is None:
+                return None
+            return {"key": key, "category": category, "price": "2.300.000 IDR"}
+
+    monkeypatch.setattr(evaluate_path, "get_pricing_service", _ExactPricingCatalog)
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    body = await evaluate_path.run_evaluation(
+        object(),
+        facts=facts,
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-exact-pricing",
+        evaluation_time=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+
+    assert body["decision"]["state"] == "SUPPORTED_CANDIDATES"
+    quotes = body["decision"]["quotes"]
+    assert quotes
+    assert len(save_calls) == 1
+    assert save_calls[0]["decision"].quotes
+    for quote in quotes:
+        assert quote["status"] == "AVAILABLE"
+        assert quote["amount"] == 2_300_000
+        assert quote["currency"] == "IDR"
+        assert quote["catalog_version"] == "test-2026.1"
+        assert quote["reason_code"] == "PRICE_AVAILABLE"
+    for candidate in body["display"]["candidates"]:
+        assert candidate["pricing"]["status"] == "AVAILABLE"
+        assert candidate["pricing"]["reason_code"] == "PRICE_AVAILABLE"
 
 
 async def test_pricing_catalog_outage_does_not_overwrite_legal_decision(
@@ -2176,7 +2240,11 @@ def test_freshness_is_monotone_from_current_to_stale_after_boundary() -> None:
     boundary = source.verified_at + timedelta(seconds=90_000)
     statuses = [
         evaluate_path._evaluate_source_freshness(source, evaluated_at=instant).status
-        for instant in (boundary - timedelta(seconds=1), boundary, boundary + timedelta(microseconds=1))
+        for instant in (
+            boundary - timedelta(seconds=1),
+            boundary,
+            boundary + timedelta(microseconds=1),
+        )
     ]
     assert statuses == [
         SourceFreshnessStatus.CURRENT,
@@ -2191,9 +2259,7 @@ def test_future_verified_at_projects_unknown_and_never_passes_decisive_gate() ->
         freshness_max_age_seconds=90_000,
     )
     assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert {reason.code for reason in held.review_reasons} == {
-        "DECISIVE_SOURCE_FRESHNESS_UNKNOWN"
-    }
+    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
     sources = evaluate_path._build_sources_dto(
         decision,
         compiled,

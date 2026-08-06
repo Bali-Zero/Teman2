@@ -63,16 +63,15 @@ function isNumericPrice(price: string): boolean {
 }
 
 /**
- * Resolves a package's display price: live PricingTool value (via
- * `usePricingData`, when the package declares `livePriceKey`) falling back
- * to the static `pkg.price` literal — never blank, never a stranding
- * spinner. `usePricingData(null)` is a documented no-op (no fetch, no
- * loading state), so this is safe to call unconditionally for every
- * package, including the ones with no live pricing wired yet.
+ * Resolves a package's display price. An exact PricingTool identity never
+ * falls back to a copied amount: a missing row becomes contact-required.
  */
 function usePackagePrice(pkg: ServicePackage): string {
-  const { price: livePrice } = usePricingData(pkg.livePriceKey ?? null);
-  return livePrice ?? pkg.price;
+  const { price: livePrice } = usePricingData(
+    pkg.livePriceKey ?? null,
+    pkg.livePriceCategory ?? null,
+  );
+  return livePrice ?? (pkg.livePriceKey ? "Contact" : pkg.price);
 }
 
 function PriceValue({

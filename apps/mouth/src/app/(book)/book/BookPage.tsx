@@ -34,18 +34,19 @@ function LocaleSwitcher({
 }) {
   const locales = Object.entries(LOCALE_LABELS) as [Locale, string][];
   return (
-    <div className="fixed top-4 right-4 z-50 flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl px-2 py-1.5">
+    <div className="fixed top-2 right-2 z-50 flex max-w-[calc(100vw-1rem)] items-center gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/40 px-2 py-1.5 backdrop-blur-sm sm:top-4 sm:right-4">
       {locales.map(([l, label]) => (
         <button
           key={l}
           onClick={() => onChange(l)}
-          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all font-[family-name:var(--font-montserrat)] ${
+          className={`shrink-0 rounded-lg px-2 py-1 text-xs font-medium transition-all font-[family-name:var(--font-montserrat)] sm:px-2.5 ${
             locale === l
               ? "bg-accent-warm text-white"
               : "text-white/50 hover:text-white"
           }`}
         >
-          {label}
+          <span className="hidden sm:inline">{label}</span>
+          <span className="sm:hidden">{l.toUpperCase()}</span>
         </button>
       ))}
     </div>
@@ -105,6 +106,7 @@ function ServicesSection({ locale }: { locale: Locale }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
+            data-testid="book-service-cards"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl"
           >
             {translatedServices.map((svc) => (
@@ -112,7 +114,8 @@ function ServicesSection({ locale }: { locale: Locale }) {
                 key={svc.serviceKey}
                 title={svc.title}
                 tagline={svc.tagline}
-                serviceKey={svc.serviceKey}
+                pricingCategory={svc.pricingCategory}
+                pricingItemKey={svc.pricingItemKey}
                 features={svc.features}
                 waMessage={svc.waMessage}
                 badge={svc.badge}
