@@ -15,6 +15,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager, suppress
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import ORJSONResponse
@@ -686,6 +687,23 @@ def create_app() -> FastAPI:
     from backend.app.setup.router_registration import include_routers
 
     include_routers(app)
+
+    # FastAPI/Pydantic omit model_validator cross-field conditionals from
+    # runtime OpenAPI. The frontend derives its TypeScript contract from this
+    # document, so inject the exact same reviewed Decision allOf blocks used
+    # by the standalone Visa Engine JSON-Schema export.
+    from backend.services.visa_engine.schema_export import (
+        inject_openapi_decision_conditionals,
+    )
+
+    default_openapi = app.openapi
+
+    def _openapi_with_visa_decision_conditionals() -> dict[str, Any]:
+        schema = default_openapi()
+        inject_openapi_decision_conditionals(schema)
+        return schema
+
+    app.openapi = _openapi_with_visa_decision_conditionals
 
     from backend.app.routers.root_endpoints import router as root_router
 

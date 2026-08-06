@@ -1,230 +1,374 @@
-/**
- * E2E scenarios for Visa Oracle v2 (TRACK C PR1 "Oracle Experience
- * Foundation"). Modeled on `visa-funnel-fusion.spec.ts` — getByRole-driven,
- * runs against the base URL configured in playwright.config.ts.
- *
- * CI runs `--grep "page Page"`; the describe block below carries that
- * literal string on purpose.
- */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
+import { makeVisaOracleResponse } from "../src/app/(visa-oracle)/visa-oracle/_lib/visa-oracle-test-fixture";
 
-test.describe("Visa Oracle v2 — page Page", () => {
-  test("happy path: framing → offshore tourism → verdict with a supported candidate", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
+const RESUME_KEY = "visa-oracle:v2:resume:v1";
+const VERDICT_FACTS = {
+  in_indonesia: "no",
+  overstay_days: "0",
+  nationalities: "US",
+  birth_date: "1990-01-01",
+  category: "tourism",
+  trip_scope: "single",
+  stay_days: "30",
+  entry_pattern: "SINGLE",
+  review_gate: "none",
+};
+const VERDICT_HISTORY = [
+  { kind: "framing" },
+  { kind: "question", questionId: "in_indonesia" },
+  { kind: "question", questionId: "overstay_days" },
+  { kind: "question", questionId: "nationalities" },
+  { kind: "question", questionId: "birth_date" },
+  { kind: "question", questionId: "category" },
+  { kind: "question", questionId: "trip_scope" },
+  { kind: "question", questionId: "stay_days" },
+  { kind: "question", questionId: "entry_pattern" },
+  { kind: "question", questionId: "review_gate" },
+  { kind: "confirmation" },
+  { kind: "verdict" },
+];
 
-    await expect(
-      page.getByRole("heading", { name: /a map, not an application/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /^start$/i }).click();
+type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
-    await expect(
-      page.getByRole("heading", { name: /are you in indonesia right now/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
+async function seedVerdictResume(page: Page): Promise<void> {
+  const savedAtIso = new Date().toISOString();
+  const expiresAtIso = new Date(Date.now() + 2 * 60 * 60 * 1_000).toISOString();
+  await page.addInitScript(
+    ({ key, savedAt, expiresAt, history, facts }) => {
+      window.sessionStorage.setItem(
+        key,
+        JSON.stringify({
+          schemaVersion: 1,
+          savedAtIso: savedAt,
+          expiresAtIso: expiresAt,
+          snapshot: {
+            schemaVersion: 1,
+            attempt: 0,
+            history,
+            facts,
+            updatedAtIso: savedAt,
+          },
+        }),
+      );
+    },
+    {
+      key: RESUME_KEY,
+      savedAt: savedAtIso,
+      expiresAt: expiresAtIso,
+      history: VERDICT_HISTORY,
+      facts: VERDICT_FACTS,
+    },
+  );
+}
 
-    await expect(
-      page.getByRole("heading", { name: /what brings you to indonesia/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /tourism & short visit/i }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /how long are you planning to stay/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /up to 30 days/i }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /honest questions/i }),
-    ).toBeVisible();
-    // Finding #5 (adversarial review 2026-07-17): Continue is disabled
-    // until an explicit checklist choice is made — the old test relied on
-    // the removed "press Continue with nothing checked = none" default.
-    await page
-      .getByRole("checkbox", { name: /none of these apply to me/i })
-      .check();
-    await page.getByRole("button", { name: /see my options/i }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /here.s what you told us/i }),
-    ).toBeVisible();
-    // Finding #12: the confirmation ("honesty receipt") heading receives
-    // focus on mount, same as every question screen and the verdict card.
-    await expect(
-      page.getByRole("heading", { name: /here.s what you told us/i }),
-    ).toBeFocused();
-    await page.getByRole("button", { name: /see my options/i }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /strongest fit/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /continue on whatsapp/i }),
-    ).toBeVisible();
+async function fulfillJson(route: Route, body: unknown): Promise<void> {
+  await route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(body),
   });
+}
 
-  test("back link restores the previous question, and re-answering down a different branch drops stale facts from the abandoned branch (finding #1)", async ({
+async function expectEngineState(page: Page, state: FixtureState) {
+  await expect(
+    page.getByRole("heading", {
+      name: translate("en", `verdict.headline.${state}`),
+    }),
+  ).toBeVisible();
+}
+
+async function expectNoWcagViolations(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(
+    results.violations.map(({ id, impact, help, nodes }) => ({
+      id,
+      impact,
+      help,
+      nodes: nodes.map(({ target, failureSummary }) => ({
+        target,
+        failureSummary,
+      })),
+    })),
+  ).toEqual([]);
+}
+
+async function tabTo(
+  page: Page,
+  target: ReturnType<Page["locator"]>,
+  maxTabs = 80,
+): Promise<void> {
+  await expect(target).toBeVisible();
+  for (let attempt = 0; attempt < maxTabs; attempt += 1) {
+    if (
+      await target.evaluate((element) => element === document.activeElement)
+    ) {
+      return;
+    }
+    await page.keyboard.press("Tab");
+  }
+  throw new Error(
+    `Keyboard focus did not reach ${await target.evaluate((element) => element.outerHTML)}`,
+  );
+}
+
+async function keyboardActivate(
+  page: Page,
+  target: ReturnType<Page["locator"]>,
+): Promise<void> {
+  await tabTo(page, target);
+  await page.keyboard.press("Enter");
+}
+
+async function expectFocusedHeading(page: Page, name: string): Promise<void> {
+  const heading = page.getByRole("heading", { name });
+  await expect(heading).toBeVisible();
+  await expect(heading).toBeFocused();
+}
+
+test.describe("Visa Oracle v2 integration — page Page", () => {
+  for (const state of [
+    "SUPPORTED_CANDIDATES",
+    "NEEDS_INPUT",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+    "TEMPORARILY_UNAVAILABLE",
+  ] as const) {
+    test(`ENGINE renders the OpenAPI ${state} state`, async ({
+      page,
+    }, testInfo) => {
+      await seedVerdictResume(page);
+      const requests: Array<{ body: string | null; key: string | undefined }> =
+        [];
+      await page.route("**/api/visa-oracle/evaluate**", async (route) => {
+        requests.push({
+          body: route.request().postData(),
+          key: route.request().headers()["idempotency-key"],
+        });
+        await fulfillJson(route, makeVisaOracleResponse(state));
+      });
+
+      await page.goto("/visa-oracle");
+      await expectEngineState(page, state);
+      expect(requests).toHaveLength(1);
+      expect(requests[0].key).toMatch(/^[0-9a-f-]{36}$/);
+      const body = JSON.parse(requests[0].body ?? "{}") as {
+        assessment_id?: string;
+        facts?: Record<string, unknown>;
+      };
+      expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(Object.keys(body.facts ?? {})).toHaveLength(40);
+
+      if (state === "SUPPORTED_CANDIDATES") {
+        await expect(page.getByText("Visit Visa C1")).toBeVisible();
+        await expectNoWcagViolations(page);
+        await page.screenshot({
+          path: testInfo.outputPath("visa-oracle-engine-desktop.png"),
+          fullPage: true,
+        });
+      } else {
+        await expect(page.getByText("Visit Visa C1")).toHaveCount(0);
+      }
+    });
+  }
+
+  test("CURATED and malformed JSON fail closed with zero candidates", async ({
     page,
   }) => {
+    await seedVerdictResume(page);
+    const curated = makeVisaOracleResponse();
+    curated.mode = "CURATED";
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, curated),
+    );
     await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /what brings you to indonesia/i }),
-    ).toBeVisible();
-
-    await page.getByRole("button", { name: /^back$/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /are you in indonesia right now/i }),
-    ).toBeVisible();
-
-    // Proceed down the "work" branch far enough to answer work_payer.
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await page.getByRole("button", { name: /work & employment/i }).click();
     await expect(
       page.getByRole("heading", {
-        name: /will an indonesian-registered company/i,
+        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
       }),
     ).toBeVisible();
+    await expect(page.getByText("Visit Visa C1")).toHaveCount(0);
+
+    await page.unroute("**/api/visa-oracle/evaluate**");
+    await seedVerdictResume(page);
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: '{"mode":"ENGINE","mode":"CURATED"}',
+      }),
+    );
+    await page.reload();
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+      }),
+    ).toBeVisible();
+    await expect(page.getByText("Visit Visa C1")).toHaveCount(0);
+  });
+
+  test("automatic network retry preserves exact body/key; explicit TEMP retry rotates both ids", async ({
+    page,
+  }) => {
+    await seedVerdictResume(page);
+    const networkRequests: Array<{
+      body: string | null;
+      key: string | undefined;
+    }> = [];
+    await page.route("**/api/visa-oracle/evaluate**", async (route) => {
+      networkRequests.push({
+        body: route.request().postData(),
+        key: route.request().headers()["idempotency-key"],
+      });
+      if (networkRequests.length === 1) {
+        await route.abort("failed");
+      } else {
+        await fulfillJson(
+          route,
+          makeVisaOracleResponse("TEMPORARILY_UNAVAILABLE"),
+        );
+      }
+    });
+    await page.goto("/visa-oracle");
+    await expectEngineState(page, "TEMPORARILY_UNAVAILABLE");
+    expect(networkRequests).toHaveLength(2);
+    expect(networkRequests[1]).toEqual(networkRequests[0]);
+
     await page
-      .getByRole("button", { name: /yes, an indonesian entity pays me/i })
+      .getByRole("button", { name: "Retry verified evaluation" })
       .click();
-    await expect(
-      page.getByRole("heading", { name: /honest questions/i }),
-    ).toBeVisible();
-
-    // Back past review_gate, back past work_payer, back to category —
-    // then take a DIFFERENT branch that never asks work_payer.
-    await page.getByRole("button", { name: /^back$/i }).click();
-    await expect(
-      page.getByRole("heading", {
-        name: /will an indonesian-registered company/i,
-      }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /^back$/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /what brings you to indonesia/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /tourism & short visit/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /how long are you planning to stay/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /up to 30 days/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /honest questions/i }),
-    ).toBeVisible();
-    await page
-      .getByRole("checkbox", { name: /none of these apply to me/i })
-      .check();
-    await page.getByRole("button", { name: /see my options/i }).click();
-
-    // The confirmation screen shows the NEW branch's answer, and never
-    // shows the abandoned branch's work_payer question — proof the stale
-    // fact was pruned, not just visually skipped (finding #1). Scoped to
-    // the answers group specifically — the living tree's category leaf
-    // renders the same label text elsewhere on the page.
-    await expect(
-      page.getByRole("heading", { name: /here.s what you told us/i }),
-    ).toBeVisible();
-    const answersGroup = page.locator(".oracle-confirmation__group").first();
-    await expect(
-      answersGroup.getByText(/tourism & short visit/i),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/will an indonesian-registered company/i),
-    ).toHaveCount(0);
+    await expect.poll(() => networkRequests.length).toBe(3);
+    expect(networkRequests[2].key).not.toBe(networkRequests[1].key);
+    const before = JSON.parse(networkRequests[1].body ?? "{}") as {
+      assessment_id?: string;
+    };
+    const after = JSON.parse(networkRequests[2].body ?? "{}") as {
+      assessment_id?: string;
+    };
+    expect(after.assessment_id).not.toBe(before.assessment_id);
   });
 
-  test("not-sure on the work payer question routes to human review, never a guess", async ({
+  test("320px, keyboard and reduced-motion path has no overlap or horizontal overflow", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+    await seedVerdictResume(page);
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, makeVisaOracleResponse()),
+    );
     await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await page.getByRole("button", { name: /work & employment/i }).click();
+    await expectEngineState(page, "SUPPORTED_CANDIDATES");
 
-    await expect(
-      page.getByRole("heading", {
-        name: /will an indonesian-registered company/i,
-      }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /not sure/i }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /honest questions/i }),
-    ).toBeVisible();
-    await page
-      .getByRole("checkbox", { name: /none of these apply to me/i })
-      .check();
-    await page.getByRole("button", { name: /see my options/i }).click();
-    await page.getByRole("button", { name: /see my options/i }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /needs a human/i }),
-    ).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(
+      dimensions.clientWidth + 1,
+    );
+    const clippedElements = await page
+      .locator(".oracle-main__content")
+      .evaluate((root) => {
+        const viewportWidth = window.innerWidth;
+        return Array.from(root.querySelectorAll<HTMLElement>("*"))
+          .filter((element) => {
+            if (element.closest(".oracle-breadcrumb, .oracle-table-scroll")) {
+              return false;
+            }
+            const rect = element.getBoundingClientRect();
+            return (
+              rect.width > 0 &&
+              rect.height > 0 &&
+              (rect.left < -1 || rect.right > viewportWidth + 1)
+            );
+          })
+          .slice(0, 20)
+          .map((element) => {
+            const rect = element.getBoundingClientRect();
+            return {
+              className: element.className,
+              left: Math.round(rect.left),
+              right: Math.round(rect.right),
+              tagName: element.tagName,
+            };
+          });
+      });
+    expect(clippedElements).toEqual([]);
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus-visible")).toHaveCount(1);
+    await expectNoWcagViolations(page);
+    await page.screenshot({
+      path: testInfo.outputPath("visa-oracle-engine-320-reduced-motion.png"),
+      fullPage: true,
+    });
   });
 
-  test("language toggle switches copy instantly without resetting the interview", async ({
+  test("real EN/ID journey supports Back, branch pruning, confirmation edit and verified evaluation", async ({
     page,
   }) => {
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, makeVisaOracleResponse()),
+    );
     await page.goto("/visa-oracle");
+
+    await page
+      .getByRole("checkbox", {
+        name: /save my interview on this device for 2 hours/i,
+      })
+      .check();
     await page.getByRole("button", { name: /^start$/i }).click();
     await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
 
-    await page.getByRole("button", { name: "Indonesia" }).click();
+    await page.getByRole("spinbutton").fill("0");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+
+    await page.getByRole("combobox").selectOption("US");
+    await page.getByRole("button", { name: /^add country$/i }).click();
+    await page.getByRole("button", { name: /^continue$/i }).click();
+
+    await page.locator('input[type="date"]').fill("1990-01-01");
+    await page.getByRole("button", { name: /see my options/i }).click();
+
+    await page
+      .getByRole("button", { name: /switch to bahasa indonesia/i })
+      .click();
     await expect(
       page.getByRole("heading", { name: /apa tujuan anda ke indonesia/i }),
     ).toBeVisible();
-  });
-
-  test("prototype badge and footer disclaimer are always visible", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
-    await expect(page.getByText(/prototype — sample data/i)).toBeVisible();
-    await expect(page.getByText(/ditjen imigrasi decides/i)).toBeVisible();
-  });
-
-  test("tree tap-to-edit: tapping a completed trunk step jumps back to that question and prunes later facts (interaction #6)", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await page.getByRole("button", { name: /work & employment/i }).click();
+    await page
+      .getByRole("button", { name: /kerja & ketenagakerjaan/i })
+      .click();
+    await page
+      .getByRole("button", { name: /ganti ke bahasa inggris/i })
+      .click();
     await expect(
-      page.getByRole("heading", {
-        name: /will an indonesian-registered company/i,
-      }),
+      page.getByRole("heading", { name: /only purpose for the trip/i }),
     ).toBeVisible();
+    await page.getByRole("button", { name: /yes — one main purpose/i }).click();
     await page
       .getByRole("button", { name: /yes, an indonesian entity pays me/i })
       .click();
     await expect(
-      page.getByRole("heading", { name: /honest questions/i }),
+      page.getByRole("heading", {
+        name: /will any compensation.*indonesian source/i,
+      }),
     ).toBeVisible();
 
-    // The living tree's "category" trunk step is now a completed step —
-    // a real, accessible `<button>` (not the aria-hidden decorative div
-    // every other trunk step renders as). Tapping it dispatches the same
-    // EDIT action as the confirmation card's Edit link.
-    const editCategory = page.getByRole("button", {
-      name: /edit answer: category/i,
-    });
-    await expect(editCategory).toBeVisible();
-    await editCategory.click();
+    await page.getByRole("button", { name: /^back$/i }).click();
+    await page.getByRole("button", { name: /^back$/i }).click();
+    await page.getByRole("button", { name: /^back$/i }).click();
     await expect(
       page.getByRole("heading", { name: /what brings you to indonesia/i }),
     ).toBeVisible();
-
-    // Take a DIFFERENT branch that never asks work_payer, and prove the
-    // fact from the abandoned branch was pruned (same technique as the
-    // existing Back-navigation test above).
     await page.getByRole("button", { name: /tourism & short visit/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /how long are you planning to stay/i }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /up to 30 days/i }).click();
+    await page.getByRole("button", { name: /yes — one main purpose/i }).click();
+    await page.getByRole("spinbutton").fill("30");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("button", { name: /^one entry$/i }).click();
     await page
       .getByRole("checkbox", { name: /none of these apply to me/i })
       .check();
@@ -236,192 +380,226 @@ test.describe("Visa Oracle v2 — page Page", () => {
     await expect(
       page.getByText(/will an indonesian-registered company/i),
     ).toHaveCount(0);
-  });
-
-  test("tree tap-to-edit: current/pending/framing/confirmation/verdict trunk steps never render as buttons, and a skipped question stays non-editable through confirmation and verdict (P0 fix, Codex GPT-5.6-terra xhigh adversarial review 2026-07-18)", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-
-    // On the very first question, nothing in the tree has been answered
-    // yet — no completed-step edit buttons should exist at all.
-    await expect(
-      page.getByRole("button", { name: /^edit answer:/i }),
-    ).toHaveCount(0);
-
-    // Onshore + permit_expiry=unsure routes straight to review_gate,
-    // skipping "category" entirely (flow.ts computeNextNode). Before the
-    // P0 fix, the tree's ordinal-position status logic still marked
-    // "category" as "done" (it sits earlier in trunk order than
-    // review_gate) and exposed a live "Edit answer: Category" button whose
-    // EDIT dispatch was a silent no-op — confirmed here across every
-    // screen the trunk still renders on: the review_gate question itself,
-    // the confirmation screen, and the verdict screen.
-    await page.getByRole("button", { name: /yes, i.m here/i }).click();
-    await expect(
-      page.getByRole("heading", {
-        name: /when does your current stay permit expire/i,
-      }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /not sure/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /honest questions/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /edit answer: category/i }),
-    ).toHaveCount(0);
-    // Framing/confirmation/verdict must never be editable either, even
-    // once genuinely "passed" — EDIT only knows how to truncate to a
-    // `{ kind: "question" }` node.
-    await expect(
-      page.getByRole("button", { name: /edit answer: start/i }),
-    ).toHaveCount(0);
-
+    const stayRow = page
+      .locator(".oracle-confirmation__row")
+      .filter({ hasText: /how many days do you plan to stay/i });
+    await stayRow.getByRole("button", { name: /^edit$/i }).click();
+    await page.getByRole("spinbutton").fill("45");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("button", { name: /^one entry$/i }).click();
     await page
       .getByRole("checkbox", { name: /none of these apply to me/i })
       .check();
     await page.getByRole("button", { name: /see my options/i }).click();
     await expect(
-      page.getByRole("heading", { name: /here.s what you told us/i }),
+      page
+        .locator(".oracle-confirmation__row")
+        .filter({ hasText: /how many days do you plan to stay.*45 days/i }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /edit answer: category/i }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: /edit answer: confirmation/i }),
-    ).toHaveCount(0);
-
     await page.getByRole("button", { name: /see my options/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /needs a human/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /edit answer: category/i }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: /edit answer: verdict/i }),
-    ).toHaveCount(0);
+
+    await expectEngineState(page, "SUPPORTED_CANDIDATES");
+    await expect(page.getByText("Visit Visa C1")).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate((key) => sessionStorage.getItem(key), RESUME_KEY),
+      )
+      .toBeNull();
   });
 
-  test("outcome document checklist items are real, independently toggleable checkboxes (item 4)", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await page.getByRole("button", { name: /tourism & short visit/i }).click();
-    await page.getByRole("button", { name: /up to 30 days/i }).click();
-    await page
-      .getByRole("checkbox", { name: /none of these apply to me/i })
-      .check();
-    await page.getByRole("button", { name: /see my options/i }).click();
-    await page.getByRole("button", { name: /see my options/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /strongest fit/i }),
-    ).toBeVisible();
+  for (const language of ["en", "id"] as const) {
+    test(`keyboard-only ${language.toUpperCase()} journey reaches a conservative engine outcome`, async ({
+      page,
+    }) => {
+      await page.route("**/api/visa-oracle/evaluate**", (route) =>
+        fulfillJson(route, makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED")),
+      );
+      await page.goto("/visa-oracle");
 
-    const docCheckbox = page.getByRole("checkbox", {
-      name: /passport valid 6\+ months/i,
+      if (language === "id") {
+        await keyboardActivate(
+          page,
+          page.getByRole("button", { name: /switch to bahasa indonesia/i }),
+        );
+      }
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "framing.cta"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.in_indonesia"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "q.in_indonesia.opt.no"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.overstay_days"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "notsure.trigger"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.nationalities"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "notsure.trigger"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.birth_date"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "notsure.trigger"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.category"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "q.category.opt.tourism"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.trip_scope"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "q.trip_scope.opt.single"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.stay_days"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "back.button"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.trip_scope"));
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "q.trip_scope.opt.single"),
+          exact: true,
+        }),
+      );
+
+      const stayDays = page.getByRole("spinbutton");
+      await tabTo(page, stayDays);
+      await page.keyboard.type("30");
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "question.continue"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.entry_pattern"));
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "q.entry_pattern.opt.SINGLE"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(page, translate(language, "q.review_gate"));
+
+      const noFlags = page.getByRole("checkbox", {
+        name: translate(language, "q.review_gate.item.none"),
+        exact: true,
+      });
+      await tabTo(page, noFlags);
+      await page.keyboard.press("Space");
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "confirmation.cta"),
+          exact: true,
+        }),
+      );
+      await expectFocusedHeading(
+        page,
+        translate(language, "confirmation.title"),
+      );
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "confirmation.cta"),
+          exact: true,
+        }),
+      );
+      await expect(
+        page.getByRole("heading", {
+          name: translate(language, "verdict.headline.HUMAN_REVIEW_REQUIRED"),
+        }),
+      ).toBeVisible();
+      await expectNoWcagViolations(page);
     });
-    await expect(docCheckbox).toBeVisible();
-    await expect(docCheckbox).not.toBeChecked();
-    await docCheckbox.check();
-    await expect(docCheckbox).toBeChecked();
-    await docCheckbox.uncheck();
-    await expect(docCheckbox).not.toBeChecked();
-  });
+  }
 
-  test("QR handoff is a real, accessible, non-decorative element carrying the WhatsApp link (item 3)", async ({
+  test("configured WhatsApp handoff creates no link or QR before scoped consent", async ({
     page,
   }) => {
+    await seedVerdictResume(page);
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, makeVisaOracleResponse()),
+    );
     await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await page.getByRole("button", { name: /tourism & short visit/i }).click();
-    await page.getByRole("button", { name: /up to 30 days/i }).click();
-    await page
-      .getByRole("checkbox", { name: /none of these apply to me/i })
-      .check();
-    await page.getByRole("button", { name: /see my options/i }).click();
-    await page.getByRole("button", { name: /see my options/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /strongest fit/i }),
-    ).toBeVisible();
+    await expectEngineState(page, "SUPPORTED_CANDIDATES");
 
-    // Real, accessible role="img" with a descriptive aria-label — never
-    // aria-hidden, unlike the decorative placeholder it replaced.
+    const consent = page.getByRole("checkbox", {
+      name: /i consent to open whatsapp with a minimal visa oracle receipt/i,
+    });
+    await expect(consent).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /open whatsapp/i }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("img", { name: /qr code/i })).toHaveCount(0);
+
+    await consent.check();
+    const link = page.getByRole("link", { name: /open whatsapp/i });
     const qr = page.getByRole("img", { name: /qr code/i });
+    await expect(link).toHaveAttribute("href", /^https:\/\/wa\.me\//);
     await expect(qr).toBeVisible();
-    await expect(qr).not.toHaveAttribute("aria-hidden", "true");
-
-    // The link stays the text alternative right beside it — visible and
-    // clickable, encoding the exact same wa.me URL the QR carries.
-    const whatsappLink = page.getByRole("link", {
-      name: /continue on whatsapp/i,
-    });
-    await expect(whatsappLink).toBeVisible();
-    await expect(whatsappLink).toHaveAttribute("href", /^https:\/\/wa\.me\//);
-
-    // P1 (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
-    // string encoded into the QR bitmap must be byte-identical to the
-    // visible link's href — never a link that goes stale relative to what
-    // actually scans.
-    const qrValue = await qr.getAttribute("data-qr-value");
-    const href = await whatsappLink.getAttribute("href");
-    expect(qrValue).toBe(href);
-
-    // P1 (same review): the QR must render at a genuinely scannable
-    // density — the old fixed 64px box put a ~65-97-module QR at well
-    // under 1px/module. >=160px CSS is the concrete fix.
-    const box = await qr.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.width).toBeGreaterThanOrEqual(160);
-    expect(box!.height).toBeGreaterThanOrEqual(160);
+    expect(await qr.getAttribute("data-qr-value")).toBe(
+      await link.getAttribute("href"),
+    );
   });
 
-  test("copy summary shows a visible, announced failure state when the clipboard write rejects (P1 minor, Codex GPT-5.6-terra xhigh adversarial review 2026-07-18)", async ({
+  test("fresh framing offers sensitive local retention without enabling it", async ({
     page,
   }) => {
-    // Force navigator.clipboard.writeText to reject before any app code
-    // runs, simulating a real failure mode (insecure context / denied
-    // permission) rather than the happy path already covered elsewhere.
-    // Overriding the method directly (rather than redefining the whole
-    // `navigator.clipboard` property) is the reliable pattern — the
-    // Clipboard instance already exists, this just shadows its prototype
-    // method with an own-property that always rejects.
-    await page.addInitScript(() => {
-      window.navigator.clipboard.writeText = () =>
-        Promise.reject(new Error("denied"));
-    });
-
     await page.goto("/visa-oracle");
-    await page.getByRole("button", { name: /^start$/i }).click();
-    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
-    await page.getByRole("button", { name: /tourism & short visit/i }).click();
-    await page.getByRole("button", { name: /up to 30 days/i }).click();
-    await page
-      .getByRole("checkbox", { name: /none of these apply to me/i })
-      .check();
-    await page.getByRole("button", { name: /see my options/i }).click();
-    await page.getByRole("button", { name: /see my options/i }).click();
+    await expect(page.getByText(/save the full interview/i)).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: /strongest fit/i }),
-    ).toBeVisible();
-
-    // A stable, name-independent handle — the button's accessible name
-    // itself changes with `copyState` ("Copy summary" → "Couldn't copy…"),
-    // so a role+name locator would stop matching the instant the state we
-    // want to observe actually lands.
-    const copyButton = page.locator(".oracle-copy-cta");
-    await expect(copyButton).toHaveAccessibleName(/copy summary/i);
-    await copyButton.click();
-
-    // Visible failure state — never a silently-swallowed catch — plus the
-    // same text announced via the aria-live status region for screen
-    // readers.
-    await expect(copyButton).toHaveAttribute("data-copy-state", "failed");
-    await expect(copyButton).toContainText(/couldn.t copy/i);
-    await expect(page.getByRole("status")).toHaveText(/couldn.t copy/i);
+      page.getByRole("checkbox", {
+        name: /save my interview on this device for 2 hours/i,
+      }),
+    ).not.toBeChecked();
+    expect(
+      await page.evaluate((key) => sessionStorage.getItem(key), RESUME_KEY),
+    ).toBeNull();
+    await expect(page.getByRole("button", { name: /^start$/i })).toBeVisible();
+    await expect(page.locator(".oracle-constellation")).toHaveCount(0);
   });
 });

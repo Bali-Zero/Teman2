@@ -225,6 +225,79 @@ class TestErrorMonitoringMiddleware:
         mock_alert_service.send_http_error_alert.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_private_visa_5xx_alert_contains_no_caller_metadata(
+        self, mock_app, mock_alert_service
+    ):
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.state = MagicMock()
+        mock_request.state.request_id = "caller-passport-id"
+        mock_request.method = "POST"
+        mock_request.url.path = "/api/visa-oracle/evaluate"
+        mock_request.headers.get.side_effect = lambda name, default=None: {
+            "user-agent": "family-sensitive-user-agent",
+        }.get(name, default)
+        response = MagicMock(
+            status_code=500,
+            headers={},
+            body=b'{"detail":"nationality GN and family payload"}',
+        )
+
+        result = await middleware.dispatch(mock_request, AsyncMock(return_value=response))
+
+        assert result is response
+        kwargs = mock_alert_service.send_http_error_alert.await_args.kwargs
+        assert kwargs["request_id"] != "caller-passport-id"
+        assert kwargs["user_agent"] is None
+        assert kwargs["error_detail"] == "Visa Oracle evaluation failed"
+        assert "GN" not in repr(kwargs)
+
+    @pytest.mark.asyncio
+    async def test_private_visa_latency_alert_contains_no_caller_metadata(
+        self, mock_app, mock_alert_service
+    ):
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.state = MagicMock()
+        mock_request.method = "POST"
+        mock_request.url.path = "/api/visa-oracle/evaluate"
+        mock_request.headers.get.return_value = "passport-sensitive-agent"
+        response = MagicMock(status_code=200, headers={})
+
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.latency_alert_threshold_ms = -1
+            await middleware.dispatch(mock_request, AsyncMock(return_value=response))
+
+        kwargs = mock_alert_service.send_latency_alert.await_args.kwargs
+        assert kwargs["user_agent"] is None
+        assert kwargs["request_id"] != "passport-sensitive-agent"
+
+    @pytest.mark.asyncio
+    async def test_private_visa_exception_response_and_alert_redact_detail(
+        self, mock_app, mock_alert_service
+    ):
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.state = MagicMock()
+        mock_request.method = "POST"
+        mock_request.url.path = "/api/visa-oracle/evaluate"
+        mock_request.headers.get.return_value = "caller-controlled-id"
+
+        result = await middleware.dispatch(
+            mock_request,
+            AsyncMock(side_effect=ValueError("passport GN family payload")),
+        )
+
+        assert result.status_code == 500
+        assert b"passport" not in result.body
+        kwargs = mock_alert_service.send_http_error_alert.await_args.kwargs
+        assert kwargs["error_detail"] == "Visa Oracle evaluation failed"
+        assert kwargs["user_agent"] is None
+
+    @pytest.mark.asyncio
     async def test_dispatch_exception_alert_failure(self, mock_app, mock_alert_service):
         """Test dispatch with exception when alert fails"""
         middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)

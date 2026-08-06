@@ -3,21 +3,25 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, CircleAlert, HelpCircle, Info } from "lucide-react";
-import type { RecommendState } from "@/lib/visa-oracle/types";
 import type { Language } from "../_lib/flow";
-import type { EligibilityState } from "../_lib/tree";
+import type {
+  LegalSupportStatus,
+  OutcomeState,
+  OutcomeViewModel,
+} from "../_lib/outcome-view-model";
 import { translate, BODY_FIRST, type I18nKey } from "../_lib/i18n";
 
 export interface VerdictRevealProps {
   language: Language;
-  state: RecommendState;
+  state: OutcomeState;
+  provenance: OutcomeViewModel["provenance"];
   /** Only meaningful for SUPPORTED_CANDIDATES — the strongest candidate's
-   * eligibility, shown as a 4-state chip (color+icon+text, never
-   * color-alone — spec hard-constraint 4). */
-  eligibility?: EligibilityState;
+   * legal support status. Operational and Bali Zero service availability
+   * remain separate in OutcomeSheet. */
+  legalStatus?: LegalSupportStatus;
 }
 
-const STATE_ICON: Record<RecommendState, typeof CheckCircle2> = {
+const STATE_ICON: Record<OutcomeState, typeof CheckCircle2> = {
   SUPPORTED_CANDIDATES: CheckCircle2,
   HUMAN_REVIEW_REQUIRED: HelpCircle,
   NO_SUPPORTED_PATH: CircleAlert,
@@ -30,38 +34,23 @@ const STATE_ICON: Record<RecommendState, typeof CheckCircle2> = {
 // verdict chip above them — previously OutcomeSheet rendered eligibility
 // as color+text only in that table, a spec hard-constraint-4 violation
 // (never color-alone) that this module already solved once, locally.
-export const ELIGIBILITY_ICON: Record<EligibilityState, typeof CheckCircle2> = {
-  eligible: CheckCircle2,
-  likely: CheckCircle2,
-  conditional: HelpCircle,
-  "likely-not": CircleAlert,
+export const LEGAL_STATUS_ICON: Record<
+  LegalSupportStatus,
+  typeof CheckCircle2
+> = {
+  SUPPORTED: CheckCircle2,
+  CONDITIONAL: HelpCircle,
+  NOT_SUPPORTED: CircleAlert,
+  UNKNOWN: HelpCircle,
 };
 
-/**
- * "The Oracle deals your card" (design doc §3 interaction #4): the
- * strongest path resolves into a hero verdict card. Two layers, feature-
- * detected in OracleShell:
- *
- * 1. Where the View Transitions API exists and motion isn't reduced,
- *    OracleShell wraps the confirmation→verdict `advance()` dispatch in
- *    `document.startViewTransition()`. The tree's "verdict" trunk row
- *    (LivingTree.tsx `TreePanel`) and this card share the CSS
- *    `view-transition-name: oracle-verdict-morph` — never on both at once,
- *    since the tree row only carries it before this card mounts — so the
- *    browser interpolates geometry between the small trunk line and this
- *    hero card: a real shared-element detach-and-grow, not a simulation.
- * 2. This component's own spring reveal below (`--motion-curve-reveal`,
- *    the overshoot curve made for this moment) is what actually plays
- *    inside that browser-native transition, AND is the full fallback on
- *    its own wherever the View Transitions API is unsupported. Reduced
- *    motion skips both: OracleShell never calls `startViewTransition`, and
- *    every animated prop below already resolves to `undefined` in that
- *    branch — an instant swap, per spec.
- */
+/** A restrained state reveal. Motion never carries decision meaning and is
+ * removed entirely for people who prefer reduced motion. */
 export function VerdictReveal({
   language,
   state,
-  eligibility,
+  provenance,
+  legalStatus,
 }: VerdictRevealProps) {
   const reducedMotion = useReducedMotion();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -72,6 +61,14 @@ export function VerdictReveal({
 
   const StateIcon = STATE_ICON[state] ?? Info;
   const bodyFirst = BODY_FIRST[language];
+  const headlineKey =
+    provenance === "ENGINE"
+      ? (`verdict.headline.${state}` as I18nKey)
+      : (`verdict.provenance_headline.${provenance}` as I18nKey);
+  const descriptionKey =
+    provenance === "ENGINE"
+      ? (`verdict.state_description.${state}` as I18nKey)
+      : (`verdict.provenance_description.${provenance}` as I18nKey);
 
   const heading = (
     <h1
@@ -86,7 +83,7 @@ export function VerdictReveal({
       ref={headingRef}
     >
       <StateIcon aria-hidden="true" size={28} />
-      {translate(language, `verdict.headline.${state}` as I18nKey)}
+      {translate(language, headlineKey)}
     </h1>
   );
   const body = (
@@ -94,35 +91,30 @@ export function VerdictReveal({
       className="oracle-subhead"
       style={{ marginTop: bodyFirst ? "var(--space-3)" : "var(--space-2)" }}
     >
-      {translate(language, `verdict.state_description.${state}` as I18nKey)}
+      {translate(language, descriptionKey)}
     </p>
   );
 
   return (
     <motion.div
       className="oracle-verdict-card"
-      // Shared-element morph target (see the class-level comment above) —
-      // only while motion isn't reduced, so a reduced-motion visit never
-      // even offers the browser a transition to interpolate.
-      style={
-        reducedMotion
-          ? undefined
-          : { viewTransitionName: "oracle-verdict-morph" }
-      }
-      initial={reducedMotion ? undefined : { opacity: 0, scale: 0.92, y: 12 }}
-      animate={reducedMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
+      initial={reducedMotion ? undefined : { y: 6 }}
+      animate={reducedMotion ? undefined : { y: 0 }}
       transition={{
-        duration: reducedMotion ? 0 : 0.5,
-        ease: [0.5, 0, 0.3, 1.2], // var(--motion-curve-reveal)
+        duration: reducedMotion ? 0 : 0.2,
+        ease: [0.4, 0, 0.2, 1],
       }}
     >
-      {eligibility && (
-        <span className="oracle-verdict-chip" data-state={eligibility}>
+      {legalStatus && (
+        <span
+          className="oracle-verdict-chip"
+          data-state={legalStatus.toLowerCase()}
+        >
           {(() => {
-            const Icon = ELIGIBILITY_ICON[eligibility];
+            const Icon = LEGAL_STATUS_ICON[legalStatus];
             return <Icon aria-hidden="true" size={16} />;
           })()}
-          {translate(language, `verdict.eligibility.${eligibility}` as I18nKey)}
+          {translate(language, `outcome.status.${legalStatus}` as I18nKey)}
         </span>
       )}
       {/* Finding #16: design doc §3's ID register is body-first — swap

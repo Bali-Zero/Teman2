@@ -1,19 +1,20 @@
-"""W1 — the Visa Oracle v2 evaluate read-path (RECOMMEND surface, SHADOW era).
+"""Visa Oracle v2 deterministic evaluate read-path (RECOMMEND surface).
 
 Backing service for the public ``POST /api/visa-oracle/evaluate`` endpoint
 (``app/routers/visa_oracle_evaluate.py``): canonical ``ApplicantFacts`` in,
 the Kimi-spec B.2 envelope out — ``{mode, decision, sources, display}``
 (``research/visa/2026-07-19-kimi-uiux-adaptation-spec.md`` §A.4.1/B.2) —
-and exactly one full-fact SHADOW ``visa_decisions`` audit row persisted per
-evaluation (migrations 252/255/256/257).
+and a privacy-preserving ``visa_decisions`` audit row persisted for completed
+evaluations only under an explicit retention policy (migrations
+252/255/256/257/264).
 
 Spec: ``research/visa/2026-07-23-w1-evidence-machinery-brief.md`` Item 2.
 
 Relationship to ``shadow.py`` (STEP-6c/6d): same fail-closed pack binding,
 same crypto posture, same PII boundary — different surface. ``shadow.py``
 is the fire-and-forget MATCH-surface audit twin whose response is never
-rendered; THIS module is the RECOMMEND-surface read-path whose response IS
-the product (the v2 UI renders it in ``mode="CURATED"`` form). The private
+rendered; THIS module is the RECOMMEND-surface read-path whose response may
+become the product authority in ``ENFORCE`` mode. The private
 helpers are IMPORTED from ``shadow.py`` read-only — the file itself is not
 touched — rather than triplicated: the pack-binding SQL and the 255
 candidate/grounding/citation writers have exactly one home each
@@ -25,11 +26,11 @@ Mode discipline (mirrors ``shadow.resolve_match_shadow_enabled``):
 - ``VISA_ENGINE_EVALUATE_MODE`` — OFF (default) | SHADOW | ENFORCE. OFF is
   a disabled surface: the endpoint responds with the TEMPORARILY_UNAVAILABLE
   shape (``retryable=true``, HTTP 200) and persists NOTHING. SHADOW runs the
-  evaluation and persists the audit row. ENFORCE is accepted (evaluation
-  still runs, SHADOW semantics) but logs a one-time warning that the
-  response-flip is not implemented — and the response ``mode`` STAYS
-  ``"CURATED"`` (``resolve_response_mode`` can never return ``"ENGINE"`` in
-  this lane; the ENFORCE flip is a separately-gated task).
+  evaluation and persists the audit row best-effort while returning
+  ``mode="CURATED"``. ENFORCE returns ``mode="ENGINE"`` and fails closed if
+  decision persistence cannot be proven. Both modes abstain before RulePack
+  resolution unless a Zero-approved retention policy covers the evaluation
+  clock; no SHADOW exemption exists for retained pseudonymous audit data.
 - ``VISA_ENGINE_EVALUATE_ENVIRONMENT`` — which rule-pack environment the
   bitemporal binding resolves against. Defaults to PRODUCTION (the v2 UI's
   audience is production traffic; SHADOW audits what the engine *would*
@@ -62,6 +63,8 @@ MATCH surface uses only because it never sees the facts at all).
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -70,15 +73,33 @@ import uuid
 from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import TypeAlias
+from urllib.parse import urlsplit
 
 import asyncpg
 
+from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.visa_engine.api_models import (
+    DisclosedReviewFlag,
+    SourceApplicabilityStatus,
+    SourceFreshnessDTO,
+    SourceFreshnessStatus,
+    VisaOracleEvaluateRequest,
+    VisaOracleEvaluateResponse,
+)
 from backend.services.visa_engine.bundle import StaticTrustStore, verify_rule_pack
 from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
-from backend.services.visa_engine.crypto import resolve_identity_provider
+from backend.services.visa_engine.crypto import (
+    resolve_engine_hmac_keyring,
+    resolve_identity_provider,
+)
+from backend.services.visa_engine.decision_seal import seal_decision
 from backend.services.visa_engine.enums import (
+    DecisionState,
     EngineMode,
     EngineSurface,
+    Environment,
+    SourceAuthorityType,
+    SourceStatus,
     VisaPurpose,
 )
 from backend.services.visa_engine.errors import (
@@ -88,10 +109,30 @@ from backend.services.visa_engine.errors import (
     RulePackCompilationError,
     RulePackVerificationError,
 )
-from backend.services.visa_engine.evaluator import evaluate
+from backend.services.visa_engine.evaluator import evaluate_with_trace
+from backend.services.visa_engine.idempotency import (
+    IdempotencyConflictError,
+    hash_idempotency_key,
+)
+from backend.services.visa_engine.idempotency import (
+    complete as complete_idempotency,
+)
+from backend.services.visa_engine.idempotency import (
+    reserve as reserve_idempotency,
+)
 from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
+    Reason,
+    SourceRecord,
+)
+from backend.services.visa_engine.pricing_adapter import (
+    ExactPricingCatalog,
+    UnavailablePricingCatalog,
+    resolve_candidate_pricing,
+)
+from backend.services.visa_engine.retention import (
+    active_policy_available as active_retention_policy_available,
 )
 from backend.services.visa_engine.shadow import (
     ENGINE_VERSION,
@@ -162,53 +203,39 @@ _VISA_PURPOSE_TO_REQUEST_CATEGORY: MappingProxyType[VisaPurpose, str] = MappingP
     }
 )
 
-_enforce_not_implemented_warned = False
 
+def resolve_evaluate_mode() -> EngineMode:
+    """Resolve the public authority lever; unknown values fail closed to OFF."""
 
-def _warn_enforce_not_implemented_once() -> None:
-    global _enforce_not_implemented_warned
-    if _enforce_not_implemented_warned:
-        return
-    logger.warning(
-        "%s=ENFORCE requested but enforcement is not implemented yet; running SHADOW-only",
-        EVALUATE_MODE_ENV,
-    )
-    _enforce_not_implemented_warned = True
+    raw = os.environ.get(EVALUATE_MODE_ENV, EngineMode.OFF.value).strip().upper()
+    try:
+        return EngineMode(raw)
+    except ValueError:
+        return EngineMode.OFF
 
 
 def resolve_evaluate_shadow_enabled() -> bool:
     """Re-read ``EVALUATE_MODE_ENV`` fresh on every call.
 
-    True iff the (stripped, upper-cased) value is ``SHADOW`` or ``ENFORCE``;
-    anything else (missing, ``OFF``, or any invalid string) resolves to
-    ``False``. ``ENFORCE`` is accepted (returns ``True`` — the evaluation
-    still runs with SHADOW semantics) but logs a one-time warning that the
-    response-flip is not implemented yet — a deliberate mirror of
-    ``shadow.resolve_match_shadow_enabled``'s discipline.
+    True iff the resolved mode is ``SHADOW`` or ``ENFORCE``; anything else
+    resolves to ``False``. Authority and persistence semantics are handled by
+    :func:`run_evaluation`, which resolves the same lever once per request.
     """
 
-    raw = os.environ.get(EVALUATE_MODE_ENV, EngineMode.OFF.value).strip().upper()
-    if raw == EngineMode.ENFORCE.value:
-        _warn_enforce_not_implemented_once()
-        return True
-    return raw == EngineMode.SHADOW.value
+    return resolve_evaluate_mode() in (EngineMode.SHADOW, EngineMode.ENFORCE)
 
 
-def resolve_response_mode() -> str:
-    """The B.2 envelope ``mode`` — always ``"CURATED"`` in this lane.
+def resolve_response_mode(mode: EngineMode | None = None) -> str:
+    """Map the authority lever to the public response contract.
 
-    ``"ENGINE"`` is the ENFORCE-era value (the engine verdict becomes the
-    authoritative render source, Kimi spec §B.2/B.3). The flip is driven by
-    a DB lever that does not exist yet and is gated separately (ENFORCE-
-    GATE); this resolver is the single place that will read it. It
-    deliberately CANNOT return ``"ENGINE"`` today — even under
-    ``VISA_ENGINE_EVALUATE_MODE=ENFORCE`` the response keeps saying
-    ``CURATED``, so a premature flag flip can never silently promote the
-    engine verdict to authoritative in the UI (the same fail-closed posture
-    as ``resolve_evaluate_shadow_enabled``'s warn-and-stay-SHADOW rule).
+    SHADOW is comparison-only and therefore CURATED. ENFORCE is authoritative
+    and therefore ENGINE, but only after the durable decision write succeeds;
+    :func:`run_evaluation` fail-closes a failed ENFORCE write to an ENGINE-mode
+    TEMPORARILY_UNAVAILABLE response.
     """
 
-    return "CURATED"
+    resolved = mode or resolve_evaluate_mode()
+    return "ENGINE" if resolved is EngineMode.ENFORCE else "CURATED"
 
 
 def resolve_allowed_synthetic_sources() -> frozenset[str]:
@@ -233,6 +260,155 @@ def resolve_allowed_synthetic_sources() -> frozenset[str]:
 def _resolve_evaluate_environment() -> str:
     raw = os.environ.get(EVALUATE_ENVIRONMENT_ENV, _DEFAULT_EVALUATE_ENVIRONMENT).strip()
     return raw or _DEFAULT_EVALUATE_ENVIRONMENT
+
+
+async def _retention_gate_allows_persistence(
+    db_pool: asyncpg.Pool,
+    *,
+    environment: str,
+    evaluated_at: datetime,
+    request_trace: str,
+) -> bool:
+    """Fail durable decision processing closed without a Zero policy."""
+
+    try:
+        available = await active_retention_policy_available(
+            db_pool,
+            environment=environment,
+            evaluated_at=evaluated_at,
+        )
+    except Exception as exc:
+        logger.warning(
+            "evaluate path: retention policy check failed: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        return False
+    if not available:
+        logger.warning(
+            "evaluate path: no Zero-approved decision retention policy "
+            "for environment=%s (trace=%s)",
+            environment,
+            request_trace,
+        )
+    return available
+
+
+_ReplayPackIdentity: TypeAlias = tuple[uuid.UUID, int, str, str]
+
+
+async def _current_replay_pack_identity(
+    db_pool: asyncpg.Pool,
+    *,
+    environment: str,
+    moment: datetime,
+) -> _ReplayPackIdentity | None:
+    """Resolve and cryptographically verify the authority active *now*."""
+
+    binding = await _resolve_active_pack_binding(
+        db_pool,
+        environment=environment,
+        effective_at=moment,
+        observed_at=moment,
+    )
+    if binding is None:
+        return None
+    verified = verify_rule_pack(
+        binding.raw_envelope,
+        trust_store=StaticTrustStore.from_env(),
+        observed_at=moment,
+    )
+    payload = verified.pack.payload
+    if binding.rule_pack_id != payload.rule_pack_id:
+        return None
+    return (
+        payload.rule_pack_id,
+        payload.sequence,
+        payload.version,
+        verified.payload_sha256.hex(),
+    )
+
+
+async def _replay_authority_matches(
+    db_pool: asyncpg.Pool,
+    *,
+    response: VisaOracleEvaluateResponse,
+    expected_environment: str,
+    request_trace: str,
+) -> tuple[bool, EngineMode]:
+    """Double-check mode and active RulePack immediately before replay.
+
+    Two snapshots make a concurrent activation flip observable. An evaluated
+    replay is valid only while its signed RulePack remains the current active
+    authority. A TEMP replay has no legal claim, but its response mode must
+    still match the live mode.
+    """
+
+    expected_pack: _ReplayPackIdentity | None = None
+    if response.decision.state is not DecisionState.TEMPORARILY_UNAVAILABLE:
+        rule_pack = response.decision.rule_pack
+        if rule_pack is None:  # pragma: no cover - Decision invariant
+            return False, resolve_evaluate_mode()
+        expected_pack = (
+            rule_pack.rule_pack_id,
+            rule_pack.sequence,
+            rule_pack.version,
+            rule_pack.payload_sha256,
+        )
+
+    previous_snapshot: tuple[EngineMode, str, _ReplayPackIdentity | None] | None = None
+    for _ in range(2):
+        mode = resolve_evaluate_mode()
+        environment = _resolve_evaluate_environment()
+        moment = datetime.now(timezone.utc)
+        if mode is EngineMode.OFF:
+            return False, mode
+        if environment != expected_environment or response.mode.value != resolve_response_mode(
+            mode
+        ):
+            return False, mode
+        if not await _retention_gate_allows_persistence(
+            db_pool,
+            environment=environment,
+            evaluated_at=moment,
+            request_trace=request_trace,
+        ):
+            return False, mode
+        try:
+            active_pack = (
+                None
+                if expected_pack is None
+                else await _current_replay_pack_identity(
+                    db_pool,
+                    environment=environment,
+                    moment=moment,
+                )
+            )
+        except Exception as exc:
+            logger.warning(
+                "evaluate path: replay authority check failed: %s (trace=%s)",
+                type(exc).__name__,
+                request_trace,
+            )
+            return False, mode
+        snapshot = (mode, environment, active_pack)
+        if expected_pack is not None and active_pack != expected_pack:
+            return False, mode
+        if previous_snapshot is not None and snapshot != previous_snapshot:
+            return False, mode
+        previous_snapshot = snapshot
+    return True, previous_snapshot[0]
+
+
+def _replay_rejection_response(*, mode: EngineMode, now: datetime) -> VisaOracleEvaluateResponse:
+    code = (
+        "EVALUATE_SURFACE_DISABLED"
+        if mode is EngineMode.OFF
+        else "IDEMPOTENCY_REPLAY_AUTHORITY_CHANGED"
+    )
+    return VisaOracleEvaluateResponse.model_validate(
+        build_temp_unavailable_body(now=now, code=code, mode=mode)
+    )
 
 
 def verify_driver_token(presented: str | None) -> bool:
@@ -288,27 +464,27 @@ def derive_request_category(facts: ApplicantFacts, hint: str | None) -> str:
     return hint if hint is not None else "other"
 
 
-def build_temp_unavailable_body(*, now: datetime, code: str) -> dict[str, JsonValue]:
+def build_temp_unavailable_body(
+    *,
+    now: datetime,
+    code: str,
+    mode: EngineMode | None = None,
+) -> dict[str, JsonValue]:
     """The TEMPORARILY_UNAVAILABLE-shaped envelope body (HTTP 200).
 
-    Returned — with NOTHING persisted — whenever the evaluation cannot run:
+    Returned — with no successful decision claimed — whenever evaluation cannot run:
     surface disabled (OFF), no active pack, pack verification/compilation
     failure, or the crypto/evaluation layer fail-closing. ``mode`` is still
-    ``resolve_response_mode()``: the UI's ``resolveVerdict`` reads
-    ``decision.state``/``outage.retryable`` on this path, and the curated
-    labeling invariant (Kimi spec §B.4) must keep holding.
+    ``resolve_response_mode()`` so callers can distinguish comparison-only
+    SHADOW responses from authoritative ENFORCE responses.
 
-    The ``decision`` object mirrors the ``Decision`` wire shape but is NOT a
-    validated ``models.Decision`` instance: ``facts_fingerprint`` is
-    ``null`` because no evaluation happened, and fabricating an HMAC tag
-    over facts that were never evaluated would be a dishonest integrity
-    claim (the model's own invariant requires the field non-null, which is
-    exactly why this is a documented wire shape, not a ``Decision``).
+    ``facts_fingerprint`` is null because no evaluation happened; fabricating
+    an HMAC tag over unevaluated facts would be a dishonest integrity claim.
     """
 
     iso_now = now.astimezone(timezone.utc).isoformat()
     return {
-        "mode": resolve_response_mode(),
+        "mode": resolve_response_mode(mode),
         "decision": {
             "schema_version": "1.0.0",
             "decision_id": None,
@@ -332,6 +508,162 @@ def build_temp_unavailable_body(*, now: datetime, code: str) -> dict[str, JsonVa
         "sources": [],
         "display": {"candidates": []},
     }
+
+
+def _source_applicability_status(
+    *,
+    source_status: SourceStatus,
+    legal_from: datetime,
+    legal_to: datetime | None,
+    recorded_from: datetime,
+    recorded_to: datetime | None,
+    effective_at: datetime,
+    observed_at: datetime,
+) -> SourceApplicabilityStatus:
+    """Classify only applicability facts in the signed bitemporal record.
+
+    This deliberately makes no external freshness assertion. A signed
+    legal/system period can establish applicability, never that the source
+    was re-verified recently enough for a decision.
+    """
+
+    status_map = {
+        SourceStatus.SUPERSEDED: SourceApplicabilityStatus.SUPERSEDED,
+        SourceStatus.REVOKED: SourceApplicabilityStatus.REVOKED,
+        SourceStatus.UNAVAILABLE: SourceApplicabilityStatus.UNAVAILABLE,
+    }
+    mapped = status_map.get(source_status)
+    if mapped is not None:
+        return mapped
+    if effective_at < legal_from:
+        return SourceApplicabilityStatus.NOT_YET_EFFECTIVE
+    if legal_to is not None and effective_at >= legal_to:
+        return SourceApplicabilityStatus.EXPIRED
+    if observed_at < recorded_from or (recorded_to is not None and observed_at >= recorded_to):
+        return SourceApplicabilityStatus.UNKNOWN
+    return SourceApplicabilityStatus.APPLICABLE
+
+
+def _evaluate_source_freshness(
+    source: SourceRecord,
+    *,
+    evaluated_at: datetime,
+) -> SourceFreshnessDTO:
+    """Evaluate a signed source policy against the decision observation clock.
+
+    The boundary is inclusive: a source is CURRENT through exactly
+    ``verified_at + max_age_seconds`` and STALE after it.  Integer timedelta
+    components avoid floating-point rounding and support the model's complete
+    positive-integer domain without constructing an overflowing timedelta.
+    """
+
+    policy = source.freshness_policy
+    if source.verified_at > evaluated_at:
+        return SourceFreshnessDTO(
+            status=SourceFreshnessStatus.UNKNOWN,
+            reason_code="SOURCE_VERIFIED_AT_IN_FUTURE",
+            evaluated_at=evaluated_at,
+            verified_at=source.verified_at,
+            max_age_seconds=None if policy is None else policy.max_age_seconds,
+        )
+    if policy is None:
+        return SourceFreshnessDTO(
+            status=SourceFreshnessStatus.UNKNOWN,
+            reason_code="FRESHNESS_POLICY_NOT_DEFINED",
+            evaluated_at=evaluated_at,
+            verified_at=source.verified_at,
+            max_age_seconds=None,
+        )
+
+    age = evaluated_at - source.verified_at
+    age_whole_seconds = age.days * 86_400 + age.seconds
+    within_policy = age_whole_seconds < policy.max_age_seconds or (
+        age_whole_seconds == policy.max_age_seconds and age.microseconds == 0
+    )
+    status = (
+        SourceFreshnessStatus.CURRENT if within_policy else SourceFreshnessStatus.STALE
+    )
+    return SourceFreshnessDTO(
+        status=status,
+        reason_code=(
+            "SOURCE_FRESHNESS_CURRENT"
+            if status is SourceFreshnessStatus.CURRENT
+            else "SOURCE_FRESHNESS_STALE"
+        ),
+        evaluated_at=evaluated_at,
+        verified_at=source.verified_at,
+        max_age_seconds=policy.max_age_seconds,
+    )
+
+
+_PRIMARY_AUTHORITY_TYPES = frozenset(
+    {
+        SourceAuthorityType.PRIMARY_LAW,
+        SourceAuthorityType.IMPLEMENTING_REGULATION,
+        SourceAuthorityType.OFFICIAL_PORTAL,
+        SourceAuthorityType.OFFICIAL_CIRCULAR,
+    }
+)
+
+_OFFICIAL_SOURCE_HOSTS = frozenset(
+    {
+        "www.imigrasi.go.id",
+        "evisa.imigrasi.go.id",
+        "peraturan.bpk.go.id",
+        "kemenimipas.go.id",
+        "www.peraturan.go.id",
+    }
+)
+
+
+def _has_official_source_url(canonical_url: str) -> bool:
+    """Accept only pinned HTTPS authority hosts, without credential/port tricks."""
+
+    try:
+        parsed = urlsplit(canonical_url)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme.lower() == "https"
+        and parsed.hostname is not None
+        and parsed.hostname.lower() in _OFFICIAL_SOURCE_HOSTS
+        and parsed.username is None
+        and parsed.password is None
+        and port is None
+    )
+
+
+def _source_is_authoritative_and_applicable(
+    source: SourceRecord,
+    *,
+    decision: Decision,
+    compiled: CompiledRulePack,
+) -> bool:
+    """Validate signed authority, bitemporal, and provenance-clock integrity."""
+
+    applicability = _source_applicability_status(
+        source_status=source.status,
+        legal_from=source.legal_period.from_,
+        legal_to=source.legal_period.to,
+        recorded_from=source.recorded_period.from_,
+        recorded_to=source.recorded_period.to,
+        effective_at=decision.effective_at,
+        observed_at=decision.observed_at,
+    )
+    return (
+        source.status is SourceStatus.VERIFIED
+        and source.authority_type in _PRIMARY_AUTHORITY_TYPES
+        and _has_official_source_url(source.canonical_url)
+        and applicability is SourceApplicabilityStatus.APPLICABLE
+        and source.recorded_period.from_ <= source.retrieved_at
+        and source.retrieved_at <= source.verified_at
+        and (
+            source.recorded_period.to is None
+            or source.verified_at < source.recorded_period.to
+        )
+        and source.verified_at <= compiled.source_pack.protected.signed_at
+    )
 
 
 def _build_sources_dto(
@@ -377,6 +709,10 @@ def _build_sources_dto(
         if source is None:
             unresolved += 1
             continue
+        freshness = _evaluate_source_freshness(
+            source,
+            evaluated_at=decision.observed_at,
+        )
         dtos.append(
             {
                 "source_record_id": str(source.source_record_id),
@@ -384,6 +720,10 @@ def _build_sources_dto(
                 "title": source.title,
                 "publisher": source.publisher,
                 "authority_type": source.authority_type.value,
+                "is_primary_authority": (
+                    source.authority_type in _PRIMARY_AUTHORITY_TYPES
+                    and _has_official_source_url(source.canonical_url)
+                ),
                 "status": source.status.value,
                 "document_number": source.document_number,
                 "canonical_url": source.canonical_url,
@@ -392,7 +732,28 @@ def _build_sources_dto(
                     for locator in source.locators
                 ],
                 "legal_period_from": source.legal_period.from_.isoformat(),
+                "legal_period_to": (
+                    source.legal_period.to.isoformat()
+                    if source.legal_period.to is not None
+                    else None
+                ),
+                "recorded_period_from": source.recorded_period.from_.isoformat(),
+                "retrieved_at": source.retrieved_at.isoformat(),
                 "verified_at": source.verified_at.isoformat(),
+                "applicability": {
+                    "status": _source_applicability_status(
+                        source_status=source.status,
+                        legal_from=source.legal_period.from_,
+                        legal_to=source.legal_period.to,
+                        recorded_from=source.recorded_period.from_,
+                        recorded_to=source.recorded_period.to,
+                        effective_at=decision.effective_at,
+                        observed_at=decision.observed_at,
+                    ).value,
+                    "effective_at": decision.effective_at.isoformat(),
+                    "observed_at": decision.observed_at.isoformat(),
+                },
+                "freshness": freshness.model_dump(mode="json"),
             }
         )
     if unresolved:
@@ -409,17 +770,14 @@ def _build_display(
     compiled: CompiledRulePack,
     *,
     request_trace: str,
+    pricing_catalog: ExactPricingCatalog,
 ) -> dict[str, JsonValue]:
     """The B.2 ``display`` block — pack-backed candidate display data.
 
-    Field set is PINNED here (W1 brief Item 2, design-seat P2-2; Track C 4a
-    consumes this contract): ``name`` / ``tagline`` / ``timeline`` /
-    ``requirements`` / ``checklist`` per candidate. Only ``name`` (pack
-    ``VisaProductVersion.names``) and ``timeline`` (pack
-    ``stay_policy``/``extension_policy``) exist in rule-pack schema 1.0.0 —
-    ``tagline``/``requirements``/``checklist`` are pinned as ``null``/empty
-    placeholders rather than fabricated, and the pack-schema lane that
-    introduces them populates them here.
+    Product names and stay/extension policy come from the signed RulePack.
+    Documentation and processing-time assessments remain explicit UNKNOWN
+    until authoritative catalog adapters provide evidence; pricing comes only
+    from the exact-key PricingTool adapter and never invents an amount.
     """
 
     products = {
@@ -432,6 +790,11 @@ def _build_display(
         if product is None:
             unresolved += 1
             continue
+        pricing = resolve_candidate_pricing(
+            product,
+            pricing_catalog=pricing_catalog,
+            evaluated_at=decision.evaluated_at,
+        )
         entries.append(
             {
                 "product_code": str(candidate.product_code),
@@ -439,12 +802,41 @@ def _build_display(
                 "rank": candidate.rank,
                 "name": {"id": product.names.id, "en": product.names.en},
                 "tagline": None,
-                "timeline": {
+                "stay_policy": {
                     "stay": product.stay_policy.model_dump(mode="json"),
                     "extension": product.extension_policy.model_dump(mode="json"),
                 },
-                "requirements": [],
-                "checklist": [],
+                "documentation": {
+                    "status": "UNKNOWN",
+                    "reason_code": "DOCUMENTATION_CATALOG_NOT_VERIFIED",
+                    "observed_at": decision.observed_at.isoformat(),
+                    "requirements": [],
+                    "checklist": [],
+                },
+                "processing_timeline": {
+                    "status": "UNKNOWN",
+                    "reason_code": "PROCESSING_TIMELINE_NOT_VERIFIED",
+                    "observed_at": decision.observed_at.isoformat(),
+                    "anchor_date": None,
+                    "estimated_completion_from": None,
+                    "estimated_completion_to": None,
+                },
+                "availability": {
+                    "legal_eligibility": "SUPPORTED",
+                    "operational_availability": {
+                        "status": "UNKNOWN",
+                        "reason_code": "OPERATIONAL_AVAILABILITY_NOT_EVALUATED",
+                        "observed_at": decision.observed_at.isoformat(),
+                        "source_refs": [],
+                    },
+                    "bali_zero_service_availability": {
+                        "status": "UNKNOWN",
+                        "reason_code": "BALI_ZERO_SERVICE_AVAILABILITY_NOT_EVALUATED",
+                        "observed_at": decision.observed_at.isoformat(),
+                        "source_refs": [],
+                    },
+                },
+                "pricing": pricing.as_json(),
             }
         )
     if unresolved:
@@ -456,6 +848,282 @@ def _build_display(
     return {"candidates": entries}
 
 
+_DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(
+    {
+        DisclosedReviewFlag.CRIMINAL_RECORD: "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+        DisclosedReviewFlag.HEALTH_CONCERN: "DISCLOSED_HEALTH_CONCERN_REVIEW",
+        DisclosedReviewFlag.PRIOR_VISA_REFUSAL: "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+        DisclosedReviewFlag.NOT_CERTAIN: "DISCLOSED_UNCERTAINTY_REVIEW",
+        DisclosedReviewFlag.PEP_OR_SANCTIONS: "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+        DisclosedReviewFlag.SOURCE_OF_FUNDS_UNCLEAR: "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+        DisclosedReviewFlag.DIPLOMATIC_PASSPORT: "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+        DisclosedReviewFlag.AMBIGUOUS_SPONSOR: "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+        DisclosedReviewFlag.ACTIVITY_BOUNDARY: "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+        DisclosedReviewFlag.MULTI_PURPOSE_TRIP: "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+        DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS: (
+            "CONFLICTING_IMMIGRATION_STATUS_REVIEW"
+        ),
+    }
+)
+
+
+def _apply_decisive_source_authority_hold(
+    decision: Decision,
+    compiled: CompiledRulePack,
+) -> Decision:
+    """Abstain unless every decisive citation is authoritative at both clocks.
+
+    This runs after deterministic evaluation but before sealing/persistence.
+    It is deliberately independent of ``Rule.safety_critical``: no supported
+    candidate or definitive no-path result may rely on a secondary, revoked,
+    superseded, unavailable, legally inapplicable, system-time-inapplicable,
+    or non-current source.
+    """
+
+    if decision.state not in (
+        DecisionState.SUPPORTED_CANDIDATES,
+        DecisionState.NO_SUPPORTED_PATH,
+    ):
+        return decision
+
+    rule_ids: set[str] = set()
+    decisive_refs: set[uuid.UUID] = set()
+    if decision.state is DecisionState.SUPPORTED_CANDIDATES:
+        for candidate in decision.candidates:
+            rule_ids.update(candidate.support_rule_ids)
+            decisive_refs.update(candidate.source_refs)
+    else:
+        for reason in decision.no_path_reasons:
+            rule_ids.update(reason.rule_ids)
+            decisive_refs.update(reason.source_refs)
+
+    source_index = {
+        source.source_record_id: source for source in compiled.source_pack.payload.source_records
+    }
+    invalid_refs: set[uuid.UUID] = set()
+    freshness_stale_refs: set[uuid.UUID] = set()
+    freshness_unknown_refs: set[uuid.UUID] = set()
+    for source_ref in decisive_refs:
+        source = source_index.get(source_ref)
+        if source is None:
+            invalid_refs.add(source_ref)
+            continue
+        if not _source_is_authoritative_and_applicable(
+            source,
+            decision=decision,
+            compiled=compiled,
+        ):
+            invalid_refs.add(source_ref)
+            continue
+
+        freshness = _evaluate_source_freshness(
+            source,
+            evaluated_at=decision.observed_at,
+        )
+        if freshness.status is SourceFreshnessStatus.STALE:
+            freshness_stale_refs.add(source_ref)
+        elif freshness.status is not SourceFreshnessStatus.CURRENT:
+            freshness_unknown_refs.add(source_ref)
+
+    reasons: list[Reason] = []
+    stable_rule_ids = tuple(sorted(rule_ids)) or ("system.decisive-source-gate",)
+    if not decisive_refs or invalid_refs:
+        reasons.append(
+            Reason(
+                code="DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+                rule_ids=stable_rule_ids,
+                source_refs=tuple(sorted(invalid_refs, key=str)),
+            )
+        )
+    if freshness_unknown_refs:
+        reasons.append(
+            Reason(
+                code="DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+                rule_ids=stable_rule_ids,
+                source_refs=tuple(sorted(freshness_unknown_refs, key=str)),
+            )
+        )
+    if freshness_stale_refs:
+        reasons.append(
+            Reason(
+                code="DECISIVE_SOURCE_STALE",
+                rule_ids=stable_rule_ids,
+                source_refs=tuple(sorted(freshness_stale_refs, key=str)),
+            )
+        )
+    if not reasons:
+        return decision
+
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "state": "HUMAN_REVIEW_REQUIRED",
+            "candidates": (),
+            "missing_facts": (),
+            "review_reasons": tuple(reasons),
+            "no_path_reasons": (),
+            "outage": None,
+            "quotes": (),
+            "trace_sha256": decision.trace_sha256,
+            "decision_integrity": None,
+        }
+    )
+    return Decision.model_validate(payload)
+
+
+def _apply_safety_critical_source_hold(
+    decision: Decision,
+    compiled: CompiledRulePack,
+) -> Decision:
+    """Abstain unless every active safety-critical source is CURRENT.
+
+    The hold is global for an otherwise conclusive decision. This also covers
+    authoritative-list omissions that the rule condition itself cannot detect
+    (for example, a country missing from a stale list).
+    """
+
+    # Freshness cannot outrank an infrastructure outage, cannot consume facts
+    # that the evaluator still needs, and must not replace a more specific
+    # review already raised by the signed rules. It is an abstention adapter
+    # only for otherwise conclusive legal outcomes.
+    if decision.state not in (
+        DecisionState.SUPPORTED_CANDIDATES,
+        DecisionState.NO_SUPPORTED_PATH,
+    ):
+        return decision
+
+    rule_ids: list[str] = []
+    source_refs: set[uuid.UUID] = set()
+    for rule in compiled.active_rules(effective_at=decision.effective_at):
+        if not rule.source_rule.safety_critical:
+            continue
+        rule_ids.append(rule.rule_id)
+        source_refs.update(rule.source_rule.source_refs)
+    if not source_refs:
+        return decision
+
+    source_index = {
+        source.source_record_id: source for source in compiled.source_pack.payload.source_records
+    }
+    invalid_refs: set[uuid.UUID] = set()
+    stale_refs: set[uuid.UUID] = set()
+    unknown_refs: set[uuid.UUID] = set()
+    for source_ref in source_refs:
+        source = source_index.get(source_ref)
+        if source is None:
+            invalid_refs.add(source_ref)
+            continue
+        if not _source_is_authoritative_and_applicable(
+            source,
+            decision=decision,
+            compiled=compiled,
+        ):
+            invalid_refs.add(source_ref)
+            continue
+        freshness = _evaluate_source_freshness(
+            source,
+            evaluated_at=decision.observed_at,
+        )
+        if freshness.status is SourceFreshnessStatus.STALE:
+            stale_refs.add(source_ref)
+        elif freshness.status is not SourceFreshnessStatus.CURRENT:
+            unknown_refs.add(source_ref)
+    if not invalid_refs and not stale_refs and not unknown_refs:
+        return decision
+
+    stable_rule_ids = tuple(sorted(set(rule_ids)))
+    reasons: list[Reason] = []
+    if invalid_refs:
+        reasons.append(
+            Reason(
+                code="SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+                rule_ids=stable_rule_ids,
+                source_refs=tuple(sorted(invalid_refs, key=str)),
+            )
+        )
+    if unknown_refs:
+        reasons.append(
+            Reason(
+                code="SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+                rule_ids=stable_rule_ids,
+                source_refs=tuple(sorted(unknown_refs, key=str)),
+            )
+        )
+    if stale_refs:
+        reasons.append(
+            Reason(
+                code="SAFETY_CRITICAL_SOURCE_STALE",
+                rule_ids=stable_rule_ids,
+                source_refs=tuple(sorted(stale_refs, key=str)),
+            )
+        )
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "state": "HUMAN_REVIEW_REQUIRED",
+            "candidates": (),
+            "missing_facts": (),
+            "review_reasons": tuple(reasons),
+            "no_path_reasons": (),
+            "outage": None,
+            "quotes": (),
+            "trace_sha256": decision.trace_sha256,
+            "decision_integrity": None,
+        }
+    )
+    return Decision.model_validate(payload)
+
+
+def _apply_disclosed_review_flags(
+    decision: Decision,
+    flags: tuple[DisclosedReviewFlag, ...],
+) -> Decision:
+    """Monotone abstention adapter for review disclosures outside the pack.
+
+    This adapter cannot create or retain candidates.  Empty ``source_refs``
+    is intentional: these codes describe an applicant disclosure requiring
+    a human workflow, not a legal eligibility claim.  They must not borrow a
+    regulatory citation that the signed RulePack did not declare.
+    """
+
+    if not flags:
+        return decision
+    if decision.decision_id is None or decision.public_id is None:
+        return decision
+
+    flag_seed = ",".join(flag.value for flag in flags)
+    decision_id = uuid.uuid5(decision.decision_id, flag_seed)
+    public_id = hashlib.sha256(f"{decision.public_id}:{flag_seed}".encode()).hexdigest()[:20]
+    disclosed_reasons = tuple(
+        Reason(
+            code=_DISCLOSED_REVIEW_REASON_CODES[flag],
+            rule_ids=(f"system.disclosed-review.{flag.value.lower().replace('_', '-')}",),
+            source_refs=(),
+        )
+        for flag in flags
+    )
+    existing_reasons = (
+        decision.review_reasons if decision.state.value == "HUMAN_REVIEW_REQUIRED" else ()
+    )
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "decision_id": decision_id,
+            "public_id": public_id,
+            "state": "HUMAN_REVIEW_REQUIRED",
+            "candidates": (),
+            "missing_facts": (),
+            "review_reasons": (*existing_reasons, *disclosed_reasons),
+            "no_path_reasons": (),
+            "outage": None,
+            "quotes": (),
+            "trace_sha256": decision.trace_sha256,
+            "decision_integrity": None,
+        }
+    )
+    return Decision.model_validate(payload)
+
+
 async def _save_evaluate_decision(
     db_pool: asyncpg.Pool,
     *,
@@ -463,15 +1131,16 @@ async def _save_evaluate_decision(
     rule_pack_db_id: uuid.UUID,
     ruleset_activation_id: uuid.UUID,
     environment: str,
+    engine_mode: EngineMode,
     request_fingerprint: bytes,
     request_category: str,
     traffic_source: str,
 ) -> None:
     """INSERT one ``visa_decisions`` row for an evaluate-path ``Decision``.
 
-    A DOCUMENTED MIRROR of ``shadow._save_shadow_decision`` (same INSERT,
-    same column set, same ``ON CONFLICT (decision_id) DO NOTHING``
-    semantics) with exactly three deliberate deltas:
+    A documented mirror of ``shadow._save_shadow_decision`` with RECOMMEND
+    surface metadata. A decision-id collision is accepted only when its
+    immutable replay identity matches; otherwise persistence fails closed.
 
     - ``engine_surface`` is ``RECOMMEND`` (this module's surface), never
       ``MATCH`` — an audit row must never claim a surface it did not serve;
@@ -486,44 +1155,103 @@ async def _save_evaluate_decision(
     rule_pack_sha256 = (
         bytes.fromhex(decision.rule_pack.payload_sha256) if decision.rule_pack is not None else None
     )
+    if decision.trace_sha256 is None or decision.decision_integrity is None:
+        raise ValueError(
+            "evaluated decisions must be trace-bound and authenticated before persistence"
+        )
+    trace_sha256 = bytes.fromhex(decision.trace_sha256)
+    decision_hmac = bytes.fromhex(decision.decision_integrity.digest)
+    decision_hmac_key_id = decision.decision_integrity.key_id
     candidate_summary = _build_candidate_summary(decision)
     grounding_summary = _build_grounding_summary(decision)
     citations = _collect_citations(grounding_summary)
 
     async with db_pool.acquire() as conn:
-        await conn.execute(
-            """
+        async with conn.transaction():
+            inserted = await conn.fetchrow(
+                """
             INSERT INTO visa_decisions (
                 decision_id, environment, engine_surface, engine_mode,
                 rule_pack_id, ruleset_activation_id, rule_pack_sha256, verdict,
                 citations, engine_version, effective_at, observed_at, evaluated_at,
                 request_fingerprint, request_category, candidate_summary,
-                grounding_summary, traffic_source
+                grounding_summary, traffic_source, trace_sha256,
+                decision_hmac, decision_hmac_key_id
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9::text::jsonb, $10, $11, $12, $13,
-                $14, $15, $16::text::jsonb, $17::text::jsonb, $18
+                $14, $15, $16::text::jsonb, $17::text::jsonb, $18, $19, $20, $21
             )
             ON CONFLICT (decision_id) DO NOTHING
+            RETURNING decision_id
             """,
-            decision.decision_id,
-            environment,
-            _SURFACE.value,
-            EngineMode.SHADOW.value,
-            rule_pack_db_id,
-            ruleset_activation_id,
-            rule_pack_sha256,
-            decision.state.value,
-            json.dumps(citations),
-            ENGINE_VERSION,
-            decision.effective_at,
-            decision.observed_at,
-            decision.evaluated_at,
-            request_fingerprint,
-            request_category,
-            json.dumps(candidate_summary),
-            json.dumps(grounding_summary),
-            traffic_source,
-        )
+                decision.decision_id,
+                environment,
+                _SURFACE.value,
+                engine_mode.value,
+                rule_pack_db_id,
+                ruleset_activation_id,
+                rule_pack_sha256,
+                decision.state.value,
+                json.dumps(citations),
+                ENGINE_VERSION,
+                decision.effective_at,
+                decision.observed_at,
+                decision.evaluated_at,
+                request_fingerprint,
+                request_category,
+                json.dumps(candidate_summary),
+                json.dumps(grounding_summary),
+                traffic_source,
+                trace_sha256,
+                decision_hmac,
+                decision_hmac_key_id,
+            )
+            if inserted is not None:
+                return
+            existing = await conn.fetchrow(
+                """
+                SELECT request_fingerprint, rule_pack_sha256, verdict,
+                       effective_at, engine_mode, trace_sha256,
+                       decision_hmac, decision_hmac_key_id
+                FROM visa_decisions
+                WHERE decision_id = $1
+                """,
+                decision.decision_id,
+            )
+            if existing is None:  # pragma: no cover - ON CONFLICT visibility invariant
+                raise RuntimeError("conflicting decision row disappeared")
+            expected = (
+                request_fingerprint,
+                rule_pack_sha256,
+                decision.state.value,
+                decision.effective_at,
+                engine_mode.value,
+                trace_sha256,
+                decision_hmac,
+                decision_hmac_key_id,
+            )
+            actual = (
+                bytes(existing["request_fingerprint"]),
+                (
+                    None
+                    if existing["rule_pack_sha256"] is None
+                    else bytes(existing["rule_pack_sha256"])
+                ),
+                str(existing["verdict"]),
+                existing["effective_at"],
+                str(existing["engine_mode"]),
+                (None if existing["trace_sha256"] is None else bytes(existing["trace_sha256"])),
+                (None if existing["decision_hmac"] is None else bytes(existing["decision_hmac"])),
+                (
+                    None
+                    if existing["decision_hmac_key_id"] is None
+                    else str(existing["decision_hmac_key_id"])
+                ),
+            )
+            if actual != expected:
+                raise RuntimeError(
+                    "existing decision row is incompatible with deterministic replay"
+                )
 
 
 async def run_evaluation(
@@ -533,29 +1261,46 @@ async def run_evaluation(
     traffic_source: str,
     request_category_hint: str | None,
     request_trace: str,
+    disclosed_review_flags: tuple[DisclosedReviewFlag, ...] = (),
+    evaluation_time: datetime | None = None,
 ) -> dict[str, JsonValue]:
     """Run one evaluate-path evaluation and build the B.2 envelope body.
 
-    Never raises for pack/engine/persistence failures — every failure mode
-    degrades to the TEMPORARILY_UNAVAILABLE-shaped body (HTTP 200,
-    ``retryable=true``, NOTHING persisted), the same fail-closed philosophy
-    as ``shadow._shadow_evaluate_match``'s silent skips, but rendered
-    because this surface's caller is the UI, not a fire-and-forget audit
-    spawn. ``traffic_source`` MUST already be allowlist-checked by the
+    Pack and engine failures degrade to TEMPORARILY_UNAVAILABLE. Persistence
+    is best-effort in SHADOW mode because the visible response stays CURATED;
+    ENFORCE fails closed to TEMPORARILY_UNAVAILABLE when durable persistence
+    cannot be proven. ``traffic_source`` MUST already be allowlist-checked by the
     router (this function trusts it; the synthetic-class gate is the
     router's job, one layer up, next to the other request validations).
 
     NEVER logs applicant facts — every log line carries only the caller-
-    supplied ``request_trace`` (a truncated SHA-256 of the raw request
-    body), the resolved environment, the verdict, and counts.
+    supplied ``request_trace`` (a random, PII-independent identifier), the
+    resolved environment, the verdict, and counts.
     """
 
-    now = datetime.now(timezone.utc)
+    now = evaluation_time or datetime.now(timezone.utc)
+    engine_mode = resolve_evaluate_mode()
 
-    if not resolve_evaluate_shadow_enabled():
-        return build_temp_unavailable_body(now=now, code="EVALUATE_SURFACE_DISABLED")
+    if engine_mode is EngineMode.OFF:
+        return build_temp_unavailable_body(
+            now=now,
+            code="EVALUATE_SURFACE_DISABLED",
+            mode=engine_mode,
+        )
 
     environment = _resolve_evaluate_environment()
+
+    if not await _retention_gate_allows_persistence(
+        db_pool,
+        environment=environment,
+        evaluated_at=now,
+        request_trace=request_trace,
+    ):
+        return build_temp_unavailable_body(
+            now=now,
+            code="RETENTION_POLICY_UNAVAILABLE",
+            mode=engine_mode,
+        )
 
     try:
         binding = await _resolve_active_pack_binding(
@@ -568,14 +1313,14 @@ async def run_evaluation(
         logger.warning(
             "evaluate path: pack binding query failed (trace=%s)", request_trace, exc_info=True
         )
-        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE", mode=engine_mode)
     if binding is None:
         logger.info(
             "evaluate path: no active rule pack for environment=%s, unavailable (trace=%s)",
             environment,
             request_trace,
         )
-        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE", mode=engine_mode)
 
     try:
         verified = verify_rule_pack(
@@ -585,22 +1330,32 @@ async def run_evaluation(
         )
     except RulePackVerificationError as exc:
         logger.warning("evaluate path: rule pack verification failed: %s", exc)
-        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE", mode=engine_mode)
 
     try:
         compiled = build_compiled_pack(verified.pack)
     except RulePackCompilationError as exc:
         logger.warning("evaluate path: rule pack compilation failed: %s", exc)
-        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="RULE_PACK_UNAVAILABLE", mode=engine_mode)
 
     try:
         identity_provider = resolve_identity_provider()
-        decision = evaluate(
+        evaluation = evaluate_with_trace(
             facts,
             compiled,
             effective_at=now,
             observed_at=now,
             identity_provider=identity_provider,
+        )
+        decision = evaluation.decision
+        decision = _apply_decisive_source_authority_hold(decision, compiled)
+        decision = _apply_safety_critical_source_hold(decision, compiled)
+        decision = _apply_disclosed_review_flags(decision, disclosed_review_flags)
+        keyring = resolve_engine_hmac_keyring(compiled.environment, now)
+        decision = seal_decision(
+            decision,
+            key=keyring.minting_key,
+            trace=evaluation.trace,
         )
     except (PlaceholderIdentityNotAllowedError, FactsFingerprintKeyUnavailableError):
         logger.warning(
@@ -610,25 +1365,27 @@ async def run_evaluation(
             environment,
             request_trace,
         )
-        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE", mode=engine_mode)
     except FactsFingerprintKeyError:
         logger.warning(
             "evaluate path: malformed facts-fingerprint key config "
             "(VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON), unavailable (trace=%s)",
             request_trace,
         )
-        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE", mode=engine_mode)
     except Exception as exc:  # defense-in-depth — evaluate() is documented pure/total
         # Log the exception TYPE only, never str(exc): evaluate() runs over
         # ApplicantFacts, and a stray ValidationError/KeyError message could
         # echo a raw fact value — this module must never log facts (Law 2).
         logger.warning("evaluate path: evaluate() failed: %s", type(exc).__name__)
-        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE")
+        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE", mode=engine_mode)
 
     request_category = derive_request_category(facts, request_category_hint)
     # The request correlator IS the STEP-6d facts fingerprint (see module
     # docstring): keyed HMAC, non-reversible, exactly the G-a "distinct
     # requests" granularity.
+    if decision.facts_fingerprint is None:  # pragma: no cover - evaluated-state invariant
+        return build_temp_unavailable_body(now=now, code="EVALUATION_UNAVAILABLE", mode=engine_mode)
     request_fingerprint = bytes.fromhex(decision.facts_fingerprint.digest)
 
     try:
@@ -638,6 +1395,7 @@ async def run_evaluation(
             rule_pack_db_id=binding.rule_pack_id,
             ruleset_activation_id=binding.ruleset_activation_id,
             environment=environment,
+            engine_mode=engine_mode,
             request_fingerprint=request_fingerprint,
             request_category=request_category,
             traffic_source=traffic_source,
@@ -653,19 +1411,253 @@ async def run_evaluation(
             request_trace,
             exc_info=True,
         )
+        if engine_mode is EngineMode.ENFORCE:
+            return build_temp_unavailable_body(
+                now=now,
+                code="DECISION_PERSISTENCE_UNAVAILABLE",
+                mode=engine_mode,
+            )
+
+    try:
+        pricing_catalog: ExactPricingCatalog = await asyncio.to_thread(get_pricing_service)
+    except Exception as exc:
+        # Pricing availability cannot overwrite an already approved and
+        # persisted legal decision. Log only the type: adapter exceptions may
+        # include catalog payloads or connection details.
+        logger.warning(
+            "evaluate path: pricing catalog acquisition failed: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        pricing_catalog = UnavailablePricingCatalog()
+
+    try:
+        envelope = {
+            "mode": resolve_response_mode(engine_mode),
+            "decision": decision.model_dump(mode="json"),
+        }
+        envelope["sources"] = _build_sources_dto(
+            decision,
+            compiled,
+            request_trace=request_trace,
+        )
+        envelope["display"] = _build_display(
+            decision,
+            compiled,
+            request_trace=request_trace,
+            pricing_catalog=pricing_catalog,
+        )
+        validated = VisaOracleEvaluateResponse.model_validate(envelope)
+    except Exception as exc:
+        # Projection defects (unresolved source/product, malformed quote, or
+        # response-contract drift) must never escape as a 500 or a partial,
+        # fabricated result. Log type and trace only; never the payload/error
+        # text because validation messages can include applicant-derived data.
+        logger.error(
+            "evaluate path: public projection failed: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        return build_temp_unavailable_body(
+            now=now,
+            code="PUBLIC_PROJECTION_UNAVAILABLE",
+            mode=engine_mode,
+        )
 
     logger.info(
-        "evaluate path decision written: trace=%s verdict=%s candidates=%d",
+        "evaluate path decision ready: trace=%s verdict=%s candidates=%d",
         request_trace,
         decision.state.value,
         len(decision.candidates),
     )
-    return {
-        "mode": resolve_response_mode(),
-        "decision": decision.model_dump(mode="json"),
-        "sources": _build_sources_dto(decision, compiled, request_trace=request_trace),
-        "display": _build_display(decision, compiled, request_trace=request_trace),
-    }
+    return validated.model_dump(mode="json")
+
+
+async def run_public_evaluation(
+    db_pool: asyncpg.Pool,
+    *,
+    request: VisaOracleEvaluateRequest,
+    traffic_source: str,
+    request_category_hint: str | None,
+    request_trace: str,
+    canonical_request: bytes,
+    idempotency_key: str | None,
+) -> VisaOracleEvaluateResponse:
+    """Run the typed public contract, optionally with durable replay.
+
+    A supplied idempotency key is never best-effort: inability to reserve or
+    complete its durable record returns TEMPORARILY_UNAVAILABLE instead of a
+    non-replayable successful decision.
+    """
+
+    facts = request.applicant_facts()
+    entry_mode = resolve_evaluate_mode()
+    if idempotency_key is not None and entry_mode is EngineMode.OFF:
+        return _replay_rejection_response(mode=entry_mode, now=datetime.now(timezone.utc))
+    if idempotency_key is None:
+        try:
+            body = await run_evaluation(
+                db_pool,
+                facts=facts,
+                traffic_source=traffic_source,
+                request_category_hint=request_category_hint,
+                request_trace=request_trace,
+                disclosed_review_flags=request.effective_review_flags(),
+            )
+            return VisaOracleEvaluateResponse.model_validate(body)
+        except Exception as exc:
+            logger.error(
+                "evaluate path: public response validation failed: %s (trace=%s)",
+                type(exc).__name__,
+                request_trace,
+            )
+            return VisaOracleEvaluateResponse.model_validate(
+                build_temp_unavailable_body(
+                    now=datetime.now(timezone.utc),
+                    code="PUBLIC_PROJECTION_UNAVAILABLE",
+                )
+            )
+
+    entry_environment = _resolve_evaluate_environment()
+    retention_moment = datetime.now(timezone.utc)
+    if not await _retention_gate_allows_persistence(
+        db_pool,
+        environment=entry_environment,
+        evaluated_at=retention_moment,
+        request_trace=request_trace,
+    ):
+        return VisaOracleEvaluateResponse.model_validate(
+            build_temp_unavailable_body(
+                now=retention_moment,
+                code="RETENTION_POLICY_UNAVAILABLE",
+                mode=entry_mode,
+            )
+        )
+
+    key_sha256 = hash_idempotency_key(idempotency_key)
+    key_moment = datetime.now(timezone.utc)
+    try:
+        environment = Environment(_resolve_evaluate_environment())
+        keyring = resolve_engine_hmac_keyring(environment, key_moment)
+    except (ValueError, FactsFingerprintKeyError, FactsFingerprintKeyUnavailableError):
+        logger.warning("evaluate path: idempotency HMAC unavailable (trace=%s)", request_trace)
+        return VisaOracleEvaluateResponse.model_validate(
+            build_temp_unavailable_body(now=key_moment, code="IDEMPOTENCY_UNAVAILABLE")
+        )
+    mode_before_reserve = resolve_evaluate_mode()
+    if mode_before_reserve is EngineMode.OFF:
+        return _replay_rejection_response(mode=mode_before_reserve, now=datetime.now(timezone.utc))
+    try:
+        reservation = await reserve_idempotency(
+            db_pool,
+            key_sha256=key_sha256,
+            canonical_request=canonical_request,
+            environment=environment.value,
+            minting_key=keyring.minting_key,
+            verification_keys=keyring.verification_keys,
+        )
+    except IdempotencyConflictError:
+        raise
+    except Exception as exc:
+        logger.warning(
+            "evaluate path: idempotency reservation unavailable: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        return VisaOracleEvaluateResponse.model_validate(
+            build_temp_unavailable_body(
+                now=datetime.now(timezone.utc), code="IDEMPOTENCY_UNAVAILABLE"
+            )
+        )
+    if reservation.response is not None:
+        replay_allowed, current_mode = await _replay_authority_matches(
+            db_pool,
+            response=reservation.response,
+            expected_environment=environment.value,
+            request_trace=request_trace,
+        )
+        if not replay_allowed:
+            return _replay_rejection_response(
+                mode=current_mode,
+                now=datetime.now(timezone.utc),
+            )
+        return reservation.response
+
+    try:
+        body = await run_evaluation(
+            db_pool,
+            facts=facts,
+            traffic_source=traffic_source,
+            request_category_hint=request_category_hint,
+            request_trace=request_trace,
+            disclosed_review_flags=request.effective_review_flags(),
+            evaluation_time=reservation.reserved_at,
+        )
+        response = VisaOracleEvaluateResponse.model_validate(body)
+    except Exception as exc:
+        logger.error(
+            "evaluate path: idempotent response validation failed: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        response = VisaOracleEvaluateResponse.model_validate(
+            build_temp_unavailable_body(
+                now=reservation.reserved_at,
+                code="PUBLIC_PROJECTION_UNAVAILABLE",
+            )
+        )
+    # A reserved row intentionally remains incomplete when the surface or its
+    # signed authority changes while the evaluator is running.  This is a
+    # fail-closed tombstone until its Zero-approved policy deadline reclaims it; it
+    # contains no response body or authentication material.  Configuration is
+    # process-local rather than DB-transactional, so this double snapshot
+    # narrows (but cannot make atomic) the final completion boundary.
+    if (
+        response.decision.state is DecisionState.TEMPORARILY_UNAVAILABLE
+        and response.decision.outage is not None
+        and response.decision.outage.code == "EVALUATE_SURFACE_DISABLED"
+    ):
+        return response
+    completion_allowed, current_mode = await _replay_authority_matches(
+        db_pool,
+        response=response,
+        expected_environment=environment.value,
+        request_trace=request_trace,
+    )
+    if not completion_allowed:
+        return _replay_rejection_response(
+            mode=current_mode,
+            now=datetime.now(timezone.utc),
+        )
+    try:
+        completed = await complete_idempotency(
+            db_pool,
+            reservation=reservation,
+            response=response,
+            response_signing_key=keyring.minting_key,
+            verification_keys=keyring.verification_keys,
+        )
+        replay_allowed, current_mode = await _replay_authority_matches(
+            db_pool,
+            response=completed,
+            expected_environment=environment.value,
+            request_trace=request_trace,
+        )
+        if not replay_allowed:
+            return _replay_rejection_response(
+                mode=current_mode,
+                now=datetime.now(timezone.utc),
+            )
+        return completed
+    except Exception as exc:
+        logger.warning(
+            "evaluate path: idempotency completion unavailable: %s (trace=%s)",
+            type(exc).__name__,
+            request_trace,
+        )
+        return VisaOracleEvaluateResponse.model_validate(
+            build_temp_unavailable_body(now=reservation.reserved_at, code="IDEMPOTENCY_UNAVAILABLE")
+        )
 
 
 __all__ = [
@@ -676,8 +1668,10 @@ __all__ = [
     "build_temp_unavailable_body",
     "derive_request_category",
     "resolve_allowed_synthetic_sources",
+    "resolve_evaluate_mode",
     "resolve_evaluate_shadow_enabled",
     "resolve_response_mode",
     "run_evaluation",
+    "run_public_evaluation",
     "verify_driver_token",
 ]

@@ -13,7 +13,8 @@ here.
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timezone
+import json
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -23,6 +24,7 @@ from backend.services.visa_engine.crypto import (
     FACTS_FINGERPRINT_KEYS_ENV_VAR,
     FactsFingerprintKeyStore,
     build_identity_provider,
+    resolve_engine_hmac_keyring,
     resolve_identity_provider,
 )
 from backend.services.visa_engine.enums import DecisionState, Environment
@@ -240,6 +242,82 @@ class TestFactsFingerprintKeyStoreSelection:
         )
         key = store.select(Environment.PRODUCTION, _EFFECTIVE_AT)
         assert key.kid == "zzz"
+
+
+class TestEngineHmacKeyRing:
+    def test_rotation_retains_all_configured_nonrevoked_historical_keys(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        floor = _EFFECTIVE_AT - timedelta(hours=24)
+        entries = [
+            _key_entry(
+                kid="expired-within-window",
+                secret=_secret_b64(1),
+                valid_from="2020-01-01T00:00:00+00:00",
+                valid_to=(_EFFECTIVE_AT - timedelta(hours=12)).isoformat(),
+            ),
+            _key_entry(
+                kid="expired-at-floor",
+                secret=_secret_b64(2),
+                valid_from="2020-01-01T00:00:00+00:00",
+                valid_to=floor.isoformat(),
+            ),
+            _key_entry(
+                kid="revoked",
+                secret=_secret_b64(3),
+                valid_from="2020-01-01T00:00:00+00:00",
+                revoked_at=(_EFFECTIVE_AT - timedelta(seconds=1)).isoformat(),
+            ),
+            _key_entry(
+                kid="revocation-future",
+                secret=_secret_b64(4),
+                valid_from="2020-01-01T00:00:00+00:00",
+                revoked_at=(_EFFECTIVE_AT + timedelta(hours=1)).isoformat(),
+            ),
+            _key_entry(
+                kid="new",
+                secret=_secret_b64(5),
+                valid_from=(_EFFECTIVE_AT - timedelta(hours=1)).isoformat(),
+            ),
+            _key_entry(
+                kid="future",
+                secret=_secret_b64(6),
+                valid_from=(_EFFECTIVE_AT + timedelta(seconds=1)).isoformat(),
+            ),
+        ]
+        monkeypatch.setenv(FACTS_FINGERPRINT_KEYS_ENV_VAR, json.dumps(entries))
+
+        keyring = resolve_engine_hmac_keyring(Environment.PRODUCTION, _EFFECTIVE_AT)
+        assert keyring.minting_key.kid == "new"
+        assert {key.kid for key in keyring.verification_keys} == {
+            "expired-within-window",
+            "expired-at-floor",
+            "revocation-future",
+            "new",
+        }
+
+    def test_revoked_key_is_never_retained_for_replay(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        entries = [
+            _key_entry(
+                kid="revoked-old",
+                secret=_secret_b64(7),
+                valid_from="2020-01-01T00:00:00+00:00",
+                revoked_at=(_EFFECTIVE_AT - timedelta(microseconds=1)).isoformat(),
+            ),
+            _key_entry(
+                kid="active",
+                secret=_secret_b64(8),
+                valid_from=(_EFFECTIVE_AT - timedelta(hours=1)).isoformat(),
+            ),
+        ]
+        monkeypatch.setenv(FACTS_FINGERPRINT_KEYS_ENV_VAR, json.dumps(entries))
+
+        keyring = resolve_engine_hmac_keyring(Environment.PRODUCTION, _EFFECTIVE_AT)
+        assert [key.kid for key in keyring.verification_keys] == ["active"]
 
 
 # ---------------------------------------------------------------------------

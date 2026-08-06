@@ -3,10 +3,13 @@ Legal Ingestion Service
 Specialized ingestion pipeline for Indonesian legal documents
 """
 
+import asyncio
+import hashlib
 import logging
 import os
 import time
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,12 +28,21 @@ from backend.core.legal import (
 from backend.core.parsers import DocumentParseError, auto_detect_and_parse
 from backend.core.qdrant_db import QdrantClient
 from backend.services.ingestion.ingestion_logger import IngestionStage, ingestion_logger
+from backend.services.integrations.service_account_drive_service import (
+    DriveArchiveIntegrityError,
+    ServiceAccountDriveService,
+)
 from backend.utils.tier_classifier import TierClassifier
 
 logger = logging.getLogger(__name__)
 
 LEGAL_CANONICAL_COLLECTION = "legal_unified"
 LEGAL_ENV_OVERRIDE_FLAG = "LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"
+CURRENT_RETRIEVAL_SCOPE = "current"
+HISTORICAL_RETRIEVAL_SCOPE = "historical_only"
+ALLOWED_RETRIEVAL_SCOPES = frozenset(
+    {CURRENT_RETRIEVAL_SCOPE, HISTORICAL_RETRIEVAL_SCOPE},
+)
 
 ALLOWED_CANONICAL_COLLECTIONS = frozenset({
     LEGAL_CANONICAL_COLLECTION,
@@ -168,6 +180,33 @@ def validate_legal_ingest_result(result: dict[str, Any]) -> None:
         raise LegalIngestIntegrityError("Legal ingestion produced zero upserts")
 
 
+def validate_legal_retrieval_scope(retrieval_scope: str) -> str:
+    """Normalize a legal source's retrieval scope or fail closed."""
+    normalized = retrieval_scope.strip().lower()
+    if normalized not in ALLOWED_RETRIEVAL_SCOPES:
+        raise LegalIngestIntegrityError(
+            "Legal ingestion retrieval_scope must be one of "
+            f"{sorted(ALLOWED_RETRIEVAL_SCOPES)!r}; got {retrieval_scope!r}",
+        )
+    return normalized
+
+
+def build_content_bound_legal_doc_id(
+    metadata: dict[str, Any],
+    source_sha256: str,
+) -> str:
+    """Build a stable legal identity, binding incomplete metadata to source bytes."""
+    identity = [
+        str(metadata.get("type_abbrev") or "DOC"),
+        str(metadata.get("number") or "UNKNOWN"),
+        str(metadata.get("year") or "UNKNOWN"),
+    ]
+    normalized = [part.replace(" ", "_").replace("/", "_") for part in identity]
+    if any(part.upper() in {"DOC", "UNKNOWN", "0", "NONE"} for part in normalized):
+        normalized.append(source_sha256[:16])
+    return "_".join(normalized)
+
+
 class LegalIngestionService:
     """
     Specialized ingestion service for Indonesian legal documents.
@@ -217,6 +256,24 @@ class LegalIngestionService:
             resolved_collection_name,
         )
 
+    @staticmethod
+    async def _quarantine_current_points(
+        vector_db: QdrantClient,
+        document_id: str,
+    ) -> list[str]:
+        """Mark a previous current-law version historical before replacement."""
+        points = await vector_db.scroll_strict(
+            metadata_filter={"document_id": document_id},
+        )
+        # Qdrant applies one filter operation server-side. Writing a top-level
+        # guard excludes both flat legal payloads and nested legacy payloads,
+        # because current-law filters inspect both representations.
+        await vector_db.set_payload_by_filter(
+            metadata_filter={"document_id": document_id},
+            payload={"retrieval_scope": HISTORICAL_RETRIEVAL_SCOPE},
+        )
+        return [str(point["id"]) for point in points]
+
     async def ingest_legal_document(
         self,
         file_path: str,
@@ -228,6 +285,10 @@ class LegalIngestionService:
         trace_id: str | None = None,
         user_id: str | None = None,
         document_id: str | None = None,
+        retrieval_scope: str = CURRENT_RETRIEVAL_SCOPE,
+        source_url: str | None = None,
+        effective_date: date | None = None,
+        observed_at: datetime | None = None,
     ) -> dict[str, Any]:
         """
         Ingest a legal document through the complete pipeline.
@@ -236,8 +297,10 @@ class LegalIngestionService:
         start_time = time.time()
         source = "file_upload"
         file_type = Path(file_path).suffix.lower()
+        reconciliation_state = "NOT_REQUIRED"
 
         try:
+            retrieval_scope = validate_legal_retrieval_scope(retrieval_scope)
             # Generate document ID if not provided
             if not document_id:
                 document_id = f"legal_{int(start_time)}_{Path(file_path).stem}"
@@ -265,11 +328,17 @@ class LegalIngestionService:
                     resolved_collection=target_collection,
                 )
             )
-            if collection_name:
-                self.vector_db = QdrantClient(collection_name=target_collection)
-                # CRITICAL: Update indexer's client reference too!
-                if self.indexer:
-                    self.indexer.qdrant = self.vector_db
+            request_vector_db = (
+                QdrantClient(collection_name=target_collection)
+                if collection_name
+                else self.vector_db
+            )
+
+            # Historical instruments must only enter a collection once the
+            # executable retrieval guard's payload indexes exist.
+            if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                await request_vector_db.ensure_keyword_payload_index("retrieval_scope")
+                await request_vector_db.ensure_keyword_payload_index("metadata.retrieval_scope")
 
             # STAGE 1: Parse document
             parsing_start = time.time()
@@ -288,8 +357,6 @@ class LegalIngestionService:
                             "ocr_fallback": True,
                         },
                     )
-                    import asyncio
-
                     from backend.core.parsers import extract_text_from_pdf_async
 
                     try:
@@ -348,37 +415,50 @@ class LegalIngestionService:
                 file_type=file_type, source=source, duration_seconds=parsing_duration
             )
 
+            source_bytes = await asyncio.to_thread(Path(file_path).read_bytes)
+            source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+
             # Logging already done above with structured data
 
             # STAGE 1.5: Upload to Google Drive (Permanent)
             drive_file_id = None
             drive_web_link = None
-            drive_folder_path = "BALI ZERO/PERATURAN"
+            drive_archive: dict[str, Any] = {"status": "not_attempted"}
             try:
-                from backend.services.integrations.team_drive_service import TeamDriveService
+                from backend.app.core.config import settings
 
-                drive_service = TeamDriveService()
-
-                # Trova/crea cartella
-                folder_id = await self._ensure_drive_folder_exists(
-                    drive_service=drive_service,
-                    folder_path=drive_folder_path,
+                legal_root_id = settings.legal_drive_root_folder_id
+                archive_root_id = legal_root_id or settings.google_drive_root_folder_id
+                drive_service = ServiceAccountDriveService(
+                    root_folder_id=archive_root_id,
+                    delegated_user=settings.legal_drive_impersonate_user,
                 )
 
-                # Leggi file PDF
-                with open(file_path, "rb") as f:
-                    pdf_content = f.read()
+                if legal_root_id:
+                    folder_id = legal_root_id
+                else:
+                    folder_id = await self._ensure_drive_folder_exists(
+                        drive_service=drive_service,
+                        folder_path="BALI ZERO/PERATURAN",
+                    )
 
-                # Upload PDF
-                drive_file = await drive_service.upload_file(
-                    file_content=pdf_content,
-                    filename=Path(file_path).name,
+                filename = Path(file_path).name
+                archive_db_pool = await self.indexer._get_db_pool()
+                drive_file, archive_status = await drive_service.archive_file_idempotent(
+                    folder_id=folder_id,
+                    file_content=source_bytes,
+                    file_name=filename,
                     mime_type="application/pdf",
-                    parent_folder_id=folder_id,
+                    db_pool=archive_db_pool,
+                    require_distributed_lock=(
+                        retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE
+                    ),
                 )
+                drive_archive["status"] = archive_status
 
                 drive_file_id = drive_file["id"]
                 drive_web_link = drive_file.get("webViewLink")
+                drive_archive.update({"file_id": drive_file_id, "web_link": drive_web_link})
 
                 logger.info(
                     "[STAGE 1.5] Uploaded to Drive: %s",
@@ -392,8 +472,30 @@ class LegalIngestionService:
                     },
                 )
 
+            except DriveArchiveIntegrityError as e:
+                if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                    raise LegalIngestIntegrityError(
+                        f"Legal Drive archive integrity failure: {e}"
+                    ) from e
+                drive_archive = {"status": "failed", "reason": "archive_integrity"}
+                logger.warning(
+                    "[STAGE 1.5] Current-law Drive archive integrity failure "
+                    "(non-blocking): %s",
+                    e,
+                    extra={
+                        "document_id": document_id,
+                        "stage": "drive_upload",
+                        "error_type": type(e).__name__,
+                        "non_blocking": True,
+                    },
+                )
             except Exception as e:
-                # Non bloccare ingestione se Drive fallisce
+                if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                    raise LegalIngestIntegrityError(
+                        "Historical legal ingestion requires a verified Drive archive"
+                    ) from e
+                # Current-law ingestion preserves the legacy non-blocking Drive behavior.
+                drive_archive = {"status": "failed", "reason": "archive_unavailable"}
                 logger.warning(
                     "[STAGE 1.5] Google Drive upload failed (non-blocking): %s",
                     e,
@@ -616,9 +718,10 @@ Return ONLY valid JSON, no markdown."""
 
             # STAGE 6: Hierarchical Indexing (Parent-Child)
             # Generate a document ID
-            doc_id = f"{metadata.get('type_abbrev', 'DOC')}_{metadata.get('number', '0')}_{metadata.get('year', '0')}".replace(
-                " ", "_"
-            ).replace("/", "_")
+            current_doc_id = build_content_bound_legal_doc_id(metadata, source_sha256)
+            doc_id = current_doc_id
+            if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                doc_id = f"{doc_id}__historical"
 
             # Prepare base metadata
             base_metadata = {
@@ -636,12 +739,20 @@ Return ONLY valid JSON, no markdown."""
                 "legal_year": metadata.get("year"),
                 "legal_topic": metadata.get("topic"),
                 "legal_status": metadata.get("status"),
+                "retrieval_scope": retrieval_scope,
                 # CRITICAL: Keep original keys for LegalChunker context injection
                 "type_abbrev": metadata.get("type_abbrev"),
                 "number": metadata.get("number"),
                 "year": metadata.get("year"),
                 "topic": metadata.get("topic"),
             }
+
+            if source_url:
+                base_metadata["source_url"] = source_url
+            if effective_date:
+                base_metadata["effective_date"] = effective_date.isoformat()
+            if observed_at:
+                base_metadata["observed_at"] = observed_at.isoformat()
 
             # Add Drive file info if available
             if drive_file_id:
@@ -651,8 +762,19 @@ Return ONLY valid JSON, no markdown."""
 
             # Use HierarchicalIndexer
             indexing_start = time.time()
+            quarantined_current_ids: list[str] = []
+            if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                reconciliation_state = "QUARANTINE_IN_PROGRESS"
+                quarantined_current_ids = await self._quarantine_current_points(
+                    request_vector_db,
+                    current_doc_id,
+                )
+                reconciliation_state = "CURRENT_SCOPE_QUARANTINED"
             indexing_result = await self.indexer.index_legal_document(
-                document_text=cleaned_text, document_id=doc_id, metadata=base_metadata
+                document_text=cleaned_text,
+                document_id=doc_id,
+                metadata=base_metadata,
+                qdrant_client=request_vector_db,
             )
             chunks_indexed = _coerce_positive_int(
                 indexing_result.get("chunks_indexed"),
@@ -670,6 +792,19 @@ Return ONLY valid JSON, no markdown."""
                 raise LegalIngestIntegrityError(
                     f"Legal ingestion produced zero upserts for {doc_id}"
                 )
+            if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                await request_vector_db.delete_by_filter(
+                    metadata_filter={"document_id": current_doc_id},
+                )
+                reconciliation_state = "HISTORICAL_REPLACEMENT_COMPLETE"
+                if quarantined_current_ids:
+                    logger.info(
+                        "Removed quarantined current-law points after historical replacement",
+                        extra={
+                            "document_id": document_id,
+                            "quarantined_points": len(quarantined_current_ids),
+                        },
+                    )
             indexing_duration = time.time() - indexing_start
 
             # Record chunking and embedding metrics
@@ -817,7 +952,10 @@ Return ONLY valid JSON, no markdown."""
                 "error": None,
                 "document_id": document_id,
                 "processing_time_seconds": total_duration,
+                "drive_archive": drive_archive,
             }
+            if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                result["reconciliation_status"] = reconciliation_state
 
             # Add KG extraction results if available
             if kg_extraction_result:
@@ -843,6 +981,10 @@ Return ONLY valid JSON, no markdown."""
         except Exception as e:
             total_duration = time.time() - start_time
             error_type = type(e).__name__
+            reconciliation_requires_review = reconciliation_state in {
+                "QUARANTINE_IN_PROGRESS",
+                "CURRENT_SCOPE_QUARANTINED",
+            }
 
             # Record error metrics
             metrics_collector.record_document_ingested(
@@ -871,6 +1013,16 @@ Return ONLY valid JSON, no markdown."""
             )
 
             logger.error("❌ Error ingesting legal document %s: %s", file_path, e, exc_info=True)
+            if reconciliation_requires_review:
+                logger.critical(
+                    "Historical scope reconciliation failed after current-scope mutation; "
+                    "manual review or idempotent retry required",
+                    extra={
+                        "document_id": document_id,
+                        "reconciliation_state": reconciliation_state,
+                        "required_action": "HUMAN_REVIEW_REQUIRED",
+                    },
+                )
             return {
                 "success": False,
                 "book_title": title or Path(file_path).stem,
@@ -881,6 +1033,16 @@ Return ONLY valid JSON, no markdown."""
                 "error": str(e),
                 "document_id": document_id,
                 "processing_time_seconds": total_duration,
+                "reconciliation_status": (
+                    "HUMAN_REVIEW_REQUIRED"
+                    if reconciliation_requires_review
+                    else reconciliation_state
+                ),
+                "current_scope_state": (
+                    "QUARANTINED_OR_UNKNOWN"
+                    if reconciliation_requires_review
+                    else "UNCHANGED_OR_NOT_APPLICABLE"
+                ),
             }
 
     async def _ensure_drive_folder_exists(
@@ -892,7 +1054,7 @@ Return ONLY valid JSON, no markdown."""
         Trova o crea cartella su Google Drive.
 
         Args:
-            drive_service: TeamDriveService instance
+            drive_service: ServiceAccountDriveService instance
             folder_path: Path relativo da root (es: "BALI ZERO/PERATURAN")
 
         Returns:
@@ -908,17 +1070,12 @@ Return ONLY valid JSON, no markdown."""
 
         # Naviga/crea ogni livello
         for folder_name in parts:
-            # Cerca cartella esistente usando list_files (più preciso per parent)
+            # The service-account adapter supports an exact parent-scoped lookup.
             try:
-                parent_files_result = await drive_service.list_files(folder_id=current_parent_id)
-                parent_files = parent_files_result.get("files", [])
-
-                # Cerca cartella con nome esatto
-                matching_folder = None
-                for pf in parent_files:
-                    if pf.get("name") == folder_name and pf.get("type") == "folder":
-                        matching_folder = pf
-                        break
+                matching_folder = await drive_service.find_folder(
+                    name=folder_name,
+                    parent_id=current_parent_id,
+                )
 
                 if matching_folder:
                     current_parent_id = matching_folder["id"]
@@ -927,7 +1084,7 @@ Return ONLY valid JSON, no markdown."""
                     # Crea cartella
                     folder = await drive_service.create_folder(
                         name=folder_name,
-                        parent_folder_id=current_parent_id,
+                        parent_id=current_parent_id,
                     )
                     current_parent_id = folder["id"]
                     logger.info("Created Drive folder: %s (%s)", folder_name, current_parent_id)
@@ -941,7 +1098,7 @@ Return ONLY valid JSON, no markdown."""
                 try:
                     folder = await drive_service.create_folder(
                         name=folder_name,
-                        parent_folder_id=current_parent_id,
+                        parent_id=current_parent_id,
                     )
                     current_parent_id = folder["id"]
                     logger.info("Created Drive folder: %s (%s)", folder_name, current_parent_id)
