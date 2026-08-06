@@ -1,17 +1,23 @@
 """C5A dossier elegant render — EN + ID HTML, PDF via Playwright.
 
 Author: Claude Opus 4.7 — 2026-05-26
-Sources: ~/Desktop/nuzantara/.worktrees/docs-c5a-step2-edits/research/visa/2026-05-26-c5a-content-creator-deep-research.md
-Output:  ~/Desktop/nuzantara/research/visa/c5a-render-2026-05-26/
+Sources: the versioned C5A research dossier.
+Output:  $C5A_OUTPUT_DIR or ~/Desktop/Nuzantara-Repo-Archive/2026-05-26/c5a-dossier/
 """
 
 import asyncio
-import re
-import sys
+import os
 import time
 from pathlib import Path
 
-OUT_DIR = Path("/Users/nuzantara/Desktop/nuzantara/research/visa/c5a-render-2026-05-26")
+DEFAULT_OUT_DIR = (
+    Path.home()
+    / "Desktop"
+    / "Nuzantara-Repo-Archive"
+    / "2026-05-26"
+    / "c5a-dossier"
+)
+OUT_DIR = Path(os.environ.get("C5A_OUTPUT_DIR", str(DEFAULT_OUT_DIR))).expanduser()
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 PALETTE = {

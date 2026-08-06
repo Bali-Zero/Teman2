@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import random
 import re
 import subprocess
@@ -41,8 +42,20 @@ REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 
 DATA_JSON = REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.json"
 GOLD_JSON = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-gold-all.json"
-SILVER_OUTPUT_DIR = SCRIPT_DIR / "output" / "silver_workers"
-VALIDATION_REPORT = SCRIPT_DIR / "output" / "silver_validation_report.json"
+DEFAULT_RUNTIME_ROOT = (
+    Path.home() / "Desktop" / "Nuzantara-External-Data" / "runtime-state"
+)
+RUNTIME_ROOT = Path(
+    os.environ.get("NUZANTARA_RUNTIME_STATE_DIR", str(DEFAULT_RUNTIME_ROOT))
+).expanduser()
+OUTPUT_DIR = Path(
+    os.environ.get(
+        "KBLI_ENRICHMENT_OUTPUT_DIR",
+        str(RUNTIME_ROOT / "kbli-enrichment"),
+    )
+).expanduser()
+SILVER_OUTPUT_DIR = OUTPUT_DIR / "silver_workers"
+VALIDATION_REPORT = OUTPUT_DIR / "silver_validation_report.json"
 
 GEMINI_CLI = "gemini"
 GEMINI_MODEL = "gemini-3.1-pro-preview"

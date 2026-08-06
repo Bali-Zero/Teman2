@@ -34,6 +34,7 @@ corpora still need an explicit home outside the checkout.
 | Material                                                    | Canonical location                                                                                   | Notes                                                                                                                                                                                                      |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Generated screenshots, render experiments, one-off reports  | `~/Desktop/Nuzantara-Repo-Archive/<YYYY-MM-DD>/`                                                     | Each dated archive has a README and preserves repo-relative paths.                                                                                                                                         |
+| Mutable pipeline checkpoints and worker output              | `~/Desktop/Nuzantara-External-Data/runtime-state/<producer>/`                                        | Override with `NUZANTARA_RUNTIME_STATE_DIR` or the producer-specific variable. Runtime state is never a clean-clone input.                                                                                 |
 | Large non-versioned reference corpus                        | `~/Desktop/Nuzantara-External-Data/<YYYY-MM-DD>/repo-relative/`                                      | Symlinks inside the checkout may preserve legacy code paths. Do not commit them. The Air migration made on 2026-08-06 has its own README and SHA-256 manifest.                                             |
 | WhatsApp, OSINT, client documents, or other UU PDP material | Pro only: `~/Desktop/Nuzantara-PII-Quarantine/<YYYY-MM-DD>-<batch>/` or the owning Pro service store | Never copy raw material to Air or a cloud prompt.                                                                                                                                                          |
 | WR3 accumulated voice corpus                                | Pro only: `~/Desktop/Zantara-Voice-Corpus/`                                                          | Voice samples are biometric material. Rendering and corpus growth happen on Pro.                                                                                                                           |
@@ -68,6 +69,18 @@ The 2026-08-06 Air cleanup preserves local paths with ignored symlinks, but a
 deployment-safe owner must choose Git/LFS, object storage, or a documented build
 fetch. A symlink to a Desktop path must never be treated as the deployment
 contract.
+
+`docs/archive/` is intentionally different from the Desktop artifact archive.
+It is versioned input to the documentation inventory, guardian, history
+analyzer, and link fixer. Do not move it outside the repository during general
+cleanup; changing that contract requires a docs-governance migration.
+
+Tracked files that also match `.gitignore` require individual review. The
+2026-08-06 cleanup removed old NLM outputs, C5A HTML/PDF renders, and a KBLI
+checkpoint from Git, then routed their producers to external storage. Known
+reviewed exceptions remain where a clean checkout or a hardcoded consumer still
+requires them; `git ls-files -ci --exclude-standard` is the audit probe, not an
+automatic deletion list.
 
 ## Current operational exception
 
