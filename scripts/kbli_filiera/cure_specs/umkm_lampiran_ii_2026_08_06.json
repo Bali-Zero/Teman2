@@ -47,6 +47,32 @@
       "row_text_changed_by_the_fusion_cure": ["42912", "95299"],
       "evidence_unchanged": 26,
       "meaning": "Re-adjudication is THIRTEEN codes, not sixty-eight. For the other 26 the lanes read exactly what the annex says and their verdicts rest on it. That is NOT an instruction to revive those 26: two known axes are still unchecked on them — whether a 1:1 crosswalk heir is the same ACTIVITY or only the same lineage, and the OCR-damaged locators. Naming the 13 keeps the re-adjudication from starting at 'recheck everything', which is how a small real defect turns into a large vague one."
+    },
+    "readjudication_2026_08_06": {
+      "scope": "the 13 codes named in evidence_delta_2026_08_06",
+      "method": "per-family fan-out, Claude proposes from the corrected pack, Codex re-derives BLIND (cross-family, W100); a fourth verdict REFUSE_SEGMENT was added because the first round had no box for 'the annex reserves only a slice of this code'",
+      "agreement": "13 of 13",
+      "verdicts": {
+        "REFUSE_SEGMENT": [
+          "01111",
+          "01113",
+          "01114",
+          "01115",
+          "01121",
+          "01122",
+          "43215",
+          "43221",
+          "43222",
+          "43224",
+          "43303"
+        ],
+        "REFUSE_BROADER": ["42912"],
+        "PATCH_ZERO": ["95299"]
+      },
+      "outcome": "ELEVEN of the 13 flip from PATCH to REFUSE. The withdrawal was right, and the parent heading is what changed the answer.",
+      "declared_weakness": "The prompt's CRITICAL STRUCTURE section used the 25-Ha crops as its worked example, i.e. it handed both lanes the conclusion for that family. Their agreement on the six crops is therefore weaker evidence than their agreement on the tech-grade five and on 42912/95299, where the framing was generic. Stated rather than left for a reader to notice.",
+      "95299_scrutiny": "Checked on disk rather than taken from the verdict (W65). canonical shows `95400` also listing 2020 `95299` among its ancestors, which looked like a split the pack had hidden — the pack carried ancestors (reverse) but not siblings (forward), the very two directions armed in the applier a few hours earlier. Resolved in the verdict's favour: 95400 is 'Jasa Intermediasi Reparasi' with TEN ancestors, an intermediation platform, not the repair activity the annex reserves. Sometimes verification confirms.",
+      "limit_found_while_checking": "live_heirs() lets IDENTITY win where the 2020 number survives into 2025, by a documented and cross-family-reviewed decision (the edge file carries spurious edges such as 14111->17091). Consequence never written down until now: when a surviving number ALSO spawns a second 2025 code, the split is invisible and the row still reports as whole-row. Not a bug — a limit, and 'whole-row' therefore never means 'no other 2025 code inherited this activity'."
     }
   },
   "withdrawn_items": [

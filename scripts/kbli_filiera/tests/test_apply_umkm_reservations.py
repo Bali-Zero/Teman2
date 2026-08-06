@@ -237,3 +237,20 @@ def test_the_readjudication_scope_is_named_and_small():
     # …and 26 unchanged is NOT a licence to revive them; the spec has to keep
     # saying which axes are still open on that group.
     assert "same ACTIVITY" in d["meaning"] and "OCR" in d["meaning"]
+
+
+def test_the_readjudication_overturned_eleven_of_the_thirteen():
+    """The 13 named codes, re-judged on evidence that finally carries the parent
+    bidang usaha. Pinned because it is the reason the withdrawal was right: the
+    six 25-Ha crops and the five simple/intermediate-technology grades are
+    reserved only as a SEGMENT, not as whole codes."""
+    r = json.loads(A.SPEC.read_text(encoding="utf-8"))["withdrawn"]["readjudication_2026_08_06"]
+    v = r["verdicts"]
+    assert len(v["REFUSE_SEGMENT"]) == 11
+    assert v["PATCH_ZERO"] == ["95299"] and v["REFUSE_BROADER"] == ["42912"]
+    assert sum(len(x) for x in v.values()) == 13
+    # 01111 is the worked example of the whole defect; it must not drift back
+    # into a whole-code reservation without this test failing.
+    assert "01111" in v["REFUSE_SEGMENT"]
+    # …and the run's own weakness stays written down next to its result.
+    assert "handed both lanes the conclusion" in r["declared_weakness"]
