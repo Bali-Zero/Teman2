@@ -149,4 +149,29 @@ test("public visa service cards expose only exact all-inclusive PricingTool rows
     expect(card.text).toContain(exactPrice as string);
     expect(card.text).not.toMatch(/Extension:\s*\d|Urgent\s*\+\s*\d/i);
   }
+
+  const detailsTrigger = cards
+    .first()
+    .getByRole("button", { name: "More Details" });
+  await detailsTrigger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", {
+    name: rendered[0]?.key as string,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Close" })).toBeVisible();
+  expect(
+    await dialog.evaluate((element) =>
+      element.contains(document.activeElement),
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Shift+Tab");
+  expect(
+    await dialog.evaluate((element) =>
+      element.contains(document.activeElement),
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(detailsTrigger).toBeFocused();
 });

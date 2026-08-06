@@ -64,8 +64,8 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 | G2 engine harness          | PASS                   | PASS (unchanged)                                                                                                                 |
 | G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                                                                 |
 | G4 public engine authority | PASS                   | PASS (unchanged)                                                                                                                 |
-| G5 automated suites        | PASS                   | PASS; backend Visa Engine/router suite, 416 pertinent Vitest tests, Mouth typecheck and desktop/320 px Playwright are green      |
-| G6 independent review      | PASS on base candidate | Re-review pending after remediation of the public-pricing fallback and 320 px overlap findings                                   |
+| G5 automated suites        | PASS                   | PASS; backend Visa Engine/router suite, 417 pertinent Vitest tests, Mouth typecheck and desktop/320 px Playwright are green      |
+| G6 independent review      | PASS on base candidate | Final re-review pending after remediation of the public-pricing, 320 px overlap and details-dialog accessibility findings        |
 
 ## Pricing and UI correction evidence
 
@@ -89,6 +89,10 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 - On 320 px screens, locale and chapter navigation remain in document flow and
   do not overlap service cards. Keyboard tab activation, reduced-motion mode
   and horizontal-overflow assertions are part of the browser gate.
+- The public `More Details` surface is a named modal dialog. It transfers and
+  traps focus, exposes an accessible close control, closes on `Escape` and
+  restores focus to the trigger; unit and real-browser tests cover the full
+  keyboard path.
 - Playwright screenshots:
   [desktop](screenshots/visa-oracle-v2/book-pricing-chromium.png) and
   [320 px mobile](screenshots/visa-oracle-v2/book-pricing-mobile-chrome.png).
@@ -98,7 +102,7 @@ Verification on 2026-08-06:
 - Backend Visa Engine/router suite: green, with one expected provisioning skip
   because `visa_activation_executor` does not yet exist.
 - Mouth typecheck: green.
-- Pertinent Vitest: 40 files, 416 tests green, including full parity across all
+- Pertinent Vitest: 41 files, 417 tests green, including full parity across all
   106 generated PricingTool rows and the public Visa service catalogue.
 - Playwright: Chromium desktop and Mobile Chrome at 320 px, 4/4 green across
   `/book/services` and `/services/visa`; no horizontal overflow, overlap,
