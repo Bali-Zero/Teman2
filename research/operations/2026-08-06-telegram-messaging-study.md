@@ -246,6 +246,71 @@ treat each pair as one or it will be written twice and enforced once.
 5. **A report on a timer is not urgent** — but severity is a property of the *message*, not of
    the *producer*, so never demote a whole source.
 
+## Adversarial review
+
+**Seat:** `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only`,
+run against the **first draft** of this document, generator ≠ grader. **25 objections raised.**
+It refuted the draft's central claim; the document was rebuilt from re-measured data rather
+than patched.
+
+**Objections adopted (the draft was wrong):**
+
+1. *"`sha1(source|text[:160])` was the key"* — **refuted.** It was the *fallback*:
+   `key = dedup_key or sha1(...)`. `log-size-watchdog` passes `log-size:<path>`, `wa-mirror`
+   passes `wa-bridge:disconnected:<account>`, `sentinel` passes `md5(message)`. Verified at all
+   three call sites. **93.2% of events carry a producer key.**
+2. *"the window never once applied"* — **refuted.** The archive is post-dedup output; the
+   flat-6h control reproduces the live rate exactly. Rewritten as §2, which is now the study's
+   strongest evidence.
+3. *"2791 → 362 conditions"* — **refuted as scoped.** That replayed the fallback over all 5202
+   events. On the 355 events that actually take it: **167 → 35**.
+4. *"51.6 → 15.9/day"* — **corrected to 28.6/day**, replayed over recorded keys.
+5. *"6 sources >80% of days carry 87%"* — **refuted.** The table showed top-6 by volume, a
+   different set (`wr2-html-apply` is 20/31 = 64.5%). The two sets are no longer conflated.
+6. *"the alarm line and the cure line do not overlap"* — **narrowed.** They overlap above
+   10 MB; the gap is 1–10 MB. §5.1 says so.
+7. *"invoke the rotator and it is healed"* — **limited.** Copy-truncate against a live writer
+   regrows; a daily rotator can be re-crossed before its next run. §5.1 now states that this
+   converts a permanent alarm into a periodic one and silences only the frozen files.
+8. *"1.2 GB that nothing is trimming"* — **refuted.** The 11 alarmed files total ~47 MB; the
+   balance is subdirectories and archives with their own retention.
+9. *"718/718 ⇒ self-healing at 100%"* — **method stated instead.** Aggregate next-event
+   pairing, right-censored at both window edges. The terminal-logout `p0` path is now called
+   out as one that must never be suppressed.
+10. *"p90 25 min, so a handful remain"* — **refuted.** ~10% of 718 ≈ 72 incidents exceed it.
+11. *"one of the two organs is wrong"* (sentinel vs dlq-autopilot) — **downgraded.** Both can
+    be true of different jobs; the defect is that the channel cannot distinguish them.
+12. *"re-tier 24 sources"* — **refuted as written.** A source is not a severity class; the same
+    `sentinel` label carries the timer digest and the CRITICAL path. §6 re-tiers message
+    classes.
+13. *"a report on a timer is never urgent"* — **narrowed.** A scheduled checker can discover an
+    urgent condition; the schedule sets observation time, not severity.
+14. *"1423 of 1444 events are round-trip halves"* — **arithmetic wrong** (718 pairs = 1436).
+    Claim removed.
+15. *"it teaches everyone to ignore the channel"* / *"the noise was hiding it"* — **removed.**
+    No acknowledgment or response-time data exists; this measured frequency, not attention.
+16. *"`run_multimodal` and `cron:run_multimodal` are the same job"* — **downgraded** to "look
+    like", with the evidence that would settle it named.
+
+**Objections raised and NOT adopted, with reasons:**
+
+- *"the p90 threshold is a non-sequitur, give an SLO"* — correct that a percentile does not
+  pick a threshold, but no recovery SLO exists to derive one from. Recorded in §5.2 as an open
+  design choice about detection latency, not silently converted into a number.
+- *"eight control checks cannot establish corpus-wide collision safety"* — true, and a full
+  labelled collision audit is disproportionate for a fallback that 6.8% of events reach. The
+  scope limit is stated in §3 instead of being papered over.
+- *"the census program is not committed, so the replay is not auditable"* — fair; the replay
+  logic is stated precisely enough to re-derive (recorded `key`, ladder rungs, restart rule)
+  and the inputs are the live spool, which cannot be committed. Noted as a real limitation.
+- *"'not one has ever been eligible for rotation' is a snapshot"* — correct; the sentence now
+  describes the present population rather than all history.
+- *"111 emissions exceeds the 6h cooldown over 17 days"* — the 111 count spans the full 29.5-day
+  window, not the post-20-July period. The claim that conflated them was dropped.
+
+**Objection I raised against myself, after the review:** while rewriting, this document
+asserted `355 → 118` for the fallback replay. Measured: **167 → 35**. See §8.
+
 ## 8. How this study was wrong, and what caught it
 
 The first draft's headline was: *"the dedup key was raw text, so every repeat hashed anew and
