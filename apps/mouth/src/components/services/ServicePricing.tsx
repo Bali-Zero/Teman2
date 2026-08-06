@@ -51,27 +51,16 @@ function getVisaPackageColor(name: string): {
   };
 }
 
-// A raw digit-and-separator string ("39.000.000", "10.000.000") gets an
-// " IDR" suffix appended by the renderer below. Anything that already
-// contains letters — an already-formatted live value ("IDR 39,000,000"), a
-// placeholder ("Check live pricing"), or "Contact" — must render as-is.
-// Word/entity check on shape, never a substring/keyword list (cicatrix
-// family #3 — guard-over-match): a new placeholder string added later still
-// classifies correctly without touching this function.
-function isNumericPrice(price: string): boolean {
-  return /^\d[\d.,]*$/.test(price);
-}
-
 /**
- * Resolves a package's display price. An exact PricingTool identity never
- * falls back to a copied amount: a missing row becomes contact-required.
+ * Resolve only an exact PricingTool identity. Static package text is never a
+ * price authority; a missing or malformed row becomes contact-required.
  */
 function usePackagePrice(pkg: ServicePackage): string {
   const { price: livePrice } = usePricingData(
     pkg.livePriceKey ?? null,
     pkg.livePriceCategory ?? null,
   );
-  return livePrice ?? (pkg.livePriceKey ? "Contact" : pkg.price);
+  return livePrice ?? "Contact";
 }
 
 function PriceValue({
@@ -91,14 +80,7 @@ function PriceValue({
     );
   }
 
-  const amount = isNumericPrice(price) ? (
-    <>
-      <span className="text-3xl font-bold text-white">{price}</span>
-      <span className="text-white/40 text-sm ml-2">IDR</span>
-    </>
-  ) : (
-    <span className="text-3xl font-bold text-white">{price}</span>
-  );
+  const amount = <span className="text-3xl font-bold text-white">{price}</span>;
 
   if (variant === "card") {
     return amount;
@@ -141,6 +123,9 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               return (
                 <div
                   key={pkg.name}
+                  data-testid="public-service-price-card"
+                  data-pricing-category={pkg.livePriceCategory}
+                  data-pricing-key={pkg.livePriceKey}
                   className={`rounded-xl border p-6 cursor-pointer transition-all hover:scale-[1.02] ${
                     slug === "visa" && visaColors
                       ? `${visaColors.bg} ${visaColors.border}`
@@ -250,7 +235,9 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               </div>
 
               {/* Features */}
-              <h3 className="text-white font-medium mb-3">What's Included:</h3>
+              <h3 className="text-white font-medium mb-3">
+                What&apos;s Included:
+              </h3>
               <ul className="space-y-3 mb-6">
                 {selectedPackage.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-3 text-white/80">

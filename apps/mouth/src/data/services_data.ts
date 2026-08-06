@@ -1,18 +1,18 @@
 import * as React from "react";
 import { Globe, Building2, Calculator, Home } from "lucide-react";
+import { getExactPricingSnapshotEntries } from "@/lib/pricing-snapshot";
 
 export interface ServicePackage {
   name: string;
   description: string;
-  /** Static display used only when no PricingTool key is configured. */
+  /** Non-monetary legacy label. Public rendering never trusts this value. */
   price: string;
   features: string[];
   popular: boolean;
   /** Optional deep-link to a dedicated landing page (rendered in the
    *  pricing modal below the WhatsApp CTA). */
   link?: { href: string; label: string };
-  /** Optional exact PricingTool SSOT identity. When configured, a missing row
-   *  must abstain instead of falling back to `price`. */
+  /** Optional exact PricingTool SSOT identity. Missing rows always abstain. */
   livePriceKey?: string;
   livePriceCategory?: string;
 }
@@ -40,6 +40,52 @@ export interface ServiceData {
   }[];
 }
 
+const VISA_PRICING_CATEGORIES = [
+  "single_entry_visas",
+  "multiple_entry_visas",
+  "kitas_permits",
+  "kitap_permits",
+  "other_process",
+  "urgent_processing",
+] as const;
+
+const POPULAR_VISA_PRICING_KEYS = new Set([
+  "C1 Tourism",
+  "Investor KITAS 2 Years (Offshore)",
+  "E33G Remote Worker (Offshore)",
+]);
+const SEPARATE_MONETARY_DETAIL =
+  /(?:\bIDR\s*\d|\b\d[\d.,]*\s*IDR\b|\bRp\.?\s*\d)/i;
+
+function withoutSeparateMonetaryDetail(value: string | null): value is string {
+  return Boolean(value?.trim()) && !SEPARATE_MONETARY_DETAIL.test(value as string);
+}
+
+const VISA_SERVICE_PACKAGES: ServicePackage[] = VISA_PRICING_CATEGORIES.flatMap(
+  (category) =>
+    getExactPricingSnapshotEntries(category).map((entry) => ({
+      name: entry.name,
+      description:
+        [entry.description_en, entry.notes].find(withoutSeparateMonetaryDetail) ??
+        `Bali Zero service: ${entry.name}`,
+      price: "Contact",
+      features: [entry.duration, entry.validity, entry.notes].filter(
+        withoutSeparateMonetaryDetail,
+      ),
+      popular: POPULAR_VISA_PRICING_KEYS.has(entry.key),
+      livePriceKey: entry.key,
+      livePriceCategory: category,
+      ...(entry.key === "E33 Second Home (5 Years)"
+        ? {
+            link: {
+              href: "/visa/second-home",
+              label: "Second Home Visa guide — free fit memo",
+            },
+          }
+        : {}),
+    })),
+);
+
 export const SERVICES_DATA: Record<string, ServiceData> = {
   visa: {
     name: "Visa & Immigration",
@@ -53,631 +99,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     timeline: "Varies by visa type and sponsor readiness",
     documentsRequired: "Document set varies by pathway",
     validity: "Depends on permit class",
-    packages: [
-      // ═══════════════════════════════════════════════════════════
-      // VISIT VISAS (C Series) - Single Entry
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "C1 - Tourism Visit",
-        description: "Tourism, family visits, social activities",
-        price: "2.300.000",
-        features: [
-          "60 days (extendable 4x to 180 days)",
-          "7-10 days processing",
-          "Extension: 1.700.000 IDR each",
-        ],
-        popular: false,
-      },
-      {
-        name: "C2 - Business Visit",
-        description: "Business meetings, negotiations, conferences",
-        price: "3.600.000",
-        features: [
-          "60 days (extendable to 180 days)",
-          "7-10 days processing",
-          "No work permit required",
-        ],
-        popular: false,
-      },
-      {
-        name: "C3 - Government Assignment",
-        description: "Foreign government officials",
-        price: "Contact",
-        features: [
-          "60 days validity",
-          "Official assignment letter required",
-          "Government liaison support",
-        ],
-        popular: false,
-      },
-      {
-        name: "C4 - Journalism/Film",
-        description: "Journalists, film crews, media production",
-        price: "Contact",
-        features: [
-          "60 days validity",
-          "Press credentials required",
-          "Ministry approval needed",
-        ],
-        popular: false,
-      },
-      {
-        name: "C5/C5A - Content Creator",
-        description: "Influencers, YouTubers, content creators",
-        price: "Contact",
-        features: [
-          "60-90 days validity",
-          "Social media documentation",
-          "No monetization in Indonesia",
-        ],
-        popular: false,
-      },
-      {
-        name: "C6 - Medical Treatment",
-        description: "Medical tourism and treatment",
-        price: "Contact",
-        features: [
-          "60 days (extendable)",
-          "Hospital appointment letter",
-          "Medical documentation support",
-        ],
-        popular: false,
-      },
-      {
-        name: "C7/C7AB - Professional Events",
-        description: "Chefs, artists, musicians, performers",
-        price: "4.500.000",
-        features: [
-          "30 days validity",
-          "Event-based permit",
-          "Including urgent processing",
-        ],
-        popular: false,
-      },
-      {
-        name: "C8 - Sports Events",
-        description: "Athletes, coaches, sports officials & referees",
-        price: "4.000.000",
-        features: [
-          "Event duration validity",
-          "Federation invitation required",
-          "Team support available",
-        ],
-        popular: false,
-      },
-      {
-        name: "C18 - Work Trial",
-        description: "Job trials and skill assessments",
-        price: "5.500.000",
-        features: [
-          "90 days validity",
-          "Company sponsorship required",
-          "Path to Working KITAS",
-        ],
-        popular: false,
-      },
-      {
-        name: "C22A - Academic Internship",
-        description: "University internship programs",
-        price: "4.800.000",
-        features: [
-          "60 days (or 5.800.000 IDR for 180 days)",
-          "Academic institution required",
-          "Student documentation",
-        ],
-        popular: false,
-      },
-      {
-        name: "C22B - Skills Development",
-        description: "Company training programs",
-        price: "4.800.000",
-        features: [
-          "60 days (or 5.800.000 IDR for 180 days)",
-          "Company-sponsored training",
-          "Professional development",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // MULTIPLE ENTRY VISAS (D Series)
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "D1 - Multiple Entry Tourism",
-        description: "Frequent visitors for tourism",
-        price: "6.000.000",
-        features: [
-          "1, 2 or 5 years validity (8.000.000 / 12.900.000 IDR)",
-          "Multiple entries allowed",
-          "60 days per stay",
-        ],
-        popular: false,
-      },
-      {
-        name: "D2 - Multiple Entry Business",
-        description: "Frequent business travelers",
-        price: "6.500.000",
-        features: [
-          "1 or 2 years validity (9.000.000 IDR)",
-          "Multiple entries allowed",
-          "Business activities & meetings",
-        ],
-        popular: false,
-      },
-      {
-        name: "D12 - Business Investigation",
-        description: "Pre-investment research visits",
-        price: "7.500.000",
-        features: [
-          "1 year (or 10.000.000 IDR for 2 years)",
-          "7-10 days processing",
-          "Path to Investor KITAS",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // KITAS - WORK PERMITS (E23 Series)
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "E23 - Working KITAS (Offshore)",
-        description: "Employment with Indonesian company",
-        price: "34.500.000",
-        features: [
-          "1 year validity (renewable)",
-          "4-6 weeks (RPTKA + IMTA)",
-          "Company sponsorship required",
-        ],
-        popular: false,
-      },
-      {
-        name: "E23 - Working KITAS (Onshore)",
-        description: "Convert from within Indonesia",
-        price: "36.000.000",
-        features: [
-          "1 year validity (renewable)",
-          "4-6 weeks (RPTKA + IMTA)",
-          "Full conversion assistance",
-        ],
-        popular: false,
-      },
-      {
-        name: "E23 - Freelance KITAS (Offshore)",
-        description: "Self-employed professionals",
-        price: "25.800.000",
-        features: [
-          "6 months validity",
-          "4-6 weeks (RPTKA + IMTA)",
-          "Work permit (IMTA) included",
-        ],
-        popular: false,
-      },
-      {
-        name: "E23 - Freelance KITAS (Onshore)",
-        description: "Convert from within Indonesia",
-        price: "27.500.000",
-        features: [
-          "6 months validity",
-          "4-6 weeks (RPTKA + IMTA)",
-          "Full conversion assistance",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // KITAS - INVESTOR (E28 Series)
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "E28A - Investor KITAS (Offshore)",
-        description: "PT PMA directors & shareholders",
-        price: "17.000.000",
-        features: [
-          "2 years validity",
-          "7-10 days processing",
-          "Company ownership required",
-        ],
-        popular: true,
-      },
-      {
-        name: "E28A - Investor KITAS (Onshore)",
-        description: "Convert from within Indonesia",
-        price: "19.000.000",
-        features: [
-          "2 years validity",
-          "7-10 days processing",
-          "Extension: 18.000.000 IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "E28E - KEK Investor KITAS",
-        description: "Special Economic Zone investors",
-        price: "Contact",
-        features: [
-          "2 years validity",
-          "KEK location required",
-          "Special incentives available",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // KITAS - FAMILY (E31 Series)
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "E31A - Spouse KITAS 1 Year (Offshore)",
-        description: "Married to Indonesian citizen",
-        price: "11.000.000",
-        features: [
-          "1 year validity",
-          "7-10 days processing",
-          "Marriage certificate required",
-        ],
-        popular: false,
-      },
-      {
-        name: "E31A - Spouse KITAS 2 Years (Offshore)",
-        description: "Married to Indonesian citizen",
-        price: "15.000.000",
-        features: [
-          "2 years validity",
-          "7-10 days processing",
-          "Extension: 15.000.000 IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "E31B/F - Dependent KITAS 1 Year",
-        description: "Family of KITAS holders",
-        price: "11.000.000",
-        features: [
-          "1 year validity",
-          "7-10 days processing",
-          "Extension: 9.000.000 IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "E31B/F - Dependent KITAS 2 Years",
-        description: "Family of KITAS holders",
-        price: "15.000.000",
-        features: [
-          "2 years validity",
-          "7-10 days processing",
-          "Extension: 15.000.000 IDR",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // KITAS - LIFESTYLE (E33 Series)
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "E33G - Digital Nomad KITAS (Offshore)",
-        description: "Remote workers with foreign income",
-        price: "13.000.000",
-        features: [
-          "1 year validity",
-          "7-10 days processing",
-          "No work permit (IMTA) needed",
-        ],
-        popular: true,
-      },
-      {
-        name: "E33G - Digital Nomad KITAS (Onshore)",
-        description: "Convert from within Indonesia",
-        price: "14.000.000",
-        features: [
-          "1 year validity",
-          "7-10 days processing",
-          "Extension: 10.000.000 IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "E33E/F - Retirement KITAS (Offshore)",
-        description: "Retirees aged 55+",
-        price: "14.000.000",
-        features: [
-          "1-5 years validity",
-          "7-10 days processing",
-          "Pension proof required",
-        ],
-        popular: false,
-      },
-      {
-        name: "E33E/F - Retirement KITAS (Onshore)",
-        description: "Convert from within Indonesia",
-        price: "16.000.000",
-        features: [
-          "1-5 years validity",
-          "7-10 days processing",
-          "Extension: 10.000.000 IDR",
-        ],
-        popular: false,
-      },
-      // REMOVED 2026-07-25: "E33A/B/C - Research/Education KITAS" was a
-      // fabricated product. Under Kepmen M.IP-08.GR.01.01/2025 (the instrument
-      // that actually enumerates the visa index — Permenkumham 11/2024 does not)
-      // the E33 sub-codes are: E33A foreign expert invited by the government,
-      // E33B special-expertise government collaboration, E33C world figure,
-      // E33D world figure establishing a company (not even fileable — its
-      // imigrasi.go.id requirements page reads "Data Belum Tersedia").
-      // Research is E29; education is the E30 series. E33A/B/C were NEVER
-      // assigned to research or education under any instrument.
-      // Verified against the regulation via NB-2 plus two non-Claude seats and
-      // research/visa/2026-07-24-w2-factbase-e33.md (built from live per-code
-      // fetches of imigrasi.go.id).
-      // Deliberately NOT replaced with E29/E30 cards here: listing a new
-      // sellable service is a business decision (SYMBIOSIS Law 5), not a
-      // correction. Removing a false claim is.
-      // ═══════════════════════════════════════════════════════════
-      // SECOND HOME VISA (E33)
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "E33 - Second Home Visa",
-        description: "Long-term residence (USD 130k+ deposit) — all-inclusive",
-        price: "Contact",
-        livePriceKey: "E33 Second Home (5 Years)",
-        livePriceCategory: "kitas_permits",
-        features: [
-          "Up to 5 years initial validity",
-          "No sponsor required",
-          "Bring family members",
-        ],
-        popular: false,
-        link: {
-          href: "/visa/second-home",
-          label: "Second Home Visa guide — free fit memo",
-        },
-      },
-      {
-        name: "E35A - Working Holiday",
-        description: "Australia bilateral agreement",
-        price: "Contact",
-        features: [
-          "1 year validity",
-          "Age 18-30 only",
-          "Australian citizens only",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // KITAP - PERMANENT RESIDENCE
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "Investor KITAP + MERP",
-        description: "Permanent residence for investors",
-        price: "55.000.000",
-        features: [
-          "Permanent residence",
-          "Multiple re-entry permit included",
-          "Consecutive KITAS required",
-        ],
-        popular: false,
-      },
-      {
-        name: "Dependent KITAP + MERP",
-        description: "Family of Indonesian citizens",
-        price: "33.000.000",
-        features: [
-          "Permanent residence",
-          "Multiple re-entry permit included",
-          "Expedited processing available",
-        ],
-        popular: false,
-      },
-      {
-        name: "Retirement KITAP + MERP",
-        description: "Permanent residence for retirees",
-        price: "45.000.000",
-        features: [
-          "Permanent residence",
-          "Multiple re-entry permit included",
-          "Age 55+ requirement",
-        ],
-        popular: false,
-      },
-      {
-        name: "Working KITAP",
-        description: "Permanent residence for workers",
-        price: "Contact",
-        features: [
-          "Permanent residence",
-          "4 consecutive KITAS required",
-          "Long-term employment history",
-        ],
-        popular: false,
-      },
-      {
-        name: "MERP Only (1 Year)",
-        description: "Multiple Exit Re-entry Permit",
-        price: "Contact",
-        features: [
-          "1 year validity",
-          "Unlimited exits/entries",
-          "For KITAP holders",
-        ],
-        popular: false,
-      },
-      {
-        name: "MERP Only (2 Years)",
-        description: "Multiple Exit Re-entry Permit",
-        price: "Contact",
-        features: [
-          "2 years validity",
-          "Unlimited exits/entries",
-          "For KITAP holders",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // IMMIGRATION SERVICES
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "EPO (Exit Permit Only)",
-        description: "One-way exit from Indonesia",
-        price: "700.000",
-        features: [
-          "Exit without re-entry",
-          "1-3 days processing",
-          "Urgent +300k IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "ERP (Exit Re-entry Permit)",
-        description: "Travel abroad and return",
-        price: "800.000",
-        features: [
-          "Preserves KITAS validity",
-          "1-3 days processing",
-          "Urgent +500k IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "Mutation Passport",
-        description: "Update KITAS with new passport",
-        price: "500.000",
-        features: [
-          "Required when passport renewed",
-          "5-7 days processing",
-          "Urgent +350k IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "Mutation Address",
-        description: "Update registered address",
-        price: "500.000",
-        features: [
-          "Immigration records update",
-          "5-7 days processing",
-          "New domicile letter needed",
-        ],
-        popular: false,
-      },
-      {
-        name: "Cancel RPTKA + IMTA + Wajib Lapor",
-        description: "Full work permit cancellation",
-        price: "Contact",
-        features: [
-          "Complete cancellation package",
-          "Required when leaving employment",
-          "7-14 days processing",
-        ],
-        popular: false,
-      },
-      {
-        name: "Reset Molina",
-        description: "Immigration online account reset",
-        price: "1.000.000",
-        features: [
-          "Fix login/account issues",
-          "1-3 days processing",
-          "Urgent +400k IDR",
-        ],
-        popular: false,
-      },
-      {
-        name: "SKTT Registration",
-        description: "Temporary residence certificate",
-        price: "1.500.000",
-        features: [
-          "Required for all KITAS holders",
-          "7-10 days processing",
-          "Local government registration",
-        ],
-        popular: false,
-      },
-      {
-        name: "SKCK (Police Clearance)",
-        description: "Indonesian police clearance",
-        price: "2.000.000",
-        features: [
-          "Clean record certificate",
-          "5-7 days processing",
-          "Valid 6 months",
-        ],
-        popular: false,
-      },
-      {
-        name: "Domicile Letter",
-        description: "Residence confirmation letter",
-        price: "1.500.000",
-        features: [
-          "Official domicile confirmation",
-          "3-5 days processing",
-          "Required for many permits",
-        ],
-        popular: false,
-      },
-      {
-        name: "Domicile + SKTT Package",
-        description: "Combined residence documents",
-        price: "Contact",
-        features: [
-          "Both documents together",
-          "Save 700k IDR",
-          "7-10 days processing",
-        ],
-        popular: false,
-      },
-      {
-        name: "Born Report (Lapor Lahir)",
-        description: "Birth registration for foreigner child",
-        price: "2.000.000",
-        features: [
-          "Required within 30 days of birth (4.000.000 IDR if late)",
-          "Full documentation support",
-          "Immigration registration",
-        ],
-        popular: false,
-      },
-      // ═══════════════════════════════════════════════════════════
-      // PASSPORT SERVICES
-      // ═══════════════════════════════════════════════════════════
-      {
-        name: "Indonesian Passport 5 Years",
-        description: "Standard passport renewal",
-        price: "1.300.000",
-        features: [
-          "5 years validity",
-          "7-14 days processing",
-          "Indonesian citizens only",
-        ],
-        popular: false,
-      },
-      {
-        name: "Indonesian Passport 10 Years",
-        description: "Long-term passport",
-        price: "2.200.000",
-        features: [
-          "10 years validity",
-          "7-14 days processing",
-          "Best value for frequent travelers",
-        ],
-        popular: false,
-      },
-      {
-        name: "E-Passport 5 Years",
-        description: "Biometric electronic passport",
-        price: "2.200.000",
-        features: [
-          "Biometric chip included",
-          "5 years validity",
-          "Faster immigration clearance",
-        ],
-        popular: false,
-      },
-      {
-        name: "E-Passport 10 Years",
-        description: "Premium biometric passport",
-        price: "2.700.000",
-        features: [
-          "Biometric chip included",
-          "10 years validity",
-          "Premium travel document",
-        ],
-        popular: false,
-      },
-    ],
+    packages: VISA_SERVICE_PACKAGES,
     included: [
       "Document review and preparation",
       "Government liaison and submission",
@@ -715,7 +137,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         question: "What's the difference between offshore and onshore?",
         answer:
-          "Offshore means applying from outside Indonesia (before arrival), onshore means converting from within Indonesia while on another visa. Onshore is typically 2-4 million IDR more due to additional processing.",
+          "Offshore means applying from outside Indonesia before arrival; onshore means converting from within Indonesia while on another visa. They are distinct PricingTool services and may have different current all-inclusive prices.",
       },
       {
         question: "Do I need a work permit (IMTA) for all KITAS?",

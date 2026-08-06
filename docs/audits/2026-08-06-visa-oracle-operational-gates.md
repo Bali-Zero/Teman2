@@ -64,8 +64,8 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 | G2 engine harness          | PASS                   | PASS (unchanged)                                                                                                                 |
 | G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                                                                 |
 | G4 public engine authority | PASS                   | PASS (unchanged)                                                                                                                 |
-| G5 automated suites        | PASS                   | PASS; backend Visa Engine/router suite, 370 pertinent Vitest tests, Mouth typecheck and desktop/320 px Playwright are green      |
-| G6 independent review      | PASS on base candidate | Fresh independent review required for the source, pricing and card amendment                                                     |
+| G5 automated suites        | PASS                   | PASS; backend Visa Engine/router suite, 416 pertinent Vitest tests, Mouth typecheck and desktop/320 px Playwright are green      |
+| G6 independent review      | PASS on base candidate | Re-review pending after remediation of the public-pricing fallback and 320 px overlap findings                                   |
 
 ## Pricing and UI correction evidence
 
@@ -78,9 +78,17 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
   pricing fails.
 - The frontend generated snapshot now contains 106 exact catalogue rows. The
   nonexistent `C317 Single Entry` card and copied price fallback were removed.
+- The public `/services/visa` catalogue is generated from all exact rows in the
+  six approved PricingTool categories. Its cards and JSON-LD omit prices when
+  an exact category/key lookup fails; static package text is never a fallback.
+  Monetary add-ons embedded in notes are excluded, so the UI exposes one
+  all-inclusive amount per row.
 - Book cards now display `C1 Tourism`, `C2 Business`, `D1 Tourism (1 Year)`,
   `E33G Remote Worker (Offshore)` and `Retirement (Offshore)` using exact
   category/key identities. E33 Second Home uses the same generated source.
+- On 320 px screens, locale and chapter navigation remain in document flow and
+  do not overlap service cards. Keyboard tab activation, reduced-motion mode
+  and horizontal-overflow assertions are part of the browser gate.
 - Playwright screenshots:
   [desktop](screenshots/visa-oracle-v2/book-pricing-chromium.png) and
   [320 px mobile](screenshots/visa-oracle-v2/book-pricing-mobile-chrome.png).
@@ -90,7 +98,8 @@ Verification on 2026-08-06:
 - Backend Visa Engine/router suite: green, with one expected provisioning skip
   because `visa_activation_executor` does not yet exist.
 - Mouth typecheck: green.
-- Pertinent Vitest: 36 files, 370 tests green, including full parity across all
-  106 generated PricingTool rows.
-- Playwright: Chromium desktop and Mobile Chrome at 320 px, 2/2 green; no
-  horizontal overflow and all five exact price/name pairs visible.
+- Pertinent Vitest: 40 files, 416 tests green, including full parity across all
+  106 generated PricingTool rows and the public Visa service catalogue.
+- Playwright: Chromium desktop and Mobile Chrome at 320 px, 4/4 green across
+  `/book/services` and `/services/visa`; no horizontal overflow, overlap,
+  fabricated fallback price or separated fee.

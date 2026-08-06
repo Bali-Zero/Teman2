@@ -26,6 +26,16 @@ export function getPricingSnapshotEntry(
   return snapshot.services_by_category[category]?.[itemKey];
 }
 
+export function getExactPricingSnapshotEntries(
+  category: string,
+): PricingSnapshotEntry[] {
+  const rows = snapshot.services_by_category[category];
+  if (!rows) return [];
+  return Object.values(rows).filter(
+    (row) => row.price !== null && EXACT_IDR_PRICE.test(row.price.trim()),
+  );
+}
+
 export function getExactSnapshotPrice(
   category: string,
   itemKey: string,

@@ -6,6 +6,7 @@ import {
   getExactSnapshotPrice,
   getPricingSnapshotEntry,
 } from "./pricing-snapshot";
+import { SERVICES_DATA } from "@/data/services_data";
 
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const CANONICAL = path.join(
@@ -13,6 +14,24 @@ const CANONICAL = path.join(
   "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json",
 );
 const GENERATED = path.join(REPO_ROOT, "apps/mouth/data/bali-zero-prices.json");
+const SERVICE_PRICING_COMPONENT = path.join(
+  REPO_ROOT,
+  "apps/mouth/src/components/services/ServicePricing.tsx",
+);
+const DYNAMIC_JSON_LD_COMPONENT = path.join(
+  REPO_ROOT,
+  "apps/mouth/src/components/seo/DynamicJsonLd.tsx",
+);
+const PUBLIC_VISA_PRICING_CATEGORIES = [
+  "single_entry_visas",
+  "multiple_entry_visas",
+  "kitas_permits",
+  "kitap_permits",
+  "other_process",
+  "urgent_processing",
+] as const;
+const HARDCODED_SERVICE_MONEY =
+  /(?:\bIDR\s*\d|\b\d[\d.,]*\s*IDR\b|\bRp\.?\s*\d)/i;
 
 interface CanonicalRow {
   name?: string;
@@ -105,5 +124,53 @@ describe("generated PricingTool snapshot", () => {
       getExactSnapshotPrice("single_entry_visas", "C317 Single Entry"),
     ).toBeNull();
     expect(getExactSnapshotPrice("missing", "C1 Tourism")).toBeNull();
+  });
+
+  it("backs every public visa service card with one exact PricingTool row", () => {
+    const packages = SERVICES_DATA.visa.packages;
+    const expectedIdentities = PUBLIC_VISA_PRICING_CATEGORIES.flatMap(
+      (category) => {
+        const rows = generated.services_by_category[category] as Record<
+          string,
+          { key: string; price: string | null }
+        >;
+        return Object.values(rows)
+          .filter((row: { price: string | null }) =>
+            row.price
+              ? /^(?:\d+|\d{1,3}(?:\.\d{3})+)\s+IDR$/i.test(row.price)
+              : false,
+          )
+          .map((row: { key: string }) => `${category}:${row.key}`);
+      },
+    );
+    const actualIdentities = packages.map(
+      (pkg) => `${pkg.livePriceCategory}:${pkg.livePriceKey}`,
+    );
+
+    expect(actualIdentities).toEqual(expectedIdentities);
+    expect(new Set(actualIdentities).size).toBe(actualIdentities.length);
+    for (const pkg of packages) {
+      expect(pkg.livePriceCategory).toBeTruthy();
+      expect(pkg.livePriceKey).toBeTruthy();
+      expect(
+        getExactSnapshotPrice(
+          pkg.livePriceCategory as string,
+          pkg.livePriceKey as string,
+        ),
+      ).not.toBeNull();
+      expect(
+        [pkg.price, pkg.description, ...pkg.features].join(" "),
+      ).not.toMatch(HARDCODED_SERVICE_MONEY);
+    }
+  });
+
+  it("never falls back from PricingTool to package price text", () => {
+    const component = fs.readFileSync(SERVICE_PRICING_COMPONENT, "utf-8");
+    expect(component).not.toMatch(/\bpkg\.price\b/);
+    expect(component).toMatch(/return livePrice \?\? "Contact"/);
+
+    const jsonLd = fs.readFileSync(DYNAMIC_JSON_LD_COMPONENT, "utf-8");
+    expect(jsonLd).not.toMatch(/\bpkg\.price\b/);
+    expect(jsonLd).toMatch(/getExactSnapshotPrice/);
   });
 });
