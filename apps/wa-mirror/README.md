@@ -185,6 +185,60 @@ Not implemented in this worker slice:
 - kita frontend timeline panel wiring.
 - Any send operation or dashboard reply flow.
 
+## The launcher, and where it really lives
+
+The LaunchAgent `com.balizero.wa-mirror-launcher` runs
+`apps/wa-mirror/scripts/supervise-launcher.sh` from this repo — but that file is a
+thin, versioned supervisor. It **delegates by design** to the HOME copy:
+
+```sh
+LAUNCHER="${WA_MIRROR_LAUNCHER_START_ALL:-${HOME}/scripts/wa-mirror-launcher/start-all.sh}"
+```
+
+So on the Pro the scripts that actually execute are the ones under
+`~/scripts/wa-mirror-launcher/`, not their twins in `scripts/` here. That split is
+deliberate (the roster `~/.wa-mirror.accounts.json` carries e164 + email and stays
+HOME-only), but it is also exactly the shape of superscar #1: a fix can land in the
+repo and never reach the copy that runs.
+
+As of 2026-08-06 all eight launcher files are declared in
+`infra/home-fork/declared-pairs.json` (scope `pro`), so `scripts/lint_home_fork.py --check`
+compares live↔repo on every run and the drift can no longer be silent. Two of them
+were measured DIVERGED at declaration time, in opposite directions:
+
+| file | direction | what differs |
+|---|---|---|
+| `_lib.sh`, `start-all.sh` | **live is behind** | the W77 lifecycle gate (`get_expected_status` / `get_assigned_node`) exists only in the repo copy, which is not the copy that runs |
+| `status.sh` | **repo was behind** | the M4 (2026-07-20) logged-out detection — brought into the repo in the same commit as the declaration |
+
+The `_lib.sh` / `start-all.sh` gap is worth stating plainly, because it is quiet: the
+documented way to retire or pin an account is to set `expected_status` or
+`assigned_node` in the roster (see `accounts.example.json`), and `assigned_node` is
+the family #10 split-brain antidote. Today nothing breaks — measured 2026-08-06, the
+live roster has 7 accounts and **none** carries either field, so the gate would be a
+no-op anyway. But the moment someone sets one, it will be **ignored in silence**,
+because the code that reads it is not the code that executes. Realigning the live side
+from the repo is an apply-step on a running mirror and is tracked in the modus ledger.
+
+### Control center
+
+`scripts/api_server.py` + `scripts/nuzantara_control_center.html` are the operator UI
+for this launcher. They had never been tracked anywhere until 2026-08-06 — the only
+copy was on one machine's disk (the Pro; M5 carries a partial copy of the launcher
+that does not include the HTML at all).
+
+### Re-linking an account after a logout
+
+A revoked WhatsApp linked-device does not come back on its own — the bridge stops
+retrying by design. The re-link is a QR pairing and needs the person's own phone:
+
+```sh
+~/scripts/wa-mirror-launcher/start-one.sh <name> --qr
+```
+
+`status.sh` shows `🔓LOGGED-OUT` for accounts in that state (that is what the M4 fix
+above added); before it, such an account displayed as `🟢 RUNNING (linked)`.
+
 ## Files
 
 ```
@@ -208,5 +262,12 @@ apps/wa-mirror/
 │   └── PKWT_CLAUSE.md           (1-line for employment contract)
 └── scripts/
     ├── onboard.ts               (QR code flow for new team member)
-    └── status.ts                (list active sessions)
+    ├── status.ts                (list active sessions)
+    ├── supervise-launcher.sh    (LaunchAgent entrypoint; delegates to the HOME copy)
+    ├── _lib.sh, start-*.sh, stop-*.sh, status.sh
+    │                            (versioned twins of ~/scripts/wa-mirror-launcher/*,
+    │                             declared in infra/home-fork/declared-pairs.json)
+    ├── api_server.py            (control-center backend)
+    └── nuzantara_control_center.html
+                                 (control-center UI)
 ```
