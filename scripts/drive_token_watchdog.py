@@ -239,7 +239,7 @@ def _load_env() -> dict[str, str]:
     return env
 
 
-def _send_telegram(text: str, bot_token: str) -> bool:
+def _send_telegram(text: str, bot_token: str, condition: str = "alert") -> bool:
     """Route via the tg_notify gateway (2026-07-11 migration, cohort-5).
 
     p0 tier: alerts only fire on an escalating tier (URGENT/CRITICAL) or an
@@ -260,7 +260,25 @@ def _send_telegram(text: str, bot_token: str) -> bool:
     # a live timestamp + variable days-left, so tg_notify's default
     # source+text[:160] hash never matches twice and dedup can't suppress
     # flap-refiring (PENDING-ARMS 2026-07-12).
-    dedup_key = f"drive-token-watchdog:{socket.gethostname().split('.')[0]}"
+    # The key names the CONDITION, not just the source (fixed 2026-08-06).
+    #
+    # It used to be `drive-token-watchdog:<host>` for everything this organ
+    # says, and that is how the first real expiry alert died. Measured in the
+    # gateway state on Pro, minutes after the read was finally working:
+    #
+    #   drive-token-watchdog:Nuzantara  count=4  ts=18:00
+    #   last_text = "🔴 Drive OAuth SCADUTO (12 giorni fa)"
+    #
+    # The `ts` is the 18:00 send — the LAST "impossibile connettersi" noise —
+    # so the 18:42 expiry message was recorded and suppressed as a repeat of
+    # the very noise it replaces. Two different facts, one key, and the
+    # 6/24/72/168h ladder of the loud one swallows the quiet one.
+    #
+    # Stability still matters (that is why the key carries the tier and never
+    # `days_left`: a tier is a condition, a day count is a measurement, and a
+    # measurement in the key mints a fresh key per run — #3677). But stable
+    # PER CONDITION, not per source.
+    dedup_key = f"drive-token-watchdog:{condition}:{socket.gethostname().split('.')[0]}"
     try:
         proc = subprocess.run(
             [sys.executable, str(gateway), "--tier", "p0",
@@ -476,6 +494,7 @@ def main() -> int:
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or env.get("TELEGRAM_BOT_TOKEN", "")
 
     alerts: list[str] = []
+    alert_kinds: list[str] = []
     now_utc = datetime.now(timezone.utc)
     now_wita = now_utc.astimezone(WITA)
     timestamp = now_wita.strftime("%Y-%m-%d %H:%M WITA")
@@ -500,6 +519,7 @@ def main() -> int:
         # from the tier system means "blind", not "fine". That is the whole
         # damage this defect did — the token expired 2026-07-25 and the one
         # alert that mattered was never sent.
+        alert_kinds.append("read-failure")
         alerts.append(
             "⚠️ <b>Drive Watchdog</b>: non ho potuto LEGGERE lo stato del token\n"
             f"Causa: {token_read_error or 'sconosciuta'}\n"
@@ -509,6 +529,7 @@ def main() -> int:
         # Same effect as expired — fold into TIER_EXPIRED with synthetic message.
         new_oauth_tier = TIER_EXPIRED
         if should_alert(new_oauth_tier, last_oauth_tier):
+            alert_kinds.append("no-token")
             alerts.append(
                 "🔴 <b>Drive OAuth</b>: NESSUN TOKEN in DB\n"
                 "Drive polling disabilitato. Esegui re-auth:\n"
@@ -527,6 +548,7 @@ def main() -> int:
             new_oauth_days_left = days_left
 
             if should_alert(new_oauth_tier, last_oauth_tier):
+                alert_kinds.append(new_oauth_tier)
                 alerts.append(render_alert_text(tier_alert))
                 log(
                     f"Tier transition: {last_oauth_tier or 'OK'} → {new_oauth_tier} "
@@ -539,6 +561,7 @@ def main() -> int:
                 )
         except Exception as e:
             log(f"Parse expires_at fallito: {e}")
+            alert_kinds.append("parse-failure")
             alerts.append(f"⚠️ <b>Drive Watchdog</b>: errore parsing expires_at: {e}")
 
     # --- Check 2: SA key age (kept simple — no tier system, single threshold) ---
@@ -548,6 +571,7 @@ def main() -> int:
     if sa_age is not None and sa_age > SA_KEY_MAX_AGE_DAYS:
         # Idempotent: only alert if age went UP since last alert (or no prev alert).
         if last_sa_alert_age is None or sa_age > last_sa_alert_age:
+            alert_kinds.append("sa-key-age")
             alerts.append(
                 f"⚠️ <b>SA Key</b> age: {sa_age} giorni (soglia: {SA_KEY_MAX_AGE_DAYS})\n"
                 "Rotazione consigliata: Google Cloud Console → IAM → Service Accounts\n"
@@ -590,7 +614,11 @@ def main() -> int:
     if alerts:
         header = f"🔔 <b>Drive Watchdog</b> — {timestamp}\n\n"
         message = header + "\n\n".join(alerts)
-        delivered = _send_telegram(message, bot_token)
+        # The condition is the SET of facts in this message — sorted so the
+        # same combination always yields the same key, and joined so a message
+        # that carries two facts cannot be mistaken for either one alone.
+        condition = "+".join(sorted(set(alert_kinds))) or "alert"
+        delivered = _send_telegram(message, bot_token, condition)
         print(f"[drive-watchdog] {len(alerts)} alert{'s' if len(alerts) > 1 else ''} inviato: {delivered}")
     else:
         print(f"[drive-watchdog] {timestamp} — tutto OK (token valido, SA key OK)")

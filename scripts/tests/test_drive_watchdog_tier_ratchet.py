@@ -108,7 +108,7 @@ def test_a_failed_send_does_not_burn_the_one_expiry_alert(wd, monkeypatch):
                         lambda: _token("2026-07-25 20:02:03+00"))
     sends: list[str] = []
 
-    def failing_send(text, bot_token):
+    def failing_send(text, bot_token, condition="alert"):
         sends.append(text)
         return False
 
@@ -135,7 +135,8 @@ def test_a_failed_send_of_an_escalation_still_retries(wd, monkeypatch):
                         lambda: _token(
                             (wd.datetime.now(wd.timezone.utc)
                              + wd.timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S+00")))
-    monkeypatch.setattr(wd, "_send_telegram", lambda text, bot_token: False)
+    monkeypatch.setattr(wd, "_send_telegram",
+                        lambda text, bot_token, condition="alert": False)
 
     assert wd.main() == 0
     assert _saved_tier(wd) == wd.TIER_14_DAYS, (
@@ -159,7 +160,7 @@ def test_the_sa_key_lane_has_the_same_defect_and_the_same_cure(wd, monkeypatch):
     monkeypatch.setattr(wd, "_check_sa_key_age", lambda: wd.SA_KEY_MAX_AGE_DAYS + 5)
     sends: list[str] = []
 
-    def failing_send(text, bot_token):
+    def failing_send(text, bot_token, condition="alert"):
         sends.append(text)
         return False
 
@@ -186,7 +187,7 @@ def test_a_successful_send_does_advance_the_ratchet(wd, monkeypatch):
                         lambda: _token("2026-07-25 20:02:03+00"))
     sends: list[str] = []
     monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token: (sends.append(text), True)[1])
+                        lambda text, bot_token, condition="alert": (sends.append(text), True)[1])
 
     assert wd.main() == 0
     assert _saved_tier(wd) == wd.TIER_EXPIRED, "a delivered alert must be recorded"
@@ -205,7 +206,7 @@ def test_a_healthy_token_still_records_its_tier(wd, monkeypatch):
                             (wd.datetime.now(wd.timezone.utc)
                              + wd.timedelta(days=80)).strftime("%Y-%m-%d %H:%M:%S+00")))
     monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token: pytest.fail("nothing should be sent"))
+                        lambda text, bot_token, condition="alert": pytest.fail("nothing should be sent"))
 
     assert wd.main() == 0
     assert _saved_tier(wd) == wd.TIER_OK
@@ -224,10 +225,112 @@ def test_the_send_happens_before_the_state_write(wd, monkeypatch):
     monkeypatch.setattr(wd, "_check_drive_token_via_fly",
                         lambda: _token("2026-07-25 20:02:03+00"))
     monkeypatch.setattr(wd, "_send_telegram",
-                        lambda text, bot_token: (seq.append("send"), True)[1])
+                        lambda text, bot_token, condition="alert": (seq.append("send"), True)[1])
     real_save = wd.save_state
     monkeypatch.setattr(wd, "save_state",
                         lambda st: (seq.append("save"), real_save(st))[1])
 
     assert wd.main() == 0
     assert seq == ["send", "save"], f"wrong order: {seq}"
+
+
+# --------------------------------------------- the key names the CONDITION
+# Found in the gateway's own state on Pro, minutes after the read finally
+# worked (2026-08-06):
+#
+#   drive-token-watchdog:Nuzantara  count=4  ts=18:00
+#   last_text = "🔴 Drive OAuth SCADUTO (12 giorni fa)"
+#
+# The `ts` is the 18:00 send — the LAST "impossibile connettersi" noise — so
+# the 18:42 expiry message was recorded and SUPPRESSED as a repeat of the very
+# noise it replaces. One key for two different facts: the loud condition's
+# 6/24/72/168h ladder swallows the quiet one, and the quiet one is the whole
+# reason the organ exists.
+
+
+def _key_of(sends):
+    return sends[-1]
+
+
+def test_a_read_failure_and_an_expiry_do_not_share_a_dedup_key(wd, monkeypatch):
+    """THE defect. Two runs, two different facts; if the keys match, the
+    second is swallowed by the first's ladder inside the gateway."""
+    keys: list[str] = []
+    monkeypatch.setattr(wd, "_send_telegram",
+                        lambda text, bot_token, condition="alert":
+                        (keys.append(condition), True)[1])
+
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
+                        lambda: (None, "fly ssh rifiutato"))
+    assert wd.main() == 0
+
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
+                        lambda: _token("2026-07-25 20:02:03+00"))
+    assert wd.main() == 0
+
+    assert len(keys) == 2, f"expected both to alert, got {keys}"
+    assert keys[0] != keys[1], (
+        f"read-failure and expiry share the condition {keys[0]!r} — the "
+        "expiry will be suppressed as a repeat of the noise it replaces")
+    assert "read-failure" in keys[0] and wd.TIER_EXPIRED in keys[1], keys
+
+
+def test_the_key_carries_the_tier_but_never_the_day_count(wd, monkeypatch):
+    """INNOCENCE + #3677: the key must be stable across runs of the SAME
+    condition. A tier is a condition; `days_left` is a measurement, and a
+    measurement in the key mints a fresh key per run and defeats every window.
+    """
+    keys: list[str] = []
+    monkeypatch.setattr(wd, "_send_telegram",
+                        lambda text, bot_token, condition="alert":
+                        (keys.append(condition), True)[1])
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
+                        lambda: _token("2026-07-25 20:02:03+00"))
+
+    assert wd.main() == 0
+    wd.STATE_FILE.write_text("{}")          # forget, so it alerts again
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly",
+                        lambda: _token("2026-07-20 20:02:03+00"))  # -17 days now
+    assert wd.main() == 0
+
+    assert len(keys) == 2 and keys[0] == keys[1], (
+        f"the key moved with the day count: {keys}")
+    assert "-12" not in keys[0] and "-17" not in keys[1], (
+        f"a measurement leaked into the key: {keys}")
+
+
+def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(wd, monkeypatch, tmp_path):
+    """The two tests above assert the CONDITION main() computes. Mutation
+    caught that this is not the same claim: deleting `{condition}` from the
+    key that `_send_telegram` builds left them both green.
+
+    The defect lived IN THE KEY — that is the string the gateway's ladder
+    matches on — so it has to be read off the actual argv, one layer below
+    where the earlier assertions stop.
+    """
+    calls: list[list[str]] = []
+
+    class _Result:
+        returncode = 0
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        return _Result()
+
+    gateway = tmp_path / "tg_notify.py"
+    gateway.write_text("")
+    monkeypatch.setattr(wd, "PROJECT_ROOT", tmp_path.parent)
+    monkeypatch.setattr(wd.subprocess, "run", fake_run)
+    monkeypatch.setattr(wd.Path, "is_file", lambda self: True)
+
+    assert wd._send_telegram("body", "token", "critical_expired") is True
+    assert wd._send_telegram("body", "token", "read-failure") is True
+
+    keys = [c[c.index("--dedup-key") + 1] for c in calls]
+    assert len(keys) == 2, keys
+    assert "critical_expired" in keys[0], f"the condition never reached the key: {keys[0]}"
+    assert "read-failure" in keys[1], f"the condition never reached the key: {keys[1]}"
+    assert keys[0] != keys[1], (
+        f"both conditions produced the SAME key {keys[0]!r} — this is exactly "
+        "the state found on Pro, where the expiry was swallowed by the ladder "
+        "of the connection-error noise it replaces")
