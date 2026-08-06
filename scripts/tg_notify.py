@@ -235,7 +235,12 @@ def _save_state(spool: Path, state: dict) -> None:
     p = spool / "state.json"
     tmp = p.with_suffix(f".json.tmp{os.getpid()}")
     tmp.write_text(json.dumps(state, indent=1, sort_keys=True))
+    # The temp file inherits the umask and `replace` carries ITS mode onto the
+    # destination, so hardening `p` afterwards would be undone by the next
+    # save. Harden the source of the rename.
+    harden(tmp)
     tmp.replace(p)
+    harden(p)
 
 
 class _spool_lock:
@@ -259,11 +264,61 @@ class _spool_lock:
         return False
 
 
+def harden(path: Path) -> Path:
+    """Force 0600 on a spool file, self-healing whatever mode it already has.
+
+    THE one place this rule lives, because the spool has three writers and only
+    one of them was applying it. `_append` below opens with 0o600 and the flock
+    file is 0o600 — so the author knew — but `_save_state` used
+    `Path.write_text` and `tg_digest_flush._archive` used `open("a")`, both of
+    which take the umask (0644 on Pro). Measured 2026-08-06:
+
+        archive-p0.jsonl        -rw-------   (the one that used _append)
+        state.json              -rw-r--r--
+        archive/2026-*.jsonl    -rw-r--r--   1.6 MB, 33 days, every event
+
+    The unprotected two are the bigger exposure, not the smaller: state.json
+    carries `last_text` (200 chars of every alert) and the daily archive is the
+    complete record, including 560 rows whose dedup key still carries a raw
+    client phone number from before the 2026-07-26 grouping fix. Superscar #4 —
+    the restriction is applied where the author was thinking about it and
+    missed where a different idiom was used.
+
+    O_CREAT's mode argument only applies when the file is CREATED, so a chmod
+    is what repairs the files already on disk. Doing it on every write costs a
+    syscall and needs no separate repair pass — the next flush heals the spool.
+    Never raises: a spool the process cannot chmod (foreign owner) must not
+    take down the alert it is carrying.
+
+    Two steps, and the first one is the one this fix originally got WRONG:
+    a chmod alone protects only files that ALREADY exist, so the first write of
+    each new day still went through `open("a")` and was born 0644 under the
+    umask — the cure carrying the shape of the disease. Creating the file
+    privately first closes that, and the chmod then repairs the ones already on
+    disk. Both are needed; neither is sufficient.
+    """
+    try:
+        # O_CREAT without O_EXCL: creates at 0600, or opens an existing file
+        # and changes nothing. Closed immediately — the caller does the writing.
+        os.close(os.open(str(path), os.O_CREAT | os.O_WRONLY, 0o600))
+        if path.stat().st_mode & 0o077:
+            os.chmod(path, 0o600)
+    except OSError:
+        # Swallowed ON PURPOSE, and pinned by an innocence test
+        # (test_hardening_never_takes_down_the_alert_it_carries): a spool the
+        # process cannot chmod — foreign owner, read-only mount — must degrade
+        # to a looser file, never abort the send. An alerter that dies because
+        # it could not tidy its own permissions has traded a privacy defect for
+        # a silence defect, which is the worse of the two.
+        pass
+    return path
+
+
 def _append(spool: Path, name: str, record: dict) -> None:
     spool.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, ensure_ascii=False)
     # O_APPEND single-write keeps concurrent senders line-atomic (<4k).
-    fd = os.open(str(spool / name), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    fd = os.open(str(harden(spool / name)), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     try:
         os.write(fd, (line + "\n").encode())
     finally:
