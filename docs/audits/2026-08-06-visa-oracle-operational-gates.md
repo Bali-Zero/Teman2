@@ -1,7 +1,9 @@
 # Visa Oracle V2 operational gates — execution record
 
-Date: 2026-08-06  
-Candidate base: `b758920d3896cf4c68dcf072c22a09b6d03ada20`  
+Date: 2026-08-06
+
+Candidate base: `b758920d3896cf4c68dcf072c22a09b6d03ada20`
+
 Activation verdict: **NO-GO**
 
 This record converts the remaining production-readiness bullets into concrete,
