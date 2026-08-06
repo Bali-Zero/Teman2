@@ -298,15 +298,23 @@ def check(
             #    is no longer carrying anything, and the split the spec
             #    describes is not the split on disk. Raised by a cross-family
             #    review of this gate.
-            shut = [
-                s
-                for s in siblings
-                if (by_code.get(s) or {}).get("pma_status") not in (None, "TERBUKA")
+            #    Written as a POSITIVE observation on purpose. The first draft
+            #    asked `status not in (None, "TERBUKA")`, which reads a sibling
+            #    that is missing, or whose status field is absent, as open — a
+            #    fail-open in the middle of a guard whose whole job is to
+            #    establish that a fact is true. Unreachable today (the sibling
+            #    set is derived from the records themselves, so every member is
+            #    in `by_code`, and all 1,559 records carry one of exactly
+            #    TERBUKA/TERTUTUP/TERBATAS), which is precisely why it would
+            #    have survived: nothing exercises the branch that lies. A guard
+            #    that cannot observe the fact must refuse, not assume it.
+            not_open = [
+                s for s in siblings if (by_code.get(s) or {}).get("pma_status") != "TERBUKA"
             ]
-            if shut:
+            if not_open:
                 refusals.append(
-                    f"{code}: spec says it leaves {shut} open, but the dataset "
-                    f"already restricts them — re-adjudicate, do not stack"
+                    f"{code}: spec says it leaves {not_open} open, but the dataset "
+                    f"does not show them open — re-adjudicate, do not stack"
                 )
                 continue
 

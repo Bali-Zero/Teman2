@@ -189,7 +189,23 @@ def test_guilt_a_sibling_the_spec_calls_open_but_the_dataset_has_shut_is_refused
         ],
     )
     assert todo == []
-    assert "already restricts" in refusals[0] and "96400" in refusals[0]
+    assert "does not show them open" in refusals[0] and "96400" in refusals[0]
+
+
+def test_guilt_a_sibling_whose_status_cannot_be_read_is_refused_not_assumed_open():
+    """The same precondition, from the direction that fails OPEN if it is written
+    as a negative. A record with no `pma_status` at all is not evidence that the
+    sibling is open; it is the absence of evidence, and this gate exists to
+    establish a positive fact. The first draft asked `not in (None, "TERBUKA")`
+    and would have waved this through.
+    """
+    silent = {"kode_kbli_2025": "96400", "bps_2020_ancestors": {"codes": ["96111", "96112"]}}
+    todo, refusals = run(
+        [split_item("96210", "96111", ["96400"])],
+        [rec("96210", ancestors=["96111"]), silent],
+    )
+    assert todo == []
+    assert "does not show them open" in refusals[0]
 
 
 def test_guilt_a_split_heir_adjudicated_by_one_lane_is_refused():
