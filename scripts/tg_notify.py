@@ -78,11 +78,18 @@ CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 # A condition that PERSISTS is not news each time it is re-measured. After the
 # first send, each further send of the same live condition mutes it for longer.
-# Replayed over the real corpus using the key the gateway ACTUALLY recorded
-# (5202 events / 29.5d, 1525 of them p0):
+# Replayed over the real corpus (5202 events / 29.5d, 1525 of them p0) modelling
+# BOTH branches of `dedup_key or identity` — recorded key where the producer
+# supplied one, the new identity where it did not:
 #
-#   all tiers   176.1/day -> 48.2/day        p0   51.6/day -> 28.6/day
+#   all tiers   176.1/day -> 42.4/day        p0   51.6/day -> 22.8/day
+#   wa-attention 20.45 -> 1.49   system-doctor 2.27 -> 0.14
 #   log-size-watchdog 60.9 -> 4.2   wa-mirror-bridge 48.9 -> 4.5
+#
+# Replaying with recorded keys ONLY (i.e. ignoring the identity branch) gives
+# 28.6 p0/day. That is the control, not the result: it is what the ladder alone
+# would buy. A replay is only worth its digits if it models the branch the code
+# actually takes, and this one has two.
 #
 # The control that makes this trustworthy: replaying a FLAT 6h window over the
 # same keys reproduces the observed rate exactly (176.1 -> 176.1). The old

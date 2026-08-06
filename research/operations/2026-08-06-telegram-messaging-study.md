@@ -31,8 +31,8 @@ The organism spools **176 events/day**, of which **51.6/day are sent immediately
 > forever.** The window works perfectly and the channel is still unusable.
 
 Everything below follows from that. The fix that shipped takes the whole channel from
-**176 → 48 events/day** and `p0` from **51.6 → 28.6/day**, and the two largest producers from
-~60 and ~49/day down to ~4 each. The rest is producer work, itemised in §7.
+**176 → 42 events/day** and `p0` from **51.6 → 22.8/day**, and the two largest producers from
+~60 and ~49/day down to ~4 each. The rest is producer work, itemised in §9.
 
 ## 1. The corpus, and which code path each event takes
 
@@ -95,8 +95,14 @@ Replayed over the recorded keys:
 | | events/day | p0/day |
 |---|---:|---:|
 | today | 176.1 | 51.6 |
-| flat 6h (control — reproduces today exactly) | 176.1 | 51.6 |
-| **ladder 6/24/72/168 — shipped** | **48.2** | **28.6** |
+| flat 6h over recorded keys (control — reproduces today exactly) | 176.1 | 51.6 |
+| ladder over recorded keys only (control — the ladder's own share) | 48.2 | 28.6 |
+| **shipped: ladder + identity on the no-key branch** | **42.4** | **22.8** |
+
+The last two rows differ because `key = dedup_key or identity(...)` has **two branches** and a
+replay is only worth its digits if it models both. Using recorded keys everywhere charges the
+6.8% no-key events their *old* raw-text key and understates the result; using identity
+everywhere overrides producer keys that the code never overrides, and overstates it.
 
 | source | now/day | after/day |
 |---|---:|---:|
@@ -104,6 +110,8 @@ Replayed over the recorded keys:
 | `wa-mirror-bridge` | 48.9 | **4.5** |
 | `wa-attention` | 21.4 | **2.4** |
 | `dlq-autopilot` | 8.2 | 5.4 |
+| `system-doctor` (p0, no-key branch) | 2.27 | **0.14** |
+| `tech-orchestrator` (p0, no-key branch) | 1.90 | **0.14** |
 | `sentinel` | 12.8 | **10.6** ← barely moves, see §4 |
 
 The second shipped rule, **identity excludes measurements**, is honestly a small one: it is
@@ -264,7 +272,8 @@ than patched.
    strongest evidence.
 3. *"2791 → 362 conditions"* — **refuted as scoped.** That replayed the fallback over all 5202
    events. On the 355 events that actually take it: **167 → 35**.
-4. *"51.6 → 15.9/day"* — **corrected to 28.6/day**, replayed over recorded keys.
+4. *"51.6 → 15.9/day"* — **corrected, twice.** First to 28.6/day (recorded keys only), then
+   to **22.8/day** once the replay modelled both branches of `dedup_key or identity`. See §8.
 5. *"6 sources >80% of days carry 87%"* — **refuted.** The table showed top-6 by volume, a
    different set (`wr2-html-apply` is 20/31 = 64.5%). The two sets are no longer conflated.
 6. *"the alarm line and the cure line do not overlap"* — **narrowed.** They overlap above
@@ -328,7 +337,7 @@ number in the present version was then re-measured from the recorded `key` field
 corrected picture is *better*: the flat-6h control reproducing the live rate to the decimal is
 much stronger evidence for the ladder than a broken-deduplicator story would have been.
 
-What the objections changed, concretely: the central mechanism (§2), the effect size (28.6/day,
+What the objections changed, concretely: the central mechanism (§2), the effect size (22.8/day,
 not 15.9), the identity rule's scope (6.8% of traffic, not all of it), the §5.1 auto-heal
 (limits now stated: rotation without fixing the writers is symptomatic), the §5.2 claim (method
 and its censoring stated; the terminal-logout `p0` path excluded), the §5.3 contradiction
@@ -351,6 +360,15 @@ Three lessons, in the order they hurt:
   asserted "355 → 118 conditions" for the fallback replay. The measured value is **167 → 35**.
   That sentence was written *in the act of fixing another sentence*, which is precisely the
   place nobody looks.
+- **A replay must model the branch the code takes — and this code has two.** The effect size
+  was wrong three times, and every time for the same reason: `key = dedup_key or identity(...)`
+  is a two-branch rule, and each replay applied one branch to everything. Identity everywhere
+  gave 15.9 (it overrode producer keys the code never overrides); recorded keys everywhere gave
+  28.6 (it charged the no-key events their *old* raw key); modelling both gives **22.8**. The
+  third attempt was wrong in the *safe* direction, which is why it nearly shipped — a number
+  that understates your own result still teaches the next reader something false. Both
+  one-branch replays are kept in §3 as labelled controls, because each one isolates a real
+  quantity; neither is the answer.
 
 ## 9. Ledger
 
@@ -366,7 +384,7 @@ before — `scripts/tests/ sweep` is `continue-on-error` and gates nothing).
 | `sentinel`, `wr2-html-apply`, `dlq-autopilot`: replace `md5(message)` keys with condition keys (§4) | session | unlocks the ladder for ~12/day it cannot currently touch |
 | Align `log_size_watchdog.sh` with the rotator, or have it invoke it (§5.1) | session | 34.6% of traffic; frozen files silenced permanently |
 | `wa-mirror-bridge`: announce failure-to-recover, not disconnection (§5.2) | session | 27.8% |
-| Re-tier timer-driven message *classes* `p0` → `digest` (§6) | session | the bulk of the residual 28.6 p0/day |
+| Re-tier timer-driven message *classes* `p0` → `digest` (§6) | session | the bulk of the residual 22.8 p0/day |
 | Delete the three frozen `~/logs` files nothing will ever trim (§5.1) | session | disk + permanent alarms |
 | `sentinel` vs `dlq-autopilot` narrate the same DLQ irreconcilably (§5.3) | session | correctness, not volume |
 | `wa-attention` onto its own surface (§5.4) | session | 12.1% |
