@@ -33,15 +33,34 @@ outcomes were "🚨 scade DOMANI" about a healthy credential and "🔴 SCADUTO"
 about one nobody had used today. It never showed only because the read always
 failed: curing the read is what would have armed the false alarm.
 
+What replaced it is NOT "no signal at all". Refresh is lazy-on-use, so
+`updated_at` advancing IS a consumer succeeding, and when the refresh token was
+revoked that column simply froze:
+
+    row 7dfe56b2…  last successful refresh  2026-07-25 19:02
+    GARUDA indexer (daily, GARUDA_DRIVE_USER_ID = that row):
+        `invalid_grant: Token has been expired or revoked`, every night
+    re-authorised by hand                    2026-08-06 11:11
+
+Twelve days frozen, twelve nights of a real outage. So a frozen row IS worth
+saying — as a DIGEST note, because it cannot tell "revoked" from "unused" and
+the ground truth is the consumer's own failure. The old ladder did shout at
+this row, but for a reason that was false, and shouted identically at healthy
+ones, which is why it could never be trusted.
+
     GUILT ×2     — a failed delivery must NOT advance the ratchet, and the very
                    next run must still speak.
-    GUILT (B)    — the REAL measured row shape must be SILENT. This is the case
-                   the old corpus could not have: it only ever fed invented
-                   day-scale numbers to a pure function, never a row.
+    GUILT (B)    — a freshly-refreshed row must be SILENT, and a frozen one must
+                   speak at DIGEST. These are the cases the old corpus could not
+                   have: it only ever fed invented day-scale numbers to a pure
+                   function, never a row.
     SYMMETRY     — the SA lane carries the same ratchet and the same cure.
-    INNOCENCE ×2 — a delivered alert DOES advance it (or this spams every 6h),
-                   and a healthy verdict is still recorded so a later failure
-                   reads as a change.
+    INNOCENCE ×3 — a delivered alert DOES advance it (or this spams every 6h);
+                   a healthy verdict is still recorded so a later failure reads
+                   as a change; and SYSTEM, frozen BY DESIGN since 2026-05-10,
+                   is never called stale.
+    TIER         — an actionable fact anywhere in the bundle pulls the whole
+                   message to p0; digest only when staleness is all there is.
     ORDER        — send before write, pinned directly: every value-level
                    assertion here passes on the happy path under the old
                    sequence, which only diverges when the send fails.
@@ -98,7 +117,7 @@ def _healthy_rows(mod):
         {
             "rows": [
                 {
-                    "user_id": "SYSTEM",
+                    "user_id": "7dfe56b2",
                     "has_refresh": True,
                     "updated_at": (now - mod.timedelta(minutes=1)).strftime(
                         "%Y-%m-%d %H:%M:%S+00"
@@ -122,7 +141,7 @@ def _idle_rows(mod):
         {
             "rows": [
                 {
-                    "user_id": "SYSTEM",
+                    "user_id": "7dfe56b2",
                     "has_refresh": True,
                     "updated_at": (now - mod.timedelta(days=12)).strftime(
                         "%Y-%m-%d %H:%M:%S+00"
@@ -162,7 +181,7 @@ def test_a_failed_send_does_not_burn_the_one_alert(wd, monkeypatch):
     monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
     sends: list[str] = []
 
-    def failing_send(text, bot_token, condition="alert"):
+    def failing_send(text, bot_token, condition="alert", tier="p0"):
         sends.append(text)
         return False
 
@@ -189,7 +208,7 @@ def test_a_failed_send_of_a_changed_failure_still_retries(wd, monkeypatch):
     wd.STATE_FILE.write_text(json.dumps({"last_oauth_health": wd.HEALTH_NO_ROWS}))
     monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
     monkeypatch.setattr(
-        wd, "_send_telegram", lambda text, bot_token, condition="alert": False
+        wd, "_send_telegram", lambda text, bot_token, condition="alert", tier="p0": False
     )
 
     assert wd.main() == 0
@@ -198,23 +217,99 @@ def test_a_failed_send_of_a_changed_failure_still_retries(wd, monkeypatch):
     )
 
 
-@pytest.mark.parametrize("shape", ["fresh", "idle"])
-def test_a_live_shaped_row_never_speaks(wd, monkeypatch, shape):
+def test_a_freshly_refreshed_row_never_speaks(wd, monkeypatch):
     """TRAUMA B, and the case the old corpus was structurally unable to have.
 
     It tested `classify_tier(30)`, `classify_tier(14)`, `classify_tier(-1)` —
-    a pure function fed numbers nobody had ever measured. Feed it instead the
-    two shapes this table actually produces, both of them healthy, and the old
-    ladder alerts on BOTH: "scade DOMANI" on the fresh one (days_left == 0),
-    "SCADUTO" on the idle one.
+    a pure function fed numbers nobody had ever measured. Feed it the shape
+    the table actually produces one minute after a refresh, and the old ladder
+    says "🚨 scade DOMANI": `days_left` is 0, because the window is an hour.
     """
-    rows = _healthy_rows(wd) if shape == "fresh" else _idle_rows(wd)
-    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: rows)
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _healthy_rows(wd))
     monkeypatch.setattr(
         wd,
         "_send_telegram",
-        lambda text, bot_token, condition="alert": pytest.fail(
-            f"a healthy {shape} row raised an alert: {text[:200]}"
+        lambda text, bot_token, condition="alert", tier="p0": pytest.fail(
+            f"a healthy row raised an alert: {text[:200]}"
+        ),
+    )
+
+    assert wd.main() == 0
+    assert _saved_health(wd) == wd.HEALTH_OK
+
+
+def test_a_frozen_row_is_a_digest_note_not_a_critical(wd, monkeypatch):
+    """The signal that WOULD have caught the real outage — at the volume it
+    deserves.
+
+    Refresh is lazy-on-use, so `updated_at` advancing is a consumer
+    succeeding. Row 7dfe56b2 froze at 2026-07-25 19:02 when its refresh token
+    was revoked and stayed frozen twelve days while GARUDA collected
+    `invalid_grant` nightly. The old ladder DID shout at this row — "🔴
+    SCADUTO" — but for the wrong reason (a one-hour window it read as days),
+    and it shouted identically at healthy idle rows, which is why it could
+    never have been trusted.
+
+    p0 would be wrong too: this cannot tell "revoked" from "unused", and the
+    ground truth is the consumer's own failure. Digest.
+    """
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _idle_rows(wd))
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert", tier="p0": (
+            sent.append((tier, text)),
+            True,
+        )[1],
+    )
+
+    assert wd.main() == 0
+    assert len(sent) == 1, sent
+    tier, text = sent[0]
+    assert tier == "digest", f"a staleness note went out at {tier}"
+    assert "invalid_grant" in text, (
+        "the note must tell the reader where the PROOF is — the consumer's "
+        "log — since this verdict alone cannot distinguish revoked from unused"
+    )
+    assert _saved_health(wd) == wd.HEALTH_STALE_REFRESH
+
+
+def test_an_actionable_fact_in_the_bundle_pulls_the_whole_message_to_p0(
+    wd, monkeypatch
+):
+    """INNOCENCE for the tier choice: one message carries every fact of the
+    run, so burying a real P0 inside a digest flush would be the same class of
+    mistake as shouting the staleness note."""
+    sent: list[str] = []
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _idle_rows(wd))
+    monkeypatch.setattr(wd, "_check_sa_key_age", lambda: wd.SA_KEY_MAX_AGE_DAYS + 5)
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert", tier="p0": (
+            sent.append(tier),
+            True,
+        )[1],
+    )
+
+    assert wd.main() == 0
+    assert sent == ["p0"], sent
+
+
+def test_the_system_row_frozen_by_design_is_not_stale(wd, monkeypatch):
+    """`_refresh_token` early-returns for SYSTEM since 2026-05-10 — Drive runs
+    on ServiceAccountDriveService and that row is left unrefreshed on purpose.
+    Its `updated_at` has been frozen since 2026-06-15. Alarming on it would
+    fire every six hours, forever, about the intended state."""
+    rows, _ = _idle_rows(wd)
+    rows["rows"][0]["user_id"] = "SYSTEM"
+    monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: (rows, None))
+    monkeypatch.setattr(
+        wd,
+        "_send_telegram",
+        lambda text, bot_token, condition="alert", tier="p0": pytest.fail(
+            f"SYSTEM's by-design staleness raised an alert: {text[:200]}"
         ),
     )
 
@@ -236,7 +331,7 @@ def test_the_sa_key_lane_has_the_same_defect_and_the_same_cure(wd, monkeypatch):
     monkeypatch.setattr(wd, "_check_sa_key_age", lambda: wd.SA_KEY_MAX_AGE_DAYS + 5)
     sends: list[str] = []
 
-    def failing_send(text, bot_token, condition="alert"):
+    def failing_send(text, bot_token, condition="alert", tier="p0"):
         sends.append(text)
         return False
 
@@ -268,7 +363,7 @@ def test_an_undelivered_sa_alert_does_not_freeze_the_oauth_verdict(wd, monkeypat
     monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _healthy_rows(wd))
     monkeypatch.setattr(wd, "_check_sa_key_age", lambda: wd.SA_KEY_MAX_AGE_DAYS + 5)
     monkeypatch.setattr(
-        wd, "_send_telegram", lambda text, bot_token, condition="alert": False
+        wd, "_send_telegram", lambda text, bot_token, condition="alert", tier="p0": False
     )
 
     assert wd.main() == 0
@@ -288,7 +383,7 @@ def test_a_successful_send_does_advance_the_ratchet(wd, monkeypatch):
     monkeypatch.setattr(
         wd,
         "_send_telegram",
-        lambda text, bot_token, condition="alert": (sends.append(text), True)[1],
+        lambda text, bot_token, condition="alert", tier="p0": (sends.append(text), True)[1],
     )
 
     assert wd.main() == 0
@@ -311,7 +406,7 @@ def test_the_old_day_ladder_keys_are_purged_from_the_state_file(wd, monkeypatch)
     monkeypatch.setattr(
         wd,
         "_send_telegram",
-        lambda text, bot_token, condition="alert": pytest.fail("nothing to send"),
+        lambda text, bot_token, condition="alert", tier="p0": pytest.fail("nothing to send"),
     )
 
     assert wd.main() == 0
@@ -335,7 +430,7 @@ def test_the_send_happens_before_the_state_write(wd, monkeypatch):
     monkeypatch.setattr(
         wd,
         "_send_telegram",
-        lambda text, bot_token, condition="alert": (seq.append("send"), True)[1],
+        lambda text, bot_token, condition="alert", tier="p0": (seq.append("send"), True)[1],
     )
     real_save = wd.save_state
     monkeypatch.setattr(
@@ -448,7 +543,7 @@ def test_a_read_failure_and_a_credential_failure_do_not_share_a_dedup_key(
     monkeypatch.setattr(
         wd,
         "_send_telegram",
-        lambda text, bot_token, condition="alert": (keys.append(condition), True)[1],
+        lambda text, bot_token, condition="alert", tier="p0": (keys.append(condition), True)[1],
     )
 
     monkeypatch.setattr(
@@ -476,7 +571,7 @@ def test_the_key_carries_the_verdict_but_never_a_measurement(wd, monkeypatch):
     monkeypatch.setattr(
         wd,
         "_send_telegram",
-        lambda text, bot_token, condition="alert": (keys.append(condition), True)[1],
+        lambda text, bot_token, condition="alert", tier="p0": (keys.append(condition), True)[1],
     )
     monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _no_refresh_rows(wd))
 

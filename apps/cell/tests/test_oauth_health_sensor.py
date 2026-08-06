@@ -78,6 +78,21 @@ class TestOAuthHealthSensor:
         assert reading.status == "red"
         assert reading.health == "no-token"
 
+    def test_a_frozen_refresh_is_yellow_not_red(self, tmp_path: Path) -> None:
+        """The watchdog's third verdict. Yellow because the table cannot tell
+        a revoked credential from an unused one — red would claim more than is
+        known, and unknown (the default for an unmapped verdict) would throw
+        the signal away entirely. Added with the verdict, not after it: an
+        unmapped verdict here is a consumer the producer forgot."""
+        path = _write_state(
+            tmp_path,
+            last_oauth_health="stale-refresh",
+            last_oauth_check_iso=NOW.isoformat(),
+        )
+        reading = OAuthHealthSensor(state_path=path).read(now=NOW)
+        assert reading.status == "yellow"
+        assert reading.health == "stale-refresh"
+
     # ----------------------------------------------------------- innocence
     def test_healthy_verdict_is_green(self, tmp_path: Path) -> None:
         path = _write_state(

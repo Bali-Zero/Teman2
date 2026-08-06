@@ -32,11 +32,19 @@ are anchored to those shapes, not to invented day counts.
 
     GUILT      — a row that cannot renew itself is a real, nameable failure
     GUILT      — no rows at all is a different failure with a different remedy
-    INNOCENCE  — both live shapes (just-refreshed, idle-for-weeks) are SILENT
-    INNOCENCE  — the SYSTEM row, unrefreshed on purpose since 2026-05-10, is
-                 not an alarm
-    LIMIT      — the declared blind spot is asserted, so nobody re-derives a
-                 countdown from `updated_at` and calls it an expiry
+    GUILT      — a row FROZEN for 3+ days is reported: refresh is lazy-on-use,
+                 so `updated_at` advancing is a consumer succeeding, and when
+                 7dfe56b2's refresh token was revoked the column simply stopped
+                 moving for twelve days while GARUDA logged `invalid_grant`
+                 nightly. A revoked token still has `refresh_token IS NOT
+                 NULL`, so the P0 cannot see it; the freeze can.
+    INNOCENCE  — a recently-refreshed row is SILENT, at every age inside the
+                 window — that is the false CRITICAL this file exists for
+    INNOCENCE  — the SYSTEM row, frozen on purpose since 2026-05-10, is never
+                 called stale
+    INNOCENCE  — an unreadable timestamp is not staleness
+    PRECEDENCE — a dead credential outranks a frozen one, or a real outage
+                 goes out at digest tier
 """
 
 from __future__ import annotations
@@ -48,6 +56,7 @@ from scripts.drive_token_watchdog import (
     HEALTH_NO_REFRESH,
     HEALTH_NO_ROWS,
     HEALTH_OK,
+    HEALTH_STALE_REFRESH,
     _age_text,
     classify_oauth_health,
     parse_expires_at,
@@ -110,42 +119,107 @@ def test_one_broken_row_among_healthy_ones_still_speaks():
     "label,ago",
     [
         ("just refreshed", timedelta(minutes=1)),
-        ("idle twelve days", timedelta(days=12)),
-        ("idle since June", timedelta(days=52)),
+        ("refreshed yesterday", timedelta(days=1)),
+        ("just inside the window", timedelta(days=2, hours=23)),
     ],
 )
-def test_every_live_shape_with_a_refresh_token_is_silent(label, ago):
+def test_a_recently_refreshed_row_is_silent(label, ago):
     """THE regression this file exists for.
 
-    Under the old ladder: `just refreshed` → days_left 0 → "🚨 scade DOMANI",
-    CRITICAL; both idle shapes → negative → "🔴 SCADUTO". Three false alarms,
-    covering literally every state the table can be in.
+    Under the old ladder every one of these is an alarm: `just refreshed` →
+    days_left 0 → "🚨 scade DOMANI" CRITICAL, and the other two → negative →
+    "🔴 SCADUTO". Three false alarms over a credential that is working.
     """
-    health = classify_oauth_health([_row("SYSTEM", refreshed_ago=ago)])
+    health = classify_oauth_health([_row("7dfe56b2", refreshed_ago=ago)], now_utc=NOW)
     assert health.verdict == HEALTH_OK, f"{label} raised {health.verdict}"
     assert health.message == "", f"{label} produced an alert body: {health.message}"
 
 
-def test_the_deliberately_unrefreshed_system_row_is_not_an_alarm():
+def test_the_deliberately_unrefreshed_system_row_is_not_stale():
     """`_refresh_token` early-returns for SYSTEM since 2026-05-10 — Drive runs
-    on ServiceAccountDriveService and that row is left stale ON PURPOSE. Any
-    staleness rule over `updated_at` would fire on it every six hours."""
-    health = classify_oauth_health([_row("SYSTEM", refreshed_ago=timedelta(days=52))])
+    on ServiceAccountDriveService and that row is left frozen ON PURPOSE
+    (2026-06-15 and counting). The staleness rule must exclude it by ENTITY,
+    or it fires every six hours forever about the intended state."""
+    health = classify_oauth_health(
+        [_row("SYSTEM", refreshed_ago=timedelta(days=52))], now_utc=NOW
+    )
     assert health.verdict == HEALTH_OK
 
 
-# ------------------------------------------------------------------- limit
-def test_the_age_is_context_and_never_a_verdict():
-    """The declared blind spot: `updated_at` age cannot separate "unused" from
-    "refresh is failing". It appears in the detail line so a human reading the
-    log has it, and nowhere else — a threshold on it would rebuild the same
-    false positive one field to the left."""
-    fresh = classify_oauth_health([_row("SYSTEM", refreshed_ago=timedelta(minutes=1))])
-    stale = classify_oauth_health([_row("SYSTEM", refreshed_ago=timedelta(days=52))])
+# --------------------------------------------------------------- staleness
+def test_a_frozen_row_is_reported():
+    """The signal that would have caught the real outage.
 
-    assert fresh.verdict == stale.verdict == HEALTH_OK
-    assert fresh.detail != stale.detail, "the age must still be VISIBLE in the log"
-    assert fresh.message == stale.message == ""
+    Refresh is lazy-on-use, so `updated_at` advancing is a consumer
+    succeeding. Row 7dfe56b2 froze at 2026-07-25 19:02 when its refresh token
+    was revoked and stayed frozen twelve days while GARUDA collected
+    `invalid_grant` nightly. A revoked token still has `refresh_token IS NOT
+    NULL`, so the P0 above is blind to it — the freeze is not.
+    """
+    health = classify_oauth_health(
+        [_row("7dfe56b2", refreshed_ago=timedelta(days=12))], now_utc=NOW
+    )
+    assert health.verdict == HEALTH_STALE_REFRESH
+    assert "7dfe56b2" in health.message
+    assert "invalid_grant" in health.message, (
+        "the note must point at where the PROOF is — this verdict alone cannot "
+        "tell a revoked credential from an unused one"
+    )
+
+
+def test_the_boundary_is_the_stated_threshold():
+    """Just inside is silent, just outside speaks. Pinned because the value is
+    derived from something real — three missed runs of a daily consumer — and
+    a future edit that drifts it should have to say so here."""
+    from scripts.drive_token_watchdog import STALE_REFRESH_DAYS
+
+    inside = timedelta(days=STALE_REFRESH_DAYS, hours=-1)
+    outside = timedelta(days=STALE_REFRESH_DAYS, hours=1)
+    assert (
+        classify_oauth_health([_row("u", refreshed_ago=inside)], now_utc=NOW).verdict
+        == HEALTH_OK
+    )
+    assert (
+        classify_oauth_health([_row("u", refreshed_ago=outside)], now_utc=NOW).verdict
+        == HEALTH_STALE_REFRESH
+    )
+
+
+def test_an_unreadable_timestamp_is_not_staleness():
+    """"I could not read it" is not "it is old". Treating an unparseable
+    `updated_at` as stale would put a recurring digest note on a healthy row,
+    which is the false-positive family this whole change exists to end."""
+    row = _row("u", refreshed_ago=timedelta(minutes=1))
+    row["updated_at"] = "not a timestamp"
+    health = classify_oauth_health([row], now_utc=NOW)
+    assert health.verdict == HEALTH_OK
+    assert "?" in health.detail, "the unreadable field must still be VISIBLE"
+
+
+def test_a_dead_credential_outranks_a_stale_one():
+    """Precedence: a row that can never renew is actionable now; a frozen one
+    is a hint. If both are true of the same table the message must be the P0,
+    or a real outage goes out at digest tier."""
+    health = classify_oauth_health(
+        [_row("u", has_refresh=False, refreshed_ago=timedelta(days=12))], now_utc=NOW
+    )
+    assert health.verdict == HEALTH_NO_REFRESH
+
+
+# ------------------------------------------------------------------- limit
+def test_the_age_is_always_visible_in_the_detail_line():
+    """Whatever the verdict, a human reading the log gets the ages — the
+    verdict is a summary, and this organ has already been wrong once about
+    what a column means."""
+    fresh = classify_oauth_health(
+        [_row("u", refreshed_ago=timedelta(minutes=1))], now_utc=NOW
+    )
+    stale = classify_oauth_health(
+        [_row("u", refreshed_ago=timedelta(days=12))], now_utc=NOW
+    )
+    assert fresh.detail != stale.detail
+    assert "12g" in stale.detail, stale.detail
+    assert fresh.message == ""
 
 
 def test_age_text_never_raises_on_junk():
