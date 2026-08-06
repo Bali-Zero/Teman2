@@ -888,9 +888,10 @@ promised; it now has a number.
 
 **THE STRUCTURAL FINDING, bigger than the 35: the cap attaches to the (bidang usaha, KBLI) PAIR, never
 to the code.** Entry 7 caps `30111` at 49% as a warship yard; entry 8 caps **the same code** at 0% as a
-builder of pinisi, cadik and traditional wooden vessels — and the body says so explicitly (art. 3(3):
-where one KBLI spans several bidang usaha, the requirement applies only to the bidang usaha named in the
-column). Our single `pma_max_asing` integer cannot express that, nor a phase-dependent cap (`58130`: 0%
+builder of pinisi, cadik and traditional wooden vessels — and the body says so explicitly (**Pasal 6 ayat (3)** for
+Lampiran III; the twin for Lampiran II is Pasal 5 ayat (5)): where one KBLI covers more than one bidang
+usaha, the requirement applies only to the bidang usaha named in that column. (Corrected 2026-08-06 at the
+source — this said `art. 3(3)`, which does not exist; Pasal 3 has two ayat.) Our single `pma_max_asing` integer cannot express that, nor a phase-dependent cap (`58130`: 0%
 at establishment, 49% via the capital market for expansion; broadcasting 20% likewise), nor a
 conditional one. **Any future cure that picks one number for such a code is asserting something the
 instrument does not say** — those codes are reported `ambiguous` and are not auto-patchable by

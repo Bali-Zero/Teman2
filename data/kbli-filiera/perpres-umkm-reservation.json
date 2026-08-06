@@ -37,7 +37,7 @@
   "unresolved": 0,
   "dialokasikan": 124,
   "kemitraan": 57,
-  "title_corroborated": 159,
+  "title_corroborated": 158,
   "text_cell_missing": 0
  },
  "tick_x_histogram": {
@@ -61,6 +61,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Jagung",
+   "parent_heading": "Pertanian tanaman pangan dengan luas kurang dari 25 Ha",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -69,6 +70,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Kedelai",
+   "parent_heading": "Pertanian tanaman pangan dengan luas kurang dari 25 Ha",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -77,6 +79,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Kacang tanah",
+   "parent_heading": "Pertanian tanaman pangan dengan luas kurang dari 25 Ha",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -85,6 +88,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Kacang hijau",
+   "parent_heading": "Pertanian tanaman pangan dengan luas kurang dari 25 Ha",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -93,6 +97,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Padi hibrida",
+   "parent_heading": "Pertanian tanaman pangan dengan luas kurang dari 25 Ha",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -101,6 +106,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Padi inbrida",
+   "parent_heading": "Pertanian tanaman pangan dengan luas kurang dari 25 Ha",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -109,6 +115,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Getah pinus",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -117,6 +124,7 @@
    "column": "dialokasikan",
    "page": 1,
    "text": "Bambu SK I.Jo 054161C",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -125,6 +133,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Rotan",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -133,6 +142,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Daun kayu putih",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -141,6 +151,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Kokon/kepompong ulat sutra (persutraan alam)",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -149,6 +160,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Damar",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -157,6 +169,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Madu",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -165,6 +178,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "kulit kayu lawang, kayu manis, getah-getahan lainya, sarang burung walet di alam dan perlebahan lain-lain",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -173,6 +187,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri pemindangan ikan",
+   "parent_heading": "Pemungutan hasil hutan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -181,6 +196,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri tempe kedelai",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -189,6 +205,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri tahu kedelai",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -197,6 +214,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri gula merah",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -205,6 +223,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "Industri makanan dan masakan olahan: Rendang",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -213,6 +232,7 @@
    "column": "dialokasikan",
    "page": 2,
    "text": "mendapatkan indikasi geografis: Garam Amed Bali",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -221,6 +241,7 @@
    "column": "dialokasikan",
    "page": 3,
    "text": "Industri kerupuk, keripik, peyek dan seienisnya (pabrikan dan non pabrikan)",
+   "parent_heading": null,
    "read_from": "page-image",
    "title_corroborated": true
   },
@@ -229,6 +250,7 @@
    "column": "dialokasikan",
    "page": 3,
    "text": "Industri pertenunan cual Industri pertenunan ulap doyo Industri pertenunan tenun grinsing Industri tenun tapis",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -237,6 +259,7 @@
    "column": "dialokasikan",
    "page": 3,
    "text": "Industri kain tenun ikat",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -245,6 +268,7 @@
    "column": "dialokasikan",
    "page": 3,
    "text": "Industri batik: Industri batik tulis Industri batik kombinasi tulis dan cap l2    Industri kain sulaman/ bordir, yaitu: Industri kain karawo",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -253,6 +277,7 @@
    "column": "dialokasikan",
    "page": 3,
    "text": "Industri kain karancang Industri kain sulam usus Industri kain sulaman/bordir lainnya yang dikerjakan tidak dengan mesin",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -261,6 +286,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "Industri ikat kepala tradisional Industri ikat pinggang tradisional Industri pembuatan mukena",
+   "parent_heading": null,
    "read_from": "page-image",
    "title_corroborated": false
   },
@@ -269,6 +295,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "Industri ikat kepala tradisional Industri ikat pinggang tradisional Industri pembuatan mukena",
+   "parent_heading": null,
    "read_from": "page-image",
    "title_corroborated": false
   },
@@ -277,6 +304,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "Rotan dan bambu Anyaman dari tanaman pandan, agel, mendong, ketak,",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -285,6 +313,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "purun, eceng gondok, keladi air Industri alat-alat dapur dari kayu, rotan dan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -293,6 +322,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "Industri kerajinan ukiran dari kayu bukan mebeller ukiran kayu, relief, topeng, patung, wayang",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -301,6 +331,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "bambu",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -309,6 +340,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "lainnya YTDL t7     Usaha bidang obat tradisional (usaha kecil obat",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -317,6 +349,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "tradisional/UKoT dan usaha mikro obat tradisional/UMOT)",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -325,6 +358,7 @@
    "column": "dialokasikan",
    "page": 4,
    "text": "Industri pengasapan karet",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -333,6 +367,7 @@
    "column": "dialokasikan",
    "page": 5,
    "text": "5 DLALOI T'I No.                          BIDAI{G USAHA                                 I{BLI KOPERA TI t9    Industri perlengkapan rumah tangga dari tanah liat/keramik, berupa: Gerabah Keramik hias",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -341,6 +376,7 @@
    "column": "dialokasikan",
    "page": 5,
    "text": "Bajak Garu Sabit Ani-ani Dodos Egreg Pisau sadap karet 2l    Industri alat potong dan perkakas tangan pertukangan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -349,6 +385,7 @@
    "column": "dialokasikan",
    "page": 5,
    "text": "Perkakas tangan yang diproses secara manual atau semi mekanik untuk pertukangan dan pemotongarn",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -357,6 +394,7 @@
    "column": "dialokasikan",
    "page": 5,
    "text": "Keris Rencong Mandau",
+   "parent_heading": "Industri peralatan umum, berupa",
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -365,6 +403,7 @@
    "column": "dialokasikan",
    "page": 6,
    "text": "Dambus dari Bangka Belitung Kolintang dari Minahasa Gendang Beleq dari NTB Sasando dari NTT Tifa dari Papua",
+   "parent_heading": "Industri alat musik tradisional antara lain",
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -373,6 +412,7 @@
    "column": "dialokasikan",
    "page": 6,
    "text": "Penyediaan tenaga listrik untuk pembangkit listrik < 1 MW",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -381,6 +421,7 @@
    "column": "dialokasikan",
    "page": 6,
    "text": "madya: geduns tempat tinegal gedung perbelanjaan meliputi toserba, toko, rumah toko (ruko) dan warung",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -389,6 +430,7 @@
    "column": "dialokasikan",
    "page": 6,
    "text": "geduns tempat tinegal gedung perbelanjaan meliputi toserba, toko, rumah toko (ruko) dan warung gedung kesehatan meliputi puskesmas, balai pengobatan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -397,6 +439,7 @@
    "column": "dialokasikan",
    "page": 6,
    "text": "dan gedung pelayanan kesehatan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -405,6 +448,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "gedung pendidikan meliputi sarana pendidikan, tempat kursus, laboratorium dan bangunan penunjang pendidikan lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -413,6 +457,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "gedung penginapan meliputi hostel dan losmen",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -421,6 +466,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "gedung tempat hiburan dan olahraga meliputi bioskop, gedung kebudayaan/kesenian, gedung wisata dan rekreasi serta gedung olahraga",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -429,6 +475,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "gedung lainnya meliputi tempat ibadah, gedung balai pertemuan, gudang, gedung genset, rumah pompa, depo, gedung gardu listrik, dan gedung gardu sinyal",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -437,6 +484,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "jasa pekerjaan konstruksi prafabrikasi bangunan gedung meliputi pemasangan bahan hasil produksi pabrik seperti beton pracetak, baja, plastik, karet, dan hasil produksi pabrik lainnya dengan metode pabrikasi, erection, dan/atau perakitan untuk bangunan gedung",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -445,6 +493,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "Konstruksi bangunan sipil jalan meliputi pemeliharaan, bangunan jalan raya yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -453,6 +502,7 @@
    "column": "dialokasikan",
    "page": 7,
    "text": "Konstruksi jaringan irigasi yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -461,6 +511,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "bangunan pengolahan, penyaluran dan penampungan air minum",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -469,6 +520,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "penampungan air limbah dan/atau risiko kecil dan sedang",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -477,6 +529,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "sederhana dan 3l( No 054181 C",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -485,6 +538,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "Konstruksi telekomunikasi navigasi udara yang menggunakan teknologi sederhana dan madya Konstruksi sinyal dan telekomunikasi kereta api yang mengglrnakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -493,6 +547,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "sederhana dan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -501,6 +556,7 @@
    "column": "dialokasikan",
    "page": 8,
    "text": "sederhana dan       'a",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -509,6 +565,7 @@
    "column": "dialokasikan",
    "page": 9,
    "text": "Pemasangan bangunan prafabrikasi untuk konstruksi jaringan saluran irigasi, komunikasi dan limbah yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -516,7 +573,8 @@
    "code": "42911",
    "column": "dialokasikan",
    "page": 9,
-   "text": "Konstruksi bangunan yang menggunakan teknologi sederhana dan madya: sumber daya air pelabuhan bukan perikanan",
+   "text": "Konstruksi bangunan yang menggunakan teknologi sederhana dan madya: sumber daya air",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -524,7 +582,8 @@
    "code": "42912",
    "column": "dialokasikan",
    "page": 9,
-   "text": "pelabuhan bukan perikanan pelabuhan perikanan",
+   "text": "pelabuhan bukan perikanan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -533,6 +592,7 @@
    "column": "dialokasikan",
    "page": 9,
    "text": "pelabuhan perikanan",
+   "parent_heading": null,
    "read_from": "page-image",
    "title_corroborated": true
   },
@@ -541,6 +601,7 @@
    "column": "dialokasikan",
    "page": 9,
    "text": "Pemasangan bangunan prafabrikasi untuk konstruksi bangunan sipil lainnya yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -549,6 +610,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -557,6 +619,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -565,6 +628,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "instalasi penyediaan tenaga listrik: Tegangan rendah/menengah",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -572,7 +636,8 @@
    "code": "43212",
    "column": "dialokasikan",
    "page": 10,
-   "text": "Instalasi yang menggunakan teknologi sederhana dan madya: telekomunikasi sinyal dan telekomunikasi kereta api",
+   "text": "telekomunikasi sinyal dan telekomunikasi kereta api",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -581,6 +646,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "elektronika saluran air Qtlambingl",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -589,6 +655,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "sinyal dan telekomunikasi kereta api",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -597,6 +664,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "sinyal dan rambu-rambu jalan raya elektronika",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -605,6 +673,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "saluran air Qtlambingl pemanas dan geotermal",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -613,6 +682,7 @@
    "column": "dialokasikan",
    "page": 10,
    "text": "pemanas dan geotermal",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -620,7 +690,8 @@
    "code": "43223",
    "column": "dialokasikan",
    "page": 11,
-   "text": "11 DIALO U I[o.                          BIDA!5G USNIA                                KBLI KOPER T minyak dan gas pendingin dan ventilasi udara",
+   "text": "DIALO U I[o.                          BIDA!5G USNIA                                KBLI KOPER T minyak dan gas pendingin dan ventilasi udara",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -629,6 +700,7 @@
    "column": "dialokasikan",
    "page": 11,
    "text": "pendingin dan ventilasi udara mekanikal",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -637,6 +709,7 @@
    "column": "dialokasikan",
    "page": 11,
    "text": "mekanikal konstruksi lainnya YTDL meliputi pemasangan dan pemeliharaan instalasi fasilitas pertambangan dan manufaktur seperti loading and discharging stations,",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "page-image",
    "title_corroborated": true
   },
@@ -645,6 +718,7 @@
    "column": "dialokasikan",
    "page": 11,
    "text": "winding shafis, chemical plants, ironfoundaies, blast furnaces dan coke ouen; pemasangan instalasi sistem pengolahan dan peralatan pemurnian air laut, air payau, air tawar menjadi air murni pada pembangkit listrik",
+   "parent_heading": "Instalasi yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -652,7 +726,8 @@
    "code": "43301",
    "column": "dialokasikan",
    "page": 11,
-   "text": "Pengerjaan yang menggunakan teknologi sederhana dan madya: pemasangan kaca dan aluminium lantai, dinding, peralatan saniter dan plafon",
+   "text": "pemasangan kaca dan aluminium lantai, dinding, peralatan saniter dan plafon",
+   "parent_heading": "Pengerjaan yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -661,6 +736,7 @@
    "column": "dialokasikan",
    "page": 11,
    "text": "lantai, dinding, peralatan saniter dan plafon pengecatan",
+   "parent_heading": "Pengerjaan yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -669,6 +745,7 @@
    "column": "dialokasikan",
    "page": 11,
    "text": "pengecatan",
+   "parent_heading": "Pengerjaan yang menggunakan teknologi sederhana dan madya",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -676,15 +753,17 @@
    "code": "43304",
    "column": "dialokasikan",
    "page": 12,
-   "text": "Dekorasi yang menggunakan teknologi sederhana dan madya lnterior Eksterior",
+   "text": "lnterior Eksterior",
+   "parent_heading": null,
    "read_from": "text-layer",
-   "title_corroborated": true
+   "title_corroborated": false
   },
   {
    "code": "43305",
    "column": "dialokasikan",
    "page": 12,
    "text": "Eksterior Penyelesaian konstruksi bangunan lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -693,6 +772,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "Penyelesaian konstruksi bangunan lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -701,6 +781,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "Pemasangan kontruksi yang menggunakan teknologi sederhana dan madya: Pemasangan pondasi dan tiang pancang Pemasangan perancah (steigefi",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -709,6 +790,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "Pemasangan perancah (steigefi Pemasangan atap I roof coueing",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -717,6 +799,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "Pemasangan atap I roof coueing Kerangka baja",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -725,6 +808,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "Kerangka baja Penyewaan alat konstruksi dengan operator yang",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -733,6 +817,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "Penyewaan alat konstruksi dengan operator yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -741,6 +826,7 @@
    "column": "dialokasikan",
    "page": 12,
    "text": "sederhana dan madya yang belum diklasifikasikan dalam kelompok 43901 s.d.",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -749,6 +835,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "yang terintegrasi dengan bidang usaha penjualan sepeda motor",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -757,6 +844,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Minimarket",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -765,6 +853,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Bukan di toserba atau departement store",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -773,6 +862,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Minuman tidak beralkohol",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -781,6 +871,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Beras",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -789,6 +880,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Roti, kue kering, serta kue basah dan sejenisnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -797,6 +889,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Kopi, gula pasir dan gula merah",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -805,6 +898,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Tahu, tempe, tauco dan oncom",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -813,6 +907,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Daging dan ikan olahan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -821,6 +916,7 @@
    "column": "dialokasikan",
    "page": 13,
    "text": "Barang dan obat farmasi untuk manusia di apotik",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -829,6 +925,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Makanan lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -837,6 +934,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Alas kaki",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -845,6 +943,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "'B\"rt\"t dan obat farmasi untuk manusia bukan di apotik",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -853,6 +952,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "minuman, tembakau, kimia, farmasi, kosmetik dan alat laboratorium",
+   "parent_heading": null,
    "read_from": "page-image",
    "title_corroborated": true
   },
@@ -861,6 +961,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Perdagangan eceran melalui media untuk komoditi tekstil, pakaian, alas kaki, dan barang keperluan pribadi",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -869,6 +970,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Perdagangan eceran melalui media untuk barang perlengkapan rumah tangga dan perlengkapan dapur",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -877,6 +979,7 @@
    "column": "dialokasikan",
    "page": 14,
    "text": "Hotel Bintang I",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -885,6 +988,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Hotel Melati",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -893,6 +997,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Pondok Wisata",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -901,6 +1006,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Vila",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -909,6 +1015,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Guest House",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -917,6 +1024,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -925,6 +1033,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -933,6 +1042,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Aktivitas keinsinyuran dan konsultansi teknis YBDI yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -941,6 +1051,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "Jasa pengujian laboratorium yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -949,6 +1060,7 @@
    "column": "dialokasikan",
    "page": 15,
    "text": "penyediaan tenaga listrik atau pemanfaatan tenaga listrik: Tenaga listrik tegangan rendah/ menengah",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -957,6 +1069,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Jasa inspeksi teknik instalasi yang menggunakan teknologi sederhana dan madya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -965,6 +1078,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Aktivitas agen perialanan wisata",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -973,6 +1087,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Jasa pramuwisata",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -981,6 +1096,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Aktivitas jasa Foto kopi, penyiapan dokumen dan jasa khusus penuniang kantor lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -989,6 +1105,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "(residential health seruices) dan sarana pelayanan kesehatan dasar",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -997,6 +1114,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Reparasi peralatan: Peralatan rumah tangga dan Peralatan rumah dan kebun",
+   "parent_heading": "Reparasi peralatan",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1005,6 +1123,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Vermak pakaian",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1012,7 +1131,8 @@
    "code": "95299",
    "column": "dialokasikan",
    "page": 16,
-   "text": "Industri reparasi barang rumah tangga dan pribadi lainnya St( No 054256 C",
+   "text": "Industri reparasi barang rumah tangga dan pribadi lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1021,6 +1141,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Pangkas rambut/ barber shop",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1029,6 +1150,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Salon kecantikan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1037,6 +1159,7 @@
    "column": "dialokasikan",
    "page": 16,
    "text": "Penatu",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1045,6 +1168,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Budidaya ayarn ras pedaginC FS)",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1053,6 +1177,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan laut",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1061,6 +1186,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan laut",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1069,6 +1195,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air tawar",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1077,6 +1204,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air tawar",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1085,6 +1213,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air payau",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1093,6 +1222,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Ikan air payau",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1101,6 +1231,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Usaha produksi/ ekstraksi garam",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1109,6 +1240,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "perairan lainnya",
+   "parent_heading": "Usaha pengolahan hasil perikanan (UPI)",
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1117,6 +1249,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Pengasapan ikan dan biota perairan lainnya Peragian/fermentasi ikan dan produk masak lainnya (untuk",
+   "parent_heading": "Usaha pengolahan hasil perikanan (UPI)",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1125,6 +1258,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "Peragian/fermentasi ikan dan produk masak lainnya (untuk usaha ekstraksi dan ielly ikan) Industri berbasis daging lumatan dan surimi",
+   "parent_heading": "Usaha pengolahan hasil perikanan (UPI)",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1133,6 +1267,7 @@
    "column": "kemitraan",
    "page": 17,
    "text": "usaha ekstraksi dan ielly ikan) Industri berbasis daging lumatan dan surimi",
+   "parent_heading": "Usaha pengolahan hasil perikanan (UPI)",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1141,6 +1276,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Pengalengan ikan",
+   "parent_heading": "Usaha pengolahan hasil perikanan (UPI)",
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1149,6 +1285,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri             buah-buahan dan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1157,6 +1294,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri kopra",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1165,6 +1303,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri pengolahan suqu bubuk dan susu kental",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1173,6 +1312,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1181,6 +1321,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "7l     lnQustri kecap",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1189,6 +1330,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "kecgp, tempe dan tahu",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1197,6 +1339,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri kayu gergajian dengan kapasitas produksi sampai {engan kurang dari 2OO0 m3 per tahun",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1205,6 +1348,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "qqle4isnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1213,6 +1357,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri pengollrhan rotan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1221,6 +1366,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri               briket kela",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1229,6 +1375,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri minyak atsiri",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1237,6 +1384,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri alat kesehatan kelas A",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1245,6 +1393,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri batu bata dan tanah      keramik",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1253,6 +1402,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri barang lainnya dari tanah liat/keramik",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1261,6 +1411,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri kapur",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1269,6 +1420,7 @@
    "column": "kemitraan",
    "page": 18,
    "text": "Industri serat sabut kelapa",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1277,6 +1429,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri barang-barang dari semen",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1285,6 +1438,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri barang-barang dari kapur",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1293,6 +1447,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri barang-barang dari semen dan kapur lainnya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1301,6 +1456,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri paku, mur, dan baut",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1309,6 +1465,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri komponen dan suku cadang mesin dan turbin",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1317,6 +1474,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri pompa lainnya, kompressor, kran, dan klep/katup",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1325,6 +1483,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "dan kotak kemudi; suku cadang dan aksesori untuk bodi karoseri kendaraan bermotor, seperti sabuk pengaman, pintu, bamper, airbag; tempat duduk mobil; peralatan listrik kendaraan bermotor, seperti generator, alternator, bus| ignition wiing hnrnesses/ starter, sistem buka tutup pintu dan jendela otomatis, pemasangan argometer ke dalam panel instrumen, penRatur uoltase",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1333,6 +1492,7 @@
    "column": "kemitraan",
    "page": 19,
    "text": "Industri komponen dan perlengkapan kendaraan bermotor roda dua dan tiga",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1341,6 +1501,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Industri peralatan dan perlengkapan kapal kayu untuk wisata bahari dan penangkapan ikan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1349,6 +1510,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Industri permata",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1357,6 +1519,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "dari logam mulia",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1365,6 +1528,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Industri barang perhiasan berharga bukan untuk keperluan pribadi dari losam mulia",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1373,6 +1537,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Industri perhiasan imitasi dan barang seienis",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1381,6 +1546,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Industri kerajinan yang tidak diklasifikasikan di tempat lain",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1389,6 +1555,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Jasa reparasi kapal, perahu dan bangunan terapung",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1397,6 +1564,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Jasa reparasi alat angkutan lainnya, bukan kendaraan bermotor",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1405,6 +1573,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "Industri daur ulang barang-barang bukan logam",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1413,6 +1582,7 @@
    "column": "kemitraan",
    "page": 20,
    "text": "gedung perkantoran gedung industri",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1420,7 +1590,8 @@
    "code": "41013",
    "column": "kemitraan",
    "page": 20,
-   "text": "gedung industri SK tJo 05,1024C",
+   "text": "gedung industri",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1429,6 +1600,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Konstruksi jembatan dan jalan layang yang menggunakan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1437,6 +1609,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "dan ekspor hasil perikanan",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1445,6 +1618,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "ro2.   Aktivitas agen kurir",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1453,6 +1627,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Konsultasi di bidang instalasi tenaga listrik",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1461,6 +1636,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Alat transportasi darat (rental tuithaut operatofl",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1469,6 +1645,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Mesin pertanian dan peralatannya",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1477,6 +1654,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Mesin kantor dan peralatannya Mesin lainnya dan peralatannya yang tidak diklasifikasikan di",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1485,6 +1663,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "tempat lain (pembangkit tenaga listrik, tekstil, pengolahan/ pengerjaan logam/ kayu, percetakan, dan las listrik)",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": false
   },
@@ -1493,6 +1672,7 @@
    "column": "kemitraan",
    "page": 21,
    "text": "Laboratorium kesehatan klinik",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   },
@@ -1501,6 +1681,7 @@
    "column": "dialokasikan",
    "page": 22,
    "text": "Peralatan komunikasi",
+   "parent_heading": null,
    "read_from": "text-layer",
    "title_corroborated": true
   }
