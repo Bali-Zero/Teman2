@@ -27,11 +27,11 @@ app.add_middleware(
 # ── Paths & Environment ────────────────────────────────────────────────────────
 HOME = Path.home()
 ACCOUNTS_JSON = HOME / ".wa-mirror.accounts.json"
-# `~/Desktop/nuzantara` still resolves on the Pro, but only because a compat
-# symlink survives the 2026-07-16 move out of Desktop (W84/TCC). `_lib.sh`, the
-# launcher's own source of truth, says `$HOME/nuzantara/apps/wa-mirror` — two
-# files disagreeing about where wa-mirror lives is how the session-linked column
-# silently reads the wrong tree the day someone tidies the symlink away.
+# This pointed at the pre-2026-07-16 Desktop location, which still resolves on
+# the Pro only because a compat symlink survives that move (W84/TCC). `_lib.sh`,
+# the launcher's own source of truth, says `$HOME/nuzantara/apps/wa-mirror` —
+# two files disagreeing about where wa-mirror lives is how the session-linked
+# column silently reads the wrong tree the day someone tidies the symlink away.
 WA_MIRROR_DIR = Path(
     os.environ.get("WA_MIRROR_DIR") or (HOME / "nuzantara" / "apps" / "wa-mirror")
 )

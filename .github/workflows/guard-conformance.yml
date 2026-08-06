@@ -207,7 +207,9 @@ jobs:
         if: steps.relevant.outputs.run == 'true'
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet fastapi pytest
+          # asyncpg too: api_server.py imports it at module scope, and a dev
+          # machine whose venv happens to carry it cannot reproduce this red.
+          python3 -m pip install --quiet fastapi pytest asyncpg
           python3 -m pytest apps/wa-mirror/scripts/test_api_server_path_confinement.py -q
 
       - name: Sentinel success (no guard surfaces changed)
