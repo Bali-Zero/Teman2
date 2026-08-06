@@ -53,12 +53,12 @@ Index decision must never be substituted for either missing act.
 
 ## Gate state after this execution
 
-| Gate                       | Before                 | After                                                                                    |
-| -------------------------- | ---------------------- | ---------------------------------------------------------------------------------------- |
-| G0 inventory               | PASS                   | PASS                                                                                     |
-| G1 contracts and sources   | BLOCKED                | BLOCKED; two related sources archived and classified, two dispositive PDFs still missing |
-| G2 engine harness          | PASS                   | PASS (unchanged)                                                                         |
-| G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                         |
-| G4 public engine authority | PASS                   | PASS (unchanged)                                                                         |
-| G5 automated suites        | PASS                   | Requires rerun after this docs-only operational record                                   |
-| G6 independent review      | PASS on base candidate | New branch requires independent docs/source-manifest review                              |
+| Gate                       | Before                 | After                                                                                                   |
+| -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| G0 inventory               | PASS                   | PASS                                                                                                    |
+| G1 contracts and sources   | BLOCKED                | BLOCKED; two related sources archived and classified, two dispositive PDFs still missing                |
+| G2 engine harness          | PASS                   | PASS (unchanged)                                                                                        |
+| G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                                        |
+| G4 public engine authority | PASS                   | PASS (unchanged)                                                                                        |
+| G5 automated suites        | PASS                   | Base full suites unchanged; docs-only Prettier, JSON parse, pre-commit and `git diff --check` are green |
+| G6 independent review      | PASS on base candidate | New branch requires independent docs/source-manifest review                                             |
