@@ -210,6 +210,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/nuzantara-drive-sync.filter",
+      "repo": "scripts/nuzantara-drive-sync.filter",
+      "_note": "Promoted 2026-08-08 after a 16h+ Google Drive 'Queries per minute' quota storm (2026-08-07): nuzantara-drive-sync.sh syncs the wa-mirror Baileys session dir (36k+ high-churn pre-key files) to Drive on every run — fixed by excluding apps/wa-mirror/sessions/** in this filter. The filter was previously genuinely HOME-only (no repo twin existed to declare — an entry with no repo side would have been fiction, per superscar #1's own definition of a pair). This entry closes that gap for the filter; nuzantara-drive-sync.sh itself (the script that consumes it) is STILL HOME-only and undeclared — a separate promotion, out of scope here.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/fly-pg-proxy-wrapper.sh",
       "repo": "infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh",
       "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.balizero.wr2.pg-proxy home_fork_target finding). Wrapper fixes a fly CLI v0.4.49 token regression (extracts access_token from config.yml, injects via FLY_ACCESS_TOKEN, validates before binding). Promoted verbatim; canon plist updated to match (ThrottleInterval 10->30).",
