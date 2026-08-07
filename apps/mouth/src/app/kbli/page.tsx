@@ -160,16 +160,29 @@ export default async function KBLIHomePage({
                   <div className="flex justify-center py-1.5 pb-2.5">
                     <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
                   </div>
-                  {/* Screen — awaiting a navigator still (see PR that removed
-                      the <video>): its src pointed at /videos/kbli-demo.mp4,
-                      a path that has never existed in public/ (the real dir is
-                      public/video/, singular), so production served a broken
-                      player with visible controls. A dark panel is the honest
-                      placeholder until a real still lands here. */}
+                  {/* Screen — an editorial still, deliberately NOT a UI mock-up
+                      and NOT a video. What stood here was a <video> whose src
+                      was /videos/kbli-demo.mp4, a path that never existed in
+                      public/ (the real dir is public/video/, singular), so
+                      production served a broken player with visible controls.
+                      The asset is encoded at exactly 812x572 — the 406x286
+                      screen at 2x — so the browser is never left to guess a
+                      crop. No `priority`: the parent column is `hidden lg:flex`,
+                      so on phones this never enters the viewport and the default
+                      lazy loading keeps its ~109KB off a surface that cannot
+                      display it. */}
                   <div
                     className="rounded-[18px] bg-black/60 overflow-hidden"
                     style={{ height: 286 }}
-                  />
+                  >
+                    <Image
+                      src="/images/kbli-navigator-hero.jpg"
+                      alt="Aerial photograph at first light of inland Bali, looking down at the line where one permitted land use ends and another begins: flooded rice terraces on the left, a row of workshops and warehouses on the right, a single road running between them."
+                      width={812}
+                      height={572}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   {/* Home bar */}
                   <div className="flex justify-center pt-2.5 pb-1.5">
                     <div className="w-[60px] h-1 rounded-sm bg-white/[0.08]" />
