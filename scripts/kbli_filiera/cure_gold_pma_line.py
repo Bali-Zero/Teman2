@@ -135,10 +135,19 @@ AUTHORED_SENTENCES = {
             "Since this is fully open to foreign investment, expect a minimum "
             "paid-up capital of IDR 10 billion."
         ),
+        # The paid-up figure here was IDR 10 billion when this sentence was
+        # first authored — inherited unexamined from the clause I was replacing,
+        # and wrong since Permen BKPM 5/2025 (art. 26(10): 2.5 billion). Caught
+        # by `cure_gold_paidup_capital.py` an hour later. The lesson is not the
+        # figure: it is that a cure reads the clause it came for and copies the
+        # one beside it.
         "new": (
             "Foreign shareholding in courier activity is capped at 49%, so an "
             "Indonesian partner holds the majority; expect a minimum paid-up "
-            "capital of IDR 10 billion."
+            "capital of IDR 2.5 billion. Total investment must still exceed IDR "
+            "10 billion per 5-digit KBLI per location — a separate threshold "
+            "from the paid-up minimum (Permen BKPM 5/2025 art. 26(2) and "
+            "art. 26(10))."
         ),
         "why": "cap 49; the sentence made the capital figure follow FROM an openness that is not the case",
     },

@@ -170,8 +170,10 @@ jobs:
               scripts/drive_token_watchdog.py|\
               scripts/tests/test_drive_watchdog_fly_path.py|\
               scripts/tests/test_drive_watchdog_tier_ratchet.py|\
-              apps/zantara-media/zantara_media/alerts.py|\
-              apps/zantara-media/tests/test_alerts_gateway.py|\
+              apps/zantara-media/zantara_media/*|\
+              apps/zantara-media/tests/*|\
+              scripts/tests/test_zantara_media_suite_has_a_runner.py|\
+              .github/workflows/magazine-auto-assets.yml|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
               scripts/tests/test_lint_workflow_errexit_decap.py|\
               scripts/lint_workflow_errexit_decap.py|\
@@ -267,19 +269,29 @@ jobs:
           done
           exit $fail
 
-      - name: garuda alert gateway guilt+innocence (apps/zantara-media)
+      - name: apps/zantara-media suite has a runner (replaces the garuda alert pin)
         if: steps.paths.outputs.relevant == 'true'
-        # Its own step, not the loop above: the loop runs `pytest <path>` from
-        # the repo root and this corpus imports `zantara_media`, which lives
-        # under apps/. Both files ARE sentinel trigger paths, so a PR that
-        # guts either one runs this.
+        # 2026-08-07, GARUDA decommission. This step was born pinning ONE corpus
+        # (test_alerts_gateway.py) because nothing else ran apps/zantara-media's
+        # tests — "which is how the alert path stayed mute for 141 nights". That
+        # module is gone with the pipeline it alerted for.
         #
-        # DECLARED GAP: test_immune_enforcement_trigger_symmetry.py only reads
-        # the loop's `scripts/**.py` entries, so it cannot vouch for this step.
-        # Armed here at birth precisely because nothing else runs
-        # apps/zantara-media's tests — no workflow did, which is how the alert
-        # path stayed mute for 141 nights.
-        run: PYTHONPATH=apps/zantara-media python -m pytest apps/zantara-media/tests/test_alerts_gateway.py -q
+        # Deleting the step outright would have re-opened exactly that hole, so
+        # the first attempt ran the whole suite here. It cannot: THIS job is the
+        # lean deterministic core (see the header) and installs nothing, so the
+        # suite dies at collection on `pydantic`. The only job with the app's
+        # dependencies is magazine-auto-assets.yml — which is where the suite now
+        # runs, over the whole tests/ DIRECTORY rather than three named files.
+        #
+        # That job is not required, this one is. So what runs here is the
+        # dependency-free guard that the runner over there stays a directory:
+        # coverage lives where the environment is, and a required check stops it
+        # narrowing back. Guilt+innocence in the file itself.
+        #
+        # DECLARED GAP (unchanged): test_immune_enforcement_trigger_symmetry.py
+        # only reads the loop's `scripts/**.py` entries, so it cannot vouch for
+        # this step.
+        run: python -m pytest scripts/tests/test_zantara_media_suite_has_a_runner.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'
