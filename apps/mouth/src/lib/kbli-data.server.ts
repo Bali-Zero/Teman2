@@ -14,6 +14,7 @@ import { resolveLicenseType } from "./kbli-derive";
 import { resolvePmaCap } from "./kbli-pma-cap";
 import { perpresCitation } from "./kbli-perpres-locator";
 import { deriveProvenance } from "./kbli-provenance";
+import { riskDispute } from "./kbli-risk-dispute";
 
 // Section names mapping
 const SECTION_NAMES_EN: Record<string, string> = {
@@ -362,6 +363,7 @@ function transformCode(
         }
       : undefined,
     provenance: deriveProvenance(raw),
+    riskDispute: riskDispute(code) ?? undefined,
     tier: goldEntry ? "gold" : "bronze",
     keywords: [],
   };
