@@ -292,6 +292,71 @@ def canonical_for_compare(plist: dict) -> dict:
     return {k: v for k, v in plist.items() if k not in ENV_SPECIFIC_KEYS}
 
 
+# Install-time template placeholder, e.g. `__HOME__`, `__REPO_ROOT__/scripts/x.sh`.
+# A handful of repo canons (com.balizero.drive-intake-drain,
+# com.balizero.dropbox-intake, com.balizero.wr2.ig-metrics-scrape.daily) ship
+# with these tokens INSIDE ProgramArguments — not just EnvironmentVariables,
+# the only place ENV_SPECIFIC_KEYS already excludes — so a correctly-installed
+# live plist (tokens substituted with real paths) diffed byte-for-byte against
+# its own template canon reads as permanently "repo-divergent". Ward-round
+#2026-08-07, repo-divergent-placeholder-template-false-positive.
+_TEMPLATE_PLACEHOLDER_RE = re.compile(r"__[A-Z0-9_]+__")
+
+
+def _mask_templated(canon_value, live_value):
+    """Recursively mask fields whose CANON side is a template placeholder.
+
+    Only the CANON string decides whether a field is templated — if it
+    contains a `__TOKEN__` pattern, BOTH sides are replaced with the same
+    sentinel so the field can never register as a diff, regardless of what
+    the installer actually substituted (this function does not need to know
+    the correct value, only that canon says "this varies at install time").
+
+    Structural shape must still agree for the mask to apply: a placeholder
+    never hides a live value of the wrong type/length (e.g. live missing an
+    argv element, or an extra key live-only) — that stays a real diff, which
+    is exactly how genuine drift keeps getting caught.
+    """
+    if isinstance(canon_value, str):
+        if _TEMPLATE_PLACEHOLDER_RE.search(canon_value):
+            return "<template>", "<template>"
+        return canon_value, live_value
+    if (
+        isinstance(canon_value, list)
+        and isinstance(live_value, list)
+        and len(canon_value) == len(live_value)
+    ):
+        masked_canon, masked_live = [], []
+        for cv, lv in zip(canon_value, live_value):
+            mc, ml = _mask_templated(cv, lv)
+            masked_canon.append(mc)
+            masked_live.append(ml)
+        return masked_canon, masked_live
+    if isinstance(canon_value, dict) and isinstance(live_value, dict):
+        masked_canon, masked_live = {}, {}
+        for k, cv in canon_value.items():
+            if k in live_value:
+                mc, ml = _mask_templated(cv, live_value[k])
+                masked_canon[k] = mc
+                masked_live[k] = ml
+            else:
+                masked_canon[k] = cv  # live missing the key: real diff, preserved
+        for k, lv in live_value.items():
+            if k not in canon_value:
+                masked_live[k] = lv  # live-only key: real diff, preserved
+        return masked_canon, masked_live
+    return canon_value, live_value
+
+
+def plists_equivalent(live_plist: dict, repo_plist: dict) -> bool:
+    """True iff live and repo-canon agree once env-specific keys and
+    install-time template placeholders are both accounted for."""
+    lc = canonical_for_compare(live_plist)
+    cc = canonical_for_compare(repo_plist)
+    masked_canon, masked_live = _mask_templated(cc, lc)
+    return masked_canon == masked_live
+
+
 def name_stamp_age_days(name: str, now: datetime) -> Optional[float]:
     """Age from a YYYYMMDD embedded in the filename, if any."""
     m = _NAME_STAMP_RE.search(name)
@@ -474,7 +539,7 @@ def reconcile(
                 repo_symlinked.append(f.name)
             else:
                 repo_plist = parse_plist(twin)
-                if repo_plist is not None and canonical_for_compare(plist) != canonical_for_compare(repo_plist):
+                if repo_plist is not None and not plists_equivalent(plist, repo_plist):
                     repo_divergent.append({"label": label, "file": f.name})
 
     return {
