@@ -191,6 +191,40 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(() => buildEngineOutcome(response)).toThrow();
   });
 
+  it("curates review-reason copy for a known code, EN and ID", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code = "CALLING_VISA_REVIEW";
+
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    const message = outcome.reviewReasons[0].message;
+    expect(message.en).toMatch(/calling visa/i);
+    expect(message.id).toMatch(/calling visa/i);
+    expect(message.en.toLowerCase()).not.toContain(
+      "no evaluation was submitted",
+    );
+    expect(message.en).not.toContain("Verified reason:");
+  });
+
+  it("falls back to an honest generic sentence for an unmapped review-reason code", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code = "SOME_FUTURE_RULE_CODE";
+
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    const message = outcome.reviewReasons[0].message;
+    expect(message.en).not.toContain("SOME_FUTURE_RULE_CODE");
+    expect(message.en).not.toContain("Verified reason:");
+    expect(message.en.toLowerCase()).not.toContain(
+      "no evaluation was submitted",
+    );
+    expect(message.en.toLowerCase()).toContain("judgment");
+  });
+
   it("maps missing engine facts back to editable interview questions", () => {
     const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"));
     expect(outcome.state).toBe("NEEDS_INPUT");

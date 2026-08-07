@@ -111,6 +111,55 @@ describe("Visa Oracle evaluation HTTP client", () => {
     expect(duplicateJsonFetch).toHaveBeenCalledOnce();
   });
 
+  it("carries the raw decision.state/outage on a malformed response that still names a real state", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    const raw = JSON.parse(JSON.stringify(response)) as Record<string, unknown>;
+    // Break strict parsing on an unrelated field (a non-boolean authority
+    // flag) while `decision.state`/`decision.outage` stay perfectly legible
+    // — this must not be reported as "we don't know what the server did".
+    (raw.sources as Array<Record<string, unknown>>)[0].is_primary_authority =
+      null;
+    const fetchImpl = vi.fn(async () => jsonResponse(raw));
+
+    await expect(
+      evaluateVisaOracle({
+        request: REQUEST,
+        idempotencyKey: IDEMPOTENCY_KEY,
+        fetchImpl,
+        maxRetries: 0,
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        code: "MALFORMED_RESPONSE",
+        knownDecisionState: "HUMAN_REVIEW_REQUIRED",
+        knownOutageIsNull: true,
+      }),
+    );
+  });
+
+  it("leaves knownDecisionState unset when the payload never names a readable state", async () => {
+    const duplicateJsonFetch = vi.fn(
+      async () =>
+        new Response('{"mode":"ENGINE","mode":"CURATED"}', {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    await expect(
+      evaluateVisaOracle({
+        request: REQUEST,
+        idempotencyKey: IDEMPOTENCY_KEY,
+        fetchImpl: duplicateJsonFetch,
+        maxRetries: 0,
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        code: "MALFORMED_RESPONSE",
+        knownDecisionState: undefined,
+      }),
+    );
+  });
+
   it("classifies an elapsed request deadline as a timeout", async () => {
     const fetchImpl = vi.fn<typeof fetch>(
       async (_input, init) =>

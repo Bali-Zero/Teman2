@@ -29,6 +29,7 @@ import { VisaOracleResponseError } from "../_lib/engine-response";
 import { buildPreviewOutcome } from "../_lib/preview-adapter";
 import {
   buildClientGuardOutcome,
+  buildDegradedHumanReviewOutcome,
   buildNetworkFailureOutcome,
   buildShadowOutcome,
 } from "../_lib/outcome-fallbacks";
@@ -50,6 +51,7 @@ import {
 } from "../_lib/runtime-mode";
 import { shadowParityMatches } from "../_lib/shadow-parity";
 import type { OutcomeViewModel } from "../_lib/outcome-view-model";
+import type { VisaOracleEvaluateResponse } from "../_lib/visa-oracle-contract";
 import { LivingTree } from "./LivingTree";
 import { PathsCounter } from "./PathsCounter";
 import { QuestionScreen } from "./QuestionScreen";
@@ -158,10 +160,39 @@ interface OracleShellRuntimeProps {
   initialResumeExpiresAtIso: string | null;
 }
 
+/**
+ * The server unambiguously asserted `decision.state: "HUMAN_REVIEW_REQUIRED"`
+ * with `outage: null` — either because we hold the fully validated response
+ * (an adapter-level invariant rejected some other field) or because a
+ * best-effort peek of the raw payload read it directly (strict parsing
+ * rejected the payload before we could fully trust it). Either way, an
+ * evaluation genuinely happened and must never be reported as "no
+ * evaluation was submitted".
+ */
+function isKnownHumanReviewDecision(
+  knownDecision: { state: string; outageIsNull: boolean } | undefined,
+): boolean {
+  return (
+    knownDecision?.state === "HUMAN_REVIEW_REQUIRED" &&
+    knownDecision.outageIsNull === true
+  );
+}
+
 function fallbackForError(
   error: unknown,
   assumptions: OutcomeViewModel["assumptions"],
+  knownDecision?: { state: string; outageIsNull: boolean },
 ): OutcomeViewModel {
+  const resolvedKnownDecision =
+    knownDecision ??
+    (error instanceof VisaOracleClientError && error.knownDecisionState
+      ? {
+          state: error.knownDecisionState,
+          outageIsNull: error.knownOutageIsNull === true,
+        }
+      : undefined);
+  const degradedHumanReview = isKnownHumanReviewDecision(resolvedKnownDecision);
+
   if (error instanceof VisaOracleClientError) {
     const clientGuard =
       error.code === "INVALID_REQUEST" ||
@@ -172,6 +203,9 @@ function fallbackForError(
         error.status < 500 &&
         !isVisaOracleRetryableHttpStatus(error.status));
     if (clientGuard) {
+      if (degradedHumanReview) {
+        return buildDegradedHumanReviewOutcome({ assumptions });
+      }
       return buildClientGuardOutcome({
         code:
           error.code === "HTTP_ERROR"
@@ -187,6 +221,9 @@ function fallbackForError(
     });
   }
   if (error instanceof VisaOracleResponseError) {
+    if (degradedHumanReview) {
+      return buildDegradedHumanReviewOutcome({ assumptions });
+    }
     return buildClientGuardOutcome({ code: error.code, assumptions });
   }
   return buildClientGuardOutcome({
@@ -477,8 +514,14 @@ function OracleShellRuntime({
         const lease = evaluationCacheRef.current.acquire(
           cacheKey,
           async (requestSignal) => {
+            // Hoisted so the catch block below can read the already-validated
+            // decision.state/outage when a LATER step (buildEngineOutcome)
+            // throws — needed to tell "no evaluation was submitted" apart
+            // from "an evaluation was submitted and flagged for human
+            // review, but we couldn't render every detail safely".
+            let response: VisaOracleEvaluateResponse | undefined;
             try {
-              const response = await evaluateVisaOracle({
+              response = await evaluateVisaOracle({
                 request: prepared.request,
                 idempotencyKey: prepared.identity.idempotencyKey,
                 signal: requestSignal,
@@ -523,7 +566,18 @@ function OracleShellRuntime({
                   assumptions,
                 });
               }
-              const fallback = fallbackForError(error, assumptions);
+              const knownDecision =
+                response !== undefined
+                  ? {
+                      state: response.decision.state,
+                      outageIsNull: response.decision.outage === null,
+                    }
+                  : undefined;
+              const fallback = fallbackForError(
+                error,
+                assumptions,
+                knownDecision,
+              );
               telemetryForFallback(fallback, telemetryCorrelationHash);
               return fallback;
             }
