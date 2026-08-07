@@ -567,7 +567,8 @@
     {
       "live": "~/Library/LaunchAgents/com.balizero.zoho-mail-loop.daily.plist",
       "repo": "infra/launchagents/com.balizero.zoho-mail-loop.daily.plist",
-      "machines": ["all"]
+      "machines": ["pro"],
+      "_note": "Pro-only singleton by design, not fleet redundancy: scripts/zoho-mail-loop.sh hardcodes ORGAN_ID=\"pro.zoho_mail_loop\", and its single-instance lock (/tmp/zoho-mail-loop.lock) is per-machine only — a second copy on Mini would not be blocked by that lock and would draft/move against the SAME live Zoho mailbox concurrently (scar family #10, active-active split-brain). `machines: [\"all\"]` was a declaration mismatch, not a deployment: the plist has never actually been installed on Mini (lint_home_fork.py --check reports it absent there, not drifted) — corrected before any tick reads the absence as something to realign."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/_lib.sh",
