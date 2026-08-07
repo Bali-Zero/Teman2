@@ -132,6 +132,7 @@ jobs:
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
               infra/launchagents/wrappers/cron-agent.sh|\
               scripts/tests/test_cron_agent_oauth_cascade.sh|\
+              scripts/tests/test_cron_agent_alert_verdict.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
@@ -475,6 +476,20 @@ jobs:
           # half runs the wrapper in a fake world (W107) so "did not rotate" is
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
+      - name: Cron-agent alert verdict corpus (a lost alert must not buy silence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # send_telegram() discarded both channels of the notification gateway
+          # (`>/dev/null 2>&1 || true`) and then armed its 30-minute cooldown
+          # unconditionally. tg_notify.py ends in six ways and only ONE of them
+          # reached Telegram, so a merely-spooled alert also silenced its own
+          # successor and left no record of which of the six had happened.
+          # The exit code cannot carry the verdict — main() returns 0 even from
+          # its "NEVER fail the caller" except branch — so this pins that the
+          # STATUS WORD is judged (W104), read as an entity and not a substring
+          # (`p0_unsent_spooled` is one prefix away from a false "sent").
+          bash scripts/tests/test_cron_agent_alert_verdict.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
