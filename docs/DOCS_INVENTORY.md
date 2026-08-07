@@ -88,12 +88,12 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/X_PREMIUM_BLITZ_BATTLE_PLAN.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
 | docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md | LIVE | 2026-05-06 | 2026-08-04 | — | 1 | 0 | no | — | — |
 | docs/ai/AI_HANDOVER_PROTOCOL.md | LIVE | 2026-04-25 | 2026-07-24 | — | 2 | 0 | no | — | — |
-| docs/ai/GEMINI.md | LIVE | 2026-03-31 | 2026-06-29 | — | 4 | 0 | no | — | — |
+| docs/ai/GEMINI.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
 | docs/analysis/nlm-sacred-integration/SESSION_REPORT.md | LIVE | 2026-04-21 | 2026-07-20 | — | 0 | 0 | no | — | — |
 | docs/architecture/CHAIN_ONBOARDING_IMPROVEMENTS.md | LIVE | 2026-03-10 | 2026-06-08 | — | 1 | 0 | no | — | — |
 | docs/architecture/KG_LANGGRAPH_FIX_SUMMARY.md | LIVE | 2026-03-10 | 2026-06-08 | — | 2 | 0 | no | — | — |
 | docs/architecture/LOCAL_NODE_PROTOCOL.md | LIVE | 2026-02-01 | 2026-05-02 | — | 1 | 0 | no | — | — |
-| docs/architecture/OMNICHANNEL_STRATEGY.md | LIVE | 2026-01-19 | 2026-04-19 | — | 1 | 0 | no | — | — |
+| docs/architecture/OMNICHANNEL_STRATEGY.md | LIVE | 2026-01-19 | 2026-04-19 | — | 2 | 0 | no | — | — |
 | docs/architecture/SYSTEM_MAP_LIVE.md | LIVE | 2026-03-10 | 2026-06-08 | — | 2 | 0 | no | — | — |
 | docs/archive/2026-04-orphans/AGENT_TEST_LLM.md | ARCHIVED | — | — | — | 0 | 0 | no | — | — |
 | docs/archive/2026-04-orphans/DEBUG_FINDINGS.md | ARCHIVED | — | — | — | 0 | 0 | no | — | — |
@@ -366,54 +366,54 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/audits/2026-04-29-zero-crash-audit/_codex_iteration_2.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
 | docs/audits/2026-04-29-zero-crash-audit/_codex_iteration_3_final.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
 | docs/audits/2026-04-29-zero-crash-audit/p0-5-httpx-audit-report.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
-| docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/README.md | LIVE | 2026-04-29 | 2026-07-28 | — | 10 | 0 | no | — | — |
+| docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/README.md | LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S1.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S2.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S3.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S4-final.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S4.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
-| docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/00_README.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/00_README.md | LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/wave2-team-air.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/wave2-team-pro.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
-| docs/audits/2026-04-29-zero-crash-audit/prompts/wave3/00_README.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-04-29-zero-crash-audit/prompts/wave3/00_README.md | LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/audits/2026-04-29-zero-crash-audit/prompts/wave3/wave3-team-pro.md | LIVE | 2026-04-29 | 2026-07-28 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/00_briefing.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/00b_briefing_v2.md | ARCHIVED | 2026-05-02 | 2026-07-31 | 2026-08-01 | 0 | 0 | no | — | archive: orphan, last_touched=2026-05-02, refs=0 |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/01_codex_gpt55_response.md | LIVE | 2026-05-02 | 2026-07-31 | — | 0 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/01_codex_gpt55_response.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/01b_codex_round2.md | LIVE | 2026-05-02 | 2026-07-31 | — | 2 | 0 | no | — | — |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/02_gemini_response.md | LIVE | 2026-05-02 | 2026-07-31 | — | 0 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/02_gemini_response.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/02b_gemini_round2.md | ARCHIVED | 2026-05-02 | 2026-07-31 | 2026-08-01 | 0 | 0 | no | — | archive: orphan, last_touched=2026-05-02, refs=0 |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/03_deepseek_response.md | LIVE | 2026-05-02 | 2026-07-31 | — | 0 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/03_deepseek_response.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/03b_deepseek_round2.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/04_automation_inventory_complete.md | LIVE | 2026-05-02 | 2026-07-31 | — | 3 | 0 | no | — | — |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/05_cell_architecture_complete.md | LIVE | 2026-05-02 | 2026-07-31 | — | 2 | 0 | no | — | — |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/06_openclaw_ecosystem_audit.md | LIVE | 2026-05-02 | 2026-07-31 | — | 5 | 0 | no | — | — |
-| docs/audits/2026-05-02-cell-openclaw-brainstorm/07_openclaw_deep_research.md | LIVE | 2026-05-02 | 2026-07-31 | — | 2 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/04_automation_inventory_complete.md | LIVE | 2026-05-02 | 2026-07-31 | — | 4 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/05_cell_architecture_complete.md | LIVE | 2026-05-02 | 2026-07-31 | — | 3 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/06_openclaw_ecosystem_audit.md | LIVE | 2026-05-02 | 2026-07-31 | — | 6 | 0 | no | — | — |
+| docs/audits/2026-05-02-cell-openclaw-brainstorm/07_openclaw_deep_research.md | LIVE | 2026-05-02 | 2026-07-31 | — | 3 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/99_synthesis.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-02-cell-openclaw-brainstorm/99b_synthesis_v2.md | LIVE | 2026-05-02 | 2026-07-31 | — | 14 | 0 | no | — | — |
 | docs/audits/2026-05-05-phase-1-5-spike/DECISION.md | LIVE | 2026-05-07 | 2026-08-05 | — | 0 | 0 | no | — | — |
-| docs/audits/2026-05-05-phase-1-5-spike/README.md | LIVE | 2026-05-07 | 2026-08-05 | — | 11 | 0 | no | — | — |
+| docs/audits/2026-05-05-phase-1-5-spike/README.md | LIVE | 2026-05-07 | 2026-08-05 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/audits/2026-05-05-phase-1-5-spike/nlm_callsite_map.md | LIVE | 2026-05-07 | 2026-08-05 | — | 2 | 0 | no | — | — |
-| docs/audits/2026-05-12-phase3-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-05-12-phase3-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-phase3-spec-brainstorm/01_claude_self_critique.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-phase3-spec-brainstorm/02_gemini_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-phase3-spec-brainstorm/03_deepseek_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-phase3-spec-brainstorm/04_nb1_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-12-phase3-spec-brainstorm/04_nb1_review_meta.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
 | docs/audits/2026-05-12-phase3-spec-brainstorm/05_synthesis.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
-| docs/audits/2026-05-12-ticket-a1-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-05-12-ticket-a1-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-ticket-a1-spec-brainstorm/01_claude_self_critique.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-ticket-a1-spec-brainstorm/02_gemini_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-ticket-a1-spec-brainstorm/03_deepseek_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
-| docs/audits/2026-05-12-ticket-a1-spec-brainstorm/04_nb1_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-05-12-ticket-a1-spec-brainstorm/04_nb1_review.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-12-ticket-a1-spec-brainstorm/05_synthesis.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
-| docs/audits/2026-05-13-ticket-a2-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-05-13-ticket-a2-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-a2-spec-brainstorm/01_claude.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-a2-spec-brainstorm/02_gemini.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-a2-spec-brainstorm/03_deepseek.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-a2-spec-brainstorm/04_nb1.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-a2-spec-brainstorm/05_synthesis.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
-| docs/audits/2026-05-13-ticket-b-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 1 | 0 | no | — | — |
+| docs/audits/2026-05-13-ticket-b-spec-brainstorm/00_briefing.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-b-spec-brainstorm/01_claude.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-b-spec-brainstorm/02_gemini.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
 | docs/audits/2026-05-13-ticket-b-spec-brainstorm/03_deepseek.md | LIVE | 2026-05-12 | 2026-08-10 | — | 0 | 0 | no | — | — |
@@ -445,17 +445,17 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/automations/runtime-ownership.md | LIVE | 2026-05-02 | 2026-07-31 | — | 1 | 0 | no | — | — |
 | docs/automations/runtime-register.md | LIVE | 2026-05-02 | 2026-07-31 | — | 2 | 0 | no | — | — |
 | docs/brainstorms/2026-04-26-oss-injections/00_SYNTHESIS.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/01_instructor_deepseek.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/01_instructor_gemini.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/02_openllmetry_deepseek.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/02_openllmetry_gemini.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/03_atlas_deepseek.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/03_atlas_gemini.md | LIVE | 2026-04-26 | 2026-07-25 | — | 1 | 0 | no | — | — |
-| docs/brainstorms/2026-04-26-oss-injections/README.md | LIVE | 2026-04-26 | 2026-07-25 | — | 11 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/01_instructor_deepseek.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/01_instructor_gemini.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/02_openllmetry_deepseek.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/02_openllmetry_gemini.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/03_atlas_deepseek.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/03_atlas_gemini.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
+| docs/brainstorms/2026-04-26-oss-injections/README.md | LIVE | 2026-04-26 | 2026-07-25 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/brainstorms/2026-04-26-oss-injections/_initial_report.md | LIVE | 2026-04-26 | 2026-07-25 | — | 2 | 0 | no | — | — |
 | docs/briefs/2026-02-06-openapi-type-safety-brief.md | ARCHIVED | 2026-04-24 | 2026-07-23 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-24, refs=0 |
 | docs/caching/GEMINI_BATCH_GUIDE.md | LIVE | 2026-02-17 | 2026-05-18 | — | 1 | 0 | no | — | — |
-| docs/caching/README.md | LIVE | 2026-02-17 | 2026-05-18 | — | 11 | 0 | no | — | — |
+| docs/caching/README.md | LIVE | 2026-02-17 | 2026-05-18 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/caching/WORKFLOW_GUIDE.md | LIVE | 2026-02-17 | 2026-05-18 | — | 2 | 0 | no | — | — |
 | docs/cell-core/admission-test-rubric.md | LIVE | 2026-05-02 | 2026-07-31 | — | 2 | 0 | no | — | — |
 | docs/cell-core/cognitive-levels-matrix.md | LIVE | 2026-05-08 | 2026-08-06 | — | 3 | 0 | no | — | — |
@@ -463,38 +463,38 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/cell-core/observed-shell-tier.md | LIVE | 2026-05-02 | 2026-07-31 | — | 2 | 0 | no | — | — |
 | docs/client_briefs/2026-01-27_fausti_bank_statement.md | LIVE | 2026-01-27 | 2026-04-27 | — | 1 | 0 | no | — | — |
 | docs/codex/CODEX_SPALLA.md | LIVE | 2026-05-03 | 2026-08-01 | — | 1 | 0 | no | — | — |
-| docs/connectome/README.md | LIVE | 2026-07-16 | 2026-10-14 | — | 11 | 0 | no | — | — |
+| docs/connectome/README.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/cowork-integration.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | — |
 | docs/crm/2026-05-10-bali-zero-drive-map.md | LIVE | 2026-05-10 | 2026-08-08 | — | 0 | 0 | no | — | — |
 | docs/crm/2026-05-10-tax-company-pilot-plan.md | LIVE | 2026-05-10 | 2026-08-08 | — | 0 | 0 | no | — | — |
 | docs/crm/action-items-2026-04-20-errors.md | ARCHIVED | 2026-04-20 | 2026-07-19 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-20, refs=0 |
 | docs/crm/assignment-mismatches-2026-04-20.md | LIVE | 2026-04-20 | 2026-07-19 | — | 1 | 0 | no | — | — |
-| docs/crm/reports-2026-04-20/README.md | LIVE | 2026-04-20 | 2026-07-19 | — | 11 | 0 | no | — | — |
+| docs/crm/reports-2026-04-20/README.md | LIVE | 2026-04-20 | 2026-07-19 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/cro/2026-04-19-4-app-engagement-conversion.md | LIVE | 2026-04-19 | 2026-07-18 | — | 2 | 0 | no | — | — |
 | docs/cro/2026-04-19-funnel-audit.md | LIVE | 2026-04-19 | 2026-07-18 | — | 6 | 0 | no | — | — |
-| docs/database/postgresql/README.md | LIVE | 2026-03-10 | 2026-06-08 | — | 11 | 0 | no | — | — |
+| docs/database/postgresql/README.md | LIVE | 2026-03-10 | 2026-06-08 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/decisions/2026-05-03-codex-spalla-architecture.md | LIVE | 2026-05-03 | 2026-08-01 | — | 2 | 0 | no | — | — |
 | docs/design/2026-07-19-garuda-os-unified-surfaces/EXECUTION-WORKFLOW.md | LIVE | 2026-07-20 | 2026-10-18 | — | 0 | 0 | no | — | — |
 | docs/design/2026-07-19-garuda-os-unified-surfaces/PLAN.md | LIVE | 2026-07-19 | 2026-10-17 | — | 1 | 0 | no | — | — |
 | docs/design/components-catalog.md | LIVE | 2026-07-22 | 2026-10-20 | — | 0 | 0 | no | — | — |
 | docs/design-palettes/SESSION-SUMMARY.md | ARCHIVED | 2026-04-12 | 2026-07-11 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-12, refs=0 |
-| docs/design-palettes/funnels/research/tax-MASTER-design.md | LIVE | 2026-04-12 | 2026-07-11 | — | 0 | 0 | no | — | — |
-| docs/design-palettes/funnels/research/tax-codex-brainstorm.md | LIVE | 2026-04-12 | 2026-07-11 | — | 0 | 0 | no | — | — |
-| docs/design-palettes/funnels/research/tax-deepseek-brainstorm.md | LIVE | 2026-04-12 | 2026-07-11 | — | 0 | 0 | no | — | — |
-| docs/design-palettes/funnels/research/tax-gemini-brainstorm.md | LIVE | 2026-04-12 | 2026-07-11 | — | 0 | 0 | no | — | — |
-| docs/design-palettes/funnels/research/tax-web-research.md | LIVE | 2026-04-12 | 2026-07-11 | — | 0 | 0 | no | — | — |
+| docs/design-palettes/funnels/research/tax-MASTER-design.md | LIVE | 2026-04-12 | 2026-07-11 | — | 1 | 0 | no | — | — |
+| docs/design-palettes/funnels/research/tax-codex-brainstorm.md | LIVE | 2026-04-12 | 2026-07-11 | — | 1 | 0 | no | — | — |
+| docs/design-palettes/funnels/research/tax-deepseek-brainstorm.md | LIVE | 2026-04-12 | 2026-07-11 | — | 1 | 0 | no | — | — |
+| docs/design-palettes/funnels/research/tax-gemini-brainstorm.md | LIVE | 2026-04-12 | 2026-07-11 | — | 1 | 0 | no | — | — |
+| docs/design-palettes/funnels/research/tax-web-research.md | LIVE | 2026-04-12 | 2026-07-11 | — | 1 | 0 | no | — | — |
 | docs/design-palettes/research/MASTER-synthesis.md | LIVE | 2026-04-12 | 2026-07-11 | — | 2 | 0 | no | — | — |
 | docs/design-palettes/research/ORIGINAL-color-inventory.md | LIVE | 2026-04-12 | 2026-07-11 | — | 2 | 0 | no | — | — |
-| docs/design-palettes/research/claude-exa-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 1 | 0 | no | — | — |
-| docs/design-palettes/research/codex-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 1 | 0 | no | — | — |
-| docs/design-palettes/research/deepseek-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 1 | 0 | no | — | — |
-| docs/design-palettes/research/gemini-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 1 | 0 | no | — | — |
+| docs/design-palettes/research/claude-exa-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 2 | 0 | no | — | — |
+| docs/design-palettes/research/codex-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 2 | 0 | no | — | — |
+| docs/design-palettes/research/deepseek-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 2 | 0 | no | — | — |
+| docs/design-palettes/research/gemini-futuristic-dark-ui.md | LIVE | 2026-04-13 | 2026-07-12 | — | 2 | 0 | no | — | — |
 | docs/features/DASHBOARD_INTEGRATION_NOTES.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/features/KBLI_NOTEBOOK_EXPLORER.md | LIVE | 2026-03-22 | 2026-06-20 | — | 1 | 0 | no | — | — |
 | docs/graphrag-rrf-weight-decision.md | LIVE | 2026-04-17 | 2026-07-16 | — | 2 | 0 | no | — | — |
 | docs/graphrag-v2-completion-2026-04-17.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
 | docs/graphrag-v2-ctx-header-pass-2026-04-18.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
-| docs/infra/launchagents/nuz-sync/README.md | LIVE | 2026-07-16 | 2026-10-14 | — | 11 | 0 | no | — | — |
+| docs/infra/launchagents/nuz-sync/README.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/innervation-2026-04-29/00_design_intent.md | LIVE | 2026-04-29 | 2026-07-28 | — | 2 | 0 | no | — | — |
 | docs/innervation-2026-04-29/01_innervation_matrix.md | LIVE | 2026-04-29 | 2026-07-28 | — | 3 | 0 | no | — | — |
 | docs/innervation-2026-04-29/02_dispatch_resilience_log.md | LIVE | 2026-04-29 | 2026-07-28 | — | 5 | 0 | no | — | — |
@@ -520,7 +520,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/mata-garuda/30-AUTONOMY-LEVELS.md | LIVE | 2026-04-09 | 2026-07-08 | — | 2 | 0 | no | — | — |
 | docs/mata-garuda/40-EXTERNAL-TOOLS.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
 | docs/mata-garuda/40a-CIVIC-STACK-EVAL.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
-| docs/mata-garuda/40b-AGENT-TAXONOMY.md | LIVE | 2026-04-09 | 2026-07-08 | — | 4 | 0 | no | — | — |
+| docs/mata-garuda/40b-AGENT-TAXONOMY.md | LIVE | 2026-04-09 | 2026-07-08 | — | 5 | 0 | no | — | — |
 | docs/mata-garuda/40c-AUTOAGENT-EVAL.md | LIVE | 2026-04-09 | 2026-07-08 | — | 5 | 0 | no | — | — |
 | docs/mata-garuda/40d-AUTOAGENT-PATTERNS.md | LIVE | 2026-04-09 | 2026-07-08 | — | 4 | 0 | no | — | — |
 | docs/mata-garuda/41-RESEARCH-LOG.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
@@ -528,13 +528,13 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/mata-garuda/51-EXISTING-INVENTORY.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
 | docs/mata-garuda/90-SESSIONS.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
 | docs/mata-garuda/bridge-wr2-schema.md | ARCHIVED | 2026-04-19 | 2026-07-18 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-19, refs=0 |
-| docs/mata-garuda/poc/README.md | LIVE | 2026-04-09 | 2026-07-08 | — | 12 | 0 | no | — | — |
+| docs/mata-garuda/poc/README.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
 | docs/mata-garuda/poc/dummy_agent_GENOME.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
 | docs/nb-lifecycle/round1-19-ambiguous-decisions-2026-05-07.md | LIVE | 2026-05-07 | 2026-08-05 | — | 2 | 0 | no | — | — |
 | docs/nlm-sources/KBLI_2025_VIDEO_SOURCE.md | LIVE | 2026-03-31 | 2026-06-29 | — | 2 | 0 | no | — | — |
 | docs/nlm-sources/POST_PRODUCTION_CHECKLIST.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
 | docs/nlm-sources/PRO_EXECUTION_INSTRUCTIONS.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
-| docs/observability/README.md | LIVE | 2026-04-17 | 2026-07-16 | — | 11 | 0 | no | — | — |
+| docs/observability/README.md | LIVE | 2026-04-17 | 2026-07-16 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/operations/2026-08-07-fr-ru-translation-freshness-decision.md | LIVE | 2026-08-07 | 2026-11-05 | — | 0 | 0 | no | — | — |
 | docs/operations/2026-08-07-nuzantara-repo-sync-doctrine-conflict.md | LIVE | 2026-08-07 | 2026-11-05 | — | 0 | 0 | no | — | — |
 | docs/operations/AGENT_ARSENAL.md | LIVE | 2026-01-25 | 2026-04-25 | — | 1 | 0 | no | — | — |
@@ -553,7 +553,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/operations/cron-canonical-2026-05-20.md | LIVE | 2026-05-19 | 2026-08-17 | — | 0 | 0 | no | — | — |
 | docs/operations/docs-guardian-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/operations/docs-history-analyzer-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | — |
-| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-06 | 2026-11-04 | — | 1 | 0 | no | — | — |
+| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/operations/nb-mitochondrial-monitor.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
 | docs/operations/wa-mirror-email-manifest-runbook.md | LIVE | 2026-05-26 | 2026-08-24 | — | 0 | 0 | no | — | — |
 | docs/ops/2026-04-30-followup-cell-cron-sensor.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
@@ -575,7 +575,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/plans/2026-04-19-4apps/02-kbli-check.md | LIVE | 2026-04-19 | 2026-07-18 | — | 1 | 0 | no | — | — |
 | docs/plans/2026-04-19-4apps/03-tax-gap.md | LIVE | 2026-04-19 | 2026-07-18 | — | 1 | 0 | no | — | — |
 | docs/plans/2026-04-19-4apps/04-zoning-check.md | LIVE | 2026-04-19 | 2026-07-18 | — | 1 | 0 | no | — | — |
-| docs/plans/2026-04-19-4apps/README.md | LIVE | 2026-04-19 | 2026-07-18 | — | 11 | 0 | no | — | — |
+| docs/plans/2026-04-19-4apps/README.md | LIVE | 2026-04-19 | 2026-07-18 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/plans/2026-06-15-team-photos-ssot.md | LIVE | 2026-06-15 | 2026-09-13 | — | 0 | 0 | no | — | — |
 | docs/plans/2026-07-17-visa-oracle-v2/00-product-design.md | LIVE | 2026-07-17 | 2026-10-15 | — | 1 | 0 | no | — | — |
 | docs/plans/2026-07-17-visa-oracle-v2/track-c-experience-spec.md | LIVE | 2026-07-17 | 2026-10-15 | — | 0 | 0 | no | — | — |
@@ -602,7 +602,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/research/voice-concierge-open-source-plan-2026-06-17.md | LIVE | 2026-06-17 | 2026-09-15 | — | 0 | 0 | no | — | — |
 | docs/runbooks/2026-05-20-wr2-zombie-fix.md | LIVE | 2026-05-28 | 2026-08-26 | — | 1 | 0 | no | — | — |
 | docs/runbooks/2026-06-03-residual-ops-hub.md | LIVE | 2026-06-03 | 2026-09-01 | — | 1 | 0 | no | — | — |
-| docs/runbooks/README.md | LIVE | 2026-08-07 | 2026-11-05 | — | 11 | 0 | no | — | — |
+| docs/runbooks/README.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/runbooks/agent-worktree-broker.md | LIVE | 2026-07-16 | 2026-10-14 | — | 4 | 0 | no | — | — |
 | docs/runbooks/arsenal-probe.md | LIVE | 2026-08-05 | 2026-11-03 | — | 2 | 0 | no | — | — |
 | docs/runbooks/auth-sentinel.md | LIVE | 2026-07-12 | 2026-10-10 | — | 1 | 0 | no | — | — |
@@ -760,33 +760,33 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/superpowers/prompts/domain-mesh/05-phase6-bali-macro.md | LIVE | 2026-05-08 | 2026-08-06 | — | 2 | 0 | no | — | — |
 | docs/superpowers/prompts/domain-mesh/06-phase7-nexus-osint.md | LIVE | 2026-05-08 | 2026-08-06 | — | 2 | 0 | no | — | — |
 | docs/superpowers/prompts/domain-mesh/07-phase8-cross-domain-federation.md | LIVE | 2026-05-08 | 2026-08-06 | — | 1 | 0 | no | — | — |
-| docs/superpowers/prompts/domain-mesh/README.md | LIVE | 2026-05-08 | 2026-08-06 | — | 11 | 0 | no | — | — |
+| docs/superpowers/prompts/domain-mesh/README.md | LIVE | 2026-05-08 | 2026-08-06 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/superpowers/reviews/2026-04-21-partners-v1/01-gemini.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-04-21-partners-v1/02-codex.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-04-21-partners-v1/03-deepseek.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
-| docs/superpowers/reviews/2026-04-21-partners-v1/04-nb2.md | LIVE | 2026-04-21 | 2026-07-20 | — | 3 | 0 | no | — | — |
+| docs/superpowers/reviews/2026-04-21-partners-v1/04-nb2.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-04-21-partners-v1/99-synthesis.md | LIVE | 2026-04-21 | 2026-07-20 | — | 3 | 0 | no | — | — |
-| docs/superpowers/reviews/2026-04-21-partners-v1/ASYA-withholding-rates-runbook.md | LIVE | 2026-04-21 | 2026-07-20 | — | 0 | 0 | no | — | — |
+| docs/superpowers/reviews/2026-04-21-partners-v1/ASYA-withholding-rates-runbook.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-04-21-partners-v1/POST-MERGE-deploy-runbook.md | ARCHIVED | 2026-04-21 | 2026-07-20 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-21, refs=0 |
 | docs/superpowers/reviews/2026-04-21-partners-v1/v1.1-backlog.md | ARCHIVED | 2026-04-21 | 2026-07-20 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-21, refs=0 |
-| docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/00-review-brief.md | LIVE | 2026-07-25 | 2026-10-23 | — | 6 | 0 | no | — | — |
+| docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/00-review-brief.md | LIVE | 2026-07-25 | 2026-10-23 | — | 0 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/01-fable-5-architecture-judge.md | LIVE | 2026-07-25 | 2026-10-23 | — | 2 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/02-gemini-3.1-pro-constructive.md | LIVE | 2026-07-25 | 2026-10-23 | — | 2 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/03-glm-5.2-adversarial.md | LIVE | 2026-07-25 | 2026-10-23 | — | 4 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/04-fable-5-revised-gate.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/05-fable-5-final-amendment-gate.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/06-fable-5-formatted-spec-integrity-gate.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
-| docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/99-synthesis.md | LIVE | 2026-07-25 | 2026-10-23 | — | 3 | 0 | no | — | — |
-| docs/superpowers/reviews/2026-07-17-modular-worker-plane-implementation-plan/00-review-brief.md | LIVE | 2026-07-25 | 2026-10-23 | — | 6 | 0 | no | — | — |
+| docs/superpowers/reviews/2026-07-17-backend-modular-kernel-worker-plane/99-synthesis.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
+| docs/superpowers/reviews/2026-07-17-modular-worker-plane-implementation-plan/00-review-brief.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
 | docs/superpowers/reviews/2026-07-17-modular-worker-plane-implementation-plan/2026-07-23-current-system-refresh.md | LIVE | 2026-07-26 | 2026-10-24 | — | 1 | 0 | no | — | — |
 | docs/superpowers/sessions/2026-04-12-symbiosis-genome-session.md | ARCHIVED | 2026-04-13 | 2026-07-12 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-13, refs=0 |
 | docs/superpowers/sessions/2026-04-17-strategic-8/2026-04-17-v2-team-ops-draft-pr.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
 | docs/superpowers/sessions/2026-04-17-strategic-8/2026-04-17-v2-team-ops-lighthouse-deferred.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
-| docs/superpowers/sessions/2026-04-17-strategic-8/DOCKER-CLAUDE-CLI.md | LIVE | 2026-04-17 | 2026-07-16 | — | 0 | 0 | no | — | — |
+| docs/superpowers/sessions/2026-04-17-strategic-8/DOCKER-CLAUDE-CLI.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
 | docs/superpowers/sessions/2026-04-17-strategic-8/MERGE-STRATEGY.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
 | docs/superpowers/sessions/2026-04-17-strategic-8/OAUTH-LIVE-VALIDATION.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
 | docs/superpowers/sessions/2026-04-17-strategic-8/P0-REVIEW.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
-| docs/superpowers/sessions/2026-04-17-strategic-8/README.md | LIVE | 2026-04-17 | 2026-07-16 | — | 11 | 0 | no | — | — |
+| docs/superpowers/sessions/2026-04-17-strategic-8/README.md | LIVE | 2026-04-17 | 2026-07-16 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/superpowers/sessions/2026-04-17-strategic-8/air-1-pdp-coverage.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
 | docs/superpowers/sessions/2026-04-17-strategic-8/air-2-s09-services.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
 | docs/superpowers/sessions/2026-04-17-strategic-8/air-3-graphrag-completion.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
@@ -809,7 +809,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/superpowers/solidification-prompts/11-air-mcp-server.md | LIVE | 2026-04-06 | 2026-07-05 | — | 1 | 0 | no | — | — |
 | docs/superpowers/solidification-prompts/12-cowork-vector-search.md | LIVE | 2026-04-06 | 2026-07-05 | — | 1 | 0 | no | — | — |
 | docs/superpowers/solidification-prompts/13-cowork-frontend.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
-| docs/superpowers/solidification-prompts/README.md | LIVE | 2026-04-06 | 2026-07-05 | — | 11 | 0 | no | — | — |
+| docs/superpowers/solidification-prompts/README.md | LIVE | 2026-04-06 | 2026-07-05 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/superpowers/solidification-reports/PDP-pass-2.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
 | docs/superpowers/solidification-reports/S09-services-layer.md | LIVE | 2026-04-17 | 2026-07-16 | — | 1 | 0 | no | — | — |
 | docs/superpowers/solidification-reports/S11-agents-layer.md | ARCHIVED | 2026-04-17 | 2026-07-16 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-17, refs=0 |
@@ -862,11 +862,11 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/superpowers/specs/2026-04-19-llm-cost-tracking-v2-design.md | LIVE | 2026-04-19 | 2026-07-18 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-20-crm-partners-module.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-20-partners-brainstorm/00-brief.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-20-partners-brainstorm/01-gemini.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-20-partners-brainstorm/02-codex.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-20-partners-brainstorm/03-deepseek.md | LIVE | 2026-04-21 | 2026-07-20 | — | 2 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-20-partners-brainstorm/04-nb2.md | LIVE | 2026-04-21 | 2026-07-20 | — | 3 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-20-partners-brainstorm/99-synthesis.md | LIVE | 2026-04-21 | 2026-07-20 | — | 5 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-20-partners-brainstorm/01-gemini.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-20-partners-brainstorm/02-codex.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-20-partners-brainstorm/03-deepseek.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-20-partners-brainstorm/04-nb2.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-20-partners-brainstorm/99-synthesis.md | LIVE | 2026-04-21 | 2026-07-20 | — | 3 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-20-visa-check-ui-design.md | ARCHIVED | 2026-04-20 | 2026-07-19 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-20, refs=0 |
 | docs/superpowers/specs/2026-04-21-visa-catalogue-rebuild.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-21-visa-funnel-fusion.md | LIVE | 2026-04-21 | 2026-07-20 | — | 1 | 0 | no | — | — |
@@ -931,21 +931,21 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/superpowers/specs/2026-07-18-bali-zero-magazine-sites-design.md | LIVE | 2026-07-21 | 2026-10-19 | — | 0 | 0 | no | — | — |
 | docs/superpowers/specs/2026-07-31-kita-dashboard-warm-refinement-design.md | LIVE | 2026-07-31 | 2026-10-29 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/brainstorm-crm-strategy.md | LIVE | 2026-03-29 | 2026-06-27 | — | 1 | 0 | no | — | — |
-| docs/superpowers/specs/nlm-deep-research/00_mega_synthesis.md | LIVE | 2026-03-28 | 2026-06-26 | — | 0 | 0 | no | — | — |
+| docs/superpowers/specs/nlm-deep-research/00_mega_synthesis.md | LIVE | 2026-03-28 | 2026-06-26 | — | 3 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/01_query_design.md | LIVE | 2026-03-28 | 2026-06-26 | — | 4 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/02_sequencing.md | LIVE | 2026-03-28 | 2026-06-26 | — | 4 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/03_quality_verification.md | LIVE | 2026-03-28 | 2026-06-26 | — | 4 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/04_source_management.md | LIVE | 2026-03-28 | 2026-06-26 | — | 6 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/04b_source_management_codex.md | LIVE | 2026-03-28 | 2026-06-26 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/05_scraper_integration.md | LIVE | 2026-03-28 | 2026-06-26 | — | 7 | 0 | no | — | — |
-| docs/superpowers/specs/nlm-deep-research/05b_scraper_integration_codex.md | LIVE | 2026-03-28 | 2026-06-26 | — | 2 | 0 | no | — | — |
-| docs/superpowers/specs/nlm-deep-research/05b_scraper_integration_deepseek.md | LIVE | 2026-03-28 | 2026-06-26 | — | 1 | 0 | no | — | — |
+| docs/superpowers/specs/nlm-deep-research/05b_scraper_integration_codex.md | LIVE | 2026-03-28 | 2026-06-26 | — | 3 | 0 | no | — | — |
+| docs/superpowers/specs/nlm-deep-research/05b_scraper_integration_deepseek.md | LIVE | 2026-03-28 | 2026-06-26 | — | 2 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/06_failure_modes.md | LIVE | 2026-03-28 | 2026-06-26 | — | 6 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/06b_failure_modes_gemini.md | LIVE | 2026-03-28 | 2026-06-26 | — | 2 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/07_testing_protocol.md | LIVE | 2026-03-28 | 2026-06-26 | — | 5 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/07b_testing_protocol_deepseek.md | LIVE | 2026-03-28 | 2026-06-26 | — | 4 | 0 | no | — | — |
-| docs/superpowers/specs/nlm-deep-research/NB2_FULL_REPORT.md | LIVE | 2026-03-28 | 2026-06-26 | — | 0 | 0 | no | — | — |
-| docs/superpowers/specs/nlm-deep-research/PROGRESS.md | LIVE | 2026-03-28 | 2026-06-26 | — | 2 | 0 | no | — | — |
+| docs/superpowers/specs/nlm-deep-research/NB2_FULL_REPORT.md | LIVE | 2026-03-28 | 2026-06-26 | — | 2 | 0 | no | — | — |
+| docs/superpowers/specs/nlm-deep-research/PROGRESS.md | LIVE | 2026-03-28 | 2026-06-26 | — | 4 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-deep-research/phase1_adversarial_reviews.md | LIVE | 2026-03-28 | 2026-06-26 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-nb5-brainstorm-gemini-search.md | LIVE | 2026-03-29 | 2026-06-27 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/nlm-nb5-brainstorm-ops.md | LIVE | 2026-03-29 | 2026-06-27 | — | 1 | 0 | no | — | — |
@@ -954,11 +954,11 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/war-room-2.0-design.md | LIVE | 2026-07-16 | 2026-10-14 | — | 3 | 0 | no | — | — |
 | docs/war-room-v2/ACTIVATION_PLAN.md | ARCHIVED | 2026-04-19 | 2026-07-18 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-19, refs=0 |
 | docs/war-room-v2/DEPLOY_RUNBOOK.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | — |
-| docs/war-room-v2/README.md | LIVE | 2026-07-16 | 2026-10-14 | — | 13 | 0 | no | — | — |
+| docs/war-room-v2/README.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
 | docs/wr2/2026-05-08-sprint-b-to-f-detailed-plan.md | LIVE | 2026-07-14 | 2026-10-12 | — | 0 | 0 | no | — | — |
 | docs/wr2/SUPERVISOR.md | LIVE | 2026-07-14 | 2026-10-12 | — | 6 | 0 | no | — | — |
 | docs/wr2/canonical-bypass-prevention-2026-05-15.md | LIVE | 2026-07-14 | 2026-10-12 | — | 1 | 0 | no | — | — |
-| docs/wr2/flowkit-integration.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
+| docs/wr2/flowkit-integration.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
 | docs/wr2/operator-driven-mode-spec-2026-05-26.md | LIVE | 2026-07-14 | 2026-10-12 | — | 0 | 0 | no | — | — |
 | docs/wr2/pipeline-architecture-2026-05-10.md | LIVE | 2026-07-14 | 2026-10-12 | — | 1 | 0 | no | — | — |
 | docs/wr2/skill-snapshots/canva-apply-2026-05-07-prewipe.md | LIVE | 2026-05-06 | 2026-08-04 | — | 0 | 0 | no | — | — |
@@ -967,9 +967,9 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/wr2/skill-snapshots/deploy-pull-2026-05-08.md | LIVE | 2026-05-07 | 2026-08-05 | — | 1 | 0 | no | — | — |
 | docs/wr2/sprint2-mapping.md | LIVE | 2026-07-14 | 2026-10-12 | — | 2 | 0 | no | — | — |
 | docs/wr3/2026-07-26-wr3-into-wr2-single-media-surface.md | LIVE | 2026-07-26 | 2026-10-24 | — | 0 | 0 | no | — | — |
-| docs/wr3/README.md | LIVE | 2026-05-18 | 2026-08-16 | — | 11 | 0 | no | — | — |
-| docs/wr3/runbook-supervisor.md | LIVE | 2026-07-26 | 2026-10-24 | — | 0 | 0 | no | — | — |
-| docs/wr3/symbiosis-precedence.md | LIVE | 2026-05-18 | 2026-08-16 | — | 1 | 0 | no | — | — |
+| docs/wr3/README.md | LIVE | 2026-05-18 | 2026-08-16 | — | 0 | 0 | no | — | keep (directory index) |
+| docs/wr3/runbook-supervisor.md | LIVE | 2026-07-26 | 2026-10-24 | — | 1 | 0 | no | — | — |
+| docs/wr3/symbiosis-precedence.md | LIVE | 2026-05-18 | 2026-08-16 | — | 2 | 0 | no | — | — |
 | docs/x-articles/001_KBLI_2025_DEADLINE.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
 | docs/x-articles/001_PROMO_ASSETS.md | LIVE | 2026-03-31 | 2026-06-29 | — | 0 | 0 | no | — | — |
 | docs/x-articles/KBLI_DECODED_001_56101.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
