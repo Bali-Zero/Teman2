@@ -68,6 +68,60 @@ function reason(
   };
 }
 
+// Curated, human-readable copy for the rule pack's HUMAN_REVIEW reason
+// codes (source: services/visa_engine/contracts/packs/rulepack-prod-*.json
+// `effect.reason_code` on REQUIRE_REVIEW rules). A code missing from this
+// map falls back to an honest generic sentence — never a raw code dump —
+// so a new rule can ship without breaking this UI, and this map can grow
+// independently of a rule pack release.
+const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
+  CALLING_VISA_REVIEW: text(
+    "Your nationality is on the Calling Visa list, which always requires manual review before a visa can be confirmed.",
+    "Kewarganegaraan Anda termasuk dalam daftar Calling Visa, yang selalu memerlukan peninjauan manual sebelum visa dapat dikonfirmasi.",
+  ),
+  ACTIVE_OVERSTAY: text(
+    "An active overstay on record needs a person to review before any path can be confirmed.",
+    "Overstay aktif yang tercatat memerlukan peninjauan oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  CITIZENSHIP_EVIDENCE_CONFLICT: text(
+    "Your answers about citizenship do not fully agree with each other and need a person to confirm.",
+    "Jawaban Anda tentang kewarganegaraan tidak sepenuhnya cocok satu sama lain dan memerlukan konfirmasi dari seseorang.",
+  ),
+  MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
+    "This case involves a minor without a confirmed guardian on file and needs a person to review it.",
+    "Kasus ini melibatkan anak di bawah umur tanpa wali yang terkonfirmasi dan memerlukan peninjauan oleh seseorang.",
+  ),
+  STATUS_BRIDGING_REVIEW: text(
+    "Bridging between immigration statuses needs a person to check the timing and conditions involved.",
+    "Peralihan antar status keimigrasian memerlukan pemeriksaan oleh seseorang atas waktu dan ketentuan yang berlaku.",
+  ),
+  LOCAL_MARKET_ACTIVITY_REVIEW: text(
+    "The activity you described needs a person to confirm it does not cross into locally reserved business.",
+    "Aktivitas yang Anda jelaskan memerlukan konfirmasi oleh seseorang agar tidak melanggar bidang usaha yang dicadangkan untuk lokal.",
+  ),
+  DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
+    "The activity you disclosed sits close to a legal boundary that needs a person to confirm.",
+    "Aktivitas yang Anda ungkapkan berada dekat batas hukum yang memerlukan konfirmasi dari seseorang.",
+  ),
+};
+
+const GENERIC_REVIEW_REASON: LocalizedText = text(
+  "Some of your answers need a person's judgment before we can confirm a path.",
+  "Beberapa jawaban Anda memerlukan penilaian dari seseorang sebelum kami dapat mengonfirmasi jalur.",
+);
+
+function reviewReason(
+  code: string,
+  sourceIds: readonly string[],
+  trustedIds: ReadonlySet<string>,
+): OutcomeReason {
+  return {
+    code,
+    message: REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON,
+    sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
+  };
+}
+
 function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
   const url = trustedPrimarySourceUrl(source.canonical_url);
   if (!url) return null;
@@ -412,7 +466,7 @@ function buildValidatedOutcome(
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {
           requireReviewHoldRefs(item.source_refs);
-          return reason(item.code, item.source_refs, trustedIds);
+          return reviewReason(item.code, item.source_refs, trustedIds);
         }) as [OutcomeReason, ...OutcomeReason[]],
       };
     case "NO_SUPPORTED_PATH":

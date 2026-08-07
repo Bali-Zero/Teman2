@@ -37,6 +37,13 @@ export class VisaOracleClientError extends Error {
   constructor(
     public readonly code: VisaOracleClientErrorCode,
     public readonly status?: number,
+    /** Best-effort `decision.state` read directly off the raw JSON payload
+     * — set only when the payload parsed as an object with a string state,
+     * independent of whether strict schema validation accepted the rest of
+     * it. Never used to render anything beyond choosing an honest fallback
+     * message; never trusted as authoritative. */
+    public readonly knownDecisionState?: string,
+    public readonly knownOutageIsNull?: boolean,
   ) {
     super(code);
     this.name = "VisaOracleClientError";
@@ -99,16 +106,49 @@ async function readResponseText(response: Response): Promise<string> {
   }
 }
 
+/**
+ * Best-effort, untrusted peek at `decision.state`/`decision.outage` on the
+ * raw parsed JSON. Used ONLY to choose which honest fallback copy to show
+ * when strict validation rejects the payload — never to render any
+ * attacker-controlled content, and never treated as a substitute for the
+ * strict parser's own guarantees.
+ */
+function peekDecisionState(
+  raw: unknown,
+): { state: string; outageIsNull: boolean } | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const decision = (raw as Record<string, unknown>).decision;
+  if (typeof decision !== "object" || decision === null) return undefined;
+  const state = (decision as Record<string, unknown>).state;
+  if (typeof state !== "string") return undefined;
+  const outage = (decision as Record<string, unknown>).outage;
+  return { state, outageIsNull: outage === null };
+}
+
 function parseResponseBody(source: string): VisaOracleEvaluateResponse {
+  let raw: unknown;
   try {
-    return parseVisaOracleEvaluateResponse(parseStrictJson(source));
+    raw = parseStrictJson(source);
+  } catch (error) {
+    if (error instanceof StrictJsonError) {
+      throw new VisaOracleClientError("MALFORMED_RESPONSE");
+    }
+    throw error;
+  }
+  try {
+    return parseVisaOracleEvaluateResponse(raw);
   } catch (error) {
     if (
-      error instanceof StrictJsonError ||
       (error as VisaOracleResponseError | undefined)?.name ===
-        "VisaOracleResponseError"
+      "VisaOracleResponseError"
     ) {
-      throw new VisaOracleClientError("MALFORMED_RESPONSE");
+      const known = peekDecisionState(raw);
+      throw new VisaOracleClientError(
+        "MALFORMED_RESPONSE",
+        undefined,
+        known?.state,
+        known?.outageIsNull,
+      );
     }
     throw error;
   }

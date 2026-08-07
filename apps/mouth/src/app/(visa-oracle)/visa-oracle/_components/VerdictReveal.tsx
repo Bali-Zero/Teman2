@@ -61,14 +61,22 @@ export function VerdictReveal({
 
   const StateIcon = STATE_ICON[state] ?? Info;
   const bodyFirst = BODY_FIRST[language];
-  const headlineKey =
-    provenance === "ENGINE"
-      ? (`verdict.headline.${state}` as I18nKey)
-      : (`verdict.provenance_headline.${provenance}` as I18nKey);
-  const descriptionKey =
-    provenance === "ENGINE"
-      ? (`verdict.state_description.${state}` as I18nKey)
-      : (`verdict.provenance_description.${provenance}` as I18nKey);
+  // The state is what the server actually decided and is always the more
+  // specific, honest signal — including for a non-ENGINE provenance that
+  // still carries a genuine state (e.g. a degraded CLIENT_GUARD outcome
+  // that honestly reports HUMAN_REVIEW_REQUIRED rather than pretending no
+  // evaluation happened). Generic provenance copy is reserved for the one
+  // case where state itself carries no information: TEMPORARILY_UNAVAILABLE
+  // from a non-ENGINE origin (network failure, shadow mode, preview, or a
+  // client-side hold that never reached a real state at all).
+  const useProvenanceCopy =
+    provenance !== "ENGINE" && state === "TEMPORARILY_UNAVAILABLE";
+  const headlineKey = useProvenanceCopy
+    ? (`verdict.provenance_headline.${provenance}` as I18nKey)
+    : (`verdict.headline.${state}` as I18nKey);
+  const descriptionKey = useProvenanceCopy
+    ? (`verdict.provenance_description.${provenance}` as I18nKey)
+    : (`verdict.state_description.${state}` as I18nKey);
 
   const heading = (
     <h1

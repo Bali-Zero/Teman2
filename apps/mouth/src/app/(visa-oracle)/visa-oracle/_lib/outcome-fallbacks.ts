@@ -1,7 +1,9 @@
 import type {
+  HumanReviewOutcome,
   InterviewAssumption,
   LocalizedText,
   OutcomeNextSteps,
+  OutcomeReason,
   TemporarilyUnavailableOutcome,
 } from "./outcome-view-model";
 
@@ -93,4 +95,40 @@ export function buildShadowOutcome(
   options: Omit<FallbackOptions, "retryable">,
 ): TemporarilyUnavailableOutcome {
   return buildFallback("SHADOW", { ...options, retryable: false });
+}
+
+const DEGRADED_REVIEW_REASON: OutcomeReason = {
+  code: "CLIENT_UNABLE_TO_VERIFY_DETAIL",
+  message: {
+    en: "A Bali Zero advisor will review your full case by hand. Some supporting detail could not be safely verified in this browser, so it is not shown here.",
+    id: "Konsultan Bali Zero akan meninjau kasus Anda secara lengkap. Beberapa detail pendukung tidak dapat diverifikasi dengan aman di browser ini, sehingga tidak ditampilkan di sini.",
+  },
+  sourceIds: [],
+};
+
+/**
+ * The server unambiguously returned `decision.state: "HUMAN_REVIEW_REQUIRED"`
+ * with `outage: null` — an evaluation genuinely happened and a human review
+ * was genuinely triggered — but some other part of the payload (an
+ * individual review reason's source citation, most often) failed this
+ * client's own stricter verification and was rejected before it could be
+ * rendered. This is NOT "no evaluation was submitted": that claim must stay
+ * reserved for TEMPORARILY_UNAVAILABLE/network/parse failures where the
+ * server's decision is genuinely unknown. Candidates stay empty and no
+ * citation is fabricated; only the honest, generic review copy is shown.
+ */
+export function buildDegradedHumanReviewOutcome(options: {
+  assumptions?: readonly InterviewAssumption[];
+}): HumanReviewOutcome {
+  return {
+    provenance: "CLIENT_GUARD",
+    assessment: null,
+    state: "HUMAN_REVIEW_REQUIRED",
+    candidates: [],
+    pathsRemaining: 1,
+    assumptions: options.assumptions ?? [],
+    sources: [],
+    nextSteps: NEXT_STEPS,
+    reviewReasons: [DEGRADED_REVIEW_REASON],
+  };
 }

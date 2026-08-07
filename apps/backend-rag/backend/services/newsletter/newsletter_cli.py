@@ -28,7 +28,26 @@ NEWSLETTER_SUBJECT_PREFIX  optional prefix prepended to the subject (e.g. "[TEST
 Exit codes:
     0  sent (even if 0 recipients — log-only)
     1  config / pool init error
-    2  empty roundup/digest → nothing sent
+    2  empty roundup/digest → nothing sent (includes "already sent today")
+
+Idempotency (daily digest only, added 2026-08-07)
+--------------------------------------------------
+Two independent schedulers can call ``_run_daily`` for the same UTC calendar
+day: the legacy Pro LaunchAgent (``com.balizero.wr2.newsletter``, disarmed
+2026-08-07 but this guard survives it deliberately — HOME-fork drift, scar
+family #1, can silently reload a plist) via this CLI's ``--daily`` path, and
+the in-process ``daily_task.py`` loop (``_run_once`` calls ``_run_daily``
+directly). Neither ``send_daily_digest`` nor ``build_daily`` de-duplicates —
+confirmed live 2026-08-07: the old cron fired 00:00 UTC and the in-process
+loop fired 18:30 UTC the same UTC day, ~5.5h apart, both against a 48h
+lookback window with no "already included" filter, so the two runs' item
+sets overlap almost entirely. ``_already_sent_today``/``_mark_sent_today``
+close that gap using the SAME state mechanism ``daily_task.py`` already uses
+for its own receipt (``system_settings``, key/value/updated_at) — no new
+lock/queue invented. The claim is written BEFORE the send attempt (not
+after) so a slow first sender still wins the race against a second
+invocation that starts moments later; a caller that finds the day already
+claimed skips without touching the network.
 """
 
 from __future__ import annotations
@@ -39,6 +58,7 @@ import json
 import logging
 import os
 import sys
+from datetime import date, datetime, timezone
 
 import asyncpg
 
@@ -50,6 +70,13 @@ from backend.services.newsletter.publisher import NewsletterPublisher
 logger = logging.getLogger("newsletter.cli")
 
 DEFAULT_RECIPIENT = "zero@balizero.com"
+
+# system_settings key recording the last UTC calendar day the daily digest
+# was actually claimed for sending. Distinct from daily_task.py's
+# "newsletter_daily_task_last" (that one records ITS OWN last cycle outcome,
+# written by only one caller); this key is the cross-caller dedup guard both
+# the CLI path and the in-process loop consult and update.
+_DAILY_SENT_KEY = "newsletter_daily_digest_last_sent_day"
 
 
 def _hb(status: str, note: str = "") -> None:
@@ -92,6 +119,58 @@ def _recipients_from_env() -> list[str]:
     return recipients
 
 
+async def _already_sent_today(pool: asyncpg.Pool, day: date) -> bool:
+    """True if the daily digest for ``day`` was already claimed by some caller.
+
+    Read-only probe — never raises past the caller. On any DB error, returns
+    False (fail-open to "not yet sent"): a transient read failure must not
+    silently swallow a legitimate send (scar family #8 — never crash/starve
+    a task over a flaky connection). The real backstop against a genuine
+    duplicate under a DB outage is that BOTH schedulers would need to be
+    invoked within the outage window, same as before this guard existed.
+    """
+    try:
+        row = await pool.fetchrow("SELECT value FROM system_settings WHERE key = $1", _DAILY_SENT_KEY)
+    except Exception as exc:
+        logger.warning("[newsletter] idempotency check failed (%s) — proceeding as not-sent", exc)
+        return False
+    if row is None or row["value"] is None:
+        return False
+    try:
+        return json.loads(row["value"]).get("day") == day.isoformat()
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
+async def _mark_sent_today(pool: asyncpg.Pool, day: date) -> bool:
+    """Atomically claim ``day`` for sending. Returns True iff THIS call won.
+
+    Uses the same INSERT ... ON CONFLICT DO UPDATE upsert shape as
+    ``daily_task._persist_state`` (system_settings key/value/updated_at) but
+    adds a WHERE guard so a second caller racing shortly after does not
+    silently re-claim (and thus re-permit) an already-claimed day: the
+    UPDATE only fires — and RETURNING only yields a row — when the stored
+    value actually differs from what we're about to write.
+    """
+    try:
+        row = await pool.fetchrow(
+            """
+            INSERT INTO system_settings (key, value, updated_at)
+            VALUES ($1, $2, now())
+            ON CONFLICT (key) DO UPDATE
+                SET value = EXCLUDED.value, updated_at = now()
+                WHERE system_settings.value IS DISTINCT FROM EXCLUDED.value
+            RETURNING value
+            """,
+            _DAILY_SENT_KEY,
+            json.dumps({"day": day.isoformat()}),
+        )
+    except Exception as exc:
+        logger.warning("[newsletter] idempotency claim failed (%s) — sending unguarded", exc)
+        return True  # never block a real send over a persistence hiccup
+    return row is not None
+
+
 async def _run_weekly(pool: asyncpg.Pool, recipients: list[str], subject_prefix: str) -> int:
     intel_repo = IntelRepository(db_pool=pool)
     cognitive_repo = CognitiveRepository(db_pool=pool)
@@ -130,7 +209,39 @@ async def _run_weekly(pool: asyncpg.Pool, recipients: list[str], subject_prefix:
     return 0
 
 
+def _write_daily_skip(day: date, *, items_in_digest: int, scarce: bool, skip_reason: str) -> None:
+    """Emit the same JSON line shape as a real send, for a pre-send skip."""
+    sys.stdout.write(
+        json.dumps(
+            {
+                "mode": "daily",
+                "day": day.isoformat(),
+                "recipients_attempted": 0,
+                "recipients_sent": 0,
+                "recipients_failed": 0,
+                "subject": "",
+                "skipped": True,
+                "skip_reason": skip_reason,
+                "items_in_digest": items_in_digest,
+                "scarce": scarce,
+            },
+            default=str,
+        )
+        + "\n"
+    )
+
+
 async def _run_daily(pool: asyncpg.Pool, recipients: list[str], subject_prefix: str) -> int:
+    today = datetime.now(timezone.utc).date()
+    if await _already_sent_today(pool, today):
+        logger.warning(
+            "[newsletter] daily digest for %s already sent by another invocation "
+            "— skipping (idempotency guard)",
+            today.isoformat(),
+        )
+        _write_daily_skip(today, items_in_digest=0, scarce=False, skip_reason="already_sent_today")
+        return 2
+
     intel_repo = IntelRepository(db_pool=pool)
     cognitive_repo = CognitiveRepository(db_pool=pool)
 
@@ -139,6 +250,27 @@ async def _run_daily(pool: asyncpg.Pool, recipients: list[str], subject_prefix: 
         cognitive_repo=cognitive_repo,
     )
     content = await builder.build_daily()
+
+    # Claim the day BEFORE sending, not after: a second invocation starting
+    # while the first is still mid-flight on its per-recipient HTTP loop
+    # must see the day already taken. Only claim when there is something to
+    # actually send — an empty-digest or no-recipients run must not burn
+    # the day for a later, real attempt (both are already no-ops for the
+    # recipient, so there's nothing to duplicate).
+    if not content.is_empty and recipients:
+        if not await _mark_sent_today(pool, content.day):
+            logger.warning(
+                "[newsletter] daily digest for %s claimed by a concurrent invocation "
+                "— skipping",
+                content.day.isoformat(),
+            )
+            _write_daily_skip(
+                content.day,
+                items_in_digest=len(content.items),
+                scarce=content.scarce,
+                skip_reason="already_sent_today",
+            )
+            return 2
 
     publisher = NewsletterPublisher()
     result = await publisher.send_daily_digest(content, recipients, subject_prefix=subject_prefix)
