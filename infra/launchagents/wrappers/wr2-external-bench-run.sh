@@ -40,8 +40,13 @@ if [ -s "$OUTPUT_FILE" ]; then
   exit 0
 fi
 
-# Source secrets for DeepSeek API + Gemini OAuth path discovery
-source "${HOME}/.nuzantara-secrets.env" 2>/dev/null || true
+# Source secrets for DeepSeek API + Gemini OAuth path discovery.
+# The `[ -f ]` guard is load-bearing, not defensive noise: `source <missing>
+# || true` under `set -e` does NOT degrade — bash treats a failed `source` as a
+# special builtin and EXITS before the `||` ever runs. Verified on this fleet's
+# /bin/bash (3.2.57): the line after such a source never executes, rc=1, and the
+# job dies before writing a single word about why (W108).
+[ -f "${HOME}/.nuzantara-secrets.env" ] && source "${HOME}/.nuzantara-secrets.env"
 
 # Verify the seed file from May exists (carryover input per agent spec)
 SEED_FILE="${HOME}/.claude/skills/bali-zero-brand/_external-bench-2026-05.md"
@@ -98,6 +103,7 @@ if [ "${WR2_BENCH_DEBUG:-0}" = "1" ]; then
   timeout "$BENCH_TIMEOUT" "$CLAUDE_BIN" -p \
     --model claude-opus-4-8 \
     --permission-mode bypassPermissions \
+    --max-budget-usd "${WR2_BENCH_MAX_BUDGET_USD:-10}" \
     --verbose --output-format stream-json \
     --append-system-prompt "You are wr2-external-bench. Read your spec at .claude/agents/wr2-external-bench.md. Follow it exactly." \
     "$PROMPT" \
@@ -106,6 +112,7 @@ else
   timeout "$BENCH_TIMEOUT" "$CLAUDE_BIN" -p \
     --model claude-opus-4-8 \
     --permission-mode bypassPermissions \
+    --max-budget-usd "${WR2_BENCH_MAX_BUDGET_USD:-10}" \
     --append-system-prompt "You are wr2-external-bench. Read your spec at .claude/agents/wr2-external-bench.md. Follow it exactly." \
     "$PROMPT" \
     >> "$LOG" 2>> "$ERR" || EXIT_CODE=$?
@@ -114,16 +121,28 @@ fi
 EXIT_CODE=${EXIT_CODE:-0}
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-external-bench done (exit=${EXIT_CODE}, output_lines=$(wc -l < "$OUTPUT_FILE" 2>/dev/null || echo 0))" >> "$LOG"
 
-# Telegram alert on failure (success notify is agent's job per Step 5)
-if [ "$EXIT_CODE" -ne 0 ] && [ -f "${HOME}/.nuzantara-secrets.env" ]; then
-  TOKEN=$(grep -E "^TELEGRAM_BOT_TOKEN=" "${HOME}/.nuzantara-secrets.env" | cut -d= -f2 | tr -d '"')
-  CHAT=$(grep -E "^TELEGRAM_OWNER_CHAT_ID=" "${HOME}/.nuzantara-secrets.env" | cut -d= -f2 | tr -d '"')
-  if [ -n "$TOKEN" ] && [ -n "$CHAT" ]; then
-    curl -s "https://api.telegram.org/bot${TOKEN}/sendMessage" \
-      -d "chat_id=${CHAT}" \
-      -d "text=⚠️ wr2-external-bench ${YEAR_MONTH} FAILED (exit=${EXIT_CODE}). Check ${ERR}" \
-      > /dev/null || true
-  fi
+# Telegram alert on failure (success notify is agent's job per Step 5).
+#
+# Routed through the ONE gateway (tg_notify.py owns token resolution, tiering and
+# dedup) rather than a direct sendMessage. Two defects died with the old block:
+#   - it was gated on `[ -f ~/.nuzantara-secrets.env ]` AND on both variables
+#     being non-empty, so in a token-poor cron environment it did nothing and
+#     left no trace of having done nothing — the exact W108 signature;
+#   - `> /dev/null || true` threw away the outcome, so "the alarm fired" and
+#     "the alarm was swallowed" were indistinguishable afterwards.
+# The rc is now captured with errexit disarmed (W101: judge by the CAPTURED code,
+# never by having survived the line) and written to the log either way.
+if [ "$EXIT_CODE" -ne 0 ]; then
+  GATEWAY="$(dirname "$0")/tg_notify.py"
+  [ -f "$GATEWAY" ] || GATEWAY="${HOME}/nuzantara/scripts/tg_notify.py"
+  set +e
+  python3 "$GATEWAY" --tier p0 --source wr2-external-bench \
+    --dedup-key "wr2-external-bench:${YEAR_MONTH}:$(hostname -s)" \
+    -- "⚠️ wr2-external-bench ${YEAR_MONTH} FAILED (exit=${EXIT_CODE}). Check ${ERR}" \
+    >> "$LOG" 2>&1
+  NOTIFY_RC=$?
+  set -e
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] telegram notify rc=${NOTIFY_RC} (gateway=${GATEWAY})" >> "$LOG"
 fi
 
 exit "$EXIT_CODE"
