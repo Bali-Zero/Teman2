@@ -193,16 +193,51 @@ async def run(args: argparse.Namespace) -> int:
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
+    # `--policy-file` used to default to `str(default_policy_path())` --
+    # an argparse `default=` expression that argparse evaluates EAGERLY,
+    # every time this function runs, before `parser.parse_args()` even
+    # looks at `argv`. `default_policy_path()` derives the checked-in
+    # policy path as `Path(__file__).resolve().parents[5]` (repo root),
+    # which raises `IndexError` in any container that only has a partial
+    # checkout (fewer than 6 ancestor directories above this file) -- so
+    # every invocation crashed before argument parsing, including a bare
+    # `--help`. The default is now `None` and resolved lazily, below, only
+    # when the caller did not pass `--policy-file` explicitly -- an
+    # explicit `--policy-file` never touches the filesystem in this
+    # function at all.
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--effective-from", required=True, type=_parse_aware_datetime)
-    parser.add_argument("--policy-file", default=str(default_policy_path()))
+    parser.add_argument(
+        "--policy-file",
+        default=None,
+        help=(
+            "defaults to the checked-in canonical policy JSON, resolved only "
+            "when this flag is omitted (never touches the filesystem otherwise)"
+        ),
+    )
     parser.add_argument("--database-url-env", default=POLICY_WRITER_DSN_ENV)
     parser.add_argument(
         "--apply",
         action="store_true",
         help="perform the idempotent insert; default only validates and reports",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.policy_file is None:
+        try:
+            canonical = default_policy_path()
+        except IndexError:
+            parser.error(
+                "--policy-file was not provided and the canonical checked-in "
+                "policy path could not be derived from this module's location "
+                "(no full repository checkout present); pass --policy-file explicitly"
+            )
+        if not canonical.is_file():
+            parser.error(
+                f"--policy-file was not provided and the canonical checked-in "
+                f"policy path does not exist: {canonical}; pass --policy-file explicitly"
+            )
+        args.policy_file = str(canonical)
+    return args
 
 
 def main(argv: list[str]) -> int:
