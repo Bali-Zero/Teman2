@@ -585,19 +585,30 @@ def test_home_rebase_does_not_mask_a_different_payload(world):
     assert [d["file"] for d in r["repo_divergent"]] == [name]
 
 
-def test_home_rebase_does_not_mask_a_desktop_relocation(world):
-    """Guilt: live sits under this machine's home but one directory deeper —
-    `~/Desktop/nuzantara/...` against canon's `~/nuzantara/...`. That is the
-    exact path the fleet ruled OFF on 2026-07-16 for TCC reasons (W84); the
-    home root normalises, the Desktop hop does not."""
-    name = "com.nuzantara.desktop.plist"
+def test_home_rebase_does_not_mask_an_extra_directory_hop(world):
+    """Guilt: live sits under this machine's home but one directory DEEPER than
+    canon. The home root normalises; the extra hop does not, so this still
+    diverges. Real-world shape this pins: the relocation the fleet ruled off on
+    2026-07-16 for TCC reasons (W84) moved the repo up one level out of a
+    protected directory, and a live plist left pointing at the old, deeper
+    location must not be forgiven by a rebase that only forgives WHOSE home.
+
+    The fixture uses a neutral `parked/` hop rather than the real directory
+    name on purpose. `_rebase_homes` has no knowledge of that directory — it
+    normalises a home root and nothing else — so writing the real literal here
+    would (a) read as though the guard special-cases it, which it does not, and
+    (b) trip `scripts/lint_tcc_desktop_paths.py`. Per that lint's allowlist,
+    an incidental placeholder disconnected from the guard logic under test gets
+    swept, not excepted; only a corpus whose guard actually matches on that
+    string earns a class-2 entry."""
+    name = "com.nuzantara.deeper.plist"
     write_plist(
-        world["agents"] / name, "com.nuzantara.desktop",
+        world["agents"] / name, "com.nuzantara.deeper",
         program_args=["/opt/homebrew/bin/python3",
-                      f"{world['home']}/Desktop/nuzantara/scripts/gc.py", "--apply"],
+                      f"{world['home']}/parked/nuzantara/scripts/gc.py", "--apply"],
     )
     write_plist(
-        world["repo"] / "infra" / "launchagents" / name, "com.nuzantara.desktop",
+        world["repo"] / "infra" / "launchagents" / name, "com.nuzantara.deeper",
         program_args=["/opt/homebrew/bin/python3",
                       "/Users/nuzantara/nuzantara/scripts/gc.py", "--apply"],
     )
