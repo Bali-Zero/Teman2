@@ -73,6 +73,22 @@ MIN_ATTEMPT_SECONDS="${CRON_AGENT_MIN_ATTEMPT_SECONDS:-300}"
 
 log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [$JOB_NAME] $*" >> "$LOG_FILE"; }
 
+_file_mtime() {
+    # `stat -f%m` is BSD syntax. On GNU coreutils `-f` means --file-system and
+    # `%m` is the MOUNT POINT, so the BSD form does not fail there — it succeeds
+    # and prints something that is not a timestamp. A `|| echo 0` fallback keyed
+    # to the exit code therefore never fires, and the caller's age arithmetic
+    # gets garbage. Judge the VALUE (is it a number?), not the exit code.
+    # Pro runs macOS, so the BSD branch is the live one; the GNU branch is what
+    # makes the cooldown gate testable on a Linux CI runner instead of silently
+    # inert there (W108: a check that only runs on one OS hides defects).
+    local m
+    m="$(stat -f%m "$1" 2>/dev/null)"
+    case "$m" in ''|*[!0-9]*) m="$(stat -c%Y "$1" 2>/dev/null)" ;; esac
+    case "$m" in ''|*[!0-9]*) m=0 ;; esac
+    printf '%s' "$m"
+}
+
 send_telegram() {
     local msg="$1"
     # Notification gateway (post-#2263 canon promotion): tg_notify.py owns token
@@ -94,7 +110,7 @@ send_telegram() {
     # minutes of silence and left no trace of having done so — a lost alert that
     # suppressed its own successor.
     if [[ -f "$COOLDOWN_FILE" ]]; then
-        local age=$(( $(date +%s) - $(stat -f%m "$COOLDOWN_FILE" 2>/dev/null || echo 0) ))
+        local age=$(( $(date +%s) - $(_file_mtime "$COOLDOWN_FILE") ))
         [[ $age -lt 1800 ]] && { log "Telegram cooldown active (${age}s < 1800s)"; return; }
     fi
     local gateway="$(dirname "$0")/tg_notify.py"

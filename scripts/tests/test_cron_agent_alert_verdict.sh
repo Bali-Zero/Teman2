@@ -57,7 +57,9 @@ not_armed() { [ "$LAST_COOLDOWN_EXISTS" = "0" ]; }
 # That produced a first draft where every check "passed" the not-armed assertions
 # because the harness never ran at all: a fake world measuring its own poverty
 # (W108). Hence the two extractions are separate, and the guard below is fatal.
-EXTRACT="$(sed -n '/^log() {/p' "$WRAPPER"; sed -n '/^send_telegram() {/,/^}/p' "$WRAPPER")"
+EXTRACT="$(sed -n '/^log() {/p' "$WRAPPER"
+           sed -n '/^_file_mtime() {/,/^}/p' "$WRAPPER"
+           sed -n '/^send_telegram() {/,/^}/p' "$WRAPPER")"
 poverty_check() {
   local why="$1" cond="$2"
   [ "$cond" = "1" ] && return 0
@@ -66,6 +68,7 @@ poverty_check() {
   exit 2
 }
 poverty_check "send_telegram() not extracted" "$(yesno has 'send_telegram' "$EXTRACT")"
+poverty_check "_file_mtime() not extracted"   "$(yesno has '_file_mtime' "$EXTRACT")"
 poverty_check "log() not extracted"            "$(yesno has 'log() {'      "$EXTRACT")"
 poverty_check "extraction is not syntactically complete (truncated function?)" \
   "$(printf '%s\n' "$EXTRACT" | bash -n 2>/dev/null && echo 1 || echo 0)"
@@ -144,6 +147,20 @@ run_scenario "tg_notify: sent" 0
 check "'sent' -> cooldown armed" "$(yesno armed)"
 run_scenario "tg_notify: deduped" 0
 check "'deduped' (an equivalent message already went out) -> cooldown armed" "$(yesno armed)"
+
+echo "the mtime helper — the cooldown gate is only as real as this (W108):"
+# `stat -f%m` is BSD; on GNU coreutils -f means --file-system and %m is the mount
+# point, so it SUCCEEDS and prints a non-timestamp. An exit-code-keyed fallback
+# never fires there and the gate goes silently inert. These two run on whatever
+# OS the runner is, which is the point: the assertion below about a 60s-old
+# cooldown is only meaningful because this helper works on both.
+mt_probe="$(mktemp "$SANDBOX/mt.XXXXXX")"
+mt_now="$(bash -c "$EXTRACT"$'\n''_file_mtime "'"$mt_probe"'"')"
+check "returns a plausible epoch for a real file (got '${mt_now}')" \
+      "$(yesno eval '[ -n "$mt_now" ] && [ "$mt_now" -gt 1700000000 ] 2>/dev/null')"
+mt_gone="$(bash -c "$EXTRACT"$'\n''_file_mtime "'"$SANDBOX"'/definitely-absent"')"
+check "returns 0 — never a non-numeric — for a file that is not there (got '${mt_gone}')" \
+      "$(yesno test "$mt_gone" = "0")"
 
 echo "innocence — the pre-existing cooldown semantics are untouched:"
 run_scenario "tg_notify: sent" 0 present 60
