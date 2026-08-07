@@ -68,7 +68,7 @@
 
 ### Postgres (Fly `nuzantara-postgres`)
 
-Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`garuda_indexer_state`, `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
+Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
 
 ### Filesystem state
 
@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 33 · **Packages:** 6
+**Apps:** 32 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -129,8 +129,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `osint-nexus-ui` |  |
 | `remediator` |  |
 | `team-agent` |  |
-| `wa-dashboard` | Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox. |
-| `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`) puntata al DB di produzione |
+| `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`). Read-only: zero INSERT/UPDATE. |
 | `wa-meta-inbox` | Desktop-local UI for the **BALI ZERO WhatsApp Business (Meta API)** number |
 | `wa-mirror` | **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17) |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
@@ -171,7 +170,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`132 plist tracked in infra/launchagents/ · 103 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (78% coverage)`
+`133 plist tracked in infra/launchagents/ · 104 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (78% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

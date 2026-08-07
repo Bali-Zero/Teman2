@@ -146,7 +146,6 @@ def include_routers(api: FastAPI) -> None:
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         voice,
         wa_actions,
-        wa_dashboard_stream,
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         war_room_dashboard,
@@ -336,7 +335,6 @@ def include_routers(api: FastAPI) -> None:
         whatsapp_conversations.router,
     )  # Omnichannel WhatsApp conversations API (dashboard only)
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
-    api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
@@ -594,7 +592,6 @@ def include_light_routers(api: FastAPI) -> None:
         visa_oracle,
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         wa_actions,
-        wa_dashboard_stream,
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         war_room_dashboard,
@@ -741,7 +738,6 @@ def include_light_routers(api: FastAPI) -> None:
     )  # Meta WhatsApp webhook must live on public api process
     api.include_router(whatsapp_conversations.router)
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
-    api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)

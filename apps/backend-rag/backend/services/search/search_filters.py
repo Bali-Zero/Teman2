@@ -10,6 +10,7 @@ from typing import Any
 def build_search_filter(
     tier_filter: dict[str, Any] | None = None,
     exclude_repealed: bool = True,
+    exclude_historical: bool = False,
 ) -> dict[str, Any] | None:
     """Build combined search filter with tier access and repealed law exclusion.
 
@@ -25,6 +26,8 @@ def build_search_filter(
         tier_filter: Optional tier constraint, format:
                      {"tier": {"$in": ["S", "A"]}} for inclusion
         exclude_repealed: If True, exclude status_vigensi="dicabut" (default: True)
+        exclude_historical: If True, exclude evidence marked historical_only;
+            callers handling legal current-law answers must set this explicitly.
 
     Returns:
         Combined filter dict or None if no filters apply
@@ -81,5 +84,10 @@ def build_search_filter(
         else:
             # No existing status_vigensi filter, add exclusion
             filters["status_vigensi"] = {"$ne": "dicabut"}
+
+    # A historical instrument may be authoritative evidence of its own past,
+    # but it must never be retrieved as current law by the public path.
+    if exclude_historical:
+        filters["retrieval_scope"] = {"$ne": "historical_only"}
 
     return filters if filters else None

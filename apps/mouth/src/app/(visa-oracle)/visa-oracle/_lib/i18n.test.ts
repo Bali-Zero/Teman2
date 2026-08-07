@@ -28,10 +28,10 @@ describe("i18n.ts — EN/ID key parity", () => {
 describe("i18n.ts — translate()", () => {
   it("interpolates {{vars}}", () => {
     expect(translate("en", "paths.counter.aria", { count: 3 })).toBe(
-      "3 paths remaining",
+      "3 interview branches remaining",
     );
     expect(translate("id", "paths.counter.aria", { count: 3 })).toBe(
-      "3 jalur tersisa",
+      "3 cabang wawancara tersisa",
     );
   });
 

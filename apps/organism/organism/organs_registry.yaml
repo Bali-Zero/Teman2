@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 0aa7a72d05a60e7a28f23b51a71a3cc857171b3eed1ef1bc8e9953144abeecbf
+checksum: 5785e7c57f0c1931bd0e800185903ce93ec972f32dece2808ca4135d26254ada
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -437,12 +437,20 @@ organs:
   runtime: pro_launchd
   type: cron
   expected_hb_seconds: 5400
-  owner_module: scripts/translate-articles.py
+  owner_module: scripts/translate-articles-cron-wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
   recovery_params:
+    host: pro
     label: com.balizero.translate.hourly
   severity_on_silence: warning
+  notes: Hourly article translator, runs translate-articles.py inside an isolated
+    worktree (scripts/agent_start.py, lane=mouth) via scripts/translate-articles-cron-wrapper.sh
+    so the main checkout is never written to directly (mouth main-dirt structural
+    fix, 2026-08-07) — output is promoted via an auto-merge PR only when something
+    actually changed, most runs are no-ops. The heartbeat carries the real verdict
+    (ok / degraded = PR opened but auto-merge did not arm / error = worktree creation,
+    push, or PR creation failed), never "reached the end". Kill switch TRANSLATE_HOURLY_ENABLED=false.
   cicatrix_refs: []
   bridge_source:
     type: state_file

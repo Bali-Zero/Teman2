@@ -151,13 +151,138 @@ _STATUSES = frozenset({"TERBUKA", "TERTUTUP", "TERBATAS"})
 # word is not evidence of a false claim, and letting one through costs nothing
 # because the sidebar cells are checked independently.
 _SENTENCE = re.compile(r"[^.!?\n]+")
-_NATIONAL_SCOPE = re.compile(r"national(?:ly)?", re.IGNORECASE)
-_OPENNESS_CLAIM = re.compile(
-    r"open\s+(?:to|nationally|for)|nationally\s+open|open\s+national|"
-    r"100\s*%\s*(?:national|foreign)|full\s+foreign\s+ownership",
+
+# Splitting on every `.` breaks a sentence in half at "Perpres No. 7 of 2025" or
+# "3.5", and this predicate needs the national scope word and the openness claim
+# in the SAME sentence — so an abbreviation between them is a silent miss, in
+# the one direction that reaches a client. Measured in the live catalogue: 50
+# abbreviation dots and 109 decimal dots. Both are masked before splitting and
+# restored after, so the sentence a human would read is the sentence tested.
+_ABBREV_DOT = re.compile(
+    r"\b(?:art|no|nos|pp|uu|perpres|permen|perka|kepmen|cf|vs|etc|approx|ltd|jl|dr|mr|ms|st|inc)\.",
     re.IGNORECASE,
 )
-_NEGATION = re.compile(r"\b(?:not|no|never|cannot|can't|isn't|does\s+not|nor)\b", re.IGNORECASE)
+_DECIMAL_DOT = re.compile(r"(?<=\d)\.(?=\d)")
+_DOT_HOLD = "\x00"
+
+
+def _sentences(text: str) -> list[str]:
+    """Sentences, without breaking on a legal abbreviation or a decimal point."""
+    masked = _ABBREV_DOT.sub(lambda m: m.group(0)[:-1] + _DOT_HOLD, text)
+    masked = _DECIMAL_DOT.sub(_DOT_HOLD, masked)
+    return [frag.replace(_DOT_HOLD, ".") for frag in _SENTENCE.findall(masked)]
+_NATIONAL_SCOPE = re.compile(r"national(?:ly)?", re.IGNORECASE)
+
+# The second half of the claim vocabulary, added 2026-08-06 after enumerating
+# what the corpus ACTUALLY says instead of imagining phrasings. The first list
+# was built from the sentences the first version happened to catch, which is
+# circular — a pattern written from the instances you found catches the
+# instances you found (W113). Reading the not-yet-caught sentences on capped
+# records surfaced four families it had no words for:
+#
+#   TERBUKA as a bare status word   "the record marks the activity as TERBUKA"   (18)
+#   a maximum stated as a number    "the code is PMA-open up to 100%"            (10)
+#   "fully open"                    "Nationally, foreign ownership is fully open" (8)
+#   openness as a NOUN              "the real line between a national opening…"   (1)
+#
+# `\bTERBUKA\b` is deliberately not scoped to "national TERBUKA": the sentence
+# predicate already requires a national scope word, and a Bali-scoped sentence
+# that also says "nationally TERBUKA" on a capped record is making exactly the
+# claim this module exists to find.
+#
+# A cross-family reviewer, told to refute, named three more families and built
+# a sentence for each. All three reproduced against this file, so they are here
+# rather than in a ledger: `wholly/entirely/completely foreign-owned` (a whole
+# synonym family the list had no word for), `ceiling is 100%` (the noun this
+# module's own stat card uses — `Foreign-ownership ceiling` — which the prose
+# predicate could not read), and `unrestricted`. Live in the catalogue that is
+# one further code, `50223`.
+_OPENNESS_CLAIM = re.compile(
+    r"open\s+(?:to|nationally|for|and)|nationally\s+open|open\s+national|"
+    r"100\s*%\s*(?:national|foreign)|full\s+foreign\s+ownership|"
+    r"\bTERBUKA\b|fully\s+open|national\s+opening|PMA[-\s]open|"
+    r"maximum\s+is\s+100\s*%|up\s+to\s+100\s*%|"
+    r"ceiling\s+is\s+100\s*%|\bunrestricted\b|"
+    r"(?:wholly|entirely|completely)\s+foreign[-\s]owned",
+    re.IGNORECASE,
+)
+
+# WHERE the negation sits decides, exactly as it does for the contrast below —
+# and getting this wrong was the single largest blind spot in the module, found
+# by a reviewer hunting something else.
+#
+# Scanning the WHOLE sentence means an unrelated later clause acquits the claim.
+# The house style of this catalogue puts the two facts side by side:
+#
+#   "…nationally open to PMA and NOT blocked by Bali's moratorium record"  (30400)
+#   "…with a fully open national foreign-ownership position and NO Bali
+#    moratorium block"                                                     (79122)
+#
+# The sentence asserts the falsehood in its first half and is acquitted by its
+# innocent second. Measured on the live catalogue: **42 sentences on 22 codes**,
+# every one of them a genuine assertion of national openness on a record capped
+# at 0 or 49 — military combat vehicles, chartered flights, couriers, Umrah and
+# Hajj travel. Not one was a denial. The rule is therefore positional: a
+# negation acquits only when it precedes the claim it is supposed to be denying.
+_NEGATION = re.compile(
+    # `no(?!\.)` and not a bare `no`: masking abbreviations for the splitter
+    # newly keeps "regulation No. 7 of 2025" inside its sentence, and a bare
+    # `\bno\b` reads that regulation NUMBER as the word "no" and acquits the
+    # claim after it. The fix for one half of superscar #3 handed the other half
+    # a new instance in the same edit.
+    r"\b(?:not|no(?!\.)|never|cannot|can't|isn't|does\s+not|nor|"
+    # English also denies by DEGREE, and these read as assertions to a pattern
+    # that only knows "not": "the national position is anything but open".
+    # `without` is deliberately only in its `without being` form — bare
+    # `without` would acquit "without a local partner, this is nationally open
+    # to 100%", which is the dangerous direction. Newly acquits 0 live
+    # sentences; this is relief for prose not yet written.
+    r"anything\s+but|hardly|barely|far\s+from|without\s+being)\b",
+    re.IGNORECASE,
+)
+
+# English denies a claim by CONTRAST as often as by "not", and the contrastive
+# forms carried no weight here at all — so widening the claim list newly
+# convicted `50126`, which says the true thing:
+#
+#   "…foreign ownership is capped at 49%, RATHER THAN being fully open"
+#
+# But adding these to `_NEGATION` was an over-match the moment it was written,
+# and this module's own test caught it on `50135`:
+#
+#   "…may hold the activity with full foreign ownership, RATHER THAN under a
+#    lower foreign-equity ceiling"
+#
+# Same two words, opposite meanings. What separates them is not the marker, it
+# is WHICH SIDE of it the openness claim sits on: before the contrast it is the
+# alternative being ASSERTED, after it the one being REJECTED. So the marker is
+# matched positionally rather than as a blanket acquittal — the entity, not the
+# form, one layer below where that rule usually gets applied.
+_CONTRAST = re.compile(r"\b(?:rather\s+than|instead\s+of|as\s+opposed\s+to)\b", re.IGNORECASE)
+
+# …and "after the marker" is not enough on its own, which the same reviewer
+# showed and the live catalogue confirmed on `41020`:
+#
+#   "the conclusion is aligned RATHER THAN contradictory: nationally open, and
+#    not blocked for PMA registration in Bali"
+#
+# The contrast is between `aligned` and `contradictory`. The openness sits after
+# the marker and is nonetheless ASSERTED, because a clause boundary ends the
+# contrast before it gets there. So the marker must DIRECTLY govern the claim:
+# no colon, semicolon or dash may stand between them.
+# The comma is in this class for the FRONTED contrast, which is ordinary English
+# and not an edge case: "RATHER THAN being capped, this activity is nationally
+# open" puts the asserted side after the marker, and only the comma says where
+# the rejected side ended. It changes no live verdict today — it is here because
+# the next sentence somebody writes is as likely to be fronted as trailing.
+_CLAUSE_BREAK = re.compile(r"[:;—–,]")
+
+
+def _contrast_rejects(sentence: str, contrast: re.Match, claim: re.Match) -> bool:
+    """Is the openness the alternative being REJECTED, rather than asserted?"""
+    if claim.start() < contrast.end():
+        return False  # the claim sits before the marker — it is the asserted side
+    return not _CLAUSE_BREAK.search(sentence[contrast.end() : claim.start()])
 
 
 def load_records(path: Path = CANONICAL) -> list[dict[str, Any]]:
@@ -266,10 +391,15 @@ def classify(record: dict[str, Any]) -> dict[str, Any]:
     capped = isinstance(cap, int) and cap < 100
     if capped:
         for path, text in _prose_fields(record):
-            for sentence in _SENTENCE.findall(text):
-                if not (_NATIONAL_SCOPE.search(sentence) and _OPENNESS_CLAIM.search(sentence)):
+            for sentence in _sentences(text):
+                claim = _OPENNESS_CLAIM.search(sentence)
+                if not (claim and _NATIONAL_SCOPE.search(sentence)):
                     continue
-                if _NEGATION.search(sentence):
+                negation = _NEGATION.search(sentence)
+                if negation and negation.start() < claim.start():
+                    continue
+                contrast = _CONTRAST.search(sentence)
+                if contrast and _contrast_rejects(sentence, contrast, claim):
                     continue
                 out["body_asserts_national_openness"] = True
                 out["offending_fields"].append(

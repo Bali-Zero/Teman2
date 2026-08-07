@@ -63,24 +63,86 @@ case "$TIER" in
 esac
 TIMEOUT="${CRON_AGENT_TIMEOUT:-$DEFAULT_TIMEOUT}"
 
+# Floor for a single cascade attempt (see run_agent's allocation comment). The
+# slowest agent job measured succeeding on Pro takes 118s; 300s is ~2.5x that,
+# and the global TIMEOUT above still caps the whole cascade. Per-job override:
+# CRON_AGENT_MIN_ATTEMPT_SECONDS.
+MIN_ATTEMPT_SECONDS="${CRON_AGENT_MIN_ATTEMPT_SECONDS:-300}"
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [$JOB_NAME] $*" >> "$LOG_FILE"; }
+
+_file_mtime() {
+    # `stat -f%m` is BSD syntax. On GNU coreutils `-f` means --file-system and
+    # `%m` is the MOUNT POINT, so the BSD form does not fail there — it succeeds
+    # and prints something that is not a timestamp. A `|| echo 0` fallback keyed
+    # to the exit code therefore never fires, and the caller's age arithmetic
+    # gets garbage. Judge the VALUE (is it a number?), not the exit code.
+    # Pro runs macOS, so the BSD branch is the live one; the GNU branch is what
+    # makes the cooldown gate testable on a Linux CI runner instead of silently
+    # inert there (W108: a check that only runs on one OS hides defects).
+    local m
+    m="$(stat -f%m "$1" 2>/dev/null)"
+    case "$m" in ''|*[!0-9]*) m="$(stat -c%Y "$1" 2>/dev/null)" ;; esac
+    case "$m" in ''|*[!0-9]*) m=0 ;; esac
+    printf '%s' "$m"
+}
 
 send_telegram() {
     local msg="$1"
     # Notification gateway (post-#2263 canon promotion): tg_notify.py owns token
     # resolution + tiering + 6h dedup; this wrapper keeps its own 30-min cooldown.
     # No env-token gate: an alert must not vanish silently when env lacks the token.
+    #
+    # JUDGE THE REPLY, NOT THE EXIT CODE (W104). tg_notify.py's main() returns 0
+    # unconditionally — its `except Exception` branch is literally commented
+    # "NEVER fail the caller", spools best-effort and still returns 0. So an rc
+    # check here would be decorative by construction. The verdict is the status
+    # word it prints on STDERR, one of six:
+    #     sent               -> it reached Telegram
+    #     deduped            -> an equivalent message went out recently (silence
+    #                           is the intended outcome, so it counts as handled)
+    #     logged | spooled | p0_overflow_spooled | p0_unsent_spooled
+    #                        -> it did NOT reach Telegram; it is parked for later
+    # The old line discarded both channels (`>/dev/null 2>&1`) and then touched
+    # the cooldown unconditionally, so a spooled or errored alert also bought 30
+    # minutes of silence and left no trace of having done so — a lost alert that
+    # suppressed its own successor.
     if [[ -f "$COOLDOWN_FILE" ]]; then
-        local age=$(( $(date +%s) - $(stat -f%m "$COOLDOWN_FILE" 2>/dev/null || echo 0) ))
+        local age=$(( $(date +%s) - $(_file_mtime "$COOLDOWN_FILE") ))
         [[ $age -lt 1800 ]] && { log "Telegram cooldown active (${age}s < 1800s)"; return; }
     fi
     local gateway="$(dirname "$0")/tg_notify.py"
     [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
-    python3 "$gateway" --tier p0 --source cron-agent \
-        --dedup-key "cron-agent:${JOB_NAME}:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
-    touch "$COOLDOWN_FILE"
+    if [[ ! -f "$gateway" ]]; then
+        log "ALERT NOT SENT: notification gateway missing (looked in $(dirname "$0") and $HOME/nuzantara/scripts)"
+        return
+    fi
+    local reply rc
+    reply="$(python3 "$gateway" --tier p0 --source cron-agent \
+        --dedup-key "cron-agent:${JOB_NAME}:$(hostname -s)" -- "$msg" 2>&1)"
+    rc=$?
+    # Record what the gateway actually said, always. rc is logged for forensics
+    # only — it is never the thing being judged.
+    log "Telegram gateway rc=$rc reply=$(printf '%s' "$reply" | tr '\n' ' ' | head -c 200)"
+    # Read the status as an ENTITY, not a substring (superscar #3): pull the word
+    # off a line that IS the status line. A bare `*"sent"*` would also match the
+    # free-form "internal error (...)" branch if an exception message ever carried
+    # the word, and `p0_unsent_spooled` is one prefix away from a false positive.
+    local status
+    status="$(printf '%s\n' "$reply" | sed -n 's/^tg_notify: \([a-z0-9_]*\)$/\1/p' | tail -1)"
+    case "$status" in
+        sent|deduped)
+            touch "$COOLDOWN_FILE"
+            ;;
+        *)
+            # Deliberately NOT touching the cooldown: an alert that did not go out
+            # must not buy silence for the next one. Volume is bounded — send_telegram
+            # fires at most a handful of times per job run, and these jobs are daily.
+            log "ALERT NOT DELIVERED (status='${status:-<unparseable>}') — cooldown deliberately NOT armed so the next attempt is not pre-silenced"
+            ;;
+    esac
 }
 
 save_state() {
@@ -119,12 +181,16 @@ claude_stderr_retryable() {
 
 claude_stdout_retryable() {
     local stdout_file="$1"
-    python3 - "$stdout_file" <<'PY'
+    # Optional: the exit code the CLI just returned. When non-zero, stdout is a
+    # CLI diagnostic rather than an agent answer — see the anchor note below.
+    local exit_code="${2:-}"
+    python3 - "$stdout_file" "$exit_code" <<'PY'
 import json
 import re
 import sys
 
 text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+exit_code = sys.argv[2] if len(sys.argv) > 2 else ""
 broad = re.compile(
     r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
     r"usage limit|weekly limit|hit your limit|capacity|overloaded|"
@@ -175,6 +241,26 @@ retryable = (
     bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
     or bool(whole.fullmatch(text))
 )
+
+# The whole-text anchor above judges the SHAPE of the sentence: it only fires
+# when the entire output IS one of the phrasings it knows. That strictness is
+# deliberate and must stay — an agent that SUCCEEDS and happens to discuss
+# "rate limits" in its answer must not rotate the seat.
+#
+# But it made the cascade decorative against the commonest auth failure there
+# is. The CLI prints, on stdout, exit 1:
+#     Failed to authenticate. API Error: 401 OAuth access token has been revoked.
+# The anchor knows "authentication failed", not "Failed to authenticate", so it
+# refused to match and the loop broke at the first seat instead of rotating to
+# a live one. Measured 2026-08-07 on Pro: three of four numbered seats revoked,
+# the fourth alive, and every agent job died on seat 1 regardless.
+#
+# So bind the severity to the EXIT CODE, not to the wording. A non-zero exit
+# means the CLI itself refused; its stdout is a diagnostic, and any auth/quota
+# marker anywhere in it is the entity we care about. Exit 0 keeps the anchor.
+if not retryable and exit_code not in ("", "0") and not isinstance(payload, dict):
+    retryable = bool(broad.search(text))
+
 raise SystemExit(0 if retryable else 1)
 PY
 }
@@ -182,7 +268,8 @@ PY
 claude_retryable_files() {
     local stdout_file="$1"
     local stderr_file="$2"
-    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file"
+    local exit_code="${3:-}"
+    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file" "$exit_code"
 }
 
 claude_oauth_env() {
@@ -351,6 +438,26 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
         local attempts_left=$(( ${#tokens[@]} - idx ))
         local attempt_timeout=$(( remaining / attempts_left ))
+        # Equal division assumes every attempt consumes its slice. A cascade is
+        # the opposite: a DEAD seat is refused in seconds and costs nothing,
+        # while the ONE seat that works needs real time. So an equal split
+        # starves the only attempt that was ever going to succeed — and it gets
+        # worse the healthier the fleet is. Measured on Pro 2026-08-07, right
+        # after all four seats were re-issued: 600s / 5 entries = 120s each,
+        # and `indexing-daily` (a job that takes 118s) passed with two seconds
+        # to spare while `weekly-dep-audit` was killed on all five in turn —
+        # five healthy seats, five timeouts, no work done. The wrapper already
+        # grants a legitimate long agent run 30 minutes of background ceiling
+        # (see CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS below); a 120s slice
+        # contradicts that by 15x.
+        #
+        # So: floor every attempt at a real working slice. Fast-failing seats
+        # never reach the floor (they are refused long before it), so rotation
+        # keeps its full depth; only a seat that is genuinely working gets the
+        # time. The global deadline is still the hard backstop — the cap on the
+        # next line means the floor can never overrun it.
+        [[ $attempt_timeout -lt $MIN_ATTEMPT_SECONDS ]] && attempt_timeout=$MIN_ATTEMPT_SECONDS
+        [[ $attempt_timeout -gt $remaining ]] && attempt_timeout=$remaining
         [[ $attempt_timeout -lt 1 ]] && attempt_timeout=1
 
         local env_args=()
@@ -385,7 +492,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
 
         # OAuth quota/auth diagnostics can exit 0: classify before success.
-        if claude_retryable_files "$attempt_out" "$attempt_err"; then
+        if claude_retryable_files "$attempt_out" "$attempt_err" "$exit_code"; then
             log "$label: OAuth account unavailable, trying next"
             output=""
             rm -f "$attempt_out" "$attempt_err"

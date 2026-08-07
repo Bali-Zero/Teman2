@@ -75,6 +75,26 @@ P0_BUDGET = _env_num("TG_P0_BUDGET", 12, int)
 # Small on purpose: a flapping cron must not become the next source that eats
 # the channel. See the comment at the budget decision below for the measurement.
 CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
+# ── Daytime reserve (2026-08-07) ─────────────────────────────────────────────
+# The budget was spent first-come-first-served, and the nightly cron batch
+# empties it before dawn. Measured on Pro over 7 clean days (07-31 → 08-06):
+# **68 of the 98 sent P0s (69%) fired between 00:00 and 02:59**, and between
+# 08:00 and 23:00 essentially nothing got through except cron-fail reserve
+# draws — while 275 further P0s (74% of a true demand of 53/day) went to the
+# digest. The lane was therefore CLOSED during the hours its only reader is
+# awake: anything breaking at 14:00 could not reach him. 18 of those 68
+# pre-dawn slots were green bulletins that never carried a red in seven days.
+#
+# So the night may spend at most P0_BUDGET - DAY_RESERVE; the remainder is held
+# for the daytime window. This changes WHICH P0s interrupt, not how many.
+#
+# `cron-fail:` is EXEMPT from the night sub-cap, deliberately: W106 IS a 03:21
+# "the Postgres backup failed", and holding one back to protect the afternoon
+# would be that same scar wearing a new face. A cron failure at night still
+# faces only the full budget and its own reserve, exactly as before.
+DAY_RESERVE = _env_num("TG_P0_DAY_RESERVE", 5, int)
+DAY_START_H = _env_num("TG_P0_DAY_START_HOUR", 8, int)
+DAY_END_H = _env_num("TG_P0_DAY_END_HOUR", 24, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 # A condition that PERSISTS is not news each time it is re-measured. After the
 # first send, each further send of the same live condition mutes it for longer.
@@ -115,6 +135,11 @@ DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 REPEAT_LADDER_H = [
     float(x) for x in os.environ.get("TG_REPEAT_LADDER_H", "").split(",") if x.strip()
 ] or [DEDUP_HOURS, 24.0, 72.0, 168.0]
+# A condition is only DEAD after this much silence, even when the ladder's own
+# window is shorter. 36h clears a daily cadence (24h) with margin for cron
+# jitter, and stays well under 48h so a genuinely two-day-silent condition is
+# still news. See _death_silence_h() for the measurement that set it.
+DEATH_FLOOR_H = float(os.environ.get("TG_DEATH_FLOOR_H", "36"))
 DRY_RUN = os.environ.get("TG_DRY_RUN", "") == "1"
 RELAY_SSH = os.environ.get("TG_RELAY_SSH", "")  # e.g. "pro" on M5
 RELAY_GATEWAY = os.environ.get(
@@ -171,6 +196,38 @@ def _mute_window_h(streak: int) -> float:
     if streak <= 0:
         return 0.0
     return REPEAT_LADDER_H[min(streak - 1, len(REPEAT_LADDER_H) - 1)]
+
+
+def _death_silence_h(streak: int) -> float:
+    """Silence after which a condition counts as DEAD (its next hit is a new birth).
+
+    Why this is not simply `2 * mute_window` (2026-08-07). It used to be, and the
+    consequence was measured live: the ladder could never quieten a ONCE-A-DAY
+    condition, which is most of this fleet's traffic. At rung 1 the window is
+    DEDUP_HOURS (6h), so "dead" meant 12h of silence — SHORTER than the 24h period
+    of a daily cron. Every nightly recurrence therefore looked like a brand-new
+    condition, reset the streak to 1, and sent at full volume forever.
+
+    Measured on Pro over 7 days, from the gateway's own dedup state:
+
+        wa-bridge:* (fires several times a day)   8 days running -> streak 3
+        cron-fail:garuda_indexer                  7 days running -> streak 1
+        cron-fail:nightly_autofix_ci              7 days running -> streak 1
+        cron-agent:conversation-cleanup           7 days running -> streak 1
+        cron-fail:nb_agents_daily_dr              7 days running -> streak 1
+        cron-fail:run_gap_scanner_layer_a         7 days running -> streak 1
+
+    Chatty conditions climb; daily ones are pinned at rung 1. Those five alone
+    are five P0 every single day. The comment two functions below —
+    "else a chronic condition loses its streak and the ladder silently restarts
+    at 6h forever" — names this exact failure and guards the PRUNE path; this is
+    the other door into the same room.
+
+    The floor only bites at rung 1 (2*6=12 -> 36). From rung 2 on, `2 * win`
+    already dominates (48, 144, 336) and this changes nothing — so a condition
+    that has genuinely climbed keeps exactly the death semantics it has today.
+    """
+    return max(2.0 * _mute_window_h(streak), DEATH_FLOOR_H)
 
 
 # ---------------------------------------------------------------- token chain
@@ -384,6 +441,7 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
 
     send_meta = False
     drew_from_reserve = False
+    held_for_day = False
     today = time.strftime("%Y-%m-%d", time.localtime(now))
 
     with _spool_lock(spool):
@@ -403,9 +461,12 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
                 entry["last_text"] = text[:200]
                 _save_state(spool, state)
                 return "deduped"
-            # Silent for more than two windows => the condition DIED. The next
-            # occurrence is a new birth, so the ladder restarts from the top.
-            if since > 2 * win:
+            # Silent for longer than the death threshold => the condition DIED.
+            # The next occurrence is a new birth, so the ladder restarts at the
+            # top. NOT `2 * win`: at rung 1 that is 12h, shorter than a daily
+            # cron's own period, so every nightly recurrence read as a rebirth
+            # and the ladder could never climb. See _death_silence_h().
+            if since > _death_silence_h(streak) * 3600:
                 streak = 1
                 suppressed = 0
             else:
@@ -447,7 +508,14 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             budget.clear()
             budget.update({"date": today, "sent": 0, "overflow": 0, "cron_reserve": 0})
 
-        if budget["sent"] >= P0_BUDGET:
+        hour = time.localtime(now).tm_hour
+        is_day = DAY_START_H <= hour < DAY_END_H
+        is_cron_fail = key.startswith("cron-fail:")
+        night_cap = max(0, P0_BUDGET - DAY_RESERVE)
+        # A cron failure is never subject to the night sub-cap (see DAY_RESERVE).
+        effective = P0_BUDGET if (is_day or is_cron_fail) else night_cap
+
+        if budget["sent"] >= effective:
             # A cron JOB FAILURE draws on its own small reserve once the shared
             # budget is gone. Measured 2026-07-27 on Pro: the P0 budget is hit on
             # 8 of 21 days and 68% of it (155 of 228 sent P0s) is one chatty
@@ -456,7 +524,7 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             # 03:21 "the Postgres backup failed" returned p0_overflow_spooled and
             # went to the digest, and production then spent 27 hours with no
             # backup at all.
-            if key.startswith("cron-fail:") and budget.get("cron_reserve", 0) < CRON_FAIL_RESERVE:
+            if is_cron_fail and budget.get("cron_reserve", 0) < CRON_FAIL_RESERVE:
                 budget["cron_reserve"] = budget.get("cron_reserve", 0) + 1
                 drew_from_reserve = True
                 record["p0_cron_reserve"] = True
@@ -465,6 +533,14 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             else:
                 budget["overflow"] += 1
                 record["p0_overflow"] = True
+                # Distinguish "the day's budget is gone" from "the night has
+                # spent its share and the rest is held for daylight" — they are
+                # different states, and the meta message below must not claim
+                # the first while the second is true (W106's second-degree
+                # defect: the diagnosis that ages with the cure).
+                if not is_day and budget["sent"] < P0_BUDGET:
+                    record["p0_night_holdback"] = True
+                    held_for_day = True
                 _append(spool, "pending.jsonl", record)
                 send_meta = budget["overflow"] == 1
                 _save_state(spool, state)
@@ -477,10 +553,19 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
     if over:
         if send_meta:
             token, chat = resolve_credentials()
-            meta = (
-                f"🔕 [{machine}] Budget P0 esaurito ({P0_BUDGET}/{P0_BUDGET} oggi). "
-                f"I successivi P0 finiscono nel digest."
-            )
+            if held_for_day:
+                meta = (
+                    f"🌙 [{machine}] Quota P0 notturna esaurita "
+                    f"({max(0, P0_BUDGET - DAY_RESERVE)}/{P0_BUDGET}); "
+                    f"{DAY_RESERVE} slot restano per le "
+                    f"{int(DAY_START_H):02d}-{int(DAY_END_H):02d}. I P0 notturni "
+                    f"successivi vanno nel digest — i cron-fail passano lo stesso."
+                )
+            else:
+                meta = (
+                    f"🔕 [{machine}] Budget P0 esaurito ({P0_BUDGET}/{P0_BUDGET} oggi). "
+                    f"I successivi P0 finiscono nel digest."
+                )
             if DRY_RUN or (token and chat):
                 send_telegram(token, chat, meta)
             else:
@@ -584,6 +669,70 @@ def selftest() -> int:
             notify("p0", "t", "an unrelated failure", "other:thing") == "p0_overflow_spooled",
         )
 
+        # ---- daytime reserve (2026-08-07) ----------------------------------
+        # GUILT: the nightly batch spent the whole budget before dawn (68 of 98
+        # sent P0s fired 00:00-02:59 on the live fleet), so the lane was shut
+        # for the hours its reader is awake. The night must now stop at
+        # P0_BUDGET - DAY_RESERVE.
+        # INNOCENCE ×2, and the second is the one that matters: the very P0 the
+        # night refused goes through in daylight (the slots are held, not
+        # destroyed), and a `cron-fail:` at night is NEVER held — W106 is a
+        # 03:21 backup failure, and protecting the afternoon with it would be
+        # the same scar with a new face.
+        # The window is pinned by the knobs, not by the wall clock, so this is
+        # deterministic at any hour CI happens to run.
+        global DAY_RESERVE, DAY_START_H, DAY_END_H
+        P0_BUDGET, CRON_FAIL_RESERVE, DAY_RESERVE = 4, 2, 2  # night may spend 2 of 4
+
+        night = spool / "night"
+        night.mkdir()
+        os.environ["TG_SPOOL_DIR"] = str(night)
+        DAY_START_H, DAY_END_H = 25, 25  # no hour qualifies → always night
+        check("night: 1st P0 sends", notify("p0", "n", "the disk is full") == "sent")
+        check("night: 2nd P0 sends", notify("p0", "n", "the token was revoked") == "sent")
+        check(
+            "night: 3rd P0 is HELD for the day",
+            notify("p0", "n", "a third distinct thing broke") == "p0_overflow_spooled",
+        )
+        nstate = json.loads((night / "state.json").read_text())
+        check(
+            "…and the budget is NOT exhausted (2 of 4 spent)",
+            nstate["p0_budget"]["sent"] == 2 and nstate["p0_budget"]["sent"] < P0_BUDGET,
+        )
+        held = [json.loads(x) for x in (night / "pending.jsonl").read_text().splitlines()]
+        check("…the held record says WHY", any(r.get("p0_night_holdback") for r in held))
+        meta = (night / "sent-dry.jsonl").read_text()
+        check("…and the meta message does not claim the budget is spent",
+              "notturna" in meta and "Budget P0 esaurito" not in meta)
+        # The exemption cannot be proven by ONE night cron-fail: without it the
+        # call still succeeds — by drawing the cron reserve. The difference is
+        # only visible once that reserve would be gone, and it is the whole
+        # point: night cron-fails must not BURN the reserve that the 03:21
+        # backup failure needs. With the exemption the budget (4) carries them
+        # and the reserve (2) is still untouched behind it, so four pass;
+        # without it only the two the reserve can cover do. A first draft
+        # asserted a single cron-fail here and a mutation that deleted the
+        # exemption sailed straight through it.
+        for i, what in enumerate(
+            ["the backup did not run", "the mirror died", "the disk filled", "the token expired"]
+        ):
+            check(
+                f"night: cron-fail {i + 1}/4 passes WITHOUT burning the reserve (W106)",
+                notify("p0", "cron:x", what, f"cron-fail:job-{i}") == "sent",
+            )
+
+        day = spool / "day"
+        day.mkdir()
+        os.environ["TG_SPOOL_DIR"] = str(day)
+        DAY_START_H, DAY_END_H = 0, 24  # every hour qualifies → always day
+        check("day: 1st P0 sends", notify("p0", "d", "the disk is full") == "sent")
+        check("day: 2nd P0 sends", notify("p0", "d", "the token was revoked") == "sent")
+        check(
+            "day: the 3rd — refused at night — GOES THROUGH",
+            notify("p0", "d", "a third distinct thing broke") == "sent",
+        )
+        os.environ["TG_SPOOL_DIR"] = str(spool)
+
         # ---- identity: measurements are not identity (2026-08-06) ----------
         # GUILT: the three loudest sources on the live fleet each embed a
         # changing number in their text; under the old raw key every repeat
@@ -606,6 +755,87 @@ def selftest() -> int:
         )
         state = json.loads((spool / "state.json").read_text())
         check("reserve counted exactly twice", state["p0_budget"].get("cron_reserve") == 2)
+
+        # ---- the repeat ladder must climb for a DAILY condition (2026-08-07) --
+        # The clock is a HOLDER the test advances, never an iterator of ticks:
+        # `logging` calls time.time() once per LogRecord and would drain a list
+        # sized to the number of notifies (P3 FLAKY, cured 2026-08-02).
+        real_time = time.time
+        clock = [real_time()]
+        time.time = lambda: clock[0]
+        try:
+            ladder = spool / "ladder"
+            ladder.mkdir()
+            os.environ["TG_SPOOL_DIR"] = str(ladder)
+            DAY_START_H, DAY_END_H = 0, 24
+            P0_BUDGET = 99  # the ladder is what is under test here, not the budget
+
+            # GUILT: seven consecutive days of ONE standing condition. Before the
+            # floor this sent 7/7 — every 24h gap exceeded 2*6h and reset the
+            # streak to 1 forever, which is exactly what the five live cron-fail
+            # keys were doing. Days 1-3 climb the ladder and are heard; from day
+            # 4 the 72h rung swallows them.
+            outcomes = []
+            for _ in range(7):
+                outcomes.append(notify("p0", "cron:x", "the indexer died", "cron-fail:daily"))
+                clock[0] += 24 * 3600
+            # The exact sequence, asserted rather than summarised — day 6 is the
+            # 72h rung expiring, not a defect, and a looser assertion hid it.
+            #   d1 rung1(6h)  send -> streak 2
+            #   d2 24h>6h     send -> streak 3
+            #   d3 24h>24h    send -> streak 4 window 72h
+            #   d4 24h<72h    mute
+            #   d5 48h<72h    mute
+            #   d6 72h        send (carries "ripetuta 2x") -> rung 168h
+            #   d7 24h<168h   mute      => 4 sends where there were 7, then 1/week
+            check(
+                "daily condition: 4 sends in 7 days, not 7",
+                outcomes == ["sent", "sent", "sent", "deduped", "deduped", "sent", "deduped"],
+            )
+            lstate = json.loads((ladder / "state.json").read_text())
+            check(
+                "…and the ladder actually CLIMBED (streak > 1)",
+                int(lstate["dedup"]["cron-fail:daily"]["streak"]) > 1,
+            )
+            sent_text = (ladder / "sent-dry.jsonl").read_text()
+            check(
+                "…and the escape carries how much it repeated while muted",
+                "ripetuta" in sent_text,
+            )
+
+            # INNOCENCE 1: a condition that genuinely DIES must come back at full
+            # volume — 48h of silence is past the 36h floor, so the next hit is a
+            # NEW BIRTH. Assert the streak, not the outcome: a first draft checked
+            # `== "sent"`, which is true whether the ladder resets or climbs, so a
+            # mutation that raised the floor to 500h sailed straight through it.
+            # The observable that actually distinguishes the two worlds is the rung.
+            clock[0] += 48 * 3600
+            notify("p0", "cron:y", "the mirror died", "cron-fail:intermittent")
+            clock[0] += 48 * 3600
+            check(
+                "a condition silent past the floor is REBORN (streak back to 1)",
+                notify("p0", "cron:y", "the mirror died", "cron-fail:intermittent") == "sent"
+                and int(
+                    json.loads((ladder / "state.json").read_text())["dedup"][
+                        "cron-fail:intermittent"
+                    ]["streak"]
+                )
+                == 1,
+            )
+
+            # INNOCENCE 2: the floor must be inert wherever 2*win already exceeds
+            # it. Touching the high rungs would change death semantics for the
+            # chatty conditions that ALREADY climb correctly today.
+            check(
+                "floor is inert from rung 2 up",
+                _death_silence_h(2) == 2 * _mute_window_h(2)
+                and _death_silence_h(3) == 2 * _mute_window_h(3)
+                and _death_silence_h(4) == 2 * _mute_window_h(4),
+            )
+            check("floor bites only at rung 1", _death_silence_h(1) == DEATH_FLOOR_H)
+        finally:
+            time.time = real_time
+            os.environ["TG_SPOOL_DIR"] = str(spool)
 
     print("SELFTEST", "PASS" if not failures else f"FAIL ({failures})")
     return 0 if not failures else 1

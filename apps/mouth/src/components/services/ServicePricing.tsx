@@ -3,9 +3,16 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Check, X, Info, Phone } from "lucide-react";
+import { Check, Info, Phone } from "lucide-react";
 import type { ServicePackage } from "@/data/services_data";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { usePricingData } from "@/hooks/usePricingData";
 
 // ServiceData without icon (React component cannot be serialized)
@@ -51,28 +58,16 @@ function getVisaPackageColor(name: string): {
   };
 }
 
-// A raw digit-and-separator string ("39.000.000", "10.000.000") gets an
-// " IDR" suffix appended by the renderer below. Anything that already
-// contains letters — an already-formatted live value ("IDR 39,000,000"), a
-// placeholder ("Check live pricing"), or "Contact" — must render as-is.
-// Word/entity check on shape, never a substring/keyword list (cicatrix
-// family #3 — guard-over-match): a new placeholder string added later still
-// classifies correctly without touching this function.
-function isNumericPrice(price: string): boolean {
-  return /^\d[\d.,]*$/.test(price);
-}
-
 /**
- * Resolves a package's display price: live PricingTool value (via
- * `usePricingData`, when the package declares `livePriceKey`) falling back
- * to the static `pkg.price` literal — never blank, never a stranding
- * spinner. `usePricingData(null)` is a documented no-op (no fetch, no
- * loading state), so this is safe to call unconditionally for every
- * package, including the ones with no live pricing wired yet.
+ * Resolve only an exact PricingTool identity. Static package text is never a
+ * price authority; a missing or malformed row becomes contact-required.
  */
 function usePackagePrice(pkg: ServicePackage): string {
-  const { price: livePrice } = usePricingData(pkg.livePriceKey ?? null);
-  return livePrice ?? pkg.price;
+  const { price: livePrice } = usePricingData(
+    pkg.livePriceKey ?? null,
+    pkg.livePriceCategory ?? null,
+  );
+  return livePrice ?? "Contact";
 }
 
 function PriceValue({
@@ -92,14 +87,7 @@ function PriceValue({
     );
   }
 
-  const amount = isNumericPrice(price) ? (
-    <>
-      <span className="text-3xl font-bold text-white">{price}</span>
-      <span className="text-white/40 text-sm ml-2">IDR</span>
-    </>
-  ) : (
-    <span className="text-3xl font-bold text-white">{price}</span>
-  );
+  const amount = <span className="text-3xl font-bold text-white">{price}</span>;
 
   if (variant === "card") {
     return amount;
@@ -116,18 +104,12 @@ function PriceValue({
 export default function ServicePricing({ service, slug }: ServicePricingProps) {
   const [selectedPackage, setSelectedPackage] =
     React.useState<ServicePackage | null>(null);
-
-  // Close modal on escape key
-  React.useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedPackage(null);
-    };
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, []);
+  const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
+  const dialogTitleRef = React.useRef<HTMLHeadingElement>(null);
+  const dialogTriggerRef = React.useRef<HTMLButtonElement>(null);
 
   return (
-    <>
+    <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
       {/* Pricing Table */}
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
@@ -142,14 +124,16 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               return (
                 <div
                   key={pkg.name}
-                  className={`rounded-xl border p-6 cursor-pointer transition-all hover:scale-[1.02] ${
+                  data-testid="public-service-price-card"
+                  data-pricing-category={pkg.livePriceCategory}
+                  data-pricing-key={pkg.livePriceKey}
+                  className={`rounded-xl border p-6 transition-all hover:scale-[1.02] ${
                     slug === "visa" && visaColors
                       ? `${visaColors.bg} ${visaColors.border}`
                       : pkg.popular
                         ? "border-accent-blue-editorial bg-accent-blue-editorial/10 hover:border-accent-blue-editorial"
                         : "border-white/10 bg-[#0a2540] hover:border-white/30"
                   }`}
-                  onClick={() => setSelectedPackage(pkg)}
                 >
                   {pkg.popular && (
                     <span
@@ -185,18 +169,25 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                     ))}
                   </ul>
 
-                  <button
-                    className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
-                      slug === "visa" && visaColors
-                        ? `rp-dark-island ${visaColors.badge} text-white hover:opacity-90`
-                        : pkg.popular
-                          ? "rp-dark-island bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
-                          : "border border-white/20 text-white hover:bg-white/10"
-                    }`}
-                  >
-                    <Info className="w-4 h-4" />
-                    More Details
-                  </button>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        dialogTriggerRef.current = event.currentTarget;
+                        setSelectedPackage(pkg);
+                      }}
+                      className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
+                        slug === "visa" && visaColors
+                          ? `rp-dark-island ${visaColors.badge} text-white hover:opacity-90`
+                          : pkg.popular
+                            ? "rp-dark-island bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
+                            : "border border-white/20 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      <Info className="w-4 h-4" aria-hidden="true" />
+                      More Details
+                    </button>
+                  </DialogTrigger>
                 </div>
               );
             })}
@@ -210,114 +201,109 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
       {/* Modal Popup */}
       {selectedPackage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          onClick={() => setSelectedPackage(null)}
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0a2540] p-0 text-white"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            dialogTitleRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            dialogTriggerRef.current?.focus();
+          }}
         >
-          <div
-            className="relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button — kept off the light-retint pass (it sits on an
-                `.absolute` ancestor, which the Rumah Putih CSS scope
-                deliberately excludes elsewhere on the site) so its colors
-                are set explicitly here to stay legible on the now-light
-                modal body. */}
-            <button
-              onClick={() => setSelectedPackage(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/5 hover:bg-black/10 transition-colors"
+          <div className="p-8">
+            {/* Header */}
+            {selectedPackage.popular && (
+              <span className="inline-block px-3 py-1 rounded-full bg-accent-blue-editorial text-white text-xs font-medium mb-4">
+                Most Popular
+              </span>
+            )}
+            <DialogTitle
+              ref={dialogTitleRef}
+              tabIndex={-1}
+              className="font-serif text-2xl text-white mb-2 outline-none"
             >
-              <X className="w-5 h-5 text-[#1e3863]" />
-            </button>
+              {selectedPackage.name}
+            </DialogTitle>
+            <DialogDescription className="text-white/60 mb-6">
+              {selectedPackage.description}
+            </DialogDescription>
 
-            {/* Modal Content */}
-            <div className="p-8">
-              {/* Header */}
-              {selectedPackage.popular && (
-                <span className="inline-block px-3 py-1 rounded-full bg-accent-blue-editorial text-white text-xs font-medium mb-4">
-                  Most Popular
-                </span>
-              )}
-              <h2 className="font-serif text-2xl text-white mb-2">
-                {selectedPackage.name}
-              </h2>
-              <p className="text-white/60 mb-6">
-                {selectedPackage.description}
-              </p>
-
-              {/* Price */}
-              <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
-                <PriceValue pkg={selectedPackage} variant="modal" />
-              </div>
-
-              {/* Features */}
-              <h3 className="text-white font-medium mb-3">What's Included:</h3>
-              <ul className="space-y-3 mb-6">
-                {selectedPackage.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-white/80">
-                    <Check className="w-5 h-5 text-[#22c55e] mt-0.5 flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Additional Info */}
-              <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
-                <h4 className="text-white/60 text-sm uppercase tracking-wider mb-2">
-                  Our Service Includes:
-                </h4>
-                <ul className="text-white/70 text-sm space-y-1">
-                  <li>• Document preparation & review</li>
-                  <li>• Government submission & liaison</li>
-                  <li>• Status tracking & updates</li>
-                  <li>• Dedicated support throughout</li>
-                </ul>
-              </div>
-
-              {/* WhatsApp CTA */}
-              <WhatsAppLeadButton
-                source="pricing_modal"
-                context={{
-                  service_slug: slug,
-                  package_name: selectedPackage.name,
-                }}
-                whatsappContext={[
-                  { label: "Service", value: slug },
-                  { label: "Package", value: selectedPackage.name },
-                ]}
-                utm={{ page: `/services/${slug}` }}
-                className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
-              >
-                <Phone className="w-5 h-5" />
-                Chat on WhatsApp
-              </WhatsAppLeadButton>
-
-              {/* Optional deep-link to a dedicated landing page */}
-              {selectedPackage.link && (
-                <Link
-                  href={selectedPackage.link.href}
-                  className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors mb-3"
-                >
-                  {selectedPackage.link.label} →
-                </Link>
-              )}
-
-              <Link
-                href="/chat"
-                className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
-              >
-                <Image
-                  src="/assets/logo/zantara-lotus.png"
-                  alt="Zantara Lotus Logo"
-                  width={60}
-                  height={60}
-                />
-                Ask Zantara AI
-              </Link>
+            {/* Price */}
+            <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
+              <PriceValue pkg={selectedPackage} variant="modal" />
             </div>
+
+            {/* Features */}
+            <h3 className="text-white font-medium mb-3">
+              What&apos;s Included:
+            </h3>
+            <ul className="space-y-3 mb-6">
+              {selectedPackage.features.map((feature, i) => (
+                <li key={i} className="flex items-start gap-3 text-white/80">
+                  <Check className="w-5 h-5 text-[#22c55e] mt-0.5 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+
+            {/* Additional Info */}
+            <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
+              <h4 className="text-white/60 text-sm uppercase tracking-wider mb-2">
+                Our Service Includes:
+              </h4>
+              <ul className="text-white/70 text-sm space-y-1">
+                <li>• Document preparation & review</li>
+                <li>• Government submission & liaison</li>
+                <li>• Status tracking & updates</li>
+                <li>• Dedicated support throughout</li>
+              </ul>
+            </div>
+
+            {/* WhatsApp CTA */}
+            <WhatsAppLeadButton
+              source="pricing_modal"
+              context={{
+                service_slug: slug,
+                package_name: selectedPackage.name,
+              }}
+              whatsappContext={[
+                { label: "Service", value: slug },
+                { label: "Package", value: selectedPackage.name },
+              ]}
+              utm={{ page: `/services/${slug}` }}
+              className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
+            >
+              <Phone className="w-5 h-5" />
+              Chat on WhatsApp
+            </WhatsAppLeadButton>
+
+            {/* Optional deep-link to a dedicated landing page */}
+            {selectedPackage.link && (
+              <Link
+                href={selectedPackage.link.href}
+                className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors mb-3"
+              >
+                {selectedPackage.link.label} →
+              </Link>
+            )}
+
+            <Link
+              href="/chat"
+              className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
+            >
+              <Image
+                src="/assets/logo/zantara-lotus.png"
+                alt="Zantara Lotus Logo"
+                width={60}
+                height={60}
+              />
+              Ask Zantara AI
+            </Link>
           </div>
-        </div>
+        </DialogContent>
       )}
-    </>
+    </Dialog>
   );
 }

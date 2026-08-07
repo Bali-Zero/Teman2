@@ -67,9 +67,10 @@ actually ships now, not what an earlier draft of this module claimed.
    ``EXCLUDED`` before it ever reaches its ``HUMAN_REVIEW`` stage, silently
    suppressing the GLOBAL review concern. Fixed: ``evaluate()`` now evaluates
    every in-force GLOBAL ``HUMAN_REVIEW`` rule ONCE, before purpose
-   extraction and before the per-product loop, and returns
-   ``HUMAN_REVIEW_REQUIRED`` immediately on any TRUE result — see
-   ``evaluate()``'s pre-pass block. This does not replace or deduplicate the
+   extraction and before the per-product loop, and gives that result
+   unconditional final precedence — see ``evaluate()``'s pre-pass block.
+   The product traversal still completes when purposes are known so its trace
+   is not truncated. This does not replace or deduplicate the
    per-product ``HUMAN_REVIEW`` stage: PRODUCTS-scoped review rules (and a
    GLOBAL rule that resolves UNKNOWN rather than TRUE here) still flow
    through ``evaluate_product()`` exactly as before.
@@ -178,7 +179,7 @@ actually ships now, not what an earlier draft of this module claimed.
    inventing one out of scope; it instead derives a deterministic (same
    inputs -> same output, required for the determinism test) fingerprint
    using a fixed, clearly-named, NON-SECRET placeholder key
-   (``_FACTS_FINGERPRINT_PLACEHOLDER_KEY``) — mirroring ``bundle.py``'s own
+   (``TEST_FACTS_FINGERPRINT_PLACEHOLDER_KEY``) — mirroring ``bundle.py``'s own
    "UNSIGNED-DEV firebreak, never silently treated as real security"
    posture. ``decision_id``/``public_id`` are derived (UUIDv5 / truncated
    SHA-256 hex) from the same inputs for the same determinism reason. **Do
@@ -203,6 +204,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.ast import ConditionResult, FactSnapshot, UnknownFact
@@ -234,6 +236,7 @@ from backend.services.visa_engine.models import (
     RulePackRef,
     TimeRange,
 )
+from backend.services.visa_engine.trace import EvaluationTrace, TraceNode, TraceUnknownFact
 
 # ---------------------------------------------------------------------------
 # ProductProofStatus / ProductProof (spec §1 evaluator.py, §4.2)
@@ -283,6 +286,22 @@ class ProductProof:
 # ---------------------------------------------------------------------------
 
 _StageResult = tuple[CompiledRule, ConditionResult]
+
+
+@dataclass(frozen=True, slots=True)
+class _TraceEntry:
+    """Internal byproduct of one real rule evaluation.
+
+    It intentionally keeps the already-computed ``ConditionResult`` rather
+    than evaluating a condition again while constructing the public hash.
+    """
+
+    rule: CompiledRule
+    result: ConditionResult
+    product_version_id: uuid.UUID | None
+    evaluation_scope: Literal["GLOBAL_PREPASS", "PRODUCT_PROOF", "RANKING"]
+    product_proof_status: ProductProofStatus | None
+    applied_effect: str | None
 
 
 def _rules_by_stage(rules: Sequence[CompiledRule]) -> Mapping[RuleStage, tuple[CompiledRule, ...]]:
@@ -534,6 +553,7 @@ def evaluate_product(
     facts: FactSnapshot,
     purposes: frozenset[str],
     fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
+    _trace_sink: list[_TraceEntry] | None = None,
 ) -> ProductProof:
     """Evaluate one product's HARD_FILTER -> HUMAN_REVIEW -> ELIGIBILITY
     stage loop (spec §4.2, verbatim algorithm — the docstring order matches
@@ -556,34 +576,77 @@ def evaluate_product(
     """
     by_stage = _rules_by_stage(rules)
 
+    # Evaluate all proof stages before applying precedence. Conditions are
+    # pure and compiler-validated, so the verdict is unchanged; unlike the
+    # old cross-stage short-circuit this produces a complete audit traversal.
+    # RANKING remains restricted to supported products in ``_rank_supported``.
     hard_results = _evaluate_stage(by_stage.get(RuleStage.HARD_FILTER, ()), facts)
+    review_results = _evaluate_stage(by_stage.get(RuleStage.HUMAN_REVIEW, ()), facts)
+    support_results = _evaluate_stage(by_stage.get(RuleStage.ELIGIBILITY, ()), facts)
+
+    def finish(
+        proof: ProductProof,
+        *,
+        applied_rule_ids: frozenset[str],
+    ) -> ProductProof:
+        if _trace_sink is not None:
+            for rule, result in hard_results + review_results + support_results:
+                _trace_sink.append(
+                    _TraceEntry(
+                        rule=rule,
+                        result=result,
+                        product_version_id=product.product_version_id,
+                        evaluation_scope="PRODUCT_PROOF",
+                        product_proof_status=proof.status,
+                        applied_effect=(
+                            _effect_for_result(rule, result)
+                            if rule.rule_id in applied_rule_ids
+                            else None
+                        ),
+                    )
+                )
+        return proof
+
     if any(result.truth is TruthValue.TRUE for _, result in hard_results):
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.EXCLUDED,
-            reasons=_true_reasons(hard_results),
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.EXCLUDED,
+                reasons=_true_reasons(hard_results),
+            ),
+            applied_rule_ids=frozenset(
+                rule.rule_id for rule, result in hard_results if result.truth is TruthValue.TRUE
+            ),
         )
     hard_safety = _safety_unknowns(hard_results)
     hard_review_unknowns, hard_input_unknowns = _partition_unknowns_by_policy(hard_safety)
 
-    review_results = _evaluate_stage(by_stage.get(RuleStage.HUMAN_REVIEW, ()), facts)
     if any(result.truth is TruthValue.TRUE for _, result in review_results):
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.REVIEW,
-            reasons=_true_reasons(review_results),
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.REVIEW,
+                reasons=_true_reasons(review_results),
+            ),
+            applied_rule_ids=frozenset(
+                rule.rule_id for rule, result in review_results if result.truth is TruthValue.TRUE
+            ),
         )
     review_safety = _safety_unknowns(review_results)
     review_review_unknowns, review_input_unknowns = _partition_unknowns_by_policy(review_safety)
 
     if hard_review_unknowns or review_review_unknowns:
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.REVIEW,
-            reasons=_unknown_reasons(hard_review_unknowns + review_review_unknowns),
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.REVIEW,
+                reasons=_unknown_reasons(hard_review_unknowns + review_review_unknowns),
+            ),
+            applied_rule_ids=frozenset(
+                rule.rule_id for rule, _ in hard_review_unknowns + review_review_unknowns
+            ),
         )
 
-    support_results = _evaluate_stage(by_stage.get(RuleStage.ELIGIBILITY, ()), facts)
     true_support = tuple(
         (rule, result) for rule, result in support_results if result.truth is TruthValue.TRUE
     )
@@ -601,18 +664,26 @@ def evaluate_product(
         missing = _underlying_applicant_facts(
             hard_input_unknowns + review_input_unknowns, fact_registry
         )
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.BLOCKED_UNKNOWN,
-            missing_facts=missing,
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.BLOCKED_UNKNOWN,
+                missing_facts=missing,
+            ),
+            applied_rule_ids=frozenset(
+                rule.rule_id for rule, _ in hard_input_unknowns + review_input_unknowns
+            ),
         )
 
     if purposes <= covered:
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.SUPPORTED,
-            support_rules=tuple(rule for rule, _ in true_support),
-            covered_purposes=covered,
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.SUPPORTED,
+                support_rules=tuple(rule for rule, _ in true_support),
+                covered_purposes=covered,
+            ),
+            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
         )
 
     missing_purposes = purposes - covered
@@ -635,10 +706,13 @@ def evaluate_product(
         else frozenset()
     )
     if not (purposes <= naive_potential_coverage):
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.UNSUPPORTED,
-            missing_purposes=purposes - naive_potential_coverage,
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.UNSUPPORTED,
+                missing_purposes=purposes - naive_potential_coverage,
+            ),
+            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
         )
 
     # Gate round 2 (2026-07-20) P0-R2: the optimistic union above says every
@@ -656,10 +730,13 @@ def evaluate_product(
     # now — no single future resolution could ever realize the coverage the
     # naive union promised.
     if not _has_consistent_covering_subset(missing_purposes, support_safety):
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.UNSUPPORTED,
-            missing_purposes=missing_purposes,
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.UNSUPPORTED,
+                missing_purposes=missing_purposes,
+            ),
+            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
         )
 
     # Every declared purpose IS potentially coverable by some jointly
@@ -679,16 +756,22 @@ def evaluate_product(
         if frozenset(entry[0].effect.covered_purposes) & missing_purposes  # type: ignore[union-attr]
     )
     if relevant_review:
-        return ProductProof(
-            product=product,
-            status=ProductProofStatus.REVIEW,
-            reasons=_unknown_reasons(relevant_review),
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.REVIEW,
+                reasons=_unknown_reasons(relevant_review),
+            ),
+            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support + relevant_review),
         )
     missing = _underlying_applicant_facts(relevant_input, fact_registry)
-    return ProductProof(
-        product=product,
-        status=ProductProofStatus.BLOCKED_UNKNOWN,
-        missing_facts=missing,
+    return finish(
+        ProductProof(
+            product=product,
+            status=ProductProofStatus.BLOCKED_UNKNOWN,
+            missing_facts=missing,
+        ),
+        applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support + relevant_input),
     )
 
 
@@ -703,6 +786,7 @@ def _rank_supported(
     compiled_pack: CompiledRulePack,
     *,
     effective_at: datetime,
+    trace_sink: list[_TraceEntry] | None = None,
 ) -> tuple[Candidate, ...]:
     """Rank already-SUPPORTED proofs only (spec §4.4). Ranking rules add
     integer points; UNKNOWN ranking facts add zero (never re-derive
@@ -717,6 +801,17 @@ def _rank_supported(
             if rule.stage is not RuleStage.RANKING:
                 continue
             result = ast_module.evaluate_condition(rule.when, facts)
+            if trace_sink is not None:
+                trace_sink.append(
+                    _TraceEntry(
+                        rule=rule,
+                        result=result,
+                        product_version_id=proof.product.product_version_id,
+                        evaluation_scope="RANKING",
+                        product_proof_status=proof.status,
+                        applied_effect=_effect_for_result(rule, result),
+                    )
+                )
             if result.truth is TruthValue.TRUE:
                 score += rule.effect.points  # type: ignore[union-attr]
         scored.append((proof, score))
@@ -790,8 +885,8 @@ def _build_notices(facts: FactSnapshot, compiled_pack: CompiledRulePack) -> tupl
 #: NOT a secret. A fixed, non-secret placeholder standing in for the real
 #: HMAC key ``crypto.py`` (PR4+/later, undone) will eventually manage. Never
 #: treat a ``Fingerprint`` built with this key as a real integrity guarantee.
-_FACTS_FINGERPRINT_PLACEHOLDER_KEY = b"visa-engine-pr5-unsigned-dev-placeholder-key"
-_FACTS_FINGERPRINT_KEY_ID = "pr5-unsigned-dev-placeholder-v1"
+TEST_FACTS_FINGERPRINT_PLACEHOLDER_KEY = b"visa-engine-pr5-unsigned-dev-placeholder-key"
+TEST_FACTS_FINGERPRINT_KEY_ID = "pr5-unsigned-dev-placeholder-v1"
 
 #: Fixed, arbitrary namespace UUID for deriving a deterministic ``decision_id``
 #: via UUIDv5 — never treat as a secret; its only job is to keep the derived
@@ -802,8 +897,8 @@ _DECISION_ID_NAMESPACE = uuid.UUID("2f6a8b2e-6a3b-4b8e-9b0a-6f1a8b2e6a3b")
 def _facts_fingerprint(
     facts: ApplicantFacts,
     *,
-    key: bytes = _FACTS_FINGERPRINT_PLACEHOLDER_KEY,
-    key_id: str = _FACTS_FINGERPRINT_KEY_ID,
+    key: bytes = TEST_FACTS_FINGERPRINT_PLACEHOLDER_KEY,
+    key_id: str = TEST_FACTS_FINGERPRINT_KEY_ID,
 ) -> Fingerprint:
     """HMAC-SHA256 over ``canonical_fact_payload(facts)``. ``key``/``key_id``
     default to the NON-SECRET placeholder (see module docstring); the real
@@ -893,9 +988,7 @@ def build_decision_identity(
     the key (the point — a secret-keyed digest makes ``public_id`` genuinely
     unguessable). PURE: no I/O, no wall-clock.
     """
-    facts_fingerprint = _facts_fingerprint(
-        facts, key=fingerprint_key, key_id=fingerprint_key_id
-    )
+    facts_fingerprint = _facts_fingerprint(facts, key=fingerprint_key, key_id=fingerprint_key_id)
     decision_id, public_id = _deterministic_ids(
         assessment_id=facts.assessment_id,
         rule_pack_id=rule_pack_ref.rule_pack_id,
@@ -935,8 +1028,8 @@ def _placeholder_identity_provider(
         facts,
         rule_pack_ref,
         effective_at,
-        fingerprint_key=_FACTS_FINGERPRINT_PLACEHOLDER_KEY,
-        fingerprint_key_id=_FACTS_FINGERPRINT_KEY_ID,
+        fingerprint_key=TEST_FACTS_FINGERPRINT_PLACEHOLDER_KEY,
+        fingerprint_key_id=TEST_FACTS_FINGERPRINT_KEY_ID,
     )
 
 
@@ -998,6 +1091,77 @@ def _assemble(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class EvaluationResult:
+    """One decision and the exact internal trace that produced its hash."""
+
+    decision: Decision
+    trace: EvaluationTrace
+
+
+def _effect_for_result(rule: CompiledRule, result: ConditionResult) -> str | None:
+    """Describe only an effect the evaluator actually applied."""
+
+    if result.truth is TruthValue.TRUE:
+        return str(rule.effect.type)
+    if result.truth is TruthValue.UNKNOWN and rule.on_unknown is not OnUnknownAction.NO_EFFECT:
+        return f"ON_UNKNOWN_{rule.on_unknown.value}"
+    return None
+
+
+def _build_evaluation_trace(
+    *,
+    compiled_pack: CompiledRulePack,
+    snapshot: FactSnapshot,
+    identity: DecisionIdentity,
+    effective_at: datetime,
+    entries: Sequence[_TraceEntry],
+) -> EvaluationTrace:
+    """Materialize trace nodes from results already computed by the evaluator."""
+
+    nodes: list[TraceNode] = []
+    for entry in entries:
+        unknown_facts: list[TraceUnknownFact] = []
+        for fact_path in sorted(entry.result.unknown_facts, key=lambda path: path.value):
+            fact = snapshot.values.get(fact_path)
+            if not isinstance(fact, UnknownFact):  # pragma: no cover - AST/snapshot invariant
+                raise RuntimeError("condition trace marked a known fact as UNKNOWN")
+            unknown_facts.append(TraceUnknownFact(fact_path=fact_path, reason=fact.reason))
+
+        nodes.append(
+            TraceNode(
+                evaluation_scope=entry.evaluation_scope,
+                stage=entry.rule.stage,
+                stage_order=entry.rule.stage.order,
+                priority=entry.rule.priority,
+                rule_id=entry.rule.rule_id,
+                product_version_id=entry.product_version_id,
+                # This node records the signed condition root. Nested AST
+                # child tracing can extend this index without coupling the
+                # digest to declaration order in the pack's rules array.
+                signed_child_index=0,
+                source_refs=tuple(sorted(entry.rule.source_refs, key=str)),
+                condition_result=entry.result.truth,
+                referenced_fact_paths=tuple(
+                    sorted(entry.result.referenced_facts, key=lambda path: path.value)
+                ),
+                unknown_facts=tuple(unknown_facts),
+                applied_effect=entry.applied_effect,
+                product_proof_status=(
+                    None if entry.product_proof_status is None else entry.product_proof_status.value
+                ),
+            )
+        )
+
+    ordered_nodes = tuple(sorted(nodes, key=TraceNode.ordering_key))
+    return EvaluationTrace(
+        pack_sha256=compiled_pack.source_pack.payload_sha256,
+        effective_at=effective_at,
+        facts_hmac=identity.facts_fingerprint.digest,
+        ordered_nodes=ordered_nodes,
+    )
+
+
 def _fallback_no_path_reason(
     products: Sequence[CompiledProduct], compiled_pack: CompiledRulePack
 ) -> Reason:
@@ -1039,7 +1203,7 @@ def _fallback_no_path_reason(
 # ---------------------------------------------------------------------------
 
 
-def evaluate(
+def evaluate_with_trace(
     facts: ApplicantFacts,
     compiled_pack: CompiledRulePack,
     *,
@@ -1047,8 +1211,8 @@ def evaluate(
     observed_at: datetime,
     fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
     identity_provider: IdentityProvider = _placeholder_identity_provider,
-) -> Decision:
-    """Assemble one ``Decision`` for ``facts`` against ``compiled_pack``.
+) -> EvaluationResult:
+    """Assemble one ``Decision`` plus its same-pass evaluation trace.
 
     PURE: no I/O, no DB, no clock reads beyond ``effective_at``/``observed_at``.
     Same inputs always produce a byte-identical ``Decision`` (see module
@@ -1083,9 +1247,10 @@ def evaluate(
 
     snapshot = fact_registry.derive(facts, effective_at=effective_at)
     notices = _build_notices(snapshot, compiled_pack)
+    trace_entries: list[_TraceEntry] = []
 
-    def assemble(**kwargs: object) -> Decision:
-        return _assemble(
+    def assemble(**kwargs: object) -> EvaluationResult:
+        decision = _assemble(
             decision_id=identity.decision_id,
             public_id=identity.public_id,
             rule_pack_ref=rule_pack_ref,
@@ -1094,6 +1259,17 @@ def evaluate(
             observed_at=observed_at,
             notices=notices,
             **kwargs,  # type: ignore[arg-type]
+        )
+        trace = _build_evaluation_trace(
+            compiled_pack=compiled_pack,
+            snapshot=snapshot,
+            identity=identity,
+            effective_at=effective_at,
+            entries=trace_entries,
+        )
+        return EvaluationResult(
+            decision=decision.model_copy(update={"trace_sha256": trace.sha256()}),
+            trace=trace,
         )
 
     # --- GLOBAL HUMAN_REVIEW pre-pass (gate round 1 item 3 / P0-C, see
@@ -1104,9 +1280,9 @@ def evaluate(
     # the three reachable counterexamples this fixes (unknown purposes,
     # zero active products, a GLOBAL hard-filter excluding every product
     # first) are covered by `test_evaluator_gate_round1.py`. A TRUE result
-    # here wins immediately and unconditionally (frozen precedence:
-    # HUMAN_REVIEW_REQUIRED ranks above every other state this function
-    # produces). This does not replace the per-product HUMAN_REVIEW stage —
+    # here wins unconditionally at final assembly (frozen precedence), while
+    # the product-proof traversal still completes when purposes are known so
+    # the trace is not truncated. This does not replace the per-product stage —
     # PRODUCTS-scoped review rules, and a GLOBAL rule that resolves UNKNOWN
     # under `on_unknown` policies other than HUMAN_REVIEW, still flow
     # through `evaluate_product()` below exactly as before.
@@ -1129,6 +1305,25 @@ def evaluate(
         key=lambda rule: (rule.priority, rule.rule_id),
     )
     global_review_results = _evaluate_stage(global_review_rules, snapshot)
+    trace_entries.extend(
+        _TraceEntry(
+            rule=rule,
+            result=result,
+            product_version_id=None,
+            evaluation_scope="GLOBAL_PREPASS",
+            product_proof_status=None,
+            applied_effect=(
+                _effect_for_result(rule, result)
+                if result.truth is TruthValue.TRUE
+                or (
+                    result.truth is TruthValue.UNKNOWN
+                    and rule.on_unknown is OnUnknownAction.HUMAN_REVIEW
+                )
+                else None
+            ),
+        )
+        for rule, result in global_review_results
+    )
     global_true_entries = tuple(
         (rule, result) for rule, result in global_review_results if result.truth is TruthValue.TRUE
     )
@@ -1137,11 +1332,11 @@ def evaluate(
         for rule, result in global_review_results
         if result.truth is TruthValue.UNKNOWN and rule.on_unknown is OnUnknownAction.HUMAN_REVIEW
     )
+    global_review_reasons: tuple[Reason, ...] = ()
     if global_true_entries or global_unknown_review_entries:
-        review_reasons = _dedupe_reasons(
+        global_review_reasons = _dedupe_reasons(
             _true_reasons(global_true_entries) + _unknown_reasons(global_unknown_review_entries)
         )
-        return assemble(state=DecisionState.HUMAN_REVIEW_REQUIRED, review_reasons=review_reasons)
 
     purposes_fact = snapshot.values.get(FactPath.INTENT_PURPOSES)
     if purposes_fact is None or isinstance(purposes_fact, UnknownFact):
@@ -1150,10 +1345,12 @@ def evaluate(
         # declared purpose at all, no per-product coverage test is even
         # meaningful, so we short-circuit here rather than run every
         # product's stage loop against an undefined purpose set.
-        return assemble(
-            state=DecisionState.NEEDS_INPUT,
-            missing_facts=(FactPath.INTENT_PURPOSES,),
-        )
+        if global_review_reasons:
+            return assemble(
+                state=DecisionState.HUMAN_REVIEW_REQUIRED,
+                review_reasons=global_review_reasons,
+            )
+        return assemble(state=DecisionState.NEEDS_INPUT, missing_facts=(FactPath.INTENT_PURPOSES,))
     purposes: frozenset[str] = frozenset(purposes_fact.value)  # type: ignore[union-attr]
 
     products = sorted(
@@ -1176,6 +1373,7 @@ def evaluate(
             facts=snapshot,
             purposes=purposes,
             fact_registry=fact_registry,
+            _trace_sink=trace_entries,
         )
         for compiled_product in products
     ]
@@ -1183,8 +1381,13 @@ def evaluate(
     # P0-B fix (gate round 1 item 2, see module docstring): REVIEW checked
     # before SUPPORTED — frozen precedence ranks HUMAN_REVIEW_REQUIRED above
     # SUPPORTED_CANDIDATES unconditionally, not only when the review trigger
-    # happens to be GLOBAL (GLOBAL review triggers are already handled above
-    # and never reach this point when TRUE).
+    # happens to be GLOBAL (GLOBAL review triggers are handled first below).
+    if global_review_reasons:
+        return assemble(
+            state=DecisionState.HUMAN_REVIEW_REQUIRED,
+            review_reasons=global_review_reasons,
+        )
+
     review = [proof for proof in proofs if proof.status is ProductProofStatus.REVIEW]
     if review:
         review_reasons = _dedupe_reasons(reason for proof in review for reason in proof.reasons)
@@ -1192,7 +1395,13 @@ def evaluate(
 
     supported = [proof for proof in proofs if proof.status is ProductProofStatus.SUPPORTED]
     if supported:
-        candidates = _rank_supported(supported, snapshot, compiled_pack, effective_at=effective_at)
+        candidates = _rank_supported(
+            supported,
+            snapshot,
+            compiled_pack,
+            effective_at=effective_at,
+            trace_sink=trace_entries,
+        )
         return assemble(state=DecisionState.SUPPORTED_CANDIDATES, candidates=candidates)
 
     blocked = [proof for proof in proofs if proof.status is ProductProofStatus.BLOCKED_UNKNOWN]
@@ -1215,3 +1424,24 @@ def evaluate(
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)
     return assemble(state=DecisionState.NO_SUPPORTED_PATH, no_path_reasons=no_path_reasons)
+
+
+def evaluate(
+    facts: ApplicantFacts,
+    compiled_pack: CompiledRulePack,
+    *,
+    effective_at: datetime,
+    observed_at: datetime,
+    fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
+    identity_provider: IdentityProvider = _placeholder_identity_provider,
+) -> Decision:
+    """Compatibility facade returning only the public, trace-bound decision."""
+
+    return evaluate_with_trace(
+        facts,
+        compiled_pack,
+        effective_at=effective_at,
+        observed_at=observed_at,
+        fact_registry=fact_registry,
+        identity_provider=identity_provider,
+    ).decision

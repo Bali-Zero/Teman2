@@ -2,53 +2,351 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
-import { useOracleFlow } from "../_lib/flow";
+import {
+  restoreInterviewSnapshot,
+  useOracleFlow,
+  type InterviewSnapshot,
+} from "../_lib/flow";
 import { QUESTIONS, getLane } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
-import { sendShadowEvaluation } from "../_lib/shadow-client";
+import { prepareEvaluationRequest } from "../_lib/evaluation-request";
 import {
-  mapOracleFactsToApplicantFacts,
-  stableFactsKey,
-} from "../_lib/fact-mapper";
+  evaluateVisaOracle,
+  isVisaOracleRetryableHttpStatus,
+  VisaOracleClientError,
+} from "../_lib/evaluation-client";
+import {
+  browserEvaluationIdentityStorage,
+  clearEvaluationIdentities,
+  createMemoryEvaluationIdentityStorage,
+  type EvaluationIdentityStorage,
+} from "../_lib/evaluation-identity-store";
+import { EvaluationRunCache } from "../_lib/evaluation-run-cache";
+import { buildEngineOutcome } from "../_lib/engine-adapter";
+import { VisaOracleResponseError } from "../_lib/engine-response";
+import { buildPreviewOutcome } from "../_lib/preview-adapter";
+import {
+  buildClientGuardOutcome,
+  buildDegradedHumanReviewOutcome,
+  buildNetworkFailureOutcome,
+  buildShadowOutcome,
+} from "../_lib/outcome-fallbacks";
+import {
+  VISA_ORACLE_RESUME_TTL_MS,
+  clearInterviewResume,
+  loadInterviewResumeWithExpiry,
+  saveInterviewResume,
+  scheduleInterviewResumeCleanup,
+} from "../_lib/resume-store";
+import {
+  emitVisaOracleTelemetry,
+  nonReversibleHash,
+  type VisaOracleTelemetryState,
+} from "../_lib/telemetry";
+import {
+  resolveVisaOracleMode,
+  type VisaOracleMode,
+} from "../_lib/runtime-mode";
+import { shadowParityMatches } from "../_lib/shadow-parity";
+import type { OutcomeViewModel } from "../_lib/outcome-view-model";
+import type { VisaOracleEvaluateResponse } from "../_lib/visa-oracle-contract";
 import { LivingTree } from "./LivingTree";
 import { PathsCounter } from "./PathsCounter";
 import { QuestionScreen } from "./QuestionScreen";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { VerdictReveal } from "./VerdictReveal";
 import { OutcomeSheet } from "./OutcomeSheet";
+import { ConsentHandoff } from "./ConsentHandoff";
 import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
 
 const HIDE_COUNTER_ON = new Set(["in_indonesia", "permit_expiry"]);
 
-/**
- * Layout scaffold + orchestrator (spec item 9): constellation backdrop,
- * theme + language toggles, prototype badge, footer disclaimer — and the
- * one place that owns `useOracleFlow`, wiring every screen to it.
- */
-export function OracleShell() {
-  const [theme, setTheme] = useState<OracleTheme>("light");
+function isMinorForHandoff(
+  birthDateValue: string | undefined,
+  evaluatedAtIso: string | undefined,
+): boolean {
+  if (!birthDateValue || !evaluatedAtIso) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDateValue);
+  const evaluatedAt = new Date(evaluatedAtIso);
+  if (!match || Number.isNaN(evaluatedAt.valueOf())) return false;
+  const birthYear = Number(match[1]);
+  const birthMonth = Number(match[2]);
+  const birthDay = Number(match[3]);
+  let age = evaluatedAt.getUTCFullYear() - birthYear;
+  const month = evaluatedAt.getUTCMonth() + 1;
+  const day = evaluatedAt.getUTCDate();
+  if (month < birthMonth || (month === birthMonth && day < birthDay)) age -= 1;
+  return age >= 0 && age < 18;
+}
 
-  // Finding #9 (adversarial review 2026-07-17): before this fix, the
-  // verdict/outcome screens read TWO independently-instantiated `new
-  // Date()` snapshots (one inside `useOracleFlow`'s `evaluate()` memo, one
-  // inside `OutcomeSheet`'s own `today` default) — close in time but never
-  // guaranteed identical, so a render right at a UTC-midnight lane
-  // boundary could disagree with itself about `result.state` vs. the
-  // freshness stamp / overstay-lane check. `frozenToday` is captured once,
-  // the first render that reaches "verdict", and held for the rest of
-  // that visit — every date-sensitive computation downstream (the hook's
-  // `evaluate()`, OutcomeSheet's freshness stamp and lane check) reads the
-  // SAME Date object from then on, not a fresh "now" per call.
+const SESSION_COPY = {
+  en: {
+    loading: "Restoring your private browser session…",
+    evaluating: "Checking the verified Visa Oracle engine…",
+    resume:
+      "Optional: save the full interview, including sensitive immigration, nationality and family answers, in this browser session for up to 2 hours. It expires while this tab stays open and can be cleared at any time.",
+    resumeOptIn: "Save my interview on this device for 2 hours",
+    clear: "Clear saved interview",
+    retry: "Retry verified evaluation",
+  },
+  id: {
+    loading: "Memulihkan sesi browser privat Anda…",
+    evaluating: "Memeriksa mesin Visa Oracle terverifikasi…",
+    resume:
+      "Opsional: simpan wawancara lengkap, termasuk jawaban sensitif tentang imigrasi, kewarganegaraan, dan keluarga, dalam sesi browser ini hingga 2 jam. Data kedaluwarsa saat tab ini tetap terbuka dan dapat dihapus kapan saja.",
+    resumeOptIn: "Simpan wawancara saya di perangkat ini selama 2 jam",
+    clear: "Hapus wawancara tersimpan",
+    retry: "Coba lagi evaluasi terverifikasi",
+  },
+} as const;
+
+interface HydratedShell {
+  snapshot: InterviewSnapshot | null;
+  restoredAt: Date;
+  resumeExpiresAtIso: string | null;
+}
+
+function validateStoredSnapshot(
+  value: unknown,
+  restoredAt: Date,
+): InterviewSnapshot | null {
+  return restoreInterviewSnapshot(value, "en", restoredAt) === null
+    ? null
+    : (value as InterviewSnapshot);
+}
+
+/** Hydrate sessionStorage after mount so server and first client render match. */
+export function OracleShell() {
+  const [hydrated, setHydrated] = useState<HydratedShell | null>(null);
+
+  useEffect(() => {
+    const restoredAt = new Date();
+    const restored = loadInterviewResumeWithExpiry((value) =>
+      validateStoredSnapshot(value, restoredAt),
+    );
+    if (restored === null) clearEvaluationIdentities();
+    setHydrated({
+      snapshot: restored?.snapshot ?? null,
+      restoredAt,
+      resumeExpiresAtIso: restored?.expiresAtIso ?? null,
+    });
+  }, []);
+
+  if (hydrated === null) {
+    return (
+      <div className="oracle-root" data-oracle-theme="light" data-funnel="visa">
+        <p className="oracle-subhead" role="status" aria-live="polite">
+          {SESSION_COPY.en.loading}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <OracleShellRuntime
+      initialSnapshot={hydrated.snapshot}
+      restoreToday={hydrated.restoredAt}
+      initialResumeExpiresAtIso={hydrated.resumeExpiresAtIso}
+    />
+  );
+}
+
+interface OracleShellRuntimeProps {
+  initialSnapshot: InterviewSnapshot | null;
+  restoreToday: Date;
+  initialResumeExpiresAtIso: string | null;
+}
+
+/**
+ * The server unambiguously asserted `decision.state: "HUMAN_REVIEW_REQUIRED"`
+ * with `outage: null` — either because we hold the fully validated response
+ * (an adapter-level invariant rejected some other field) or because a
+ * best-effort peek of the raw payload read it directly (strict parsing
+ * rejected the payload before we could fully trust it). Either way, an
+ * evaluation genuinely happened and must never be reported as "no
+ * evaluation was submitted".
+ */
+function isKnownHumanReviewDecision(
+  knownDecision: { state: string; outageIsNull: boolean } | undefined,
+): boolean {
+  return (
+    knownDecision?.state === "HUMAN_REVIEW_REQUIRED" &&
+    knownDecision.outageIsNull === true
+  );
+}
+
+function fallbackForError(
+  error: unknown,
+  assumptions: OutcomeViewModel["assumptions"],
+  knownDecision?: { state: string; outageIsNull: boolean },
+): OutcomeViewModel {
+  const resolvedKnownDecision =
+    knownDecision ??
+    (error instanceof VisaOracleClientError && error.knownDecisionState
+      ? {
+          state: error.knownDecisionState,
+          outageIsNull: error.knownOutageIsNull === true,
+        }
+      : undefined);
+  const degradedHumanReview = isKnownHumanReviewDecision(resolvedKnownDecision);
+
+  if (error instanceof VisaOracleClientError) {
+    const clientGuard =
+      error.code === "INVALID_REQUEST" ||
+      error.code === "MALFORMED_RESPONSE" ||
+      (error.code === "HTTP_ERROR" &&
+        error.status !== undefined &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        !isVisaOracleRetryableHttpStatus(error.status));
+    if (clientGuard) {
+      if (degradedHumanReview) {
+        return buildDegradedHumanReviewOutcome({ assumptions });
+      }
+      return buildClientGuardOutcome({
+        code:
+          error.code === "HTTP_ERROR"
+            ? `ENGINE_HTTP_${error.status ?? "ERROR"}`
+            : error.code,
+        assumptions,
+      });
+    }
+    return buildNetworkFailureOutcome({
+      code: error.code,
+      assumptions,
+      retryable: true,
+    });
+  }
+  if (error instanceof VisaOracleResponseError) {
+    if (degradedHumanReview) {
+      return buildDegradedHumanReviewOutcome({ assumptions });
+    }
+    return buildClientGuardOutcome({ code: error.code, assumptions });
+  }
+  return buildClientGuardOutcome({
+    code: "CLIENT_INTEGRATION_GUARD",
+    assumptions,
+  });
+}
+
+function telemetryForFallback(
+  outcome: OutcomeViewModel,
+  correlationHash: string | undefined,
+): void {
+  if (outcome.provenance === "CLIENT_GUARD") {
+    emitVisaOracleTelemetry({
+      event: "visa_oracle_v2_client_guard",
+      state: outcome.state,
+      correlationHash,
+    });
+  } else if (outcome.provenance === "NETWORK_FAILURE") {
+    emitVisaOracleTelemetry({
+      event: "visa_oracle_v2_network_failure",
+      state: outcome.state,
+      correlationHash,
+    });
+  }
+}
+
+function OracleShellRuntime({
+  initialSnapshot,
+  restoreToday,
+  initialResumeExpiresAtIso,
+}: OracleShellRuntimeProps) {
+  const [theme, setTheme] = useState<OracleTheme>("light");
   const [frozenToday, setFrozenToday] = useState<Date | null>(null);
-  const flow = useOracleFlow("en", frozenToday ?? undefined);
+  const [outcome, setOutcome] = useState<OutcomeViewModel | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [hasLocalResume, setHasLocalResume] = useState(
+    initialSnapshot !== null,
+  );
+  const [resumeEnabled, setResumeEnabled] = useState(initialSnapshot !== null);
+  const resumeEnabledRef = useRef(initialSnapshot !== null);
+  const skipInitialResumeWriteRef = useRef(initialSnapshot !== null);
+  const cancelResumeCleanupRef = useRef<(() => void) | null>(null);
+  const activeControllerRef = useRef<AbortController | null>(null);
+  const activeReleaseRef = useRef<(() => void) | null>(null);
+  const evaluationGenerationRef = useRef(0);
+  const evaluationCacheRef = useRef(new EvaluationRunCache<OutcomeViewModel>());
+  const lastEvaluationKeyRef = useRef<string | null>(null);
+  const memoryIdentityStorageRef = useRef<EvaluationIdentityStorage | null>(
+    null,
+  );
+  if (memoryIdentityStorageRef.current === null) {
+    memoryIdentityStorageRef.current = createMemoryEvaluationIdentityStorage();
+  }
+  const memoryIdentityStorage = memoryIdentityStorageRef.current;
+  const mode = useMemo<VisaOracleMode>(() => resolveVisaOracleMode(), []);
+  const reducedMotion = useReducedMotion();
+
+  const clearAllEvaluationIdentities = useCallback(() => {
+    clearEvaluationIdentities(memoryIdentityStorage);
+    clearEvaluationIdentities();
+  }, [memoryIdentityStorage]);
+
+  const expireResumePersistence = useCallback(() => {
+    cancelResumeCleanupRef.current = null;
+    clearAllEvaluationIdentities();
+    resumeEnabledRef.current = false;
+    setResumeEnabled(false);
+    setHasLocalResume(false);
+  }, [clearAllEvaluationIdentities]);
+
+  const scheduleResumeCleanup = useCallback(
+    (expiresAtIso: string) => {
+      cancelResumeCleanupRef.current?.();
+      cancelResumeCleanupRef.current = scheduleInterviewResumeCleanup(
+        expiresAtIso,
+        { onExpired: expireResumePersistence },
+      );
+    },
+    [expireResumePersistence],
+  );
+
+  const disableResumePersistence = useCallback(() => {
+    cancelResumeCleanupRef.current?.();
+    cancelResumeCleanupRef.current = null;
+    clearInterviewResume();
+    clearAllEvaluationIdentities();
+    resumeEnabledRef.current = false;
+    setResumeEnabled(false);
+    setHasLocalResume(false);
+  }, [clearAllEvaluationIdentities]);
+
+  const saveSnapshot = useCallback(
+    (snapshot: InterviewSnapshot) => {
+      if (skipInitialResumeWriteRef.current) {
+        skipInitialResumeWriteRef.current = false;
+        return;
+      }
+      if (!resumeEnabledRef.current) return;
+      const savedAt = new Date();
+      if (!saveInterviewResume(snapshot, { now: savedAt })) {
+        disableResumePersistence();
+        return;
+      }
+      setHasLocalResume(true);
+      scheduleResumeCleanup(
+        new Date(savedAt.getTime() + VISA_ORACLE_RESUME_TTL_MS).toISOString(),
+      );
+    },
+    [disableResumePersistence, scheduleResumeCleanup],
+  );
+
+  const flow = useOracleFlow({
+    initialSnapshot: initialSnapshot ?? undefined,
+    onSnapshot: saveSnapshot,
+    restoreToday,
+  });
   const {
     state,
     current,
-    result,
     assumptions,
+    interviewBranchesRemaining,
     canGoBack,
     answer,
     skip,
@@ -61,32 +359,92 @@ export function OracleShell() {
     setLanguage,
   } = flow;
   const language = state.language;
-  const reducedMotion = useReducedMotion();
+  const sessionCopy = SESSION_COPY[language];
 
-  /**
-   * "Oracle deals your card" (design doc §3 interaction #4): the ONLY call
-   * site that ever moves confirmation → verdict. Where the browser
-   * supports the View Transitions API and motion isn't reduced, the
-   * `advance()` dispatch (and the DOM update it causes) runs inside
-   * `document.startViewTransition()` — `flushSync` forces React to apply
-   * the resulting re-render synchronously inside that callback, which the
-   * API requires to capture an accurate "after" snapshot. LivingTree's
-   * "verdict" trunk row and VerdictReveal's hero card share a
-   * `view-transition-name`, so the browser morphs geometry between them.
-   * Every other environment (no API support, or `prefers-reduced-motion`)
-   * falls through to a plain `advance()` — an instant swap, with
-   * VerdictReveal's own spring reveal (unaffected by any of this) as the
-   * craft fallback either way.
-   */
+  useEffect(() => {
+    if (initialResumeExpiresAtIso !== null) {
+      scheduleResumeCleanup(initialResumeExpiresAtIso);
+    }
+    return () => cancelResumeCleanupRef.current?.();
+  }, [initialResumeExpiresAtIso, scheduleResumeCleanup]);
+
+  const cancelEvaluation = useCallback(() => {
+    evaluationGenerationRef.current += 1;
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    activeReleaseRef.current?.();
+    activeReleaseRef.current = null;
+  }, []);
+
+  const leaveOutcome = useCallback(() => {
+    cancelEvaluation();
+    const key = lastEvaluationKeyRef.current;
+    if (key) evaluationCacheRef.current.invalidate(key);
+    lastEvaluationKeyRef.current = null;
+    clearAllEvaluationIdentities();
+    setEvaluating(false);
+    setOutcome(null);
+    setFrozenToday(null);
+  }, [cancelEvaluation, clearAllEvaluationIdentities]);
+
+  const startInterview = useCallback(() => {
+    advance();
+  }, [advance]);
+
+  const clearSavedInterview = useCallback(() => {
+    disableResumePersistence();
+  }, [disableResumePersistence]);
+
+  const handleResumeOptIn = useCallback(
+    (enabled: boolean) => {
+      if (!enabled) {
+        disableResumePersistence();
+        return;
+      }
+      resumeEnabledRef.current = true;
+      setResumeEnabled(true);
+    },
+    [disableResumePersistence],
+  );
+
+  const handleEdit = useCallback(
+    (questionId: string) => {
+      leaveOutcome();
+      edit(questionId);
+    },
+    [edit, leaveOutcome],
+  );
+
+  const handleSelectCategory = useCallback(
+    (category: string) => {
+      leaveOutcome();
+      selectCategory(category);
+    },
+    [leaveOutcome, selectCategory],
+  );
+
+  const handleReviewAnswers = useCallback(() => {
+    leaveOutcome();
+    reviewAnswers();
+  }, [leaveOutcome, reviewAnswers]);
+
+  const handleRestart = useCallback(() => {
+    leaveOutcome();
+    disableResumePersistence();
+    evaluationCacheRef.current.clear();
+    lastEvaluationKeyRef.current = null;
+    restart();
+  }, [disableResumePersistence, leaveOutcome, restart]);
+
   const revealVerdict = useCallback(() => {
-    const startViewTransition =
-      typeof document !== "undefined"
-        ? (
-            document as Document & {
-              startViewTransition?: (callback: () => void) => unknown;
-            }
-          ).startViewTransition
-        : undefined;
+    const assessmentClock = new Date();
+    setFrozenToday(assessmentClock);
+    setOutcome(null);
+    const startViewTransition = (
+      document as Document & {
+        startViewTransition?: (callback: () => void) => unknown;
+      }
+    ).startViewTransition;
     if (reducedMotion || !startViewTransition) {
       advance();
       return;
@@ -102,143 +460,234 @@ export function OracleShell() {
     }
   }, [current.kind, frozenToday]);
 
-  /**
-   * SHADOW wiring (2026-07-27, dedup corrected same day — TWO independent
-   * defects fixed, both traced to the same root cause: the dedupe key was
-   * wrong in BOTH of its dimensions). An invisible, fire-and-forget POST
-   * to the LIVE `visa_engine` endpoint, fired once per DISTINCT completed
-   * interview — the moment a verdict is shown for a wire payload that
-   * hasn't already been shadow-posted THIS attempt. Sibling to the
-   * `frozenToday` effect above (its own `useRef`, so this effect's own
-   * re-runs never double-fire independently of that one), and reads
-   * `frozenToday` rather than reaching for `new Date()` itself, for the
-   * SAME reason `frozenToday` exists at all (Finding #9, above): a second
-   * independent clock read here could disagree with the verdict/lane
-   * computation across a UTC-midnight boundary. Gated on
-   * `frozenToday !== null` so this never fires on the render where
-   * `current.kind` first becomes "verdict" but `frozenToday` is still
-   * `null` — it fires on the FOLLOWING render, once frozenToday's own
-   * effect has committed a value, guaranteeing both effects always agree
-   * on "today".
-   *
-   * THE ONE INVARIANT: `sendShadowEvaluation` is synchronous (`void`,
-   * never a `Promise`), never throws, and its result is never read — see
-   * `shadow-client.ts`'s docstring for the full contract. During SHADOW
-   * this call has ZERO observable effect on anything this component
-   * renders, by construction, not by convention: no state it returns is
-   * ever stored, no error it could throw is ever allowed to escape.
-   *
-   * THE SEMANTIC CONTRACT: exactly one SHADOW POST per (interview attempt
-   * x distinct wire payload). Two dimensions, two independent fixes:
-   *
-   *  - DEDUPE ON CONTENT, not mount (first correction): the original
-   *    "fire once per mount, never reset" latch was wrong — this route
-   *    ships affordances (REVIEW_ANSWERS "Edit answers", SELECT_CATEGORY
-   *    "what instead") that legitimately return the user from "verdict"
-   *    to "confirmation" and then to a SECOND verdict in the SAME mount
-   *    with DIFFERENT facts. A mount-scoped latch fired on the first
-   *    verdict and silently ate every honest re-verdict after an edit.
-   *
-   *  - DEDUPE ON THE WIRE PAYLOAD, not raw UI facts (second correction,
-   *    same day): `state.facts` is the raw interview answers — but
-   *    `remote_income` (and every other UI-only field with no
-   *    `FactPath` — see `fact-mapper.ts`'s module docstring) has NO
-   *    representation in what the engine actually receives. Keying on
-   *    raw facts meant editing an answer with no wire effect (change
-   *    `remote_income` from "above" to "below", re-confirm) produced a
-   *    SECOND POST whose `facts` object was byte-identical to the
-   *    first — a duplicate row the engine cannot tell apart from a
-   *    retry. The key below is computed from
-   *    `mapOracleFactsToApplicantFacts(...).facts` (`stableFactsKey`,
-   *    `fact-mapper.ts`) — the SAME transform `shadow-client.ts` applies
-   *    before POSTing — so "distinct" means what the docstring always
-   *    claimed it meant: distinct in what actually goes over the wire.
-   *
-   *  - DEDUPE SCOPED TO THE ATTEMPT, not the component lifetime (third
-   *    correction, same day): a `useRef` that is NEVER cleared survives
-   *    RESTART, which is a real, user-visible "throw everything away and
-   *    start over" — `flow.ts`'s RESTART wipes `history`/`facts` back to
-   *    "framing" but the component itself never remounts. A user who
-   *    completes an interview, clicks "Start over", and retraces the
-   *    EXACT SAME answers is running a second, genuinely independent
-   *    interview — and got silently swallowed as a "duplicate" of the
-   *    first, because the ref never forgot what it had already sent.
-   *    Two honest interviews became one row — missing evidence, worse
-   *    than a wrong one.
-   *
-   * ATTEMPT IDENTITY — the design choice this fix had to make, and why it
-   * survives a NEW way of reaching "verdict" added next year without
-   * being touched: `flow.ts`'s `FlowState.attempt` is a counter bumped
-   * ONLY by the reducer's own `resetFlow` primitive (RESTART, and the
-   * SELECT_CATEGORY defensive fallback — both a full wipe back to
-   * "framing", which is what a reset structurally IS). Every action that
-   * returns to "verdict" by TRUNCATING history instead of wiping it
-   * (REVIEW_ANSWERS today, SELECT_CATEGORY's happy path today, and
-   * whatever gets added later) never touches `attempt`, because none of
-   * them call `resetFlow`. This effect therefore never has to enumerate
-   * "which actions count as a new attempt" — the same trap that bit this
-   * bug's first-ever fix, which enumerated REVIEW_ANSWERS/SELECT_CATEGORY
-   * for the CONTENT dimension and was right to avoid enumerating them
-   * again here for the LIFETIME dimension. `attempt` changing is
-   * SUFFICIENT AND NECESSARY evidence of a reset, by construction, not by
-   * a list this effect has to keep in sync with `flow.ts`.
-   *
-   * `shadowSentRef` holds the CURRENT attempt's set of already-posted
-   * wire-payload keys (`{ attempt, keys: Set<string> }`). Each arrival at
-   * "verdict": if `state.attempt` has moved on from what the ref
-   * remembers, the set is reset empty (a new attempt starts with a clean
-   * slate — the SAME retraced answers in a new attempt must still post,
-   * scenario D of the shipped truth table); then the current wire-facts
-   * key is looked up in that set — already present means this exact
-   * payload was already shadow-posted THIS attempt (no new row, whether
-   * that's a pure re-render or an edit-and-revert with no material wire
-   * change), absent means fire and remember it.
-   */
-  const shadowSentRef = useRef<{ attempt: number; keys: Set<string> } | null>(
-    null,
-  );
   useEffect(() => {
     if (current.kind !== "verdict" || frozenToday === null) return;
 
-    // Same transform `shadow-client.ts` applies before POSTing — the
-    // dedupe key must be computed from what the engine actually receives,
-    // never from raw `state.facts`. `assessmentId` here is a fixed
-    // placeholder: this call exists only to derive `.facts` for the key,
-    // its `assessment_id`/`collected_at` are never read, and the REAL
-    // POST (inside `sendShadowEvaluation`) generates its own fresh
-    // `crypto.randomUUID()` — this placeholder never reaches the network.
-    const wireFacts = mapOracleFactsToApplicantFacts(state.facts, {
-      assessmentId: "shadow-dedupe-key",
-      collectedAt: frozenToday,
-    }).facts;
-    const factsKey = stableFactsKey(wireFacts);
+    const generation = evaluationGenerationRef.current + 1;
+    evaluationGenerationRef.current = generation;
+    const controller = new AbortController();
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = controller;
+    setEvaluating(true);
+    setOutcome(null);
 
-    if (
-      shadowSentRef.current === null ||
-      shadowSentRef.current.attempt !== state.attempt
-    ) {
-      shadowSentRef.current = { attempt: state.attempt, keys: new Set() };
+    if (mode === "OFF") {
+      setOutcome(
+        buildClientGuardOutcome({
+          code: "ENGINE_MODE_OFF",
+          assumptions,
+        }),
+      );
+      setEvaluating(false);
+      return () => controller.abort();
     }
-    if (shadowSentRef.current.keys.has(factsKey)) return;
-    shadowSentRef.current.keys.add(factsKey);
-    sendShadowEvaluation(state.facts, frozenToday);
-  }, [current.kind, frozenToday, state.facts, state.attempt]);
+    if (mode === "PREVIEW") {
+      setOutcome(buildPreviewOutcome(state.facts, frozenToday));
+      setEvaluating(false);
+      return () => controller.abort();
+    }
+
+    let cacheKey: string | null = null;
+    let releaseLease: (() => void) | null = null;
+    const run = async () => {
+      try {
+        const browserIdentityStorage = resumeEnabledRef.current
+          ? browserEvaluationIdentityStorage()
+          : null;
+        const prepared = await prepareEvaluationRequest({
+          facts: state.facts,
+          attempt: state.attempt,
+          now: frozenToday,
+          storage: browserIdentityStorage ?? memoryIdentityStorage,
+        });
+        if (controller.signal.aborted) return;
+        let telemetryCorrelationHash: string | undefined;
+        try {
+          telemetryCorrelationHash = await nonReversibleHash(
+            prepared.identity.assessmentId,
+          );
+        } catch {
+          // A missing correlator is safer than hashing structured applicant data.
+        }
+        cacheKey = `${mode}:${state.attempt}:${prepared.evaluationHash}`;
+        lastEvaluationKeyRef.current = cacheKey;
+        const lease = evaluationCacheRef.current.acquire(
+          cacheKey,
+          async (requestSignal) => {
+            // Hoisted so the catch block below can read the already-validated
+            // decision.state/outage when a LATER step (buildEngineOutcome)
+            // throws — needed to tell "no evaluation was submitted" apart
+            // from "an evaluation was submitted and flagged for human
+            // review, but we couldn't render every detail safely".
+            let response: VisaOracleEvaluateResponse | undefined;
+            try {
+              response = await evaluateVisaOracle({
+                request: prepared.request,
+                idempotencyKey: prepared.identity.idempotencyKey,
+                signal: requestSignal,
+              });
+              if (mode === "SHADOW") {
+                const preview = buildPreviewOutcome(state.facts, frozenToday);
+                emitVisaOracleTelemetry({
+                  event: shadowParityMatches(response, preview)
+                    ? "visa_oracle_v2_parity_match"
+                    : "visa_oracle_v2_parity_mismatch",
+                  state: response.decision.state,
+                  correlationHash: telemetryCorrelationHash,
+                });
+                return buildShadowOutcome({
+                  code: "SHADOW_VERIFICATION_ONLY",
+                  assumptions,
+                });
+              }
+
+              const engineOutcome = buildEngineOutcome(response, {
+                assumptions,
+                facts: state.facts,
+                interviewBranchesRemaining,
+              });
+              emitVisaOracleTelemetry({
+                event: "visa_oracle_v2_engine_result",
+                state: engineOutcome.state,
+                correlationHash: telemetryCorrelationHash,
+              });
+              return engineOutcome;
+            } catch (error) {
+              if (
+                requestSignal.aborted ||
+                (error instanceof VisaOracleClientError &&
+                  error.code === "ABORTED")
+              ) {
+                throw error;
+              }
+              if (mode === "SHADOW") {
+                return buildShadowOutcome({
+                  code: "SHADOW_VERIFICATION_UNAVAILABLE",
+                  assumptions,
+                });
+              }
+              const knownDecision =
+                response !== undefined
+                  ? {
+                      state: response.decision.state,
+                      outageIsNull: response.decision.outage === null,
+                    }
+                  : undefined;
+              const fallback = fallbackForError(
+                error,
+                assumptions,
+                knownDecision,
+              );
+              telemetryForFallback(fallback, telemetryCorrelationHash);
+              return fallback;
+            }
+          },
+        );
+        releaseLease = lease.release;
+        activeReleaseRef.current = releaseLease;
+
+        const nextOutcome = await lease.promise;
+        if (
+          controller.signal.aborted ||
+          evaluationGenerationRef.current !== generation
+        ) {
+          return;
+        }
+        setOutcome(nextOutcome);
+        setEvaluating(false);
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          evaluationGenerationRef.current !== generation ||
+          (error instanceof VisaOracleClientError && error.code === "ABORTED")
+        ) {
+          return;
+        }
+        const fallback = fallbackForError(error, assumptions);
+        setOutcome(fallback);
+        setEvaluating(false);
+      }
+    };
+    void run();
+
+    return () => {
+      controller.abort();
+      releaseLease?.();
+      if (activeReleaseRef.current === releaseLease) {
+        activeReleaseRef.current = null;
+      }
+      if (activeControllerRef.current === controller) {
+        activeControllerRef.current = null;
+      }
+    };
+  }, [
+    assumptions,
+    current.kind,
+    frozenToday,
+    interviewBranchesRemaining,
+    mode,
+    memoryIdentityStorage,
+    retryNonce,
+    state.attempt,
+    state.facts,
+  ]);
+
+  useEffect(() => {
+    if (!outcome) return;
+    const retryable =
+      outcome.state === "TEMPORARILY_UNAVAILABLE" && outcome.outage.retryable;
+    if (retryable) return;
+    disableResumePersistence();
+  }, [disableResumePersistence, outcome]);
+
+  useEffect(
+    () => () => {
+      activeControllerRef.current?.abort();
+    },
+    [],
+  );
+
+  const retryEvaluation = useCallback(() => {
+    const key = lastEvaluationKeyRef.current;
+    if (key) evaluationCacheRef.current.invalidate(key);
+    // An explicit product retry is a new evaluation, not an HTTP replay of a
+    // cached TEMP response. Automatic transport retries stay inside the client
+    // and preserve their original body/key.
+    clearAllEvaluationIdentities();
+    setOutcome(null);
+    setRetryNonce((value) => value + 1);
+  }, [clearAllEvaluationIdentities]);
 
   const lane = useMemo(() => getLane(state.facts), [state.facts]);
+  const outcomeAssessmentReference =
+    outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
+  const guardianConsentRequired = isMinorForHandoff(
+    state.facts.birth_date,
+    outcome?.provenance === "ENGINE"
+      ? outcome.assessment.evaluatedAtIso
+      : restoreToday.toISOString(),
+  );
 
   return (
     <div className="oracle-root" data-oracle-theme={theme} data-funnel="visa">
-      <Constellation />
       <div className="oracle-shell">
         <header className="oracle-topbar">
           <span
             className="oracle-badge"
             title={translate(language, "prototype.badge.detail")}
           >
-            <Sparkles aria-hidden="true" />
             {translate(language, "prototype.badge")}
           </span>
           <div className="oracle-topbar__actions">
+            {hasLocalResume && (
+              <button
+                type="button"
+                className="oracle-question__back"
+                onClick={clearSavedInterview}
+              >
+                {sessionCopy.clear}
+              </button>
+            )}
             <LanguageToggle language={language} onChange={setLanguage} />
             <ThemeToggle
               language={language}
@@ -254,7 +703,7 @@ export function OracleShell() {
               language={language}
               current={current}
               facts={state.facts}
-              onEditQuestion={edit}
+              onEditQuestion={handleEdit}
             />
           </div>
 
@@ -264,7 +713,7 @@ export function OracleShell() {
                 <div style={{ marginBottom: "var(--space-4)" }}>
                   <PathsCounter
                     language={language}
-                    count={result.pathsRemaining}
+                    count={interviewBranchesRemaining}
                     visible
                   />
                 </div>
@@ -278,11 +727,22 @@ export function OracleShell() {
                 <p className="oracle-subhead">
                   {translate(language, "framing.body")}
                 </p>
+                <p className="oracle-question__hint">{sessionCopy.resume}</p>
+                <label className="oracle-checklist__item">
+                  <input
+                    type="checkbox"
+                    checked={resumeEnabled}
+                    onChange={(event) =>
+                      handleResumeOptIn(event.currentTarget.checked)
+                    }
+                  />
+                  {sessionCopy.resumeOptIn}
+                </label>
                 <button
                   type="button"
                   className="oracle-option-card"
                   style={{ width: "fit-content" }}
-                  onClick={advance}
+                  onClick={startInterview}
                 >
                   {translate(language, "framing.cta")}
                   <ArrowRight aria-hidden="true" size={18} />
@@ -314,61 +774,89 @@ export function OracleShell() {
                 language={language}
                 facts={state.facts}
                 assumptions={assumptions}
-                pathsRemaining={result.pathsRemaining}
-                onEdit={edit}
+                interviewBranchesRemaining={interviewBranchesRemaining}
+                onBack={back}
+                onEdit={handleEdit}
                 onConfirm={revealVerdict}
               />
             )}
 
-            {current.kind === "verdict" && (
-              <>
-                <VerdictReveal
-                  language={language}
-                  state={result.state}
-                  eligibility={result.candidates[0]?.eligibility}
-                />
-                <OutcomeSheet
-                  language={language}
-                  result={result}
-                  facts={state.facts}
-                  today={frozenToday ?? undefined}
-                  onSelectCategory={selectCategory}
-                />
-                {/* Finding #15: the verdict screen is never a dead end —
-                    both a full restart and a scoped jump back to the
-                    confirmation screen (to tweak one answer without
-                    re-answering everything) are one click away. */}
+            {current.kind === "verdict" &&
+              (evaluating || outcome === null ? (
                 <div
-                  className="oracle-no-print"
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "var(--space-4)",
-                    marginTop: "var(--space-6)",
-                  }}
+                  className="oracle-verdict-card"
+                  role="status"
+                  aria-live="polite"
                 >
-                  <button
-                    type="button"
-                    className="oracle-question__back"
-                    onClick={reviewAnswers}
-                  >
-                    {translate(language, "verdict.edit_answers" as I18nKey)}
-                  </button>
-                  <button
-                    type="button"
-                    className="oracle-question__back"
-                    onClick={restart}
-                  >
-                    {translate(language, "restart.button")}
-                  </button>
+                  <p className="oracle-subhead">{sessionCopy.evaluating}</p>
                 </div>
-              </>
-            )}
+              ) : (
+                <>
+                  <VerdictReveal
+                    language={language}
+                    state={outcome.state}
+                    provenance={outcome.provenance}
+                    legalStatus={outcome.candidates[0]?.legal.status}
+                  />
+                  <OutcomeSheet
+                    language={language}
+                    outcome={outcome}
+                    facts={state.facts}
+                    onSelectCategory={handleSelectCategory}
+                    onEditMissingInput={handleEdit}
+                    handoffSlot={
+                      <ConsentHandoff
+                        language={language}
+                        state={outcome.state as VisaOracleTelemetryState}
+                        assessmentReference={outcomeAssessmentReference}
+                        guardianConsentRequired={guardianConsentRequired}
+                      />
+                    }
+                  />
+                  <div
+                    className="oracle-no-print"
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "var(--space-4)",
+                      marginTop: "var(--space-6)",
+                    }}
+                  >
+                    {outcome.state === "TEMPORARILY_UNAVAILABLE" &&
+                      outcome.outage.retryable && (
+                        <button
+                          type="button"
+                          className="oracle-option-card"
+                          onClick={retryEvaluation}
+                        >
+                          {sessionCopy.retry}
+                        </button>
+                      )}
+                    <button
+                      type="button"
+                      className="oracle-question__back"
+                      onClick={handleReviewAnswers}
+                    >
+                      {translate(language, "verdict.edit_answers" as I18nKey)}
+                    </button>
+                    <button
+                      type="button"
+                      className="oracle-question__back"
+                      onClick={handleRestart}
+                    >
+                      {translate(language, "restart.button")}
+                    </button>
+                  </div>
+                </>
+              ))}
           </div>
         </main>
 
         <footer className="oracle-footer">
           <p>{translate(language, "footer.disclaimer")}</p>
+          <a href="/visa-oracle/privacy">
+            {translate(language, "footer.privacy")}
+          </a>
         </footer>
       </div>
     </div>
@@ -388,26 +876,4 @@ function noticeFor(
     return `lane.${lane}.notice` as I18nKey;
   }
   return undefined;
-}
-
-/** Fixed, static SVG stars — mood only, never re-rendered per interaction. */
-function Constellation() {
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 18 }, (_, i) => ({
-        cx: (i * 53) % 100,
-        cy: (i * 37) % 100,
-        r: (i % 3) + 0.4,
-      })),
-    [],
-  );
-  return (
-    <div className="oracle-constellation" aria-hidden="true">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-        {stars.map((s, i) => (
-          <circle key={i} cx={s.cx} cy={s.cy} r={s.r} />
-        ))}
-      </svg>
-    </div>
-  );
 }

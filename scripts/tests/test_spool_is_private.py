@@ -78,16 +78,36 @@ def spool(tmp_path, monkeypatch):
 
 # --------------------------------------------------------------------- guilt
 def test_every_file_the_gateway_writes_is_private(spool):
-    """One pass through the real gateway, then read the modes off disk."""
+    """One pass through BOTH real programs, then read the modes off disk.
+
+    ROUND 2 (2026-08-06, found in PROVE-LIVE). This test carried exactly this
+    name while running only `tg_notify.py` — never the flush. On Pro, hours
+    after #3684 shipped, `last_flush.json` was still 0644 and had been rewritten
+    that same afternoon: the flush writes it at THREE sites (silent-healthy,
+    send-failed, sent) and none was hardened. A test whose name says "every
+    file the gateway writes" while exercising one of the two programs is read
+    downstream as the complete claim it is not — the same shape as counting a
+    subset and reporting it as the population.
+
+    The assertion is deliberately unenumerated: whatever lands in the spool
+    directory must be private. A future fourth writer is covered without anyone
+    remembering to add it here.
+    """
     subprocess.run([sys.executable, str(GATEWAY), "--tier", "digest",
                     "--source", "t", "--", "hello"], check=True,
                    capture_output=True, env={**os.environ})
     subprocess.run([sys.executable, str(GATEWAY), "--tier", "p0",
                     "--source", "t", "--", "fire"], check=True,
                    capture_output=True, env={**os.environ})
-    written = [p for p in spool.iterdir() if p.is_file()]
-    assert written, "the gateway wrote nothing — the probe measured its own setup"
-    leaky = {p.name: _mode(p) for p in written if _group_or_other_readable(p)}
+    subprocess.run([sys.executable, str(FLUSH)], capture_output=True, text=True)
+
+    written = [p for p in spool.rglob("*") if p.is_file()]
+    assert written, "nothing was written — the probe measured its own setup"
+    assert any(p.name == "last_flush.json" for p in written), (
+        "the flush did not run, so its three write sites were never exercised "
+        "— the exact blind spot this test was widened to cover")
+    leaky = {str(p.relative_to(spool)): _mode(p)
+             for p in written if _group_or_other_readable(p)}
     assert not leaky, f"spool files readable beyond the owner: {leaky}"
 
 
@@ -142,6 +162,40 @@ def test_an_existing_loose_file_is_repaired(spool):
         f"setup failed: born {_mode(victim)}, not loose — nothing was measured")
     tg_notify.harden(victim)
     assert not _group_or_other_readable(victim), f"still {_mode(victim)}"
+
+
+# ------------------------------------------------- guilt: the other two branches
+# The flush writes last_flush.json at THREE sites and the corpus above reaches
+# exactly one — the happy "sent" path. Mutation found that: un-hardening either
+# other site survived the whole suite. Three write sites, one exercised, is how
+# a fix looks complete while two thirds of it is unproven.
+
+
+def test_the_silent_healthy_heartbeat_is_private(spool):
+    """Branch 1: an EMPTY spool still stamps last_flush.json (the self-probe
+    needs it to tell healthy-silence from death). Never reached above, because
+    the corpus always spools something first."""
+    r = subprocess.run([sys.executable, str(FLUSH)], capture_output=True, text=True)
+    assert "spool empty" in r.stdout, f"wrong branch: {r.stdout}{r.stderr}"
+    stamp = spool / "last_flush.json"
+    assert stamp.exists(), "no heartbeat written — nothing measured"
+    assert not _group_or_other_readable(stamp), f"{_mode(stamp)}"
+
+
+def test_the_send_failed_stamp_is_private(spool, monkeypatch):
+    """Branch 2: with no credentials, `bool(token and chat)` is False, the send
+    is judged failed, the spool is preserved and last_flush.json records the
+    error. Hermetic — this path never touches the network."""
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_OWNER_CHAT_ID", raising=False)
+    monkeypatch.delenv("TG_DRY_RUN", raising=False)
+    subprocess.run([sys.executable, str(GATEWAY), "--tier", "digest",
+                    "--source", "t", "--", "will fail"], check=True, capture_output=True)
+    r = subprocess.run([sys.executable, str(FLUSH)], capture_output=True, text=True)
+    assert r.returncode == 3, f"wrong branch (rc={r.returncode}): {r.stdout}{r.stderr}"
+    stamp = spool / "last_flush.json"
+    assert stamp.exists(), "no failure stamp written — nothing measured"
+    assert not _group_or_other_readable(stamp), f"{_mode(stamp)}"
 
 
 # ----------------------------------------------------------------- innocence

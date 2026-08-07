@@ -234,7 +234,19 @@ describe("internal-leak gate (real canonical)", () => {
     // (`l4_bali_blocked is false`, `pma_max_asing`, …) inside editorial prose.
     // Only an editorial rewrite can remove these; a label map cannot. When a
     // regeneration lot lands, LOWER this number — never raise it.
-    const BASELINE = 392;
+    //
+    // 392 -> 388 on 2026-08-06. The prose cure for the Koperasi/UMKM codes first
+    // pushed this to 394: two of its replacements narrated `l4_bali_blocked` on
+    // pages that had not done so before, because the paragraph being rewritten
+    // quoted the record and I kept the schema along with the fact. Raising the
+    // baseline would have recorded that a client may read a field name as the
+    // price of a cure — so the names came out of all six replacements instead,
+    // which took four codes off this list that were already on it.
+    // 388 -> 386 with the final prose lot (7 codes, 25 fields). Re-derived from
+    // the canonical with this file's own regex rather than subtracted from the
+    // previous number: two branches lowering the same monotone ratchet conflict
+    // even when both are right, and the resolution is to re-measure (W109b).
+    const BASELINE = 386;
     const leaking = records.filter((r) =>
       readerFacingStrings(r.intel_2026).some((s) => FIELD_RE.test(s)),
     );

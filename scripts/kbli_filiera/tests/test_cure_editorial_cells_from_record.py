@@ -257,7 +257,10 @@ def test_the_live_run_writes_the_real_catalogue_into_a_copy_and_changes_only_cel
     p.write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
 
     authored_before = E.report(original["data"])["needs_an_author"]["codes"]
-    assert len(authored_before) == 31, "the prose backlog only a human can shrink"
+    assert len(authored_before) == 0, (
+        "the prose backlog on this module's predicate is closed — all four lots "
+        "of cure_prose_national_openness.py have landed"
+    )
 
     # The catalogue is already cured, so this run is the IDEMPOTENCE check: a
     # second pass must find nothing, write nothing, and leave the document

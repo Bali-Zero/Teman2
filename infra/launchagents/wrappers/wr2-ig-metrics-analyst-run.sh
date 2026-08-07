@@ -4,7 +4,7 @@
 # Reads engagement metrics from human-review-queue.json + wr2-episodic.db,
 # correlates with carousel attributes, proposes amendments to
 # ~/.claude/skills/bali-zero-brand/_proposed-amendments/<date>-ig-insights.md.
-# Spec: ~/.claude/agents/wr2-ig-metrics-analyst.md (Sonnet 4.6 frontmatter).
+# Spec: .claude/agents/wr2-ig-metrics-analyst.md (Sonnet 4.6 frontmatter).
 # Phase B Phase D — created 2026-05-10 to close ciclo-vitale loop.
 #
 # Sonnet-5 runtime proof gap (PENDING-ARMS 2026-07-03/07-06): this wrapper called
@@ -144,7 +144,7 @@ fi
 # bounded attempt; auth/quota/empty failures rotate to the next seat while the
 # aggregate worst-case stays within the original two-hour budget.
 cd "${HOME}/nuzantara"
-CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
+CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in .claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
 
 CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-$(command -v claude || true)}"
 if [ -z "$CLAUDE_BIN" ]; then

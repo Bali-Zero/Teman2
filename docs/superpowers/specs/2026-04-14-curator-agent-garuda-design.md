@@ -492,7 +492,7 @@ Metrics written back to `publication_history.engagement_metrics`. Weekly rollup 
 - End-to-end test on 20-file sample
 - Deploy migration to Fly.io postgres
 - Run first real batch on existing GARUDA/ content
-- Document in `docs/GARUDA_INDEXER_OPS.md`
+- Document in `docs/archive/2026-08-decommissioned/GARUDA_INDEXER_OPS.md`
 
 ### Sprint 5.2 — IG Carousel curator (3-5 days)
 
@@ -582,7 +582,7 @@ Sequenced one-at-a-time:
 - [ ] Migration 108 deployed
 - [ ] `garuda_assets` Qdrant collection populated with first 500+ files
 - [ ] Cron running nightly at 03:00
-- [ ] `docs/GARUDA_INDEXER_OPS.md`
+- [ ] `docs/archive/2026-08-decommissioned/GARUDA_INDEXER_OPS.md`
 
 **Sprint 5.2:**
 

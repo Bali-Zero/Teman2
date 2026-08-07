@@ -35,6 +35,7 @@ was fine. A diagnosis aimed away from the cause costs more than silence
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -44,6 +45,31 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "scripts" / "drive_token_watchdog.py"
+
+
+def _wire_payload(expires_at: str, updated_at: str) -> str:
+    """One `echo` line in the shape the fly side ACTUALLY prints.
+
+    W114: a fake built at the service boundary in the vocabulary the reader
+    imagines confirms the reader instead of testing it. These fakes stand in
+    for the remote `python3 -c` and must speak its wire format — a `rows`
+    list carrying `user_id` / `has_refresh` / `expires_at` / `updated_at`. An
+    earlier version of this corpus echoed a flat `{"expires_at": ...}` object
+    that the remote side had stopped producing, and stayed green.
+    """
+    payload = json.dumps(
+        {
+            "rows": [
+                {
+                    "user_id": "SYSTEM",
+                    "has_refresh": True,
+                    "expires_at": expires_at,
+                    "updated_at": updated_at,
+                }
+            ]
+        }
+    )
+    return f"echo '{payload}'\n"
 
 
 def _load():
@@ -110,14 +136,14 @@ def test_a_healthy_environment_still_returns_the_token(wd, monkeypatch, tmp_path
     fake.write_text(
         "#!/bin/sh\n"
         "echo 'Connecting to fdaa:...'\n"
-        "echo '{\"expires_at\": \"2026-12-01 00:00:00+00:00\", \"created_at\": \"2026-09-01\"}'\n"
+        + _wire_payload("2026-12-01 00:00:00+00:00", "2026-11-30 23:00:00+00:00")
     )
     fake.chmod(0o755)
     monkeypatch.setattr(wd, "_resolve_fly", lambda: str(fake))
 
     data, reason = wd._check_drive_token_via_fly()
     assert reason is None, reason
-    assert data["expires_at"].startswith("2026-12-01")
+    assert data["rows"][0]["expires_at"].startswith("2026-12-01")
 
 
 def test_an_installed_fly_on_path_wins_over_the_fallback(wd, monkeypatch, tmp_path):
@@ -146,5 +172,99 @@ def test_the_alert_text_no_longer_prescribes_checking_fly_ssh():
     src = SCRIPT.read_text()
     assert "Verifica che <code>fly ssh</code> funzioni" not in src, (
         "the misdirecting diagnosis is back")
-    assert "la scadenza NON è sorvegliata" in src, (
-        "the alert must say the expiry check is blind while this fires")
+    assert "la credenziale NON è sorvegliata" in src, (
+        "the alert must say the credential check is blind while this fires")
+
+
+# ------------------------------------------- second cause: the CREDENTIAL
+# Found 2026-08-06 in PROVE-LIVE of the PATH cure above, and it is a distinct
+# defect with the same symptom. Measured on Pro, running the REAL command
+# rather than `auth whoami` (which passes for a token scoped to another app
+# and only dies later, on the work):
+#
+#   FLY_API_TOKEN from ~/.nuzantara-secrets.env -> Could not find App "nuzantara-rag"
+#   FLY_API_TOKEN unset, ~/.fly/config.yml      -> PROBE_OK
+#
+# cron reaches this script through cron-wrapper.sh, which SOURCES the secrets
+# file — so the production path always carried the credential that cannot see
+# this app, and the PATH cure alone would never have made the organ see the
+# expiry. The earlier verification runs succeeded only because they ran under
+# `env -i`, which stripped it: the mirror of W108's dev machine that could not
+# reproduce the red.
+
+
+def _fly_that_needs_no_token(tmp_path, name="flyctl"):
+    """A fake fly that FAILS when FLY_API_TOKEN is set and succeeds when it is
+    not — the live behaviour, inverted-testable."""
+    fake = tmp_path / name
+    fake.write_text(
+        "#!/bin/sh\n"
+        'if [ -n "$FLY_API_TOKEN" ]; then\n'
+        "  echo 'Error: Could not find App \"nuzantara-rag\"' >&2\n"
+        "  exit 1\n"
+        "fi\n"
+        + _wire_payload("2026-07-25 20:02:03+00:00", "2026-07-25 19:02:03+00:00")
+    )
+    fake.chmod(0o755)
+    return fake
+
+
+def test_a_wrongly_scoped_env_token_falls_back_to_the_config_credential(
+    wd, monkeypatch, tmp_path
+):
+    """GUILT: the exact production shape. With only the first credential tried,
+    the read fails and the expiry is never seen."""
+    monkeypatch.setattr(wd, "_resolve_fly",
+                        lambda: str(_fly_that_needs_no_token(tmp_path)))
+    monkeypatch.setenv("FLY_API_TOKEN", "FlyV1 scoped-to-another-app")
+
+    data, reason = wd._check_drive_token_via_fly()
+    assert reason is None, f"the fallback credential was never tried: {reason}"
+    assert data["rows"][0]["expires_at"].startswith("2026-07-25")
+
+
+def test_when_every_credential_refuses_the_reason_names_each_one(
+    wd, monkeypatch, tmp_path
+):
+    """GUILT: both refuse. The message must say what EACH attempt said —
+    a diagnosis aimed away from the cause costs more than silence (W106)."""
+    fake = tmp_path / "flyctl"
+    fake.write_text("#!/bin/sh\necho 'Error: unauthorized' >&2\nexit 1\n")
+    fake.chmod(0o755)
+    monkeypatch.setattr(wd, "_resolve_fly", lambda: str(fake))
+    monkeypatch.setenv("FLY_API_TOKEN", "FlyV1 also-dead")
+
+    data, reason = wd._check_drive_token_via_fly()
+    assert data is None
+    assert "env/inherited" in reason and "config.yml" in reason, reason
+    assert "unauthorized" in reason, reason
+
+
+def test_a_working_env_token_is_used_and_the_fallback_is_never_reached(
+    wd, monkeypatch, tmp_path
+):
+    """INNOCENCE, and it is why this is a PROBE and not a hardcoded `unset`.
+
+    W106 is precisely the story of hardcoding 'the env token is stale, always
+    drop it': true the day it was written, the world inverted, and the cure
+    threw away the only working credential for 27h. Here the env credential
+    works, so it must be the one used — no second attempt, no preference
+    frozen into the code.
+    """
+    counter = tmp_path / "calls"
+    fake = tmp_path / "flyctl"
+    fake.write_text(
+        "#!/bin/sh\n"
+        f"echo x >> {counter}\n"
+        + _wire_payload("2026-12-01 00:00:00+00:00", "2026-11-30 23:00:00+00:00")
+    )
+    fake.chmod(0o755)
+    monkeypatch.setattr(wd, "_resolve_fly", lambda: str(fake))
+    monkeypatch.setenv("FLY_API_TOKEN", "FlyV1 perfectly-good")
+
+    data, reason = wd._check_drive_token_via_fly()
+    assert reason is None, reason
+    assert data["rows"][0]["expires_at"].startswith("2026-12-01")
+    assert counter.read_text().count("x") == 1, (
+        "fly was invoked twice — the first credential worked and the fallback "
+        "must not have run")
