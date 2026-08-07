@@ -206,6 +206,74 @@ class StaleFinding:
         }
 
 
+def _machine_label(host: str | None = None) -> str:
+    """Return this machine's short label: m5 / mini / pro / <raw hostname>.
+
+    Self-contained port of proprioception.py::machine_label() (same file's
+    probe_guardian_freshness(), 2026-07-17 lesson: "a Pro-only guardian probed
+    on M5 is a false DIVERGED — jurisdiction, not divergence"). Duplicated
+    rather than imported: this detector is invoked as a standalone,
+    bootstrap-safe script (see module docstring: `cat ... | ssh pro python3 -`)
+    and must not gain an intra-repo import dependency.
+
+    host is injectable so tests can exercise jurisdiction scoping without
+    touching the real hostname (mirrors sync_cross_host_sidecars's own `host`
+    param below); defaults to socket.gethostname() in production.
+    """
+    h = (host or socket.gethostname()).split(".")[0].lower()
+    if "air-m5" in h:
+        return "m5"
+    if "mini" in h:
+        return "mini"
+    if h == "nuzantara":
+        return "pro"
+    return h
+
+
+# organ_id PREFIX -> the host whose jurisdiction the sidecar falls under.
+# Ported from proprioception.py::probe_guardian_freshness()'s per-item machine
+# scoping (same 2026-07-17 lesson as _machine_label() above). "cell" and
+# "infra" both resolve to "pro" because, as of today, EVERY cell.*/infra.*
+# sidecar in this organism is written exclusively by
+# launchagent-state-bridge.py, which is gated to run ONLY on Pro (see its
+# BRIDGED_TCP_PROBES + CORE_ORGANS_EXPECTED's comment above: "All five are
+# Pro-resident"). A prefix ABSENT from this map (wr2., codex., mata_garuda., a
+# bare "auth-sentinel", ...) is NOT jurisdiction-scoped — today's behaviour
+# (report it) is preserved, because an unrecognised prefix is evidence of
+# nothing: attribute-or-report, never attribute-or-drop. Audit this map if a
+# cell.*/infra.* organ is ever written from a host other than Pro.
+ORGAN_PREFIX_HOST: dict[str, str] = {
+    "pro": "pro",
+    "mini": "mini",
+    "m5": "m5",
+    "cell": "pro",
+    "infra": "pro",
+}
+
+
+def _is_foreign_jurisdiction(
+    organ_id: str,
+    here: str,
+    sources: dict[str, dict[str, str]] = CROSS_HOST_SIDECAR_SOURCES,
+) -> bool:
+    """True iff this sidecar belongs to another host's organ and is not an
+    explicit cross-host mirror (CROSS_HOST_SIDECAR_SOURCES).
+
+    Root cause this closes: a Pro-owned snapshot (e.g. pro.translate_hourly)
+    orphaned in a DIFFERENT machine's ~/.organism/last_seen/ — nothing on that
+    machine ever refreshes another host's organ, so the stray file freezes
+    forever and reads as a dead organ that is, in fact, alive on its own host
+    (2026-08-07). infra.eventbus_redis_mini is the deliberate exception: its
+    canonical writer also lives on Pro, but CROSS_HOST_SIDECAR_SOURCES exists
+    precisely so Mini (and, transitively, any other non-owning host) keeps
+    seeing it — silencing that mirror here would be the W94 under-match twin.
+    """
+    owner = ORGAN_PREFIX_HOST.get(organ_id.split(".", 1)[0])
+    if owner is None or owner == here:
+        return False
+    return organ_id not in sources
+
+
 def _parse_ts(raw: Any, fallback_mtime: float) -> float:
     """Parse both sidecar schemas (superscar #9 tolerance).
 
@@ -234,6 +302,7 @@ def scan_sidecars(
     stale_days: float = DEFAULT_STALE_DAYS,
     now: float | None = None,
     expect_core: tuple[str, ...] | None = None,
+    host: str | None = None,
 ) -> list[StaleFinding]:
     """Return findings for organs whose heartbeat is stale, missing, or corrupt.
 
@@ -244,6 +313,12 @@ def scan_sidecars(
     to the machine-resident core set (Pro only) when scanning the real organism
     dir; tests pass () so an isolated tmp dir does not spuriously flag the
     production core organs, and M5/Mini scans do not flag Pro-resident organs.
+
+    host is forwarded to _machine_label() for jurisdiction scoping (see
+    _is_foreign_jurisdiction): a sidecar owned by another host (by its
+    organ_id prefix) is skipped unless it is on the CROSS_HOST_SIDECAR_SOURCES
+    allow-list — a stray same-name snapshot orphaned on the wrong machine is
+    not evidence that organ is dead, it just isn't this machine's to judge.
     """
     if expect_core is None:
         expect_core = (
@@ -252,6 +327,7 @@ def scan_sidecars(
             else ()
         )
     now = time.time() if now is None else now
+    here = _machine_label(host)
     findings: list[StaleFinding] = []
 
     if not os.path.isdir(sidecar_dir):
@@ -263,6 +339,8 @@ def scan_sidecars(
             continue
         organ_id = fname[: -len(".json")]
         seen.add(organ_id)
+        if _is_foreign_jurisdiction(organ_id, here):
+            continue
         path = os.path.join(sidecar_dir, fname)
         try:
             with open(path, encoding="utf-8") as fh:
@@ -331,6 +409,7 @@ def scan_sidecars_status(
     now: float | None = None,
     benign: frozenset[str] = KNOWN_BENIGN_FAILED,
     expect_core: tuple[str, ...] | None = None,
+    host: str | None = None,
 ) -> list[StaleFinding]:
     """Full receptor scan: stale/dead/corrupt (via scan_sidecars) PLUS unhealthy.
 
@@ -341,10 +420,19 @@ def scan_sidecars_status(
 
     This is the status-aware extension (2026-06-28): the prior receptor saw the
     mute organs but ignored the ones crying for help.
+
+    host is forwarded to scan_sidecars() AND applied again in this function's
+    own unhealthy loop below — without the second application, a foreign-host
+    organ that scan_sidecars() correctly skips as out-of-jurisdiction would
+    fall through into `already` being empty for it and get reported here
+    instead as "unhealthy", turning a jurisdiction skip into a misclassified
+    finding rather than a clean skip (2026-08-07).
     """
     now = time.time() if now is None else now
+    here = _machine_label(host)
     findings = scan_sidecars(
-        sidecar_dir, stale_days=stale_days, now=now, expect_core=expect_core
+        sidecar_dir, stale_days=stale_days, now=now, expect_core=expect_core,
+        host=host,
     )
     already = {f.organ_id for f in findings}  # don't double-count stale/corrupt
 
@@ -356,6 +444,8 @@ def scan_sidecars_status(
             continue
         organ_id = fname[: -len(".json")]
         if organ_id in already or organ_id in benign:
+            continue
+        if _is_foreign_jurisdiction(organ_id, here):
             continue
         path = os.path.join(sidecar_dir, fname)
         try:

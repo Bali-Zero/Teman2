@@ -1024,6 +1024,57 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         </div>
       )}
 
+      {/* ── RISK-TIER DISPUTE FRAME (gold editorial vs OSS record disagree) ──
+          Independent axis from the Bali frames above — a code can be both
+          Bali-blocked/non-classifiable AND risk-disputed, so this is its own
+          condition, never chained with `!baliBlocked`. Never renders the
+          editorial side's tier (RENDER CONTRACT, kbli-risk-dispute.ts). */}
+      {kbli.riskDispute && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">⚖️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              Sources disagree on the risk tier
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            {kbli.riskDispute.kind === "universal_claim" ? (
+              <>
+                The editorial guide on this page states one risk tier as
+                applying at every business scale, while the licensing rows on
+                this record carry {kbli.riskDispute.recordTiers.join(" / ")}{" "}
+                across its scopes and scales. The two sources have not been
+                reconciled — verify the current tier on oss.go.id before filing.
+              </>
+            ) : (
+              <>
+                The licensing rows on this record list{" "}
+                {kbli.riskDispute.recordTiers.join(" / ")} across its scopes and
+                business scales, while the editorial guide on this page
+                describes a different tier. The two sources have not been
+                reconciled — verify the current tier on oss.go.id before filing.
+              </>
+            )}
+            {kbli.riskDispute.baliDependsOnTier && (
+              <>
+                {" "}
+                The Bali position shown on this page is derived from the
+                record's tier, so it inherits this disagreement.
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
       <KeyFacts
         licensing={kbli.licensing}

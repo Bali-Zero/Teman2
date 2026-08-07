@@ -18,6 +18,7 @@ count in `test_exception_list_only_shrinks` is the ratchet.
 
 from __future__ import annotations
 
+import copy
 import json
 import sys
 from pathlib import Path
@@ -35,18 +36,30 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # Codes whose gold PMA sentence disagrees with canonical and which a COMPILER
 # must not rewrite. Every one needs a per-code adjudication, not a deduction.
 # This list may only shrink.
+# 2026-08-07: 5 of the original 7 were adjudicated against the vaulted Perpres
+# 10/2021-as-amended-by-49/2021 instruments; the adjudication survived a
+# cross-family adversarial review (Gemini agy, instructed to refute). Four
+# were cured (73100, 47221, 86202, 47222 — see
+# cure_gold_pma_line.py::AUTHORED_SENTENCES and, for 47222's canonical
+# pma_status, cure_canonical_47222_reservation.py). 41011's permissive cure
+# was REFUTED and its reason below replaces the earlier one. 65121 and 86101
+# are untouched.
 ADJUDICATION_BACKLOG = {
-    "41011": "gold 67% vs canonical 100% — gold is more restrictive; which is right is a ruling",
-    "47221": "canonical cap is `special`; gold states 49% — no figure to compare against",
-    # Machine-generated, not authored: the enrichment scripts append
-    # `Condition: {pma_kondisi}.` after the figure. Refused because 49% vs a
-    # TERTUTUP record is a disagreement about the law, not a stale default.
-    "47222": "gold 49% + kemitraan condition vs canonical 0%/TERTUTUP; the note also cites alcoholic retail on a non-alcoholic code",
+    "41011": (
+        "gold 67% vs canonical 100% — permissive cure REFUTED by cross-family "
+        "review 2026-08-07: a sectoral construction JV cap (67%/70% ASEAN, "
+        "BUJKN partnership, Besar-only qualification) may survive the Perpres "
+        "via UU 2/2017/PUPR instruments; needs a primary-source read before "
+        "any change"
+    ),
     "65121": "gold cites a historical 80% acquisition cap vs canonical 100%",
-    "73100": "gold 49% + kemitraan vs canonical 100%; canonical's own locator for this family is unverifiable (10/2021 lampiran are text-layer-dead)",
-    "86101": "whole record is written about a PRIVATE hospital on the STATE hospital code (cap 0/TERTUTUP) — a sentence swap would leave a closed line above a PT PMA step-by-step",
-    "86202": "gold points the reader at 86103 'capped at 67%' while 86103's own canonical cap is 100",
 }
+# 86101 cured 2026-08-07: the whole card described a PRIVATE hospital on the
+# STATE hospital code and was replaced field-by-field (not a sentence swap —
+# see cure_gold_86101_government_hospital.py + cure_specs/
+# gold_86101_government_hospital_2026_08_07.json). The new text carries no
+# `**PMA:**` sentence at all, so it no longer registers with C.scan() —
+# confirmed below rather than assumed.
 
 
 @pytest.fixture(scope="module")
@@ -67,6 +80,26 @@ def stores():
 # ── the live ledger ─────────────────────────────────────────────────────────
 
 
+def _backlog_mismatch(gold: dict, by_code: dict) -> set[str]:
+    """Symmetric difference between what the scanner flags (findings ∪
+    incomparable) and ADJUDICATION_BACKLOG's keys — empty iff they agree
+    exactly.
+
+    A one-directional check (findings ⊆ backlog) only catches a NEW,
+    unnamed divergence; it says nothing if a NAMED backlog entry stops
+    producing a finding — e.g. its wrong sentence is silently deleted or
+    rewritten to agree with canonical without going through adjudication.
+    That is a real event (the ledger's own claim about the file is now
+    false) and round-4 review caught it as a hole: the old test would stay
+    green while ADJUDICATION_BACKLOG quietly went stale. Set-EQUALITY closes
+    both directions with one assertion.
+    """
+    incomparable: list = []
+    findings = C.scan(gold, by_code, incomparable)
+    found_or_incomparable = set(findings) | {c for c, *_ in incomparable}
+    return found_or_incomparable ^ set(ADJUDICATION_BACKLOG)
+
+
 def test_no_gold_pma_sentence_contradicts_canonical(stores):
     by_code, gold = stores
     incomparable: list = []
@@ -83,19 +116,60 @@ def test_no_gold_pma_sentence_contradicts_canonical(stores):
             f"{code}: gold states a figure the canonical cap cannot be compared "
             "against. Not comparable is not clean — name it."
         )
+    mismatch = _backlog_mismatch(gold, by_code)
+    assert mismatch == set(), (
+        f"the scanner's findings/incomparable keys and ADJUDICATION_BACKLOG's "
+        f"keys no longer match exactly — symmetric difference {sorted(mismatch)}. "
+        "A backlog entry that stops producing a finding did not get adjudicated "
+        "— its wrong sentence vanished without a cure being recorded. "
+        "Investigate; do not shrink ADJUDICATION_BACKLOG to make this pass."
+    )
+
+
+def test_backlog_mismatch_detector_catches_a_vanished_finding(stores):
+    """Guilt for `_backlog_mismatch`: on a COPY of gold with 41011's PMA
+    sentence deleted (as if someone had silently 'fixed' or dropped it
+    without adjudication), the detector must report 41011 as missing —
+    proving the set-equality guard above is not a decoration."""
+    by_code, gold = stores
+    mutated = copy.deepcopy(gold)
+    live = mutated["41011"]["whatYouNeed"]
+    sentence = "**PMA:** Open up to 67% foreign ownership — a local partner holds the remainder."
+    assert sentence in live, "fixture assumption stale — re-read 41011's live text"
+    mutated["41011"]["whatYouNeed"] = live.replace(sentence, "").strip()
+    mismatch = _backlog_mismatch(mutated, by_code)
+    assert mismatch == {"41011"}
 
 
 def test_exception_list_only_shrinks():
-    # 2026-08-07: 7. Lower this number when one is adjudicated; never raise it.
-    assert len(ADJUDICATION_BACKLOG) <= 7
+    # 2026-08-07: 7 -> 3 -> 2 (five adjudicated and cured, 86101 last). Lower
+    # this number when one is adjudicated; never raise it.
+    assert len(ADJUDICATION_BACKLOG) <= 2
+    # Explicit pin, not just a count — a count alone would not notice one
+    # code swapped for another at the same cardinality.
+    assert set(ADJUDICATION_BACKLOG) == {"41011", "65121"}
     assert all(v.strip() for v in ADJUDICATION_BACKLOG.values()), "a reason is required"
+
+
+def test_86101_card_replacement_left_no_pma_sentence_for_the_scanner(stores):
+    """86101 was cured by a whole-field replacement, not a sentence swap — the
+    new text names no percentage at all. Guards against a future re-author
+    silently reintroducing a `**PMA:**` sentence the scanner would have to
+    judge: if that happens this test goes red before the ledger does."""
+    by_code, gold = stores
+    findings = C.scan(gold, by_code)
+    assert "86101" not in findings
+    prose = C.prose_scan(gold, by_code)
+    assert "86101" not in prose
 
 
 def test_the_sixteen_more_open_codes_are_gone_from_the_live_file(stores):
     """The cure's own claim, asserted against the file rather than the log.
 
-    These sixteen promised more foreign ownership than the record allows. Two
-    stay on the backlog (47222, 86101); the other fourteen must be gone.
+    These sixteen promised more foreign ownership than the record allows. One
+    stays on the backlog (86101 — the whole record needs a rewrite, not a
+    sentence swap); the other fifteen (including 47222, cured 2026-08-07 via
+    AUTHORED_SENTENCES) must be gone.
     """
     by_code, gold = stores
     cured = [
@@ -157,6 +231,12 @@ def test_innocence_prose_net_ignores_a_code_that_is_actually_open():
 
 
 def test_the_authored_sentences_are_in_the_live_file(stores):
+    """DECLARED (round-4 review, no change requested): this exact-sentence pin
+    is deliberately kept word-for-word rather than loosened to a substring or
+    fact-based check — `AUTHORED_SENTENCES`'s `old`/`new` pair IS the archive
+    of what changed and why (see cure_gold_pma_line.py's module docstring);
+    a looser check would stop proving the archived text is what actually
+    shipped."""
     _by_code, gold = stores
     for code, a in C.AUTHORED_SENTENCES.items():
         live = gold[code][a["field"]]

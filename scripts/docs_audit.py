@@ -336,9 +336,157 @@ def walk_docs(repo: Path) -> List[Path]:
     return sorted(paths)
 
 
+REF_DELIM_CHARS = ("/", "`", "(")
+
+
+def _resolve_link_target(citing_file: Path, raw_target: str, repo: Path) -> str | None:
+    """Resolve a markdown link's `(...)` target relative to the CITING file's
+    own directory into a repo-relative POSIX path, or None for a URL/anchor-
+    only/outside-repo target. Mirrors compute_broken_links()'s resolution so
+    the two functions never disagree about what a link "points at".
+    """
+    target = raw_target.strip()
+    if not target or target.startswith(("http://", "https://", "mailto:", "#")):
+        return None
+    target_path = target.split("#", 1)[0].split("?", 1)[0]
+    if not target_path:
+        return None
+    resolved = (citing_file.parent / target_path).resolve()
+    try:
+        rel = resolved.relative_to(repo.resolve())
+    except ValueError:
+        return None
+    return rel.as_posix()
+
+
+def _has_bare_delimited_mention(
+    content: str,
+    citing_file: Path,
+    repo: Path,
+    basename: str,
+    target_rel_posix: str,
+) -> bool:
+    """Fallback for non-link citations: True iff `content` contains an
+    occurrence of `basename` that is reference-anchored rather than an
+    accidental substring.
+
+    Anchoring rule (guard-over-match family #3 — see cicatrix-superscar.md
+    §3 — every substring guard eventually needs both a guilt AND an
+    innocence corpus, pinned here in test_docs_audit.py):
+      - the character immediately BEFORE the match must be a real delimiter
+        (`/`, a backtick, or `(`) — this alone rejects the basename-inside-
+        basename hole (ANTHROPIC_API_REFERENCE.md must never credit
+        API_REFERENCE.md: the char before "API_REFERENCE.md" there is "_",
+        not a delimiter).
+      - the character immediately AFTER the match must not be a word
+        character either — so "README.mdx" or "README.md.bak" can't credit
+        "README.md" by mere prefix.
+      - when the leading delimiter is "/", the full contiguous path token
+        walked backward from the match (e.g. "docs/sub/README.md" or
+        "../sub/README.md") must resolve to `target_rel_posix` under EITHER
+        of two conventions actually observed in this repo's prose: (a)
+        repo-root-relative (writers paste the "docs/..." path they'd type
+        from the repo root, regardless of where the citing file lives), or
+        (b) citing-file-relative, exactly like a real markdown link (so a
+        backticked "../sibling.md" resolves against the CITING file's own
+        directory, not the repo root — this is what makes a genuine
+        sibling reference like `` `../assignment-mismatches-2026-04-20.md` ``
+        count; a naive trailing-segment string match does NOT handle ".."
+        and was measured to silently drop this exact real citation before
+        this fix). Two different docs/**/README.md files must still not
+        credit each other purely because both happen to end in
+        "README.md" preceded by a slash — neither resolution makes that
+        happen, since neither produces the OTHER file's actual path.
+      - a backtick or "(" immediately before a BARE basename (no path
+        prefix at all, e.g. `` `README.md` ``) is accepted with no further
+        check — a deliberate, documented BROADENING beyond bare-markdown-
+        link anchoring (see compute_refs_in docstring for the decision and
+        the measured impact of NOT making this choice).
+    """
+    n = len(content)
+    blen = len(basename)
+    idx = 0
+    while True:
+        idx = content.find(basename, idx)
+        if idx == -1:
+            return False
+        end = idx + blen
+        # "." is excluded too, not just word chars: "README.md.bak" and
+        # "README.mdx" must not credit "README.md" by mere prefix — a "."
+        # right after the match means the real filename continues past it.
+        trailing_ok = end >= n or not (content[end].isalnum() or content[end] in "_-.")
+        if idx == 0 or not trailing_ok:
+            idx = end
+            continue
+        prev = content[idx - 1]
+        if prev not in REF_DELIM_CHARS:
+            idx = end
+            continue
+        if prev != "/":
+            # Bare basename preceded directly by a backtick or "(" — accept.
+            return True
+        # prev == "/": walk backward through path-token characters (incl.
+        # "." so a leading "../" or "./" is captured whole) to recover the
+        # full cited path, then try BOTH resolutions described above.
+        start = idx - 1
+        while start > 0 and (
+            content[start - 1].isalnum() or content[start - 1] in "_-./"
+        ):
+            start -= 1
+        token = content[start:end]
+        # (a) repo-root-relative: the token IS the repo-relative path.
+        if token.lstrip("/") == target_rel_posix:
+            return True
+        # (b) citing-file-relative: resolve against the citing file's own
+        # directory, exactly like a real markdown link (_resolve_link_target).
+        if _resolve_link_target(citing_file, token, repo) == target_rel_posix:
+            return True
+        idx = end
+    return False
+
+
 def compute_refs_in(repo: Path, target: Path) -> int:
-    """Count other .md files (in docs/ + reference root files) that contain target's basename."""
+    """Count other .md files (in docs/ + reference root files) that CITE
+    `target` via a reference-anchored match: either (a) a markdown link
+    `[...](...)` that resolves — exact repo-relative path equality — to
+    `target`, or (b) a bare (non-link) mention delimiter-anchored per
+    `_has_bare_delimited_mention` (see its docstring for the exact rule).
+
+    Deliberately NOT a `basename in text` substring test: that inflated
+    refs_in on any doc whose basename happens to be a SUFFIX of a longer
+    basename or of an ordinary prose word — e.g. docs/API_REFERENCE.md was
+    credited by every doc that merely wrote ANTHROPIC_API_REFERENCE.md,
+    which never links or otherwise cites API_REFERENCE.md at all — and
+    because refs_in==0 is half of orphan-archival eligibility (see
+    classify()'s `structurally_eligible`), that inflation could mask a doc
+    that should already be orphan-eligible, or — the sharper failure mode —
+    the FIX for it could flip a large slice of genuinely-cited docs to
+    refs_in==0 overnight if done too strictly.
+
+    DECISION, pinned by the guilt/innocence corpus in test_docs_audit.py:
+    an UNLINKED backticked/parenthesized bare filename (`` `README.md` ``,
+    no path, no `[text](...)` syntax) DOES count as a citation. This repo's
+    docs corpus commonly cites a doc that way (backtick-wrapped filename in
+    prose, no markdown link). Measured directly (2026-08-07, this exact
+    implementation, not a prior estimate) against the old substring scan
+    across every docs/** + reference-root candidate pair (979-file
+    universe): 561 files had refs_in>0 under the old scan, 533 under this
+    one — 28 lose their only (substring-inflated) inbound reference, ZERO
+    gain one. Of those 28, 16 are ALSO already past their own
+    orphan_eligible_on and not whitelisted — i.e. this counting fix alone
+    makes them newly eligible for the scheduled --organ refresh's NEXT run
+    to archive (this PR's own --gate-consistent regen does not itself flip
+    any of them — verified empirically, zero ARCHIVED-status rows changed
+    in this PR's diff — --gate-consistent only ever carries forward an
+    ALREADY-committed flip, never invents one). See the PR body for the
+    full 16-doc list: that archival is intentionally left as a separate,
+    later decision, not a side effect of this fix. A bare, UNDELIMITED
+    prose mention ("the file README.md is a common convention") does NOT
+    count — that is the
+    one shape this fix exists to kill.
+    """
     basename = target.name
+    target_rel_posix = target.relative_to(repo).as_posix()
     # Scan roots: docs/** and a handful of root files. Skip the file itself + archive dest.
     # Use walk_docs() (git-aware) so candidates match local↔CI exactly.
     candidates: List[Path] = [p for p in walk_docs(repo) if p != target]
@@ -362,10 +510,31 @@ def compute_refs_in(repo: Path, target: Path) -> int:
     count = 0
     for c in candidates:
         try:
-            if basename in c.read_text(encoding="utf-8", errors="ignore"):
-                count += 1
+            content = c.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
+        # Cheap pre-filter, safe under BOTH matching mechanisms below: a
+        # markdown link can only resolve to `target` if its raw target text
+        # contains `basename` as a literal substring (the resolved path's
+        # own final component), and the delimited-mention fallback requires
+        # a literal `basename` occurrence by construction. Skipping the
+        # regex scan + path resolution for the (vast majority of) candidates
+        # that don't even contain the substring is a pure speed win — this
+        # repo's docs/** is O(1000) files, so compute_refs_in is called
+        # O(files) times and each call previously re-scanned every OTHER
+        # file; regex+resolve() on every pair measured ~3x slower than the
+        # substring-only predecessor across the full corpus (2026-08-07).
+        if basename not in content:
+            continue
+        cited = False
+        for match in LINK_RE.finditer(content):
+            if _resolve_link_target(c, match.group(1), repo) == target_rel_posix:
+                cited = True
+                break
+        if not cited:
+            cited = _has_bare_delimited_mention(content, c, repo, basename, target_rel_posix)
+        if cited:
+            count += 1
     return count
 
 

@@ -28,8 +28,8 @@
     {
       "live": "~/.claude/agents/regulatory-watcher.md",
       "repo": ".claude/agents/regulatory-watcher.md",
-      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' — this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair; same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini).",
-      "machines": ["pro", "m5"]
+      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' — this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair. Corrected 2026-08-07: this entry previously asserted 'same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini)' — that sentence, written while narrating the other two machines, was itself an unverified claim (W113: a replacement assertion written while correcting something else is unverified by default). Mini in fact HAS this file, sha256 4335975443… identical across repo canon, Pro, M5 AND Mini (re-verified 2026-08-07). Scope widened to include mini — no consumer-scope reasoning survives the correction, the file simply exists in the same place on all four copies.",
+      "machines": ["pro", "m5", "mini"]
     },
     {
       "live": "~/scripts/wr2-deploy-pull.sh",
@@ -350,7 +350,7 @@
     {
       "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
       "repo": "scripts/wr2-cron-wrapper.sh",
-      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA — sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro).",
+      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA — sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro). Mini fact (measured 2026-08-07, deliberately NOT added to machines): Mini also has a copy at this live path, sha256 3f07eed7d2… — DIFFERENT from both the repo canon and Pro's live copy (03486087a6…) — and it is an inert ancestor: 0 crontab entries and 0 LaunchAgent plist references to wr2-cron-wrapper on Mini (Pro has 36). Declaring 'mini' here would manufacture a permanent red on a fork nothing invokes; do not add it unless something on Mini starts executing this path.",
       "machines": ["pro"]
     },
     {
@@ -627,6 +627,12 @@
       "live": "~/Library/LaunchAgents/com.balizero.claude-settings-watcher.plist",
       "repo": "infra/launchagents/com.balizero.claude-settings-watcher.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/.nuzantara-cron/auth_sentinel_cron.sh",
+      "repo": "scripts/auth_sentinel_cron.sh",
+      "machines": ["m5"],
+      "_note": "Found diverged on 2026-08-07 by a single line (the ~/Desktop path PR #2499 cured on 2026-07-16 had not reached this live copy) and realigned by the auth-sentinel item in the same pending-arms batch. Re-verified sha256-identical to the repo twin 2026-08-07 before this pair was declared (STRICT ORDERING: a pair is only declared after its live sync is proven, per family #1's own antidote — declaring an unsynced pair arms a permanent red on M5). Was UNDECLARED in both surfaces (0 hits in this file and in scripts/proprioception.py's home_fork_scripts args) — until today only scripts/launchagent_reconcile.py caught drift here, and only generically (plist->wrapper diff), not via a dedicated home-fork pair."
     }
   ],
   "allow": [
