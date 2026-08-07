@@ -46,7 +46,7 @@ def test_stale_float_ts_flagged_guilt(tmp_path):
     d = str(tmp_path)
     old = time.time() - 28 * 86400
     _write(d, "pro.dlq_autopilot", {"ts": old, "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     assert len(findings) == 1
     f = findings[0]
     assert f.organ_id == "pro.dlq_autopilot"
@@ -61,7 +61,7 @@ def test_stale_iso_ts_flagged_schema_tolerant(tmp_path):
         "%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 20 * 86400)
     )
     _write(d, "pro.sentinel", {"ts": iso_old, "status": "degraded"})
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     assert len(findings) == 1
     assert findings[0].organ_id == "pro.sentinel"
     assert 19 <= findings[0].age_days <= 21
@@ -71,7 +71,7 @@ def test_corrupt_sidecar_flagged_not_skipped(tmp_path):
     """A guard that silently skips a broken sidecar is blind (#2)."""
     d = str(tmp_path)
     _write(d, "pro.broken", "{not valid json")
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     assert len(findings) == 1
     assert findings[0].kind == "corrupt"
 
@@ -83,7 +83,7 @@ def test_innocence_many_fresh_one_stale(tmp_path):
     for i in range(20):
         _write(d, f"pro.healthy_{i}", {"ts": now - 60, "status": "ok"})
     _write(d, "infra.pg_bridge_watchdog", {"ts": now - 22 * 86400, "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     assert len(findings) == 1
     assert findings[0].organ_id == "infra.pg_bridge_watchdog"
 
@@ -94,7 +94,7 @@ def test_threshold_boundary(tmp_path):
     now = time.time()
     _write(d, "pro.just_under", {"ts": now - 6 * 86400, "status": "ok"})
     _write(d, "pro.just_over", {"ts": now - 8 * 86400, "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     ids = {f.organ_id for f in findings}
     assert ids == {"pro.just_over"}
 
@@ -153,7 +153,7 @@ def test_guilt_canonical_checkout_stamp_still_flags_stale(tmp_path):
 def test_finding_is_serializable(tmp_path):
     d = str(tmp_path)
     _write(d, "pro.x", {"ts": time.time() - 30 * 86400, "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     blob = json.dumps([f.to_dict() for f in findings])
     assert "pro.x" in blob
 
@@ -208,7 +208,7 @@ def test_degraded_status_flagged(tmp_path):
     """degraded (not just failed) is also surfaced if not benign."""
     d = str(tmp_path)
     _write(d, "pro.real_degraded", {"ts": time.time(), "status": "degraded"})
-    findings = scan_sidecars_status(d, now=time.time())
+    findings = scan_sidecars_status(d, now=time.time(), host="nuzantara")
     assert any(f.organ_id == "pro.real_degraded" and f.kind == "unhealthy" for f in findings)
 
 
@@ -220,7 +220,7 @@ def test_stale_failed_not_double_counted(tmp_path):
     d = str(tmp_path)
     old = time.time() - 30 * 86400
     _write(d, "pro.old_and_failed", {"ts": old, "status": "failed"})
-    findings = scan_sidecars_status(d, now=time.time())
+    findings = scan_sidecars_status(d, now=time.time(), host="nuzantara")
     kinds = {f.kind for f in findings if f.organ_id == "pro.old_and_failed"}
     assert kinds == {"stale"}, f"expected only stale, got {kinds}"
 
@@ -419,3 +419,110 @@ def test_cross_host_sync_graceful_on_timeout(tmp_path, monkeypatch):
 
     with open(p, encoding="utf-8") as fh:
         assert json.load(fh)["ts"] == old_ts
+
+
+# ---------------------------------------------------------------------------
+# Jurisdiction scoping (2026-08-07): scan_sidecars() read every file in the
+# local ~/.organism/last_seen/ with no host/jurisdiction scoping, so a Pro
+# sidecar orphaned on M5 since 2026-07-21 (pro.translate_hourly, frozen wall-
+# clock, never refreshed by anything on M5) reported "heartbeat frozen 17.0d"
+# as a phantom P1 while the real Pro organ ran fine that same day. Straight
+# port of proprioception.py::probe_guardian_freshness()'s per-item machine
+# scoping (same 2026-07-17 "jurisdiction, not divergence" lesson).
+# ---------------------------------------------------------------------------
+
+from organism_stale_detector import _is_foreign_jurisdiction, _machine_label  # noqa: E402
+
+
+def test_guilt_pro_sidecar_orphaned_on_m5_not_flagged(tmp_path):
+    """GUILT (of the OLD code / innocence of the NEW code): a pro.* sidecar
+    frozen 17d, present in the local last_seen dir, must NOT be reported when
+    running on M5 — it is not M5's organ to judge (jurisdiction, not
+    divergence). This is the exact live shape of pro.translate_hourly.json."""
+    d = str(tmp_path)
+    old = time.time() - 17 * 86400
+    _write(d, "pro.translate_hourly", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="air-m5")
+    assert findings == [], f"foreign-host sidecar wrongly flagged on M5: {findings}"
+
+
+def test_guilt_pro_sidecar_still_flags_on_pro(tmp_path):
+    """GUILT (of the finding surviving): the SAME frozen pro.* sidecar MUST
+    still be reported when scanned from Pro itself — jurisdiction skip must
+    not silently delete a real alarm on the machine that owns it."""
+    d = str(tmp_path)
+    old = time.time() - 17 * 86400
+    _write(d, "pro.translate_hourly", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
+    assert len(findings) == 1
+    assert findings[0].organ_id == "pro.translate_hourly"
+    assert findings[0].kind == "stale"
+
+
+def test_innocence_cross_host_allowlisted_organ_still_flags_on_m5(tmp_path):
+    """INNOCENCE (the W94 under-match twin): infra.eventbus_redis_mini is the
+    one legitimately cross-host-mirrored organ (CROSS_HOST_SIDECAR_SOURCES) —
+    silencing it via the new jurisdiction skip would be exactly the under-match
+    failure mode this repo has scarred on before. It must STILL be flagged
+    stale on M5 even though its organ_id prefix ("infra.") resolves to "pro"."""
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(d, "infra.eventbus_redis_mini", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="air-m5")
+    assert len(findings) == 1
+    assert findings[0].organ_id == "infra.eventbus_redis_mini"
+
+
+def test_innocence_m5_own_sidecar_still_flags_on_m5(tmp_path):
+    """INNOCENCE: an m5.* sidecar scanned on M5 is squarely in-jurisdiction —
+    the new skip must never suppress a machine's own organs."""
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(d, "m5.arsenal_probe", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="air-m5")
+    assert len(findings) == 1
+    assert findings[0].organ_id == "m5.arsenal_probe"
+
+
+def test_innocence_unrecognised_prefix_keeps_reporting(tmp_path):
+    """INNOCENCE: attribute-or-report, never attribute-or-drop. An organ_id
+    whose prefix isn't in ORGAN_PREFIX_HOST (or has no prefix at all) is not
+    evidence the sidecar is foreign — today's behaviour (report it) must be
+    unchanged regardless of which machine is scanning."""
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(d, "auth-sentinel", {"ts": old, "status": "ok"})
+    _write(d, "wr2.html_apply.runtime", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="air-m5")
+    ids = {f.organ_id for f in findings}
+    assert ids == {"auth-sentinel", "wr2.html_apply.runtime"}
+
+
+def test_scan_sidecars_status_does_not_reclassify_foreign_stale_as_unhealthy(tmp_path):
+    """GUILT of the two-loop consistency fix: scan_sidecars_status() must skip
+    a foreign-jurisdiction sidecar in ITS OWN unhealthy loop too — otherwise a
+    clean jurisdiction skip in scan_sidecars() turns into a misclassified
+    'unhealthy' finding one loop later (worse than the original bug: it fires
+    on the SAME data with a DIFFERENT, less legible verdict)."""
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "pro.some_failed_organ", {"ts": time.time(), "status": "failed"})
+    findings = scan_sidecars_status(d, now=time.time(), host="air-m5")
+    assert findings == [], f"foreign sidecar reclassified as unhealthy: {findings}"
+
+
+def test_machine_label_recognises_all_three_hosts():
+    assert _machine_label("air-m5") == "m5"
+    assert _machine_label("Air-M5.local") == "m5"
+    assert _machine_label("mini-pro2") == "mini"
+    assert _machine_label("nuzantara") == "pro"
+    assert _machine_label("some-ci-runner") == "some-ci-runner"
+
+
+def test_is_foreign_jurisdiction_unit():
+    assert _is_foreign_jurisdiction("pro.translate_hourly", "m5") is True
+    assert _is_foreign_jurisdiction("pro.translate_hourly", "pro") is False
+    assert _is_foreign_jurisdiction("infra.eventbus_redis_mini", "m5") is False
+    assert _is_foreign_jurisdiction("m5.arsenal_probe", "m5") is False
+    assert _is_foreign_jurisdiction("auth-sentinel", "m5") is False
