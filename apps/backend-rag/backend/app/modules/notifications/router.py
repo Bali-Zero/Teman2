@@ -112,7 +112,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                 LEFT JOIN (
                     SELECT DISTINCT ON (client_id)
                         client_id, expiry_date, document_type as visa_type
-                    FROM client_documents
+                    FROM documents
                     WHERE document_category = 'immigration'
                     AND expiry_date IS NOT NULL
                     ORDER BY client_id, expiry_date DESC
@@ -139,7 +139,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                 LEFT JOIN (
                     SELECT DISTINCT ON (client_id)
                         client_id, expiry_date, document_type as visa_type
-                    FROM client_documents
+                    FROM documents
                     WHERE document_category = 'immigration'
                     AND expiry_date IS NOT NULL
                     ORDER BY client_id, expiry_date DESC
