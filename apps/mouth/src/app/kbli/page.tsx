@@ -160,20 +160,16 @@ export default async function KBLIHomePage({
                   <div className="flex justify-center py-1.5 pb-2.5">
                     <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
                   </div>
-                  {/* Screen with video */}
+                  {/* Screen — awaiting a navigator still (see PR that removed
+                      the <video>): its src pointed at /videos/kbli-demo.mp4,
+                      a path that has never existed in public/ (the real dir is
+                      public/video/, singular), so production served a broken
+                      player with visible controls. A dark panel is the honest
+                      placeholder until a real still lands here. */}
                   <div
                     className="rounded-[18px] bg-black/60 overflow-hidden"
                     style={{ height: 286 }}
-                  >
-                    <video
-                      src="/videos/kbli-demo.mp4"
-                      autoPlay
-                      loop
-                      playsInline
-                      controls
-                      className="w-full h-full object-cover block rounded-[18px]"
-                    />
-                  </div>
+                  />
                   {/* Home bar */}
                   <div className="flex justify-center pt-2.5 pb-1.5">
                     <div className="w-[60px] h-1 rounded-sm bg-white/[0.08]" />
