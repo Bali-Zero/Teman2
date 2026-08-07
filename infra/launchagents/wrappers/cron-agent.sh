@@ -78,15 +78,55 @@ send_telegram() {
     # Notification gateway (post-#2263 canon promotion): tg_notify.py owns token
     # resolution + tiering + 6h dedup; this wrapper keeps its own 30-min cooldown.
     # No env-token gate: an alert must not vanish silently when env lacks the token.
+    #
+    # JUDGE THE REPLY, NOT THE EXIT CODE (W104). tg_notify.py's main() returns 0
+    # unconditionally — its `except Exception` branch is literally commented
+    # "NEVER fail the caller", spools best-effort and still returns 0. So an rc
+    # check here would be decorative by construction. The verdict is the status
+    # word it prints on STDERR, one of six:
+    #     sent               -> it reached Telegram
+    #     deduped            -> an equivalent message went out recently (silence
+    #                           is the intended outcome, so it counts as handled)
+    #     logged | spooled | p0_overflow_spooled | p0_unsent_spooled
+    #                        -> it did NOT reach Telegram; it is parked for later
+    # The old line discarded both channels (`>/dev/null 2>&1`) and then touched
+    # the cooldown unconditionally, so a spooled or errored alert also bought 30
+    # minutes of silence and left no trace of having done so — a lost alert that
+    # suppressed its own successor.
     if [[ -f "$COOLDOWN_FILE" ]]; then
         local age=$(( $(date +%s) - $(stat -f%m "$COOLDOWN_FILE" 2>/dev/null || echo 0) ))
         [[ $age -lt 1800 ]] && { log "Telegram cooldown active (${age}s < 1800s)"; return; }
     fi
     local gateway="$(dirname "$0")/tg_notify.py"
     [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
-    python3 "$gateway" --tier p0 --source cron-agent \
-        --dedup-key "cron-agent:${JOB_NAME}:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
-    touch "$COOLDOWN_FILE"
+    if [[ ! -f "$gateway" ]]; then
+        log "ALERT NOT SENT: notification gateway missing (looked in $(dirname "$0") and $HOME/nuzantara/scripts)"
+        return
+    fi
+    local reply rc
+    reply="$(python3 "$gateway" --tier p0 --source cron-agent \
+        --dedup-key "cron-agent:${JOB_NAME}:$(hostname -s)" -- "$msg" 2>&1)"
+    rc=$?
+    # Record what the gateway actually said, always. rc is logged for forensics
+    # only — it is never the thing being judged.
+    log "Telegram gateway rc=$rc reply=$(printf '%s' "$reply" | tr '\n' ' ' | head -c 200)"
+    # Read the status as an ENTITY, not a substring (superscar #3): pull the word
+    # off a line that IS the status line. A bare `*"sent"*` would also match the
+    # free-form "internal error (...)" branch if an exception message ever carried
+    # the word, and `p0_unsent_spooled` is one prefix away from a false positive.
+    local status
+    status="$(printf '%s\n' "$reply" | sed -n 's/^tg_notify: \([a-z0-9_]*\)$/\1/p' | tail -1)"
+    case "$status" in
+        sent|deduped)
+            touch "$COOLDOWN_FILE"
+            ;;
+        *)
+            # Deliberately NOT touching the cooldown: an alert that did not go out
+            # must not buy silence for the next one. Volume is bounded — send_telegram
+            # fires at most a handful of times per job run, and these jobs are daily.
+            log "ALERT NOT DELIVERED (status='${status:-<unparseable>}') — cooldown deliberately NOT armed so the next attempt is not pre-silenced"
+            ;;
+    esac
 }
 
 save_state() {
