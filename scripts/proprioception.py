@@ -435,6 +435,40 @@ BUILTINS = {
 
 # ---------------------------------------------------------------- wraps
 
+_EXIT_CODE_EVIDENCE_CAP = 5
+
+
+def _parse_exit_code(rc: int, out: str, err: str) -> tuple[str, int, list[str]]:
+    """`parse: exit_code` verdict: RECONCILED/0-findings iff rc==0, otherwise DIVERGED
+    with a finding count that reflects the tool's own output — not a hardcoded 1.
+
+    §5-docsync-underreport (2026-08-07): the previous version took only the LAST line
+    of the wrapped tool's combined output and hardcoded n_findings=1 regardless of how
+    many things actually failed. Against docs_sync.py --check (2 stale files: README.md
+    + docs/AI_ONBOARDING.md, one line each under a "DOCSYNC STALE — run: ..." header)
+    this silently dropped README.md and reported "1 finding" when there were 2 — the
+    report SessionStart and the healers read under-counted by construction. A tool that
+    fails with MULTIPLE lines is assumed to emit one header/summary line (own name for
+    the problem, not itself a finding) followed by the real per-item detail lines; a
+    tool that fails with a SINGLE line, or with empty output, keeps the original shape
+    (that line — or "exit {rc}" — as the one finding) since there is no header to strip.
+    """
+    if rc == 0:
+        return RECONCILED, 0, []
+    combined = (out or err).strip()
+    if not combined:
+        return DIVERGED, 1, [f"exit {rc}"]
+    lines = [ln[:160] for ln in combined.splitlines() if ln.strip()]
+    if len(lines) <= 1:
+        return DIVERGED, 1, lines
+    detail = lines[1:]  # drop the tool's own header/summary line — never a finding itself
+    n = len(detail)
+    ev = detail[:_EXIT_CODE_EVIDENCE_CAP]
+    if n > _EXIT_CODE_EVIDENCE_CAP:
+        ev = ev + [f"... ({_EXIT_CODE_EVIDENCE_CAP} of {n} shown)"]
+    return DIVERGED, n, ev
+
+
 def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]]:
     argv = [a.replace("{repo}", str(root)) for a in entry["target"]]
     if argv[0].startswith("python") and len(argv) > 1:
@@ -450,8 +484,7 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
         return UNPROBEABLE, 0, [f"wrapped reconciler missing: {e}"]
     parse = entry.get("parse", "exit_code")
     if parse == "exit_code":
-        return (RECONCILED if rc == 0 else DIVERGED), (0 if rc == 0 else 1), \
-            ([] if rc == 0 else [(out or err).strip().splitlines()[-1][:160] if (out or err).strip() else f"exit {rc}"])
+        return _parse_exit_code(rc, out, err)
     try:
         data = json.loads(out.strip() or "null")
     except json.JSONDecodeError:
