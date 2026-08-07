@@ -44,11 +44,27 @@ describe("sanitizeRedirect", () => {
   it("blocks path traversal ../", () => {
     expect(sanitizeRedirect("/portal/../admin")).toBeNull();
   });
+  it("blocks percent-encoded traversal that normalizes to a network path", () => {
+    expect(sanitizeRedirect("/portal/%2e%2e//2130706433/collect")).toBeNull();
+  });
+  it("blocks repeatedly encoded traversal", () => {
+    expect(
+      sanitizeRedirect("/portal/%252e%252e//2130706433/collect"),
+    ).toBeNull();
+  });
+  it("blocks encoded backslashes", () => {
+    expect(sanitizeRedirect("/portal/%5cevil.example/collect")).toBeNull();
+  });
   it("allows bare /portal (no trailing slash)", () => {
     expect(sanitizeRedirect("/portal")).toBe("/portal");
   });
   it("allows bare /workspace (no trailing slash)", () => {
     expect(sanitizeRedirect("/workspace")).toBe("/workspace");
+  });
+  it("preserves a safe query and fragment", () => {
+    expect(sanitizeRedirect("/portal/dashboard?tab=visa#open")).toBe(
+      "/portal/dashboard?tab=visa#open",
+    );
   });
   it("blocks prefix smuggling /portalsomething", () => {
     expect(sanitizeRedirect("/portalsomething")).toBeNull();

@@ -14,6 +14,10 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from backend.app.core.config import settings
+from backend.services.security.token_revocation import (
+    RevocationStoreUnavailable,
+    is_session_revoked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,23 +84,35 @@ manager = ConnectionManager()
 
 async def get_current_user_ws(token: str) -> str | None:
     """
-    Validate JWT token
+    Validate an access token and its server-side session state.
 
-    SECURITY: Token is now passed directly (from header/subprotocol) instead of query param
+    SECURITY: Token is passed directly from a header or subprotocol. WebSocket
+    sessions fail closed when expiry or revocation cannot be verified.
     """
     try:
-        # S03: Two-phase JWT expiry enforcement
         payload = jwt.decode(
             token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
-            options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+            options={"verify_exp": True, "require_exp": True},
         )
+
+        if payload.get("type") != "access":
+            return None
+
         user_id: str = payload.get("sub") or payload.get("userId")
         if user_id is None:
             return None
+
+        if await is_session_revoked(payload):
+            logger.warning("Rejected revoked WebSocket JWT session")
+            return None
+
         return user_id
     except JWTError:
+        return None
+    except RevocationStoreUnavailable:
+        logger.error("WebSocket authentication unavailable: session revocation cannot be checked")
         return None
 
 
@@ -126,15 +142,6 @@ async def websocket_endpoint(websocket: WebSocket) -> Any:
             if subprotocol.startswith("bearer."):
                 token = subprotocol[7:]  # Remove "bearer." prefix
                 break
-
-    # Last resort: check query param (deprecated, kept for backward compatibility)
-    if not token:
-        from urllib.parse import parse_qs
-
-        query_string = websocket.url.query
-        if query_string:
-            params = parse_qs(query_string)
-            token = params.get("token", [None])[0]
 
     if not token:
         logger.debug("⚠️ WebSocket connection rejected: No token provided")

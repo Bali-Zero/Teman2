@@ -12,7 +12,7 @@
  * No hardcoded hexes.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatIDR } from "@balizero/core/utils";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import {
@@ -21,8 +21,11 @@ import {
   getMyCommissions,
   type Partner,
   type PartnerReferral,
-  type PartnerCommission,
+  type PartnerSelfCommission,
 } from "@/lib/api/partners/partners";
+import { PartnerLoadError, PartnerPartialWarning } from "../PartnerLoadError";
+
+type PartnerDashboardResource = "profile" | "referrals" | "commissions";
 
 function fmt(n: number | undefined): string {
   if (n == null) return "—";
@@ -51,42 +54,67 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function PartnerDashboardPage() {
   const [partner, setPartner] = useState<Partner | null>(null);
   const [referrals, setReferrals] = useState<PartnerReferral[]>([]);
-  const [commissions, setCommissions] = useState<PartnerCommission[]>([]);
+  const [commissions, setCommissions] = useState<PartnerSelfCommission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState<PartnerDashboardResource[]>(
+    [],
+  );
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const results = await Promise.allSettled([
+      getMe(),
+      getMyReferrals(),
+      getMyCommissions(),
+    ]);
+    const failed: PartnerDashboardResource[] = [];
+    const [profileResult, referralsResult, commissionsResult] = results;
+
+    if (profileResult.status === "fulfilled" && profileResult.value) {
+      setPartner(profileResult.value);
+    } else {
+      setPartner(null);
+      failed.push("profile");
+    }
+
+    if (
+      referralsResult.status === "fulfilled" &&
+      Array.isArray(referralsResult.value)
+    ) {
+      setReferrals(referralsResult.value);
+    } else {
+      setReferrals([]);
+      failed.push("referrals");
+    }
+
+    if (
+      commissionsResult.status === "fulfilled" &&
+      Array.isArray(commissionsResult.value)
+    ) {
+      setCommissions(commissionsResult.value);
+    } else {
+      setCommissions([]);
+      failed.push("commissions");
+    }
+
+    setUnavailable(failed);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [p, r, c] = await Promise.all([
-          getMe(),
-          getMyReferrals(),
-          getMyCommissions(),
-        ]);
-        setPartner(p);
-        setReferrals(Array.isArray(r) ? r : []);
-        setCommissions(Array.isArray(c) ? c : []);
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   if (loading)
     return <div className="p-6 text-[var(--tx-secondary)]">Loading...</div>;
-  if (error)
-    return (
-      <div className="p-6" style={{ color: "var(--state-danger)" }}>
-        Error: {error}
-      </div>
-    );
+  if (unavailable.length === 3) return <PartnerLoadError onRetry={load} />;
+
+  const referralsUnavailable = unavailable.includes("referrals");
+  const commissionsUnavailable = unavailable.includes("commissions");
 
   const totalEarned = commissions
     .filter((c) => c.status === "paid")
-    .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
+    .reduce((sum, c) => sum + Number(c.net_amount_idr ?? 0), 0);
   const totalPending = commissions
     .filter(
       (c) =>
@@ -94,7 +122,7 @@ export default function PartnerDashboardPage() {
         c.status === "approved" ||
         c.status === "pending_approval",
     )
-    .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
+    .reduce((sum, c) => sum + Number(c.net_amount_idr ?? 0), 0);
   const recentReferrals = referrals.slice(0, 5);
   const recentCommissions = commissions.slice(0, 5);
 
@@ -119,11 +147,24 @@ export default function PartnerDashboardPage() {
         )}
       </section>
 
+      {unavailable.length > 0 && <PartnerPartialWarning onRetry={load} />}
+
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Total Earned" value={fmt(totalEarned)} />
-        <StatCard label="Pending" value={fmt(totalPending)} />
-        <StatCard label="Referral Count" value={String(referrals.length)} />
+        <StatCard
+          label="Total Earned"
+          value={commissionsUnavailable ? "Unavailable" : fmt(totalEarned)}
+        />
+        <StatCard
+          label="Pending"
+          value={commissionsUnavailable ? "Unavailable" : fmt(totalPending)}
+        />
+        <StatCard
+          label="Referral Count"
+          value={
+            referralsUnavailable ? "Unavailable" : String(referrals.length)
+          }
+        />
       </div>
 
       {/* Recent referrals */}
@@ -131,7 +172,11 @@ export default function PartnerDashboardPage() {
         <h2 className="text-lg font-medium text-[var(--tx-pure)] mb-3">
           Recent Referrals
         </h2>
-        {recentReferrals.length === 0 ? (
+        {referralsUnavailable ? (
+          <p className="text-[var(--tx-secondary)] text-sm">
+            Referrals are temporarily unavailable.
+          </p>
+        ) : recentReferrals.length === 0 ? (
           <p className="text-[var(--tx-secondary)] text-sm">
             No referrals yet.
           </p>
@@ -174,7 +219,11 @@ export default function PartnerDashboardPage() {
         <h2 className="text-lg font-medium text-[var(--tx-pure)] mb-3">
           Recent Commissions
         </h2>
-        {recentCommissions.length === 0 ? (
+        {commissionsUnavailable ? (
+          <p className="text-[var(--tx-secondary)] text-sm">
+            Commissions are temporarily unavailable.
+          </p>
+        ) : recentCommissions.length === 0 ? (
           <p className="text-[var(--tx-secondary)] text-sm">
             No commissions yet.
           </p>
@@ -194,7 +243,7 @@ export default function PartnerDashboardPage() {
                     <td className="px-4 py-2">
                       {new Date(c.created_at).toLocaleDateString("id-ID")}
                     </td>
-                    <td className="px-4 py-2">{fmt(c.net_amount)}</td>
+                    <td className="px-4 py-2">{fmt(c.net_amount_idr)}</td>
                     <td className="px-4 py-2">
                       <StatusBadge status={c.status} />
                     </td>

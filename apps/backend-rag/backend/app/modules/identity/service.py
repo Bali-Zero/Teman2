@@ -4,6 +4,7 @@ Business logic for authentication and user management
 """
 
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -197,9 +198,8 @@ class IdentityService:
         Returns:
             JWT token string
         """
-        # Payload structure matches Node.js exactly
-        # Expiration: 7 days (same as Node.js '7d')
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
+        now = datetime.now(timezone.utc)
+        expiration = now + timedelta(hours=settings.jwt_access_token_expire_hours)
 
         payload = {
             "sub": user.id,  # Standard Subject claim
@@ -209,6 +209,9 @@ class IdentityService:
             "department": user.department,
             "sessionId": session_id,
             "exp": int(expiration.timestamp()),  # JWT exp claim (Unix timestamp)
+            "iat": now.timestamp(),
+            "jti": str(uuid.uuid4()),
+            "type": "access",
         }
 
         # Generate token with same secret and algorithm as Node.js

@@ -1,12 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const { mockUsePortalBilling, mockGetInvoicePdfUrl, mockToastError } =
-  vi.hoisted(() => ({
-    mockUsePortalBilling: vi.fn(),
-    mockGetInvoicePdfUrl: vi.fn(),
-    mockToastError: vi.fn(),
-  }));
+const {
+  mockUsePortalBilling,
+  mockGetInvoicePdfUrl,
+  mockToastError,
+  mockRefetch,
+} = vi.hoisted(() => ({
+  mockUsePortalBilling: vi.fn(),
+  mockGetInvoicePdfUrl: vi.fn(),
+  mockToastError: vi.fn(),
+  mockRefetch: vi.fn(),
+}));
 
 vi.mock("@/hooks/usePortalBilling", () => ({
   usePortalBilling: mockUsePortalBilling,
@@ -80,6 +85,7 @@ function mockState(state: {
     isLoading: state.isLoading ?? false,
     isError: state.isError ?? false,
     error: state.error ?? null,
+    refetch: mockRefetch,
   });
 }
 
@@ -150,6 +156,32 @@ describe("BillingPage", () => {
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
+  it("downloads through a same-origin anchor after resolving the proxy URL", async () => {
+    mockState({ data: BILLING });
+    mockGetInvoicePdfUrl.mockResolvedValue({
+      download_url: "/api/portal/billing/1/pdf",
+    });
+    let clickedLink: HTMLAnchorElement | undefined;
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        clickedLink = this;
+      });
+    render(<BillingPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Download invoice INV-2026-001" }),
+    );
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledOnce());
+    expect(mockGetInvoicePdfUrl).toHaveBeenCalledWith(1);
+    expect(clickedLink?.getAttribute("href")).toBe("/api/portal/billing/1/pdf");
+    expect(clickedLink?.download).toBe("INV-2026-001.pdf");
+    expect(clickedLink?.rel).toBe("noopener noreferrer");
+    expect(clickedLink?.isConnected).toBe(false);
+    clickSpy.mockRestore();
+  });
+
   it("keeps zero outstanding on the success state color", () => {
     mockState({
       data: {
@@ -174,14 +206,24 @@ describe("BillingPage", () => {
     expect(container.innerHTML).not.toContain("rgba(30,30,35,0.7)");
   });
 
-  it("keeps the masthead and shows a token-colored warning on error", () => {
+  it("keeps failures client-safe and retries the real billing query", () => {
     mockState({ isError: true, error: new Error("boom") });
     render(<BillingPage />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Billing",
     );
-    expect(screen.getByText("boom")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Unable to load billing" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("boom")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We could not verify your invoices. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(mockRefetch).toHaveBeenCalledOnce();
   });
 
   it("renders the empty state when there are no invoices", () => {

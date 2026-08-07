@@ -233,8 +233,8 @@ describe("VaultScanStatus (future-proof enum, not on list endpoint today)", () =
 });
 
 describe("VaultUploadResponse", () => {
-  // Mirrors the dict returned by `PortalDocumentsMixin.upload_document`
-  // at documents.py:478-496.
+  // Mirrors the client-safe projection returned by
+  // `PortalDocumentsMixin.upload_document`.
   const validUpload = {
     success: true,
     message: "Document uploaded successfully",
@@ -246,23 +246,16 @@ describe("VaultUploadResponse", () => {
       size_kb: 412,
       created_at: "2026-04-18T12:00:00+00:00",
       expiry_date: "2030-01-15",
-      extracted_text_preview: "Republic of Indonesia / Passport / ...",
-      processing: {
-        virus_clean: true,
-        ocr_pages: 2,
-        drive_uploaded: true,
-      },
     },
   };
 
   it("parses a valid upload response", () => {
     const parsed = VaultUploadResponse.parse(validUpload);
     expect(parsed.data.id).toBe(501);
-    expect(parsed.data.processing.virus_clean).toBe(true);
-    expect(parsed.data.processing.ocr_pages).toBe(2);
+    expect(parsed.data.name).toBe("passport.pdf");
   });
 
-  it("handles null ocr_pages and empty extracted_text_preview", () => {
+  it("handles nullable public upload fields", () => {
     const parsed = VaultUploadedFile.parse({
       id: 502,
       type: "misc",
@@ -271,21 +264,25 @@ describe("VaultUploadResponse", () => {
       size_kb: 50,
       created_at: "2026-04-18T12:00:00+00:00",
       expiry_date: null,
-      extracted_text_preview: "",
-      processing: {
-        virus_clean: true,
-        ocr_pages: null,
-        drive_uploaded: false,
-      },
     });
-    expect(parsed.processing.ocr_pages).toBeNull();
-    expect(parsed.extracted_text_preview).toBe("");
+    expect(parsed.expiry_date).toBeNull();
   });
 
-  it("rejects missing required processing block", () => {
+  it.each(["processing", "extracted_text_preview", "drive_file_id"])(
+    "rejects leaked internal field %s",
+    (field) => {
+      const bad = {
+        ...validUpload,
+        data: { ...validUpload.data, [field]: "internal" },
+      };
+      expect(VaultUploadResponse.safeParse(bad).success).toBe(false);
+    },
+  );
+
+  it("rejects an incomplete public upload payload", () => {
     const bad = {
       ...validUpload,
-      data: { ...validUpload.data, processing: undefined },
+      data: { ...validUpload.data, created_at: undefined },
     };
     expect(VaultUploadResponse.safeParse(bad).success).toBe(false);
   });

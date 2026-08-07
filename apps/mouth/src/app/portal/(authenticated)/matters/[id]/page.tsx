@@ -22,6 +22,7 @@ import { usePortalMatter } from "@/hooks";
 import { PortalBackButton } from "@/components/portal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { PortalApprovedIntelligence } from "@/lib/api/portal/portal.types";
 
@@ -170,7 +171,7 @@ function ApprovedIntelligencePanel({
 export default function PortalMatterDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
   const matterId = parseMatterId(params?.id);
-  const { data, isLoading, isError, error } = usePortalMatter(matterId);
+  const { data, isLoading, isError, refetch } = usePortalMatter(matterId);
 
   if (!matterId) {
     return (
@@ -195,9 +196,13 @@ export default function PortalMatterDetailPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Unable to load matter</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : "Please try again later."}
+            We could not verify this matter. Check your connection and try
+            again.
           </AlertDescription>
         </Alert>
+        <Button onClick={() => void refetch()} variant="outline">
+          Retry
+        </Button>
       </div>
     );
   }

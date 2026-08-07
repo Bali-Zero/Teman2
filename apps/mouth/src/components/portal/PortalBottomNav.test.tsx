@@ -12,8 +12,26 @@ const { mockUsePathname, mockGetMessages } = vi.hoisted(() => ({
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   usePathname: () => mockUsePathname(),
-  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
+}));
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+    prefetch,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    children: React.ReactNode;
+    href: string;
+    prefetch?: boolean;
+  }) => (
+    <a
+      href={href}
+      data-prefetch={prefetch === false ? "false" : undefined}
+      {...props}
+    >
+      {children}
+    </a>
   ),
 }));
 
@@ -52,6 +70,10 @@ describe("PortalBottomNav", () => {
       expect(screen.getByText("Messages")).toBeInTheDocument();
       expect(screen.getByText("Profile")).toBeInTheDocument();
     });
+
+    for (const link of screen.getAllByRole("link")) {
+      expect(link).toHaveAttribute("data-prefetch", "false");
+    }
   });
 
   it("should highlight active tab based on pathname", async () => {
@@ -63,6 +85,35 @@ describe("PortalBottomNav", () => {
       const vaultLink = screen.getByText("Vault").closest("a");
       expect(vaultLink).toHaveAttribute("href", "/portal/vault");
     });
+  });
+
+  it("renders partner-only navigation without polling client messages", async () => {
+    mockUsePathname.mockReturnValue("/portal/partner/commissions");
+    render(<PortalBottomNav variant="partner" />);
+
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+      "href",
+      "/portal/partner/dashboard",
+    );
+    expect(screen.getByRole("link", { name: "Referrals" })).toHaveAttribute(
+      "href",
+      "/portal/partner/referrals",
+    );
+    expect(screen.getByRole("link", { name: "Commissions" })).toHaveAttribute(
+      "href",
+      "/portal/partner/commissions",
+    );
+    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute(
+      "href",
+      "/portal/partner/profile",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Vault" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Messages" }),
+    ).not.toBeInTheDocument();
+    expect(mockGetMessages).not.toHaveBeenCalled();
   });
 
   it("should fetch and display unread message count", async () => {

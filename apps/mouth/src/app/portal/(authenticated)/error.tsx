@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import Link from 'next/link';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 export default function PortalError({
   error,
@@ -14,7 +14,7 @@ export default function PortalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Portal Error', {}, error);
+    logger.error("Portal Error", {}, error);
   }, [error]);
 
   return (
@@ -24,11 +24,14 @@ export default function PortalError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Portal Unavailable</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Portal Unavailable
+        </h2>
         <p className="text-muted-foreground">
-          We couldn&apos;t load your portal. This might be due to a temporary connection issue.
+          We couldn&apos;t load your portal. This might be due to a temporary
+          connection issue.
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <div className="mt-4 p-3 bg-muted rounded-md text-left overflow-auto max-h-32 text-xs font-mono text-destructive">
             {error.message}
           </div>
@@ -40,7 +43,7 @@ export default function PortalError({
           <RefreshCw className="mr-2 h-4 w-4" />
           Try Again
         </Button>
-        <Link href="/portal">
+        <Link href="/portal" prefetch={false}>
           <Button variant="outline">
             <Home className="mr-2 h-4 w-4" />
             Go Home

@@ -43,7 +43,7 @@ async function savePrefs(body: PrefsResponse): Promise<PrefsResponse> {
 
 export default function NotificationsSettingsPage() {
   const qc = useQueryClient();
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["portal", "notification_prefs"],
     queryFn: fetchPrefs,
   });
@@ -105,9 +105,13 @@ export default function NotificationsSettingsPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Unable to load preferences</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : "Unexpected error."}
+            We could not verify your saved notification choices. Your settings
+            have not been changed.
           </AlertDescription>
         </Alert>
+        <Button type="button" variant="outline" onClick={() => void refetch()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -211,10 +215,9 @@ export default function NotificationsSettingsPage() {
             </span>
           )}
           {mutation.isError && (
-            <span className="text-sm text-[var(--state-danger)]">
-              {mutation.error instanceof Error
-                ? mutation.error.message
-                : "Could not save"}
+            <span role="alert" className="text-sm text-[var(--state-danger)]">
+              Could not save your preferences. Your saved choices have not been
+              changed.
             </span>
           )}
         </div>

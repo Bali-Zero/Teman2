@@ -123,6 +123,34 @@ class TestErrorMonitoringMiddleware:
         mock_alert_service.send_http_error_alert.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_dispatch_redacts_magic_link_token_from_alert(self, mock_app, mock_alert_service):
+        """Credential-bearing paths must be redacted before alert delivery."""
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+        raw_token = "synthetic-magic-link-token"
+
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.method = "GET"
+        mock_request.url.path = f"/api/auth/verify-magic/{raw_token}"
+        mock_request.headers.get.return_value = "test-agent"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.headers = {}
+        mock_response.body = b'{"detail": "Internal error"}'
+
+        result = await middleware.dispatch(
+            mock_request,
+            AsyncMock(return_value=mock_response),
+        )
+
+        assert result == mock_response
+        kwargs = mock_alert_service.send_http_error_alert.await_args.kwargs
+        assert kwargs["path"] == "/api/auth/verify-magic/[REDACTED]"
+        assert raw_token not in str(kwargs)
+
+    @pytest.mark.asyncio
     async def test_dispatch_429_error(self, mock_app, mock_alert_service):
         """Test dispatch with 429 error (should alert)"""
         middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)

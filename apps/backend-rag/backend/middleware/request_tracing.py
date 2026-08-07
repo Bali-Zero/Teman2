@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from backend.app.utils.logging_utils import sanitize_log_path
 from backend.middleware.correlation import (
     reset_correlation_id,
     set_correlation_id,
@@ -82,7 +83,7 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
             "correlation_id": correlation_id,
             "request_id": request_id,
             "method": request.method,
-            "path": request.url.path,
+            "path": sanitize_log_path(request.url.path),
             "query_params": dict(request.query_params),
             "start_time": trace_start,
             "steps": [],

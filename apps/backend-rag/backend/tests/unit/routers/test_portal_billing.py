@@ -110,23 +110,21 @@ async def test_get_billing_empty():
 
 
 @pytest.mark.asyncio
-async def test_get_billing_fallback_on_missing_table():
-    """get_billing returns empty when invoices table doesn't exist."""
+async def test_get_billing_fails_closed_on_database_error():
+    """get_billing must not present a database failure as an empty account."""
     mock_conn = AsyncMock()
-    mock_conn.fetch.side_effect = Exception("relation 'invoices' does not exist")
+    mock_conn.fetch.side_effect = RuntimeError("database unavailable")
 
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.get_billing(
-        client_id=1,
-        current_user={"client_id": 1, "email": "c1@example.com"},
-    )
-
-    assert len(result["invoices"]) == 0
-    assert result["summary"]["count"] == 0
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        await service.get_billing(
+            client_id=1,
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
 
 
 @pytest.mark.asyncio
@@ -277,18 +275,48 @@ async def test_get_invoice_pdf_url_not_found():
 
 
 @pytest.mark.asyncio
-async def test_get_invoice_pdf_url_returns_none_on_db_error() -> None:
-    """get_invoice_pdf_url degrades to None when the invoice lookup fails."""
+async def test_get_invoice_pdf_url_propagates_db_error() -> None:
+    """get_invoice_pdf_url must not disguise a database failure as a missing PDF."""
     service, mock_conn = _make_invoice_service(row=None)
     mock_conn.fetchrow.side_effect = ConnectionError("database unavailable")
 
-    result = await service.get_invoice_pdf_url(
-        client_id=1,
-        invoice_id=999,
-        current_user={"client_id": 1, "email": "c1@example.com"},
-    )
+    with pytest.raises(ConnectionError, match="database unavailable"):
+        await service.get_invoice_pdf_url(
+            client_id=1,
+            invoice_id=999,
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
 
-    assert result is None
+
+@pytest.mark.asyncio
+async def test_download_invoice_pdf_uses_fail_closed_qa_sink() -> None:
+    """QA runtime streams its reserved fixture without importing or calling Drive."""
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "QA-INV-2026-0001",
+            "drive_web_link": None,
+            "drive_file_id": "synthetic_invoice_pdf_fixture_00000001",
+        }
+    )
+    sink = MagicMock()
+    sink.download = AsyncMock(return_value=b"%PDF-synthetic-invoice")
+
+    with patch(
+        "backend.services.portal._mixins.billing.QADocumentSinkClient.from_environment",
+        return_value=sink,
+    ):
+        result = await service.download_invoice_pdf(
+            client_id=1,
+            invoice_id=1,
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    assert result == {
+        "content": b"%PDF-synthetic-invoice",
+        "file_name": "QA-INV-2026-0001.pdf",
+        "mime_type": "application/pdf",
+    }
+    sink.download.assert_awaited_once_with("synthetic_invoice_pdf_fixture_00000001")
 
 
 @pytest.mark.asyncio
@@ -513,6 +541,23 @@ async def test_get_invoice_pdf_url_route_returns_404_when_missing() -> None:
 
     assert exc.value.status_code == 404
     assert exc.value.detail == "Invoice not found or PDF not available"
+
+
+@pytest.mark.asyncio
+async def test_get_invoice_pdf_url_route_hides_service_errors() -> None:
+    """PDF lookup returns a generic 500 instead of a false 404 or backend detail."""
+    service = AsyncMock()
+    service.get_invoice_pdf_url.side_effect = ConnectionError("database unavailable")
+
+    with pytest.raises(portal_billing.HTTPException) as exc:
+        await portal_billing.get_invoice_pdf_url(
+            invoice_id=13,
+            client={"client_id": 7, "email": "c7@example.com"},
+            portal_service=service,
+        )
+
+    assert exc.value.status_code == 500
+    assert exc.value.detail == "Failed to load invoice PDF"
 
 
 @pytest.mark.asyncio

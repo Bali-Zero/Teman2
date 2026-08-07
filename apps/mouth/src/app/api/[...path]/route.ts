@@ -398,12 +398,14 @@ async function proxy(req: NextRequest): Promise<Response> {
     return new Response(
       JSON.stringify({
         error: "Proxy error",
-        message: error instanceof Error ? error.message : "Unknown error",
-        targetUrl,
+        message: "Service temporarily unavailable",
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
       },
     );
   }

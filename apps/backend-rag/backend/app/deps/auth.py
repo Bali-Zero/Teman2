@@ -12,6 +12,11 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
+from backend.services.security.token_revocation import (
+    RevocationStoreUnavailable,
+    is_session_revoked_sync,
+)
+
 logger = logging.getLogger(__name__)
 
 # Security scheme for JWT authentication (shared singleton)
@@ -66,21 +71,12 @@ def get_current_user(
 
         token = credentials.credentials
 
-        # S03: Two-phase JWT expiry enforcement
-        if settings.jwt_enforce_expiry:
-            payload = jwt.decode(
-                token,
-                settings.jwt_secret_key,
-                algorithms=["HS256"],
-                options={"verify_exp": True},
-            )
-        else:
-            payload = jwt.decode(
-                token,
-                settings.jwt_secret_key,
-                algorithms=["HS256"],
-                options={"verify_exp": False},
-            )
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=["HS256"],
+            options={"verify_exp": True, "require_exp": True},
+        )
 
         # S03-S3: Reject non-access tokens (e.g. refresh tokens)
         # Skip check if type claim absent (backward compat with pre-S03 tokens)
@@ -92,36 +88,16 @@ def get_current_user(
         if not user_email:
             raise HTTPException(status_code=401, detail="Invalid token: missing user identifier")
 
-        user_ctx = {
+        if is_session_revoked_sync(payload):
+            logger.warning("Rejected revoked JWT session")
+            raise HTTPException(status_code=401, detail="Session revoked")
+
+        return {
             "email": user_email,
             "user_id": payload.get("user_id", user_email),
             "role": payload.get("role", "user"),
             "permissions": payload.get("permissions", []),
         }
-
-        # S03: Audit mode — flag expired tokens without rejecting
-        if not settings.jwt_enforce_expiry:
-            exp = payload.get("exp")
-            if exp:
-                from datetime import datetime, timezone
-
-                if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
-                    logger.warning(
-                        f"S03_AUDIT: Expired token used by {user_email} "
-                        f"(jti={payload.get('jti', 'none')})"
-                    )
-                    user_ctx["_warn_expired"] = True
-
-        # S03-S2: Token revocation check
-        # Note: get_current_user is sync. Full async revocation check
-        # runs in HybridAuthMiddleware (async context). This sync path
-        # logs a warning if revocation is enabled but cannot check.
-        if settings.enable_token_revocation:
-            jti = payload.get("jti")
-            if jti:
-                logger.debug("S03-S2: Token jti=%s — revocation check deferred to middleware", jti)
-
-        return user_ctx
     except JWTError as e:
         logger.warning("JWT validation failed: %s", e)
         raise HTTPException(
@@ -131,6 +107,12 @@ def get_current_user(
         ) from e
     except HTTPException:
         raise
+    except RevocationStoreUnavailable as e:
+        logger.error("Authentication unavailable: session revocation cannot be checked")
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service temporarily unavailable",
+        ) from e
     except Exception as e:
         logger.error("Authentication error: %s", e, exc_info=True)
         raise HTTPException(status_code=401, detail="Authentication failed") from e

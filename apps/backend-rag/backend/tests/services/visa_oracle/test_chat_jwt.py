@@ -24,14 +24,21 @@ from starlette.requests import Request
 from backend.app.core.config import settings
 
 
-def _make_jwt(sub: str, *, ttl_seconds: int = 3600, wrong_key: bool = False) -> str:
+def _make_jwt(
+    sub: str,
+    *,
+    ttl_seconds: int = 3600,
+    wrong_key: bool = False,
+    include_exp: bool = True,
+) -> str:
     now = datetime.now(timezone.utc)
     claims = {
         "sub": sub,
         "type": "visa_funnel",
         "iat": now,
-        "exp": now + timedelta(seconds=ttl_seconds),
     }
+    if include_exp:
+        claims["exp"] = now + timedelta(seconds=ttl_seconds)
     key = "WRONG_KEY_FOR_TEST_ONLY_PAD_TO_32_CHARS" if wrong_key else settings.jwt_secret_key
     return jwt.encode(claims, key, algorithm=settings.jwt_algorithm)
 
@@ -74,6 +81,25 @@ async def test_chat_rejects_wrong_signature(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         await mod.chat(req, body, db_pool=None)
     assert ei.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_chat_rejects_visa_funnel_token_without_exp():
+    """A signed visa-funnel token without exp must not become indefinite."""
+    from backend.app.routers import visa_oracle as mod
+
+    token = _make_jwt("abc1234567890000", include_exp=False)
+    req = _build_request(f"Bearer {token}")
+    body = mod.ChatRequest(
+        session_id="s1",
+        message="hello",
+        check_hash="abc1234567890000",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await mod.chat(req, body, db_pool=None)
+
+    assert exc_info.value.status_code == 401
 
 
 @pytest.mark.asyncio

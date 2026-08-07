@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -78,6 +78,29 @@ class TestRequestTracingMiddleware:
 
         assert result.headers["X-Correlation-ID"] == "existing-correlation-id"
         assert result.headers["X-Request-ID"] == "existing-request-id"
+
+    @pytest.mark.asyncio
+    async def test_dispatch_redacts_magic_link_token_from_trace(self, middleware):
+        """Credential-bearing route parameters must not enter stored traces."""
+        raw_token = "synthetic-magic-link-token"
+        mock_request = MagicMock()
+        mock_request.headers.get.return_value = "magic-link-correlation"
+        mock_request.state = MagicMock()
+        mock_request.method = "GET"
+        mock_request.url.path = f"/api/auth/verify-magic/{raw_token}"
+        mock_request.query_params = {}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+
+        result = await middleware.dispatch(mock_request, AsyncMock(return_value=mock_response))
+        trace = RequestTracingMiddleware.get_trace("magic-link-correlation")
+
+        assert result == mock_response
+        assert trace is not None
+        assert trace["path"] == "/api/auth/verify-magic/[REDACTED]"
+        assert raw_token not in str(trace)
 
     @pytest.mark.asyncio
     async def test_dispatch_with_exception(self, middleware):
@@ -156,8 +179,9 @@ class TestRequestTracingMiddleware:
 
     def test_add_step_no_trace(self, middleware):
         """Test adding step when trace doesn't exist"""
-        # Should not raise error
         RequestTracingMiddleware.add_step("non-existent", "step1", 10.5)
+
+        assert RequestTracingMiddleware.get_trace("non-existent") is None
 
     def test_get_trace(self, middleware):
         """Test getting trace"""

@@ -1,10 +1,13 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetVisaStatus, mockToastError } = vi.hoisted(() => ({
-  mockGetVisaStatus: vi.fn(),
-  mockToastError: vi.fn(),
-}));
+const { mockGetVisaStatus, mockLoggerError, mockToastError } = vi.hoisted(
+  () => ({
+    mockGetVisaStatus: vi.fn(),
+    mockLoggerError: vi.fn(),
+    mockToastError: vi.fn(),
+  }),
+);
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -19,7 +22,7 @@ vi.mock("@/components/ui/toast", () => ({
 }));
 
 vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+  logger: { error: mockLoggerError, info: vi.fn(), warn: vi.fn() },
 }));
 
 import VisaPage from "./page";
@@ -80,6 +83,10 @@ async function renderLoaded(daysRemaining = 200) {
 }
 
 describe("VisaPage (WS3 day pass)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
   it("renders the day masthead: copper rule + Cormorant serif in --tx-pure", async () => {
     const { container } = await renderLoaded();
 
@@ -186,12 +193,38 @@ describe("VisaPage (WS3 day pass)", () => {
       await screen.findByText("Select a client to view visa information"),
     ).toBeInTheDocument();
     expect(mockToastError).not.toHaveBeenCalled();
+    expect(mockLoggerError).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+  });
+
+  it("settles a missing client as a safe account-link state with retry", async () => {
+    mockGetVisaStatus
+      .mockRejectedValueOnce(
+        Object.assign(new Error("Client not found"), { statusCode: 404 }),
+      )
+      .mockResolvedValueOnce(visaFixture(200));
+    render(<VisaPage />);
+
+    expect(
+      await screen.findByText("Client profile connection needed"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Client not found")).not.toBeInTheDocument();
+    expect(mockToastError).not.toHaveBeenCalled();
+    expect(mockLoggerError).not.toHaveBeenCalled();
+    expect(mockGetVisaStatus).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("KITAS Investor")).toBeInTheDocument();
+    expect(mockGetVisaStatus).toHaveBeenCalledTimes(2);
   });
 
   it("shows a contact toast when loading fails with 403", async () => {
     mockGetVisaStatus.mockRejectedValue(new Error("Forbidden"));
     render(<VisaPage />);
-    await screen.findByRole("heading", { level: 1 });
+    await screen.findByText("Visa information unavailable");
     expect(mockToastError).toHaveBeenCalledWith(
       "Failed to load visa information",
       "Your account needs verification.",
@@ -200,12 +233,16 @@ describe("VisaPage (WS3 day pass)", () => {
         onClick: expect.any(Function),
       }),
     );
+    expect(mockLoggerError).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
   });
 
   it("shows a chat toast when loading fails with non-403", async () => {
     mockGetVisaStatus.mockRejectedValue(new Error("Network error"));
     render(<VisaPage />);
-    await screen.findByRole("heading", { level: 1 });
+    await screen.findByText("Visa information unavailable");
     expect(mockToastError).toHaveBeenCalledWith(
       "Failed to load visa information",
       "Please try again later",
@@ -214,5 +251,9 @@ describe("VisaPage (WS3 day pass)", () => {
         onClick: expect.any(Function),
       }),
     );
+    expect(mockLoggerError).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
   });
 });
