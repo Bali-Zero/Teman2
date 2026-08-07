@@ -110,6 +110,22 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const pmaSourceNote =
     " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)";
 
+  // BROADER-adjudicated codes render "100% open" correctly for the WHOLE
+  // code while a narrower bidang usaha inside them carries a Perpres
+  // Lampiran III foreign-cap condition (perpres_slice_disclosure_relation.py
+  // — see the licensing-page frame in LicensingSection.tsx for the same
+  // content in full). One compact qualifier sentence per row.
+  const perpresSliceQualifier = code.perpresSlice
+    ? " " +
+      code.perpresSlice
+        .map((row) =>
+          row.foreignCapPct === 0
+            ? `One specific activity inside this code — "${row.bidangUsaha}" — is reserved for domestic capital under Perpres 10/2021 (as amended): no foreign equity in that slice.`
+            : `One specific activity inside this code — "${row.bidangUsaha}" — is capped at 49% foreign ownership under Perpres 10/2021 (as amended)${row.condition ? `, ${row.condition}` : ""}.`,
+        )
+        .join(" ")
+    : "";
+
   // Rows whose provenance is not KBLI-2025-native (crosswalk pending /
   // unreadable marker) must never be stated as unqualified fact — visible FAQ
   // and FAQPage JSON-LD both come from this builder (Codex gate round 4).
@@ -168,7 +184,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const entries: KbliFaqEntry[] = [
     {
       question: `Can foreigners operate a ${code.titleEn.toLowerCase()} business in Indonesia?`,
-      answer: `${pmaAnswer}${pmaSourceNote}`,
+      answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNote}`,
     },
     {
       question: `What license is required for KBLI ${code.code}?`,

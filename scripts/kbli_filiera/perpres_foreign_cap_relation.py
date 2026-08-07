@@ -51,12 +51,49 @@ conditional ones (defence: above 49% with the Defence Minister's approval; air
 transport: 49% AND the national owner must retain single majority). Codes whose
 pairs disagree are reported as `ambiguous`, never as a divergence to auto-patch.
 
-REPORTER, NOT A GATE — DELIBERATELY, FOR NOW
----------------------------------------------
+REPORTER, NOT A GATE — UNTIL NOW
+----------------------------------
 `--check` exits 0 while divergences exist, because on the day this landed there
 were 35 of them: arming a gate on a 35-item backlog turns every unrelated PR red
-and teaches people to bypass it (W95). `--strict` is the flip, and flipping it is
-the closing act of the cure lane, not a rider on this diff.
+and teaches people to bypass it (W95). `--strict` is the flip, armed 2026-08-07
+once the backlog closed: every DISAGREE row is BROADER-or-PLAIN-adjudicated (see
+`apply_perpres_foreign_caps.ADJUDICATION`, imported at call time — a local
+import, not a module-level one, because that module imports THIS one; see
+`_adjudication()`), every AMBIGUOUS row (30111, 30113) is adjudicated too, and
+NO_DESCENDANT is empty (50113's own case — see the crosswalk fallback below).
+`--strict` checks every bucket the join produces, not just DISAGREE, because a
+code the instrument restricts and we simply never located is as unadjudicated
+as one we found and shrugged at.
+
+THE 50113 FIX — A JOIN THAT COULD NOT SEE ITS OWN ANSWER
+-----------------------------------------------------------
+`50113` (Angkutan Laut Dalam Negeri untuk Wisata) used to report NO_DESCENDANT:
+canonical's OWN `50113` record carries `bps_2020_ancestors: None`, because it is
+a Batch-A code — its ancestry is DELIBERATELY excluded from canonical (the
+Batch-A exclusion is a design choice recorded in the corner, not a gap to fill
+by writing into canonical). `ancestors_of()` returned `[]` for it, so
+`reverse['50113']` never got populated and the join reported "no 2025 code in
+our ancestry inherits from it" — even though canonical's 50113 record ALREADY
+carries the lawful value (`pma_status=TERBATAS`, `pma_max_asing=49`, with a
+verified official basis, cured in an earlier lot). The join was blind to its own
+agreement, not disagreeing with it.
+
+The fix is an in-memory-only fallback, never a canonical write: when a record's
+own `bps_2020_ancestors` is `None`, `ancestors_of()` falls back to
+`data/kbli-filiera/phase0/bps_crosswalk.json`'s `relation[code]` — the SAME
+Phase-0 gate-verified crosswalk Batch B already trusts for ancestry, just not
+yet copied into canonical for Batch-A codes. With the fallback, 50113 resolves
+via its own self-mapped entry (`relation['50113']['codes'] == ['50113']`) and
+the join reports it correctly as `agree` (49 == 49) — the row was never a slice
+case, it just could not see far enough to say so.
+
+GATED to `pma_cap_verified is True` — trust the fallback to CONFIRM, not to
+CREATE. Ungated, the identical mechanism also resolves ancestors for `51103`,
+`60103` and `60203` — all three quarantined (`per_skala_disputed_pp28_collision`)
+with an UNVERIFIED PMA layer, and `51103` is one of the corner's own documented
+false-friends. Manufacturing three new unadjudicated restriction claims as a
+side effect of un-hiding one already-settled agreement is exactly the harm this
+module exists to prevent — see `ancestors_of()`'s docstring for the measurement.
 """
 
 from __future__ import annotations
@@ -70,6 +107,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 OUT_PATH = REPO_ROOT / "data" / "kbli-filiera" / "perpres-foreign-caps.json"
+PHASE0_CROSSWALK = REPO_ROOT / "data" / "kbli-filiera" / "phase0" / "bps_crosswalk.json"
 
 INSTRUMENT = "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu)"
 VINTAGE = "2021-05-25"
@@ -154,11 +192,62 @@ def caps_by_code(relation: list[tuple]) -> dict[str, list[tuple]]:
     return dict(out)
 
 
-def ancestors_of(record: dict) -> list[str]:
+def load_phase0_crosswalk(path: Path = PHASE0_CROSSWALK) -> dict[str, list[str]]:
+    """2025 code -> KBLI-2020 ancestor codes, from the Phase-0 gate-verified
+    crosswalk. Batch-A codes carry NO `bps_2020_ancestors` in canonical (the
+    exclusion is deliberate — see corner §LIVE STATE), but their mechanical
+    ancestry is already recorded here. Used ONLY as an in-memory fallback in
+    `ancestors_of()`; never written back to canonical. A missing/unreadable
+    file degrades to an empty fallback (the caller still returns `[]` for a
+    Batch-A code, same as before this fix existed) rather than raising —
+    this module's own `no_descendant` bucket already reports that outcome
+    loudly, so a silent empty dict does not manufacture a false agreement."""
+    if not path.is_file():
+        return {}
+    try:
+        relation = json.loads(path.read_text()).get("relation") or {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+    out: dict[str, list[str]] = {}
+    for code, entry in relation.items():
+        if not isinstance(entry, dict):
+            continue
+        codes = entry.get("codes") or []
+        if codes:
+            out[str(code)] = [str(c) for c in codes]
+    return out
+
+
+def ancestors_of(record: dict, phase0_fallback: dict[str, list[str]] | None = None) -> list[str]:
     """The KBLI-2020 codes this 2025 record descends from. Reading `codes` OR
     `ancestors` because both shapes exist in the wild; a shape we do not
     recognise yields an empty list, which lands the code in `no_descendant`
-    rather than inventing a lineage."""
+    rather than inventing a lineage.
+
+    `phase0_fallback` is consulted ONLY when canonical's own
+    `bps_2020_ancestors` is absent (`None`/missing) — a Batch-A code, by
+    design (see `load_phase0_crosswalk`). A record that DOES carry
+    `bps_2020_ancestors` (even an empty dict) never reaches the fallback:
+    canonical's own field is authoritative whenever it exists at all.
+
+    SECOND GATE, measured before it was written: the fallback is trusted only
+    to CONFIRM a fact this record's OWN `pma_status`/`pma_max_asing` has
+    already been independently adjudicated to hold (`pma_cap_verified is
+    True`) — never to manufacture a brand-new restriction claim on a record
+    whose PMA layer is still the generic blanket default. Measured across the
+    whole 1,559-record catalogue: exactly ONE Batch-A-no-ancestor record
+    carries `pma_cap_verified is True` — `50113`, this fix's own motivating
+    case. Without the gate, the SAME fallback also resolves ancestors for
+    `51103`, `60103` and `60203` — all three already carry a
+    `per_skala_disputed_pp28_collision` marker (quarantined, licensing
+    disputed) with `pma_cap_verified` still unset, and `51103` is one of the
+    corner's own documented false-friends (`pp28_sources` cites a wrong
+    neighbour code's data). Trusting an unverified Phase-0 mechanical match on
+    an already-quarantined code would manufacture three new, unadjudicated
+    PMA-restriction claims as a side effect of a fix meant to un-hide one
+    already-settled agreement — exactly the class of harm this module exists
+    to prevent. Those three stay `no_descendant`-shaped (absent from the
+    reverse map) until someone adjudicates them on their own evidence."""
     anc = record.get("bps_2020_ancestors")
     out: list[str] = []
     if isinstance(anc, dict):
@@ -169,17 +258,25 @@ def ancestors_of(record: dict) -> list[str]:
                 v = c.get("code") or c.get("kode")
                 if v:
                     out.append(str(v))
+        return out
+    if phase0_fallback and record.get("pma_cap_verified") is True:
+        code = str(record.get("kode_kbli_2025") or "")
+        out.extend(phase0_fallback.get(code, []))
     return out
 
 
-def classify_join(relation: list[tuple], records: list[dict]) -> dict:
+def classify_join(
+    relation: list[tuple],
+    records: list[dict],
+    phase0_fallback: dict[str, list[str]] | None = None,
+) -> dict:
     """Pure. Three buckets per the corner's F2 step 3, plus the one the law
     itself creates: a 2020 code whose pairs carry DIFFERENT caps is `ambiguous`
     by the instrument, not by our uncertainty, and must never be auto-patched."""
     by_code = caps_by_code(relation)
     reverse: dict[str, list[dict]] = defaultdict(list)
     for rec in records:
-        for a in ancestors_of(rec):
+        for a in ancestors_of(rec, phase0_fallback):
             reverse[a].append(rec)
 
     agree, disagree, ambiguous, no_descendant = [], [], [], []
@@ -217,11 +314,58 @@ def load_canonical(path: Path) -> list[dict]:
     return json.loads(path.read_text())["data"]
 
 
+def _adjudication() -> dict[str, tuple[str, str]]:
+    """`apply_perpres_foreign_caps.ADJUDICATION`, loaded lazily.
+
+    A LOCAL (function-scope) import, not a module-level one: that sibling
+    module already does `from perpres_foreign_cap_relation import (...)` at
+    ITS top level, so a module-level import here would be circular. Deferring
+    to call time means this module's own top-level definitions (RELATION,
+    classify_join, ...) are already fully built by the time
+    `apply_perpres_foreign_caps` re-imports them — the same sys.path-sibling
+    pattern every compiler in this directory already uses."""
+    _dir = str(Path(__file__).resolve().parent)
+    if _dir not in sys.path:
+        sys.path.insert(0, _dir)
+    from apply_perpres_foreign_caps import ADJUDICATION
+
+    return ADJUDICATION
+
+
+def strict_violations(result: dict) -> list[str]:
+    """Every row `--strict` refuses to pass in silence, named.
+
+    A DISAGREE or AMBIGUOUS row is tolerated only if its 2025 code is present
+    in `apply_perpres_foreign_caps.ADJUDICATION` — ANY verdict (PLAIN/BROADER/
+    RENAMED) counts, because presence in that dict IS the adjudication record;
+    a blanket "trust every ambiguous row" waiver would defeat the point (no
+    silent tolerance — every exception is a named, git-blamable line in that
+    dict). NO_DESCENDANT rows have no 2025 code to look up at all — the
+    instrument restricts a KBLI-2020 activity and we found no home for it in
+    2025, which is unadjudicated by definition, not tolerable by any waiver.
+    """
+    adjudication = _adjudication()
+    violations: list[str] = []
+    for item in result["disagree"]:
+        code = item["kbli_2025"]
+        if code not in adjudication:
+            violations.append(f"{code}: DISAGREE, never adjudicated")
+    for item in result["ambiguous"]:
+        code = item["kbli_2025"]
+        if code not in adjudication:
+            violations.append(f"{code}: AMBIGUOUS, never adjudicated")
+    for item in result["no_descendant"]:
+        violations.append(f"{item['kbli_2020']}: NO DESCENDANT — restricted by the "
+                           "instrument, no 2025 code inherits from it")
+    return violations
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true", help="report only; do not write the artifact")
     ap.add_argument("--strict", action="store_true",
-                    help="exit 1 when a divergence exists (arm this once the cure lane has landed)")
+                    help="exit 1 unless every DISAGREE/AMBIGUOUS row is adjudicated "
+                         "(apply_perpres_foreign_caps.ADJUDICATION) and NO_DESCENDANT is empty")
     ap.add_argument("--dataset", default=str(CANONICAL))
     args = ap.parse_args(argv)
 
@@ -232,8 +376,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"codes carrying CONFLICTING caps across bidang usaha: {sorted(conflicting) or 'none'}")
     print(f"instrument: {INSTRUMENT} (vintage {VINTAGE})")
 
-    result = classify_join(RELATION, load_canonical(Path(args.dataset)))
-    print(f"\njoin onto KBLI-2025 through the BPS crosswalk — "
+    phase0_fallback = load_phase0_crosswalk()
+    result = classify_join(RELATION, load_canonical(Path(args.dataset)), phase0_fallback)
+    print(f"\njoin onto KBLI-2025 through the BPS crosswalk (+ Phase-0 fallback for "
+          f"Batch-A codes: {len(phase0_fallback)} codes available) — "
           f"agree {len(result['agree'])} | DISAGREE {len(result['disagree'])} | "
           f"ambiguous-by-law {len(result['ambiguous'])} | no 2025 descendant {len(result['no_descendant'])}")
     for item in result["disagree"]:
@@ -258,9 +404,14 @@ def main(argv: list[str] | None = None) -> int:
              "rows": rows}, indent=1, ensure_ascii=False) + "\n")
         print(f"\nwrote {OUT_PATH.relative_to(REPO_ROOT)}")
 
-    if args.strict and result["disagree"]:
-        print(f"\nSTRICT: {len(result['disagree'])} divergence(s) between the catalogue and the operative instrument")
-        return 1
+    if args.strict:
+        violations = strict_violations(result)
+        if violations:
+            print(f"\nSTRICT: {len(violations)} unadjudicated row(s):")
+            for v in violations:
+                print(f"  {v}")
+            return 1
+        print("\nSTRICT: every DISAGREE/AMBIGUOUS row is adjudicated, NO_DESCENDANT is empty — PASS")
     return 0
 
 

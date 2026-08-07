@@ -12,7 +12,8 @@
         "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
         "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json",
         "apps/mouth/data/perpres-locators.json",
-        "apps/mouth/data/kbli-risk-disputes.json"
+        "apps/mouth/data/kbli-risk-disputes.json",
+        "apps/mouth/data/kbli-perpres-slice-disclosures.json"
       ]
     },
     {

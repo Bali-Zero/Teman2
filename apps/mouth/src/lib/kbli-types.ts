@@ -346,6 +346,22 @@ export interface KBLIRiskDispute {
   baliDependsOnTier: boolean;
 }
 
+/**
+ * One Perpres 49/2021 Lampiran III restricted slice hiding inside a code
+ * whose WHOLE-CODE `pma.status` renders 100% open (BROADER-adjudicated —
+ * see `apply_perpres_foreign_caps.ADJUDICATION` and
+ * `perpres_slice_disclosure_relation.py`). `bidangUsaha` is the annex's own
+ * text for the narrower activity the cap actually attaches to; `locator`
+ * names the annex entry. Multiple rows on one code are real (30111: a
+ * warship slice at 49% AND a Pinisi/Cadik slice at 0%).
+ */
+export interface KBLIPerpresSliceRow {
+  bidangUsaha: string;
+  foreignCapPct: 0 | 49;
+  condition: string | null;
+  locator: string;
+}
+
 /** Processed KBLI code — frontend-friendly version */
 export interface KBLICode {
   code: string;
@@ -385,6 +401,8 @@ export interface KBLICode {
   };
   /** Set only when the gold editorial prose and the record's risk tier share nothing (gold_risk_dispute_relation.py). */
   riskDispute?: KBLIRiskDispute;
+  /** Set only for BROADER-adjudicated codes carrying a restricted Perpres slice (perpres_slice_disclosure_relation.py). One or more rows. */
+  perpresSlice?: KBLIPerpresSliceRow[];
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
   baliL4?: KBLIBaliL4;
   /** Per-fact provenance + verification state (TRACK-P). Derived from structured markers only. */

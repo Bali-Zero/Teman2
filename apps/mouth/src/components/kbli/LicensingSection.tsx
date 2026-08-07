@@ -1075,6 +1075,56 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         </div>
       )}
 
+      {/* ── PERPRES SLICE-DISCLOSURE FRAME (a restricted bidang usaha hides
+          inside an otherwise-open code) ── Independent axis, own condition,
+          never chained to riskDispute/baliBlocked — perpres_slice_disclosure_
+          relation.py only ever emits this for BROADER-adjudicated codes
+          (whole-code pma.status renders open), so it can co-occur with either
+          frame above. One paragraph per row (30111 carries two: a warship
+          slice at 49% and a Pinisi/Cadik slice at 0%). */}
+      {kbli.perpresSlice && kbli.perpresSlice.length > 0 && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">⚠️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              One activity inside this code is foreign-capital restricted
+            </span>
+          </div>
+          {kbli.perpresSlice.map((row, i) => (
+            <p
+              key={`${row.locator}-${i}`}
+              className="text-sm leading-relaxed text-[var(--foreground-secondary)]"
+              style={i > 0 ? { marginTop: "0.5rem" } : undefined}
+            >
+              One specific activity inside this code — &quot;{row.bidangUsaha}
+              &quot; —{" "}
+              {row.foreignCapPct === 0 ? (
+                <>
+                  is reserved for domestic capital under Perpres 10/2021 (as
+                  amended): no foreign equity in that slice.
+                </>
+              ) : (
+                <>
+                  is capped at 49% foreign ownership under Perpres 10/2021 (as
+                  amended){row.condition ? `, ${row.condition}` : ""}.
+                </>
+              )}{" "}
+              The rest of the code is open as shown. Check which side your exact
+              activity falls on before filing.
+            </p>
+          ))}
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
       <KeyFacts
         licensing={kbli.licensing}
