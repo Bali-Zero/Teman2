@@ -30,6 +30,7 @@ import { GOLD_CODES } from "./kbli-gold-codes";
 import { getSectionVisual } from "./kbli-cover-design";
 import { deriveProvenance } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
+import { perpresSlice } from "./kbli-perpres-slice";
 
 // =============================================================================
 // Constants: Section metadata
@@ -501,6 +502,9 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     // readers): both must set it or the two readers disagree on the 30
     // disputed codes exactly as the perpres-locator cross-reader test guards.
     riskDispute: riskDispute(code) ?? undefined,
+    // Same dual-reader discipline as riskDispute above — set in BOTH
+    // transforms or the two readers disagree on the 14 slice-disclosure codes.
+    perpresSlice: perpresSlice(code) ?? undefined,
   };
 }
 

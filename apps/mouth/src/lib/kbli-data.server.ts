@@ -15,6 +15,7 @@ import { resolvePmaCap } from "./kbli-pma-cap";
 import { perpresCitation } from "./kbli-perpres-locator";
 import { deriveProvenance } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
+import { perpresSlice } from "./kbli-perpres-slice";
 
 // Section names mapping
 const SECTION_NAMES_EN: Record<string, string> = {
@@ -364,6 +365,10 @@ function transformCode(
       : undefined,
     provenance: deriveProvenance(raw),
     riskDispute: riskDispute(code) ?? undefined,
+    // Same dual-reader discipline as riskDispute above — set in BOTH
+    // transforms (kbli-data.ts is the one the page actually consumes) or the
+    // two readers disagree on the 14 slice-disclosure codes.
+    perpresSlice: perpresSlice(code) ?? undefined,
     tier: goldEntry ? "gold" : "bronze",
     keywords: [],
   };

@@ -416,8 +416,8 @@
 21013 | Industri Produk Farmasi untuk Hewan | TERBUKA | 100% | Menengah Rendah
 21014 | Industri Bahan Baku Farmasi untuk Hewan | TERBUKA | 100% | Menengah Tinggi
 21015 | Industri Alat Diagnosis Medis, Perban, Kasa, dan Penunjang Kesehatan Lainnya | TERBUKA | 100% | Tinggi
-21021 | Industri Bahan Baku Obat Bahan Alam untuk Manusia | TERBUKA | 100% | Tinggi
-21022 | Industri Produk Obat Bahan Alam untuk Manusia | TERBUKA | 100% | Tinggi
+21021 | Industri Bahan Baku Obat Bahan Alam untuk Manusia | TERBATAS | 0% | Tinggi
+21022 | Industri Produk Obat Bahan Alam untuk Manusia | TERBATAS | 0% | Tinggi
 21023 | Industri Produk Obat Bahan Alam Untuk Hewan | TERBUKA | 100% | Menengah Rendah
 21024 | Industri Bahan Baku Obat Bahan Alam untuk Hewan | TERBUKA | 100% | Tinggi
 22111 | Industri Ban Luar dan Ban Dalam | TERBUKA | 100% | Menengah Tinggi

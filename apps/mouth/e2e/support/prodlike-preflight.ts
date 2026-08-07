@@ -39,6 +39,7 @@ const FORBIDDEN_PRODUCTION_HOSTS = new Set([
   "my.balizero.com",
   "nuzantara-rag.fly.dev",
 ]);
+const FORBIDDEN_PRODUCTION_HOST_SUFFIXES = ["balizero.com", "fly.dev"];
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const SAFE_REQUEST_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const SAFE_PAGE_ERROR_NAMES = new Set([
@@ -133,6 +134,15 @@ export function classifyPageError(error: Error): string {
 
 function normalizeHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.$/, "");
+}
+
+function isForbiddenProductionHost(hostname: string): boolean {
+  return (
+    FORBIDDEN_PRODUCTION_HOSTS.has(hostname) ||
+    FORBIDDEN_PRODUCTION_HOST_SUFFIXES.some(
+      (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
+    )
+  );
 }
 
 function missingContracts(environment: EnvironmentSource): RequiredContract[] {
@@ -282,7 +292,7 @@ function parseAllowedHosts(
       host.includes("/") ||
       host.includes(":") ||
       isIP(host) !== 0 ||
-      FORBIDDEN_PRODUCTION_HOSTS.has(host)
+      isForbiddenProductionHost(host)
     ) {
       throw new ProdlikePreflightError(
         `QA-E2E-001 preflight rejected ${ALLOWED_HOSTS_ENV}: entries must be non-production hostnames without schemes, paths, ports, or IP literals.`,
@@ -318,7 +328,7 @@ function parseSafeUrl(
       `QA-E2E-001 preflight rejected ${variableName}: credentials, query strings, and fragments are forbidden.`,
     );
   }
-  if (FORBIDDEN_PRODUCTION_HOSTS.has(hostname)) {
+  if (isForbiddenProductionHost(hostname)) {
     throw new ProdlikePreflightError(
       `QA-E2E-001 preflight rejected ${variableName}: a production endpoint is forbidden.`,
     );

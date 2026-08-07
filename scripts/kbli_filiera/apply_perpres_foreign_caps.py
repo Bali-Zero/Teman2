@@ -102,17 +102,92 @@ ADJUDICATION: dict[str, tuple[str, str]] = {
     "58130": (BROADER, "journals and periodicals; the annex restricts newspapers, magazines and bulletins as PRESS, a narrower press-law category"),
     "60102": (BROADER, "digital radio broadcasting as an activity; the annex restricts 'Lembaga Penyiaran Swasta', an institutional status"),
     "60202": (BROADER, "television programming and broadcasting; the annex restricts 'Lembaga Penyiaran Berlangganan' (subscription)"),
-    # --- plausibly a rename, but unproven — NOT patched -------------------
-    "21021": (RENAMED, "'Obat Bahan Alam' is plausibly the current name for 'obat tradisional', but that equivalence needs a BPOM source, not an inference"),
-    "21022": (RENAMED, "same as 21021 — needs the naming instrument before a client-facing flip"),
+    # --- RENAMED -> PLAIN, adjudicated 2026-08-07 on primary-source research
+    # (four legs, cited verbatim in NOTA_OVERRIDE below): UU 17/2023 Pasal 1
+    # substitutes "Obat Bahan Alam" into the exact definitional slot "obat
+    # tradisional" held under UU 36/2009; Peraturan BPOM 25/2023 replaces the
+    # 2005 obat-tradisional registration rule while keeping the jamu/OHT/
+    # fitofarmaka substructure; SEB 4.S/2026 (BKPM+Kemenkumham+BPS) rules
+    # title-only KBLI conversions carry no new legal consequence; and OSS RBA
+    # still serves 21021 under the OLD title "Industri Bahan Baku Obat
+    # Tradisional untuk Manusia" (the operative system never re-opened the
+    # code). Perpres 49/2021 Lampiran III entries 5-6 name both codes BY
+    # NUMBER AND TITLE at 100% modal dalam negeri — no longer BROADER-than or
+    # a bare inference, a plain (bidang usaha, KBLI) identity match.
+    "21021": (PLAIN, "UU 17/2023 Pasal 1 + Peraturan BPOM 25/2023 + SEB 4.S/2026 + "
+                     "OSS RBA still serving the pre-rename title together establish "
+                     "'Obat Bahan Alam' as the 2025 name for 'obat tradisional', not a "
+                     "new activity — see NOTA_OVERRIDE for the presumption stated to readers"),
+    "21022": (PLAIN, "same four-leg basis as 21021 — see NOTA_OVERRIDE"),
 }
 
 CONDITION_NOTE = {
     0: "Modal dalam negeri 100% — open to domestic capital only",
 }
 
+# Per-code override of the generated `pma_nota` — the free-text rationale field
+# read by clients, distinct from `pma_kondisi` (which states the LEGAL EFFECT
+# of the cap, e.g. "domestic capital only"). `patch_for()` writes the generic
+# `pma_kondisi` from `CONDITION_NOTE`/`condition_for()` on every PLAIN code as
+# usual; this dict additionally overwrites `pma_nota` on the two codes below
+# with the exact rename-presumption sentence the adjudication requires — a
+# reader of `/kbli/21021` needs to know WHY a 2025-titled, seemingly-new code
+# inherits a 2020-titled Perpres restriction, and the generic kondisi text
+# does not say that. Deliberately NOT gated behind "never overwrite existing
+# human text" (unlike `pma_kondisi` in the write loop below): this dict IS the
+# human adjudication, replacing 21021's pre-existing unrelated `pma_nota`
+# ("Sektor prioritas: Industri produk farmasi") on purpose.
+NOTA_OVERRIDE: dict[str, str] = {
+    "21021": (
+        "Perpres restriction presumed to continue under the 2025 title "
+        "(rename, not new activity — UU 17/2023; no contrary OSS/BKPM "
+        "guidance found)"
+    ),
+    "21022": (
+        "Perpres restriction presumed to continue under the 2025 title "
+        "(rename, not new activity — UU 17/2023; no contrary OSS/BKPM "
+        "guidance found)"
+    ),
+}
 
-def patch_for(item: dict, cap: int, condition: str | None) -> dict:
+# The 2 AMBIGUOUS-by-law codes (perpres_foreign_cap_relation.py's own bucket —
+# never `disagree`, so `plan()` below never plans a patch for them; canonical
+# stays TERBUKA/100 for both, correctly, because neither restriction covers
+# the WHOLE code). Merged into ADJUDICATION (not a separate dict) so
+# `--strict` on the sibling module — which checks membership in THIS dict for
+# every DISAGREE **and AMBIGUOUS** row — recognises them as adjudicated rather
+# than silently waived: 30111 covers both a warship slice (Lampiran III entry
+# 7, 49%, Menteri Pertahanan condition) and a traditional-wooden-vessel slice
+# (entry 8, Pinisi/Cadik, 0%); 30113 (unmanned vessels) reaches only the
+# defence slice (entry 7's "operasi militer" reading) — a traditional wooden
+# Pinisi is not an unmanned vehicle, so it does NOT inherit entry 8. Both
+# slices are disclosed per-row by `perpres_slice_disclosure_relation.py`,
+# which hand-authors its own rows for these two codes (see MANUAL_SLICE_ROWS
+# there) — never derived from this dict, because the derivation that works
+# for the other 12 BROADER codes (one ancestor -> one annex row) does not
+# distinguish 30111's two rows from 30113's one. `plan()` below is unaffected:
+# its `divergent` set comes only from `result["disagree"]`, and 30111/30113
+# live in `result["ambiguous"]`, so adding them here plans no patch — verified
+# by `test_perpres_foreign_cap_relation.py`'s
+# `test_innocence_ambiguous_codes_in_adjudication_plan_no_patch`.
+ADJUDICATION["30111"] = (
+    BROADER,
+    "covers BOTH a warship slice (Lampiran III entry 7, 49%, Menteri "
+    "Pertahanan condition) and a traditional wooden-vessel slice (entry 8, "
+    "Pinisi/Cadik, 0%) — neither restriction covers manned-vessel "
+    "manufacturing as a whole, so the code stays TERBUKA/100; both slices "
+    "are disclosed per-row in kbli-perpres-slice-disclosures.json",
+)
+ADJUDICATION["30113"] = (
+    BROADER,
+    "reaches only the defence slice (entry 7, 49%, Menteri Pertahanan "
+    "condition, read as 'operasi militer') — no Pinisi/Cadik row: a "
+    "traditional wooden vessel is not an unmanned vehicle, so entry 8 does "
+    "not apply; the code stays TERBUKA/100, one slice disclosed",
+)
+
+
+def patch_for(item: dict, cap: int, condition: str | None, code_2025: str | None = None) -> dict:
     """Pure — the field-level patch for one record, given the lawful cap."""
     patch = {
         "pma_max_asing": cap,
@@ -124,6 +199,9 @@ def patch_for(item: dict, cap: int, condition: str | None) -> dict:
     note = condition or CONDITION_NOTE.get(cap)
     if note:
         patch["pma_kondisi"] = note
+    nota = NOTA_OVERRIDE.get(code_2025 or "")
+    if nota:
+        patch["pma_nota"] = nota
     return patch
 
 
@@ -163,7 +241,7 @@ def plan(records: list[dict]) -> tuple[list[dict], list[str]]:
         planned.append({
             "kbli_2025": code,
             "was": {"pma_max_asing": item["catalogue_cap"], "pma_status": item["catalogue_status"]},
-            "patch": patch_for(item, cap, condition_for(item["kbli_2020"])),
+            "patch": patch_for(item, cap, condition_for(item["kbli_2020"]), code_2025=code),
             "reason": reason,
         })
     return planned, refusals

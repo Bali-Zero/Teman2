@@ -18,6 +18,7 @@ class MockNextRequest {
   readonly url: string;
   readonly method: string;
   readonly headers: Headers;
+  readonly body: ReadableStream<Uint8Array> | null;
   readonly cookies: {
     get: (name: string) => { value: string } | undefined;
   };
@@ -30,6 +31,7 @@ class MockNextRequest {
       headers?: HeadersInit;
       cookies?: Record<string, string>;
       body?: ArrayBuffer | FormData;
+      bodyChunks?: Uint8Array[];
     } = {},
   ) {
     this.url = url;
@@ -41,6 +43,18 @@ class MockNextRequest {
         name in cookieMap ? { value: cookieMap[name] } : undefined,
     };
     this._body = init.body;
+    const chunks =
+      init.bodyChunks ??
+      (init.body instanceof ArrayBuffer ? [new Uint8Array(init.body)] : []);
+    this.body =
+      chunks.length > 0
+        ? new ReadableStream<Uint8Array>({
+            start(controller) {
+              for (const chunk of chunks) controller.enqueue(chunk);
+              controller.close();
+            },
+          })
+        : null;
   }
 
   async arrayBuffer(): Promise<ArrayBuffer> {
@@ -313,5 +327,238 @@ describe("proxy catch-all route — public error redaction", () => {
     expect(JSON.stringify(payload)).not.toContain("private-backend");
     expect(JSON.stringify(payload)).not.toContain("10.0.0.42");
     expect(JSON.stringify(payload)).not.toContain("ECONNREFUSED");
+  });
+});
+
+describe("proxy catch-all route — public Visa Oracle boundary", () => {
+  beforeEach(() => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    process.env.NUZANTARA_API_URL = "https://nuzantara-rag.fly.dev";
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("strips portal credentials while preserving anonymous contract headers", async () => {
+    const req = new MockNextRequest(
+      "http://localhost/api/visa-oracle/evaluate?request_category=family",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer portal-session",
+          Cookie: "nz_access_token=portal-session; nz_csrf_token=csrf-secret",
+          "Content-Type": "application/json",
+          "Idempotency-Key": "opaque-idempotency-key",
+          "Transfer-Encoding": "chunked",
+          "X-API-Key": "portal-api-key",
+          "X-CSRF-Token": "csrf-secret",
+        },
+        cookies: {
+          nz_access_token: "portal-session",
+          nz_csrf_token: "csrf-secret",
+        },
+        body: new TextEncoder().encode("{}").buffer,
+      },
+    );
+
+    await POST(req as never);
+
+    const [, init] = vi.mocked(global.fetch).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    const sentHeaders = init.headers as Headers;
+    expect(sentHeaders.get("authorization")).toBeNull();
+    expect(sentHeaders.get("cookie")).toBeNull();
+    expect(sentHeaders.get("x-api-key")).toBeNull();
+    expect(sentHeaders.get("x-csrf-token")).toBeNull();
+    expect(sentHeaders.get("transfer-encoding")).toBeNull();
+    expect(sentHeaders.get("idempotency-key")).toBe("opaque-idempotency-key");
+    expect(sentHeaders.get("content-type")).toBe("application/json");
+    expect(init.credentials).toBe("omit");
+  });
+
+  it("rejects a declared oversized body before reading or calling upstream", async () => {
+    const req = new MockNextRequest(
+      "http://localhost/api/visa-oracle/evaluate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": String(32 * 1024 + 1),
+        },
+        body: new ArrayBuffer(1),
+      },
+    );
+    const arrayBufferSpy = vi.spyOn(req, "arrayBuffer");
+
+    const response = await POST(req as never);
+
+    expect(response.status).toBe(413);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(arrayBufferSpy).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("stops an oversized chunked stream at the proxy boundary", async () => {
+    const req = new MockNextRequest(
+      "http://localhost/api/visa-oracle/evaluate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Transfer-Encoding": "chunked",
+        },
+        bodyChunks: [new Uint8Array(20 * 1024), new Uint8Array(20 * 1024)],
+      },
+    );
+
+    const response = await POST(req as never);
+
+    expect(response.status).toBe(413);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["multipart/form-data; boundary=attack", "application/jsonp"])(
+    "rejects unsupported media type %s before parsing or calling upstream",
+    async (contentType) => {
+      const req = new MockNextRequest(
+        "http://localhost/api/visa-oracle/evaluate",
+        {
+          method: "POST",
+          headers: { "Content-Type": contentType },
+          body: new FormData(),
+        },
+      );
+      const formDataSpy = vi.spyOn(req, "formData");
+      const arrayBufferSpy = vi.spyOn(req, "arrayBuffer");
+
+      const response = await POST(req as never);
+
+      expect(response.status).toBe(415);
+      expect(formDataSpy).not.toHaveBeenCalled();
+      expect(arrayBufferSpy).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("accepts a body at the exact 32 KiB limit", async () => {
+    const req = new MockNextRequest(
+      "http://localhost/api/visa-oracle/evaluate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": String(32 * 1024),
+        },
+        body: new ArrayBuffer(32 * 1024),
+      },
+    );
+
+    const response = await POST(req as never);
+
+    expect(response.status).toBe(200);
+    const [, init] = vi.mocked(global.fetch).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect((init.body as ArrayBuffer).byteLength).toBe(32 * 1024);
+  });
+
+  it("redacts request_category from all proxy logs", async () => {
+    const makeRequest = () =>
+      new MockNextRequest(
+        "http://localhost/api/visa-oracle/evaluate?request_category=family",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: new TextEncoder().encode("{}").buffer,
+        },
+      );
+
+    await POST(makeRequest() as never);
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response("unavailable", { status: 503 }),
+    );
+    await POST(makeRequest() as never);
+    vi.mocked(global.fetch).mockRejectedValueOnce(new Error("network down"));
+    await POST(makeRequest() as never);
+
+    const serializedLogs = JSON.stringify({
+      debug: vi.mocked(logger.debug).mock.calls,
+      error: vi.mocked(logger.error).mock.calls,
+      warn: vi.mocked(logger.warn).mock.calls,
+    });
+    expect(serializedLogs).not.toContain("request_category");
+    expect(serializedLogs).not.toContain("family");
+  });
+
+  it("does not log identifying request context for an upstream auth rejection", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response("rejected", { status: 401 }),
+    );
+    const req = new MockNextRequest(
+      "http://localhost/api/visa-oracle/evaluate",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer identifying-session",
+          Cookie: "nz_access_token=identifying-session",
+          "Content-Type": "application/json",
+          "User-Agent": "identifying-browser-profile",
+          "X-Correlation-ID": "identifying-correlation",
+        },
+        cookies: { nz_access_token: "identifying-session" },
+        body: new TextEncoder().encode("{}").buffer,
+      },
+    );
+
+    const response = await POST(req as never);
+
+    expect(response.status).toBe(401);
+    const serializedLogs = JSON.stringify({
+      debug: vi.mocked(logger.debug).mock.calls,
+      error: vi.mocked(logger.error).mock.calls,
+      warn: vi.mocked(logger.warn).mock.calls,
+    });
+    expect(serializedLogs).not.toContain("identifying-session");
+    expect(serializedLogs).not.toContain("identifying-browser-profile");
+    expect(serializedLogs).not.toContain("identifying-correlation");
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[Proxy] Anonymous Visa Oracle upstream rejected request",
+      expect.objectContaining({ action: "upstream_rejected" }),
+    );
+  });
+
+  it("refuses upstream redirects without replaying the applicant body", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(null, {
+        status: 307,
+        headers: { Location: "https://attacker.invalid/collect" },
+      }),
+    );
+    const req = new MockNextRequest(
+      "http://localhost/api/visa-oracle/evaluate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: new TextEncoder().encode('{"sensitive":"facts"}').buffer,
+      },
+    );
+
+    const response = await POST(req as never);
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("location")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledOnce();
+    expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
+      "https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate",
+    );
   });
 });

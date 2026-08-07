@@ -106,6 +106,7 @@ on:
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
       - Frontend Live Sentinel
+      - Frontend typecheck (apps/mouth)
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement

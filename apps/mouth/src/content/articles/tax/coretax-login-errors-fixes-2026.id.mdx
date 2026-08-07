@@ -58,122 +58,315 @@ ogImage: "/static/insights/tax/coretax-login-errors-fixes-2026.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "e02cc73d3639df08606d3e0a63b2f8d802ca653e3441ed3134677f402558ddd1"
+source_sha256: "e8db6856a9d2784636ec85bdb2007fe824942165a1210b25244a7d82c638c03a"
 ---
 
-## Memahami Kesalahan Login CoreTax di Tahun 2026
+## Memahami Kesalahan Login CoreTax pada Tahun 2026
 
-Direktorat Jenderal Pajak (DJP) Indonesia meluncurkan Sistem Inti Administrasi Perpajakan (CoreTax) pada tahun 2025, menggantikan platform DJP Online yang lama. Meskipun sistem baru ini menjanjikan administrasi perpajakan yang lebih efisien, transisinya telah menciptakan gelombang masalah login yang membuat frustrasi warga negara Indonesia maupun wajib pajak asing.
+Direktorat Jenderal Pajak (DJP) meluncurkan Sistem Administrasi CoreTax pada tahun 2025, menggantikan platform DJP Online yang lama. Meskipun sistem baru menjanjikan administrasi pajak yang lebih terstruktur, transisi ini telah menciptakan gelombang masalah login yang mengganggu baik warga Indonesia maupun wajib pajak asing.
 
-Jika Anda adalah pemilik bisnis asing atau ekspatriat yang menjalankan PT PMA di Indonesia, masalah login CoreTax dapat menunda pelaporan pajak Anda, memblokir pembuatan faktur, dan menciptakan masalah kepatuhan. Panduan ini mencakup setiap kesalahan umum, menjelaskan mengapa hal itu terjadi, dan memberikan solusi yang jelas.
+Jika Anda adalah pemilik bisnis asing atau ekspatriat yang mengoperasikan PT PMA di Indonesia, masalah login CoreTax dapat menunda pelaporan pajak, memblokir pembuatan faktur, dan menciptakan masalah kepatuhan. Panduan ini mencakup setiap kesalahan umum, menjelaskan penyebabnya, dan memberikan solusi yang jelas.
 
 ## Kesalahan Login CoreTax yang Paling Umum
 
-Sebelum mendalami kode kesalahan spesifik, berikut adalah tabel referensi cepat dari masalah login CoreTax yang paling sering dilaporkan dan akar penyebabnya:
+Sebelum masuk ke kode kesalahan spesifik, berikut adalah tabel referensi cepat untuk masalah login CoreTax yang paling sering dilaporkan dan penyebab dasarnya:
 
-| Kesalahan / Gejala              | Akar Penyebab                                | Kesulitan Perbaikan |
-| ------------------------------- | -------------------------------------------- | ------------------- |
-| "Kredensial tidak valid"        | NPWP belum dimigrasi ke format 16 digit      | Mudah               |
-| ETAX-40001                      | Kegagalan koneksi ke server DJP              | Sedang              |
-| ETAX-20001                      | Sertifikat digital kedaluwarsa atau rusak    | Sedang              |
-| "NIK tidak ditemukan"           | Ketidakcocokan NIK-NPWP di database Dukcapil | Sulit               |
-| Halaman kosong setelah login    | Inkompatibilitas browser atau masalah cache  | Mudah               |
-| "Akun belum diaktivasi"         | Akun belum diaktivasi setelah migrasi        | Mudah               |
-| Timeout / kesalahan 502         | Server DJP overload (periode puncak lapor)   | Tunggu              |
-| Impor sertifikat gagal          | Format file salah atau batasan browser       | Sedang              |
-| Kegagalan otentikasi dua faktor | Nomor telepon belum diperbarui di profil     | Sedang              |
-| Loop "Sesi kedaluwarsa"         | Konflik cookie/cache                         | Mudah               |
+| Kesalahan / Gejala                   | Penyebab Dasar                                | Tingkat Kesulitan Memperbaiki |
+| --------------------------------- | ----------------------------------------- | ----------------- |
+| "Kredensial tidak valid"             | NPWP belum bermigrasi ke format 16 digit      | Mudah              |
+| ETAX-40001                        | Kegagalan koneksi ke server DJP          | Sedang            |
+| ETAX-20001                        | Sertifikat digital kedaluwarsa atau rusak  | Sedang            |
+| "NIK tidak ditemukan"             | Ketidakcocokan NIK-NPWP di database Dukcapil    | Sulit              |
+| Halaman kosong setelah login            | Ketidakcocokan browser atau masalah cache    | Mudah              |
+| "Akun belum diaktivasi"           | Akun belum diaktifkan setelah migrasi     | Mudah              |
+| Timeout / 502 error               | Server DJP overload (periode pelaporan puncak) | Tunggu              |
+| Gagal mengimpor sertifikat         | Format file salah atau pembatasan browser | Sedang            |
+| Kegagalan autentikasi dua faktor | Nomor telepon tidak diperbarui di profil       | Sedang            |
+| "Sesi kedaluwarsa" loop            | Konflik cookie/cache                     | Mudah              |
 
 ## Kesalahan 1: Kredensial Tidak Valid Setelah Migrasi
 
-**Apa yang Anda lihat:** Anda memasukkan NPWP dan kata sandi, tetapi CoreTax mengembalikan pesan "Login gagal" atau "Kredensial tidak valid."
+**Apa yang Anda lihat:** Anda memasukkan NPWP dan kata sandi, tetapi CoreTax mengembalikan "Login gagal" atau "Kredensial tidak valid."
 
-**Mengapa hal itu terjadi:** Saat DJP memigrasi akun dari sistem lama ke CoreTax, kata sandi tidak dibawa secara otomatis untuk semua pengguna. Selain itu, jika Anda masih mencoba login dengan NPWP 15 digit yang lama, sistem mungkin tidak mengenalinya.
+**Mengapa hal ini terjadi:** Saat DJP memigrasikan akun dari sistem lama ke CoreTax, kata sandi tidak otomatis dibawa untuk semua pengguna. Selain itu, jika Anda masih mencoba masuk dengan NPWP 15 digit lama, sistem mungkin tidak mengenali NPWP tersebut.
 
-**Perbaikan langkah demi langkah:**
+**Langkah-langkah perbaikan:**
 
-1. Buka [coretaxdjp.pajak.go.id](https://coretaxdjp.pajak.go.id)
-2. Klik "Lupa Password"
-3. Masukkan NPWP 16 digit Anda (untuk badan) atau NIK Anda (untuk wajib pajak individu Indonesia)
-4. Untuk orang asing: gunakan NPWP 16 digit Anda yang dimulai dengan "0" diikuti oleh 15 digit nomor lama Anda
-5. Periksa email terdaftar Anda untuk tautan pengaturan ulang
-6. Atur kata sandi baru yang memenuhi persyaratan: minimal 8 karakter, setidaknya satu huruf besar, satu angka, dan satu karakter khusus
-7. Coba login kembali dengan kata sandi baru
+1. Kunjungi [coretaxdjp.pajak.go.id](https://coretaxdjp.pajak.go.id)
+2. Klik "Lupa Password" (Lupa Kata Sandi)
+3. Masukkan NPWP 16 digit (untuk entitas) atau NIK (untuk wajib pajak individu Indonesia)
+4. Untuk orang asing: gunakan NPWP 16 digit yang dimulai dengan "0" diikuti oleh nomor lama 15 digit Anda
+5. Periksa email terdaftar Anda untuk tautan reset
+6. Tetapkan kata sandi baru yang memenuhi persyaratan: minimal 8 karakter, setidaknya satu huruf kapital, satu angka, dan satu karakter khusus
+7. Coba masuk kembali dengan kata sandi baru
 
-**Jika email pengaturan ulang tidak kunjung datang:** Email terdaftar Anda mungkin sudah usang. Kunjungi KPP (Kantor Pelayanan Pajak) setempat dengan membawa paspor, KITAS/KITAP, dan kartu NPWP untuk memperbarui alamat email Anda.
+**Jika email reset tidak tiba:** Alamat email terdaftar Anda mungkin sudah usang. Kunjungi KPP (Kantor Pelayanan Pajak) setempat dengan paspor, KITAS/KITAP, dan kartu NPWP untuk memperbarui alamat email Anda.
 
 ## Kesalahan 2: Kegagalan Koneksi ETAX-40001
 
-**Apa yang Anda lihat:** Saat membuka e-Faktur atau mencoba mengunggah faktur PPN, Anda mendapatkan pesan "ETAX-40001: Tidak dapat menghubungi E-TaxInvoice Server."
+**Apa yang Anda lihat:** Saat membuka e-Faktur atau mencoba mengunggah faktur PPN, Anda mendapatkan "ETAX-40001: Tidak dapat menghubungi E-TaxInvoice Server."
 
-**Mengapa hal itu terjadi:** Kesalahan ini berarti aplikasi desktop e-Faktur Anda tidak dapat menjangkau server DJP. Penyebab umum termasuk pemblokiran port DJP di tingkat ISP, sertifikat digital yang kedaluwarsa, atau pemeliharaan server.
+**Mengapa hal ini terjadi:** Kesalahan ini berarti aplikasi e-Faktur desktop Anda tidak dapat terhubung ke server DJP. Penyebab umum termasuk pemblokiran ISP terhadap port DJP, sertifikat digital yang kedaluwarsa, atau pemeliharaan server.
 
-**Perbaikan langkah demi langkah:**
+**Langkah-langkah perbaikan:**
 
 1. **Periksa status server DJP** - Kunjungi [pajak.go.id](https://pajak.go.id) untuk melihat apakah ada pengumuman pemeliharaan
-2. **Uji internet Anda** - Buka situs web lain untuk memastikan koneksi Anda berfungsi
+2. **Uji koneksi internet Anda** - Buka situs web lain untuk memastikan koneksi Anda berfungsi
 3. **Periksa sertifikat digital Anda:**
    - Buka e-Faktur > Referensi > Sertifikat Digital
    - Jika sertifikat menunjukkan kedaluwarsa, unduh yang baru dari CoreTax
-4. **Bersihkan cache e-Faktur:**
+4. **Hapus cache e-Faktur:**
    - Tutup e-Faktur sepenuhnya
-   - Navigasikan ke folder instalasi e-Faktur Anda
+   - Navigasi ke folder instalasi e-Faktur Anda
    - Hapus folder `db` (cadangkan terlebih dahulu)
-   - Mulai ulang e-Faktur dan impor kembali database Anda
-5. **Coba VPN** - Beberapa ISP Indonesia (terutama Telkomsel dan Indihome) terkadang memiliki masalah perutean ke server DJP. VPN dapat melewati masalah ini.
+   - Mulai ulang e-Faktur dan impor ulang database Anda
+5. **Coba menggunakan VPN** - Beberapa ISP Indonesia (terutama Telkomsel dan Indihome) sesekali memiliki masalah routing ke server DJP. VPN dapat mengatasi ini.
 6. **Periksa firewall Anda** - Pastikan port 80 dan 443 terbuka untuk lalu lintas keluar ke domain DJP
 
 ## Kesalahan 3: Masalah Sertifikat Digital ETAX-20001
 
-**Apa yang Anda lihat:** "ETAX-20001: File sertifikat digital tidak ditemukan" atau "Sertifikat digital expired."
+**Apa yang Anda lihat:** "ETAX-20001: File sertifikat digital tidak ditemukan" atau "Sertifikat digital kedaluwarsa."
 
-**Mengapa hal itu terjadi:** Sertifikat digital yang diterbitkan oleh DJP memiliki masa berlaku (biasanya 2 tahun). Saat kedaluwarsa, semua fungsi yang memerlukan otentikasi sertifikat akan berhenti berfungsi, termasuk pembuatan e-Faktur dan penandatanganan e-Bupot.
+**Mengapa hal ini terjadi:** Sertifikat digital yang diterbitkan oleh DJP memiliki masa berlaku (biasanya 2 tahun). Saat kedaluwarsa, semua fungsi yang memerlukan otentikasi sertifikat berhenti bekerja, termasuk pembuatan e-Faktur dan penandatanganan e-Bupot.
 
-**Perbaikan langkah demi langkah:**
+**Langkah-langkah perbaikan:**
 
-1. **Periksa kedaluwarsa sertifikat:**
-   - Login ke CoreTax
-   - Navigasikan ke Profil > Sertifikat Digital
-   - Catat tanggal kedaluwarsanya
-2. **Minta sertifikat baru:**
-   - Di CoreTax, buka Layanan > Permintaan Sertifikat Digital
+1. **Periksa masa berlaku sertifikat:**
+   - Masuk ke CoreTax
+   - Navigasi ke Profil > Sertifikat Digital
+   - Catat tanggal kedaluwarsa
+2. **Permintaan sertifikat baru:**
+   - Di CoreTax, pergi ke Layanan > Permintaan Sertifikat Digital
    - Isi formulir aplikasi
-   - Untuk PT PMA: direktur atau perwakilan resmi harus mengajukan
+   - Untuk PT PMA: direktur atau wakil yang berwenang harus mengajukan
    - Unggah dokumen yang diperlukan (NPWP, akta perusahaan, paspor/KTP direktur)
 3. **Unduh dan instal:**
-   - Setelah disetujui (biasanya 1-3 hari kerja), unduh file .p12 yang baru
-   - Impor ke dalam aplikasi e-Faktur Anda: Referensi > Sertifikat Digital > Browse
-   - Masukkan passphrase yang diberikan oleh DJP
+   - Setelah disetujui (biasanya 1-3 hari kerja), unduh file .p12 baru
+   - Impor ke aplikasi e-Faktur Anda: Referensi > Sertifikat Digital > Browse
+   - Masukkan frasa sandi yang diberikan oleh DJP
 4. **Perbarui di browser:**
    - Untuk akses web CoreTax, impor sertifikat ke browser Anda
-   - Chrome: Settings > Privacy and Security > Security > Manage Certificates
-   - Firefox: Settings > Privacy & Security > Certificates > View Certificates
+   - Chrome: Pengaturan > Privasi dan Keamanan > Keamanan > Kelola Sertifikat
+   - Firefox: Pengaturan > Privasi & Keamanan > Sertifikat > Lihat Sertifikat
 
-**Penting:** Simpan cadangan file sertifikat Anda (.p12) dengan aman. Jika hilang, Anda harus meminta yang baru dari awal.
+**Penting:** Cadangkan file sertifikat (.p12) Anda secara aman. Jika Anda kehilangannya, Anda akan perlu meminta yang baru dari awal.
 
-## Kesalahan 4: NIK Tidak Ditemukan
+## Kesalahan 4: NIK Tidak Ditemukan (NIK Tidak Ditemukan)
 
-**Apa yang Anda lihat:** "NIK tidak ditemukan di database Dukcapil" saat mencoba login atau memvalidasi identitas Anda.
+**Apa yang Anda lihat:** "NIK tidak ditemukan di database Dukcapil" saat mencoba masuk atau memvalidasi identitas Anda.
 
-**Mengapa hal itu terjadi:** Ini adalah salah satu kesalahan yang paling membuat frustrasi bagi orang asing. Sistem CoreTax memvalidasi identitas wajib pajak terhadap database Dukcapil (catatan sipil). Untuk orang asing dengan KITAS atau KITAP, data Anda mungkin belum disinkronkan dengan benar antara imigrasi (Ditjen Imigrasi), Dukcapil, dan database DJP.
+**Mengapa hal ini terjadi:** Ini adalah salah satu kesalahan paling mengganggu bagi orang asing. Sistem CoreTax memvalidasi identitas wajib pajak terhadap database Dukcapil (catatan sipil). Untuk orang asing dengan KITAS atau KITAP, data Anda mungkin belum disinkronkan dengan benar antara imigrasi (DGIM), Dukcapil, dan database DJP.
 
-**Perbaikan langkah demi langkah:**
+**Langkah-langkah perbaikan:**
 
 1. **Verifikasi format NPWP Anda:**
-   - Orang asing harus menggunakan NPWP 16 digit mereka, bukan nomor paspor
-   - Format 16 digit adalah: "0" + NPWP 15 digit lama Anda
+   - Orang asing harus menggunakan NPWP 16 digit, bukan nomor paspor
+   - Format 16 digit adalah: "0" + NPWP lama 15 digit Anda
 2. **Periksa pendaftaran Dukcapil:**
-   - Jika Anda memegang KITAS/KITAP, Anda seharusnya sudah terdaftar di Dukcapil
+   - Jika Anda memegang KITAS/KITAP, Anda seharusnya terdaftar di Dukcapil
    - Hubungi agen imigrasi Anda untuk memverifikasi status Dukcapil Anda
-3. **Kunjungi KPP secara langsung:**
+3. **Kunjungi KPP langsung:**
    - Bawa paspor, KITAS/KITAP, kartu NPWP, dan dokumen perusahaan
-   - Minta "validasi NIK-NPWP" di helpdesk
-   - Petugas KPP akan memverifikasi dan menyinkronkan data Anda secara manual
+   - Minta "validasi NIK-NPWP" di meja bantuan
+   - Petugas KPP akan memverifikasi dan mensinkronkan data Anda secara manual
 4. **Ajukan keluhan melalui Kring Pajak:**
-   - Hubungi 1500-200 (helpline DJP)
-   - Atau kirim tiket melalui [pengaduan.pajak.go.id](https://pengaduan.pajak.go.id)
-   - Referensikan NPWP Anda dan jelaskan ketidakcocokan NIK tersebut
+   - Telepon 1500-200 (nomor layanan DJP)
+   - Atau ajukan tiket melalui [pengaduan.pajak.go.id](https://pengaduan.pajak.go.id)
+   - Sebutkan NPWP Anda dan jelaskan ketidakcocokan NIK
 
-**Garis Waktu:** Masalah sinkronisasi NIK-NPWP biasanya memakan waktu 5-14 hari kerja untuk diselesaikan setelah dieskalasi melalui KPP.
+**Timeline:** Masalah sinkronisasi NIK-NPWP biasanya memakan waktu 5-14 hari kerja untuk diselesaikan setelah diajukan melalui KPP.
 
-... (sisanya diterjemahkan dengan pola yang sama mengikuti konteks teknis pajak)
+## Kesalahan 5: Halaman Kosong atau Memuat Tak Terbatas Setelah Login
+
+**Apa yang Anda lihat:** Anda berhasil memasukkan kredensial, tetapi CoreTax menampilkan halaman kosong, spinner memuat tak terbatas, atau langsung keluar dari login.
+
+**Mengapa hal ini terjadi:** CoreTax memiliki persyaratan browser tertentu dan sensitif terhadap data yang dicache dari sesi DJP Online lama.
+
+**Langkah-langkah perbaikan:**
+
+1. **Gunakan browser yang didukung:**
+   - Google Chrome (versi 90+) - direkomendasikan
+   - Mozilla Firefox (versi 95+)
+   - Microsoft Edge (versi 90+)
+   - Safari TIDAK didukung secara resmi
+2. **Hapus data browser:**
+   - Hapus cookie khusus untuk domain `*.pajak.go.id`
+   - Hapus gambar dan file yang dicache
+   - Di Chrome: Pengaturan > Privasi > Hapus data penelusuran > pilih "Cookie" dan "Gambar yang dicache"
+3. **Nonaktifkan ekstensi browser:**
+   - Pemblokir iklan (uBlock Origin, AdBlock Plus) dapat mengganggu CoreTax
+   - Nonaktifkan semua ekstensi sementara dan coba lagi
+4. **Coba mode inkognito/priva:**
+   - Ini menghilangkan semua masalah ekstensi dan cache sekaligus
+5. **Periksa JavaScript:**
+   - CoreTax memerlukan JavaScript diaktifkan
+   - Pastikan browser Anda tidak memblokir skrip dari pajak.go.id
+
+## Kesalahan 6: Akun Tidak Diaktifkan
+
+**Apa yang Anda lihat:** "Akun belum diaktivasi" atau "Account not yet activated."
+
+**Mengapa hal ini terjadi:** Setelah pendaftaran NPWP atau migrasi ke CoreTax, Anda harus mengaktifkan akun melalui email verifikasi yang dikirim oleh DJP.
+
+**Langkah-langkah perbaikan:**
+
+1. Periksa email terdaftar Anda (termasuk folder spam/junk) untuk email aktivasi dari DJP
+2. Klik tautan aktivasi dalam email
+3. Jika tautan telah kedaluwarsa (berlaku selama 24 jam), pergi ke halaman login CoreTax dan klik "Kirim Ulang Aktivasi" (Kirim Ulang Aktivasi)
+4. Jika Anda tidak pernah menerima email, kunjungi KPP setempat dengan dokumen identitas
+5. KPP dapat mengaktifkan akun Anda secara manual di tempat
+
+## Kesalahan 7: Timeout Server dan Kesalahan 502
+
+**Apa yang Anda lihat:** "502 Bad Gateway," "Server Error," atau halaman sekadar timeout.
+
+**Mengapa hal ini terjadi:** Server CoreTax mengalami beban berat selama periode pelaporan puncak, terutama:
+
+| Periode Puncak         | Tenggat Waktu                        | Beban yang Diharapkan |
+| ------------------- | ------------------------------- | ------------- |
+| 1-31 Januari        | Pembayaran pajak bulanan Desember   | Tinggi          |
+| 1-31 Maret          | Tenggat SPT Tahunan individu        | Sangat Tinggi     |
+| 1-30 April          | Tenggat SPT Tahunan perusahaan      | Ekstrem       |
+| 25 setiap bulan     | Tenggat SPT Masa bulanan            | Sedang-Tinggi |
+
+**Langkah-langkah perbaikan:**
+
+1. **Coba jam non-puncak:** Akses CoreTax pagi hari (6-8 AM WIB) atau malam hari (setelah 8 PM WIB)
+2. **Jangan mengulang refresh:** Ini menambah beban server dan mungkin memicu pembatasan laju
+3. **Simpan pekerjaan Anda secara berkala:** Sesi CoreTax dapat terputus selama beban tinggi
+4. **Gunakan aplikasi e-Faktur desktop** alih-alih pelaporan berbasis web bila memungkinkan
+5. **Ajukan sejak dini:** Jangan menunggu hingga minggu terakhir periode tenggat
+
+## Kesalahan 8: Kegagalan Autentikasi Dua Faktor
+
+**Apa yang Anda lihat:** CoreTax mengirimkan kode verifikasi, tetapi Anda tidak menerimanya, atau kode ditolak.
+
+**Mengapa hal ini terjadi:** CoreTax menggunakan autentikasi dua faktor berbasis SMS atau email. Jika nomor telepon atau email Anda sudah usang, Anda tidak akan menerima kode.
+
+**Langkah-langkah perbaikan:**
+
+1. **Periksa nomor telepon terdaftar:**
+   - Jika Anda mengganti SIM card Indonesia, nomor lama mungkin terkait dengan NPWP Anda
+   - Untuk orang asing: pastikan nomor telepon Indonesia (+62) terdaftar, bukan nomor asing Anda
+2. **Perbarui detail kontak:**
+   - Ini harus dilakukan di KPP secara langsung (untuk alasan keamanan, detail kontak tidak dapat diubah secara online)
+   - Bawa: paspor, KITAS/KITAP, kartu NPWP, dan SIM card telepon baru
+3. **Gunakan verifikasi email:**
+   - Jika tersedia, pilih "Kirim ke Email" alih-alih SMS
+   - Ini sering lebih andal untuk orang asing
+
+## Checklist Pencegahan Kesalahan CoreTax
+
+Untuk meminimalkan masalah login di masa depan, ikuti checklist perawatan ini:
+
+| Tugas                                   | Frekuensi                     | Mengapa                                        |
+| -------------------------------------- | ----------------------------- | ------------------------------------------ |
+| Verifikasi tanggal kedaluwarsa sertifikat digital | Setiap 6 bulan                | Hindari kehilangan akses tiba-tiba                   |
+| Perbarui email dan telepon terdaftar      | Saat berubah                  | Pastikan Anda menerima kode dan pemberitahuan |
+| Hapus cache browser untuk pajak.go.id    | Bulanan                       | Cegah konflik data yang sudah usang               |
+| Cadangkan sertifikat digital (.p12)     | Setelah setiap perbaruan            | Hindari penundaan permohonan ulang                |
+| Uji login CoreTax                     | 1 minggu sebelum tenggat pelaporan | Tangani masalah sejak dini                         |
+| Simpan nomor EFIN secara aman              | Sekali                          | Diperlukan untuk reset kata sandi               |
+
+## Apa Itu EFIN dan Mengapa Penting?
+
+EFIN (Nomor Identifikasi Pengajuan Elektronik) Anda adalah nomor 10 digit yang diterbitkan oleh DJP yang diperlukan untuk:
+
+- Mereset kata sandi CoreTax Anda
+- Mengaktifkan akun Anda
+- Mengajukan SPT secara online
+
+**Cara mendapatkan EFIN Anda:**
+
+1. **Pertama kali:** Kunjungi KPP terdaftar Anda dengan dokumen identitas. EFIN diterbitkan di tempat.
+2. **Lupa EFIN Anda:** Telepon Kring Pajak di 1500-200 dengan NPWP Anda siap. Mereka dapat mencarinya setelah verifikasi identitas.
+3. **Untuk PT PMA:** EFIN perusahaan terpisah dari EFIN pribadi direktur. Keduanya diperlukan.
+
+## Kesalahan CoreTax Umum yang Spesifik untuk Orang Asing
+
+Wajib pajak asing menghadapi tantangan unik di CoreTax. Berikut adalah masalah spesifik orang asing yang paling umum:
+
+### Penolakan Nomor Paspor
+
+CoreTax mungkin menolak nomor paspor yang mengandung karakter khusus atau melebihi panjang yang diharapkan. Jika nomor paspor Anda tidak diterima:
+
+- Masukkan hanya karakter alfanumerik (hilangkan tanda hubung atau spasi)
+- Beberapa format paspor lama tidak dikenali; bawa paspor fisik Anda ke KPP untuk masukan manual
+- Jika Anda memperbarui paspor, nomor lama di catatan DJP harus diperbarui
+
+### Nomor KITAS/KITAP Tidak Dikenali
+
+Saat CoreTax meminta nomor izin tinggal Anda dan menolaknya:
+
+- Gunakan format yang ditunjukkan di kartu ITAS/ITAP fisik Anda
+- Jangan sertakan awalan "2C" atau "2D" kecuali secara khusus ditunjukkan di kartu
+- Jika baru diterbitkan, izinkan 2-4 minggu untuk data imigrasi disinkronkan dengan DJP
+
+### Masalah Alamat Asing
+
+CoreTax memerlukan alamat Indonesia untuk korespondensi pajak. Jika alamat Anda dimasukkan salah selama pendaftaran NPWP:
+
+- Kunjungi KPP untuk memperbarui alamat Anda
+- Sertakan surat keterangan domisili (Surat Keterangan Domisili) dari RT/RW setempat atau penyewa kantor Anda
+- Pastikan alamat sesuai dengan yang ada di KITAS/KITAP Anda
+
+## Kapan Harus Mencari Bantuan Profesional
+
+Meskipun banyak kesalahan CoreTax dapat diselesaikan secara mandiri, beberapa situasi memerlukan bantuan profesional:
+
+- **Kegagalan sinkronisasi NIK** yang berlanjut setelah 14 hari kerja
+- **Masalah sertifikat digital** untuk perusahaan dengan beberapa cabang
+- **Pemberitahuan denda pajak** yang dipicu oleh keterlambatan pelaporan akibat kesalahan sistem
+- **Pelaporan perusahaan kompleks** yang memerlukan e-Faktur, e-Bupot, dan integrasi SPT
+
+Tim konsultasi pajak Bali Zero menangani migrasi dan penyelesaian masalah CoreTax untuk perusahaan PT PMA. Paket Akuntansi Dasar kami dimulai dari IDR 1,500,000/bulan dan mencakup pelaporan pajak bulanan, akuntansi, dan dukungan CoreTax. Untuk perusahaan yang membutuhkan manajemen kepatuhan penuh, Paket Akuntansi Premium seharga IDR 3,000,000/bulan mencakup semua kewajiban pajak termasuk manajemen e-Faktur, pelaporan SPT tahunan, dan penyelesaian masalah CoreTax yang didedikasikan. Bantuan migrasi CoreTax satu kali tersedia seharga IDR 5,000,000.
+
+## Langkah-demi-Langkah: Cara Mereset Kata Sandi CoreTax Anda
+
+Ini adalah perbaikan paling umum untuk masalah login. Ikuti langkah-langkah tepat ini:
+
+1. Buka [coretaxdjp.pajak.go.id](https://coretaxdjp.pajak.go.id)
+2. Klik "Lupa Password" di bawah formulir login
+3. Masukkan NPWP 16 digit (untuk entitas) atau NIK (untuk individu Indonesia)
+4. Masukkan EFIN Anda
+5. Email verifikasi akan dikirim ke alamat terdaftar Anda
+6. Buka email dan klik tautan reset (berlaku selama 24 jam)
+7. Buat kata sandi baru:
+   - Minimal 8 karakter
+   - Setidaknya 1 huruf kapital
+   - Setidaknya 1 angka
+   - Setidaknya 1 karakter khusus (!@#$%^&\*)
+8. Masuk dengan kata sandi baru Anda
+9. Jika autentikasi dua faktor diaktifkan, masukkan kode yang dikirim ke telepon/email Anda
+
+## Pertanyaan yang Sering Diajukan
+
+### Mengapa CoreTax terus mengatakan kredensial login saya tidak valid?
+
+Kredensial tidak valid biasanya berarti NPWP Anda belum bermigrasi ke format NIK 16 digit, kata sandi Anda direset selama migrasi, atau sertifikat digital Anda kedaluwarsa. Coba reset kata sandi Anda di coretaxdjp.pajak.go.id dan pastikan Anda menggunakan NPWP 16 digit (NIK untuk individu).
+
+### Bagaimana cara memperbaiki kesalahan ETAX-40001 di CoreTax?
+
+ETAX-40001 menunjukkan kegagalan koneksi antara aplikasi e-Faktur Anda dan server DJP. Periksa koneksi internet Anda, pastikan sertifikat digital Anda valid, verifikasi server DJP tidak sedang dalam pemeliharaan, dan coba gunakan VPN jika ISP Anda memblokir port DJP.
+
+### Apakah saya masih bisa menggunakan DJP Online alih-alih CoreTax?
+
+DJP Online tetap tersedia sebagian untuk fungsi lama tertentu, tetapi semua wajib pajak diwajibkan untuk bermigrasi ke CoreTax. Pendaftaran baru, e-Faktur, e-Bupot, dan sebagian besar fungsi pelaporan sekarang eksklusif di CoreTax sejak 2025.
+
+### Apa yang harus saya lakukan jika tidak ada perbaikan yang bekerja?
+
+Jika Anda telah menghabiskan semua langkah penyelesaian masalah, ajukan keluhan formal melalui Kring Pajak (1500-200) atau kunjungi KPP terdaftar Anda secara langsung. Bawa semua dokumen identitas dan tangkapan layar kesalahan. Untuk perusahaan PT PMA, pertimbangkan untuk menggunakan konsultan pajak yang memiliki saluran komunikasi langsung dengan DJP.
+
+### Apakah ada tenggat waktu untuk bermigrasi ke CoreTax?
+
+Semua wajib pajak diwajibkan untuk bermigrasi ke CoreTax sebelum akhir 2025. Jika Anda belum bermigrasi, akun DJP Online lama Anda mungkin memiliki fungsi terbatas. Hubungi KPP atau konsultan pajak Anda untuk segera memulai migrasi.
+
+## Poin-Poin Penting
+
+- Sebagian besar kesalahan login CoreTax dapat diselesaikan dengan mereset kata sandi Anda dan membersihkan cache browser
+- Pertahankan nomor EFIN, sertifikat digital, dan detail kontak terdaftar Anda tetap diperbarui
+- Wajib pajak asing harus memverifikasi sinkronisasi NIK-NPWP secara proaktif
+- Ajukan selama jam non-puncak untuk menghindari beban server
+- Saat kesalahan berlanjut selama lebih dari 14 hari, cari dukungan konsultasi pajak profesional
+
+Untuk penyelesaian masalah CoreTax dan manajemen kepatuhan pajak penuh, hubungi Bali Zero di info@balizero.com atau WhatsApp +62 821 3454 721. Tim kami menangani masalah teknis sehingga Anda dapat fokus menjalankan bisnis Anda di Indonesia.

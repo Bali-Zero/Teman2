@@ -8,16 +8,18 @@
  */
 "use client";
 
-import { useCallback, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import {
   BEHAVIORAL_CATEGORIES,
   CATEGORY_KEYS,
   QUESTIONS,
-  getLane,
+  REVIEW_GATE_ITEMS,
+  parseIsoDateUtc,
   type CategoryKey,
   type OracleFacts,
 } from "./tree";
-import { evaluate, type Assumption, type EvaluateResult } from "./mock-engine";
+import type { InterviewAssumption } from "./outcome-view-model";
+import { canonicalCountryCodes } from "./countries";
 
 export type Language = "en" | "id";
 
@@ -45,6 +47,33 @@ export interface FlowState {
   attempt: number;
 }
 
+export const INTERVIEW_SNAPSHOT_SCHEMA_VERSION = 1 as const;
+
+/**
+ * Language-neutral, JSON-serializable resume payload. Storage, TTL and any
+ * encryption policy belong to the integration layer; the flow only owns a
+ * versioned representation and deterministic, pruning-aware restoration.
+ */
+export interface InterviewSnapshot {
+  schemaVersion: typeof INTERVIEW_SNAPSHOT_SCHEMA_VERSION;
+  attempt: number;
+  history: readonly OracleNode[];
+  facts: Readonly<OracleFacts>;
+  updatedAtIso: string;
+}
+
+export interface UseOracleFlowOptions {
+  initialLanguage?: Language;
+  /** May come from untrusted browser storage; invalid snapshots fail closed
+   * to a fresh interview. */
+  initialSnapshot?: unknown;
+  onSnapshot?: (snapshot: InterviewSnapshot) => void;
+  /** Clock injection for deterministic tests and storage adapters. */
+  snapshotNow?: () => Date;
+  /** Replays date-sensitive routing against this clock during hydration. */
+  restoreToday?: Date;
+}
+
 export type FlowAction =
   | { type: "ANSWER"; questionId: string; value: string; today?: Date }
   | { type: "SKIP"; questionId: string; today?: Date }
@@ -70,6 +99,158 @@ export function initialFlowState(
   attempt = 0,
 ): FlowState {
   return { history: [{ kind: "framing" }], facts: {}, language, attempt };
+}
+
+export function createInterviewSnapshot(
+  state: Pick<FlowState, "attempt" | "history" | "facts">,
+  now: Date = new Date(),
+): InterviewSnapshot {
+  return {
+    schemaVersion: INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
+    attempt: state.attempt,
+    history: state.history.map((node) => ({ ...node })),
+    facts: { ...state.facts },
+    updatedAtIso: now.toISOString(),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOracleNode(value: unknown): value is OracleNode {
+  if (!isRecord(value) || typeof value.kind !== "string") return false;
+  if (
+    value.kind === "framing" ||
+    value.kind === "confirmation" ||
+    value.kind === "verdict"
+  ) {
+    return Object.keys(value).length === 1;
+  }
+  return (
+    value.kind === "question" &&
+    typeof value.questionId === "string" &&
+    Object.prototype.hasOwnProperty.call(QUESTIONS, value.questionId)
+  );
+}
+
+function isValidFactValue(questionId: string, value: string): boolean {
+  const question = QUESTIONS[questionId];
+  if (!question || value.length === 0 || value.length > 256) return false;
+  if (value === "unsure") return question.notSure !== undefined;
+  if (question.kind === "date") return parseIsoDateUtc(value) !== null;
+  if (question.kind === "country-codes") {
+    const codes = value.split(",");
+    return (
+      question.codeInput !== undefined &&
+      canonicalCountryCodes(codes, question.codeInput.multiple) === value &&
+      codes.length <= (question.codeInput.maxSelections ?? 1)
+    );
+  }
+  if (question.kind === "status-code") {
+    return (
+      value.length <= (question.codeInput?.maxLength ?? 32) &&
+      /^[A-Z][A-Z0-9-]*$/.test(value)
+    );
+  }
+  if (question.kind === "number") {
+    const parsed = Number(value);
+    return (
+      question.numberInput !== undefined &&
+      /^\d+$/.test(value) &&
+      Number.isSafeInteger(parsed) &&
+      parsed >= question.numberInput.min &&
+      parsed <= question.numberInput.max &&
+      (parsed - question.numberInput.min) % question.numberInput.step === 0
+    );
+  }
+  if (question.kind === "review-gate") {
+    const items = value.split(",").filter(Boolean);
+    if (items.length === 0 || new Set(items).size !== items.length)
+      return false;
+    if (items.includes("none") && items.length !== 1) return false;
+    return items.every((item) =>
+      (REVIEW_GATE_ITEMS as readonly string[]).includes(item),
+    );
+  }
+  return question.options.some((option) => option.key === value);
+}
+
+/**
+ * Hydrate by replaying the saved path, not by trusting its history/facts.
+ * Any impossible node, invalid answer or branch that changed with the current
+ * assessment clock is truncated at the last valid frontier; descendants are
+ * discarded by construction. Completely malformed payloads return `null`.
+ */
+export function restoreInterviewSnapshot(
+  value: unknown,
+  language: Language = "en",
+  today: Date = new Date(),
+): FlowState | null {
+  if (!isRecord(value)) return null;
+  if (value.schemaVersion !== INTERVIEW_SNAPSHOT_SCHEMA_VERSION) return null;
+  if (
+    typeof value.attempt !== "number" ||
+    !Number.isSafeInteger(value.attempt) ||
+    value.attempt < 0
+  ) {
+    return null;
+  }
+  if (
+    typeof value.updatedAtIso !== "string" ||
+    !Number.isFinite(Date.parse(value.updatedAtIso))
+  ) {
+    return null;
+  }
+  if (
+    !Array.isArray(value.history) ||
+    value.history.length === 0 ||
+    value.history.length > 64 ||
+    !value.history.every(isOracleNode) ||
+    value.history[0].kind !== "framing"
+  ) {
+    return null;
+  }
+  if (!isRecord(value.facts)) return null;
+
+  const savedFacts: OracleFacts = {};
+  for (const [questionId, factValue] of Object.entries(value.facts)) {
+    if (
+      typeof factValue !== "string" ||
+      !Object.prototype.hasOwnProperty.call(QUESTIONS, questionId)
+    ) {
+      return null;
+    }
+    savedFacts[questionId] = factValue;
+  }
+
+  const history: OracleNode[] = [{ kind: "framing" }];
+  let facts: OracleFacts = {};
+  for (let index = 1; index < value.history.length; index += 1) {
+    const current = history[history.length - 1];
+    if (current.kind === "verdict") break;
+    if (current.kind === "question") {
+      const answer = savedFacts[current.questionId];
+      if (
+        answer === undefined ||
+        !isValidFactValue(current.questionId, answer)
+      ) {
+        break;
+      }
+      facts = { ...facts, [current.questionId]: answer };
+    }
+    const expected = computeNextNode(current, facts, today);
+    const savedNext = value.history[index];
+    history.push(expected);
+    if (!sameNode(expected, savedNext)) break;
+  }
+
+  return {
+    history,
+    facts: pruneFacts(facts, history),
+    language,
+    attempt: value.attempt,
+  };
 }
 
 /**
@@ -103,6 +284,7 @@ export function computeNextNode(
   facts: OracleFacts,
   today: Date = new Date(),
 ): OracleNode {
+  void today; // kept injectable for snapshot/API compatibility
   if (current.kind === "framing") {
     return { kind: "question", questionId: "in_indonesia" };
   }
@@ -115,50 +297,157 @@ export function computeNextNode(
 
   switch (current.questionId) {
     case "in_indonesia": {
-      if (facts.in_indonesia === "yes" || facts.in_indonesia === "unsure") {
+      if (facts.in_indonesia === "yes") {
         return { kind: "question", questionId: "permit_expiry" };
       }
+      return { kind: "question", questionId: "overstay_days" };
+    }
+    case "permit_expiry":
+      return { kind: "question", questionId: "current_status_code" };
+    case "current_status_code":
+      return { kind: "question", questionId: "overstay_days" };
+    case "overstay_days":
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "wants_onshore_conversion" }
+        : { kind: "question", questionId: "nationalities" };
+    case "wants_onshore_conversion":
+      return { kind: "question", questionId: "application_channel" };
+    case "application_channel":
+      return { kind: "question", questionId: "nationalities" };
+    case "nationalities":
+      return { kind: "question", questionId: "birth_date" };
+    case "birth_date":
       return { kind: "question", questionId: "category" };
+    case "category":
+      return { kind: "question", questionId: "trip_scope" };
+    case "trip_scope": {
+      const first = getCategoryQuestionIds(facts)[0] ?? "stay_days";
+      return { kind: "question", questionId: first };
     }
-    case "permit_expiry": {
-      // Finding #7 (adversarial review 2026-07-17): an unsure compliance
-      // deadline is exactly as load-bearing as an unsure payer/clients/
-      // income — never guess, go straight to human review. `getLane`
-      // already returns null for an unsure/missing date, so without this
-      // explicit check the switch below would silently fall through to
-      // "category" instead of flagging review.
-      if (facts.permit_expiry === "unsure") {
-        return { kind: "question", questionId: "review_gate" };
-      }
-      const lane = getLane(facts, today);
-      if (lane === "expired" || lane === "urgent") {
-        return { kind: "question", questionId: "review_gate" };
-      }
-      return { kind: "question", questionId: "category" };
-    }
-    case "category": {
-      const category = facts.category as CategoryKey | undefined;
-      if (category === "work")
-        return { kind: "question", questionId: "work_payer" };
-      if (category === "remote")
-        return { kind: "question", questionId: "remote_clients" };
-      if (category === "tourism")
-        return { kind: "question", questionId: "tourism_duration" };
-      return { kind: "question", questionId: "review_gate" };
-    }
-    case "work_payer":
-      return { kind: "question", questionId: "review_gate" };
-    case "remote_clients":
-      return { kind: "question", questionId: "remote_income" };
-    case "remote_income":
-      return { kind: "question", questionId: "review_gate" };
+    // Legacy fixture snapshots can still be inspected, but this bucket is
+    // no longer reachable in the live graph and never feeds the API mapper.
     case "tourism_duration":
+    case "remote_income":
       return { kind: "question", questionId: "review_gate" };
     case "review_gate":
       return { kind: "confirmation" };
-    default:
-      return { kind: "confirmation" };
+    default: {
+      const sequence = getCategoryQuestionIds(facts);
+      const index = sequence.indexOf(current.questionId);
+      if (index === -1 || index === sequence.length - 1) {
+        return { kind: "question", questionId: "review_gate" };
+      }
+      return { kind: "question", questionId: sequence[index + 1] };
+    }
   }
+}
+
+const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
+  tourism: ["stay_days", "entry_pattern"],
+  business: [
+    "business_activity",
+    "work_indonesia_compensation",
+    "stay_days",
+    "entry_pattern",
+  ],
+  work: [
+    "work_payer",
+    "work_indonesia_compensation",
+    "work_sponsor_confirmed",
+    "work_role",
+    "stay_days",
+  ],
+  remote: [
+    "remote_clients",
+    "remote_compensation",
+    "remote_employer_country",
+    "remote_pt_pma",
+    "stay_days",
+  ],
+  family: [],
+  invest: [],
+  retirement: [],
+  study: [
+    "study_level",
+    "study_admission_confirmed",
+    "study_sponsor_confirmed",
+    "stay_days",
+  ],
+  diaspora: ["diaspora_connection", "diaspora_documents", "stay_days"],
+  other: ["other_purpose", "other_paid_activity", "stay_days", "entry_pattern"],
+};
+
+/**
+ * The behavioral question sequence for the selected interview category.
+ * This is navigation only. It never interprets answers as eligibility and
+ * never selects, orders, adds, or removes a visa candidate.
+ */
+export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
+  const category = facts.category as CategoryKey | undefined;
+  if (!category || !CATEGORY_KEYS.includes(category)) return ["stay_days"];
+
+  if (category === "invest") {
+    const branch = facts.investment_vehicle;
+    const branchQuestions =
+      branch === "pt_pma"
+        ? [
+            "investment_pt_pma",
+            "investment_capital_idr",
+            "investment_paid_up_capital_idr",
+            "investment_role",
+          ]
+        : branch === "property"
+          ? ["secondhome_property_value_usd"]
+          : branch === "bank_deposit"
+            ? [
+                "secondhome_deposit_usd",
+                "secondhome_state_bank",
+                "secondhome_own_name",
+              ]
+            : [];
+    return ["investment_vehicle", ...branchQuestions, "stay_days"];
+  }
+
+  if (category === "retirement") {
+    const branch = facts.retirement_basis;
+    const branchQuestions =
+      branch === "bank_deposit"
+        ? [
+            "secondhome_deposit_usd",
+            "secondhome_state_bank",
+            "secondhome_own_name",
+            "secondhome_passive_income_usd",
+          ]
+        : branch === "property"
+          ? ["secondhome_property_value_usd"]
+          : branch === "passive_income"
+            ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
+            : branch === "family_sponsor"
+              ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
+              : [];
+    return ["retirement_basis", ...branchQuestions, "stay_days"];
+  }
+
+  if (category === "family") {
+    const sponsorCodes = facts.family_sponsor_nationalities?.split(",") ?? [];
+    const needsPermitCode =
+      facts.family_sponsor_nationalities !== undefined &&
+      facts.family_sponsor_nationalities !== "unsure" &&
+      !sponsorCodes.includes("ID");
+    return [
+      "family_relation",
+      "marital_status",
+      "family_sponsor_nationalities",
+      ...(needsPermitCode ? ["family_sponsor_status_code"] : []),
+      ...(facts.family_relation === "SPOUSE"
+        ? ["family_marriage_registered"]
+        : []),
+      "family_sponsor_confirmed",
+      "stay_days",
+    ];
+  }
+
+  return FIXED_CATEGORY_QUESTIONS[category];
 }
 
 function truncateToNode(
@@ -175,9 +464,8 @@ function truncateToNode(
  * history stack but previously left every fact ever answered in place —
  * so re-answering a branch-determining question (e.g. `category`) down a
  * DIFFERENT path left stale facts from the abandoned branch (e.g.
- * `work_payer`) sitting in `state.facts`, silently feeding the mock
- * engine's candidate matching and completeness check with answers to
- * questions the user never reached on their current path.
+ * `work_payer`) sitting in `state.facts`, silently feeding later evaluation
+ * with answers to questions the user never reached on their current path.
  *
  * Facts are pruned to exactly the set of question ids present in the
  * (already-truncated) history — anything beyond the new frontier is
@@ -276,19 +564,24 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
   }
 }
 
-/**
- * @param today Finding #9 (adversarial review 2026-07-17): overrides the
- * clock used for this hook's internal `evaluate()` call. `undefined` (the
- * default) lets `evaluate()`'s own `new Date()` default apply — the
- * during-interview behavior, unchanged. Callers that need the
- * verdict/outcome screens to stop drifting against wall-clock time once
- * reached (OracleShell) pass a value captured once and held in state.
- */
-export function useOracleFlow(initialLanguage: Language = "en", today?: Date) {
+export function useOracleFlow(options: UseOracleFlowOptions = {}) {
+  const {
+    initialLanguage = "en",
+    initialSnapshot,
+    onSnapshot,
+    snapshotNow,
+    restoreToday,
+  } = options;
   const [state, dispatch] = useReducer(
     flowReducer,
-    initialLanguage,
-    initialFlowState,
+    { initialLanguage, initialSnapshot, restoreToday },
+    ({
+      initialLanguage: language,
+      initialSnapshot: snapshot,
+      restoreToday: hydrationClock,
+    }) =>
+      restoreInterviewSnapshot(snapshot, language, hydrationClock) ??
+      initialFlowState(language),
   );
 
   const answer = useCallback(
@@ -324,18 +617,47 @@ export function useOracleFlow(initialLanguage: Language = "en", today?: Date) {
   );
 
   const current = state.history[state.history.length - 1];
-  const result: EvaluateResult = useMemo(
-    () => evaluate(state.facts, today),
-    [state.facts, today],
+  const assumptions = useMemo<InterviewAssumption[]>(
+    () =>
+      Object.entries(state.facts)
+        .filter(([, value]) => value === "unsure")
+        .map(([questionId]) => ({
+          id: `unsure:${questionId}`,
+          questionId,
+          editable: true,
+        })),
+    [state.facts],
   );
-  const assumptions: Assumption[] = result.assumptions;
+  const selectedCategory = state.facts.category as CategoryKey | undefined;
+  const interviewBranchesRemaining =
+    selectedCategory && CATEGORY_KEYS.includes(selectedCategory)
+      ? 1
+      : CATEGORY_KEYS.length;
+  const getSnapshot = useCallback(
+    () =>
+      createInterviewSnapshot(
+        {
+          attempt: state.attempt,
+          history: state.history,
+          facts: state.facts,
+        },
+        snapshotNow?.() ?? new Date(),
+      ),
+    [snapshotNow, state.attempt, state.facts, state.history],
+  );
+
+  useEffect(() => {
+    if (!onSnapshot) return;
+    onSnapshot(getSnapshot());
+  }, [getSnapshot, onSnapshot]);
 
   return {
     state,
     current,
-    result,
     assumptions,
+    interviewBranchesRemaining,
     canGoBack: state.history.length > 1,
+    getSnapshot,
     answer,
     skip,
     advance,
@@ -377,10 +699,32 @@ export function getTreeSteps(
   const order = [
     { id: "framing", labelI18nKey: "tree.framing" },
     { id: "in_indonesia", labelI18nKey: "tree.in_indonesia" },
-    ...(facts.in_indonesia === "yes" || facts.in_indonesia === "unsure"
-      ? [{ id: "permit_expiry", labelI18nKey: "tree.permit_expiry" }]
+    ...(facts.in_indonesia === "yes"
+      ? [
+          { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
+          {
+            id: "current_status_code",
+            labelI18nKey: "tree.current_status_code",
+          },
+        ]
       : []),
+    { id: "overstay_days", labelI18nKey: "tree.overstay_days" },
+    ...(facts.in_indonesia === "yes"
+      ? [
+          {
+            id: "wants_onshore_conversion",
+            labelI18nKey: "tree.wants_onshore_conversion",
+          },
+          {
+            id: "application_channel",
+            labelI18nKey: "tree.application_channel",
+          },
+        ]
+      : []),
+    { id: "nationalities", labelI18nKey: "tree.nationalities" },
+    { id: "birth_date", labelI18nKey: "tree.birth_date" },
     { id: "category", labelI18nKey: "tree.category" },
+    { id: "trip_scope", labelI18nKey: "tree.trip_scope" },
     ...behavioralSteps(facts),
     { id: "review_gate", labelI18nKey: "tree.review_gate" },
     { id: "confirmation", labelI18nKey: "tree.confirmation" },
@@ -440,6 +784,8 @@ export function getTreeSteps(
   });
 
   const category = facts.category as CategoryKey | undefined;
+  const hasSelectedCategory =
+    category !== undefined && CATEGORY_KEYS.includes(category);
   const atOrPastCategory =
     currentId === "category" ||
     (currentIdx !== -1 &&
@@ -448,7 +794,7 @@ export function getTreeSteps(
   const categoryLeaves: TreeCategoryLeaf[] | null = atOrPastCategory
     ? CATEGORY_KEYS.map((key) => ({
         key,
-        status: category
+        status: hasSelectedCategory
           ? key === category
             ? ("done" as const)
             : ("pruned" as const)
@@ -484,18 +830,10 @@ function behavioralSteps(
 ): { id: string; labelI18nKey: string }[] {
   const category = facts.category as CategoryKey | undefined;
   if (!category || !BEHAVIORAL_CATEGORIES.has(category)) return [];
-  if (category === "work")
-    return [{ id: "work_payer", labelI18nKey: "tree.work_payer" }];
-  if (category === "remote") {
-    return [
-      { id: "remote_clients", labelI18nKey: "tree.remote_clients" },
-      { id: "remote_income", labelI18nKey: "tree.remote_income" },
-    ];
-  }
-  if (category === "tourism") {
-    return [{ id: "tourism_duration", labelI18nKey: "tree.tourism_duration" }];
-  }
-  return [];
+  return getCategoryQuestionIds(facts).map((id) => ({
+    id,
+    labelI18nKey: `tree.${id}`,
+  }));
 }
 
 export { QUESTIONS };

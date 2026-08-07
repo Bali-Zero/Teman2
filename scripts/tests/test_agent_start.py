@@ -188,6 +188,90 @@ def test_node_modules_symlink_does_not_mask_real_wip(fake_repo):
     assert mod._worktree_has_wip(wt) is True
 
 
+def _seed_mouth_workspace(repo, mod):
+    """Give the fake repo a TRACKED file under apps/mouth, then the nested
+    node_modules dir in main.
+
+    The tracked file is not decoration — it is what makes the fixture
+    representative, and leaving it out makes every assertion below vacuous.
+    `git status --porcelain` COLLAPSES untracked directories to their shallowest
+    untracked ancestor: with nothing tracked under apps/, git reports `?? apps/`
+    and never `?? apps/mouth/node_modules`, so the BROKER_GENERATED_FILES entry
+    can neither help (innocence fails) nor be needed (guilt passes for the wrong
+    reason — `?? apps/` trips WIP no matter what the exemption says). Measured
+    both worlds side by side on 2026-08-07 before writing this. The real repo
+    tracks apps/mouth/src/**, so it is always the rich world.
+    """
+    (repo / "apps" / "mouth" / "src").mkdir(parents=True, exist_ok=True)
+    (repo / "apps" / "mouth" / "src" / "page.tsx").write_text("export {}\n")
+    (repo / ".gitignore").write_text("node_modules/\n")
+    _commit_in_worktree(repo, mod, ".", "seed mouth workspace")
+    subprocess.run(
+        ["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True
+    )
+    nm = repo / "apps" / "mouth" / "node_modules"
+    nm.mkdir(parents=True, exist_ok=True)
+    (nm / "placeholder.txt").write_text("x\n")
+    return nm
+
+
+def test_mouth_node_modules_is_symlinked_into_worktree(fake_repo):
+    """This is an npm WORKSPACE monorepo: a workspace package's own deps are
+    installed NESTED (`apps/mouth/node_modules/<pkg>`), not hoisted to the root.
+    Node resolves upward from the importing file, so symlinking ONLY the root
+    node_modules leaves `recharts` unresolvable and `npm run typecheck` — the
+    command the pre-commit hook runs on any staged apps/mouth TS/TSX — dies with
+    TS2307. Measured 2026-08-07: 5 of 37 live worktrees had this directory, each
+    because someone ran the install by hand.
+    """
+    mod, repo = fake_repo
+    nm = _seed_mouth_workspace(repo, mod)
+
+    wt = mod.cmd_create("mouth", "mouth-nm-link", ttl_minutes=5)
+    link = wt / "apps" / "mouth" / "node_modules"
+    assert link.is_symlink()
+    assert link.resolve() == nm.resolve()
+
+
+def test_mouth_node_modules_symlink_not_counted_as_wip(fake_repo):
+    """Innocence, and it reproduces the MINI condition on purpose.
+
+    On M5 and Pro this symlink reads as ignored only because a BARE
+    `node_modules` line sits in their `.git/info/exclude` — a local, untracked,
+    per-machine file. Mini has no such line (measured 2026-08-07: 0 matches),
+    and the repo's own .gitignore carries only the directory-only
+    `node_modules/`, which does not match a symlink-to-a-directory. This fake
+    repo has no local exclude either, so it stands in for Mini: without the
+    BROKER_GENERATED_FILES entry the worktree would read `?? apps/mouth/
+    node_modules` forever and `--cleanup` would WARN-skip it on every run.
+    """
+    mod, repo = fake_repo
+    _seed_mouth_workspace(repo, mod)
+
+    wt = mod.cmd_create("mouth", "mouth-nm-innocent", ttl_minutes=5)
+    assert (wt / "apps" / "mouth" / "node_modules").is_symlink()
+    # Premise check: git must actually be reporting the FULL path here, not a
+    # collapsed `?? apps/`. Without this the assertion below could pass in a
+    # world where the exemption is never consulted.
+    porcelain = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True
+    ).stdout
+    assert "apps/mouth/node_modules" in porcelain or porcelain.strip() == "", porcelain
+    assert mod._worktree_has_wip(wt) is False
+
+
+def test_mouth_node_modules_exemption_does_not_mask_real_wip(fake_repo):
+    """Guilt: the new exemption must not swallow genuine WIP — including WIP
+    that lives INSIDE apps/mouth, next to the exempted path rather than at the
+    repo root, which is where a too-broad prefix match would go wrong."""
+    mod, repo = fake_repo
+    _seed_mouth_workspace(repo, mod)
+
+    wt = mod.cmd_create("mouth", "mouth-nm-guilty", ttl_minutes=5)
+    (wt / "apps" / "mouth" / "src" / "real_work.tsx").write_text("// uncommitted\n")
+    assert mod._worktree_has_wip(wt) is True
+
+
 def test_husky_shim_dir_symlinked_into_worktree(fake_repo):
     """`.husky/_` must reach every worktree or the pre-push gate is OFF there.
 

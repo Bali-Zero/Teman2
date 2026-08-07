@@ -106,9 +106,30 @@ def test_a_broader_code_is_never_patched():
     assert ADJUDICATION["10761"][0] == BROADER
 
 
-def test_a_renamed_but_unproven_code_is_never_patched():
-    planned, _ = plan([_rec("21021", ["21021"], 100)])
-    assert planned == [] and ADJUDICATION["21021"][0] == RENAMED
+def test_a_renamed_but_unproven_code_is_never_patched(monkeypatch):
+    # 21021/21022 were the live RENAMED examples until 2026-08-07, when
+    # primary-source research (UU 17/2023 + Peraturan BPOM 25/2023 + SEB
+    # 4.S/2026) flipped both to PLAIN — see the positive test below. No code
+    # currently carries RENAMED, so the guard itself (a RENAMED verdict is
+    # NEVER patched, proven vs. PLAIN below) is pinned synthetically instead
+    # of on a live code, so it stays covered even with zero real members.
+    monkeypatch.setitem(ADJUDICATION, "99999", (RENAMED, "test-only"))
+    planned, _ = plan([_rec("99999", ["99999"], 100)])
+    assert planned == []
+
+
+def test_21021_and_21022_are_now_plain_and_patched_with_the_nota():
+    # The flip's own end-proof: both codes carry the four-leg reasoning in
+    # ADJUDICATION, and `plan()` actually patches them — TERBUKA/100 ->
+    # TERBATAS/0 — with NOTA_OVERRIDE's presumption sentence attached.
+    for code in ("21021", "21022"):
+        assert ADJUDICATION[code][0] == PLAIN
+        planned, refusals = plan([_rec(code, [code], 100)])
+        assert refusals == [] and len(planned) == 1
+        patch = planned[0]["patch"]
+        assert patch["pma_max_asing"] == 0
+        assert patch["pma_status"] == "TERBATAS"
+        assert "rename, not new activity" in patch["pma_nota"]
 
 
 def test_a_record_already_matching_the_law_is_left_alone():

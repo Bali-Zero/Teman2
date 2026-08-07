@@ -268,6 +268,31 @@ async def test_dispatch_denied_redacts_magic_token_and_client_ip_from_log(
 
 
 @pytest.mark.asyncio
+async def test_private_visa_429_log_omits_client_identity(
+    middleware: RateLimitMiddleware,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    limiter_mock = MagicMock()
+    limiter_mock.is_allowed = MagicMock(
+        return_value=(False, {"limit": 30, "remaining": 0, "reset": 1111})
+    )
+    monkeypatch.setattr("backend.middleware.rate_limiter.rate_limiter", limiter_mock)
+    request = _make_request(
+        "/api/visa-oracle/evaluate",
+        client_host="203.0.113.91",
+    )
+    request.method = "POST"
+
+    with caplog.at_level("WARNING"):
+        response = await middleware.dispatch(request, AsyncMock())
+
+    assert response.status_code == 429
+    assert "203.0.113.91" not in caplog.text
+    assert "Visa Oracle evaluation rate limit exceeded" in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_dispatch_uses_ip_when_no_authenticated_user(
     middleware: RateLimitMiddleware, monkeypatch: pytest.MonkeyPatch
 ) -> None:

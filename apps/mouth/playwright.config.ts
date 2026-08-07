@@ -92,6 +92,7 @@ export default defineConfig({
         env: {
           NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS: "1",
           NEXT_PUBLIC_HIDE_CELL_WIDGET: "1",
+          NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER: "628123456789",
         },
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,

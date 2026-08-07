@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.app.utils.logging_utils import sanitize_log_path
+from backend.middleware.visa_oracle_privacy import is_private_visa_evaluation
 from backend.services.pii.violation_store import hash_subject
 
 logger = logging.getLogger(__name__)
@@ -312,10 +313,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if not allowed:
-            logger.warning(
-                "Rate limit exceeded on %s",
-                log_path,
-            )
+            if is_private_visa_evaluation(request.method, request.url.path):
+                logger.warning("Visa Oracle evaluation rate limit exceeded")
+            else:
+                logger.warning("Rate limit exceeded on %s", log_path)
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={

@@ -1131,7 +1131,7 @@
     "route_manifest": "393bd13ca615d87d52007080d788356da8f4a60650812f520852bdbc66702cc4",
     "coverage_map": "37298ea24a1d0d5373ce94db2ee3c0920657670fd8dfbe09a16711cb400be91a",
     "action_api_map": "97bc7da62f8d27705fc50318ff3b0bbab268539e745e41c1e9a3f29a90a0bef3",
-    "bug_ledger": "28130ce05b3e0f4ae420a2bfc847e15b04ebbc441bb0cb320c4f39aac3c77080"
+    "bug_ledger": "4d7778f5c7e151c9d1d0df92e7386dbf2c5f95a5eeb308c30db0874cbfdbfaec"
   },
   "finding_counts": {
     "total": 81,

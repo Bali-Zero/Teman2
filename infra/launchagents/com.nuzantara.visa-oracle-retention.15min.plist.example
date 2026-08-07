@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CRON_MAX_RETRIES</key>
+		<string>0</string>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>PER_JOB_TIMEOUT_VISA_ORACLE_RETENTION</key>
+		<string>600</string>
+		<key>VISA_ORACLE_RETENTION_APPLY</key>
+		<string>false</string>
+	</dict>
+	<key>KeepAlive</key>
+	<false/>
+	<key>Label</key>
+	<string>com.nuzantara.visa-oracle-retention.15min</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/nuzantara/scripts/cron-wrapper.sh</string>
+		<string>visa-oracle-retention</string>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/nuzantara/infra/launchagents/wrappers/visa-oracle-retention-run.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/visa-oracle-retention.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/visa-oracle-retention.log</string>
+	<key>StartInterval</key>
+	<integer>900</integer>
+</dict>
+</plist>

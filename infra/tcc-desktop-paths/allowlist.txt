@@ -87,24 +87,43 @@
 #      .github/workflows/immune-enforcement.yml's step name/comments for the
 #      lint step this PR adds.
 #
-# SIZE NOTE (added 2026-07-16, final-gate review): this file has ~298 declared
-# entries, which reads as a large exception surface for a guard meant to be
-# strict. It is NOT — the standing lint's own extension filter
-# (LINT_EXTENSIONS = {.sh, .py, .plist}) discards a line before ever checking
-# whether it's allowlisted, so only entries with those THREE extensions are
-# load-bearing for scripts/lint_tcc_desktop_paths.py's ongoing CI gate. As of
-# this writing that's 10 lines: the 2 guard-test-corpus files (class 2), the
-# 1 historical audit script + 2 dated research renderers + 1 frozen research
-# note (class 1), and the 4 self-referential tool source/test files (class 3).
-# The remaining ~288 entries (.md/.json/.txt/.yml/.tsv) exist ONLY as
-# provenance for scripts/tcc_migrate_desktop_paths.py's one-time --git-scope
-# --extensions .md sweep (commit 2 of the migration PR) — they document why
-# each historical doc was deliberately left un-swept, but the standing lint
-# never reads them because it never reads .md files at all. Kept per-file
-# (not directory-glob'd to research/**, docs/audits/**, etc.) deliberately:
-# scar #3 discipline ("no guard ships without its exceptions being explicit")
+#   4. DOCS-AUDIT REGRESSION-PIN CORPUS (added 2026-08-07,
+#      scripts/docs_audit.py's compute_refs_in follow-up) —
+#      scripts/docs_audit.py and scripts/tests/test_docs_audit.py.
+#      docs/audits/2026-05-02-cell-openclaw-brainstorm/00b_briefing_v2.md
+#      (already class 1 above) cites its siblings with fully-qualified
+#      `` `~/Desktop/nuzantara/docs/audits/.../NN_x.md` `` paths —
+#      compute_refs_in() gained a resolver for that exact shape
+#      (`_strip_home_prefix`). scripts/docs_audit.py's docstrings/comments
+#      quote that REAL, LIVE citation text verbatim so the regression stays
+#      traceable to its source; scripts/tests/test_docs_audit.py's guilt/
+#      innocence corpus constructs the identical shape (both the
+#      `Desktop/`-prefixed and un-prefixed `~/nuzantara/...` forms this
+#      repo's own prose uses, depending on which machine wrote it — see
+#      CLAUDE.md's machine table) as fixture content to prove the resolver
+#      recognises it. Neither file executes or depends on the path — same
+#      reasoning as class 2/3, applied to a different guard.
+#
+# SIZE NOTE (added 2026-07-16, final-gate review; counts updated 2026-08-07
+# when class 4 landed): this file has ~300 declared entries, which reads as
+# a large exception surface for a guard meant to be strict. It is NOT — the
+# standing lint's own extension filter (LINT_EXTENSIONS = {.sh, .py,
+# .plist}) discards a line before ever checking whether it's allowlisted, so
+# only entries with those THREE extensions are load-bearing for
+# scripts/lint_tcc_desktop_paths.py's ongoing CI gate. As of this writing
+# that's 12 lines: the 2 guard-test-corpus files (class 2), the 1 historical
+# audit script + 2 dated research renderers + 1 frozen research note (class
+# 1), the 4 self-referential tool source/test files (class 3), and the 2
+# docs-audit regression-pin files (class 4). The remaining ~288 entries
+# (.md/.json/.txt/.yml/.tsv) exist ONLY as provenance for
+# scripts/tcc_migrate_desktop_paths.py's one-time --git-scope --extensions
+# .md sweep (commit 2 of the migration PR) — they document why each
+# historical doc was deliberately left un-swept, but the standing lint never
+# reads them because it never reads .md files at all. Kept per-file (not
+# directory-glob'd to research/**, docs/audits/**, etc.) deliberately: scar
+# #3 discipline ("no guard ships without its exceptions being explicit")
 # argues for explicit enumeration over implicit directory exemption, and the
-# guard's REAL exception surface is already narrow (10 lines) once you
+# guard's REAL exception surface is already narrow (12 lines) once you
 # account for the extension filter — collapsing 288 lines that don't affect
 # the guard's behavior into a directory glob would trade a currently-tiny,
 # fully-auditable surface for a coarser one, to solve a bloat problem that
@@ -405,8 +424,10 @@ research/wr3/06-architecture-skeleton.md
 research/wr3/07-genesis-execution-state.md
 research/wr3/08-s78-pilot-runbook.md
 scripts/mini-migration/preflight-results-2026-05-10.tsv
+scripts/docs_audit.py
 scripts/lint_tcc_desktop_paths.py
 scripts/tcc_migrate_desktop_paths.py
+scripts/tests/test_docs_audit.py
 scripts/tests/test_lint_tcc_desktop_paths.py
 scripts/tests/test_tcc_migrate_desktop_paths.py
 skills/bali-zero-brand/_external-bench-2026-05.md

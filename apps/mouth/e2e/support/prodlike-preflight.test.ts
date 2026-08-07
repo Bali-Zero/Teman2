@@ -328,6 +328,19 @@ test("an explicitly allowlisted non-production hostname passes", () => {
   );
 });
 
+test("production domain suffixes cannot be allowlisted", () => {
+  for (const hostname of ["portal-api.balizero.com", "preview.fly.dev"]) {
+    const environment = safeEnvironment();
+    environment.MY_PORTAL_PRODLIKE_ALLOWED_HOSTS = hostname;
+    environment.NUZANTARA_API_URL = `https://${hostname}`;
+    environment.MY_PORTAL_BACKEND_HEALTH_URL = `https://${hostname}/health`;
+
+    const error = capturePreflightError(environment);
+    assert.match(error, /entries must be non-production hostnames/);
+    assert.doesNotMatch(error, new RegExp(hostname.replaceAll(".", "\\.")));
+  }
+});
+
 test("a non-allowlisted hostname and a mismatched health origin fail closed", () => {
   const notAllowed = safeEnvironment();
   notAllowed.NUZANTARA_API_URL = "https://portal-api.qa.example.test";

@@ -8,6 +8,58 @@ import { toError } from "@/lib/types/common";
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 minutes max for agentic RAG
 
+const VISA_ORACLE_EVALUATE_PATH = "/api/visa-oracle/evaluate";
+const VISA_ORACLE_MAX_BODY_BYTES = 32 * 1024;
+
+class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super(`Request body exceeds ${VISA_ORACLE_MAX_BODY_BYTES} bytes`);
+    this.name = "RequestBodyTooLargeError";
+  }
+}
+
+async function readBodyWithLimit(
+  req: NextRequest,
+  maxBytes: number,
+): Promise<ArrayBuffer> {
+  const declaredLength = req.headers.get("content-length");
+  if (declaredLength !== null) {
+    const parsedLength = Number(declaredLength);
+    if (Number.isFinite(parsedLength) && parsedLength > maxBytes) {
+      throw new RequestBodyTooLargeError();
+    }
+  }
+
+  if (req.body === null) return new ArrayBuffer(0);
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel("request body limit exceeded");
+        throw new RequestBodyTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bounded = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bounded.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bounded.buffer;
+}
+
 function normalizeBackendBaseUrl(url: string): string {
   return url
     .trim()
@@ -27,6 +79,13 @@ async function proxy(req: NextRequest): Promise<Response> {
   const backendBase = getBackendBaseUrl();
   const url = new URL(req.url);
   const targetUrl = `${backendBase}${url.pathname}${url.search}`;
+  const isPublicVisaEvaluation =
+    url.pathname === VISA_ORACLE_EVALUATE_PATH && req.method === "POST";
+  // Never put Visa Oracle's semantic request_category query in logs or error
+  // metadata. The upstream still receives the full targetUrl.
+  const logTargetUrl = isPublicVisaEvaluation
+    ? `${backendBase}${url.pathname}`
+    : targetUrl;
 
   // Extract correlation ID for logging
   const correlationId = req.headers.get("X-Correlation-ID") || "unknown";
@@ -36,7 +95,7 @@ async function proxy(req: NextRequest): Promise<Response> {
 
   // Log requests in development
   if (process.env.NODE_ENV !== "production") {
-    logger.debug(`[Proxy] ${req.method} ${url.pathname} -> ${targetUrl}`, {
+    logger.debug(`[Proxy] ${req.method} ${url.pathname} -> ${logTargetUrl}`, {
       component: "AUTO",
       action: "log",
     });
@@ -57,6 +116,7 @@ async function proxy(req: NextRequest): Promise<Response> {
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  headers.delete("transfer-encoding");
 
   // Authentication: prefer Authorization header over cookie to prevent stale session leak.
   // When frontend sends Authorization: Bearer, STRIP nz_access_token from cookies
@@ -65,7 +125,16 @@ async function proxy(req: NextRequest): Promise<Response> {
   const cookies = req.cookies;
   const csrfCookie = cookies.get("nz_csrf_token");
 
-  if (hasAuthHeader) {
+  if (isPublicVisaEvaluation) {
+    // The evaluate endpoint is intentionally anonymous. Forwarding a portal
+    // session would unnecessarily bind sensitive interview facts to an
+    // authenticated identity at the backend boundary.
+    headers.delete("authorization");
+    headers.delete("proxy-authorization");
+    headers.delete("cookie");
+    headers.delete("x-api-key");
+    headers.delete("x-csrf-token");
+  } else if (hasAuthHeader) {
     // Strip nz_access_token from cookie header — Authorization takes precedence.
     // The browser auto-includes httpOnly cookies, so we must actively remove it.
     const existingCookie = headers.get("cookie") || "";
@@ -93,7 +162,7 @@ async function proxy(req: NextRequest): Promise<Response> {
   }
 
   // Always forward CSRF token as cookie
-  if (csrfCookie) {
+  if (csrfCookie && !isPublicVisaEvaluation) {
     const existingCookie = headers.get("cookie") || "";
     const csrfValue = `nz_csrf_token=${csrfCookie.value}`;
     headers.set(
@@ -109,14 +178,53 @@ async function proxy(req: NextRequest): Promise<Response> {
   // Next proxy is the only place where the httpOnly-adjacent cookie is visible),
   // so we inject it here for every state-changing request uniformly.
   const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-  if (csrfCookie && MUTATING_METHODS.has(req.method)) {
+  if (
+    csrfCookie &&
+    !isPublicVisaEvaluation &&
+    MUTATING_METHODS.has(req.method)
+  ) {
     headers.set("X-CSRF-Token", csrfCookie.value);
   }
 
   let body: BodyInit | undefined = undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
     const contentType = req.headers.get("content-type") || "";
-    if (contentType.includes("multipart/form-data")) {
+    if (isPublicVisaEvaluation) {
+      const mimeEssence = contentType.split(";", 1)[0].trim().toLowerCase();
+      if (mimeEssence !== "application/json") {
+        return new Response(
+          JSON.stringify({ detail: "Content-Type must be application/json" }),
+          {
+            status: 415,
+            headers: {
+              "Cache-Control": "no-store",
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+
+      try {
+        const buf = await readBodyWithLimit(req, VISA_ORACLE_MAX_BODY_BYTES);
+        body = buf.byteLength ? buf : undefined;
+      } catch (error) {
+        if (error instanceof RequestBodyTooLargeError) {
+          return new Response(
+            JSON.stringify({
+              detail: `Request body exceeds ${VISA_ORACLE_MAX_BODY_BYTES} bytes`,
+            }),
+            {
+              status: 413,
+              headers: {
+                "Cache-Control": "no-store",
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        }
+        throw error;
+      }
+    } else if (contentType.includes("multipart/form-data")) {
       // CRITICAL: When passing FormData to fetch, fetch generates its own boundary.
       // We must delete the original Content-Type header so fetch can set the correct one.
       headers.delete("content-type");
@@ -160,7 +268,7 @@ async function proxy(req: NextRequest): Promise<Response> {
       method: req.method,
       headers,
       redirect: "manual",
-      credentials: "include",
+      credentials: isPublicVisaEvaluation ? "omit" : "include",
     };
 
     // Only add body if it exists and method supports it
@@ -178,6 +286,23 @@ async function proxy(req: NextRequest): Promise<Response> {
     }
 
     let upstream = await fetch(targetUrl, requestInit);
+
+    // The anonymous evaluation request contains sensitive applicant facts.
+    // Never replay that body to a Location chosen by an upstream response,
+    // including same-origin redirects whose target could change later.
+    if (
+      isPublicVisaEvaluation &&
+      upstream.status >= 300 &&
+      upstream.status < 400
+    ) {
+      upstream = new Response(
+        JSON.stringify({ detail: "Unexpected upstream redirect" }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
 
     // Handle redirects manually to preserve cookies (fetch doesn't forward cookies on redirects)
     let redirectCount = 0;
@@ -213,7 +338,7 @@ async function proxy(req: NextRequest): Promise<Response> {
         headers,
         body: preserveMethod && body ? body : undefined, // Preserve body for 307/308
         redirect: "manual",
-        credentials: "include",
+        credentials: isPublicVisaEvaluation ? "omit" : "include",
       });
       redirectCount++;
     }
@@ -236,7 +361,13 @@ async function proxy(req: NextRequest): Promise<Response> {
     if (upstream.status >= 400) {
       const isAuthError = upstream.status === 401 || upstream.status === 403;
 
-      if (isAuthError) {
+      if (isAuthError && isPublicVisaEvaluation) {
+        logger.warn("[Proxy] Anonymous Visa Oracle upstream rejected request", {
+          component: "AUTO",
+          action: "upstream_rejected",
+          metadata: { status: upstream.status },
+        });
+      } else if (isAuthError) {
         const hasAuthCookie = !!cookies.get("nz_access_token");
         const authLogContext = {
           component: "AUTO",
@@ -247,7 +378,7 @@ async function proxy(req: NextRequest): Promise<Response> {
               csrfCookie: !!csrfCookie,
               hasAuthHeader: hasAuthHeader,
             },
-            targetUrl,
+            targetUrl: logTargetUrl,
             correlationId,
             userAgent: req.headers.get("user-agent")?.substring(0, 50),
           },
@@ -275,7 +406,7 @@ async function proxy(req: NextRequest): Promise<Response> {
             component: "AUTO",
             action: "error",
             metadata: {
-              targetUrl,
+              targetUrl: logTargetUrl,
               correlationId,
             },
           },
@@ -390,7 +521,7 @@ async function proxy(req: NextRequest): Promise<Response> {
         metadata: {
           method: req.method,
           pathname: url.pathname,
-          targetUrl,
+          targetUrl: logTargetUrl,
         },
       },
       toError(error),

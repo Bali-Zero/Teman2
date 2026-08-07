@@ -14,6 +14,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from backend.app.utils.logging_utils import sanitize_log_path
+from backend.middleware.visa_oracle_privacy import (
+    get_or_create_private_request_id,
+    is_private_visa_evaluation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +59,15 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         def _as_id(value: Any) -> str | None:
             return value if isinstance(value, str) and value else None
 
+        private_evaluation = is_private_visa_evaluation(request.method, request.url.path)
         request_id = (
-            _as_id(getattr(request.state, "request_id", None))
-            or _as_id(getattr(request.state, "correlation_id", None))
-            or str(uuid.uuid4())
+            get_or_create_private_request_id(request)
+            if private_evaluation
+            else (
+                _as_id(getattr(request.state, "request_id", None))
+                or _as_id(getattr(request.state, "correlation_id", None))
+                or str(uuid.uuid4())
+            )
         )
         request.state.request_id = request_id
         log_path = sanitize_log_path(request.url.path)
@@ -110,7 +119,11 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                                 path=log_path,
                                 threshold_ms=settings.latency_alert_threshold_ms,
                                 request_id=request_id,
-                                user_agent=request.headers.get("user-agent"),
+                                user_agent=(
+                                    None
+                                    if private_evaluation
+                                    else request.headers.get("user-agent")
+                                ),
                             )
                         except Exception as e:
                             logger.error("Failed to send latency alert: %s", e)
@@ -122,7 +135,10 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
 
         except Exception as exc:
             # Handle unhandled exceptions
-            logger.error("Unhandled exception in request %s: %s", request_id, exc)
+            if private_evaluation:
+                logger.error("Visa Oracle evaluation raised an unhandled exception")
+            else:
+                logger.error("Unhandled exception in request %s: %s", request_id, exc)
 
             # Calculate duration
             duration_ms = (time.time() - start_time) * 1000
@@ -135,9 +151,13 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                         status_code=500,
                         method=request.method,
                         path=log_path,
-                        error_detail=str(exc),
+                        error_detail=(
+                            "Visa Oracle evaluation failed" if private_evaluation else str(exc)
+                        ),
                         request_id=request_id,
-                        user_agent=request.headers.get("user-agent"),
+                        user_agent=(
+                            None if private_evaluation else request.headers.get("user-agent")
+                        ),
                     )
                 except Exception as alert_exc:
                     logger.error("Failed to send alert for exception: %s", alert_exc)
@@ -148,7 +168,11 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                 content={
                     "detail": "Internal server error",
                     "request_id": request_id,
-                    "error": str(exc) if logger.level == logging.DEBUG else "Internal server error",
+                    "error": (
+                        str(exc)
+                        if logger.level == logging.DEBUG and not private_evaluation
+                        else "Internal server error"
+                    ),
                 },
                 headers={"X-Request-ID": request_id},
             )
@@ -165,8 +189,10 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         """
         status_code = response.status_code
         method = request.method
-        path = sanitize_log_path(request.url.path)
-        user_agent = request.headers.get("user-agent", "Unknown")
+        raw_path = request.url.path
+        path = sanitize_log_path(raw_path)
+        private_evaluation = is_private_visa_evaluation(method, raw_path)
+        user_agent = None if private_evaluation else request.headers.get("user-agent", "Unknown")
 
         # Suppress noisy logs for known non-critical patterns
         _suppressed_patterns = {
@@ -180,10 +206,17 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             return
 
         # Log error
-        logger.warning(
-            f"[{request_id}] {method} {path} → {status_code} "
-            f"({duration_ms:.2f}ms) | UA: {user_agent[:50]}",
-        )
+        if private_evaluation:
+            logger.warning(
+                "Visa Oracle evaluation returned %s in %.2fms",
+                status_code,
+                duration_ms,
+            )
+        else:
+            logger.warning(
+                f"[{request_id}] {method} {path} → {status_code} "
+                f"({duration_ms:.2f}ms) | UA: {user_agent[:50]}",
+            )
 
         # Send alert if enabled and if it's a server error (5xx) or critical client error
         alert_service = self._resolve_alert_service(request)
@@ -201,17 +234,22 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             if should_alert:
                 try:
                     # Try to extract error detail from response body
-                    error_detail = None
+                    error_detail = "Visa Oracle evaluation failed" if private_evaluation else None
                     import json as _json
 
-                    try:
-                        if hasattr(response, "body"):
-                            body = response.body
-                            if isinstance(body, bytes):
-                                body_json = _json.loads(body.decode())
-                                error_detail = body_json.get("detail", body_json.get("message"))
-                    except (_json.JSONDecodeError, UnicodeDecodeError, AttributeError) as parse_exc:
-                        logger.debug("could not parse error response body: %s", parse_exc)
+                    if not private_evaluation:
+                        try:
+                            if hasattr(response, "body"):
+                                body = response.body
+                                if isinstance(body, bytes):
+                                    body_json = _json.loads(body.decode())
+                                    error_detail = body_json.get("detail", body_json.get("message"))
+                        except (
+                            _json.JSONDecodeError,
+                            UnicodeDecodeError,
+                            AttributeError,
+                        ) as parse_exc:
+                            logger.debug("could not parse error response body: %s", parse_exc)
 
                     await alert_service.send_http_error_alert(
                         status_code=status_code,

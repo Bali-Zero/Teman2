@@ -42,8 +42,12 @@ export function BookNav({
         ))}
       </aside>
 
-      {/* Mobile bottom bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex items-center justify-between px-6 py-4 bg-[#0c0c0e]/90 backdrop-blur border-t border-white/10">
+      {/* Mobile chapter bar stays in document flow so it never covers content. */}
+      <nav
+        data-testid="book-mobile-nav"
+        aria-label="Book chapters"
+        className="relative z-30 flex items-center justify-between border-b border-white/10 bg-[#0c0c0e] px-6 py-4 md:hidden"
+      >
         <button
           onClick={() => {
             const prev = CHAPTERS[activeIndex - 1];

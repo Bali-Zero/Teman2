@@ -118,6 +118,26 @@ describe("analytics", () => {
     });
   });
 
+  it("sends PII-free events without browser or user correlation identifiers", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT = "/analytics";
+    fetchMock.mockResolvedValueOnce({ ok: true } as Response);
+    const { trackPiiFreeEvent } = await loadAnalytics();
+
+    trackPiiFreeEvent("visa_oracle_v2_engine_result", {
+      state: "NEEDS_INPUT",
+    });
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, request] = fetchMock.mock.calls[0];
+    const body = JSON.parse((request as RequestInit).body as string);
+    expect(body).toMatchObject({
+      event_name: "visa_oracle_v2_engine_result",
+      properties: { state: "NEEDS_INPUT" },
+    });
+    expect(body).not.toHaveProperty("session_id");
+    expect(body).not.toHaveProperty("user_id");
+  });
+
   it("dispatches Visa Oracle funnel events to GA4 and the core funnel bus", async () => {
     const gtag = vi.fn();
     (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;

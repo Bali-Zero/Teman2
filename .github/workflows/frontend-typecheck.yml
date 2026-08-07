@@ -1,0 +1,105 @@
+name: Frontend typecheck (apps/mouth)
+
+# WHY THIS EXISTS (2026-08-07)
+#
+# The frontend IS typechecked today — but only by the Vercel build, because
+# apps/mouth/next.config.ts sets `typescript.ignoreBuildErrors: false`, so
+# `next build` fails on a type error. The gap is WHEN: main auto-deploys on
+# push, so a type error merged to main is discovered at DEPLOY time, by
+# breaking the production build for everyone, instead of at PR time by
+# failing one PR.
+#
+# `lighthouse.yml` does build mouth on pull requests, but behind a path filter
+# covering six areas — (marketing), (blog), (book), (visa-oracle),
+# components/funnel, components/seo. Everything else in apps/mouth, including
+# app/kbli/**, gets no compile in CI at all.
+#
+# This workflow closes the timing gap and nothing more. It does NOT claim to be
+# the only thing typechecking the frontend — that claim was made and measured
+# false; see the note in PR #3745.
+#
+# SENTINEL PATTERN (mirrors immune-enforcement.yml): the workflow triggers on
+# EVERY pull request so it stays required-safe by construction — a required
+# check combined with a `paths:` filter leaves innocent PRs permanently
+# "expected but never ran". Relevance is decided INSIDE the job, and the
+# expensive steps (npm ci + tsc) are skipped when no apps/mouth code changed.
+#
+# The changed-file set is enumerated from the MERGE-BASE via
+# scripts/ci/hotzone_changed_files.sh, never a two-dot diff against the base
+# tip: `pull_request.base.sha` is main's CURRENT tip, so a branch that is
+# behind main would be credited with every file main gained since the branch
+# point (W102, which hard-blocked an innocent PR #3057). That helper exits 3
+# when it cannot determine the set, and this job treats 3 as FAILURE — a blind
+# enumeration must never read as "nothing frontend changed, skip" (W84).
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-typecheck-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: apps/mouth compiles
+    runs-on: ubuntu-latest
+    # Floor is the CHECKOUT + npm ci + a full tsc over ~1000 files, not the
+    # script alone (scripts/lint_workflow_timeout_floor.py).
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Enumerate changed files (merge-base anchored, fail-loud)
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ ! -f scripts/ci/hotzone_changed_files.sh ]; then
+            echo "::error::enumerator missing — refusing to guess the changed set"
+            exit 1
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine the changed set (rc=$ENUM_RC) — failing rather than skipping"
+            exit 1
+          fi
+          RELEVANT=false
+          if printf '%s\n' "$CHANGED" | grep -qE '^apps/mouth/.*\.(ts|tsx)$|^apps/mouth/(package\.json|tsconfig.*\.json)$|^packages/(core|ts-schemas)/|^package-lock\.json$'; then
+            RELEVANT=true
+          fi
+          echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
+          echo "::notice::frontend-typecheck relevant=$RELEVANT ($(printf '%s\n' "$CHANGED" | grep -c .) changed files)"
+
+      - name: Setup Node.js
+        if: steps.diff.outputs.relevant == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspaces (npm ci, lockfile-bound)
+        if: steps.diff.outputs.relevant == 'true'
+        run: npm ci --no-audit --no-fund
+
+      # `npm run typecheck` at the repo root delegates to
+      # `npm run typecheck -w apps/mouth` -> `tsc --noEmit`.
+      - name: tsc --noEmit (apps/mouth)
+        if: steps.diff.outputs.relevant == 'true'
+        run: npm run typecheck
+
+      - name: Not a frontend change — nothing to compile
+        if: steps.diff.outputs.relevant != 'true'
+        run: echo "::notice::no apps/mouth TS/TSX (or shared package) in this diff; typecheck skipped"

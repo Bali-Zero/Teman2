@@ -22,9 +22,12 @@
     "test:e2e:report": "playwright show-report",
     "test:public-login-bundle": "node scripts/assert-public-login-bundle.mjs",
     "prepare": "husky",
+    "generate:openapi": "cd ../backend-rag && zsh -c 'source .venv/bin/activate && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python -m scripts.generate_openapi'",
     "generate:api": "openapi-typescript ../backend-rag/openapi.json -o src/lib/api/schema.d.ts",
-    "gen:api-types": "npx openapi-typescript ../../apps/backend-rag/openapi.json -o src/lib/api/schema.d.ts",
+    "gen:api-types": "npm run generate:api",
     "validate:openapi": "node ../../scripts/validate-openapi.cjs",
+    "validate:visa-oracle-openapi": "node scripts/validate-visa-oracle-openapi.mjs",
+    "contract:visa-oracle": "npm run generate:openapi && npm run generate:api && npm run validate:visa-oracle-openapi",
     "lighthouse": "node scripts/lighthouse-ci.mjs",
     "audit:links": "npx tsx scripts/audit-internal-links.ts"
   },

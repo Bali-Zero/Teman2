@@ -7,7 +7,7 @@
  * "do not touch the global data-theme").
  *
  * Token discipline: colors/motion here either (a) define a NEW `--oracle-*`
- * tier scoped to this route (tree/verdict/constellation identity), or (b)
+ * tier scoped to this route (tree/verdict identity), or (b)
  * consume the shared @balizero/core primitives/semantic tokens directly
  * (var(--accent-funnel), var(--motion-*), text/surface tokens). Nothing in
  * this file hardcodes a duration/easing that already has a token.
@@ -16,12 +16,9 @@
 .oracle-root {
   --oracle-radius-card: var(--radius-lg);
   --oracle-radius-chip: var(--radius-full);
-  --oracle-max-width: 46rem;
-  --oracle-gutter: clamp(1.25rem, 4vw, 3rem);
-
-  /* Constellation atmosphere — mood only, opacity capped at 0.15 so it can
-     never compete with the tree as the real data structure (spec). */
-  --oracle-star-opacity: 0.15;
+  --oracle-max-width: 64rem;
+  --oracle-reading-width: 46rem;
+  --oracle-gutter: clamp(1rem, 4vw, 3rem);
 
   /* Finding #11 (adversarial review 2026-07-17): dark, theme-invariant
    * text for on top of the brand-fixed WhatsApp green (`--accent-whatsapp`,
@@ -52,7 +49,7 @@
    * the faint tier at ~4.06:1 on a tinted surface, which we independently
    * reproduced). Solid hex tuned for AA headroom on both `--oracle-bg`
    * and `--oracle-bg-elevated`: ink-muted ~7.1:1, ink-faint ~5.7:1. */
-  --oracle-ink-muted: #4a5c54;
+  --oracle-ink-muted: #35473f;
   --oracle-ink-faint: #5b6a60;
   --oracle-canopy: #1f4d3d;
   --oracle-branch: #6b7a5e;
@@ -65,7 +62,7 @@
   --oracle-accent-gold: #a8791f;
   --oracle-focus-ring: #1f4d3d;
 
-  --oracle-state-eligible: #1c7a4d;
+  --oracle-state-eligible: #16683f;
   --oracle-state-likely: #2a6f97;
   /* Finding #11: #9a6a0c on `--oracle-state-conditional-bg` measured
    * ~4.06:1 — just under AA's 4.5:1 for normal text. Darkened to #7a5209
@@ -111,6 +108,66 @@
   --oracle-state-likely-not-bg: rgba(247, 140, 162, 0.14);
 }
 
+/* The route layout resolves the saved/system preference before the Oracle
+   subtree is painted. ThemeToggle aligns React state, then marks the route
+   ready so subsequent local toggles win without touching global data-theme. */
+html[data-oracle-theme-bootstrap="dark"]
+  .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready]) {
+  --oracle-bg: #0a100d;
+  --oracle-bg-elevated: #131c17;
+  --oracle-ink: rgba(240, 242, 236, 0.94);
+  --oracle-ink-muted: #a9b3ad;
+  --oracle-ink-faint: #8b968f;
+  --oracle-canopy: #7fc4a0;
+  --oracle-branch: #587d63;
+  --oracle-leaf-pending: rgba(240, 242, 236, 0.16);
+  --oracle-leaf-active: #8fe0b8;
+  --oracle-leaf-pruned: rgba(240, 242, 236, 0.08);
+  --oracle-border: rgba(240, 242, 236, 0.1);
+  --oracle-border-strong: rgba(240, 242, 236, 0.18);
+  --oracle-accent-gold: #e0bb6c;
+  --oracle-focus-ring: #8fe0b8;
+  --oracle-state-eligible: #4ade80;
+  --oracle-state-likely: #7dd3fc;
+  --oracle-state-conditional: #f5c451;
+  --oracle-state-likely-not: #f78ca2;
+  --oracle-state-eligible-bg: rgba(74, 222, 128, 0.14);
+  --oracle-state-likely-bg: rgba(125, 211, 252, 0.14);
+  --oracle-state-conditional-bg: rgba(245, 196, 81, 0.16);
+  --oracle-state-likely-not-bg: rgba(247, 140, 162, 0.14);
+}
+
+/* No-JS/CSP fallback: system-dark visitors still receive a complete visible
+   dark palette. When the bootstrap hint exists, it wins (including a saved
+   explicit light preference on a dark-system device). */
+@media (prefers-color-scheme: dark) {
+  html:not([data-oracle-theme-bootstrap])
+    .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready]) {
+    --oracle-bg: #0a100d;
+    --oracle-bg-elevated: #131c17;
+    --oracle-ink: rgba(240, 242, 236, 0.94);
+    --oracle-ink-muted: #a9b3ad;
+    --oracle-ink-faint: #8b968f;
+    --oracle-canopy: #7fc4a0;
+    --oracle-branch: #587d63;
+    --oracle-leaf-pending: rgba(240, 242, 236, 0.16);
+    --oracle-leaf-active: #8fe0b8;
+    --oracle-leaf-pruned: rgba(240, 242, 236, 0.08);
+    --oracle-border: rgba(240, 242, 236, 0.1);
+    --oracle-border-strong: rgba(240, 242, 236, 0.18);
+    --oracle-accent-gold: #e0bb6c;
+    --oracle-focus-ring: #8fe0b8;
+    --oracle-state-eligible: #4ade80;
+    --oracle-state-likely: #7dd3fc;
+    --oracle-state-conditional: #f5c451;
+    --oracle-state-likely-not: #f78ca2;
+    --oracle-state-eligible-bg: rgba(74, 222, 128, 0.14);
+    --oracle-state-likely-bg: rgba(125, 211, 252, 0.14);
+    --oracle-state-conditional-bg: rgba(245, 196, 81, 0.16);
+    --oracle-state-likely-not-bg: rgba(247, 140, 162, 0.14);
+  }
+}
+
 .oracle-root * {
   box-sizing: border-box;
 }
@@ -142,38 +199,6 @@
   font-feature-settings: "tnum" 1;
 }
 
-/* ─── Constellation atmosphere — static, mood only, never the structure ── */
-.oracle-constellation {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-        ellipse 60% 40% at 15% 8%,
-        color-mix(in srgb, var(--oracle-canopy) 16%, transparent),
-        transparent 70%
-      )
-      no-repeat,
-    radial-gradient(
-        ellipse 50% 35% at 90% 85%,
-        color-mix(in srgb, var(--oracle-accent-gold) 12%, transparent),
-        transparent 70%
-      )
-      no-repeat;
-  opacity: var(--oracle-star-opacity);
-}
-.oracle-constellation svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.6;
-}
-.oracle-constellation circle {
-  fill: var(--oracle-star);
-}
-
 /* ─── Shell layout ──────────────────────────────────────────────────────── */
 .oracle-shell {
   position: relative;
@@ -185,7 +210,7 @@
 .oracle-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-3);
   padding: var(--space-4) var(--oracle-gutter);
   border-bottom: 1px solid var(--oracle-border);
@@ -198,9 +223,13 @@
 .oracle-main {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
-  padding: var(--space-6) var(--oracle-gutter) var(--space-16);
+  min-width: 0;
+  width: 100%;
+  max-width: 90rem;
+  margin-inline: auto;
+  padding: clamp(1.25rem, 4vw, 2.5rem) var(--oracle-gutter) var(--space-12);
 }
 @media (min-width: 1024px) {
   .oracle-main {
@@ -215,12 +244,19 @@
 }
 .oracle-main__content {
   max-width: var(--oracle-max-width);
+  min-width: 0;
   width: 100%;
+}
+
+.oracle-main__content > .oracle-question,
+.oracle-main__content > .oracle-verdict-card {
+  max-width: var(--oracle-reading-width);
 }
 
 .oracle-footer {
   border-top: 1px solid var(--oracle-border);
-  padding: var(--space-4) var(--oracle-gutter);
+  padding: var(--space-4) var(--oracle-gutter)
+    calc(5.5rem + env(safe-area-inset-bottom));
 }
 .oracle-footer p {
   margin: 0;
@@ -229,10 +265,67 @@
   color: var(--oracle-ink-faint);
   max-width: 70ch;
 }
+.oracle-footer a {
+  display: inline-block;
+  margin-top: var(--space-2);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-xs);
+  text-underline-offset: 0.2em;
+}
 
-/* ─── Prototype badge — persistent, honest ─────────────────────────────── */
+.oracle-policy__topbar {
+  justify-content: space-between;
+}
+.oracle-policy {
+  width: min(100% - (2 * var(--oracle-gutter)), 46rem);
+  margin-inline: auto;
+  padding-block: clamp(2rem, 7vw, 5rem);
+}
+.oracle-policy h1 {
+  max-width: 18ch;
+  margin: var(--space-3) 0 var(--space-5);
+  font-size: clamp(2rem, 7vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+.oracle-policy__intro {
+  max-width: 62ch;
+  margin: 0 0 var(--space-10);
+  color: var(--oracle-ink-muted);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.65;
+}
+.oracle-policy section {
+  padding-block: var(--space-6);
+  border-top: 1px solid var(--oracle-border);
+}
+.oracle-policy section h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+.oracle-policy section p {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--oracle-ink-muted);
+  line-height: 1.7;
+}
+.oracle-policy__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-4) !important;
+}
+.oracle-policy__actions a {
+  color: var(--oracle-accent-gold);
+  text-underline-offset: 0.2em;
+}
+.oracle-policy > .oracle-unverified {
+  margin-top: var(--space-8);
+}
+
+/* Legacy badge compatibility; product status now lives in outcome provenance. */
 .oracle-badge {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: var(--space-1);
   padding: 0.3rem 0.7rem;
@@ -285,8 +378,9 @@
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: background-color var(--motion-duration-fast)
-    var(--motion-ease-standard);
+  /* State colors switch atomically. A cross-fade creates intermediate
+   * foreground/background pairs that fail AA even when both endpoints pass. */
+  transition: none;
 }
 .oracle-toggle-group button[aria-pressed="true"] {
   background: var(--oracle-canopy);
@@ -294,7 +388,7 @@
 }
 
 /* ─── Focus (WCAG AA — visible on every interactive element) ───────────── */
-.oracle-root :is(button, a, input, [tabindex]):focus-visible {
+.oracle-root :is(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--oracle-focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
@@ -469,6 +563,54 @@ button.oracle-tree__step--editable:hover {
   border: 0;
 }
 
+/* Visible branch breadcrumb — compact on mobile, editable where the reducer
+   can safely prune descendants. This is interview progress, never a list of
+   engine-supported visa paths. */
+.oracle-breadcrumb {
+  margin-bottom: var(--space-3);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.oracle-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--oracle-ink-faint);
+  font-size: var(--text-xs);
+}
+.oracle-breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.oracle-breadcrumb li:not(:last-child)::after {
+  content: "/";
+  color: var(--oracle-border-strong);
+}
+.oracle-breadcrumb button {
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--oracle-ink-muted);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+.oracle-breadcrumb [aria-current="step"] {
+  color: var(--oracle-ink);
+  font-weight: 700;
+}
+.oracle-breadcrumb__ellipsis {
+  min-height: 44px;
+}
+
 /* ─── Paths counter ─────────────────────────────────────────────────────── */
 .oracle-paths-counter {
   display: inline-flex;
@@ -519,11 +661,118 @@ button.oracle-tree__step--editable:hover {
   font-size: var(--text-sm);
   line-height: 1.5;
 }
+.oracle-decision-boundary {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--oracle-accent-gold);
+  background: var(--oracle-state-conditional-bg);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
 
 .oracle-options {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+.oracle-input-form,
+.oracle-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.oracle-number-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--oracle-ink-muted);
+}
+.oracle-form-control {
+  width: min(100%, 14rem);
+  min-height: 48px;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.oracle-form-control:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--oracle-canopy) 45%, transparent);
+  outline-offset: 2px;
+}
+.oracle-input-error {
+  margin: 0;
+  color: var(--oracle-state-likely-not);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.oracle-submit {
+  width: fit-content;
+}
+
+.oracle-country-picker__control {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  max-width: 32rem;
+}
+.oracle-country-picker__control .oracle-form-control {
+  width: min(100%, 24rem);
+}
+.oracle-country-picker__add {
+  min-height: 48px;
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.oracle-country-picker__add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.oracle-country-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.oracle-country-picker__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding-left: var(--space-3);
+  border: 1px solid var(--oracle-border-strong);
+  border-radius: var(--oracle-radius-chip);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  font-size: var(--text-sm);
+}
+.oracle-country-picker__chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: var(--space-1);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--oracle-ink-muted);
+  cursor: pointer;
+}
+.oracle-country-picker__chip button:hover {
+  color: var(--oracle-ink);
+  background: color-mix(in srgb, var(--oracle-canopy) 9%, transparent);
 }
 .oracle-option-card {
   display: flex;
@@ -685,6 +934,15 @@ button.oracle-tree__step--editable:hover {
 }
 
 /* ─── Confirmation card ─────────────────────────────────────────────────── */
+.oracle-confirmation__section + .oracle-confirmation__section {
+  margin-top: var(--space-5);
+}
+.oracle-confirmation__group-title {
+  margin: 0 0 var(--space-2);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
 .oracle-confirmation__group {
   border: 1px solid var(--oracle-border);
   border-radius: var(--oracle-radius-card);
@@ -778,10 +1036,210 @@ button.oracle-tree__step--editable:hover {
   margin-top: var(--space-8);
 }
 .oracle-outcome__section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--oracle-ink);
   margin: 0 0 var(--space-3);
+}
+.oracle-origin-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--oracle-border-strong);
+  border-left: 4px solid var(--oracle-accent-gold);
+  border-radius: var(--oracle-radius-card);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink-muted);
+}
+.oracle-origin-notice > svg {
+  flex: 0 0 auto;
+  color: var(--oracle-accent-gold);
+}
+.oracle-origin-notice :is(h2, p) {
+  margin-top: 0;
+}
+.oracle-origin-notice p {
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+.oracle-origin-notice[data-provenance="network_failure"],
+.oracle-origin-notice[data-provenance="client_guard"] {
+  border-left-color: var(--oracle-state-likely-not);
+}
+
+.oracle-candidate-list {
+  display: grid;
+  gap: var(--space-5);
+}
+.oracle-candidate-card {
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--oracle-border-strong);
+  border-radius: var(--oracle-radius-card);
+  background: var(--oracle-bg-elevated);
+}
+.oracle-candidate-card > * + * {
+  margin-top: var(--space-5);
+}
+.oracle-candidate-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.oracle-candidate-card__title {
+  margin: var(--space-1) 0 0;
+  color: var(--oracle-ink);
+  font-size: clamp(1.25rem, 3vw, 1.6rem);
+  line-height: 1.2;
+}
+.oracle-candidate-card__rank {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--oracle-radius-chip);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+.oracle-candidate-card__details {
+  display: grid;
+  gap: var(--space-5);
+}
+.oracle-axis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.oracle-axis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--radius-md);
+  background: color-mix(
+    in srgb,
+    var(--oracle-bg-elevated) 92%,
+    var(--oracle-canopy)
+  );
+}
+.oracle-axis__label {
+  color: var(--oracle-ink-faint);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.oracle-axis__value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--oracle-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.oracle-axis[data-status="supported"] .oracle-axis__value,
+.oracle-axis[data-status="available"] .oracle-axis__value {
+  color: var(--oracle-state-eligible);
+}
+.oracle-axis[data-status="conditional"] .oracle-axis__value,
+.oracle-axis[data-status="contact_required"] .oracle-axis__value,
+.oracle-axis[data-status="unknown"] .oracle-axis__value {
+  color: var(--oracle-state-conditional);
+}
+.oracle-axis[data-status="not_supported"] .oracle-axis__value,
+.oracle-axis[data-status="temporarily_unavailable"] .oracle-axis__value,
+.oracle-axis[data-status="not_offered"] .oracle-axis__value {
+  color: var(--oracle-state-likely-not);
+}
+
+.oracle-reason-list,
+.oracle-action-list,
+.oracle-source-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--oracle-ink-muted);
+}
+.oracle-reason-list li + li,
+.oracle-action-list li + li,
+.oracle-source-list li + li {
+  margin-top: var(--space-3);
+}
+.oracle-reason-list__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.oracle-reason-list__sources a,
+.oracle-source-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--oracle-canopy);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.oracle-action-list li {
+  color: var(--oracle-ink-muted);
+}
+.oracle-action-list .oracle-option-card {
+  width: 100%;
+}
+.oracle-source-list li {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-1);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+}
+.oracle-source-freshness {
+  width: fit-content;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--oracle-radius-chip);
+  background: var(--oracle-state-conditional-bg);
+  color: var(--oracle-state-conditional);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+.oracle-source-freshness[data-freshness="current"] {
+  background: var(--oracle-state-eligible-bg);
+  color: var(--oracle-state-eligible);
+}
+.oracle-source-freshness[data-freshness="stale"] {
+  background: var(--oracle-state-likely-not-bg);
+  color: var(--oracle-state-likely-not);
+}
+.oracle-unverified {
+  padding: var(--space-3);
+  border: 1px dashed var(--oracle-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--oracle-state-conditional-bg);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+}
+.oracle-unverified strong {
+  color: var(--oracle-state-conditional);
+}
+.oracle-unverified p {
+  margin: var(--space-2) 0 0;
+}
+.oracle-timeline p {
+  margin: 0;
+}
+.oracle-timeline p + p {
+  margin-top: var(--space-2);
+}
+.oracle-handoff-slot {
+  padding: var(--space-4);
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--oracle-radius-card);
+  background: var(--oracle-bg-elevated);
 }
 .oracle-table-scroll {
   overflow-x: auto;
@@ -1002,6 +1460,106 @@ button.oracle-tree__step--editable:hover {
   display: none;
 }
 
+/* ─── Responsive integrity: 320px through wide desktop ───────────────── */
+@media (max-width: 47.99rem) {
+  .oracle-axis-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 40rem) {
+  .oracle-candidate-card__details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .oracle-footer {
+    padding-right: max(var(--oracle-gutter), 12rem);
+    padding-bottom: var(--space-4);
+  }
+}
+
+@media (max-width: 29.99rem) {
+  .oracle-topbar {
+    padding: var(--space-2) var(--oracle-gutter);
+  }
+  .oracle-toggle-group button {
+    width: 44px;
+    padding-inline: 0;
+  }
+  .oracle-main {
+    gap: var(--space-4);
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-8);
+  }
+  .oracle-question {
+    gap: var(--space-4);
+  }
+  .oracle-headline {
+    font-size: clamp(1.65rem, 9vw, 2rem);
+  }
+  .oracle-option-card,
+  .oracle-tile {
+    padding: var(--space-3);
+  }
+  .oracle-country-picker__control {
+    flex-direction: column;
+  }
+  .oracle-country-picker__control .oracle-form-control,
+  .oracle-country-picker__add,
+  .oracle-number-input .oracle-form-control {
+    width: 100%;
+  }
+  .oracle-number-input {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .oracle-confirmation__row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .oracle-confirmation__label {
+    flex-basis: 100%;
+  }
+  .oracle-confirmation__value {
+    flex: 1 1 10rem;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .oracle-confirmation__assumption {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .oracle-candidate-card__header {
+    flex-direction: column;
+  }
+  .oracle-outcome {
+    gap: var(--space-6);
+    margin-top: var(--space-6);
+  }
+  .oracle-outcome-actions {
+    flex-direction: column;
+  }
+  .oracle-copy-cta,
+  .oracle-print-cta {
+    justify-content: center;
+    width: 100%;
+  }
+  .oracle-source-list {
+    padding-left: 1rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .oracle-root :is(button, a, input, select, textarea):focus-visible {
+    outline: 3px solid Highlight;
+  }
+  .oracle-axis,
+  .oracle-candidate-card,
+  .oracle-origin-notice,
+  .oracle-unverified {
+    border: 1px solid CanvasText;
+  }
+}
+
 /* ─── Reduced motion — cut everything that isn't structural ────────────── */
 @media (prefers-reduced-motion: reduce) {
   .oracle-root * {
@@ -1009,21 +1567,12 @@ button.oracle-tree__step--editable:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  /* The verdict tree→card shared-element morph is entirely opt-in from
-     JS (OracleShell only calls `document.startViewTransition` when
-     `useReducedMotion()` is false) — this is belt-and-braces so the name
-     is inert even if some future caller forgets that check. */
-  .oracle-tree__step,
-  .oracle-verdict-card {
-    view-transition-name: none !important;
-  }
 }
 
 /* ─── Print — clean verdict + answers + checklist + assumptions +
    disclaimer, no tree/atmosphere/toggles, black-on-white (design doc §3
    outcome-page anatomy "share/print/PDF") ───────────────────────────────── */
 @media print {
-  .oracle-constellation,
   .oracle-topbar,
   .oracle-main__tree,
   .oracle-tree-minimap-trigger,

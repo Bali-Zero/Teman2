@@ -1045,6 +1045,10 @@ class Settings(BaseSettings):
     google_drive_root_folder_id: str | None = (
         None  # Set via GOOGLE_DRIVE_ROOT_FOLDER_ID env var (team root folder)
     )
+    # Dedicated legal archive. This is intentionally distinct from the generic
+    # Drive root because primary legal sources require controlled retention.
+    legal_drive_root_folder_id: str | None = None  # LEGAL_DRIVE_ROOT_FOLDER_ID
+    legal_drive_impersonate_user: str | None = None  # LEGAL_DRIVE_IMPERSONATE_USER
     gdrive_individuals_folder_id: str | None = (
         None  # Set via GDRIVE_INDIVIDUALS_FOLDER_ID env var (parent for individual clients)
     )

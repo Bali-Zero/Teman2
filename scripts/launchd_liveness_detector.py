@@ -504,6 +504,48 @@ def _disabled_verdict(verdict: str, label: str, disabled_labels: set[str]) -> st
     return verdict
 
 
+# Labels whose non-zero LastExitStatus is an intentional REPORT, not a
+# crash — same convention organism_stale_detector.py's KNOWN_BENIGN_FAILED
+# already documents for pro.audit_launchd_daily ("exit 1 BY DESIGN = N
+# unhealthy jobs found"). Without this, each of these reads FAILING-HONESTLY
+# forever even on a run that behaved exactly as designed. Ward-round
+# 2026-08-07 (audit-launchd-daily-exit-by-design,
+# launchd-liveness-detector-self-flag) found 4:
+#   - com.balizero.audit-launchd.daily: exit reflects the unhealthy-job
+#     COUNT it just found — a true report, not a wrapper crash.
+#   - com.nuzantara.mcp-integrity: exit encodes RED/YELLOW/GREEN
+#     connectivity drift against a moving baseline, not a wrapper failure.
+#   - com.nuzantara.launchd-liveness-detector.daily: THIS detector's OWN
+#     cron. `main()` returns 1 whenever audit() finds an alarm-worthy job
+#     ELSEWHERE (`return 1 if alarms else 0`) — so a day with a real finding
+#     anywhere else makes the detector's own entry read FAILING-HONESTLY,
+#     self-flagging it for correctly reporting on something else.
+#   - com.balizero.zoho-mail-loop.daily: exit encodes a DEGRADED count for
+#     the day (draft failures), same convention as the W114/W115/W116 fixes.
+# Audit this list whenever a label is re-armed for a different purpose — a
+# genuinely broken job must NOT be added here to silence it.
+EXPECTED_NONZERO_LABELS: frozenset[str] = frozenset({
+    "com.balizero.audit-launchd.daily",
+    "com.nuzantara.mcp-integrity",
+    "com.nuzantara.launchd-liveness-detector.daily",
+    "com.balizero.zoho-mail-loop.daily",
+})
+
+
+def _expected_nonzero_verdict(verdict: str, label: str) -> str:
+    """Override FAILING-HONESTLY with EXPECTED-NONZERO for labels whose
+    non-zero exit is a documented reporting convention, not a crash.
+
+    Scoped STRICTLY to FAILING-HONESTLY, mirroring _disabled_verdict's own
+    scoping discipline: DEAD-GREEN / DEAD-NONZERO / ARMED-TO-NOTHING rest on
+    stronger evidence (a launch-failure marker, a missing program) that this
+    allowlist does not explain away — a listed label that starts showing one
+    of THOSE verdicts is still a real finding."""
+    if verdict == "FAILING-HONESTLY" and label in EXPECTED_NONZERO_LABELS:
+        return "EXPECTED-NONZERO"
+    return verdict
+
+
 def audit() -> list[dict]:
     findings: list[dict] = []
     if not LAUNCHAGENTS.exists():
@@ -542,6 +584,9 @@ def audit() -> list[dict]:
         # 2026-07-18 fix: a deliberate `launchctl disable` reads as DISABLED,
         # not NOT-LOADED — see _disabled_verdict.
         verdict = _disabled_verdict(verdict, label, disabled_labels)
+        # 2026-08-07 fix: a documented by-design non-zero exit reads as
+        # EXPECTED-NONZERO, not FAILING-HONESTLY — see _expected_nonzero_verdict.
+        verdict = _expected_nonzero_verdict(verdict, label)
 
         findings.append({
             "label": label,
@@ -604,6 +649,7 @@ def main() -> int:
                 flag = (
                     "🚨" if f["verdict"] in ALARM_VERDICTS
                     else "⛔" if f["verdict"] == "DISABLED"
+                    else "ℹ️ " if f["verdict"] == "EXPECTED-NONZERO"
                     else "⚠️ " if f["verdict"] == "FAILING-HONESTLY"
                     else "♻️ " if f["verdict"] == "RECOVERED"
                     else "✓ "
@@ -615,6 +661,8 @@ def main() -> int:
                     print(f"        ↳ program missing: {f['program']}")
                 if f["verdict"] == "DISABLED":
                     print("        ↳ deliberate disarm — launchctl disable (not an alarm)")
+                if f["verdict"] == "EXPECTED-NONZERO":
+                    print("        ↳ non-zero exit is a documented report, not a crash")
             print("\nDEAD-GREEN = launchd exit 0 but the log proves the worker never ran")
             print("(the W84 TCC vector). Cure is OPERATOR-ONLY: grant the launchd context")
             print("Full Disk Access in System Settings, OR relocate the wrapper outside ~/Desktop.")

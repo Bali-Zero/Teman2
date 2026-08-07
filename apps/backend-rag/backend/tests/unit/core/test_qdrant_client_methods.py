@@ -6,7 +6,7 @@ Target: >95% coverage
 import json
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -237,6 +237,162 @@ class TestQdrantClientDelete:
 
             with pytest.raises(QdrantConnectionError):
                 await client.delete(["1"])
+
+
+class TestQdrantClientPayloadGuards:
+    """Wire-level coverage for provenance repair and retrieval guard indexes."""
+
+    @pytest.fixture
+    def client(self):
+        return QdrantClient(qdrant_url="http://localhost:6333", collection_name="legal_unified")
+
+    @pytest.mark.asyncio
+    async def test_set_payload_merges_only_explicit_provenance_fields(self, client):
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        http_client = AsyncMock()
+        http_client.post = AsyncMock(return_value=response)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            result = await client.set_payload(
+                ["point-1"],
+                {"drive_file_id": "drive-1", "retrieval_scope": "historical_only"},
+            )
+
+        assert result == {"success": True, "updated": 1, "collection": "legal_unified"}
+        http_client.post.assert_awaited_once_with(
+            "/collections/legal_unified/points/payload",
+            json={
+                "points": ["point-1"],
+                "payload": {
+                    "drive_file_id": "drive-1",
+                    "retrieval_scope": "historical_only",
+                },
+            },
+            params={"wait": "true"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_set_payload_rejects_empty_target_or_payload(self, client):
+        with pytest.raises(ValueError, match="ids cannot be empty"):
+            await client.set_payload([], {"retrieval_scope": "historical_only"})
+        with pytest.raises(ValueError, match="payload cannot be empty"):
+            await client.set_payload(["point-1"], {})
+
+    @pytest.mark.asyncio
+    async def test_scope_reconciliation_uses_atomic_filter_operations(self, client):
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        http_client = AsyncMock()
+        http_client.post = AsyncMock(return_value=response)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            await client.set_payload_by_filter(
+                metadata_filter={"document_id": "PP_1_2024"},
+                payload={"retrieval_scope": "historical_only"},
+            )
+            await client.delete_by_filter(
+                metadata_filter={"document_id": "PP_1_2024"},
+            )
+
+        document_filter = {
+            "must": [
+                {
+                    "should": [
+                        {
+                            "key": "metadata.document_id",
+                            "match": {"value": "PP_1_2024"},
+                        },
+                        {"key": "document_id", "match": {"value": "PP_1_2024"}},
+                    ]
+                }
+            ]
+        }
+        assert http_client.post.await_args_list == [
+            call(
+                "/collections/legal_unified/points/payload",
+                json={
+                    "filter": document_filter,
+                    "payload": {"retrieval_scope": "historical_only"},
+                },
+                params={"wait": "true"},
+            ),
+            call(
+                "/collections/legal_unified/points/delete",
+                json={"filter": document_filter},
+                params={"wait": "true"},
+            ),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_ensure_keyword_payload_index_uses_qdrant_keyword_schema(self, client):
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        http_client = AsyncMock()
+        http_client.put = AsyncMock(return_value=response)
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            result = await client.ensure_keyword_payload_index("retrieval_scope")
+
+        assert result == {"success": True, "field_name": "retrieval_scope"}
+        http_client.put.assert_awaited_once_with(
+            "/collections/legal_unified/index",
+            params={"wait": "true"},
+            json={"field_name": "retrieval_scope", "field_schema": "keyword"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_scroll_strict_paginates_and_checks_flat_and_nested_tax_payloads(self):
+        client = QdrantClient(
+            qdrant_url="http://localhost:6333",
+            collection_name="tax_genius",
+        )
+        first = MagicMock()
+        first.raise_for_status = MagicMock()
+        first.json.return_value = {
+            "result": {
+                "points": [{"id": "one", "payload": {"document_id": "PP_1_2024"}}],
+                "next_page_offset": "next",
+            }
+        }
+        second = MagicMock()
+        second.raise_for_status = MagicMock()
+        second.json.return_value = {
+            "result": {
+                "points": [{"id": "two", "payload": {"document_id": "PP_1_2024"}}],
+                "next_page_offset": None,
+            }
+        }
+        http_client = AsyncMock()
+        http_client.post = AsyncMock(side_effect=[first, second])
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            points = await client.scroll_strict(
+                metadata_filter={"document_id": "PP_1_2024"},
+                page_size=1,
+            )
+
+        assert [point["id"] for point in points] == ["one", "two"]
+        first_payload = http_client.post.await_args_list[0].kwargs["json"]
+        document_filter = first_payload["filter"]["must"][0]
+        assert document_filter == {
+            "should": [
+                {"key": "metadata.document_id", "match": {"value": "PP_1_2024"}},
+                {"key": "document_id", "match": {"value": "PP_1_2024"}},
+            ]
+        }
+        assert http_client.post.await_args_list[1].kwargs["json"]["offset"] == "next"
+
+    @pytest.mark.asyncio
+    async def test_scroll_strict_propagates_qdrant_failure(self, client):
+        http_client = AsyncMock()
+        http_client.post = AsyncMock(side_effect=RuntimeError("qdrant unavailable"))
+
+        with patch.object(client, "_get_client", return_value=http_client):
+            with pytest.raises(RuntimeError, match="qdrant unavailable"):
+                await client.scroll_strict(
+                    metadata_filter={"document_id": "PP_1_2024"},
+                )
 
 
 class TestQdrantClientPeek:

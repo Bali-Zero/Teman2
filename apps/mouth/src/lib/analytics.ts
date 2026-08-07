@@ -64,6 +64,29 @@ export function trackEvent(
 }
 
 /**
+ * Send an event without the generic browser session or user identifiers.
+ *
+ * Callers remain responsible for a closed property allowlist. Visa Oracle
+ * uses this path so its policy-safe events cannot inherit the broader CRM
+ * analytics correlation boundary.
+ */
+export function trackPiiFreeEvent(
+  eventName: string,
+  properties: AnalyticsProperties,
+): void {
+  if (typeof window === "undefined") return;
+
+  const event: AnalyticsEvent = {
+    event_name: eventName,
+    timestamp: new Date().toISOString(),
+    properties,
+  };
+  if (process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT) {
+    sendAnalyticsEvent(event);
+  }
+}
+
+/**
  * Track view mode changes
  */
 export function trackViewModeChange(newMode: "kanban" | "list"): void {

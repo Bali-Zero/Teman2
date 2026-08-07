@@ -18,6 +18,10 @@ from backend.middleware.correlation import (
     reset_correlation_id,
     set_correlation_id,
 )
+from backend.middleware.visa_oracle_privacy import (
+    get_or_create_private_request_id,
+    is_private_visa_evaluation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +67,20 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
         # (back-compat), else fresh UUID. request_id mirrors correlation_id
         # unless a prior middleware already seeded request.state.request_id
         # (e.g., error_monitoring in a minimal test harness).
-        correlation_id = (
-            request.headers.get("X-Request-Id")
-            or request.headers.get("X-Correlation-ID")
-            or str(uuid.uuid4())
-        )
-        existing_request_id = getattr(request.state, "request_id", None)
-        request_id = existing_request_id or correlation_id
+        private_evaluation = is_private_visa_evaluation(request.method, request.url.path)
+        if private_evaluation:
+            # Ignore caller-controlled tracing IDs on the anonymous assessment
+            # boundary and use one server-generated opaque ID throughout.
+            correlation_id = get_or_create_private_request_id(request)
+            request_id = correlation_id
+        else:
+            correlation_id = (
+                request.headers.get("X-Request-Id")
+                or request.headers.get("X-Correlation-ID")
+                or str(uuid.uuid4())
+            )
+            existing_request_id = getattr(request.state, "request_id", None)
+            request_id = existing_request_id or correlation_id
 
         # Store in request state (legacy consumers) and in contextvar
         # (for logger filters, downstream async code, service layers).
@@ -84,7 +95,7 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
             "request_id": request_id,
             "method": request.method,
             "path": sanitize_log_path(request.url.path),
-            "query_params": dict(request.query_params),
+            "query_params": {} if private_evaluation else dict(request.query_params),
             "start_time": trace_start,
             "steps": [],
             "duration_ms": None,
@@ -115,10 +126,9 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
             duration_ms = (time.time() - trace_start) * 1000
             trace["duration_ms"] = duration_ms
             trace["status_code"] = 500
-            trace["error"] = {
-                "type": type(exc).__name__,
-                "message": str(exc),
-            }
+            trace["error"] = {"type": type(exc).__name__}
+            if not private_evaluation:
+                trace["error"]["message"] = str(exc)
 
             # Store trace
             self._store_trace(correlation_id, trace)

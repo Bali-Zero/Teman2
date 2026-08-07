@@ -1,10 +1,12 @@
 {
   "_doc": "Config for scripts/lint_public_asset_refs.py. See that file's docstring for the disease, the declared limits, and the shrink-only contract on known_missing.",
-
-  "roots": [{ "src": "apps/mouth/src", "public": "apps/mouth/public" }],
-
+  "roots": [
+    {
+      "src": "apps/mouth/src",
+      "public": "apps/mouth/public"
+    }
+  ],
   "code_suffixes": [".tsx", ".ts", ".jsx", ".js"],
-
   "_exclude_rationale": "Tests and .d.ts write asset paths that are deliberately fake (fixtures proving a fallback renders, OpenAPI examples). Flagging them would teach people to delete honest tests.",
   "exclude_path_globs": [
     "**/__tests__/**",
@@ -18,7 +20,6 @@
     "**/node_modules/**",
     "**/.next/**"
   ],
-
   "asset_extensions": [
     "mp4",
     "webm",
@@ -41,50 +42,10 @@
     "txt",
     "xml"
   ],
-
   "_ignore_rationale": "Build output and API routes are never public/ files.",
   "ignore_prefixes": ["/_next/", "/api/"],
-
   "_framework_rationale": "Served by the Next.js app/ file convention, absent from public/ BY DESIGN. Each verified live (HTTP 200) on balizero.com 2026-08-07 before being listed here — this list is a measurement, not an assumption.",
   "framework_served": ["/favicon.ico", "/robots.txt", "/sitemap.xml"],
-
-  "_known_missing_rationale": "REAL broken references, NOT exemptions. Shrink-only: the lint fails on any entry that stops being missing or stops being referenced, so this list cannot quietly outlive its defects. Each entry records what was MEASURED, not what was assumed.",
-  "known_missing": [
-    {
-      "path": "/static/blog/default-immigration.jpg",
-      "reason": "AIWriter.getDefaultCoverImage fallback. Measured 2026-08-07: HTTP 404 live, and apps/mouth/src/lib/blog/ai-writer.ts has ZERO importers — dead module, so no reader reaches it today. Cure is deleting the module or restoring the six covers; out of scope for the PR that added this lint."
-    },
-    {
-      "path": "/static/blog/default-business.jpg",
-      "reason": "Same dead AIWriter fallback set (ai-writer.ts, 0 importers). HTTP 404 live."
-    },
-    {
-      "path": "/static/blog/default-tax-legal.jpg",
-      "reason": "Same dead AIWriter fallback set (ai-writer.ts, 0 importers). HTTP 404 live."
-    },
-    {
-      "path": "/static/blog/default-property.jpg",
-      "reason": "Same dead AIWriter fallback set (ai-writer.ts, 0 importers). HTTP 404 live."
-    },
-    {
-      "path": "/static/blog/default-lifestyle.jpg",
-      "reason": "Same dead AIWriter fallback set (ai-writer.ts, 0 importers). HTTP 404 live."
-    },
-    {
-      "path": "/static/blog/default-tech.jpg",
-      "reason": "Same dead AIWriter fallback set (ai-writer.ts, 0 importers). HTTP 404 live."
-    },
-    {
-      "path": "/static/insights/property/unnamed-3.jpg",
-      "reason": "coverImage on a getMockArticle() entry in app/api/blog/articles/[category]/[slug]/route.ts. Measured 2026-08-07: that endpoint is LIVE (HTTP 200 JSON on /api/blog/articles/property/ota-delisting-bali-2026) and returns this path, which is HTTP 404; lib/api/blog/blog.api.ts:69 consumes the endpoint. Whether a rendered surface paints the cover was NOT traced — stated as unknown rather than guessed."
-    },
-    {
-      "path": "/static/insights/property/unnamed-4.jpg",
-      "reason": "Same live getMockArticle() cover set. HTTP 404 live."
-    },
-    {
-      "path": "/static/insights/property/unnamed-5.jpg",
-      "reason": "Same live getMockArticle() cover set. HTTP 404 live."
-    }
-  ]
+  "_known_missing_rationale": "REAL broken references, NOT exemptions. Shrink-only: the lint fails on any entry that stops being missing or stops being referenced, so this list cannot quietly outlive its defects. Each entry records what was MEASURED, not what was assumed. EMPTY as of 2026-08-07: the nine entries it was born with were all cured (6 vanished with the dead ai-writer.ts module, 3 were repointed at images that exist). An empty registry is the goal state, not a missing section.",
+  "known_missing": []
 }

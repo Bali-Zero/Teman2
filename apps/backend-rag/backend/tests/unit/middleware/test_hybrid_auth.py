@@ -175,6 +175,40 @@ async def test_dispatch_public(middleware, mock_request):
 
 
 @pytest.mark.asyncio
+async def test_dispatch_visa_oracle_public_telemetry_is_pii_free(middleware, mock_request):
+    mock_request.url.path = "/api/visa-oracle/evaluate"
+    mock_request.method = "POST"
+    mock_request.headers = {"user-agent": "identifying-browser-profile"}
+    mock_request.client.host = "203.0.113.42"
+    mock_request.state.correlation_id = "user-supplied-identifier"
+    call_next = AsyncMock(return_value=Response("OK"))
+
+    with (
+        patch("middleware.hybrid_auth.logger") as mock_logger,
+        patch("backend.app.metrics.public_endpoint_access_total") as total_metric,
+        patch("backend.app.metrics.public_endpoint_access_by_ip") as ip_metric,
+    ):
+        response = await middleware.dispatch(mock_request, call_next)
+
+    assert response.headers["X-Auth-Type"] == "public"
+    log_extra = mock_logger.info.call_args.kwargs["extra"]
+    assert log_extra["endpoint"] == "/api/visa-oracle/evaluate"
+    assert log_extra["privacy_restricted"] is True
+    assert "client_ip" not in log_extra
+    assert "user_agent" not in log_extra
+    assert "correlation_id" not in log_extra
+    serialized = repr(mock_logger.info.call_args)
+    assert "203.0.113.42" not in serialized
+    assert "identifying-browser-profile" not in serialized
+    assert "user-supplied-identifier" not in serialized
+    total_metric.labels.assert_called_once_with(
+        endpoint="/api/visa-oracle/evaluate",
+        method="POST",
+    )
+    ip_metric.labels.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_temporary_endpoints_removed(middleware, mock_request):
     """Test that TEMPORARY/FIX/DEBUG endpoints are no longer public"""
     temporary_endpoints = [
