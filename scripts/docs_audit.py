@@ -337,13 +337,48 @@ def walk_docs(repo: Path) -> List[Path]:
 
 
 REF_DELIM_CHARS = ("/", "`", "(")
+# ASCII-tree box-drawing characters (U+251C/2514/2502/2500 — distinct from the
+# ASCII pipe "|" used in Markdown tables, so a table cell never false-matches
+# this). Verified live 2026-08-07: docs/wr3/README.md and
+# docs/superpowers/specs/nlm-deep-research/PROGRESS.md both cite a sibling
+# file this way inside a fenced ``` listing, e.g. "├── runbook-supervisor.md".
+BOX_DRAWING_CHARS = "├└│─"
+# Marker used to recover a repo-relative path out of a home-relative one
+# (`~/Desktop/nuzantara/docs/x.md` or `~/nuzantara/docs/x.md` — both forms
+# occur in this repo's prose, depending on which machine's home layout the
+# writer had). Text-based, not filesystem-based — this repo's own directory
+# name, not the CWD at audit time.
+_HOME_REPO_MARKER = "nuzantara/"
 
 
 def _resolve_link_target(citing_file: Path, raw_target: str, repo: Path) -> str | None:
     """Resolve a markdown link's `(...)` target relative to the CITING file's
     own directory into a repo-relative POSIX path, or None for a URL/anchor-
-    only/outside-repo target. Mirrors compute_broken_links()'s resolution so
-    the two functions never disagree about what a link "points at".
+    only/outside-repo target.
+
+    Corrected 2026-08-07 (Defect D(iii), post-#3737 review): this function's
+    own path-resolution ALGORITHM is the same one `compute_broken_links()`
+    applies inline (join against `citing_file.parent`, `.resolve()`, then
+    require containment under `repo`) — the two never disagree about what a
+    GIVEN raw href string resolves to. But the two top-level CALLERS do not
+    scan the same candidate text: `compute_broken_links()` runs
+    `_strip_code_regions()` first, so a link written as a syntax EXAMPLE
+    inside a fenced block or inline-code span is never even considered a
+    real link there. `compute_refs_in()` deliberately does NOT strip code
+    regions before scanning (see its own docstring) — this repo's real
+    citations commonly live inside fenced ASCII-tree diagrams and backtick
+    spans, and stripping them would silently re-open the exact under-match
+    this file's `_has_bare_delimited_mention()` exists to close. So a link
+    inside a fenced example CAN be treated as a real citation by
+    `compute_refs_in()` while `compute_broken_links()` ignores the same text
+    entirely — a deliberate, asymmetric divergence between the two
+    functions' candidate sets, not a bug in this function's own resolution
+    logic. The previous docstring claimed the two "never disagree about
+    what a link points at" — true only for THIS function's own algorithm in
+    isolation, false as a description of the two callers' overall behavior.
+    Corrected outright rather than reworded into something vaguer: a
+    weakened claim is still a claim, and this one was checked against both
+    call sites, not just re-read for tone.
     """
     target = raw_target.strip()
     if not target or target.startswith(("http://", "https://", "mailto:", "#")):
@@ -357,6 +392,95 @@ def _resolve_link_target(citing_file: Path, raw_target: str, repo: Path) -> str 
     except ValueError:
         return None
     return rel.as_posix()
+
+
+def _strip_home_prefix(token: str) -> str | None:
+    """`~/Desktop/nuzantara/docs/x.md` / `~/nuzantara/docs/x.md` -> `docs/x.md`,
+    or None if `token` isn't home-relative or names no repo-root marker.
+
+    Live regression (2026-08-07): docs/audits/2026-05-02-cell-openclaw-
+    brainstorm/00b_briefing_v2.md cites its 3 sibling response files by a
+    fully-qualified `` `~/Desktop/nuzantara/docs/audits/.../NN_x_response.md` ``
+    path. Neither the repo-root-relative nor the citing-file-relative
+    resolution in `_has_bare_delimited_mention()` recognises a leading `~` —
+    pathlib's `/` operator treats a value starting with `/` as an ABSOLUTE
+    replacement of the left operand, not a join, so
+    `(citing_file.parent / "/Desktop/nuzantara/...")` silently discards
+    `citing_file.parent` entirely and resolves to a real filesystem path
+    outside `repo`, which `relative_to(repo)` then rejects — a citation lost
+    with no error. `rfind` (not `find`) picks the LAST `nuzantara/` segment,
+    so a path with an incidental earlier occurrence of that word still
+    resolves on the segment nearest the actual repo-relative suffix.
+    """
+    if not token.startswith("~/"):
+        return None
+    rest = token[2:]
+    idx = rest.rfind(_HOME_REPO_MARKER)
+    if idx == -1:
+        return None
+    return rest[idx + len(_HOME_REPO_MARKER) :]
+
+
+def _trailing_boundary_ok(content: str, end: int) -> bool:
+    """True if the text immediately after a basename match does not continue
+    what looks like a longer filename (`README.mdx`, `README.md.bak`).
+
+    A trailing "." is special-cased rather than rejected outright (Defect C
+    fix, post-#3737 review, 2026-08-07): `README.md.bak` (period followed by
+    more word characters — a real, different file) must still be rejected,
+    but `docs/a/TARGET.md.` at the end of a sentence (period followed by
+    whitespace/punctuation/end-of-string) must not — that period belongs to
+    the SENTENCE, not the filename. The pre-fix rule rejected any trailing
+    period unconditionally, so a bare (non-backticked) mention ending a
+    sentence silently lost its citation while the identical backticked form
+    (where a closing backtick, not a period, supplies the boundary) did not
+    — an asymmetry with no basis in what a real citation looks like, caught
+    by re-deriving this function's OWN guarantee against real prose rather
+    than trusting the prior implementation's inline comment.
+    """
+    n = len(content)
+    if end >= n:
+        return True
+    c = content[end]
+    if c.isalnum() or c in "_-":
+        return False
+    if c == ".":
+        nxt = content[end + 1] if end + 1 < n else ""
+        return not nxt.isalnum()
+    return True
+
+
+def _enclosed_in_open_paren_same_line(content: str, idx: int) -> bool:
+    """True if position `idx` sits inside an OPEN, unclosed "(" that starts
+    earlier on the SAME LINE — e.g. "(see X.md)" or "(vedi X.md)": the
+    basename is not immediately preceded by "(" (there is lead-in text like
+    "see "/"vedi " in between), but it is still structurally inside a
+    parenthetical — a real anchor, not accidental prose. Requires an actual
+    open paren, so the guilt case ("the file README.md is a common
+    convention", no parens anywhere on the line) still correctly returns
+    False. Bounded to the current line only — a paren opened on a prior
+    line is not "the same parenthetical" for this purpose.
+
+    Live regression (2026-08-07): docs/superpowers/reviews/2026-04-21-
+    partners-v1/POST-MERGE-deploy-runbook.md cites its sibling via
+    "(see ASYA-withholding-rates-runbook.md)" and docs/superpowers/sessions/
+    2026-04-17-strategic-8/MERGE-STRATEGY.md via "(vedi DOCKER-CLAUDE-
+    CLI.md)" — in both, the character immediately before the basename is a
+    plain space (from "see "/"vedi "), not "(" — the immediate-adjacency
+    check alone does not see them. A hardcoded phrase list ("see"/"vedi")
+    was deliberately rejected in favour of this structural check — this
+    repo's guard-over-match superscar (#3, cicatrix-superscar.md) calls out
+    exactly that shape ("escape-clause che tiene/scusa solo su UNA frase
+    esatta") as its own recurring disease.
+    """
+    line_start = content.rfind("\n", 0, idx) + 1
+    depth = 0
+    for c in content[line_start:idx]:
+        if c == "(":
+            depth += 1
+        elif c == ")" and depth > 0:
+            depth -= 1
+    return depth > 0
 
 
 def _has_bare_delimited_mention(
@@ -374,36 +498,69 @@ def _has_bare_delimited_mention(
     §3 — every substring guard eventually needs both a guilt AND an
     innocence corpus, pinned here in test_docs_audit.py):
       - the character immediately BEFORE the match must be a real delimiter
-        (`/`, a backtick, or `(`) — this alone rejects the basename-inside-
-        basename hole (ANTHROPIC_API_REFERENCE.md must never credit
-        API_REFERENCE.md: the char before "API_REFERENCE.md" there is "_",
-        not a delimiter).
+        (`/`, a backtick, `(`, a box-drawing character, or whitespace that
+        itself leads back to one of those — see below); this alone rejects
+        the basename-inside-basename hole (ANTHROPIC_API_REFERENCE.md must
+        never credit API_REFERENCE.md: the char before "API_REFERENCE.md"
+        there is "_", not a delimiter).
       - the character immediately AFTER the match must not be a word
-        character either — so "README.mdx" or "README.md.bak" can't credit
-        "README.md" by mere prefix.
+        character, and a trailing "." only survives if what follows it is
+        NOT a word character either (`_trailing_boundary_ok` — Defect C fix,
+        2026-08-07): "README.mdx" / "README.md.bak" still can't credit
+        "README.md" by mere prefix, but a bare, non-backticked citation that
+        happens to end a SENTENCE ("...docs/a/TARGET.md.") is no longer
+        punished for it just because the backticked form isn't.
       - when the leading delimiter is "/", the full contiguous path token
-        walked backward from the match (e.g. "docs/sub/README.md" or
-        "../sub/README.md") must resolve to `target_rel_posix` under EITHER
-        of two conventions actually observed in this repo's prose: (a)
-        repo-root-relative (writers paste the "docs/..." path they'd type
-        from the repo root, regardless of where the citing file lives), or
-        (b) citing-file-relative, exactly like a real markdown link (so a
-        backticked "../sibling.md" resolves against the CITING file's own
-        directory, not the repo root — this is what makes a genuine
-        sibling reference like `` `../assignment-mismatches-2026-04-20.md` ``
-        count; a naive trailing-segment string match does NOT handle ".."
-        and was measured to silently drop this exact real citation before
-        this fix). Two different docs/**/README.md files must still not
-        credit each other purely because both happen to end in
-        "README.md" preceded by a slash — neither resolution makes that
-        happen, since neither produces the OTHER file's actual path.
-      - a backtick or "(" immediately before a BARE basename (no path
-        prefix at all, e.g. `` `README.md` ``) is accepted with no further
-        check — a deliberate, documented BROADENING beyond bare-markdown-
-        link anchoring (see compute_refs_in docstring for the decision and
-        the measured impact of NOT making this choice).
+        walked backward from the match (e.g. "docs/sub/README.md",
+        "../sub/README.md", or "~/Desktop/nuzantara/docs/sub/README.md")
+        must resolve to `target_rel_posix` under ONE of three conventions
+        actually observed in this repo's prose: (a) repo-root-relative
+        (writers paste the "docs/..." path they'd type from the repo root,
+        regardless of where the citing file lives), (b) citing-file-
+        relative, exactly like a real markdown link (so a backticked
+        "../sibling.md" resolves against the CITING file's own directory,
+        not the repo root — this is what makes a genuine sibling reference
+        like `` `../assignment-mismatches-2026-04-20.md` `` count; a naive
+        trailing-segment string match does NOT handle ".." and was measured
+        to silently drop this exact real citation before the original
+        #3737 fix), or (c) home-relative (`_strip_home_prefix` — a fully-
+        qualified `~/Desktop/nuzantara/...` or `~/nuzantara/...` path, the
+        form this repo's own audit-brainstorm docs use to cross-reference
+        their siblings). Two different docs/**/README.md files must still
+        not credit each other purely because both happen to end in
+        "README.md" preceded by a slash — none of the three resolutions
+        makes that happen, since none produces the OTHER file's actual
+        path.
+      - a BARE basename (no path prefix at all) is credited only if it
+        resolves, SIBLING-style, against the CITING file's own directory
+        (`_resolve_link_target(citing_file, basename, repo)` — i.e.
+        `citing_file.parent / basename` must literally BE `target`). This
+        replaces the #3737 original's "accept with no further check" for a
+        backtick/`(`-preceded bare basename, which was an over-match found
+        live 2026-08-07: a `` `README.md` `` mention anywhere in the repo,
+        about ANY README, credited EVERY docs/**/README.md target
+        regardless of directory (measured: all 14 docs/**/README.md rows
+        sitting at near-identical refs_in, entirely from this hole — see
+        compute_refs_in's docstring). The sibling requirement is what a
+        bare mention actually means in this repo's prose: a doc names its
+        OWN neighbour without spelling out the shared directory. Reached
+        from four surface shapes, all sibling-anchored the same way:
+          * immediately after a backtick or "(" (the original two, now
+            resolved instead of blindly accepted);
+          * immediately after (or, skipping whitespace, preceded by) a box-
+            drawing character (`BOX_DRAWING_CHARS`) — an ASCII-tree child
+            listing, e.g. "├── runbook-supervisor.md";
+          * inside an unclosed "(" earlier on the same line
+            (`_enclosed_in_open_paren_same_line` — "(see X.md)", "(vedi
+            X.md)"), gated to when the immediately-preceding character is
+            whitespace, so it only ever widens the two directly-adjacent
+            cases to tolerate a short lead-in word, never bare undelimited
+            prose (the guilt case has no enclosing paren at all).
+        A bare, wholly UNDELIMITED prose mention ("the file README.md is a
+        common convention") still matches none of these and is rejected —
+        the one shape this fix exists to kill (see compute_refs_in's
+        docstring for the measured impact of the broadening as a whole).
     """
-    n = len(content)
     blen = len(basename)
     idx = 0
     while True:
@@ -411,35 +568,56 @@ def _has_bare_delimited_mention(
         if idx == -1:
             return False
         end = idx + blen
-        # "." is excluded too, not just word chars: "README.md.bak" and
-        # "README.mdx" must not credit "README.md" by mere prefix — a "."
-        # right after the match means the real filename continues past it.
-        trailing_ok = end >= n or not (content[end].isalnum() or content[end] in "_-.")
-        if idx == 0 or not trailing_ok:
+        if idx == 0 or not _trailing_boundary_ok(content, end):
             idx = end
             continue
         prev = content[idx - 1]
-        if prev not in REF_DELIM_CHARS:
+
+        if prev == "/":
+            # Walk backward through path-token characters (incl. "." so a
+            # leading "../" or "./" is captured whole, and "~" so a home-
+            # relative prefix is captured whole too) to recover the full
+            # cited path, then try all three resolutions described above.
+            start = idx - 1
+            while start > 0 and (
+                content[start - 1].isalnum() or content[start - 1] in "_-./~"
+            ):
+                start -= 1
+            token = content[start:end]
+            # (a) repo-root-relative: the token IS the repo-relative path.
+            if token.lstrip("/") == target_rel_posix:
+                return True
+            # (b) citing-file-relative: resolve against the citing file's
+            # own directory, exactly like a real markdown link.
+            if _resolve_link_target(citing_file, token, repo) == target_rel_posix:
+                return True
+            # (c) home-relative: strip a leading "~/.../nuzantara/" prefix.
+            stripped = _strip_home_prefix(token)
+            if stripped is not None and stripped == target_rel_posix:
+                return True
             idx = end
             continue
-        if prev != "/":
-            # Bare basename preceded directly by a backtick or "(" — accept.
-            return True
-        # prev == "/": walk backward through path-token characters (incl.
-        # "." so a leading "../" or "./" is captured whole) to recover the
-        # full cited path, then try BOTH resolutions described above.
-        start = idx - 1
-        while start > 0 and (
-            content[start - 1].isalnum() or content[start - 1] in "_-./"
-        ):
-            start -= 1
-        token = content[start:end]
-        # (a) repo-root-relative: the token IS the repo-relative path.
-        if token.lstrip("/") == target_rel_posix:
-            return True
-        # (b) citing-file-relative: resolve against the citing file's own
-        # directory, exactly like a real markdown link (_resolve_link_target).
-        if _resolve_link_target(citing_file, token, repo) == target_rel_posix:
+
+        # Bare basename (no path prefix): find whether there is a real
+        # anchor immediately before it — backtick, "(", or a box-drawing
+        # character reached directly or by skipping back over whitespace
+        # (tree indentation), or (whitespace-gated) an unclosed "(" earlier
+        # on the line. Anything else (alnum, "_", punctuation with no
+        # enclosing paren) is not an anchor — rejected, matching the
+        # pre-#3737 guilt cases unchanged.
+        bare_anchor = False
+        if prev in ("`", "(") or prev in BOX_DRAWING_CHARS:
+            bare_anchor = True
+        elif prev in (" ", "\t"):
+            j = idx - 1
+            while j >= 0 and content[j] in " \t":
+                j -= 1
+            if j >= 0 and content[j] in BOX_DRAWING_CHARS:
+                bare_anchor = True
+            elif _enclosed_in_open_paren_same_line(content, idx):
+                bare_anchor = True
+
+        if bare_anchor and _resolve_link_target(citing_file, basename, repo) == target_rel_posix:
             return True
         idx = end
     return False
@@ -464,26 +642,40 @@ def compute_refs_in(repo: Path, target: Path) -> int:
     refs_in==0 overnight if done too strictly.
 
     DECISION, pinned by the guilt/innocence corpus in test_docs_audit.py:
-    an UNLINKED backticked/parenthesized bare filename (`` `README.md` ``,
-    no path, no `[text](...)` syntax) DOES count as a citation. This repo's
-    docs corpus commonly cites a doc that way (backtick-wrapped filename in
-    prose, no markdown link). Measured directly (2026-08-07, this exact
-    implementation, not a prior estimate) against the old substring scan
-    across every docs/** + reference-root candidate pair (979-file
-    universe): 561 files had refs_in>0 under the old scan, 533 under this
-    one — 28 lose their only (substring-inflated) inbound reference, ZERO
-    gain one. Of those 28, 16 are ALSO already past their own
-    orphan_eligible_on and not whitelisted — i.e. this counting fix alone
-    makes them newly eligible for the scheduled --organ refresh's NEXT run
-    to archive (this PR's own --gate-consistent regen does not itself flip
-    any of them — verified empirically, zero ARCHIVED-status rows changed
-    in this PR's diff — --gate-consistent only ever carries forward an
-    ALREADY-committed flip, never invents one). See the PR body for the
-    full 16-doc list: that archival is intentionally left as a separate,
-    later decision, not a side effect of this fix. A bare, UNDELIMITED
-    prose mention ("the file README.md is a common convention") does NOT
-    count — that is the
-    one shape this fix exists to kill.
+    an UNLINKED backticked/parenthesized/box-drawing/enclosed-paren bare
+    filename (`` `README.md` ``, "├── README.md", "(see README.md)" — no
+    path, no `[text](...)` syntax) DOES count as a citation, but ONLY when
+    it resolves SIBLING-style against the citing file's own directory (see
+    `_has_bare_delimited_mention`'s docstring for the exact rule and why —
+    corrected 2026-08-07, post-#3737 review: the original "accept with no
+    further check" for this shape was itself an over-match, measured live —
+    a `` `README.md` `` mention anywhere in the repo credited EVERY
+    docs/**/README.md target regardless of directory).
+
+    UNIVERSE, corrected 2026-08-07 (Defect D(i), post-#3737 review): the
+    prior text here said "979-file universe" for a refs_in>0/==0 count —
+    979 is the CANDIDATE set size (row targets + the extra root reference
+    files + apps/*/README.md, which are only ever CITERS, never targets
+    themselves). The count that actually matters — how many of the ROWS
+    `classify()` acts on sit at refs_in>0 — is over the ROW set, measured
+    at 948 (`len(walk_docs(repo))`) on the same day. Re-measured on THIS
+    exact implementation, same day, same row universe (948): the pre-#3737
+    substring scan (`basename in text`, no anchoring at all) gives 530 rows
+    at refs_in>0; this implementation gives 471. The fix, LIKE #3737's
+    original, is a pure NARROWING of the substring scan — every anchored
+    match (link-resolution, path-form, or sibling-resolved bare mention)
+    necessarily contains `basename` as a literal substring too, so refs_in
+    under this rule can never exceed the substring count for the same
+    target: 0 rows moved OFF refs_in==0 relative to the substring scan,
+    verified empirically on this exact 948-row run. See the PR body for the
+    corpus-level archival-impact list (which specific docs newly sit at
+    refs_in==0, and which of those are past their own orphan_eligible_on) —
+    a point-in-time report, deliberately not duplicated as a number in this
+    docstring, where it would go stale the next time the corpus changes
+    without anyone re-measuring it (the exact failure this correction
+    exists to fix). A bare, UNDELIMITED prose mention ("the file README.md
+    is a common convention") does NOT count — that is the one shape this
+    fix exists to kill.
     """
     basename = target.name
     target_rel_posix = target.relative_to(repo).as_posix()

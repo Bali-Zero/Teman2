@@ -2400,9 +2400,20 @@ def test_refs_in_backticked_full_relative_path_counts(tmp_path):
 def test_refs_in_unlinked_backticked_bare_basename_counts(tmp_path):
     """INNOCENCE (documented broadening, decision pinned here): an unlinked
     backticked BARE filename (no path, no markdown-link syntax) still
-    counts — the deliberate broadening beyond strict link-only anchoring
-    (see compute_refs_in's docstring for the measured impact of NOT making
-    this choice: 28 real citations lost vs. 0 under this rule)."""
+    counts, when it resolves sibling-style against the citing file's own
+    directory — the deliberate broadening beyond strict link-only/path-only
+    anchoring. Measured impact of NOT making this choice (i.e. disabling
+    the whole bare-no-path branch — backtick, "(", box-drawing, and
+    enclosed-paren alike — keeping only markdown links and full-path
+    mentions): re-measured 2026-08-07 against THIS implementation, same
+    948-row universe as compute_refs_in's docstring — 69 rows currently at
+    refs_in>0 would drop to refs_in==0, ZERO would gain one. (The original
+    #3737 commit's docstring here claimed "28 real citations lost vs. 0
+    under this rule" for the narrower pre-review shape of this same
+    broadening — a number never re-measured after review found the
+    broadening itself was partly an over-match; corrected rather than
+    reused, per this repo's discipline of re-deriving a stale number
+    instead of copying it forward.)"""
     sys.path.insert(0, str(AUDIT_SCRIPT.parent))
     import docs_audit  # noqa: E402
 
@@ -2601,3 +2612,317 @@ def test_refs_in_real_inbound_link_keeps_doc_off_the_orphan_path(tmp_path):
         "a doc with a real inbound link must never be orphan-eligible — "
         f"cells: {cells}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Post-#3737 follow-up (2026-08-07): the bare-mention broadening in the
+# original fix accepted a backtick/"("-preceded BARE basename with NO
+# further check — an over-match found live: a `` `README.md` `` mention
+# anywhere in the repo, about ANY README, credited EVERY docs/**/README.md
+# target regardless of directory. It also missed three real citation shapes:
+# a fully-qualified `~/...` home path, a "(see X.md)"/"(vedi X.md)" sibling
+# mention, and a name inside a fenced ASCII-tree diagram. Both classes are
+# fixed by requiring a bare basename to resolve SIBLING-style (against the
+# CITING file's own directory) instead of being accepted blind — see
+# _has_bare_delimited_mention's docstring.
+# ---------------------------------------------------------------------------
+
+
+def test_refs_in_link_syntax_non_resolving_paren_does_not_leak_into_bare_fallback(
+    tmp_path,
+):
+    """GUILT — the exact Defect A repro: a real markdown link `[text](README.md)`
+    that resolves to docs/a/README.md must NOT ALSO be picked up by the bare-
+    mention fallback for an unrelated docs/b/README.md, just because the raw
+    link text "(README.md)" is a literal substring match for the fallback's
+    "(" delimiter. The original #3737 fallback blind-accepted ANY basename
+    preceded by "(" — including the "(" that opens a markdown link's OWN
+    target syntax, even after `_resolve_link_target` had already correctly
+    said that link does not point at this target."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "a").mkdir(parents=True)
+    (repo / "docs" / "b").mkdir(parents=True)
+    (repo / "docs" / "a" / "citer.md").write_text(
+        "[the a readme](README.md)\n", encoding="utf-8"
+    )
+    (repo / "docs" / "a" / "README.md").write_text("# A readme\n", encoding="utf-8")
+    target_b = repo / "docs" / "b" / "README.md"
+    target_b.write_text("# B readme\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target_b) == 0
+    # Innocence, same fixture: the link DOES still count for its real target.
+    assert docs_audit.compute_refs_in(repo, repo / "docs" / "a" / "README.md") == 1
+
+
+def test_refs_in_bare_backtick_mention_requires_sibling_directory(tmp_path):
+    """GUILT — live regression pin (2026-08-07): a `` `README.md` `` bare
+    mention in docs/x/citer.md, about the readme IN docs/x/, must not credit
+    an unrelated docs/y/README.md just because both basenames match. This is
+    the exact shape measured live: docs/DOCSYNC_SENTINEL.md mentions
+    `` `README.md` `` meaning the repo-root README, and under the #3737
+    original that blindly credited docs/wr3/README.md and 13 other unrelated
+    docs/**/README.md files."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "x").mkdir(parents=True)
+    (repo / "docs" / "y").mkdir(parents=True)
+    (repo / "docs" / "x" / "citer.md").write_text(
+        "`README.md` refers to the project readme.\n", encoding="utf-8"
+    )
+    target_y = repo / "docs" / "y" / "README.md"
+    target_y.write_text("# Y readme\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target_y) == 0
+
+
+def test_refs_in_bare_backtick_mention_same_directory_counts(tmp_path):
+    """INNOCENCE, twin of the above: the SAME bare mention, when the target
+    actually IS in the citing file's own directory, still counts — the
+    sibling-resolution fix narrows the over-match, it does not kill the
+    broadening itself."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "x").mkdir(parents=True)
+    (repo / "docs" / "x" / "citer.md").write_text(
+        "`README.md` refers to the project readme.\n", encoding="utf-8"
+    )
+    target_x = repo / "docs" / "x" / "README.md"
+    target_x.write_text("# X readme\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target_x) == 1
+
+
+def test_refs_in_ascii_tree_sibling_child_counts(tmp_path):
+    """INNOCENCE — live regression pin: docs/wr3/README.md lists its sibling
+    docs/wr3/runbook-supervisor.md inside a fenced ASCII-tree diagram
+    ("├── runbook-supervisor.md"). Box-drawing characters (├ └ │ ─) must be
+    recognised as a leading anchor for a bare, sibling-resolved mention."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "wr3").mkdir(parents=True)
+    (repo / "docs" / "wr3" / "README.md").write_text(
+        "# WR3\n\n```\ndocs/wr3/\n"
+        "├── README.md                # this file\n"
+        "└── runbook-supervisor.md    # supervisor procedures\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    target = repo / "docs" / "wr3" / "runbook-supervisor.md"
+    target.write_text("# Runbook\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_ascii_tree_wrong_directory_rejected(tmp_path):
+    """GUILT, twin of the above: the identical tree LINE ("├── SIBLING.md")
+    living in a citing file whose own directory does NOT contain the real
+    target must not credit a same-basename file that lives elsewhere — the
+    ASCII-tree anchor is sibling-scoped like every other bare-mention shape,
+    not a blanket accept."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "other").mkdir(parents=True)
+    (repo / "docs" / "real").mkdir(parents=True)
+    (repo / "docs" / "other" / "README.md").write_text(
+        "```\n├── SIBLING.md    # some unrelated file\n```\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "real" / "SIBLING.md"
+    target.write_text("# Sibling\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_see_paren_sibling_mention_counts(tmp_path):
+    """INNOCENCE — live regression pin: docs/superpowers/reviews/2026-04-21-
+    partners-v1/POST-MERGE-deploy-runbook.md cites its sibling via
+    "(see ASYA-withholding-rates-runbook.md)". The character immediately
+    before the basename is a plain space (from "see "), not "(" — this
+    requires the enclosed-open-paren check, not the immediate-adjacency one."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "p").mkdir(parents=True)
+    (repo / "docs" / "p" / "citer.md").write_text(
+        "Prerequisite confirmed (see SIBLING.md).\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "p" / "SIBLING.md"
+    target.write_text("# Sibling\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_vedi_paren_sibling_mention_counts(tmp_path):
+    """INNOCENCE — live regression pin, different lead-in word: docs/
+    superpowers/sessions/2026-04-17-strategic-8/MERGE-STRATEGY.md cites its
+    sibling via "(vedi DOCKER-CLAUDE-CLI.md)". Proves the enclosed-paren
+    check is a STRUCTURAL anchor (an actual open "("), not a hardcoded
+    "see"/"vedi" phrase list — cicatrix-superscar.md family #3 calls out a
+    fragile phrase list as its own recurring disease."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "p").mkdir(parents=True)
+    (repo / "docs" / "p" / "citer.md").write_text(
+        "Bloccato da Dockerfile update (vedi OTHER.md).\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "p" / "OTHER.md"
+    target.write_text("# Other\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_paren_mention_wrong_directory_rejected(tmp_path):
+    """GUILT, twin of the two above: "(see SIBLING.md)" must not credit a
+    same-basename file living OUTSIDE the citing file's own directory."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "p").mkdir(parents=True)
+    (repo / "docs" / "q").mkdir(parents=True)
+    (repo / "docs" / "p" / "citer.md").write_text(
+        "Prerequisite confirmed (see SIBLING.md).\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "q" / "SIBLING.md"
+    target.write_text("# Sibling\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_closed_paren_before_bare_mention_rejected(tmp_path):
+    """GUILT: the enclosed-paren anchor requires the "(" to still be OPEN
+    (unclosed) at the point of the match. A paren that already closed
+    earlier on the same line is not an anchor for a later, unrelated bare
+    mention — otherwise ANY parenthetical anywhere on a line would license
+    crediting any basename appearing later on it."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "p").mkdir(parents=True)
+    (repo / "docs" / "p" / "citer.md").write_text(
+        "(unrelated aside) then casually mentions SIBLING.md later.\n",
+        encoding="utf-8",
+    )
+    target = repo / "docs" / "p" / "SIBLING.md"
+    target.write_text("# Sibling\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_home_prefixed_desktop_path_counts(tmp_path):
+    """INNOCENCE — live regression pin: docs/audits/2026-05-02-cell-openclaw-
+    brainstorm/00b_briefing_v2.md cites its 3 sibling response files by a
+    fully-qualified `` `~/Desktop/nuzantara/docs/audits/.../NN_x.md` `` path.
+    Neither the repo-root-relative nor citing-file-relative resolution
+    recognised a leading "~" before this fix — pathlib's "/" operator
+    silently discards `citing_file.parent` for an absolute-looking RHS."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "h").mkdir(parents=True)
+    (repo / "docs" / "h" / "citer.md").write_text(
+        "- `~/Desktop/nuzantara/docs/h/TARGET.md` (round 1)\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "h" / "TARGET.md"
+    target.write_text("# Target\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_home_prefixed_no_desktop_path_counts(tmp_path):
+    """INNOCENCE — a different machine's home layout (no "Desktop/" segment,
+    e.g. `~/nuzantara/...` on M5) must resolve the same way: the marker
+    search is for "nuzantara/" itself, not a fixed "Desktop/nuzantara/"
+    prefix."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "h").mkdir(parents=True)
+    (repo / "docs" / "h" / "citer.md").write_text(
+        "- `~/nuzantara/docs/h/TARGET2.md` (round 1)\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "h" / "TARGET2.md"
+    target.write_text("# Target 2\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_home_prefixed_wrong_subpath_rejected(tmp_path):
+    """GUILT, twin of the two above: a home-prefixed path whose SUFFIX (the
+    part after the "nuzantara/" marker) does not match the target's actual
+    repo-relative path must not credit it — the marker recovers a real
+    repo-relative path, it does not blanket-accept any "~/...nuzantara/..."
+    mention."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "h").mkdir(parents=True)
+    (repo / "docs" / "other").mkdir(parents=True)
+    (repo / "docs" / "h" / "citer.md").write_text(
+        "- `~/Desktop/nuzantara/docs/other/TARGET.md` (round 1)\n",
+        encoding="utf-8",
+    )
+    target = repo / "docs" / "h" / "TARGET.md"
+    target.write_text("# Target\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_sentence_final_period_after_bare_path_counts(tmp_path):
+    """INNOCENCE — Defect C fix: a bare (non-backticked) repo-relative-path
+    mention ending a sentence ("...docs/a/TARGET.md.") must count — the
+    period there ends the SENTENCE, not the filename. Before this fix, the
+    trailing-boundary check rejected ANY char-after-match "." unconditionally,
+    so this exact shape returned 0 while the backticked form
+    (`` `docs/a/TARGET.md` ``, where a backtick supplies the boundary instead
+    of a period) returned 1 — an asymmetry with no basis in the citation
+    itself."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "a").mkdir(parents=True)
+    (repo / "docs" / "a" / "citer.md").write_text(
+        "The plan lives at docs/a/TARGET.md.\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "a" / "TARGET.md"
+    target.write_text("# Target\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_bare_path_dotbak_extension_still_rejected(tmp_path):
+    """GUILT, twin of the above: a bare (non-backticked) repo-relative-path
+    mention where the "." is followed by MORE word characters
+    ("docs/a/TARGET.md.bak" — a real, different file) must still be
+    rejected. Only a period that ends the match with nothing-alnum
+    following it is treated as a sentence-final period."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "a").mkdir(parents=True)
+    (repo / "docs" / "a" / "citer.md").write_text(
+        "The backup lives at docs/a/TARGET.md.bak now.\n", encoding="utf-8"
+    )
+    target = repo / "docs" / "a" / "TARGET.md"
+    target.write_text("# Target\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
