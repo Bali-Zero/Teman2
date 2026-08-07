@@ -349,7 +349,7 @@ Attention: this capital isn't "free." Our latest analysis confirms that paid-up 
 
 If your villa is valued at Rp 8 Billion and you have paid in Rp 2.5 Billion, you are technically above the Rp 10 Billion threshold without needing further cash injections. **Bali Zero** helps certify this value for BKPM audits.
       `,
-      coverImage: "/static/insights/property/unnamed-4.jpg",
+      coverImage: "/static/insights/property/property-via-pt-pma-indonesia.jpg",
       category: "property",
       author: {
         id: "zantara-ai",
@@ -391,7 +391,7 @@ Our research shows integration goes beyond OSS. It crosses data with **SITP (Tou
 
 Migrating to **KBLI 2025 (Code 55203)** is the only escape. Note: this requires your villa to be in a **Pink Zone (Tourism)**. If you are in an agricultural zone, "Digital Darwinism" has already selected you for extinction.
       `,
-      coverImage: "/static/insights/property/unnamed-3.jpg",
+      coverImage: "/static/insights/property/airbnb-bali-ban-truth.jpg",
       category: "property",
       author: {
         id: "zantara-ai",
@@ -431,7 +431,7 @@ The government doesn't need to enter your property to fine you. Authorities have
 
 If your brand promises luxury and high-touch service, 55209 is your worst enemy. The solution is migration to **55106 (Non-star Hotel)** or **55203 (Villa)**, accepting the capital requirements but guaranteeing legal survival.
       `,
-      coverImage: "/static/insights/property/unnamed-5.jpg",
+      coverImage: "/static/insights/property/property-green-zone-alert.jpg",
       category: "property",
       author: {
         id: "zantara-ai",
