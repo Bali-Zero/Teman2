@@ -63,6 +63,12 @@ case "$TIER" in
 esac
 TIMEOUT="${CRON_AGENT_TIMEOUT:-$DEFAULT_TIMEOUT}"
 
+# Floor for a single cascade attempt (see run_agent's allocation comment). The
+# slowest agent job measured succeeding on Pro takes 118s; 300s is ~2.5x that,
+# and the global TIMEOUT above still caps the whole cascade. Per-job override:
+# CRON_AGENT_MIN_ATTEMPT_SECONDS.
+MIN_ATTEMPT_SECONDS="${CRON_AGENT_MIN_ATTEMPT_SECONDS:-300}"
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [$JOB_NAME] $*" >> "$LOG_FILE"; }
@@ -376,6 +382,26 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
         local attempts_left=$(( ${#tokens[@]} - idx ))
         local attempt_timeout=$(( remaining / attempts_left ))
+        # Equal division assumes every attempt consumes its slice. A cascade is
+        # the opposite: a DEAD seat is refused in seconds and costs nothing,
+        # while the ONE seat that works needs real time. So an equal split
+        # starves the only attempt that was ever going to succeed — and it gets
+        # worse the healthier the fleet is. Measured on Pro 2026-08-07, right
+        # after all four seats were re-issued: 600s / 5 entries = 120s each,
+        # and `indexing-daily` (a job that takes 118s) passed with two seconds
+        # to spare while `weekly-dep-audit` was killed on all five in turn —
+        # five healthy seats, five timeouts, no work done. The wrapper already
+        # grants a legitimate long agent run 30 minutes of background ceiling
+        # (see CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS below); a 120s slice
+        # contradicts that by 15x.
+        #
+        # So: floor every attempt at a real working slice. Fast-failing seats
+        # never reach the floor (they are refused long before it), so rotation
+        # keeps its full depth; only a seat that is genuinely working gets the
+        # time. The global deadline is still the hard backstop — the cap on the
+        # next line means the floor can never overrun it.
+        [[ $attempt_timeout -lt $MIN_ATTEMPT_SECONDS ]] && attempt_timeout=$MIN_ATTEMPT_SECONDS
+        [[ $attempt_timeout -gt $remaining ]] && attempt_timeout=$remaining
         [[ $attempt_timeout -lt 1 ]] && attempt_timeout=1
 
         local env_args=()
