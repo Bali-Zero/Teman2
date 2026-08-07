@@ -29,6 +29,15 @@ import path from "path";
 export interface KBLIRiskDispute {
   /** Distinct kategori_risiko values the record's per_skala rows hold. */
   recordTiers: string[];
+  /**
+   * true when the record's `l4_bali.status` is one of the statuses DERIVED
+   * from the risk tier itself (computed by the compiler from `l4_bali`, not
+   * from prose — see `bali_depends_on_tier()` in
+   * gold_risk_dispute_relation.py). 29 of the 30 zero_overlap disputes carry
+   * this: a page cannot show a Bali verdict as settled fact while calling
+   * the tier it is derived from disputed.
+   */
+  baliDependsOnTier: boolean;
 }
 
 const DISPUTES_PATH = path.join(
@@ -43,14 +52,22 @@ function load(): Record<string, KBLIRiskDispute> {
   if (_cache) return _cache;
   try {
     const parsed = JSON.parse(fs.readFileSync(DISPUTES_PATH, "utf-8"));
-    const disputes: Record<string, { record?: string[] }> =
-      parsed.disputes ?? {};
+    const disputes: Record<
+      string,
+      { record?: string[]; baliDependsOnTier?: boolean }
+    > = parsed.disputes ?? {};
     _cache = Object.fromEntries(
       Object.entries(disputes)
         // A dispute with no record side would render an empty disclosure —
         // treat it as absent rather than inventing a sentence around nothing.
         .filter(([, d]) => Array.isArray(d.record) && d.record.length > 0)
-        .map(([code, d]) => [code, { recordTiers: d.record as string[] }]),
+        .map(([code, d]) => [
+          code,
+          {
+            recordTiers: d.record as string[],
+            baliDependsOnTier: d.baliDependsOnTier === true,
+          },
+        ]),
     );
   } catch {
     process.stderr.write(

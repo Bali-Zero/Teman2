@@ -1,73 +1,117 @@
 {
   "_meta": {
-    "count": 30,
+    "count": 33,
     "generated_by": "scripts/kbli_filiera/gold_risk_dispute_relation.py --emit",
     "note": "Codes whose gold editorial prose claims a risk tier sharing NOTHING with the record's per_skala tier set. No winner is picked; the page renders a divergence disclosure. editorial_mentions is audit evidence — never render it."
   },
   "disputes": {
     "10504": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Tinggi",
         "Rendah"
       ]
     },
     "16103": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
+    "46100": {
+      "baliDependsOnTier": false,
+      "editorial_mentions": {
+        "Rendah": [
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "kind": "universal_claim",
+      "record": [
+        "Menengah Rendah",
+        "Menengah Tinggi",
+        "Rendah",
+        "Tinggi"
+      ]
+    },
     "46496": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
     "47246": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
+    "47901": {
+      "baliDependsOnTier": false,
+      "editorial_mentions": {
+        "Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "kind": "universal_claim",
+      "record": [
+        "Menengah Rendah",
+        "Menengah Tinggi",
+        "Rendah",
+        "Tinggi"
+      ]
+    },
     "49211": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "49231": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed",
           "zantaraOpener"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Tinggi"
       ]
     },
     "50133": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
@@ -76,122 +120,146 @@
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Tinggi"
       ]
     },
     "53200": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "55909": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
     "56102": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Rendah": [
           "whatYouNeed",
           "zantaraOpener"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
     "62204": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
     "64992": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "66125": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "66199": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "66301": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "68124": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
     "68291": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Tinggi"
       ]
     },
     "70201": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
     "70202": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "baliContext",
@@ -199,42 +267,63 @@
           "zantaraOpener"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
+    "71109": {
+      "baliDependsOnTier": true,
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "kind": "universal_claim",
+      "record": [
+        "Menengah Tinggi",
+        "Tinggi"
+      ]
+    },
     "74910": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed",
           "zantaraOpener"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
     "79110": {
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
     "82300": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
     "82990": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Rendah": [
           "baliContext",
@@ -242,72 +331,86 @@
           "zantaraOpener"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "85592": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "85593": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "85595": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed",
           "zantaraOpener"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Tinggi"
       ]
     },
     "90130": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]
     },
     "93295": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
     "93296": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Menengah Rendah"
       ]
     },
     "93299": {
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
@@ -316,6 +419,7 @@
           "whatYouNeed"
         ]
       },
+      "kind": "zero_overlap",
       "record": [
         "Rendah"
       ]

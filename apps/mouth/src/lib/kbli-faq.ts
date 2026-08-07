@@ -117,11 +117,13 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
     ? " Note: the source of these rows has not been verified against a KBLI-2025-native OSS scope; per-code crosswalk adjudication is pending — verify before relying on them (see Sources & Verification on this page)."
     : "";
 
-  // The gold editorial prose and the OSS record's risk tier share nothing on
-  // 30 codes (gold_risk_dispute_relation.py). Never enumerate the editorial
-  // side's tier here — see the RENDER CONTRACT in kbli-risk-dispute.ts.
+  // The gold editorial prose and the OSS record's risk tier disagree on 33
+  // codes — either sharing nothing, or a universal "X at every scale" claim
+  // a multi-tier record falsifies (gold_risk_dispute_relation.py). Never
+  // enumerate the editorial side's tier here — see the RENDER CONTRACT in
+  // kbli-risk-dispute.ts.
   const riskDisputeQualifier = code.riskDispute
-    ? " Note: the editorial guide on this page describes a different risk tier for this activity; the divergence is under review — verify the current tier on oss.go.id."
+    ? " Note: the editorial guide on this page describes a different risk tier for this activity; the two sources have not been reconciled — verify the current tier on oss.go.id."
     : "";
 
   const licenseAnswer =

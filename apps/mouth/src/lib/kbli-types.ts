@@ -331,6 +331,13 @@ export interface KBLITransition {
  */
 export interface KBLIRiskDispute {
   recordTiers: string[];
+  /**
+   * true when the record's `l4_bali.status` is derived from the risk tier
+   * itself (compiler-computed — see `bali_depends_on_tier()` in
+   * gold_risk_dispute_relation.py). The dispute frame appends a sentence
+   * declaring the Bali position inherits the disagreement only when set.
+   */
+  baliDependsOnTier: boolean;
 }
 
 /** Processed KBLI code — frontend-friendly version */

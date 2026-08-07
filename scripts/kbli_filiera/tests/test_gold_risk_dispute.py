@@ -21,6 +21,7 @@ from gold_risk_dispute_relation import (  # noqa: E402
     ARTIFACT,
     CANONICAL,
     GOLD,
+    bali_depends_on_tier,
     build_artifact,
     compute_disputes,
     gold_claims,
@@ -28,6 +29,7 @@ from gold_risk_dispute_relation import (  # noqa: E402
     load_gold,
     record_tiers,
     sentence_claims,
+    universal_claims,
     _serialize,
 )
 
@@ -83,6 +85,64 @@ class TestSentenceClaims:
         s = "most consulting codes are Low risk, but the qualifier pushes this up"
         assert sentence_claims(s, "70202") == set()
 
+    # -- CONDITIONAL guard (2026-08-07 gate finding #4) --------------------
+
+    def test_guilt_unconditional_assertion_still_convicts(self):
+        # Paired with the innocence test below: same facts, no "if" branch —
+        # proves the CONDITIONAL guard isn't over-matching plain assertions.
+        s = "OSS treats your scope as High Risk, so you will need a Standard Certificate"
+        assert sentence_claims(s, "12345") == {"Tinggi"}
+
+    def test_innocence_conditional_if_clause_does_not_convict(self):
+        # A hypothetical branch, not an assertion of this code's actual tier.
+        s = "If OSS treats your scope as High Risk, you will need a Standard Certificate"
+        assert sentence_claims(s, "12345") == set()
+
+    def test_innocence_conditional_unless_clause_does_not_convict(self):
+        s = "Unless OSS reclassifies this as High Risk, no Standard Certificate is required"
+        assert sentence_claims(s, "12345") == set()
+
+    def test_innocence_conditional_where_applicable_does_not_convict(self):
+        s = "Sector permits apply for High Risk activities, where applicable"
+        assert sentence_claims(s, "12345") == set()
+
+
+# ---------------------------------------------------------------------------
+# gold_claims — clause splitting (2026-08-07 gate finding #4): a guard fires
+# on its OWN clause, never a sibling clause of the same sentence.
+# ---------------------------------------------------------------------------
+
+
+class TestClauseSplitting:
+    def test_guilt_second_clause_convicts_past_a_semicolon(self):
+        # "The automatic Low-Risk route does not apply; this activity is High
+        # Risk." — one sentence, two clauses. The negation in clause 1 must
+        # not reach clause 2's Tinggi assertion.
+        entry = {
+            "whatYouNeed": (
+                "The automatic Low-Risk route does not apply; this activity "
+                "is High Risk."
+            )
+        }
+        assert gold_claims(entry, "12345") == {"Tinggi": ["whatYouNeed"]}
+
+    def test_innocence_first_clause_negation_still_guards_its_own_clause(self):
+        # Same sentence as above: Rendah must NOT survive — the negation
+        # still guards the clause it actually sits in.
+        entry = {
+            "whatYouNeed": (
+                "The automatic Low-Risk route does not apply; this activity "
+                "is High Risk."
+            )
+        }
+        assert "Rendah" not in gold_claims(entry, "12345")
+
+    def test_guilt_em_dash_also_splits_clauses(self):
+        entry = {
+            "whatYouNeed": "Low-Risk does not apply here — this is High Risk instead."
+        }
+        assert gold_claims(entry, "12345") == {"Tinggi": ["whatYouNeed"]}
+
 
 # ---------------------------------------------------------------------------
 # compute_disputes — zero-overlap semantics
@@ -92,10 +152,12 @@ class TestSentenceClaims:
 class TestDisputeSemantics:
     def test_guilt_zero_overlap_fires(self):
         canonical = [_record("99999", ["Tinggi"])]
-        gold = {"99999": {"whatYouNeed": "All scales: Low risk (Rendah)."}}
+        gold = {"99999": {"whatYouNeed": "Single-tier claim: Low risk (Rendah)."}}
         disputes = compute_disputes(canonical, gold)
         assert disputes["99999"]["record"] == ["Tinggi"]
+        assert disputes["99999"]["kind"] == "zero_overlap"
         assert disputes["99999"]["editorial_mentions"] == {"Rendah": ["whatYouNeed"]}
+        assert disputes["99999"]["baliDependsOnTier"] is False
 
     def test_innocence_partial_overlap_is_not_reported(self):
         # On a multi-tier record a partial overlap can be two truths about two
@@ -122,6 +184,83 @@ class TestDisputeSemantics:
 
 
 # ---------------------------------------------------------------------------
+# universal_claims / compute_disputes — the universal-quantifier rule
+# (2026-08-07 gate finding #2): a "this code is X at every scale" claim is
+# false on ANY other tier in the record, even when X itself also overlaps —
+# the exact gap the zero-overlap rule leaves open.
+# ---------------------------------------------------------------------------
+
+
+class TestUniversalClaimDispute:
+    def test_guilt_46100_all_scales_hides_other_tiers(self, real_disputes):
+        # Gold: "All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)".
+        # Record holds four tiers, including Tinggi — the Rendah overlap is
+        # exactly what let this slip past the zero-overlap rule.
+        entry = real_disputes["46100"]
+        assert entry["kind"] == "universal_claim"
+        assert set(entry["record"]) == {
+            "Menengah Rendah",
+            "Menengah Tinggi",
+            "Rendah",
+            "Tinggi",
+        }
+        assert "Rendah" in entry["editorial_mentions"]
+
+    def test_innocence_universal_claim_matching_the_records_only_tier(self):
+        # X equals the record's ONLY tier — nothing else to contradict it.
+        canonical = [_record("99999", ["Rendah"])]
+        gold = {"99999": {"whatYouNeed": "All scales: Low risk (Rendah)."}}
+        assert compute_disputes(canonical, gold) == {}
+
+    def test_guilt_universal_claim_synthetic_multi_tier_record(self):
+        canonical = [_record("99999", ["Rendah", "Tinggi"])]
+        gold = {"99999": {"whatYouNeed": "All scales: Low risk (Rendah)."}}
+        disputes = compute_disputes(canonical, gold)
+        assert disputes["99999"]["kind"] == "universal_claim"
+
+    def test_innocence_no_universal_quantifier_no_universal_claim(self):
+        entry = {"whatYouNeed": "Low risk (Rendah) for this scope."}
+        assert universal_claims(entry, "12345") == set()
+
+
+# ---------------------------------------------------------------------------
+# bali_depends_on_tier — 2026-08-07 gate finding #3: the Bali (L4) verdict on
+# a disputed code can itself be derived FROM the disputed tier.
+# ---------------------------------------------------------------------------
+
+
+class TestBaliDependsOnTier:
+    def test_guilt_tier_derived_status(self):
+        record = {"l4_bali": {"status": "OK_or_HIGHER_RISK"}}
+        assert bali_depends_on_tier(record) is True
+
+    def test_guilt_all_four_tier_derived_statuses(self):
+        for status in (
+            "OK_or_HIGHER_RISK",
+            "APERTO_BALI_RISCHIO_ALTO",
+            "BLOCCATO_CLASSE_RISCHIO",
+            "CHIUSO_MORATORIA_BALI",
+        ):
+            assert bali_depends_on_tier({"l4_bali": {"status": status}}) is True, status
+
+    def test_innocence_pma_or_sector_derived_status(self):
+        # These statuses hold regardless of which tier wins the dispute.
+        for status in (
+            "CHIUSO_PMA_NO_BESAR",
+            "TERTUTUP",
+            "CHIUSO_REGOLATORE_SETTORIALE",
+        ):
+            assert bali_depends_on_tier({"l4_bali": {"status": status}}) is False, status
+
+    def test_innocence_missing_l4_bali(self):
+        assert bali_depends_on_tier({}) is False
+
+    def test_82990_is_tier_derived_in_the_real_catalogue(self):
+        records = {r["kode_kbli_2025"]: r for r in load_canonical()}
+        assert bali_depends_on_tier(records["82990"]) is True
+
+
+# ---------------------------------------------------------------------------
 # The real catalogue — pins on adjudicated members and non-members
 # ---------------------------------------------------------------------------
 
@@ -137,6 +276,7 @@ class TestRealCatalogue:
         # says low risk at every scale.
         entry = real_disputes["82990"]
         assert entry["record"] == ["Tinggi"]
+        assert entry["kind"] == "zero_overlap"
         assert "Rendah" in entry["editorial_mentions"]
 
     def test_46206_negation_is_not_a_dispute(self, real_disputes):
@@ -151,6 +291,20 @@ class TestRealCatalogue:
         for code, entry in real_disputes.items():
             assert entry["record"], code
             assert entry["editorial_mentions"], code
+
+    def test_47901_and_71109_are_also_universal_claim_disputes(self, real_disputes):
+        # 47901: "All scales (Micro, Small, Medium, Large): Low risk (Rendah)"
+        # on a record that also holds Tinggi. 71109: "All scales (Mikro
+        # through Besar): Medium-High Risk" on a record that also holds
+        # Tinggi. Both new members of the population added by the
+        # universal-quantifier rule (2026-08-07 gate finding #2).
+        assert real_disputes["47901"]["kind"] == "universal_claim"
+        assert real_disputes["71109"]["kind"] == "universal_claim"
+
+    def test_population_count(self, real_disputes):
+        # Pinned so a future change to the guards is forced to explain a
+        # membership shift here, not just in the artifact diff.
+        assert len(real_disputes) == 33
 
 
 # ---------------------------------------------------------------------------

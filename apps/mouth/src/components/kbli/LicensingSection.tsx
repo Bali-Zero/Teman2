@@ -1047,12 +1047,18 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             </span>
           </div>
           <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-            The OSS record for this code lists{" "}
-            {kbli.riskDispute.recordTiers.join(" / ")} as its risk tier, while
-            the editorial guide on this page describes a different tier. The two
-            sources have not been reconciled — treat the OSS-derived table below
-            as the record we hold, and verify the current tier on oss.go.id
-            before filing.
+            The licensing rows on this record list{" "}
+            {kbli.riskDispute.recordTiers.join(" / ")} across its scopes and
+            business scales, while the editorial guide on this page describes a
+            different tier. The two sources have not been reconciled — verify
+            the current tier on oss.go.id before filing.
+            {kbli.riskDispute.baliDependsOnTier && (
+              <>
+                {" "}
+                The Bali position shown on this page is derived from the
+                record's tier, so it inherits this disagreement.
+              </>
+            )}
           </p>
         </div>
       )}

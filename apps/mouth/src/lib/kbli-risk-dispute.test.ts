@@ -9,8 +9,12 @@ describe("riskDispute — the /kbli/82990 disease reader", () => {
   it("returns the record tiers for a real disputed code", () => {
     // Measured 2026-08-07: the gold editorial claims "low risk at every
     // scale" while the OSS record's per_skala rows are all Tinggi — zero
-    // overlap, so this is one of the 30 disputes the compiler emitted.
-    expect(riskDispute("82990")).toEqual({ recordTiers: ["Tinggi"] });
+    // overlap, so this is one of the 33 disputes the compiler emitted.
+    // 82990's l4_bali.status is OK_or_HIGHER_RISK — tier-derived.
+    expect(riskDispute("82990")).toEqual({
+      recordTiers: ["Tinggi"],
+      baliDependsOnTier: true,
+    });
   });
 
   it("returns null for a non-disputed code", () => {
@@ -81,6 +85,22 @@ describe("RENDER CONTRACT: editorial_mentions never reaches a render site", () =
   it("LicensingSection.tsx does render the record tiers via recordTiers, not a raw editorial field", () => {
     expect(LICENSING_SECTION_SOURCE).toContain("riskDispute.recordTiers");
   });
+
+  it("LicensingSection.tsx pins the reconciliation wording exactly", () => {
+    // Whitespace-normalized: JSX text wraps across lines and prettier owns
+    // the exact line breaks (W112) — the CONTENT is what's pinned.
+    const normalized = LICENSING_SECTION_SOURCE.replace(/\s+/g, " ");
+    expect(normalized).toContain(
+      "across its scopes and business scales, while the editorial guide on this page describes a different tier. The two sources have not been reconciled — verify the current tier on oss.go.id before filing.",
+    );
+  });
+
+  it("LicensingSection.tsx gates the Bali-inheritance sentence on baliDependsOnTier", () => {
+    expect(LICENSING_SECTION_SOURCE).toContain("riskDispute.baliDependsOnTier");
+    expect(LICENSING_SECTION_SOURCE).toContain(
+      "The Bali position shown on this page is derived from the",
+    );
+  });
 });
 
 // =============================================================================
@@ -97,11 +117,27 @@ describe("buildKbliFaq — risk-dispute qualifier", () => {
     expect(base).toBeDefined();
     const disputed = {
       ...base,
-      riskDispute: { recordTiers: ["Tinggi"] },
+      riskDispute: { recordTiers: ["Tinggi"], baliDependsOnTier: false },
     } as NonNullable<typeof base>;
 
     const licenseAnswer = buildKbliFaq(disputed)[1].answer;
     expect(licenseAnswer).toContain("describes a different risk tier");
+  });
+
+  it("appends the qualifier with the exact pinned wording", async () => {
+    const { buildKbliFaq } = await import("./kbli-faq");
+    const { getCode } = await import("./kbli-data");
+    const base = getCode("56101");
+    expect(base).toBeDefined();
+    const disputed = {
+      ...base,
+      riskDispute: { recordTiers: ["Tinggi"], baliDependsOnTier: false },
+    } as NonNullable<typeof base>;
+
+    const licenseAnswer = buildKbliFaq(disputed)[1].answer;
+    expect(licenseAnswer).toContain(
+      " Note: the editorial guide on this page describes a different risk tier for this activity; the two sources have not been reconciled — verify the current tier on oss.go.id.",
+    );
   });
 
   it("innocence: omits the note when riskDispute is absent", async () => {
@@ -128,7 +164,7 @@ describe("buildKbliFaq — risk-dispute qualifier", () => {
 // =============================================================================
 
 describe("the two KBLICode readers agree on riskDispute", () => {
-  it("across all 30 disputed codes", async () => {
+  it("across all disputed codes", async () => {
     const { getCode } = await import("./kbli-data");
     const { getCode: getServerCode } = await import("./kbli-data.server");
     const parsed = JSON.parse(fs.readFileSync(ARTIFACT, "utf-8")) as {
@@ -149,6 +185,7 @@ describe("the two KBLICode readers agree on riskDispute", () => {
     const { getCode } = await import("./kbli-data");
     expect(getCode("82990")?.riskDispute).toEqual({
       recordTiers: ["Tinggi"],
+      baliDependsOnTier: true,
     });
   });
 });
