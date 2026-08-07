@@ -1,7 +1,9 @@
 # Visa Oracle V2 — Current State
 
-Snapshot: 2026-08-07, Asia/Makassar  
-Owner: Zero / Bali Zero  
+Snapshot: 2026-08-07, Asia/Makassar
+
+Owner: Zero / Bali Zero
+
 Purpose: canonical restart and Claude-review handoff for `/visaoracle`
 
 ## Read this first
