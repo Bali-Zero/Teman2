@@ -5,6 +5,11 @@ description: "Corner for Visa Oracle v2 — the immigration Decision Tree rebuil
 
 # VISA ORACLE v2 — Decision Tree (corner /visaoracle)
 
+> **CURRENT HANDOFF (read first):** `CURRENT_STATE.md` contains the canonical
+> 2026-08-07 repository/production state, reviewed SHAs, gate matrix, evidence,
+> open operational blockers and safe resume sequence. Its production verdict is
+> **NO-GO / SHADOW** even though repository G0–G6 passed on the frozen baseline.
+
 ## Mission
 
 Rebuild the Visa Oracle immigration funnel as Bali Zero's flagship public tool: an interactive
@@ -140,6 +145,19 @@ hook-enforced); Sonnet implements; research outputs persisted under `research/vi
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-07 (Mini, Visa Oracle V2 completion): **REPOSITORY CANDIDATE G0–G6 PASS;
+  PRODUCTION REMAINS NO-GO/SHADOW.** Exact independently reviewed delivery
+  `e15fc1b84501cbdc2e023497b3e1af298f51034f`, baseline `cd343655c`, verdict
+  0 BLOCKER / 0 MEDIUM. Migration 267 closes atomic complete-set legal-period
+  correction; `activate_pack` now binds separation to real `session_user` and
+  rejects the same-login/two-`SET ROLE` attack. Privacy Policy V1, exact
+  PricingTool, retention scheduler artifacts, official Calling Visa archive,
+  five-state UI and real backend authority are repository-ready. Mini/Pro were
+  out of sync at handoff and the branch was behind later `main`; do not merge or
+  ENFORCE before sync/rebase, impacted G5/G6, role/migration provisioning,
+  analytics TTL proof, DPIA, production smoke and kill-switch drill. Full state:
+  `.agents/skills/visaoracle/CURRENT_STATE.md`.
 
 - 2026-07-17: corner created. Round 1 research lanes in flight (Gemini/Codex/GLM/web). Worktree
   `mouth-visa-oracle` active. No PR — worktree-only until operator-analyzed final draft.
