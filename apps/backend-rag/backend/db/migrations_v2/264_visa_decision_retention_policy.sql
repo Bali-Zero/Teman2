@@ -97,8 +97,8 @@ FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation(
 -- decision retention. Pre-264 rows keep their original deadline and a NULL
 -- binding: no retroactive authority is invented. The NOT VALID constraint is
 -- enforced for every new row while preserving that explicit legacy cohort.
--- squawk-ignore: adding-foreign-key-constraint
--- new/near-empty tables: FK scan and SHARE ROW EXCLUSIVE lock are momentary here
+-- Table introduced by migration 262 in this same PR (empty at FK creation).
+-- squawk-ignore adding-foreign-key-constraint
 ALTER TABLE public.visa_evaluate_idempotency
     ADD COLUMN environment TEXT CHECK (
         environment IN ('TEST', 'STAGING', 'PRODUCTION')
@@ -635,8 +635,8 @@ CREATE TRIGGER visa_decision_dsr_erasure_batches_no_wipe
 BEFORE TRUNCATE ON public.visa_decision_dsr_erasure_batches
 FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
 
--- squawk-ignore: adding-foreign-key-constraint
--- new/near-empty tables: FK scan and SHARE ROW EXCLUSIVE lock are momentary here
+-- Small SHADOW-era table (~1.5k rows): FK scan and SHARE ROW EXCLUSIVE lock are momentary.
+-- squawk-ignore adding-foreign-key-constraint
 ALTER TABLE public.visa_decisions
     ADD COLUMN retention_policy_id UUID
         REFERENCES public.visa_decision_retention_policies (id),
