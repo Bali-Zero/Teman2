@@ -154,7 +154,7 @@ jobs:
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
               scripts/test_cron_single_voice.sh|\
-              apps/evaluator/nlm_deep_research/scripts/_alert.sh|\
+              apps/evaluator/nlm_deep_research/scripts/*|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
               scripts/ci/queue_rearm.sh|\
