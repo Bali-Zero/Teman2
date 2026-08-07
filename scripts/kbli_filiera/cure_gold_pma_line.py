@@ -151,6 +151,83 @@ AUTHORED_SENTENCES = {
         ),
         "why": "cap 49; the sentence made the capital figure follow FROM an openness that is not the case",
     },
+    # 2026-08-07 adjudication backlog (4 of 7 closed; 41011/47222-was-partial no
+    # — see test_gold_pma_line.py::ADJUDICATION_BACKLOG for what stays open and
+    # why). Each entry below rests on a distinct instrument reading, not a
+    # deduction from the percentage alone — the reason a mechanical swap could
+    # not do this.
+    "73100": {
+        "field": "whatYouNeed",
+        "old": (
+            "**PMA:** Restricted — max 49% foreign ownership. Condition: "
+            "Kemitraan dengan badan usaha dalam negeri. Note: Periklanan."
+        ),
+        "new": (
+            "**PMA:** Fully open — 100% foreign ownership allowed. No 73xxx "
+            "(advertising) entry appears in any Perpres 10/2021 or 49/2021 "
+            "annex or body text; the residual open-to-all-investors default "
+            "applies (Pasal 3(1)(d))."
+        ),
+        "why": "canonical cap 100 (image-verified: zero 73xxx codes anywhere in the instrument); the 49% figure belonged to the revoked DNI-2016",
+    },
+    "47221": {
+        "field": "whatYouNeed",
+        "old": (
+            "**PMA:** Restricted — max 49% foreign ownership. Condition: "
+            "Kemitraan dengan UMKM/Koperasi. Note: Perdagangan eceran minuman "
+            "beralkohol."
+        ),
+        "new": (
+            "**PMA:** Restricted — special conditions, no percentage cap. "
+            "Perpres 49/2021 Pasal 6 ayat (3a) huruf b places alcoholic-"
+            'beverage retail under "persyaratan Penanaman Modal lainnya" — a '
+            "controlled regime, not an equity ceiling."
+        ),
+        "why": "canonical cap is `special` (Perpres 10/2021 Lampiran III entry #44 is a distribution-network condition, not a percentage); 49/2021 moved the activity into Pasal 6(3a), a fourth regime with no cap",
+    },
+    "86202": {
+        "field": "whatYouNeed",
+        "old": (
+            "A foreign specialist cannot open a solo practice under this code "
+            "— Kemenkes health law reserves it, and a PT PMA cannot be "
+            "registered here. For a clinic-based structure, PMA registration "
+            "is available under KBLI 86103 (klinik), capped at 67% foreign "
+            "ownership.\n\n"
+            "**PMA:** Not available under this code — see KBLI 86103 (klinik, "
+            "capped at 67% foreign ownership)."
+        ),
+        "new": (
+            "86202 (Praktik Dokter Spesialis) is an individual medical "
+            "practice — a foreign specialist practices under a personal "
+            "SIP/STR (Surat Izin Praktik) issued to a natural person, not a "
+            "PT PMA vehicle, so a company cannot be registered directly under "
+            "this code. A foreign investor instead structures through a "
+            "private hospital: KBLI 86103 (Rumah Sakit Swasta) is open to "
+            "foreign ownership on the current record, except the "
+            "basic/residential health-services segment, which Perpres "
+            "49/2021 Lampiran II reserves to Koperasi and UMKM.\n\n"
+            "**PMA:** Not available under this code (individual practitioner "
+            "licensure) — see KBLI 86103 (Rumah Sakit Swasta), open to "
+            "foreign ownership except the basic/residential health-services "
+            "segment reserved to Koperasi/UMKM."
+        ),
+        "why": "86103's own canonical cap is 100, not 67 — the 67% figure was the revoked DNI-2016 clinic cap; the corrected cross-ref names the real carve-out (Lampiran II 'residential health services' segment) instead of a flat percentage",
+    },
+    "47222": {
+        "field": "whatYouNeed",
+        "old": (
+            "**PMA:** Restricted — max 49% foreign ownership. Condition: "
+            "Kemitraan dengan UMKM/Koperasi. Note: Perdagangan eceran minuman "
+            "beralkohol di bar."
+        ),
+        "new": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Perpres 10/2021 Lampiran II (as replaced by 49/2021) allocates "
+            "non-alcoholic beverage retail to Koperasi and UMKM; a PT PMA "
+            "cannot hold equity in this activity."
+        ),
+        "why": "canonical's own locator (Lampiran II line 3731, DIALOKASIKAN column) is a pure reservation — 0% foreign, not a 49% partnership cap; the gold sentence had read a different column",
+    },
 }
 
 
