@@ -11,7 +11,6 @@ This file proves the shared module itself, independent of any one cure.
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 

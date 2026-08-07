@@ -4,12 +4,22 @@ import { getAllCodes, getCode } from "@/lib/kbli-data";
 import type { KBLICode } from "@/lib/kbli-types";
 import { KBLICodeJsonLd } from "./KBLIStructuredData";
 
-/** Extract the JSON-LD payload the component embeds in its <script> tag. */
+/** Extract the JSON-LD payload the component embeds in its <script> tag.
+ *
+ * String ops, not a regex on HTML: CodeQL's js/bad-tag-filter flags a
+ * hand-rolled `<script>...</script>` regex as unsound (it doesn't match
+ * uppercase tags or embedded whitespace variants) even where, as here, the
+ * markup is our own component's fixed output, not attacker-controlled HTML.
+ */
 function jsonLdOf(code: KBLICode): Record<string, unknown> {
   const html = renderToStaticMarkup(<KBLICodeJsonLd code={code} />);
-  const match = html.match(/<script[^>]*>([\s\S]*)<\/script>/);
-  expect(match).not.toBeNull();
-  return JSON.parse(match![1]);
+  const openTag = html.indexOf("<script");
+  const start = html.indexOf(">", openTag) + 1;
+  const end = html.lastIndexOf("</script>");
+  expect(openTag).toBeGreaterThanOrEqual(0);
+  expect(start).toBeGreaterThan(0);
+  expect(end).toBeGreaterThanOrEqual(0);
+  return JSON.parse(html.slice(start, end));
 }
 
 // =============================================================================
