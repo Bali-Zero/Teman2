@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "status": "UNCONFIGURED",
+  "destination": {
+    "provider": null,
+    "destination_id_sha256": null,
+    "event_scope": "visa_oracle_v2_*"
+  },
+  "retention": {
+    "ttl_days": null,
+    "mode": null
+  },
+  "verification": {
+    "method": null,
+    "observed_at": null,
+    "synthetic_expired_event_was_present": null,
+    "synthetic_expired_ingestion_receipt_sha256": null,
+    "synthetic_expired_event_absent": null,
+    "synthetic_control_event_present": null,
+    "production_rows_deleted": false,
+    "provider_export_sha256": null
+  }
+}
