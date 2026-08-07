@@ -70,6 +70,7 @@ jobs:
             case "$f" in
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
+              scripts/tests/test_proprioception_run_wrap_exit_code.py|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
               scripts/lint_plist_keepalive.py|\
@@ -116,6 +117,7 @@ jobs:
               scripts/tests/test_lint_tcc_desktop_paths.py|\
               infra/tcc-desktop-paths/allowlist.txt|\
               scripts/launchd_liveness_detector.py|\
+              scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
               scripts/tests/test_launchd_liveness_marker_freshness.py|\
               scripts/tests/test_launchd_liveness_stale_exit_recovery.py|\
@@ -154,10 +156,12 @@ jobs:
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
+              scripts/lib/heartbeat.sh|\
               scripts/wr2-cron-wrapper.sh|\
               scripts/test_wr2_wrapper_alert.sh|\
               infra/openclaw/wr2/wr2-script-wrapper.sh|\
               scripts/test_wr2_script_wrapper_alert.sh|\
+              scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh|\
               scripts/cron-wrapper.sh|\
               scripts/cron-state.sh|\
               scripts/test_cron_state_alert.sh|\
@@ -179,6 +183,7 @@ jobs:
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
+              scripts/tests/test_runtime_truth_ci_gauntlet.py|\
               scripts/drive_token_watchdog.py|\
               scripts/tests/test_drive_watchdog_fly_path.py|\
               scripts/tests/test_drive_watchdog_tier_ratchet.py|\
@@ -196,6 +201,16 @@ jobs:
               infra/asset-lint/public-asset-refs-config.json|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
+              apps/evaluator/nlm_deep_research/run_verdict.py|\
+              apps/evaluator/nlm_deep_research/pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb3_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb4_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb5_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb6_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb7_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb8_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb10_pipeline.py|\
+              apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
@@ -284,6 +299,25 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: Runtime Truth CI gauntlet (four incident contracts)
+        if: steps.paths.outputs.relevant == 'true'
+        env:
+          HOME: ${{ runner.temp }}/runtime-truth-home
+          TMPDIR: ${{ runner.temp }}/runtime-truth-tmp
+        run: |
+          # Fail closed: every path is mandatory, and the meta-test pins this
+          # runner to the sentinel subjects that wake it. The corpora use only
+          # temp/fake worlds; no fleet HOME, launchd state, secrets, or network.
+          set -euo pipefail
+          mkdir -p "$HOME" "$TMPDIR"
+          python -m pytest \
+            apps/evaluator/nlm_deep_research/tests/test_run_verdict.py \
+            scripts/tests/test_launchd_liveness_expected_nonzero.py \
+            scripts/tests/test_proprioception_run_wrap_exit_code.py \
+            scripts/tests/test_runtime_truth_ci_gauntlet.py \
+            -q
+          bash scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh
 
       - name: apps/zantara-media suite has a runner (replaces the garuda alert pin)
         if: steps.paths.outputs.relevant == 'true'
