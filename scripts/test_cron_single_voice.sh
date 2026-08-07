@@ -171,6 +171,33 @@ JOB_EXIT=0 run_under_runner
 check "exit 0 preservato"                       "$(yes_if "$RC" 0)"
 check "nessun invio"                            "$(yes_if "$(sends)" 0)"
 
+echo "NESSUN BYPASS — i payload devono parlare SOLO tramite alert()"
+# Il rinvio vive dentro _alert.sh: un payload che invoca il gateway da se'
+# aggira la cura e la doppia voce ricresce, senza che niente diventi rosso
+# (W82 — la guardia sorveglia una superficie ed e' cieca all'altra).
+# "Invoca" != "nomina": run_nb5_t4_monitor.sh cita tg_notify in un COMMENTO ed e'
+# innocente, quindi i commenti si tolgono prima di guardare (over-match, #3).
+PAYLOADS="$REPO/apps/evaluator/nlm_deep_research/scripts"
+bypass=""
+for f in "$PAYLOADS"/run_*.sh; do
+    [ -f "$f" ] || continue
+    if sed 's/[[:space:]]*#.*$//' "$f" | grep -qE 'tg_notify|sendMessage'; then
+        bypass="$bypass $(basename "$f")"
+    fi
+done
+n_payloads=$(find "$PAYLOADS" -maxdepth 1 -name 'run_*.sh' | wc -l | tr -d ' ')
+check "i payload censiti sono >= 20 (non ho guardato una dir vuota)" \
+      "$([ "$n_payloads" -ge 20 ] && echo 0 || echo 1)"
+check "nessun payload invoca il gateway da se'" \
+      "$([ -z "$bypass" ] && echo 0 || { echo "     bypass:$bypass" >&2; echo 1; })"
+# innocenza del rilevatore: una menzione in commento NON e' un bypass
+probe_ok=$(printf '#!/bin/bash\n# see tg_notify for the dedup key\nalert p0 "x"\n' \
+    | sed 's/[[:space:]]*#.*$//' | grep -cE 'tg_notify|sendMessage')
+probe_guilt=$(printf '#!/bin/bash\npython3 scripts/tg_notify.py --tier p0 -- "x"\n' \
+    | sed 's/[[:space:]]*#.*$//' | grep -cE 'tg_notify|sendMessage')
+check "il rilevatore assolve una menzione in commento"   "$(yes_if "$probe_ok" 0)"
+check "…e condanna una invocazione vera"                 "$(yes_if "$probe_guilt" 1)"
+
 echo "ACCORDO — il marcatore duplicato nei tre file deve coincidere"
 mk () { grep -h '^CRON_ALERT_MARKER=' "$1" | head -1 | cut -d= -f2- | tr -d '"'; }
 M_RUN="$(mk "$RUNNER")"; M_WRAP="$(mk "$WRAPPER")"; M_LIB="$(mk "$ALERTLIB")"
