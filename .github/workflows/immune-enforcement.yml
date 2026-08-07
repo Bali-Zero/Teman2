@@ -153,6 +153,8 @@ jobs:
               scripts/test_cron_state_alert.sh|\
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
+              scripts/test_cron_single_voice.sh|\
+              apps/evaluator/nlm_deep_research/scripts/_alert.sh|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
               scripts/ci/queue_rearm.sh|\
@@ -386,6 +388,20 @@ jobs:
           # anywhere. All three exits are asserted — a fix that covers only the path
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
+
+      - name: One voice per cron failure (payload + wrapper must not both send)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The far side of the two steps above. Giving the wrappers a voice closed a
+          # real silence and opened a smaller one: the 20 nlm_deep_research payloads
+          # already alarmed for themselves, and 19 run under a wrapper that alarms too
+          # — one failure, two P0s ~2s apart, measured on run_nb2_pipeline 2026-08-06.
+          # Neither message contained the other (the payload names the log path, the
+          # wrapper quotes 600 bytes of raw stdout), so the wrapper now carries the
+          # payload's sentence. Innocence matters as much as guilt here:
+          # run_peraturan_ingestion.sh runs from crontab with NO wrapper, so an
+          # unconditional deferral would have made it mute.
+          bash scripts/test_cron_single_voice.sh
 
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
         if: steps.paths.outputs.relevant == 'true'
