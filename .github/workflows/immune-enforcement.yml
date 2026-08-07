@@ -181,6 +181,9 @@ jobs:
               scripts/lint_workflow_errexit_decap.py|\
               scripts/lint_retracted_claims.py|\
               infra/retracted-claims/registry.json|\
+              scripts/lint_public_asset_refs.py|\
+              scripts/tests/test_lint_public_asset_refs.py|\
+              infra/asset-lint/public-asset-refs-config.json|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -222,6 +225,7 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_lint_home_fork.py \
+            scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
             scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
@@ -515,6 +519,23 @@ jobs:
         run: |
           if [ -f scripts/lint_doc_executable_refs.py ]; then
             python scripts/lint_doc_executable_refs.py
+          fi
+
+      # Public-asset-refs lint runs FOR REAL on every PR, UNGATED — same
+      # reasoning as doc-executable-refs above, plus one that is specific to it:
+      # the defect it catches is introduced by FRONTEND PRs (a new `src=` in
+      # apps/mouth), which are exactly the PRs the immune-relevant sentinel
+      # classifies as NOT relevant. Gating this behind `steps.paths.outputs.relevant`
+      # would arm it only for PRs that cannot contain the defect — the W108
+      # GOTCHA verbatim ("il difetto è emerso solo dopo aver ARMATO il test su
+      # ogni PR"). Pure tree scan, no $HOME and no network, so CI can enforce it
+      # directly. Known-broken references live in the shrink-only registry at
+      # infra/asset-lint/public-asset-refs-config.json (they are carried debt,
+      # not exemptions — the lint fails if one goes stale).
+      - name: Public-asset-refs lint (code names only assets that exist in public/)
+        run: |
+          if [ -f scripts/lint_public_asset_refs.py ]; then
+            python scripts/lint_public_asset_refs.py
           fi
 
       # TCC-Desktop-paths lint runs FOR REAL on every PR (same reasoning as
