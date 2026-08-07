@@ -12,17 +12,61 @@
 # worktree is created and released again within the same run when there is nothing
 # to promote.
 #
-# Invoked (via a login shell, so gh/git credential resolution matches the proven
-# scripts/docs_guardian.sh cron pattern) by
-# ~/Library/LaunchAgents/com.balizero.translate.hourly.plist, which now points at
-# THIS script instead of calling translate-articles.py directly.
+# Invoked by ~/Library/LaunchAgents/com.balizero.translate.hourly.plist (plain
+# `/bin/zsh <this-script>`, no -lc — a login-shell invocation reads as an INLINE
+# shell string to infra/organ-conformance/check_organ_conformance.py, which then
+# analyzes the argv join instead of resolving this file and reports every content
+# gene missing. `gh`/`git` resolve fine from a non-login shell as long as PATH/HOME
+# are set, which the plist's EnvironmentVariables already do — same non-`-lc`
+# pattern as com.balizero.nb-curator.daily.plist and com.balizero.zoho-mail-loop.daily.plist),
+# which now points at THIS script instead of calling translate-articles.py directly.
 set -uo pipefail
+
+# G5_kill_switch (organ-conformance): TRANSLATE_HOURLY_ENABLED=false disables the
+# run without touching the plist. Defaults to enabled.
+if [ "${TRANSLATE_HOURLY_ENABLED:-true}" != "true" ]; then
+  print -r -- "[$(date '+%Y-%m-%d %H:%M:%S')] TRANSLATE_HOURLY_ENABLED=false — skipping run" >>"${HOME}/logs/translate-hourly-wrapper.log"
+  exit 0
+fi
 
 REPO_ROOT="${HOME}/nuzantara"
 LOG="${HOME}/logs/translate-hourly-wrapper.log"
 mkdir -p "$(dirname "$LOG")"
 
 log() { print -r -- "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >>"$LOG"; }
+
+# G2_heartbeat (organ-conformance): proof of life at ~/.organism/last_seen/<id>.json,
+# which is what organs_registry.yaml's pro.translate_hourly bridge_source and the
+# stale-detector actually read. Invoked under `bash`, never sourced — this wrapper
+# is zsh and heartbeat.sh declares `local status=…`, which dies on zsh's read-only
+# `status` special parameter (same fix as scripts/nb-curator-daily.sh, 2026-07-29).
+# The EXIT trap covers paths nobody wrote a verdict on purpose (an unset variable
+# under `set -u`, a `cd` failure before the first heartbeat call): without it those
+# runs leave NO sidecar, which reads as "never scheduled" rather than "died" — the
+# two cures differ (cicatrix-superscar.md #2, "Esiste ≠ Armato").
+ORGAN_ID="pro.translate_hourly"
+SCRIPT_DIR="${0:A:h}"
+if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
+  HEARTBEAT_LIB="$ORGANISM_HEARTBEAT_LIB"
+elif [ -r "$SCRIPT_DIR/lib/heartbeat.sh" ]; then
+  HEARTBEAT_LIB="$SCRIPT_DIR/lib/heartbeat.sh"
+else
+  HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
+fi
+HB_EMITTED=0
+heartbeat() {  # heartbeat <status> [note]
+  HB_EMITTED=1
+  [ -f "$HEARTBEAT_LIB" ] || return 0
+  bash "$HEARTBEAT_LIB" "$ORGAN_ID" "$1" "${2:-}" || true
+}
+_hb_on_exit() {
+  local rc=$?
+  if [ "$HB_EMITTED" -eq 0 ]; then
+    heartbeat error "aborted before verdict (rc=$rc)"
+  fi
+  return 0
+}
+trap _hb_on_exit EXIT
 
 cd "$REPO_ROOT" || {
   log "FATAL: cannot cd to $REPO_ROOT"
@@ -40,6 +84,7 @@ CREATE_OUT=$(python3 scripts/agent_start.py --lane mouth --task-id "$TASK_ID" --
 WT_PATH=$(print -r -- "$CREATE_OUT" | awk '/^WORKTREE_READY/ {print $2}')
 if [ -z "$WT_PATH" ] || [ ! -d "$WT_PATH" ]; then
   log "FATAL: worktree creation failed: $CREATE_OUT"
+  heartbeat error "worktree creation failed"
   exit 1
 fi
 log "worktree ready: $WT_PATH (task_id=$TASK_ID)"
@@ -52,6 +97,11 @@ NUZANTARA_REPO_ROOT="$WT_PATH" "$WT_PATH/.venv/bin/python" "$WT_PATH/scripts/tra
 RUN_RC=$?
 log "translate-articles.py exit=$RUN_RC"
 
+# Non-zero here does NOT short-circuit: translate-articles.py can leave partial,
+# still-worth-promoting output behind it (some files translated before a later
+# failure), so whatever it wrote is still detected and promoted below. RUN_RC is
+# folded into the heartbeat verdict at each concluding branch and is still this
+# process's own exit code at the bottom.
 CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
 
 if [ "$CHANGED" -gt 0 ]; then
@@ -76,6 +126,7 @@ EOF
   PUSH_RC=$?
   if [ "$PUSH_RC" -ne 0 ]; then
     log "ERROR: push failed rc=$PUSH_RC — leaving worktree $WT_PATH for manual recovery"
+    heartbeat error "push failed rc=$PUSH_RC ($CHANGED file(s) stranded in $WT_PATH)"
     exit 1
   fi
 
@@ -86,17 +137,30 @@ EOF
   CREATE_RC=$?
   if [ "$CREATE_RC" -ne 0 ]; then
     log "ERROR: gh pr create failed rc=$CREATE_RC — branch pushed, PR NOT opened, manual recovery: gh pr create --head $BRANCH"
+    heartbeat error "gh pr create failed rc=$CREATE_RC (branch $BRANCH pushed, PR not opened)"
     exit 1
   fi
   log "opened PR: $PR_URL"
   PR_NUM=$(print -r -- "$PR_URL" | grep -oE '[0-9]+$')
   # NOT --squash: once a merge queue governs main, the ruleset owns the merge
   # method and --squash is rejected outright (pipeline-ship skill, 2026-07-27+).
-  gh pr merge "$PR_NUM" --auto >>"$LOG" 2>&1 || log "WARN: could not arm auto-merge on PR #$PR_NUM — needs manual arm"
+  RUN_NOTE=""
+  [ "$RUN_RC" -ne 0 ] && RUN_NOTE=" (translate-articles.py exit=$RUN_RC — partial output)"
+  if gh pr merge "$PR_NUM" --auto >>"$LOG" 2>&1; then
+    heartbeat ok "promoted $CHANGED file(s) via $PR_URL (auto-merge armed)$RUN_NOTE"
+  else
+    log "WARN: could not arm auto-merge on PR #$PR_NUM — needs manual arm"
+    heartbeat degraded "promoted $CHANGED file(s) via $PR_URL but auto-merge did not arm$RUN_NOTE"
+  fi
   log "worktree $WT_PATH left in place pending merge (next run's opportunistic --cleanup will collect it once merged)"
 else
   log "no mouth content changes this run — releasing worktree"
   python3 scripts/agent_start.py --release "$TASK_ID" >>"$LOG" 2>&1
+  if [ "$RUN_RC" -eq 0 ]; then
+    heartbeat ok "no content changes"
+  else
+    heartbeat error "translate-articles.py exit=$RUN_RC, no output to promote"
+  fi
 fi
 
 exit $RUN_RC
