@@ -61,6 +61,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/wr2-external-bench-run.sh",
+      "repo": "infra/launchagents/wrappers/wr2-external-bench-run.sh",
+      "_note": "Promoted to repo canon 2026-08-08 — was an UNDECLARED live payload (family #1) driving plist com.balizero.wr2.external-bench.monthly. PRO is canon, chosen on CONTENT and not on convenience: the M5 copy diverged (110 vs 129 lines) and was the poorer one — Pro carries the WR2_BENCH_FORCE escape, the WR2_BENCH_TIMEOUT/DEBUG knobs, a newer model pin, and a CRITICAL EXECUTION RULE block written after the 2026-06-11 post-mortem (async launch exited success with zero output). mtimes are IDENTICAL on both machines (2026-07-16 11:14, the TCC relocation touched everything), so the timestamp could not decide direction and the content did. M5 is declared as well because its copy exists and is inert (0 cron/launchd references there) — declaring it is what makes a future drift on the dead copy visible instead of silent.",
+      "machines": ["pro", "m5"]
+    },
+    {
       "live": "~/scripts/mlx-server-run.sh",
       "repo": "infra/launchagents/wrappers/mlx-server-run.sh",
       "machines": ["pro", "mini"]
@@ -207,6 +213,12 @@
       "live": "~/scripts/dropbox-intake-sync.sh",
       "repo": "scripts/dropbox_intake_sync.sh",
       "_note": "W3 launchagent-canon reconcile (2026-07-18): live was UNDECLARED (basename mismatch — hyphen vs underscore is an INTENTIONAL rename done by infra/launchagents/install_dropbox_intake.sh's `install -m 0755 ... dropbox-intake-sync.sh`, not a fork). Confirmed byte-identical.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/nuzantara-drive-sync.filter",
+      "repo": "scripts/nuzantara-drive-sync.filter",
+      "_note": "Promoted 2026-08-08 after a 16h+ Google Drive 'Queries per minute' quota storm (2026-08-07): nuzantara-drive-sync.sh syncs the wa-mirror Baileys session dir (36k+ high-churn pre-key files) to Drive on every run — fixed by excluding apps/wa-mirror/sessions/** in this filter. The filter was previously genuinely HOME-only (no repo twin existed to declare — an entry with no repo side would have been fiction, per superscar #1's own definition of a pair). This entry closes that gap for the filter; nuzantara-drive-sync.sh itself (the script that consumes it) is STILL HOME-only and undeclared — a separate promotion, out of scope here.",
       "machines": ["pro"]
     },
     {
@@ -640,6 +652,9 @@
     "~/Library/Google/GoogleSoftwareUpdate/*",
     "~/scripts/mini-git-pull-bridge.sh",
     "~/Applications/WR2 Control.app/*",
-    "~/.local/bin/zero-design/*"
+    "~/.local/bin/zero-design/*",
+    "~/.openclaw-node-host/service-env/ai.openclaw.node-env-wrapper.sh",
+    "~/.openclaw/service-env/ai.openclaw.gateway-env-wrapper.sh",
+    "~/.claude/daemons/guardrails.py"
   ]
 }
