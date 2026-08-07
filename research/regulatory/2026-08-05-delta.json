@@ -1,0 +1,136 @@
+{
+  "run_at": "2026-08-05T20:48:04+08:00",
+  "today": "2026-08-05",
+  "new_today_count": 2,
+  "partial": true,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "403 Forbidden confirmed after one retry."
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "No readable page content was returned; the browser fallback had no available browser."
+    },
+    {
+      "url": "https://muc.co.id/id/article",
+      "reason": "empty_shell",
+      "note": "No readable page content was returned; the browser fallback had no available browser."
+    },
+    {
+      "url": "https://jdih.kemenkumham.go.id/",
+      "reason": "empty_shell",
+      "note": "No readable page content was returned after the permitted retry."
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/",
+      "reason": "empty_shell",
+      "note": "No readable page content was returned from the current-ministry domain."
+    },
+    {
+      "url": "https://peraturan.go.id/",
+      "reason": "timeout",
+      "note": "The fetch timed out after one retry; the Mozilla browser fallback had no available browser."
+    },
+    {
+      "url": "https://www.imigrasi.go.id/",
+      "reason": "http_403",
+      "note": "403 Forbidden confirmed after one retry."
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "PMK 60/2026 and PMK 61/2026 are recorded in deltas; no additional in-window filtered regulation was found."
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "The latest dated entries were 2026-08-03 organizational news and contained no filtered regulation citation."
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/search?bentuk=Peraturan%20Menteri&order=desc&teu=Kementerian%20Keuangan",
+      "reason": "outside_window",
+      "note": "The newest indexed PMK was PMK 53/2026, promulgated 2026-07-29; PMK 60/2026 and PMK 61/2026 were not yet listed."
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan?sort=terbaru",
+      "reason": "outside_window",
+      "note": "The newest listed item was dated 2026-07-29; the newest filtered type was Permenaker 11/2026, promulgated 2026-07-03."
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "The newest visible listing was KEP-55/PJ/2026 dated 2026-03-27."
+    }
+  ],
+  "nb_query_errors": [
+    {
+      "nb": "NB-INTEL-Regulation",
+      "reason": "network_error",
+      "note": "Notebook service unavailable: ConnectError [Errno 8] DNS resolution failure."
+    },
+    {
+      "nb": "NB-INTEL-Press",
+      "reason": "network_error",
+      "note": "Notebook service unavailable: ConnectError [Errno 8] DNS resolution failure."
+    },
+    {
+      "nb": "NB-INTEL-Immigration",
+      "reason": "network_error",
+      "note": "Notebook service unavailable: ConnectError [Errno 8] DNS resolution failure."
+    },
+    {
+      "nb": "NB-INTEL-Tax",
+      "reason": "network_error",
+      "note": "Notebook service unavailable: ConnectError [Errno 8] DNS resolution failure."
+    }
+  ],
+  "deltas": [
+    {
+      "citation": "PMK Nomor 60 Tahun 2026",
+      "title_id": "PMK 60/2026: tarif bea masuk barang impor dari Jepang dalam rangka IJEPA",
+      "title_en": "PMK 60/2026: import duty rates on goods from Japan under IJEPA",
+      "service_line": "tax",
+      "summary": "PMK 60/2026.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1821402/kemenkeu-tetapkan-tarif-preferensi-barang-impor-dari-jepang",
+      "verbatim_excerpt": "menetapkan kembali tarif bea masuk atas barang impor dari Jepang dalam rangka Ijepa."
+    },
+    {
+      "citation": "PMK Nomor 61 Tahun 2026",
+      "title_id": "PMK 61/2026: tata cara pemanfaatan bea masuk USDFS",
+      "title_en": "PMK 61/2026: procedure for using USDFS import duties",
+      "service_line": "tax",
+      "summary": "PMK 61/2026.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1821402/kemenkeu-tetapkan-tarif-preferensi-barang-impor-dari-jepang",
+      "verbatim_excerpt": "tata cara pemanfaatan bea masuk USDFS melalui PMK 61/2026."
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PMK 49/2026",
+    "SE-9/PJ/2026",
+    "PMK Nomor 60 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026"
+  ]
+}
