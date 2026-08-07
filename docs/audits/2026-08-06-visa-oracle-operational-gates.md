@@ -1,8 +1,9 @@
 # Visa Oracle V2 operational gates — execution record
 
-Date: 2026-08-06
+Date: 2026-08-07
 
-Candidate base: `b758920d3896cf4c68dcf072c22a09b6d03ada20`
+Candidate implementation: `d819bdfc3` (rebased on synchronized `main`
+`f24d4973b`)
 
 Activation verdict: **NO-GO**
 
@@ -57,15 +58,15 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 
 ## Gate state after this execution
 
-| Gate                       | Before                 | After                                                                                                                                                                                                                                             |
-| -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G0 inventory               | PASS                   | PASS                                                                                                                                                                                                                                              |
-| G1 contracts and sources   | BLOCKED                | PASS; official announcement evidence approved, hashed and archived; optional Kepmen PDFs remain a non-blocking corroboration gap                                                                                                                  |
-| G2 engine harness          | PASS                   | PASS (unchanged)                                                                                                                                                                                                                                  |
-| G3 UI states/categories    | PASS                   | PASS (unchanged)                                                                                                                                                                                                                                  |
-| G4 public engine authority | PASS                   | PASS (unchanged)                                                                                                                                                                                                                                  |
-| G5 automated suites        | PASS                   | PASS on current privacy candidate: 1,656 backend Visa Engine/router tests passed with one expected provisioning skip; 3,178 Mouth Vitest tests, typecheck, 15/15 desktop/320 px Playwright and the unmocked disposable full-stack smoke are green |
-| G6 independent review      | PASS on base candidate | **PASS on `6558afaa1`.** Independent adversarial review closed with 0 BLOCKER and 0 MEDIUM after two preflight-inventory findings were reproduced, fixed and independently re-tested                                                              |
+| Gate                       | Before                  | After                                                                                                                                                                                                                                                                                                           |
+| -------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G0 inventory               | PASS                    | PASS                                                                                                                                                                                                                                                                                                            |
+| G1 contracts and sources   | BLOCKED                 | PASS; official announcement evidence approved, hashed and archived; optional Kepmen PDFs remain a non-blocking corroboration gap                                                                                                                                                                                |
+| G2 engine harness          | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                |
+| G3 UI states/categories    | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                |
+| G4 public engine authority | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                |
+| G5 automated suites        | PASS                    | PASS on the rebased operational candidate: 1,667 backend Visa Engine/router tests passed with one expected provisioning skip; 3,178 Mouth Vitest tests, typecheck, 15/15 desktop/320 px Playwright, 16 retention-operation tests, four Cell sensor tests and the unmocked disposable full-stack smoke are green |
+| G6 independent review      | PASS on prior candidate | **RE-GRADE REQUIRED.** `6558afaa1` closed with 0 BLOCKER and 0 MEDIUM; the rebased migration-267/retention delta must receive an independent exact-SHA review before this record may claim final G6 closure                                                                                                     |
 
 ## Privacy Policy V1 implementation evidence
 
@@ -156,16 +157,21 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
   independently reproduces its read-only export plus prior-presence/expiry/control
   synthetic probe. The purge is independent and may not be delayed by this gap.
 
-Verification on 2026-08-06:
+Verification on 2026-08-07 after rebase onto synchronized `main`:
 
-- Backend Visa Engine/router suite: 1,656 passed, with one expected provisioning
-  skip because the operator role is not fully provisioned.
+- Backend Visa Engine/router suite: 1,668 collected, 1,667 passed and one
+  expected provisioning skip because the operator role is not fully
+  provisioned.
 - Mouth typecheck: green.
+- Visa-focused Mouth Vitest: 31 files, 319 tests green.
 - Full Mouth Vitest: 346 files, 3,178 tests green, including the Visa Oracle
   privacy, telemetry, guardian-consent and prior pricing coverage.
+- Retention operations: 16 tests green; Cell missed-run sensor: four tests
+  green; LaunchAgent plist and shell wrapper syntax checks green.
 - Playwright Visa Oracle V2: 15/15 Chromium tests green across typed engine
   states, network failures, keyboard EN/ID, reduced motion, consent, WCAG and
   320 px policy layout.
 - Unmocked full-stack smoke: 1/1 green through browser → Next → FastAPI → signed
-  TEST RulePack → PostgreSQL; migrations 264–266 applied and the disposable
-  `visa_oracle_smoke_*` database was dropped in `finally`.
+  TEST RulePack → PostgreSQL; the complete Visa Engine chain through migration
+  267 was applied and the disposable `visa_oracle_smoke_*` database was dropped
+  in `finally`.
