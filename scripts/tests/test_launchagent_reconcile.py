@@ -490,6 +490,40 @@ def test_env_specific_keys_do_not_diverge(world):
     assert r["repo_divergent"] == []
 
 
+def test_template_placeholder_innocent_when_substituted_correctly(world):
+    """Ward-round 2026-08-07, repo-divergent-placeholder-template-false-positive:
+    canon ships install-time tokens (__HOME__, __REPO_ROOT__) INSIDE
+    ProgramArguments, not just EnvironmentVariables — a correctly-installed
+    live plist (tokens substituted) must not read as forever-divergent."""
+    name = "com.balizero.templated.plist"
+    write_plist(
+        world["agents"] / name, "com.balizero.templated",
+        program_args=["/bin/bash", "/Users/nuzantara/nuzantara/scripts/x.sh"],
+    )
+    write_plist(
+        world["repo"] / "infra" / "launchagents" / name, "com.balizero.templated",
+        program_args=["/bin/bash", "__REPO_ROOT__/scripts/x.sh"],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["repo_divergent"] == []
+
+
+def test_template_placeholder_does_not_mask_a_real_argv_change(world):
+    """Guilt twin: a placeholder element must not give the WHOLE argv list a
+    free pass — a genuinely different, non-template element must still flag."""
+    name = "com.balizero.templated2.plist"
+    write_plist(
+        world["agents"] / name, "com.balizero.templated2",
+        program_args=["/bin/bash", "/Users/nuzantara/nuzantara/scripts/x.sh", "--live-only-flag"],
+    )
+    write_plist(
+        world["repo"] / "infra" / "launchagents" / name, "com.balizero.templated2",
+        program_args=["/bin/bash", "__REPO_ROOT__/scripts/x.sh", "--repo-only-flag"],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert [d["file"] for d in r["repo_divergent"]] == [name]
+
+
 def test_symlinked_repo_plist_never_divergent(world):
     name = "com.balizero.linked.plist"
     twin = world["repo"] / "infra" / "launchagents" / name
