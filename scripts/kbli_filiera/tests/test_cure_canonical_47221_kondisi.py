@@ -98,16 +98,67 @@ def test_apply_patches_the_field(tmp_path):
     assert "Jaringan distribusi" in records[0]["pma_kondisi"]
 
 
-def test_second_run_is_a_noop(tmp_path, capsys):
+def test_second_run_without_a_backfilled_new_sha256_refuses(tmp_path, capsys):
+    """ITEM J, guilt: without an explicit `new_sha256` pin, `judge_patch`
+    never mistakes a hash-mismatched record for "already cured" — the exact
+    blind spot the old per-key `already_patched` guess had.
+    """
     spec = _spec()
     path = _canonical_file(tmp_path, [_base_record()])
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(json.dumps(spec), encoding="utf-8")
     argv = ["--apply", "--dataset", str(path), "--spec", str(spec_path)]
     assert mod.main(argv) == 0
+    before = path.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert mod.main(argv) == 2, "no new_sha256 pin yet — must refuse, not noop"
+    assert "REFUSED" in capsys.readouterr().out
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_second_run_is_a_noop_after_new_sha256_is_backfilled(tmp_path, capsys):
+    spec = _spec()
+    path = _canonical_file(tmp_path, [_base_record()])
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    argv = ["--apply", "--dataset", str(path), "--spec", str(spec_path)]
+    assert mod.main(argv) == 0
+
+    _, records, _ = H.load_dataset(path)
+    patched_rec = {str(r.get(mod.CODE_FIELD)): r for r in records}["47221"]
+    spec["new_sha256"] = H.sha256_of(patched_rec)
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+
     capsys.readouterr()
     assert mod.main(argv) == 0
     assert "already cured" in capsys.readouterr().out
+
+
+def test_unrelated_field_drift_after_backfill_is_refused_not_noop(tmp_path, capsys):
+    """ITEM J's exact ask: `pma_kondisi` still reads exactly as patched, but an
+    UNRELATED field moved after `new_sha256` was pinned — must refuse.
+    """
+    spec = _spec()
+    path = _canonical_file(tmp_path, [_base_record()])
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    argv = ["--apply", "--dataset", str(path), "--spec", str(spec_path)]
+    assert mod.main(argv) == 0
+
+    _, records, _ = H.load_dataset(path)
+    by_code = {str(r.get(mod.CODE_FIELD)): r for r in records}
+    spec["new_sha256"] = H.sha256_of(by_code["47221"])
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+
+    by_code["47221"]["pma_nota"] = "mutated by a different cure entirely"
+    body = json.dumps({"data": records}, ensure_ascii=False, indent=2) + "\n"
+    path.write_text(body, encoding="utf-8")
+
+    before = path.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert mod.main(argv) == 2, "unrelated drift must refuse, never read as noop"
+    assert "REFUSED" in capsys.readouterr().out
+    assert path.read_text(encoding="utf-8") == before
 
 
 def test_untouched_fields_survive(tmp_path):

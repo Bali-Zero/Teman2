@@ -46,8 +46,9 @@ under UU 24/2004 — absent from the Pasal 1 angka 14 list. `65131`/`65132`/
 chapter (Pasal 1 angka 11-12), never mapped to a specific PP 14/2018
 provision — left to the Task-#10 financial-family lane.
 
-HARDENING (item 6, 2026-08-08 ledger)
---------------------------------------
+HARDENING (item 6, 2026-08-08 ledger; item J resume-noop hardening added
+2026-08-08)
+--------------------------------------------------------------------------
 Uses `_hardened_cure_io`: each code's spec entry pins `old_sha256` — the
 sha256 of the WHOLE record as observed when this cure was authored — so a
 record that drifted under it (re-adjudicated elsewhere, hand-edited) is
@@ -56,14 +57,27 @@ refused rather than silently overwritten. The write is atomic (tmp+rename).
 disk, that no field outside each code's declared `patch` keys moved, and
 that none of the other 1,553 records changed at all.
 
+Resume classification goes through `H.judge_patch()`, not the earlier
+per-key `already_patched = all(rec.get(k) == v for k, v in patch.items())`
+guess: that guess only reads the keys the PATCH names, so a record whose
+patched fields already carry the target values but whose UNRELATED fields
+have since moved (this fix-pack's own `cure_canonical_sector_law_prosepack.py`
+touches these same six records' `editorial.byTheNumbers`/`zantaraOpener`/
+`body` fields) would still read as "already cured" with the drift never
+reported. `judge_patch` requires the live record to hash to the pinned
+`old_sha256` (apply) or the pinned `new_sha256` (noop) — nothing in between.
+`new_sha256` is backfilled by `scripts/kbli_filiera/backfill_new_sha256.py`
+after every cure touching the same record has landed, never by this
+compiler itself (see that script's docstring for why the ordering matters).
+
 REFUSES, LOUDLY
 ----------------
 Aborts before writing anything if: a code is missing from canonical; its
-`expect` block (status/cap) no longer matches the live record; its
-`old_sha256` matches neither the live record NOR the already-patched state
-(i.e. the world moved under a THIRD state); or the untouched-fields
-fingerprint fails. Already-patched (hash matches the post-patch state) is
-success, not failure — idempotent, not a re-adjudication.
+`expect` block (status/cap) no longer matches the live record; its live hash
+matches neither `old_sha256` nor the pinned `new_sha256` (i.e. the world
+moved under a THIRD state); or the untouched-fields fingerprint fails.
+Already-patched (hash matches the pinned `new_sha256`) is success, not
+failure — idempotent, not a re-adjudication.
 
 Dry-run is the default; nothing is written without --apply.
 """
@@ -104,7 +118,8 @@ CureError = H.CureError
 
 def plan(spec: dict, records: list[dict]) -> dict[str, dict]:
     """Pure. {code: {"action": "patch"|"noop", "patch": {...}}} or raises
-    CureError. Every code named in the spec is judged independently."""
+    CureError. Every code named in the spec is judged independently, via
+    H.judge_patch (item J hardening — see the module docstring)."""
     by_code = {str(r.get(CODE_FIELD)): r for r in records}
     verdicts: dict[str, dict] = {}
     for code, entry in spec["codes"].items():
@@ -112,41 +127,18 @@ def plan(spec: dict, records: list[dict]) -> dict[str, dict]:
         if rec is None:
             raise CureError(f"{code}: not in canonical — nothing to cure")
 
-        patch = entry["patch"]
-        already_patched = all(rec.get(k) == v for k, v in patch.items())
-        current_hash = H.sha256_of(rec)
-
-        if current_hash == entry["old_sha256"]:
-            if already_patched:
-                # A record can coincidentally hash-match the pre-image AND
-                # already carry every patched value only if old==new for all
-                # keys, which never happens here — this branch documents the
-                # impossibility rather than silently mis-classifying it.
-                raise CureError(
-                    f"{code}: hash matches the pre-image but the record "
-                    "already carries every patched value — spec authored "
-                    "against a no-op, re-check the spec"
-                )
-            for key, want in entry.get("expect", {}).items():
-                if rec.get(key) != want:
-                    raise CureError(
-                        f"{code}: expect[{key}]={want!r} but hash matched — "
-                        "internal inconsistency, refusing"
-                    )
-            verdicts[code] = {"action": "patch", "patch": patch}
-            continue
-
-        if already_patched:
+        action = H.judge_patch(rec, entry["old_sha256"], entry.get("new_sha256"), code=code)
+        if action == "noop":
             verdicts[code] = {"action": "noop", "reason": "already cured"}
             continue
 
-        raise CureError(
-            f"{code}: live record hashes to {current_hash!r}, matching "
-            f"neither the pinned old_sha256 {entry['old_sha256']!r} nor the "
-            "already-patched state — the record drifted under this "
-            "adjudication (re-adjudicated elsewhere, or hand-edited); "
-            "re-derive before writing, do not overwrite blind"
-        )
+        for key, want in entry.get("expect", {}).items():
+            if rec.get(key) != want:
+                raise CureError(
+                    f"{code}: expect[{key}]={want!r} but hash matched old_sha256 "
+                    "— internal inconsistency, refusing"
+                )
+        verdicts[code] = {"action": "patch", "patch": entry["patch"]}
     return verdicts
 
 

@@ -22,9 +22,16 @@ The kondisi text is corrected to describe the condition the record's own
 official_basis actually names, so the field stops contradicting its own
 citation.
 
-HARDENING (item 6, 2026-08-08 ledger): uses `_hardened_cure_io` — old_sha256
-pin, atomic write, untouched_fields enforced (only `pma_kondisi` may move;
-every other field on 47221, and every other record, must be byte-identical).
+HARDENING (item 6, 2026-08-08 ledger; item J resume-noop hardening added
+2026-08-08): uses `_hardened_cure_io` — old_sha256 pin, atomic write,
+untouched_fields enforced (only `pma_kondisi` may move; every other field on
+47221, and every other record, must be byte-identical). Resume goes through
+`H.judge_patch()`, not a per-key value guess: 47221 is ALSO touched by this
+fix-pack's `cure_canonical_sector_law_prosepack.py` (a different field,
+`intel_2026.whatChanged`), so a check that only reads `pma_kondisi` would
+call the record "already cured" without ever noticing that unrelated drift.
+`new_sha256` is backfilled by `scripts/kbli_filiera/backfill_new_sha256.py`
+after every cure touching this record has landed.
 
 Dry-run is the default; nothing is written without --apply.
 """
@@ -62,39 +69,26 @@ CureError = H.CureError
 
 
 def plan(spec: dict, records: list[dict]) -> dict:
-    """Pure. {"action": "patch"|"noop", "patch": {...}} or raises CureError."""
+    """Pure. {"action": "patch"|"noop", "patch": {...}} or raises CureError.
+    Resume classification is H.judge_patch (item J hardening — module
+    docstring)."""
     code = spec["code"]
     by_code = {str(r.get(CODE_FIELD)): r for r in records}
     rec = by_code.get(code)
     if rec is None:
         raise CureError(f"{code}: not in canonical — nothing to cure")
 
-    patch = spec["patch"]
-    already_patched = all(rec.get(k) == v for k, v in patch.items())
-    current_hash = H.sha256_of(rec)
-
-    if current_hash == spec["old_sha256"]:
-        if already_patched:
-            raise CureError(
-                f"{code}: hash matches the pre-image but already carries every "
-                "patched value — spec authored against a no-op, re-check"
-            )
-        for key, want in spec.get("expect", {}).items():
-            if rec.get(key) != want:
-                raise CureError(
-                    f"{code}: expect[{key}]={want!r} but hash matched — internal "
-                    "inconsistency, refusing"
-                )
-        return {"action": "patch", "patch": patch}
-
-    if already_patched:
+    action = H.judge_patch(rec, spec["old_sha256"], spec.get("new_sha256"), code=code)
+    if action == "noop":
         return {"action": "noop", "reason": "already cured"}
 
-    raise CureError(
-        f"{code}: live record hashes to {current_hash!r}, matching neither the "
-        f"pinned old_sha256 {spec['old_sha256']!r} nor the already-patched state "
-        "— the record drifted under this adjudication; re-derive before writing"
-    )
+    for key, want in spec.get("expect", {}).items():
+        if rec.get(key) != want:
+            raise CureError(
+                f"{code}: expect[{key}]={want!r} but hash matched old_sha256 "
+                "— internal inconsistency, refusing"
+            )
+    return {"action": "patch", "patch": spec["patch"]}
 
 
 def verify_fleet(repair: bool) -> tuple[list[str], int]:

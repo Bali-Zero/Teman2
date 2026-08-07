@@ -127,16 +127,82 @@ def test_apply_patches_all_seven_fields(tmp_path):
         assert rec[key] == value
 
 
-def test_second_run_is_a_noop(tmp_path, capsys):
+def test_second_run_without_a_backfilled_new_sha256_refuses(tmp_path, capsys):
+    """ITEM J, guilt: the blind spot this hardening closes was a per-key value
+    guess that read a hash-mismatched-but-value-matching record as noop.
+    `judge_patch` requires an EXPLICIT `new_sha256` pin before it will ever
+    call a hash-mismatched record cured — without one, a second run must
+    REFUSE, not silently succeed. This is the behaviour change from the old
+    `already_patched` heuristic, and it deserves its own test rather than
+    being buried inside the noop path.
+    """
     spec = _one_code_spec("65111")
     path = _canonical_file(tmp_path, [_open_record("65111")])
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(json.dumps(spec), encoding="utf-8")
     argv = ["--apply", "--dataset", str(path), "--spec", str(spec_path)]
     assert mod.main(argv) == 0
+    before = path.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert mod.main(argv) == 2, "no new_sha256 pin yet — must refuse, not noop"
+    assert "REFUSED" in capsys.readouterr().out
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_second_run_is_a_noop_after_new_sha256_is_backfilled(tmp_path, capsys):
+    """The intended two-step resume path: apply, THEN an explicit backfill of
+    `new_sha256` (this test does it inline; the real tool is `backfill_new_
+    sha256.py`), THEN a second run recognizes the record as already cured.
+    """
+    spec = _one_code_spec("65111")
+    path = _canonical_file(tmp_path, [_open_record("65111")])
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    argv = ["--apply", "--dataset", str(path), "--spec", str(spec_path)]
+    assert mod.main(argv) == 0
+
+    _, records, _ = H.load_dataset(path)
+    patched_rec = {str(r.get(mod.CODE_FIELD)): r for r in records}["65111"]
+    spec["codes"]["65111"]["new_sha256"] = H.sha256_of(patched_rec)
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+
     capsys.readouterr()
     assert mod.main(argv) == 0
     assert "already cured" in capsys.readouterr().out
+
+
+def test_unrelated_field_drift_after_backfill_is_refused_not_noop(tmp_path, capsys):
+    """ITEM J's exact ask: a record whose PATCHED fields still read correctly
+    but whose UNRELATED fields moved after `new_sha256` was pinned (a later
+    cure touching the same record, or a hand-edit) must be refused — the
+    whole-record hash can no longer match either pin, so `judge_patch` cannot
+    mistake this for "already cured". This is the scenario the old per-key
+    `already_patched` guess was blind to by construction.
+    """
+    spec = _one_code_spec("65111")
+    path = _canonical_file(tmp_path, [_open_record("65111")])
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    argv = ["--apply", "--dataset", str(path), "--spec", str(spec_path)]
+    assert mod.main(argv) == 0
+
+    _, records, _ = H.load_dataset(path)
+    by_code = {str(r.get(mod.CODE_FIELD)): r for r in records}
+    spec["codes"]["65111"]["new_sha256"] = H.sha256_of(by_code["65111"])
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+
+    # A field OUTSIDE the patch drifts — e.g. a later, unrelated cure edits
+    # `judul`. Every patched key still reads exactly as the patch left it.
+    by_code["65111"]["judul"] = "mutated by a different cure entirely"
+    body = json.dumps({"data": records}, ensure_ascii=False, indent=2) + "\n"
+    path.write_text(body, encoding="utf-8")
+
+    before = path.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert mod.main(argv) == 2, "unrelated drift must refuse, never read as noop"
+    out = capsys.readouterr().out
+    assert "REFUSED" in out
+    assert path.read_text(encoding="utf-8") == before, "a refusal must never write"
 
 
 def test_untouched_fields_survive(tmp_path):

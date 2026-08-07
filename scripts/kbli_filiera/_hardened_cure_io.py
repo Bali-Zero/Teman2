@@ -32,11 +32,18 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 
 class CureError(RuntimeError):
     """A refusal. Never downgraded to a warning."""
+
+
+# A path SEGMENT that addresses one element of a list nested inside a dict —
+# `editorial.byTheNumbers[2].value` needs this for the stat-card cells; every
+# other path in this codebase is plain dict traversal and never matches this.
+_INDEXED = re.compile(r"^(?P<name>[^\[\]]+)\[(?P<idx>\d+)\]$")
 
 
 def sha256_of(value: object) -> str:
@@ -48,34 +55,90 @@ def sha256_of(value: object) -> str:
     ).hexdigest()
 
 
+def _step_into(cur: object, seg: str) -> tuple[object, bool]:
+    """One path segment, dict key or `name[idx]` list index. Returns
+    (value, ok) — `ok` is False when the segment cannot be resolved, so
+    callers decide whether that means "missing" (has_field/read_field) or
+    "create it" (write_field's intermediate segments)."""
+    m = _INDEXED.match(seg)
+    if m:
+        name, idx = m.group("name"), int(m.group("idx"))
+        if not isinstance(cur, dict) or name not in cur:
+            return None, False
+        seq = cur[name]
+        if not isinstance(seq, list) or idx >= len(seq):
+            return None, False
+        return seq[idx], True
+    if not isinstance(cur, dict) or seg not in cur:
+        return None, False
+    return cur[seg], True
+
+
 def has_field(rec: dict, path: str) -> bool:
     cur: object = rec
     for key in path.split("."):
-        if not isinstance(cur, dict) or key not in cur:
+        cur, ok = _step_into(cur, key)
+        if not ok:
             return False
-        cur = cur[key]
     return True
 
 
 def read_field(rec: dict, path: str) -> object:
     cur: object = rec
     for key in path.split("."):
-        if not isinstance(cur, dict) or key not in cur:
+        cur, ok = _step_into(cur, key)
+        if not ok:
             raise CureError(f"{path}: the record does not carry this field")
-        cur = cur[key]
     return cur
+
+
+def diff_leaf_for_patch_path(path: str) -> str:
+    """The dotted-path leaf `_diff_paths` will report for a given patch path.
+
+    `_diff_paths` (below) treats a list as an opaque leaf — it never descends
+    into one — so a patch path like `editorial.byTheNumbers[2].value` shows
+    up in the untouched-fields diff as `editorial.byTheNumbers` (the whole
+    list), never as the indexed sub-path. `verify_untouched`'s declared scope
+    must be built from THIS, not from the raw patch keys, or a legitimate
+    list-cell edit reads as an undeclared field change and refuses itself.
+    """
+    out: list[str] = []
+    for seg in path.split("."):
+        m = _INDEXED.match(seg)
+        if m:
+            out.append(m.group("name"))
+            return ".".join(out)
+        out.append(seg)
+    return ".".join(out)
 
 
 def write_field(rec: dict, path: str, value: object) -> None:
     keys = path.split(".")
     cur = rec
     for key in keys[:-1]:
+        m = _INDEXED.match(key)
+        if m:
+            name, idx = m.group("name"), int(m.group("idx"))
+            seq = cur.get(name) if isinstance(cur, dict) else None
+            if not isinstance(seq, list) or idx >= len(seq):
+                raise CureError(f"{path}: cannot traverse into {key!r}")
+            cur = seq[idx]
+            continue
         nxt = cur.get(key)
         if not isinstance(nxt, dict):
             nxt = {}
             cur[key] = nxt
         cur = nxt
-    cur[keys[-1]] = value
+    last = keys[-1]
+    m = _INDEXED.match(last)
+    if m:
+        name, idx = m.group("name"), int(m.group("idx"))
+        seq = cur.get(name) if isinstance(cur, dict) else None
+        if not isinstance(seq, list) or idx >= len(seq):
+            raise CureError(f"{path}: cannot write into {last!r} — index out of range")
+        seq[idx] = value
+    else:
+        cur[last] = value
 
 
 def load_dataset(path: Path) -> tuple[dict, list[dict], str]:
@@ -160,3 +223,54 @@ def verify_untouched(
                 f"untouched_fields: {code!r} changed field(s) outside its "
                 f"declared scope: {sorted(extra)} (declared: {sorted(allowed)})"
             )
+
+
+def judge_patch(
+    rec: dict, old_sha256: str, new_sha256: str | None, code: str = ""
+) -> str:
+    """Classify one code's plan: "patch" or "noop" — never a value-by-value
+    guess (2026-08-08 sector-law fix-pack, item J).
+
+    THE BLIND SPOT THIS CLOSES
+    ---------------------------
+    Every hardened compiler up to this point resumed with:
+
+        already_patched = all(rec.get(k) == v for k, v in patch.items())
+        ...
+        if already_patched:
+            return {"action": "noop", "reason": "already cured"}
+
+    That check only reads the KEYS NAMED IN THE PATCH. A record whose patched
+    fields already carry the target values, but whose UNRELATED fields have
+    drifted since this cure's `old_sha256` was pinned (a later cure touched
+    the same record, or a hand-edit), passes it and is certified "already
+    cured" — the drift is real and it is never reported, because the check
+    never looks anywhere else.
+
+    THE FIX
+    -------
+    `new_sha256` pins the WHOLE record's hash at the fully-cured state this
+    spec was authored against (computed AFTER every cure that touches the
+    same record has landed — ordering matters, see the fix-pack item J
+    docstring in the compiler that calls this). The noop path now requires
+    the live record to hash to EXACTLY that pin, not to "coincidentally carry
+    the same values on the keys I bothered to check". Anything else —
+    including a record that still carries every patched value but has moved
+    elsewhere — is a refusal, named, never a silent success.
+
+    `new_sha256=None` means the pin has not been backfilled yet (the normal
+    state on a spec's first application): only "patch" or "refuse" are
+    possible, matching the original hardened compilers' first-run behaviour.
+    """
+    current_hash = sha256_of(rec)
+    if current_hash == old_sha256:
+        return "patch"
+    if new_sha256 is not None and current_hash == new_sha256:
+        return "noop"
+    raise CureError(
+        f"{code}: live record hashes to {current_hash!r}, matching neither "
+        f"the pinned old_sha256 {old_sha256!r} nor the pinned new_sha256 "
+        f"{new_sha256!r} — the record drifted under this adjudication "
+        "(re-adjudicated elsewhere, or hand-edited outside the declared "
+        "patch); re-derive before writing, do not overwrite blind"
+    )
