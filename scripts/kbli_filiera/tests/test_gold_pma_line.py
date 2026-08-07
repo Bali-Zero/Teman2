@@ -38,6 +38,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 ADJUDICATION_BACKLOG = {
     "41011": "gold 67% vs canonical 100% — gold is more restrictive; which is right is a ruling",
     "47221": "canonical cap is `special`; gold states 49% — no figure to compare against",
+    # Machine-generated, not authored: the enrichment scripts append
+    # `Condition: {pma_kondisi}.` after the figure. Refused because 49% vs a
+    # TERTUTUP record is a disagreement about the law, not a stale default.
     "47222": "gold 49% + kemitraan condition vs canonical 0%/TERTUTUP; the note also cites alcoholic retail on a non-alcoholic code",
     "65121": "gold cites a historical 80% acquisition cap vs canonical 100%",
     "73100": "gold 49% + kemitraan vs canonical 100%; canonical's own locator for this family is unverifiable (10/2021 lampiran are text-layer-dead)",
@@ -106,7 +109,71 @@ def test_the_sixteen_more_open_codes_are_gone_from_the_live_file(stores):
     assert "Closed to foreign investment" in gold["79122"]["whatYouNeed"]
 
 
+# ── the prose net, and the acquittal it must not overturn ───────────────────
+
+
+def test_prose_openness_on_capped_codes_is_only_the_named_ones(stores):
+    by_code, gold = stores
+    found = set(C.prose_scan(gold, by_code))
+    allowed = set(C.PROSE_ACQUITTED) | set(ADJUDICATION_BACKLOG)
+    assert found <= allowed, (
+        f"gold asserts openness in words on a capped code nobody has named: "
+        f"{sorted(found - allowed)}"
+    )
+
+
+def test_47111_keeps_the_sentence_that_belongs_to_another_code(stores):
+    """The innocence that matters most here.
+
+    `47111` is cap 0 and its `baliContext` says "All fully open to 100% PMA" —
+    about **47191**, named two lines above as "The PMA alternative", in a
+    passage that also says "foreigners cannot own 47111". A sweep that reads the
+    percentage and not the entity would rewrite a correct paragraph into a wrong
+    one. It is on PROSE_ACQUITTED, and this test is what keeps it there.
+    """
+    _by_code, gold = stores
+    ctx = gold["47111"]["baliContext"]
+    assert "47191" in ctx and "fully open to 100% PMA" in ctx
+    assert "foreigners cannot own 47111" in ctx
+    assert "47111" in C.PROSE_ACQUITTED
+
+
+def test_guilt_prose_openness_three_fields_from_the_pma_sentence():
+    canon = {"90001": {"kode_kbli_2025": "90001", "pma_max_asing": 49,
+                       "pma_status": "TERBATAS", "judul": "Test"}}
+    gold = {"90001": {
+        "whatYouNeed": "**PMA:** Restricted — max 49% foreign ownership.",
+        "baliContext": "Since this is fully open to foreign investment, budget IDR 10bn.",
+    }}
+    hits = C.prose_scan(gold, canon)
+    assert "90001" in hits and hits["90001"][0][1] == "baliContext"
+
+
+def test_innocence_prose_net_ignores_a_code_that_is_actually_open():
+    canon = {"90001": {"kode_kbli_2025": "90001", "pma_max_asing": 100,
+                       "pma_status": "TERBUKA", "judul": "Test"}}
+    gold = {"90001": {"baliContext": "This activity is fully open to foreign investment."}}
+    assert C.prose_scan(gold, canon) == {}
+
+
+def test_the_authored_sentences_are_in_the_live_file(stores):
+    _by_code, gold = stores
+    for code, a in C.AUTHORED_SENTENCES.items():
+        live = gold[code][a["field"]]
+        assert a["new"] in live, f"{code}: the authored sentence is not in the file"
+        assert a["old"] not in live, f"{code}: the sentence it replaced is still there"
+
+
 # ── guilt ───────────────────────────────────────────────────────────────────
+
+
+def test_guilt_a_pma_marker_with_the_colon_inside_the_bold_is_seen():
+    """`41020` wrote `**PMA: TERBUKA 100% — …**`. The first version of the
+    sentence pattern was written from the `**PMA:**` shape already in hand and
+    was blind to this one, on a cap-0 code."""
+    canon, gold = _mini(0, "**PMA: TERBUKA 100% — fully open to foreign ownership.**")
+    f = C.scan(gold, canon)
+    assert "90001" in f and f["90001"]["stated"] == 100 and f["90001"]["more_open"]
 
 
 def _mini(cap, sentence, status="TERBATAS"):

@@ -85,9 +85,64 @@ log = logging.getLogger("cure_gold_pma_line")
 DEFAULT_OPEN_RE = re.compile(
     r"\*\*PMA:\*\*\s*Fully open\s*—\s*(\d{1,3})%\s*foreign ownership(?: allowed)?\."
 )
-# Any PMA sentence, for the divergence scan.
-PMA_SENTENCE_RE = re.compile(r"\*\*PMA:\*\*[^\n]*")
+# Any PMA sentence, for the divergence scan. The optional inner `**` is not
+# cosmetic: `41020` writes `**PMA: TERBUKA 100% — fully open to foreign
+# ownership.**` — colon INSIDE the bold — and the first version of this pattern,
+# written from the shape I had already found, was blind to it on a cap-0 code.
+# A pattern derived from the instance you found catches the instance you found.
+PMA_SENTENCE_RE = re.compile(r"\*\*PMA:?(?:\*\*)?[^\n]*")
 PERCENT_RE = re.compile(r"(\d{1,3})\s*%")
+
+# Openness asserted in WORDS, anywhere in gold, outside a PMA sentence. This is
+# the class a percentage check cannot reach: `53200` states its cap correctly
+# and then says "Since this is fully open to foreign investment" three fields
+# away. Reported by --report; the two live instances are cured below.
+PROSE_OPEN_RE = re.compile(
+    r"(100%\s*(?:foreign|owned|foreign-owned|PMA)|fully open|wholly foreign|"
+    r"open to 100%|foreign investors can (?:fully )?own)",
+    re.I,
+)
+
+# Gold passages that assert 100% openness on a capped code and are RIGHT,
+# because the figure belongs to a DIFFERENT, NAMED code. Never "corrected".
+PROSE_ACQUITTED = {
+    "47111": (
+        "the '100% PMA' is 47191's, named in the same paragraph as the PMA "
+        "alternative; the passage itself says 'foreigners cannot own 47111' and "
+        "calls the segment UMKM-reserved. The number belongs to another entity."
+    ),
+}
+
+# Sentence-level replacements that had to be WRITTEN, not derived — each pinned
+# to the exact sentence it was authored against, so it can never land on a
+# paragraph it was not graded on. Kept here rather than in the mechanical path
+# because a compiler that starts authoring is a compiler nobody can audit.
+AUTHORED_SENTENCES = {
+    "41020": {
+        "field": "whatYouNeed",
+        "old": "**PMA: TERBUKA 100% — fully open to foreign ownership.**",
+        "new": (
+            "**PMA: 0% — closed to foreign shareholding.** Prefabricated-building "
+            "construction is reserved to cooperatives and Indonesian MSMEs by "
+            "Perpres 49/2021, so a PT PMA cannot register this code anywhere in "
+            "Indonesia."
+        ),
+        "why": "cap 0, UMKM-reserved; the line asserted the exact opposite",
+    },
+    "53200": {
+        "field": "baliContext",
+        "old": (
+            "Since this is fully open to foreign investment, expect a minimum "
+            "paid-up capital of IDR 10 billion."
+        ),
+        "new": (
+            "Foreign shareholding in courier activity is capped at 49%, so an "
+            "Indonesian partner holds the majority; expect a minimum paid-up "
+            "capital of IDR 10 billion."
+        ),
+        "why": "cap 49; the sentence made the capital figure follow FROM an openness that is not the case",
+    },
+}
 
 
 class CureError(RuntimeError):
@@ -183,11 +238,42 @@ def scan(gold: dict, by_code: dict, incomparable: list | None = None) -> dict[st
     return out
 
 
+def prose_scan(gold: dict, by_code: dict) -> dict[str, list]:
+    """Openness asserted in words, on a code whose cap is below 100.
+
+    DECLARED LIMIT: this reads for a vocabulary, so it is blind to a
+    reformulation and to the other four languages the site serves. It is a
+    second net under the percentage check, not a proof of cleanliness — and
+    saying so here is the point, because the last thing this file's sibling
+    claimed was that a narrower net had found nothing.
+    """
+    out: dict[str, list] = {}
+    for code, rec in gold.items():
+        canon = by_code.get(code)
+        if canon is None:
+            continue
+        cap = resolve_cap(canon)
+        if not isinstance(cap, int) or cap >= 100:
+            continue
+        for k, v in rec.items():
+            if not isinstance(v, str):
+                continue
+            stripped = PMA_SENTENCE_RE.sub("", v)  # the PMA sentence has its own check
+            for m in PROSE_OPEN_RE.finditer(stripped):
+                s = max(0, m.start() - 90)
+                out.setdefault(code, []).append(
+                    (cap, k, stripped[s : m.end() + 90].replace("\n", " "))
+                )
+    return out
+
+
 def plan(findings: dict[str, dict], gold: dict) -> tuple[dict, dict]:
     """Split the findings into what a compiler may do and what it must not."""
     patch: dict[str, dict] = {}
     refused: dict[str, str] = {}
     for code, f in sorted(findings.items()):
+        if code in AUTHORED_SENTENCES:
+            continue  # handled by the authored path, not by derivation
         if not f["more_open"]:
             refused[code] = (
                 f"gold is MORE RESTRICTIVE ({f['stated']}% vs cap {f['cap']}); "
@@ -196,9 +282,10 @@ def plan(findings: dict[str, dict], gold: dict) -> tuple[dict, dict]:
             continue
         if not f["is_default"]:
             refused[code] = (
-                "hand-authored PMA sentence carrying conditions beyond the figure; "
-                "a mechanical swap would leave the replacement above prose written "
-                "for the entity the record is not"
+                "the PMA sentence carries text beyond the figure — a condition, a "
+                "note, or authored prose. Replacing the sentence would drop that "
+                "text, or leave it standing above a paragraph written for an "
+                "entity the record is not"
             )
             continue
         old_text = gold[code][f["field"]]
@@ -240,6 +327,32 @@ def main() -> int:
     findings = scan(gold, by_code, incomparable)
     patch, refused = plan(findings, gold)
 
+    # Authored sentences — pinned, never pattern-matched into place.
+    authored: dict[str, dict] = {}
+    for code, a in sorted(AUTHORED_SENTENCES.items()):
+        live = gold.get(code, {}).get(a["field"])
+        if live is None:
+            raise CureError(f"{code}.{a['field']}: field is gone — the pin is stale")
+        if a["old"] not in live:
+            if a["new"] in live:
+                continue  # already applied; idempotent, not a failure
+            raise CureError(
+                f"{code}.{a['field']}: the pinned sentence is not in the live text. "
+                "It was authored against a paragraph that has since moved; re-read "
+                "it before re-pinning."
+            )
+        authored[code] = {"field": a["field"], "new": live.replace(a["old"], a["new"], 1)}
+
+    prose = prose_scan(gold, by_code)
+    unacquitted = {c: v for c, v in prose.items()
+                   if c not in PROSE_ACQUITTED and c not in AUTHORED_SENTENCES
+                   and c not in refused}
+    log.info("prose openness on capped codes: %d found | %d acquitted | %d to author",
+             len(prose), len(PROSE_ACQUITTED), len(unacquitted))
+    for code, hits in sorted(unacquitted.items()):
+        cap, field, frag = hits[0]
+        log.info("    PROSE %s cap=%s [%s] …%s…", code, cap, field, frag.strip()[:110])
+
     log.info("gold codes: %d | divergences: %d", len(gold), len(findings))
     for code, stated, cap, _s in sorted(incomparable):
         log.info("  NOT COMPARABLE %s  gold=%s%% canonical=%r — no figure to compare",
@@ -254,7 +367,7 @@ def main() -> int:
         for code, p in sorted(patch.items()):
             log.info("    %s  «%s»  ->  «%s»", code, p["was"], p["now"])
 
-    if not patch:
+    if not patch and not authored:
         log.info("nothing to patch")
         return 0
 
@@ -268,6 +381,18 @@ def main() -> int:
         if got != p["old_sha256"]:
             raise CureError(f"{code}.{p['field']}: live text moved under the plan")
         staged[code][p["field"]] = p["new"]
+    for code, a in authored.items():
+        staged[code][a["field"]] = a["new"]
+
+    # The authored sentences must silence the prose scan on their own codes,
+    # and must not wake it anywhere else.
+    prose_after = prose_scan(staged, by_code)
+    for code in authored:
+        if code in prose_after:
+            raise CureError(f"{code}: authored sentence did not silence the prose scan")
+    for code in prose_after:
+        if code not in prose:
+            raise CureError(f"{code}: prose finding appeared on a code never touched")
 
     after = scan(staged, by_code)
     for code in patch:
@@ -288,7 +413,8 @@ def main() -> int:
     GOLD_PATH.write_text(
         json.dumps(gold_raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    log.info("WROTE %s — %d sentences re-derived", GOLD_PATH.name, len(patch))
+    log.info("WROTE %s — %d re-derived, %d authored", GOLD_PATH.name,
+             len(patch), len(authored))
     return 0
 
 
