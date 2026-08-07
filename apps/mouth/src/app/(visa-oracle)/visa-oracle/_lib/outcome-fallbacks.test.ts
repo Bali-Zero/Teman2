@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildClientGuardOutcome,
+  buildDegradedHumanReviewOutcome,
   buildNetworkFailureOutcome,
 } from "./outcome-fallbacks";
 
@@ -41,5 +42,25 @@ describe("non-engine OutcomeViewModel fallbacks", () => {
       retryable: false,
     });
     expect(outcome.outage.retryable).toBe(false);
+  });
+
+  it("reports a degraded HUMAN_REVIEW_REQUIRED honestly — never as no evaluation submitted", () => {
+    const outcome = buildDegradedHumanReviewOutcome({
+      assumptions: [{ id: "a", questionId: "review_gate", editable: true }],
+    });
+    expect(outcome).toMatchObject({
+      state: "HUMAN_REVIEW_REQUIRED",
+      provenance: "CLIENT_GUARD",
+      assessment: null,
+      candidates: [],
+      pathsRemaining: 1,
+    });
+    expect(outcome.assumptions).toHaveLength(1);
+    expect(outcome.nextSteps).toHaveLength(3);
+    expect(outcome.reviewReasons).toHaveLength(1);
+    expect(outcome.reviewReasons[0].sourceIds).toEqual([]);
+    for (const text of Object.values(outcome.reviewReasons[0].message)) {
+      expect(text.toLowerCase()).not.toContain("no evaluation was submitted");
+    }
   });
 });

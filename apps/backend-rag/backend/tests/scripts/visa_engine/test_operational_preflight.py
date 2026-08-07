@@ -23,6 +23,9 @@ CANONICAL_SENSITIVE_FUNCTIONS = {
     "public.erase_visa_decision_for_dsr(uuid,text,text)",
     "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,"
     "timestamp with time zone)",
+    "public.bind_visa_evaluate_idempotency_retention_policy()",
+    "public.bind_visa_decision_retention_policy()",
+    "public.bind_visa_decision_payload_retention()",
 }
 CANONICAL_SENSITIVE_TABLES = {
     "visa_rule_packs",

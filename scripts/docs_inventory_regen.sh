@@ -120,6 +120,24 @@ case "$#" in
     ;;
 esac
 
+# Advisory only — never changes this script's exit code. See the helper's
+# header for the 2026-08-07 measurement (PR #3750) and for why this warns
+# instead of refusing: regenerating to resolve a DOCS_INVENTORY.md conflict is
+# the CORRECT use, it just has to be repeated once the merge commit exists.
+#
+# Absence is a HARD error, not a shrug: this script runs without `set -e`, so a
+# failed `.` would sail on and leave `warn_if_merge_in_progress` undefined —
+# the guard would be gone with nothing saying so (superscar #2, exists-but-not-
+# armed). Same posture as the strict arg parsing below: never a silent fallback.
+MERGE_STATE_LIB="$SCRIPT_DIR/lib/git_merge_state.sh"
+if [[ ! -f "$MERGE_STATE_LIB" ]]; then
+  echo "docs_inventory_regen: missing $MERGE_STATE_LIB — broken checkout, refusing to run half-armed" >&2
+  exit 2
+fi
+# shellcheck source=scripts/lib/git_merge_state.sh
+. "$MERGE_STATE_LIB"
+warn_if_merge_in_progress "$SCRIPT_DIR/.."
+
 if [[ "$ORGAN_MODE" == "true" ]]; then
   TIME_MODE_ARGS=(--as-of "$(date -u +%Y-%m-%d)")
 else

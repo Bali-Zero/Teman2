@@ -204,6 +204,48 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(screen.queryByText("Visit Visa C1")).toBeNull();
   });
 
+  it("never claims no evaluation was submitted when the engine adapter rejects one review-hold citation", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.sources[0].canonical_url = "https://imigrasi.go.id.evil.test/x";
+    response.decision.review_reasons[0].source_refs = [
+      response.sources[0].source_record_id,
+    ];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("HUMAN_REVIEW_REQUIRED");
+    expect(
+      screen.getByText(translate("en", "outcome.human_review_body")),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no evaluation was submitted/i)).toBeNull();
+    expect(screen.queryByText("Client safety hold")).toBeNull();
+  });
+
+  it("never claims no evaluation was submitted when strict parsing rejects an unrelated field", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    const raw = JSON.parse(JSON.stringify(response)) as Record<string, unknown>;
+    (raw.sources as Array<Record<string, unknown>>)[0].is_primary_authority =
+      null;
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(raw), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("HUMAN_REVIEW_REQUIRED");
+    expect(screen.queryByText(/no evaluation was submitted/i)).toBeNull();
+    expect(screen.queryByText("Client safety hold")).toBeNull();
+  });
+
   it("keeps automatic network retry byte-identical and renders no fabricated result", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => {
       throw new TypeError("network down");
