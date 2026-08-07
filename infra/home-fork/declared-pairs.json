@@ -640,6 +640,9 @@
     "~/Library/Google/GoogleSoftwareUpdate/*",
     "~/scripts/mini-git-pull-bridge.sh",
     "~/Applications/WR2 Control.app/*",
-    "~/.local/bin/zero-design/*"
+    "~/.local/bin/zero-design/*",
+    "~/.openclaw-node-host/service-env/ai.openclaw.node-env-wrapper.sh",
+    "~/.openclaw/service-env/ai.openclaw.gateway-env-wrapper.sh",
+    "~/.claude/daemons/guardrails.py"
   ]
 }
