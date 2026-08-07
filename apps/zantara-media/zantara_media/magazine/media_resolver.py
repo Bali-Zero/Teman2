@@ -24,7 +24,7 @@ from typing import Any, Literal
 
 from PIL import Image
 
-from zantara_media.indexer.handlers.image_handler import extract_image
+from zantara_media.handlers.image_handler import extract_image
 from zantara_media.magazine.assets import (
     AssetIntentManifestV1,
     AssetIntentV1,
