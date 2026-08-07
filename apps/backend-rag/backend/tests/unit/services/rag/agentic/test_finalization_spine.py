@@ -1052,10 +1052,23 @@ def test_raw_early_returns_are_sealed_behind_one_public_wrapper() -> None:
         for node in raw_returns
     ), "every user-visible early return must carry a closed internal producer context"
 
-    callers: set[str] = set()
+    # Do not limit this to direct calls.  A future caller could first alias the
+    # private implementation (or resolve it through ``getattr``) and then call
+    # the alias, bypassing a call-only tripwire while still exposing a raw
+    # finalization context.  Any reference to the implementation belongs only
+    # in the public wrapper.
+    references: set[str] = set()
     for method_name, method in methods.items():
         for node in ast.walk(method):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                if node.func.attr == "_process_query_core_unfinalized":
-                    callers.add(method_name)
-    assert callers == {"process_query_core"}
+            if isinstance(node, ast.Attribute) and node.attr == "_process_query_core_unfinalized":
+                references.add(method_name)
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "getattr"
+                and len(node.args) >= 2
+                and isinstance(node.args[1], ast.Constant)
+                and node.args[1].value == "_process_query_core_unfinalized"
+            ):
+                references.add(method_name)
+    assert references == {"process_query_core"}
