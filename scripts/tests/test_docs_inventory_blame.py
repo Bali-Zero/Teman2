@@ -352,11 +352,17 @@ def test_guilt_a_whitelisted_doc_is_never_an_earned_flip() -> None:
     RENDERED row can: `classify()` writes `action = "whitelist"` for a
     whitelisted doc, never the em-dash. So the generated side's action carries
     the fact, and pinning it closes the half the predicate must leave open.
+
+    FIXTURE NOTE (2026-08-07, re-derived): this used `docs/README.md`, which
+    is now ALSO refused as a directory index. The assertion would have stayed
+    green with the whitelist half of the rule deleted — a test that passes for
+    two reasons discriminates on neither. The path is now a doc that is
+    whitelisted and nothing else, so the assertion still names one mechanism.
     """
     wl = "LIVE | 2026-04-29 | 2026-07-28 | — | 0 | 0 | no | — | whitelist"
-    committed = _full_table({"docs/README.md": _ARCHIVED})
-    generated = _full_table({"docs/README.md": wl})
-    assert _drift(committed, generated) == {"docs/README.md"}
+    committed = _full_table({"docs/GUIDE.md": _ARCHIVED})
+    generated = _full_table({"docs/GUIDE.md": wl})
+    assert _drift(committed, generated) == {"docs/GUIDE.md"}
 
 
 def test_guilt_a_future_dated_flip_is_drift() -> None:
@@ -661,3 +667,48 @@ def test_guilt_a_prior_flip_written_with_a_decorated_path_still_blocks_re_exempt
         committed, generated, prior_flips={"`docs/audits/x.md`": "2026-07-20"}
     )
     assert charged == {"docs/audits/x.md"}
+
+
+def test_guilt_a_directory_index_flip_is_never_earned() -> None:
+    """A directory index can never be orphan-flipped by an honest run, so a
+    committed ARCHIVED claim for one is drift, not a tolerated flip.
+
+    Both spellings of the class, because they are one rule and would regress
+    together: plain `README.md` and the numeric-ordering `00_README.md` the
+    wave directories use.
+
+    MEASURED, not assumed (2026-08-07): the first version of this test wrote
+    the `File` cell DECORATED, to also pin that the call site normalises with
+    `_row_key`. Its innocence control went red — a decorated row is charged as
+    drift for ANY basename, so the guilt assertion was passing on decoration
+    and would have stayed green with the directory-index rule deleted. The
+    normalisation at the call site is therefore belt-and-braces rather than
+    load-bearing, and is not claimed here as something this corpus proves.
+    """
+    for path in ("docs/topic/README.md", "docs/topic/00_README.md"):
+        committed = _full_table({path: _ARCHIVED})
+        generated = _full_table({path: _LIVE})
+        assert _drift(committed, generated) == {path}, path
+
+
+def test_innocence_an_earned_flip_on_a_non_index_doc_is_still_exempt() -> None:
+    """The control for the test above, sharing its mechanism.
+
+    Identical rows, identical dates — only the BASENAME differs. If these went
+    red too, the directory-index refusal would be swallowing every earned flip
+    rather than the class it names, and the guilt test alone could not tell the
+    two apart.
+
+    `INDEX.md` and `READMEISH.md` are here on purpose: they are the DECLARED
+    LIMITS of `_is_directory_index` (only README, only with a numeric ordering
+    prefix). Pinning them means a future widening of that regex — to other
+    index-ish names, or to any name CONTAINING "README" — cannot land quietly.
+    """
+    for path in (
+        "docs/topic/GUIDE.md",
+        "docs/topic/INDEX.md",
+        "docs/topic/READMEISH.md",
+    ):
+        committed = _full_table({path: _ARCHIVED})
+        generated = _full_table({path: _LIVE})
+        assert _drift(committed, generated) == set(), path

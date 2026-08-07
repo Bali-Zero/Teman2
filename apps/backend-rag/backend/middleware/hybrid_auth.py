@@ -27,6 +27,8 @@ from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, v
 
 logger = logging.getLogger(__name__)
 
+_PII_RESTRICTED_PUBLIC_ENDPOINTS = frozenset({"/api/visa-oracle/evaluate"})
+
 
 def _get_correlation_id(request: Request) -> str:
     """Extract correlation ID from request state for logging"""
@@ -205,20 +207,29 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             user_agent = request.headers.get("user-agent", "unknown")
             matched_entry = find_entry(path)
 
+            privacy_restricted = path in _PII_RESTRICTED_PUBLIC_ENDPOINTS
+            access_context: dict[str, Any] = {
+                "event_type": "public_endpoint_access",
+                "endpoint": path,
+                "method": request.method,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "bypass_reason": matched_entry.reason if matched_entry else "infra",
+                "bypass_category": (matched_entry.category.value if matched_entry else "infra"),
+                "bypass_prefix": matched_entry.prefix if matched_entry else None,
+                "privacy_restricted": privacy_restricted,
+            }
+            if not privacy_restricted:
+                access_context.update(
+                    {
+                        "client_ip": client_ip,
+                        "user_agent": user_agent[:200],
+                        "correlation_id": correlation_id,
+                    },
+                )
+
             logger.info(
                 "Public endpoint accessed",
-                extra={
-                    "event_type": "public_endpoint_access",
-                    "endpoint": path,
-                    "method": request.method,
-                    "client_ip": client_ip,
-                    "user_agent": user_agent[:200],
-                    "correlation_id": correlation_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "bypass_reason": matched_entry.reason if matched_entry else "infra",
-                    "bypass_category": (matched_entry.category.value if matched_entry else "infra"),
-                    "bypass_prefix": matched_entry.prefix if matched_entry else None,
-                },
+                extra=access_context,
             )
 
             try:
@@ -231,10 +242,11 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     endpoint=request.url.path,
                     method=request.method,
                 ).inc()
-                public_endpoint_access_by_ip.labels(
-                    endpoint=request.url.path,
-                    client_ip=client_ip,
-                ).inc()
+                if not privacy_restricted:
+                    public_endpoint_access_by_ip.labels(
+                        endpoint=request.url.path,
+                        client_ip=client_ip,
+                    ).inc()
             except (ImportError, AttributeError) as exc:
                 # Metrics subsystem not wired in this deployment (e.g. tests,
                 # minimal CI). Log once per process at debug — a missing

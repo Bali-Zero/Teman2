@@ -9,7 +9,13 @@
  * Plan: docs/superpowers/plans/2026-04-19-seo-cell-A-prenatal-foundation.md Task 5
  */
 
-const WA_NUMBER = "6282230102328";
+/**
+ * The public WhatsApp number, digits-only. Exported because the JSON-LD
+ * components need it as an E.164 `telephone` value: the number Google reads
+ * out of structured data has to be the same one the CTA buttons dial, and
+ * before this was shared they had drifted onto two different people.
+ */
+export const WA_NUMBER = "628213454721";
 
 export type Funnel = "home" | "visa" | "kbli" | "tax" | "property";
 

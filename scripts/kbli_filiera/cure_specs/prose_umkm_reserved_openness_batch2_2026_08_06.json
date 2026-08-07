@@ -1,0 +1,202 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_umkm_reserved_openness_batch2_2026_08_06",
+    "population": "The 7 remaining codes with pma_max_asing = 0 whose bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, and whose prose still asserts national foreign-ownership openness.",
+    "what_makes_this_batch_different_from_the_first": "These bodies do not merely contradict the record, they QUOTE it: 'the record marks the activity as TERBUKA, with pma_max_asing at 100%, sourced to Perpres 10/2021, 49/2021'. They are a stale transcription of fields that have since moved, presented to the reader as what the record says. Replacing them is even less of an editorial act than the first batch.",
+    "the_dangerous_half": "Five of the seven have l4_bali.blocked = FALSE, so their pages end on a green light: 22121's whatYouNeed says 'A PT PMA can pursue this code in Bali, subject to the standard licensing for its risk class', and 41016's headline reads 'Open Nationally and Usable in Bali'. On codes a PT PMA cannot hold at all. The Bali fact is TRUE and is kept — the moratorium genuinely does not catch them — but it is demoted from a conclusion to an irrelevance, because the national allocation closes the activity everywhere.",
+    "per_record_bali_handling": "Not one sentence reused across the batch. 10214 is l4-blocked by the risk-class moratorium, so it carries TWO restrictions and says relocating lifts only the provincial one. 10722/22121/41016/41018/41020 are not blocked, so they say the moratorium does not catch the activity and that this changes nothing. 55105 is BLOCCATO_DIPENDE_SCOPE, so it says the scope-and-risk route it used to describe is now moot. Writing one Bali sentence for the batch is exactly the defect a cross-family grader caught in the first batch (95291).",
+    "bodies_are_paragraph_surgery": "Every body is four paragraphs. The scope and scale paragraphs are carried into the replacement VERBATIM; only the PMA and Bali paragraphs are rewritten. Verified structurally (len(paras) == 4) before the surgery, not assumed.",
+    "the_detector_rejected_one_of_my_own_replacements": "The first draft of 55105's Bali paragraph said 'that path assumed a national opening that does not exist'. The detector flagged it, correctly: its negation POST-modifies the claim, and the positional negation rule requires the denial to precede it. Widening the rule to see post-modifiers would re-open the 42-sentence hole it was built to close, so the sentence was rewritten to lead with the denial ('there is no national opening for that path to rest on'). The guard rejecting its author's own prose is the guard working.",
+    "machine_gate": "All 21 fields: hash-bound to the graded paragraph, no percentage stated that differs from the record's cap of 0, and zero remaining openness assertions after patching in memory.",
+    "graded": {
+      "seat": "GLM 5.2 (cross-family), instructed to refute what was WRITTEN",
+      "raised": 3,
+      "confirmed": 3,
+      "refuted": 0,
+      "finding": "Three whatYouNeed fields narrowed the record's `Menengah-Tinggi/Tinggi` to 'medium-high', dropping the second band. Each contradicted the BODY of its own page, which carries the full form — and 22121's whatYouNeed already said 'medium-high or high', so the correct phrasing was in hand and was dropped in three of the other five. Understating a risk band is the safe direction for a PMA reader and still wrong: it is a fact about the record, and the page now disagreed with itself. Fixed in all three; verified against l4_bali.reason on disk.",
+      "not_a_defect": [
+        "Bali facts attributed per code — the reviewer checked all seven against the l4_bali table and found each sentence derived from its own record.",
+        "55105's 'the Bali scope-and-risk question no longer arises' is quantified by PMA in both the standfirst and the body, and the BLOCCATO_DIPENDE_SCOPE detail is preserved and then qualified rather than deleted.",
+        "Scope, scale, subclassification codes (GT006/BG006/GT008/BG008/KP001), product lists and building-size bands are all carried through the paragraph surgery."
+      ]
+    }
+  },
+  "codes": {
+    "10214": {
+      "judul": "Pengolahan dan Pengawetan Ikan dengan Pemindangan",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "339e8e731eee37b8a3f0c8af3b9dae524f89922988482546e0d405e63790bd2f",
+          "old_excerpt": "Pemindangan Fish Processing Is Nationally Open, but Bali Blocks PMA",
+          "new": "Pemindangan Fish Processing Is Reserved for Koperasi and UMKM"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "897682712829faea0a899fa1aeb46df13ed263bc264115d30848bf40e9550cde",
+          "old_excerpt": "This fish-processing activity is open to all business scales nationally, yet the record marks PMA registration",
+          "new": "This fish-processing activity is open to all business scales, but it is allocated to Koperasi and UMKM — foreign ownership is 0% nationwide — and PMA registration in Bali is separately blocked under the province's low-risk moratorium."
+        },
+        "whatYouNeed": {
+          "old_sha256": "70b36eb486f74919254d18820ebd634c556db3b1620e6cec8bc882e70b54d8cb",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership, but in Bali it’s blocked for PMA companies. The local",
+          "new": "The national foreign-ownership ceiling for this KBLI is 0%: Perpres 49/2021's Lampiran II allocates the bidang usaha to Koperasi and UMKM, so a PT PMA cannot hold it anywhere in Indonesia. Bali adds a second restriction — the moratorium in force since 13 May 2026 blocks PMA for activities whose OSS risk at large scale stays low to medium-low — but relocating to another province would lift only that one."
+        },
+        "editorial.body": {
+          "old_sha256": "79712753a5ec79e65c39f72bbafd2acbe18de1f8bec4f56a053660140a879472",
+          "old_excerpt": "This activity covers the processing and preservation of finfish through **pemindangan**, the Indonesian boilin",
+          "new": "This activity covers the processing and preservation of finfish through **pemindangan**, the Indonesian boiling-and-salting preservation method associated in the record with products such as pindang bandeng or paso, pindang tongkol, pindang cue, pindang naya, pindang lemuru or tembang, pindang layang, and pindang cakalang. In plain English, it is a food-processing classification for businesses that turn finfish into preserved pindang products, not a general seafood-trading label and not a catch-all for every form of fish processing.\n\nThe scale picture is broad. The slim record opens the activity to **Mikro, Kecil, Menengah, and Besar** businesses, which means it can describe anything from a very small pindang producer to a larger industrial operation, provided the registered activity is still the pemindangan-based processing and preservation of finfish described above. That matters because the classification is anchored in the production method and the resulting pindang product line. A company using this code should be able to recognise itself in that scope, rather than treating the title as a convenient umbrella for unrelated fish activities.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali adds a second restriction on top of the first. The record sets `l4_bali_blocked` to true, with the reason “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”, under the province-wide rule that blocks all Low and Medium-Low risk KBLI for PMA. Both restrictions apply at once, and only the second is provincial: registering in another province would not open the national allocation."
+        }
+      }
+    },
+    "10722": {
+      "judul": "Industri Gula Merah",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "2b9fa499d9529f103a7c279b9be474b8c41a4970a294730189e18124353e7224",
+          "old_excerpt": "Nationally, the code is PMA-open up to 100%, and in Bali the record does not mark it as blocked by the morator",
+          "new": "The national allocation to Koperasi and UMKM closes this activity to a PT PMA; Bali's moratorium not catching it changes nothing."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "781b4fbbe331d3b5f1e2e84de26312e28c65de27cef840b31d68fffc34ac2b9f",
+          "old_excerpt": "KBLI 10722 covers pure brown sugar production from cane or palm sap, open nationally to PMA and not marked as ",
+          "new": "KBLI 10722 covers pure brown sugar production from cane or palm sap. It is allocated to Koperasi and UMKM, so foreign ownership is 0% — and Bali's moratorium not catching the activity does not create a route for a PT PMA."
+        },
+        "editorial.body": {
+          "old_sha256": "0b8e4d0ba58c40568da989e6c42fc184ded007375847ec0715b69e9c2c51f03d",
+          "old_excerpt": "KBLI 10722 is a manufacturing code for **pure brown sugar**. The record defines it through the making of gula ",
+          "new": "KBLI 10722 is a manufacturing code for **pure brown sugar**. The record defines it through the making of gula merah from sap as the raw material, whether the sap comes from sugarcane or from palm plants such as aren, coconut, and similar sources. The finished product can take several forms: moulded blocks, powder or granules, or liquid sugar. That makes the code less about retailing a sweetener and more about the production activity itself: transforming nira into a brown sugar product that remains within this defined manufacturing scope.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so it can describe a small producer formalising a traditional process as well as a larger industrial operation. The important point is that the code is organised around the activity and its raw material, not around a particular brand position, distribution model, or market segment. A business registering under this code should therefore be able to connect its declared operation back to the making of pure brown sugar from cane or palm sap, in one of the product forms named in the scope.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record marks the Bali status as OK_or_HIGHER_RISK with `l4_bali_blocked` false, and the reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "22121": {
+      "judul": "Industri Karet Asap",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "07b297e2a834588690dc9354668e32a0b3f42a746f1abda61fde6d3eb3fc8179",
+          "old_excerpt": "Nationally this activity is open to foreign ownership, and in Bali it is NOT blocked by the 13 May 2026 morato",
+          "new": "The national foreign-ownership ceiling for this KBLI is 0%: Perpres 49/2021's Lampiran II allocates the bidang usaha to Koperasi and UMKM, so a PT PMA cannot register it anywhere in Indonesia. Bali's 13 May 2026 moratorium does not catch this activity — its OSS risk class at the large-enterprise (Besar) scale is medium-high or high — but that lifts a provincial restriction, not the national one."
+        },
+        "editorial.body": {
+          "old_sha256": "b7dde291965e62f33fea759079605cb98559177b00c77685fe7e03406b5b5031",
+          "old_excerpt": "KBLI 22121 is a manufacturing activity, not a trading label or a broad plantation category. The record defines",
+          "new": "KBLI 22121 is a manufacturing activity, not a trading label or a broad plantation category. The record defines it as the processing of rubber by smoking, producing products such as smoked rubber or ribbed smoked sheet (RSS), including smoked rubber sheets. In plain English, this is the industrial step where rubber is transformed through a smoking process into sheet-form output. The commercial centre of the code is therefore the making of smoked rubber sheet itself: the process, the finished sheet, and the RSS-style product named in the scope.\n\nThe scale profile is unusually broad in the record. This activity is open to Mikro, Kecil, Menengah, and Besar businesses, which means the code is not framed only for large industrial operators. A smaller processor and a larger manufacturing plant can both sit inside the registered scale range, provided the business being registered is genuinely the smoking-based rubber-processing activity described above. The code should not be stretched into activities outside that scope; its editorial meaning comes from the specific act of smoking rubber into sheet products, not from every possible rubber-related business.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record marks the Bali status as OK_or_HIGHER_RISK with `l4_bali_blocked` false, and the reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "41016": {
+      "judul": "Konstruksi Konvensional Gedung Pendidikan",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "5be1f91bab9964e91855e3fd297899e0d6e5e0c688bb00d6b408cd4695ad6145",
+          "old_excerpt": "Educational Building Construction, Open Nationally and Usable in Bali",
+          "new": "Educational Building Construction Is Reserved for Koperasi and UMKM"
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "5ebd3f981ac439c866f93b2d2e42c37c696c9cb8074a5e0cdf86439f180999e6",
+          "old_excerpt": "For a foreign-owned setup, the honest reading is therefore clean: nationally open, 100% foreign ownership allo",
+          "new": "For a foreign-owned setup the honest reading is short: the bidang usaha is allocated to Koperasi and UMKM, so the ceiling is 0% and Bali never becomes the question."
+        },
+        "whatYouNeed": {
+          "old_sha256": "f4e22fe0ae22353c84f9d27b927f22cb2fb5e50902df9f7bf4117704ae7a62db",
+          "old_excerpt": "Nationally, 100% foreign ownership is allowed. In Bali, it's not blocked by the moratorium, but because it's c",
+          "new": "The national foreign-ownership ceiling is 0%: Perpres 49/2021's Lampiran II allocates this bidang usaha to Koperasi and UMKM, so a PT PMA cannot hold it anywhere in Indonesia. Bali's moratorium does not catch the activity — its OSS risk at large scale is medium-high or high — but there is no provincial route left to verify, because the restriction is national."
+        },
+        "editorial.body": {
+          "old_sha256": "60f3037af76dae0ddd04ad02777cacbf6b6dd8811c6692eeaa4f12492de1581d",
+          "old_excerpt": "KBLI 41016 is the construction code for conventional educational buildings. The record describes a practical, ",
+          "new": "KBLI 41016 is the construction code for conventional educational buildings. The record describes a practical, physical scope: building, maintaining, and rebuilding structures used for education, including school buildings, course venues, and laboratories. It also includes changes and renovations to educational buildings. In plain English, this is not an education-service code; it is the construction activity behind the facilities where education happens.\n\nThe construction method matters because the record is specific: this code is for conventional building construction. It carries the education-building construction subclassification references GT006 and BG006, and its scope stays inside the built environment of education facilities. A company using this code should be registering for the work of constructing, maintaining, reconstructing, altering, or renovating those buildings, not for operating a school, running a course, or providing laboratory services.\n\nThe scale picture is unusually broad. The slim record marks this activity as open to Besar, Mikro, Kecil, and Menengah, so the activity is not framed only for large contractors. It can describe education-building construction activity across the listed business scales, provided the registered activity remains faithful to the scope. That breadth should not be confused with a free pass to add adjacent education or service activities; the record only supports the construction work named here.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record marks the Bali status as OK_or_HIGHER_RISK with `l4_bali_blocked` false, and the reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "41018": {
+      "judul": "Konstruksi Konvensional Gedung Hiburan dan Olahraga",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "bd74e6090572c259ddbdf38a7688f8851d5321d17c059fc80af3695738c5db42",
+          "old_excerpt": "Nationally, this KBLI is 100% open for foreign ownership (PMA). In Bali, it is not blocked by the local morato",
+          "new": "The national foreign-ownership ceiling for this KBLI is 0%: Perpres 49/2021's Lampiran II allocates the bidang usaha to Koperasi and UMKM, so a PT PMA cannot register it anywhere in Indonesia. Bali's local moratorium does not catch this activity — it is classified medium-high or high risk — but that removes a provincial obstacle, not the national one."
+        },
+        "editorial.body": {
+          "old_sha256": "a66da3f2dad60fe2ce391eebd896ccd2efa2dc7d6c58fbb14c95a0764a1550cb",
+          "old_excerpt": "KBLI 41018 is a construction activity code for buildings made by conventional methods and used for entertainme",
+          "new": "KBLI 41018 is a construction activity code for buildings made by conventional methods and used for entertainment, culture, tourism, recreation, or sport. In practical terms, the record points to the physical work behind cinemas, cultural or arts buildings, tourism and recreation buildings, and sports buildings. The scope is not limited to new construction. It also includes maintenance, rebuilding, changes, and renovation of these entertainment and sports premises.\n\nThat breadth matters because this code is defined by the nature of the building and the construction method, not by the business that will later operate inside it. A developer, contractor, or project company using this classification is registering the activity of building or renewing the venue itself. The record also identifies the construction subclassification references for this activity as GT008 and BG008, which keeps the code anchored to the construction of entertainment and sports buildings rather than to event operation, cinema management, or hospitality activity.\n\nOn scale, the code is open across the full range listed in the record: Besar, Mikro, Kecil, and Menengah. That means the activity is not presented here as a scale-exclusive classification. A small contractor doing renovation work and a larger company taking on conventional construction of a sports or recreation building both sit within the same stated activity boundary, provided the work remains the construction, maintenance, rebuilding, alteration, or renovation of the relevant building type.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record marks the Bali status as OK_or_HIGHER_RISK with `l4_bali_blocked` false, and the reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "41020": {
+      "judul": "Konstruksi Prapabrikasi Bangunan Gedung",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "3404e271cd80128821cd2cc16383b97983f21fc09c284ca1734625b264d85727",
+          "old_excerpt": "The honest national-vs-Bali conclusion is aligned rather than contradictory: nationally open, and not blocked ",
+          "new": "The national and Bali readings agree, but not in the direction this page used to suggest: the allocation to Koperasi and UMKM closes the activity to a PT PMA, and Bali has nothing left to block."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "33eefcb667b69dc25b4db2e81a0c38258a0b017371ef399c778756db8adc4460",
+          "old_excerpt": "KBLI 41020 covers on-site assembly of factory-made building components, with full national PMA opening and no ",
+          "new": "KBLI 41020 covers on-site assembly of factory-made building components. It is allocated to Koperasi and UMKM, so foreign ownership is 0% nationwide; the absence of a Bali moratorium block does not create a route."
+        },
+        "whatYouNeed": {
+          "old_sha256": "34db9043140595a297c5b46fa4b059efd594e3173334f86de6743fd7b85ce62e",
+          "old_excerpt": "Nationally, it's fully open to 100% foreign ownership. In Bali, it's not blocked by the moratorium, but becaus",
+          "new": "The national foreign-ownership ceiling is 0%: Perpres 49/2021's Lampiran II allocates this bidang usaha to Koperasi and UMKM, so a PT PMA cannot register it anywhere in Indonesia. Bali's moratorium does not catch the activity, because it falls under medium-high or high risk — but there is no project address to verify, since the restriction is national rather than local."
+        },
+        "editorial.body": {
+          "old_sha256": "77c3cb4fed46955585d5c89d1d899d11f9c22801b42709219870f4b7683acb9b",
+          "old_excerpt": "KBLI 41020 is not about manufacturing the components themselves. The record defines it as construction activit",
+          "new": "KBLI 41020 is not about manufacturing the components themselves. The record defines it as construction activity at the building site, using prefabricated building materials produced by another unit. In practical terms, this is the site-side work of putting factory-made building elements into a finished building structure: precast concrete, steel, plastic, rubber, wood, aluminium, sandwich panels, and other factory-produced materials installed through fabrication, erection, or assembly methods. The construction-work subclassification noted in the record is KP001.\n\nThat scope matters because this code sits in the execution phase of a building project. A company registering it is presenting itself as the party that installs and assembles prefabricated building systems on-site, rather than as the producer of the panels, frames, or other materials. The scale profile is unusually broad: the record opens it to Mikro, Kecil, Menengah, and Besar. That means the activity is not reserved only for large contractors in the classification record, even though actual project size and operational capacity may differ from one business to another.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali does not add a second restriction here, and that is worth stating plainly because it is easy to misread as good news. The record marks the Bali status as OK_or_HIGHER_RISK with `l4_bali_blocked` false, and the reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi — so the province's moratorium on Low and Medium-Low risk activities does not catch it. That is true, and it changes nothing for a foreign investor: the national allocation already closes the activity to a PT PMA everywhere, so there is no Bali route left to unblock."
+        }
+      }
+    },
+    "55105": {
+      "judul": "Aktivitas Hotel Bintang Satu",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.standfirst": {
+          "old_sha256": "d9990eab21317c693a52a5cafff2fa532c0ee10956790f83776d09849125c6dd",
+          "old_excerpt": "This short-stay hotel activity is nationally open to full foreign ownership, but a Bali PMA registration turns",
+          "new": "This short-stay hotel activity is allocated to Koperasi and UMKM, which sets foreign ownership at 0% nationwide — so the Bali scope-and-risk question that used to decide a PMA registration no longer arises."
+        },
+        "editorial.body": {
+          "old_sha256": "7806d518bfbda9340e24b586fdbe13589ae53f63671fb2efab79e68b56f81a04",
+          "old_excerpt": "One-star hotels are a deceptively specific accommodation business. This activity covers short-stay accommodati",
+          "new": "One-star hotels are a deceptively specific accommodation business. This activity covers short-stay accommodation, generally offered daily or weekly, that meets one-star hotel requirements and uses part or all of a building. It expressly includes buildings of up to 6,000 square metres and those above that size. Rooms and suites may be furnished, while the operating model remains recognisably hotel-led: direct customer service on site, with possible daily cleaning and bed-making, food and beverage service, laundry, and conference or convention facilities. The business is not simply providing a room; it is providing serviced, short-term hotel accommodation.\n\nRegistration is open to small, medium and large businesses. That range gives the activity room to operate at different scales without changing its essential identity: a one-star hotel serving short-stay guests directly. The two building-size bands reinforce the point. The scope is not confined to a single physical footprint, but it does remain tied to accommodation that qualifies as a one-star hotel.\n\nNationally, the position is closed to foreign ownership. The record allocates this bidang usaha to Koperasi and UMKM under Perpres 10/2021 as amended by 49/2021 (Lampiran II, the *dialokasikan* column), which sets the foreign-ownership ceiling at 0%. A PT PMA cannot hold this activity anywhere in Indonesia, at any business scale.\n\nBali’s own assessment is more granular, and it is now moot for a foreign investor. The record does not categorically block PMA registration there: at the large-business scale some scopes carry low OSS risk and others higher, so a Bali route would have depended on the scope declared in OSS. But there is no national opening for that path to rest on: with the bidang usaha allocated to Koperasi and UMKM, no declared scope makes this activity available to a PT PMA."
+        }
+      }
+    }
+  }
+}

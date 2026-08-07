@@ -84,7 +84,20 @@ class _FakeService:
 
     async def list_folders(self, _user_id: str) -> list[dict[str, Any]]:
         self.calls.append("list_folders")
-        return []
+        # A provisioned mailbox, in the shape ZohoEmailService actually returns.
+        # This used to be `[]`, which the loop read as a clean run — an empty
+        # folder list is not an inbox with nothing in it, it is a mailbox we
+        # could not see, and the two must not share an exit code.
+        return [
+            {"folder_id": "F-INBOX", "folder_name": "Inbox"},
+            {"folder_id": "F-SENT", "folder_name": "Sent"},
+            {"folder_id": "F-VISA", "folder_name": "_Visa"},
+            {"folder_id": "F-PTPMA", "folder_name": "_PTPMA"},
+            {"folder_id": "F-TAX", "folder_name": "_Tax"},
+            {"folder_id": "F-PROPERTY", "folder_name": "_Property"},
+            {"folder_id": "F-ADMIN", "folder_name": "_Admin"},
+            {"folder_id": "F-NOISE", "folder_name": "_Noise"},
+        ]
 
     async def list_emails(self, *_a: Any, **_k: Any) -> dict[str, Any]:
         self.calls.append("list_emails")
@@ -341,3 +354,128 @@ def test_an_ordinary_degraded_run_is_not_a_blocker() -> None:
 
 def test_no_errors_is_not_a_blocker() -> None:
     assert cli_module._consent_blocker([]) is None
+
+
+# --------------------------------------------------------------------------- #
+# The client's message goes in on STDIN, never on the command line.           #
+#                                                                             #
+# A process's argv is world-readable on macOS: `ps -A -ww -o args` returns the #
+# full command line of every process regardless of owner. Passing the prompt   #
+# as `-p <prompt>` published a client's mail — name, address, whole body — to  #
+# every account on the machine for up to TIMEOUT_SECONDS.                     #
+#                                                                             #
+# Same threat model as the two subject-bearing log lines cured alongside, with #
+# a strictly larger payload. SYMBIOSIS Law 2 / UU PDP Art. 67-68.             #
+# --------------------------------------------------------------------------- #
+
+_ARGV_CANARY = "Zzcanary-Quenneville-77"
+
+
+def _canary_request() -> draft_module.DraftRequest:
+    return draft_module.DraftRequest(
+        subject=f"KITAS renewal for {_ARGV_CANARY}",
+        body=f"{_ARGV_CANARY} here, what documents do you need?",
+        sender_name="someone@example.com",
+        language="en",
+        intent="visa",
+        style_block="(none)",
+    )
+
+
+def test_the_prompt_never_reaches_the_command_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: the client's words must not be visible to `ps`."""
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+    draft_module.generate(_canary_request())
+
+    joined = " ".join(seen["argv"])
+    assert _ARGV_CANARY not in joined, f"the client's text is in argv: {joined!r}"
+
+
+def test_the_prompt_arrives_on_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """INNOCENCE: privacy is not amnesia — the model must still get the prompt.
+
+    Without this, deleting the prompt entirely would pass the test above while
+    producing drafts about nothing.
+    """
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+    draft_module.generate(_canary_request())
+
+    assert seen["input"], "no prompt was passed at all"
+    assert _ARGV_CANARY in seen["input"], "the prompt reached the model without the message"
+    # And the invocation is still the CLI in print mode, on the pinned model —
+    # a `-p` that lost its flag would read stdin as an interactive session.
+    assert seen["argv"][:2] == ["/fake/claude", "-p"]
+    assert draft_module.CLAUDE_MODEL in seen["argv"]
+
+
+# --------------------------------------------------------------------------- #
+# 4. The verdict must name its own cause.                                      #
+#                                                                              #
+# `degraded` has four terms. Three of them leave a second trace a reader can   #
+# find (a missing folder, an error list, a draft failure). `unaccounted` does  #
+# not: it is silent by construction — a message nobody recorded. If the        #
+# DEGRADED line omits it, the run that most needs explaining is the one that   #
+# prints `routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0` and #
+# no reason at all. That is the mute alarm this repo keeps re-learning.        #
+# --------------------------------------------------------------------------- #
+
+
+def _summary(**overrides: Any) -> Any:
+    from backend.services.mail_loop.loop import RunSummary
+
+    return RunSummary(**overrides)
+
+
+def test_a_silent_degradation_still_says_why(caplog: pytest.LogCaptureFixture) -> None:
+    """GUILT: the only term with no other symptom must appear in the line."""
+    summary = _summary(seen=3, routed=0, left_in_inbox=0, message_errors=0)
+    assert summary.unaccounted == 3, "premise: this run is degraded ONLY by the law"
+    assert not summary.errors and not summary.missing_folders
+
+    with caplog.at_level("WARNING", logger="mail_loop"):
+        code = cli_module._report(summary)
+
+    assert code == 1
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert warnings, "a degraded run must warn"
+    assert "unaccounted=3" in warnings[0], (
+        "the DEGRADED line names every term of the verdict, or the reader is "
+        f"left guessing: {warnings[0]!r}"
+    )
+
+
+def test_a_clean_run_says_how_many_it_declined(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A quiet day is clean — and the log must let a human tell it from a dead one.
+
+    Same exit code, same `routed=0`: without the count, "understood nothing and
+    said so" and "did nothing at all" read identically at 07:30.
+    """
+    summary = _summary(seen=4, routed=0, unroutable=4, left_in_inbox=4)
+    assert summary.degraded is False, "premise: a fully-declined day is not degraded"
+
+    with caplog.at_level("INFO", logger="mail_loop"):
+        code = cli_module._report(summary)
+
+    assert code == 0
+    infos = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert infos and "unroutable=4" in infos[0], infos

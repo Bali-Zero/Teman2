@@ -296,7 +296,7 @@ def generate_html(visa_data: dict) -> str:
             </div>
             <div class="footer-contact">
                 <span><a href="mailto:info@balizero.com">info@balizero.com</a></span>
-                <span>+62 813 3805 1876</span>
+                <span>+62 821 3454 721</span>
             </div>
         </div>
     </div>

@@ -57,8 +57,76 @@ Credential values are never printed, logged, or reported (scrub layer; scar #4).
 | nlm AUTH_DEAD           | `nlm login` on Pro (recurs ~monthly)                                                                                                                         |
 | kimi AUTH_DEAD          | `kimi login` on that machine (device-code flow — authorize the printed URL/code from a kimi.com-logged browser; Allegro subscription, seat added 2026-07-19) |
 
+Note (2026-08-05, healer tick): `claude` and `nlm`'s unauthenticated shapes ("Not logged in ·
+Please run /login", "Run nlm login to re-authenticate") carry no 401/oauth-token marker, only
+short prose — this table already promised `claude AUTH/QUOTA` and `nlm AUTH_DEAD` as the cure,
+but the classifier fell through to a bare `UNKNOWN_ERR` for both (the same shape `kimi`'s "No
+providers configured" already had a local override for). Matched locally per-seat now, mirroring
+the existing `kimi` pattern — `scripts/tests/test_arsenal_probe.py` carries the guilt+innocence
+pair for each.
+
 ## Selftest / CI
 
 `python3 scripts/arsenal_probe.py --selftest` — classifier table on canned provider outputs,
 scrub check, blind-scan guard (0 seats probed → exit 2). CI: `scripts/tests/test_arsenal_probe.py`
 in `immune-enforcement.yml` (offline, guilt+innocence per classifier).
+
+## 2026-08-07 incident: the probe could hang forever and print zero bytes
+
+`timeout 60 python3 scripts/arsenal_probe.py --table` produced **0 bytes on stdout+stderr** on
+Pro, while every seat answered fine in an interactive shell seconds later. Root cause, found by
+reproducing empirically (not guessed from the two leading hypotheses — codex-stdin and PATH
+poverty — which turned out to be adjacent, real, but not the dominant cause):
+
+- **agy's stdout pipe never closes.** agy's own process exits in ~1s, but a detached grandchild
+  (likely a background/telemetry helper) inherits the stdout/stderr file descriptors without
+  closing them. `subprocess.run()`'s `communicate()` waits for EOF on those pipes, which never
+  comes — the probe ate its FULL per-seat timeout (verified live at 12s/15s/45s cutoffs; `PONG`
+  was already sitting in the partial stdout every single time). Since all seats probe
+  concurrently in one `ThreadPoolExecutor` and nothing prints until every future resolves, agy's
+  old 120s timeout alone explained the reported hang under any outer wrapper shorter than that —
+  the process was not stuck, it was faithfully waiting out a 120s budget nobody could see.
+- Compounding: `claude`/`nlm`/`ollama`'s `resolve_bin()` fallback was wrong (claude) or absent
+  (nlm, ollama), so a PATH-poor calling context (the SessionStart hook receptor, which reported
+  `claude NOT_INSTALLED` the same day) reported false `NOT_INSTALLED` for genuinely-installed
+  seats. Real, but not the hang's cause — a separate manifestation of the same "sensor measures
+  its own environment, not the seat" disease (scar family #2, W108 lineage).
+
+Fix (PR that introduced this section):
+
+1. **Judge the reply, not the timeout** (scar W104) — every subprocess-backed probe now checks
+   the partial stdout for a live signal (`PONG`, valid JSON, etc.) BEFORE accepting `TIMEOUT`. A
+   seat whose process never cleanly exits but already answered is `LIVE`, full stop.
+2. **Per-seat timeouts collapsed from 30-180s to ~15s** — safe specifically because of (1): even
+   if a reply takes the full 15s to print, that's what gets judged, not whether the process later
+   tore itself down cleanly.
+3. **Fail-visible header**, printed and flushed to **stderr** before any probe fires
+   (`arsenal_probe <ts> — probing N seat(s) on <machine>: ...`) — stderr so `--json`'s stdout
+   stays machine-parseable. Zero bytes for 60s is now impossible by construction: something is on
+   the wire before the first probe even starts.
+4. **`stdin=subprocess.DEVNULL` is now the unconditional default** in `run_probe_cmd` (previously
+   opt-in per call — only kimi/codex had it). No seat probe may ever inherit an open stdin.
+5. **`resolve_bin()` gained `COMMON_BIN_DIRS` fallback** (`~/.local/bin`, `/opt/homebrew/bin`,
+   `/usr/local/bin`, `~/.kimi-code/bin`) and now returns `(path, found_via_path)` — a binary found
+   only through a fallback (not the process's own `$PATH`) gets a `[NOT_ON_PATH: ...]` evidence
+   note instead of silently reading as a normal `LIVE`/`NOT_INSTALLED`, or worse, being missed
+   entirely under a thin `$PATH`.
+6. Final line always states **`N of M seats OK`** (`render_table` and `summary_line`) — never let
+   a partial or all-dead run read as ambiguous about how many seats were actually probed.
+
+Known NOT fixed here (reported to the ledger, out of scope for this diff):
+
+- **glm can be genuinely LIVE but reported `UNKNOWN_ERR`.** `probe_glm`'s live-check is
+  `'"model"' in ev` where `ev` is `evidence_tail(raw, ...)` — the LAST 160 chars of the response.
+  A real glm PONG reply places the `"model"` field near the START of the JSON body (Anthropic
+  message-shape: `id, type, role, model, content, stop_reason, stop_sequence, usage`), so it is
+  routinely truncated away by the tail-slice before the live-check ever sees it. Observed live
+  2026-08-07: a genuine `HTTP 200` reply classified `UNKNOWN_ERR`. Fixing this correctly needs the
+  live-check to run against the untruncated (but still scrubbed) body, which means widening
+  `http_post_json`'s return contract — deliberately left out of this diff to keep it scoped to the
+  hang; tracked as a follow-up.
+- The SessionStart hook receptor's own environment (separate from this script) is a different
+  component — this diff does not touch anything under `~/.claude/hooks/` (control-plane,
+  operator-only per repo convention). If it still shows stale/wrong seat statuses after this
+  fix lands, that is a receptor-side issue (possibly reading a stale cached run, or a `--read-last`
+  call against an old `last.json`), not this tool.

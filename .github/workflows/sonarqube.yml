@@ -31,9 +31,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Is the scanner even reachable? Measured 2026-08-06 over the last 29 COMPLETED
+  # runs of this workflow: 16 success, 13 cancelled, and the `SonarQube Scan` step
+  # succeeded **0 times**. `SONAR_TOKEN` has never been configured, so both
+  # terminal steps were skipped by their own `if:` on every run — while the two
+  # steps that FEED them were not gated and ran anyway: the full Python suite with
+  # coverage (1228s on run 31037626312) plus the frontend suite (211s), thrown
+  # away. The 13 cancellations are that work overrunning `timeout-minutes: 30`;
+  # on that run the scan step was skipped 8 seconds after the tests finished.
+  #
+  # A whole job of "exists but has never once done the thing it exists for"
+  # (cicatrix #2), costing 20-30 minutes of shared runner per PR. This gate makes
+  # the cost zero when the token is absent and changes nothing when it is present.
+  #
+  # It must be a separate JOB: GitHub exposes neither `secrets` nor `env` to
+  # `jobs.<id>.if`, only `github`/`needs`/`vars`/`inputs` — which is why the
+  # existing hoist into job-level `env` reaches step-level `if:` but could never
+  # gate the job itself. `needs.<job>.outputs` is the supported way in.
+  preflight:
+    name: SonarQube preflight (is the scanner configured?)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      configured: ${{ steps.probe.outputs.configured }}
+    steps:
+      # No checkout: this job exists to avoid paying for one.
+      - id: probe
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SONAR_TOKEN:-}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "SONAR_TOKEN is set — running the analysis job."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "SONAR_TOKEN is NOT set — skipping the analysis job entirely."
+            echo "Nothing is silently degraded: with no token the scan step was"
+            echo "already skipped on every run; this only stops paying for the"
+            echo "test+coverage steps that fed it. Set the secret to re-enable."
+          fi
+
   sonarqube:
     name: SonarQube Code Analysis
     runs-on: ubuntu-latest
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
     timeout-minutes: 30
     # Advisory-only: quality-gate thresholds (code smells, coverage,
     # duplication) are policy decisions the maintainer must own. The

@@ -56,6 +56,7 @@ function makeLicensing(
 
 function makeProvenance(
   status: KBLILicensingProvenanceStatus = "oss_native",
+  contentInheritedFrom: string[] | null = null,
 ): KBLIProvenance {
   return {
     state: status === "oss_native" ? "verified" : "pending",
@@ -65,6 +66,7 @@ function makeProvenance(
       locator: status === "oss_native" ? "OSS_RBA_resiko_2025" : null,
       vintage: status === "oss_native" ? "2025" : "2020",
       noOssScope: status === "pending_crosswalk",
+      contentInheritedFrom,
     },
     pma: { source: null, vintage: "2020", status: "pending_crosswalk" },
     dataNote: null,
@@ -375,5 +377,94 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     });
 
     expect(offenders.map((c) => c.code)).toEqual([]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// PP 28 content inherited from OTHER codes (2026-08-06)
+//
+// `isLicensingVerifiedForBareClaim` reads `_l2_source`, which names the OSS-RBA
+// RISK source. `pp28_sources` separately records where the PP 28 licensing rows
+// came from, and on 337 codes the two disagree: risk genuinely 2025-native,
+// licensing content carried from other codes. 62110 (video game development) is
+// sourced from five 62xxx computer-programming codes and inherits three
+// defence-industry permits that way.
+//
+// The gate is deliberately asymmetric — it withdraws the LICENCE claim and
+// leaves the RISK claim standing, because only one of the two is inherited.
+// -----------------------------------------------------------------------------
+
+describe("inherited PP 28 content withdraws the licence claim, not the risk", () => {
+  it("GUILT: an inherited-content record states its risk and NOT its licence", () => {
+    const kbli = makeCode({
+      provenance: makeProvenance("oss_native", ["62011", "62019", "62015"]),
+    });
+
+    // The risk gate is untouched: the tier is OSS-2025-native and still stated.
+    expect(isLicensingVerifiedForBareClaim(kbli)).toBe(true);
+    expect(verifiedRiskLabel(kbli)).toBe("High");
+    // ...and the licence type, which may belong to another code, goes silent.
+    expect(verifiedLicenseType(kbli)).toBeNull();
+
+    const description = kbliMetaDescription(kbli, "Restaurant");
+    expect(description).toContain("High risk.");
+    expect(description).not.toContain("license:");
+    // The title only ever carried the risk, so it must be unchanged — a gate
+    // that also moved the title would be suppressing a fact it does not judge.
+    expect(kbliMetaTitleSuffix(kbli)).toBe("100% Foreign Ownership, High Risk");
+  });
+
+  it("INNOCENCE: a self-sourced record still states both facts", () => {
+    const kbli = makeCode({ provenance: makeProvenance("oss_native", null) });
+
+    expect(verifiedLicenseType(kbli)).toBe("NIB + Izin");
+    expect(kbliMetaDescription(kbli, "Restaurant")).toContain(
+      "High risk, license: NIB + Izin.",
+    );
+  });
+
+  it("INNOCENCE: inheritance cannot RESURRECT a claim the risk gate withheld", () => {
+    // Both gates must hold. A pending_crosswalk record with no inheritance is
+    // still silent on both facts — the new condition only ever subtracts.
+    const kbli = makeCode({
+      provenance: makeProvenance("pending_crosswalk", null),
+    });
+
+    expect(verifiedRiskLabel(kbli)).toBeNull();
+    expect(verifiedLicenseType(kbli)).toBeNull();
+    const description = kbliMetaDescription(kbli, "Restaurant");
+    expect(description).not.toContain("risk");
+    expect(description).not.toContain("license:");
+  });
+
+  it("real dataset: the gate binds, and on how many codes is pinned", () => {
+    const codes = getAllCodes();
+    const inherited = codes.filter(
+      (c) => c.provenance?.licensing?.contentInheritedFrom != null,
+    );
+    const inheritedAndOssNative = inherited.filter(
+      (c) => c.provenance?.licensing?.status === "oss_native",
+    );
+
+    // Measured on the 1,559-code canonical 2026-08-06. Pinned so a dataset
+    // rebuild that widens or narrows the set fails loudly instead of quietly
+    // re-labelling pages.
+    expect(inherited.length).toBe(390);
+    // 336, not the 337 a raw `_l2_source === "OSS_RBA_resiko_2025"` count
+    // gives: `49213` (Angkutan Perkotaan, sourced from 49214/49219/49413)
+    // carries a `per_skala_disputed_pp28_collision` block, so `deriveProvenance`
+    // resolves it to `detached` BEFORE it can reach `oss_native`. The marker and
+    // the derived status are different questions — this pin asserts the derived
+    // one, because the derived one is what gates the page.
+    expect(inheritedAndOssNative.length).toBe(336);
+
+    // ...and the gate actually bites: every one of those 336 would have stated
+    // a licence type before this change and states none now.
+    for (const c of inheritedAndOssNative) {
+      expect(verifiedLicenseType(c), `code ${c.code}`).toBeNull();
+    }
+    // Innocence at dataset scale: SOME code still states a licence, or the
+    // gate is not a gate but a blanket.
+    expect(codes.some((c) => verifiedLicenseType(c) !== null)).toBe(true);
   });
 });

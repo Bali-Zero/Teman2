@@ -8,6 +8,7 @@
 // edit the roster instead.
 
 import { PUBLIC_ROSTER } from "@/data/team-roster";
+import { getPricingSnapshotEntry } from "@/lib/pricing-snapshot";
 
 export interface Chapter {
   id: string;
@@ -153,8 +154,8 @@ export const STATS = {
 
 // Source: verified from codebase / WhatsApp
 export const CONTACTS = {
-  whatsapp: "+62 822 3010 2328",
-  whatsappUrl: "https://wa.me/6282230102328",
+  whatsapp: "+62 821 3454 721",
+  whatsappUrl: "https://wa.me/628213454721",
   email: "info@balizero.com",
   web: "balizero.com",
 };
@@ -202,20 +203,6 @@ export const MILESTONES: Milestone[] = [
       "Knowledge graph con 56K nodi. 66K documenti legali. L'unica agenzia AI-first in Indonesia.",
   },
 ];
-
-// Pricing fallback — used when backend is cold-starting.
-// Live prices come from usePricingData SWR hook → /api/pricing/calculate
-export const PRICING_FALLBACK: Record<string, string> = {
-  "B1 Visit Visa": "Rp 5,8M",
-  "C317 Single Entry": "Rp 5,8M",
-  "E33G Multiple Entry": "Rp 9,5M",
-  "KITAS Retirement": "Rp 22M",
-  "PT PMA": "Rp 20M",
-  // Matches bali_zero_official_prices_2026.json PricingTool SSOT key
-  // ("E33 Second Home (5 Years)") and the canonical display format used on
-  // the /visa/second-home landing page and services_data.ts.
-  "E33 Second Home (5 Years)": "IDR 39,000,000",
-};
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 
@@ -549,6 +536,8 @@ export const TRANSLATIONS: Record<Locale, BookTranslations> = {
 
 export interface Service {
   serviceKey: string;
+  pricingCategory?: string;
+  pricingItemKey?: string;
   title: string;
   tagline: string;
   category: "visa" | "company" | "tax" | "property";
@@ -557,61 +546,43 @@ export interface Service {
   badge?: string;
 }
 
+function pricingBackedVisaService(
+  pricingCategory: string,
+  pricingItemKey: string,
+  badge?: string,
+): Service {
+  const entry = getPricingSnapshotEntry(pricingCategory, pricingItemKey);
+  if (!entry) {
+    throw new Error(
+      `Missing generated PricingTool row: ${pricingCategory}:${pricingItemKey}`,
+    );
+  }
+  const features = [entry.duration, entry.validity, entry.notes].filter(
+    (value): value is string => Boolean(value?.trim()),
+  );
+  return {
+    serviceKey: `${pricingCategory}:${pricingItemKey}`,
+    pricingCategory,
+    pricingItemKey,
+    title: entry.name,
+    tagline: entry.description_en ?? entry.name,
+    category: "visa",
+    features,
+    waMessage: `Hi, I am interested in ${entry.name}. Can you give me more info?`,
+    badge,
+  };
+}
+
 export const SERVICES: Service[] = [
-  {
-    serviceKey: "b1-visit-visa",
-    title: "B1 Visit Visa",
-    tagline: "Short-term business visits",
-    category: "visa",
-    features: [
-      "Single entry",
-      "Up to 60 days",
-      "Business activities allowed",
-      "Fast processing",
-    ],
-    waMessage:
-      "Hi, I am interested in the B1 Visit Visa. Can you give me more info?",
-    badge: "Most popular",
-  },
-  {
-    serviceKey: "c317-single-entry",
-    title: "C317 Single Entry",
-    tagline: "Short stay tourist & business",
-    category: "visa",
-    features: ["Single entry", "Up to 60 days", "Extendable", "Simple process"],
-    waMessage:
-      "Hi, I am interested in the C317 Single Entry visa. Can you give me more info?",
-  },
-  {
-    serviceKey: "e33g-multiple-entry",
-    title: "E33G Multiple Entry",
-    tagline: "Flexible long-term visa",
-    category: "visa",
-    features: [
-      "Multiple entries",
-      "Up to 180 days total",
-      "Business & leisure",
-      "No sponsor needed",
-    ],
-    waMessage:
-      "Hi, I am interested in the E33G Multiple Entry visa. Can you give me more info?",
-  },
-  {
-    serviceKey: "kitas-retirement",
-    title: "KITAS Retirement",
-    tagline: "Long-term stay for retirees",
-    category: "visa",
-    features: [
-      "1-year renewable",
-      "For 55+ years old",
-      "No work permit needed",
-      "Full support",
-    ],
-    waMessage:
-      "Hi, I am interested in the KITAS Retirement visa. Can you give me more info?",
-  },
+  pricingBackedVisaService("single_entry_visas", "C1 Tourism", "Most popular"),
+  pricingBackedVisaService("single_entry_visas", "C2 Business"),
+  pricingBackedVisaService("multiple_entry_visas", "D1 Tourism (1 Year)"),
+  pricingBackedVisaService("kitas_permits", "E33G Remote Worker (Offshore)"),
+  pricingBackedVisaService("kitas_permits", "Retirement (Offshore)"),
   {
     serviceKey: "pt-pma",
+    pricingCategory: "company_services",
+    pricingItemKey: "New Company (PT PMA)",
     title: "PT PMA",
     tagline: "Foreign investment company",
     category: "company",

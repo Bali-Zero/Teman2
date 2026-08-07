@@ -1,0 +1,91 @@
+{
+  "run_at": "2026-08-06T07:15:01+08:00",
+  "today": "2026-08-06",
+  "new_today_count": 0,
+  "partial": true,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "403 Forbidden confirmed after one retry."
+    },
+    {
+      "url": "https://ortax.org/news/",
+      "reason": "empty_shell",
+      "note": "No readable article index was returned after one retry."
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/",
+      "reason": "empty_shell",
+      "note": "No readable page content was returned; rendered-browser fallback was unavailable."
+    },
+    {
+      "url": "https://jdih.kemenkumham.go.id/",
+      "reason": "empty_shell",
+      "note": "No readable page content was returned from the legacy endpoint."
+    },
+    {
+      "url": "https://peraturan.go.id/",
+      "reason": "timeout",
+      "note": "Mozilla User-Agent fetch failed to resolve; the single retry timed out."
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "The in-window DJP marketplace item cites PENG-46/PJ.09/2026, which is outside the permitted regulation types; no qualifying new instrument was found."
+    },
+    {
+      "url": "https://muc.co.id/id/article",
+      "reason": "outside_window",
+      "note": "Newest visible article was dated 2026-07-28."
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "outside_window",
+      "note": "Newest visible item was dated 2026-08-03."
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/search?bentuk=Peraturan%20Menteri&order=desc&teu=Kementerian%20Keuangan",
+      "reason": "outside_window",
+      "note": "Newest indexed PMK was PMK 53 TAHUN 2026, promulgated 2026-07-29."
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan?sort=terbaru",
+      "reason": "outside_window",
+      "note": "Newest dated item was 2026-07-29; the newest qualifying Permenaker was Permenaker Nomor 11 Tahun 2026, promulgated 2026-07-03."
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest visible listing was PER-8/PJ/2026 dated 2026-07-28."
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PMK 49/2026",
+    "SE-9/PJ/2026",
+    "PMK Nomor 60 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026"
+  ]
+}

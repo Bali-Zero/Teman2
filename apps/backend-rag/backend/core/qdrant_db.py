@@ -446,6 +446,9 @@ class QdrantClient:
     _FLAT_PAYLOAD_COLLECTIONS: frozenset[str] = frozenset(
         {
             "legal_unified",
+            # The legal ingestion pipeline also writes tax regulations through
+            # HierarchicalIndexer with flatten_payload=True.
+            "tax_genius",
             # SPEC v2 D3 (F1b): curated_qa is written via upsert_documents(...,
             # flatten_payload=True) — domain/source_ref/etc. sit at top level.
             "curated_qa",
@@ -987,6 +990,77 @@ class QdrantClient:
             logger.error("Qdrant get error: %s", e)
             return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
 
+    async def set_payload(self, ids: list[str], payload: dict[str, Any]) -> dict[str, Any]:
+        """Merge payload fields into existing points without replacing provenance."""
+        if not ids:
+            raise ValueError("ids cannot be empty")
+        if not payload:
+            raise ValueError("payload cannot be empty")
+
+        client = await self._get_client()
+        response = await client.post(
+            f"/collections/{self.collection_name}/points/payload",
+            json={"points": ids, "payload": payload},
+            params={"wait": "true"},
+        )
+        response.raise_for_status()
+        return {
+            "success": True,
+            "updated": len(ids),
+            "collection": self.collection_name,
+        }
+
+    async def set_payload_by_filter(
+        self,
+        *,
+        metadata_filter: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Atomically merge payload into every point matching a strict filter."""
+        if not metadata_filter:
+            raise ValueError("metadata_filter cannot be empty")
+        if not payload:
+            raise ValueError("payload cannot be empty")
+        qdrant_filter = self._convert_filter_to_qdrant_format(
+            metadata_filter,
+            include_flat_payload=self._include_flat_payload_filters(),
+        )
+        if not qdrant_filter:
+            raise ValueError("metadata_filter did not produce a Qdrant filter")
+
+        client = await self._get_client()
+        response = await client.post(
+            f"/collections/{self.collection_name}/points/payload",
+            json={"filter": qdrant_filter, "payload": payload},
+            params={"wait": "true"},
+        )
+        response.raise_for_status()
+        return {"success": True, "collection": self.collection_name}
+
+    async def delete_by_filter(
+        self,
+        *,
+        metadata_filter: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Delete every point matching a strict metadata filter or raise."""
+        if not metadata_filter:
+            raise ValueError("metadata_filter cannot be empty")
+        qdrant_filter = self._convert_filter_to_qdrant_format(
+            metadata_filter,
+            include_flat_payload=self._include_flat_payload_filters(),
+        )
+        if not qdrant_filter:
+            raise ValueError("metadata_filter did not produce a Qdrant filter")
+
+        client = await self._get_client()
+        response = await client.post(
+            f"/collections/{self.collection_name}/points/delete",
+            json={"filter": qdrant_filter},
+            params={"wait": "true"},
+        )
+        response.raise_for_status()
+        return {"success": True, "collection": self.collection_name}
+
     async def delete(
         self,
         ids: list[str],
@@ -1025,6 +1099,17 @@ class QdrantClient:
         except Exception as e:
             logger.error("Error deleting from Qdrant: %s", e)
             raise
+
+    async def ensure_keyword_payload_index(self, field_name: str) -> dict[str, Any]:
+        """Create the indexed keyword field required by a fail-closed filter."""
+        client = await self._get_client()
+        response = await client.put(
+            f"/collections/{self.collection_name}/index",
+            params={"wait": "true"},
+            json={"field_name": field_name, "field_schema": "keyword"},
+        )
+        response.raise_for_status()
+        return {"success": True, "field_name": field_name}
 
     async def scroll(
         self,
@@ -1076,6 +1161,56 @@ class QdrantClient:
         except Exception as e:
             logger.error("Error scrolling Qdrant collection: %s", e)
             return []
+
+    async def scroll_strict(
+        self,
+        *,
+        metadata_filter: dict[str, Any],
+        page_size: int = 256,
+        max_points: int = 10_000,
+    ) -> list[dict[str, Any]]:
+        """Return all matching points or raise; intended for safety invariants."""
+        if not metadata_filter:
+            raise ValueError("metadata_filter cannot be empty")
+        if page_size <= 0 or max_points <= 0:
+            raise ValueError("page_size and max_points must be positive")
+
+        qdrant_filter = self._convert_filter_to_qdrant_format(
+            metadata_filter,
+            include_flat_payload=self._include_flat_payload_filters(),
+        )
+        if not qdrant_filter:
+            raise ValueError("metadata_filter did not produce a Qdrant filter")
+
+        client = await self._get_client()
+        url = f"/collections/{self.collection_name}/points/scroll"
+        points: list[dict[str, Any]] = []
+        offset: Any | None = None
+
+        while True:
+            remaining = max_points - len(points)
+            if remaining <= 0:
+                raise RuntimeError("Qdrant strict scroll exceeded max_points")
+            payload: dict[str, Any] = {
+                "limit": min(page_size, remaining),
+                "with_payload": True,
+                "with_vectors": False,
+                "filter": qdrant_filter,
+            }
+            if offset is not None:
+                payload["offset"] = offset
+
+            response = await client.post(url, json=payload)
+            response.raise_for_status()
+            result = response.json().get("result", {})
+            batch = result.get("points", [])
+            points.extend(
+                {"id": str(point["id"]), "payload": point.get("payload", {})}
+                for point in batch
+            )
+            offset = result.get("next_page_offset")
+            if offset is None:
+                return points
 
     async def peek(
         self,

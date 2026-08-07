@@ -27,8 +27,8 @@ export interface LivingTreeProps {
 /**
  * THE centerpiece (design doc §3): the product's data structure, rendered
  * honestly — not decoration. Vertical trunk of the interview so far;
- * ineligible category leaves fade+curl away the moment the category is
- * answered (FLIP via AnimatePresence exit); the surviving leaf thickens.
+ * unselected behavioural branches retract when the user chooses a category.
+ * This is interview navigation only, never an eligibility decision.
  * Idle "breathe" on the current step is pure CSS, gated by the
  * `prefers-reduced-motion` media query in oracle.css — this component
  * additionally gates its own JS-driven prune animation via
@@ -43,6 +43,9 @@ export function LivingTree({
   const [mobileOpen, setMobileOpen] = useState(false);
   const reducedMotion = useReducedMotion();
   const { trunk, categoryLeaves } = getTreeSteps(current, facts);
+  const visitedSteps = trunk.filter((step) => step.status !== "pending");
+  const breadcrumbSteps = visitedSteps.slice(-4);
+  const hasEarlierSteps = visitedSteps.length > breadcrumbSteps.length;
 
   const srPath = trunk
     .filter((s) => s.status !== "pending")
@@ -65,6 +68,47 @@ export function LivingTree({
           {srPath.map((line, i) => (
             <li key={i}>{line}</li>
           ))}
+        </ol>
+      </nav>
+
+      <nav
+        className="oracle-breadcrumb"
+        aria-label={translate(language, "tree.breadcrumb_label")}
+      >
+        <ol>
+          {hasEarlierSteps && (
+            <li className="oracle-breadcrumb__ellipsis" aria-hidden="true">
+              …
+            </li>
+          )}
+          {breadcrumbSteps.map((step) => {
+            const label = translate(language, step.labelI18nKey as I18nKey);
+            return (
+              <li key={step.id}>
+                {isEditableTreeStep(step) ? (
+                  <button
+                    type="button"
+                    onClick={() => onEditQuestion(step.id)}
+                    aria-label={translate(
+                      language,
+                      "tree.edit_aria" as I18nKey,
+                      { question: label },
+                    )}
+                  >
+                    {label}
+                  </button>
+                ) : (
+                  <span
+                    aria-current={
+                      step.status === "current" ? "step" : undefined
+                    }
+                  >
+                    {label}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ol>
       </nav>
 
@@ -145,21 +189,6 @@ function TreePanel({
       <div className="oracle-tree__trunk">
         {trunk.map((step) => {
           const label = translate(language, step.labelI18nKey as I18nKey);
-          // "Oracle deals your card" morph (design doc §3 interaction #4):
-          // the "verdict" trunk row carries the shared view-transition-name
-          // right up until it becomes the current step — at that point the
-          // hero card in VerdictReveal takes over the name instead (never
-          // both at once, since the two conditions are mutually exclusive
-          // on the same `current` state). Harmless no-op CSS property in
-          // browsers without View Transitions support or when
-          // `prefers-reduced-motion` disables the JS-driven transition call
-          // (OracleShell never invokes `document.startViewTransition` in
-          // that case, so this name never gets used for anything).
-          const morphStyle =
-            step.id === "verdict" && step.status !== "current"
-              ? ({ viewTransitionName: "oracle-verdict-morph" } as const)
-              : undefined;
-
           if (isEditableTreeStep(step)) {
             return (
               <button
@@ -184,7 +213,6 @@ function TreePanel({
               className="oracle-tree__step"
               data-status={step.status}
               aria-hidden="true"
-              style={morphStyle}
             >
               <span className="oracle-tree__dot" />
               <span>{label}</span>

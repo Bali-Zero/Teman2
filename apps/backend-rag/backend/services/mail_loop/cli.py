@@ -6,7 +6,8 @@ Exit codes are the contract with the wrapper, because the wrapper is what turns
 a bad run into an alert and a shell only ever sees a number:
 
     0  clean run
-    1  ran, but degraded (a folder is missing, drafting failed, nothing routed)
+    1  ran, but degraded (a folder is missing, a message errored, drafting
+       failed, or a message reached no recorded ending — see RunSummary.degraded)
     2  could not run at all (no DB, no Zoho token, no such user)
 
 There is no exit code that means "probably fine". A run that half-worked must be
@@ -23,6 +24,11 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # annotation only — `_amain` imports the real thing lazily so
+    # that `--help` keeps working without the backend's dependency tree.
+    from backend.services.mail_loop.loop import RunSummary
 
 logger = logging.getLogger("mail_loop")
 
@@ -235,35 +241,60 @@ async def _amain(args: argparse.Namespace) -> int:
     # which is precisely what makes it stop being parseable.
     print(json.dumps(summary.as_dict(), indent=2, ensure_ascii=False))  # noqa: T201
 
+    return _report(summary)
+
+
+def _report(summary: RunSummary) -> int:
+    """Turn a finished run into the process's exit code, and say why.
+
+    Pulled out of `_amain` so the wording is reachable without a database: the
+    thing worth testing here is not the arithmetic, it is that the line a human
+    finds at 07:30 names the reason for the verdict it announces.
+    """
     blocking = _consent_blocker(summary.errors)
     if blocking is not None:
+        # Deliberately does NOT recite which scopes the stored grant holds.
+        # An earlier version did, and it went stale the moment the grant was
+        # widened: it kept telling a reader the token carried only
+        # `messages.ALL + accounts.READ` long after that stopped being true.
+        # A message that inventories mutable state is a message that will lie.
+        # Say what failed, and where the procedure is written down.
         logger.error(
-            "the stored Zoho grant does not cover folders — %s. The loop can read "
-            "the mailbox but cannot list the folders it routes into, so no amount "
-            "of retrying will help: this needs a re-consent, not another run. "
-            "Re-authorise at /admin/zoho/auth (the consent URL already requests "
-            "ZohoMail.folders.READ; the stored grant predates it and carries only "
-            "ZohoMail.messages.ALL + ZohoMail.accounts.READ).",
+            "the stored Zoho grant does not cover what this run needed — %s. No "
+            "amount of retrying will help: a grant is widened by re-consenting, "
+            "not by asking again. GET /admin/zoho/auth returns the exact scope "
+            "string and the procedure; note that this client is a Self Client, "
+            "so the browser-redirect flow does NOT apply to it — the code comes "
+            "from the API console's Generate Code tab. Full runbook: "
+            "docs/runbooks/zoho-mail-loop.md §8.",
             blocking,
         )
         return 2
 
     if summary.degraded:
+        # Every term of `degraded` appears here. A verdict whose reason is not
+        # in the line it prints sends whoever finds it at 07:30 looking for a
+        # cause among the fields that happen to be shown — which is how
+        # `unaccounted` (silent, and the only one with no other symptom) would
+        # read as "routed nothing, no idea why".
         logger.warning(
             "run DEGRADED: routed=%d drafted=%d draft_failures=%d missing_folders=%s "
-            "errors=%d",
+            "errors=%d unaccounted=%d",
             summary.routed,
             summary.drafted,
             summary.draft_failures,
             summary.missing_folders,
             len(summary.errors),
+            summary.unaccounted,
         )
         return 1
 
     logger.info(
-        "run clean: seen=%d routed=%d drafted=%d left_in_inbox=%d lessons=%d%s",
+        "run clean: seen=%d routed=%d unroutable=%d drafted=%d left_in_inbox=%d "
+        "lessons=%d%s",
         summary.seen,
         summary.routed,
+        summary.unroutable,
         summary.drafted,
         summary.left_in_inbox,
         summary.lessons_learned,

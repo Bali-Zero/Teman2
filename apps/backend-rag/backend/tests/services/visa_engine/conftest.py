@@ -390,11 +390,9 @@ _MIGRATION_253_PATH = (
     _BACKEND_DIR / "db" / "migrations_v2" / "253_visa_activation_writer_hardening.sql"
 )
 _MIGRATION_254_PATH = (
-    _BACKEND_DIR
-    / "db"
-    / "migrations_v2"
-    / "254_visa_activation_system_period_infinity_guard.sql"
+    _BACKEND_DIR / "db" / "migrations_v2" / "254_visa_activation_system_period_infinity_guard.sql"
 )
+_MIGRATION_267_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "267_visa_replace_activation_set.sql"
 
 # STEP-6b gate round-2 fix (2026-07-20): migration 252 adds
 # ``visa_decisions.rule_pack_id`` / ``.ruleset_activation_id`` FKs onto the
@@ -480,6 +478,15 @@ def _read_migration_254() -> tuple[str, str]:
     return forward, rollback
 
 
+def _read_migration_267() -> tuple[str, str]:
+    """Return migration 267's atomic activation-set replacement writer."""
+
+    sql = _MIGRATION_267_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 267 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_pool() -> asyncpg.Pool:
     pool = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
@@ -492,7 +499,7 @@ async def visa_schema(db_pool: asyncpg.Pool) -> None:
     """Fresh ``visa_rule_packs``/``visa_ruleset_activations`` + the STEP-6a
     activation writer for one test.
 
-    Applies migration 250's forward SQL, then 251's, then 253's, then 254's —
+    Applies migration 250's forward SQL, then 251's, 253's, 254's, and 267's —
     same order a real deploy applies them (251 lands in the same release as
     250 per 251's own header note; 253 is the FIX-ROUND roll-forward
     correction against 251, which merged+deployed to prod in flawed form
@@ -531,7 +538,9 @@ async def visa_schema(db_pool: asyncpg.Pool) -> None:
     forward_251, rollback_251 = _read_migration_251()
     forward_253, rollback_253 = _read_migration_253()
     forward_254, rollback_254 = _read_migration_254()
+    forward_267, rollback_267 = _read_migration_267()
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_267)
         await conn.execute(rollback_254)
         await conn.execute(rollback_253)
         await conn.execute(rollback_251)
@@ -541,8 +550,10 @@ async def visa_schema(db_pool: asyncpg.Pool) -> None:
         await conn.execute(forward_251)
         await conn.execute(forward_253)
         await conn.execute(forward_254)
+        await conn.execute(forward_267)
     yield
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_267)
         await conn.execute(rollback_254)
         await conn.execute(rollback_253)
         await conn.execute(rollback_251)

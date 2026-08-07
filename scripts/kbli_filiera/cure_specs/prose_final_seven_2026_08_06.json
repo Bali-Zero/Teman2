@@ -1,0 +1,199 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "The last seven codes on the detector's backlog. Each carries a DIFFERENT recorded condition — a domestic-capital reservation, a defence-ministry route above 49%, a single-majority requirement, an Islamic-faith requirement, and one activity recorded closed with no condition under which it opens — so there is no shared paragraph here on purpose. Graded by a cross-family seat instructed to hunt the sentences WRITTEN rather than the ones removed; seven of its nine findings changed this text (the 'only route' exclusivity claim, the single-majority gloss, 'religious' for Islamic, an invented industrial-zone restriction, an absolute 'Bali adds no second obstacle', a false 'neither obstacle is removed by moving off the island', and four assertions on 84231 the record never made). Two were refuted on disk and are recorded so they are not re-litigated: the untouched byTheNumbers cells already carry the correct ceiling on all seven, and 51101's record does cite Perpres 10/2021 in pma_source.",
+  "codes": {
+    "16221": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #3",
+        "pma_kondisi_contains": "Modal dalam negeri 100% — op"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "6a15331d36d144de2d4b895a5acb09cf214206ef376c1268bcaa50228ad378c1",
+          "old_excerpt": "This is a manufacturing activity built around wood as a construction material. The scope covers wooden building materials used mainly for construction",
+          "new": "This is a manufacturing activity built around wood as a construction material. The scope covers wooden building materials used mainly for construction: beams, rafters, roof frames finished on all four sides, and supporting posts made from finger-jointed wood with adhesive or connected with metal. It also reaches the more visible architectural elements of a building: doors, windows, shutters, frames, stairs, stair rails, wooden mouldings, wooden shingles, parquet blocks and strips assembled into panels from solid wood or engineering wood, decorative wall boards, and name boards.\n\nThe registration picture is broad at the national level. The record opens the activity to Mikro, Kecil, Menengah, and Besar scale businesses, so the code is not confined to one enterprise size. For foreign investment the position is the opposite of broad: Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — lists this activity at entry #3 as open to domestic capital only. Foreign shareholding is 0%, so a PT PMA cannot hold this code anywhere in Indonesia.\n\nBali changes the practical answer. The record marks the Bali status as Blocked (risk class) and sets l4_bali_blocked to true. The stated reason is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, placing it inside the Bali moratorium. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk activities for PMA, island-wide and permanently. The immediate planning consequence is simple: a foreign investor cannot register this activity as a PMA in Bali under the record as written.\n\nTwo separate obstacles sit on this activity, and they do not have the same reach. The national one is the reservation to domestic capital, and it applies wherever the company is registered. The Bali one is the moratorium, which stops PMA registration for activities assessed at low or medium-low risk — this one is, at every scope at the large scale. Registering somewhere other than Bali removes the second obstacle and leaves the first standing, which is the opposite of what a reader of the Bali half alone would conclude."
+        },
+        "editorial.headline": {
+          "old_sha256": "93bd8799be7f248e7c30e9ff26acfc802221334578bdf0217dedf314564ab074",
+          "old_excerpt": "Wood Building Components: Nationally Open, Bali Blocked",
+          "new": "Wood Building Components: Reserved to Domestic Capital, and Blocked in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "c3d4e723d68b47454491f4b20e711263e9d4a78841aa0f745e446ca2b274e8f6",
+          "old_excerpt": "This code covers wooden construction components, open nationally to 100% foreign ownership across all scales, but blocked for PMA registration in Bali",
+          "new": "This code covers wooden construction components across all business scales — foreign shareholding is 0%, and Bali's risk-class moratorium blocks PMA registration on top of that."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "a0181efb9ee48108ecd50044052836cd26eec329dcc21437aced2212dfae6af1",
+          "old_excerpt": "A foreign wood-product manufacturer or construction-supply exporter looking to produce high-quality, export-oriented timber building materials from In",
+          "new": "Indonesian-owned manufacturers of timber building components. Foreign shareholding in this activity is 0%, so it is not a code a PT PMA can be built around; a foreign manufacturer's route here is as a customer or an offtake partner of a domestic producer, not as its owner."
+        },
+        "whatYouNeed": {
+          "old_sha256": "830f240ead6e9bb32f26977eb64f8146f2f20b0dc4f67cf6a9037ae0b95d108d",
+          "old_excerpt": "Nationally, this activity is 100% open to foreign ownership. However, in Bali, the OSS system blocks PMA registration because even a 'large' scale pro",
+          "new": "This activity is reserved to domestic capital: foreign shareholding is 0%, so a PT PMA cannot register it anywhere in Indonesia. The reservation is set by Perpres 49/2021, Lampiran III, entry #3. Bali adds a second, independent obstacle — the island-wide moratorium blocks PMA registration for activities assessed at low or medium-low risk, and this one is assessed there at every scope. Moving the registration off the island clears the Bali obstacle and leaves the national one exactly where it was."
+        }
+      }
+    },
+    "25200": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #7",
+        "pma_kondisi_contains": "may exceed 49% with Menteri "
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "199e56d70bb0a8b73bca21009ffce1f5f64ac2c003cd78ec68292270fe2bf0e3",
+          "old_excerpt": "KBLI 25200 is the manufacturing category for weapons and ammunition. Its centre of gravity is not retail, training, security services, or equipment br",
+          "new": "KBLI 25200 is the manufacturing category for weapons and ammunition. Its centre of gravity is not retail, training, security services, or equipment brokerage, but production: military artillery, cannons, rocket launchers, flamethrowers, grenade launchers, torpedo tubes, machine guns, heavy projectile weapons, light firearms such as pistols, revolvers, rifles, and shotguns, and the ammunition that serves them. The record also includes gas rifles, spring rifles, air rifles, war ammunition, shotgun, revolver, and pistol bullets, and military explosive devices such as bombs, grenades, torpedoes, mines, rockets, and missiles.\n\nThe scope is broader than a narrow defence-factory label. It also covers the manufacture of firearms and ammunition for hunting, sport, or protection, and it expressly reaches intercontinental ballistic missiles. That makes the code industrially precise but commercially wide: the activity is defined by making the weapon, ammunition, explosive, or missile system, not by the eventual user alone. A founder reading this should see a production classification for arms and munitions, spanning military-grade systems through certain civilian-use firearms and ammunition, all inside one activity record.\n\nOn business scale, the record is unusually broad: Mikro, Kecil, Menengah, and Besar are all listed as open. Foreign shareholding in this activity is capped at 49%. Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — lists it at entry #7, and the record notes a route above that ceiling: the approval of the Minister of Defence. Without that approval the 49% ceiling is the national position, and the remaining shares cannot be in foreign hands.\n\nBali's moratorium does not block it. That moratorium suspends new PMA registration for activities assessed at low or medium-low risk, and this one is recorded above that band. What the record does limit is the foreign side of the shareholding — 49%, in Bali exactly as anywhere else in Indonesia — with the defence-ministry approval as the recorded route above it."
+        },
+        "editorial.headline": {
+          "old_sha256": "9fba0b42d8d5a0fd67b290b47422c0c300cb13ce883d5be0d5a16000ba4d1d9a",
+          "old_excerpt": "Weapons and Ammunition Manufacturing, Open Nationally and Usable in Bali",
+          "new": "Weapons and Ammunition Manufacturing: Foreign Ownership Capped at 49%"
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "74e8a627bd7efa90a49b10055b733b561d057e7425aa68d3bcd6c05acf78bdf7",
+          "old_excerpt": "The honest reading is not a hidden Bali prohibition: nationally it is open, and the Bali moratorium field does not block PMA registration for this cod",
+          "new": "The reading is not a hidden Bali prohibition and not a national opening either: foreign shareholding stops at 49%, and Bali's moratorium is not what stops it."
+        },
+        "whatYouNeed": {
+          "old_sha256": "b1128f0828999cc3ed95fdc2296f5702c40458af7aa24a99bbd5d2d7beb273fe",
+          "old_excerpt": "Nationally, this sector is fully open to 100% foreign ownership. In Bali, it is not blocked but is flagged as higher-risk: a foreign-owned company can",
+          "new": "Foreign shareholding in this sector is capped at 49%: a PT PMA can hold up to 49% of the company and the rest cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #7, and the record notes a route above it — the approval of the Minister of Defence. Bali's moratorium does not block the activity: it reaches only low and medium-low risk lines, and this one sits above that band."
+        }
+      }
+    },
+    "30400": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #7",
+        "pma_kondisi_contains": "may exceed 49% with Menteri "
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "68efbfab2a4a565b8de551ee9d96cbb24792df3cccb409f1a693568172f3eb8a",
+          "old_excerpt": "KBLI 30400 is a defence-manufacturing activity, not a general automotive line. The record defines it around the making of military war vehicles, wheth",
+          "new": "KBLI 30400 is a defence-manufacturing activity, not a general automotive line. The record defines it around the making of military war vehicles, whether already fitted with weapons or not, and around the parts that make those vehicles what they are: armoured bodies, turrets, doors, protective structures, armour plate identified as part of a military combat vehicle, and other military war vehicles. Its centre of gravity is the combat platform itself: tanks, armoured combat carriers for transporting people, armoured supply or recovery vehicles with cranes, armoured amphibious military vehicles, and remotely operated tanks.\n\nThe scope also reaches factory inspection and rebuilding of military war vehicles. That matters because this code is not limited to first manufacture from a blank production line; it includes industrial rebuilding activity at the factory level. At the same time, the record keeps the boundary tight. It is not the making of weapons and ammunition, not ordinary passenger cars or trucks with light or detachable armour, not military ships, not repair and maintenance of military combat vehicles, and not military drones. The editorial reading is therefore precise: this is the industrial manufacture and factory rebuilding of military combat vehicles and their identified vehicle parts.\n\nOn registration scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar scales. That does not make the business ordinary; it simply means the scale field does not reserve the activity for one size of enterprise. A founder reading this record should separate two ideas that are often blurred: the activity’s industrial seriousness comes from the scope, while the scale availability comes from the registration data. The code can be registered across all listed business scales, but the substance remains defence-vehicle manufacturing.\n\nForeign shareholding in this activity is capped at 49%. Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — lists it at entry #7, and the record notes a route above that ceiling: the approval of the Minister of Defence. Without that approval the 49% ceiling is the national position, and the remaining shares cannot be in foreign hands. Bali's moratorium does not block it. That moratorium suspends new PMA registration for activities assessed at low or medium-low risk, and this one is recorded above that band. What the record does limit is the foreign side of the shareholding — 49%, in Bali exactly as anywhere else in Indonesia — with the defence-ministry approval as the recorded route above it."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "de83009acef98e17272ec4f20db2e0328b10a788820459429c1943fbbbc49ccd",
+          "old_excerpt": "The honest conclusion is straightforward: KBLI 30400 is nationally foreign-open up to 100% and is not marked as blocked by Bali’s moratorium in this r",
+          "new": "The constraint on this activity is not Bali's moratorium: it is a 49% ceiling on foreign shareholding, with the Minister of Defence's approval recorded as the route above it."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "f832a0ab78d72bac633262978f788918cd424844a655acf2f1602824898a0fbe",
+          "old_excerpt": "KBLI 30400 covers the manufacture and rebuilding of military combat vehicles, nationally open to PMA and not blocked by Bali’s moratorium record.",
+          "new": "KBLI 30400 covers the manufacture and rebuilding of military combat vehicles — foreign shareholding is capped at 49%, and Bali's moratorium does not block registration."
+        },
+        "whatYouNeed": {
+          "old_sha256": "933d60a9a949b3be4f461da5164c1a8fe9c99485729f8876e0fe95da617d8af5",
+          "old_excerpt": "Nationally, this activity is 100% open to foreign ownership (PMA). In Bali, it is not blocked by the moratorium but carries a medium-high/high risk cl",
+          "new": "Foreign shareholding in this activity is capped at 49%: a PT PMA can hold up to 49% of the company and the rest cannot be in foreign hands. The cap is set by Perpres 49/2021, Lampiran III, entry #7, and the record notes a route above it — the approval of the Minister of Defence. Bali's moratorium does not block the activity: it reaches only low and medium-low risk lines, and this one sits above that band."
+        }
+      }
+    },
+    "51101": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #31",
+        "pma_kondisi_contains": "national capital owner must "
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "fc46bd6590604c76025ded98a0aab07cd9fd96f8cc60d15d034d1aa99d09773c",
+          "old_excerpt": "KBLI 51101 is the operating category for commercial air transport provided on fixed routes and regular flight schedules, for a published fare. Its cen",
+          "new": "KBLI 51101 is the operating category for commercial air transport provided on fixed routes and regular flight schedules, for a published fare. Its centre of gravity is the scheduled service itself: carrying passengers, or passengers and cargo, by aircraft as part of a repeatable public timetable rather than a one-off flying arrangement. It accommodates both domestic scheduled services and international scheduled services. The code therefore describes an airline-style activity in the plain operational sense—an air service sold against established routes, established schedules and published charges.\n\nRegistration is not framed as a preserve of one business size. The record opens the activity to Mikro, Kecil, Menengah and Besar enterprises, recognising that the registered scale can sit anywhere from micro through large. That breadth does not change the activity’s defining character. A business registered here is putting forward a scheduled commercial passenger service, with cargo permitted alongside passengers; the fixed-route, regular-schedule and published-fare elements are the boundaries that give the category its shape.\n\nForeign shareholding in this activity is capped at 49%, and the record carries a second condition the ceiling alone does not express: a national capital owner must retain a single majority. That wording matters when the Indonesian side is split between several holders — whether such a structure satisfies it is a question to settle before incorporation, not after. Both conditions come from Perpres 49/2021, Lampiran III, entry #31.\n\nFor a founder, the useful distinction is simple but important. This is a code for a scheduled commercial air service, open across the listed enterprise scales, with the foreign side of the shareholding stopping at 49% and a single-majority condition on the national side. In Bali the relevant fact is equally plain: the provincial moratorium does not bar registration, because it reaches only low and medium-low risk lines and this activity sits above that band. The record cites Perpres 10/2021 and 49/2021 as the source for the national position, and Lampiran III entry #31 as the specific basis."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "3baec00d8dd38e3d27186778780650fab9404398cd169ed036c77ca8e93ad62f",
+          "old_excerpt": "A fixed-route, regular-schedule passenger air service can be fully foreign-owned nationally and is not blocked by Bali’s PMA moratorium.",
+          "new": "A fixed-route, regular-schedule passenger air service — foreign shareholding is capped at 49% with a single-majority condition on the national side, and Bali's moratorium does not block registration."
+        },
+        "whatYouNeed": {
+          "old_sha256": "453e2ff88a557fa011bb335ded7a04cc51b64794d674eed08a9136acba2232e7",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership. In Bali, it is not blocked by any local moratorium, but it's flagged as medium-high risk. Tha",
+          "new": "Foreign shareholding in this activity is capped at 49%, and the record adds a condition the ceiling alone does not express: a national capital owner must retain a single majority. Both come from Perpres 49/2021, Lampiran III, entry #31. If the Indonesian side would be split between several holders, settle whether that satisfies the single-majority condition before incorporating. In Bali the activity is not blocked: the island's moratorium reaches only low and medium-low risk lines, and this one sits above that band."
+        }
+      }
+    },
+    "51102": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #30",
+        "pma_kondisi_contains": "national capital owner must "
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "8f84e55a6eab0f9e88a929e6959a9b3fec159fcdbf90edb0fee8c40a52fc845a",
+          "old_excerpt": "KBLI 51102 is the place for commercial, non-scheduled carriage of passengers—or passengers and cargo—by aircraft when neither route nor flight schedul",
+          "new": "KBLI 51102 is the place for commercial, non-scheduled carriage of passengers—or passengers and cargo—by aircraft when neither route nor flight schedule is fixed or regular. The fare is not a public rate: it is agreed between the air-transport provider and user. That definition gives the activity a particular commercial texture. It embraces charter passenger flights, sightseeing flights, and the hiring of an aircraft with its operator for passenger transport. The stated scope also reaches domestic and international non-scheduled commercial transport, whether the load is passengers alone or passengers and cargo.\n\nThis is therefore an activity for operators whose service is formed around an agreed journey rather than a published itinerary. The relevant question is not merely whether the aircraft carries people; it is whether the journey is offered on the non-fixed, non-regular basis described in the record, with a privately agreed tariff. In practice, the code’s own wording keeps the focus on the operating service: the aircraft comes with its operator, and the commercial task is passenger carriage. The entry is open to Mikro, Kecil, Menengah, and Besar businesses, giving the same defined activity a place across each listed business scale.\n\nForeign shareholding in this activity is capped at 49%, and the record carries a second condition the ceiling alone does not express: a national capital owner must retain a single majority. That wording matters when the Indonesian side is split between several holders — whether such a structure satisfies it is a question to settle before incorporation, not after. Both conditions come from Perpres 49/2021, Lampiran III, entry #30.\n\nBali requires its own reading rather than an automatic extension of the national result. The provincial moratorium permanently blocks PMA registration for Low and Medium-Low risk KBLI island-wide. This record, however, is marked OK_or_HIGHER_RISK and expressly says it is not blocked by that moratorium; at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. A foreign investor can therefore register this activity in Bali today on the record presented here. The decisive point is not a special Bali ownership cap, but the recorded absence of a moratorium block."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "da56c9b50ab857b5454cb3c7c5c586bda00262a28d995bbacbf56c3bb74370c8",
+          "old_excerpt": "KBLI 51102 covers commercial passenger flights built around agreed journeys, with full foreign ownership nationally and no recorded Bali moratorium bl",
+          "new": "KBLI 51102 covers commercial passenger flights built around agreed journeys — foreign shareholding is capped at 49% with a single-majority condition on the national side, and Bali records no moratorium block."
+        }
+      }
+    },
+    "79122": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #36",
+        "pma_kondisi_contains": "domestic capital and Islamic"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "45090a3c9b5a57289ac97b959a8bedb39fcb07f09ca49c3de0a3bfae2537f671",
+          "old_excerpt": "An Umrah and special-Hajj pilgrimage travel bureau plans and assembles travel packages for these forms of worship. Those packages may be channelled th",
+          "new": "An Umrah and special-Hajj pilgrimage travel bureau plans and assembles travel packages for these forms of worship. Those packages may be channelled through travel agents or sold directly to consumers, online or in person. The activity reaches beyond the itinerary itself: it includes services connected to the package sold, including transport, accommodation and meals, as well as handling travel documents such as passports, visas and equivalent documents. In practical terms, this is the organising business behind a pilgrimage journey, from the package design through the travel services and documentation that support it.\n\nThe activity is open at every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the record does not confine the activity to a single size of operator. A bureau may operate around the planning and sale of pilgrimage packages while using either agent distribution or direct consumer sales, and may do so through digital or offline channels. Its defined scope keeps the focus on Umrah and special-Hajj travel packages and the services attached to those packages.\n\nThis activity is closed to foreign shareholding. Perpres 49/2021, Lampiran III — the annex of business fields carrying specific requirements — lists it at entry #36, reserved to domestic capital, with an Islamic-faith requirement recorded alongside it. Foreign shareholding is 0%, so a PT PMA cannot register an Umrah or special-Hajj travel bureau anywhere in Indonesia.\n\nThat is the distinction worth holding, because the Bali line points the other way and it is the weaker of the two. Bali's moratorium does not catch this activity — it is recorded above the low and medium-low risk band the moratorium blocks. But a provincial door standing open is of no use when the national one is shut: the reservation applies wherever the company would be registered."
+        },
+        "editorial.headline": {
+          "old_sha256": "b33ab66b0b3b357939dc83461e860c88d466ef24d64b027fdf8c0e4392a7bcf7",
+          "old_excerpt": "Umrah and Special-Hajj Travel: Open Nationally, Available in Bali",
+          "new": "Umrah and Special-Hajj Travel: Reserved to Domestic Capital"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "c4a47f279bc0977bea2d92b05c0562186a2d704fc3d21b1d930087f41e8d3439",
+          "old_excerpt": "This activity covers the assembly and sale of Umrah and special-Hajj travel packages, with a fully open national foreign-ownership position and no Bal",
+          "new": "This activity covers the assembly and sale of Umrah and special-Hajj travel packages — foreign shareholding is 0%, and Bali's open moratorium position does not change that."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "41eadafdee3d4a48fbf1f3e029c7b10556583cf5a3b2b76da8ed4eae21aef9f9",
+          "old_excerpt": "This is a pilgrimage-travel bureau activity with an open PMA path that remains available in Bali.",
+          "new": "Bali's moratorium leaves this one alone, and it makes no difference: the reservation to domestic capital is national, so there is no PMA path to keep open."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "e20bcedceccb84c3dbf4fe6cc427344aeeef927d3c9b3c532bd136f22c5f23e3",
+          "old_excerpt": "Foreign Muslim entrepreneurs or international travel operators looking to build a dedicated pilgrimage travel bureau in Indonesia.",
+          "new": "Indonesian-owned travel businesses. Foreign shareholding in this activity is 0%, so a foreign operator cannot build a PT PMA around it — an international travel company's route here runs through a domestic bureau as its partner or supplier, not through owning one."
+        },
+        "whatYouNeed": {
+          "old_sha256": "e70af35e958e74539b8aeaaf8d224ddcfa8b5c96557738339f77859b76ba4151",
+          "old_excerpt": "Nationally, a foreign-owned (PMA) company can hold up to 100% of this business. In Bali, it is not blocked by the local moratorium, but it is classifi",
+          "new": "This activity is reserved to domestic capital: foreign shareholding is 0%, so a PT PMA cannot register it anywhere in Indonesia. The reservation is set by Perpres 49/2021, Lampiran III, entry #36, and the record notes an Islamic-faith requirement alongside it. Bali's moratorium does not block the activity, but that is beside the point — the national reservation applies wherever the company is registered."
+        }
+      }
+    },
+    "84231": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "db5cc5901381e096056024d80537d011459fc6fdade4eb603734973f39fa2b16",
+          "old_excerpt": "Foreign security consultants or firms providing specialized training or equipment to government agencies, though full foreign ownership is nationally ",
+          "new": "No foreign investor: this code is recorded TERTUTUP — closed — with foreign shareholding at 0%, and the record carries no condition under which it opens. The line it replaces suggested foreign security consultants could serve government agencies here \"with strong local partnerships\", which reads as a route where the record describes none."
+        }
+      }
+    }
+  }
+}

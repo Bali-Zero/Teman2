@@ -224,7 +224,16 @@ def _iter_candidate_paths(
     A root may itself be a regular file (e.g. an expanded `~/.env*` glob
     hit) rather than a directory — handled directly rather than via
     os.walk (which yields nothing for a non-directory top). Roots that do
-    not exist are skipped. Root-level symlinks are not followed.
+    not exist are skipped.
+
+    A root that IS a symlink is resolved once and its target audited. A
+    root is NAMED by the caller; a link met during the walk is not, and
+    only the latter is a way for the walk to be lured out of the tree it
+    was asked to audit. Dropping a named root silently is how this tool
+    certified "clean" for the fleet's own memory directory — reached
+    through two symlinks — while looking at zero files: with no root
+    counted, the blind-scan guard could not fire either. Broken or
+    looping links are treated exactly like a path that does not exist.
     """
     seen_dirs: set = set()
     for raw_root in roots:
@@ -235,12 +244,17 @@ def _iter_candidate_paths(
             continue  # doesn't exist — skip per spec
 
         if stat.S_ISLNK(root_lstat.st_mode):
-            continue  # never follow symlinks, including at the root level
+            try:
+                resolved = Path(os.path.realpath(root))
+                root_lstat = os.stat(resolved)
+            except OSError:
+                continue  # broken or looping — same as a missing path
+            root = resolved
 
         if stats is not None:
             stats["roots_existing"] = stats.get("roots_existing", 0) + 1
         if stat.S_ISDIR(root_lstat.st_mode):
-            key = os.path.abspath(root)
+            key = os.path.realpath(root)
             if key in seen_dirs:
                 continue
             seen_dirs.add(key)
@@ -256,6 +270,66 @@ def _iter_candidate_paths(
 # --------------------------------------------------------------------------
 # Core scan
 # --------------------------------------------------------------------------
+
+
+def _dir_traversal(
+    directory: str, cache: Optional[dict] = None
+) -> Tuple[bool, bool]:
+    """(group_can_traverse, other_can_traverse) for ONE directory.
+
+    On any stat error the answer is (True, True): a guard that could not
+    verify must never absolve (W106b — CANNOT-VERIFY is not the same as
+    clean).
+
+    `cache` is supplied by the caller and lives for exactly one scan — a
+    fleet walk crosses ~90k files over a few hundred directories, so the
+    saving is real, but a cache that outlived the scan would be a stored
+    answer about a world that can change under it. Same reason the default
+    is None rather than a shared dict.
+    """
+    if cache is not None:
+        hit = cache.get(directory)
+        if hit is not None:
+            return hit
+    try:
+        mode = stat.S_IMODE(os.stat(directory).st_mode)
+        result = (bool(mode & stat.S_IXGRP), bool(mode & stat.S_IXOTH))
+    except OSError:
+        result = (True, True)
+    if cache is not None:
+        cache[directory] = result
+    return result
+
+
+def reachable_by(path: Path, cache: Optional[dict] = None) -> Tuple[bool, bool]:
+    """(group, other) — can each actually walk down to this file?
+
+    A 0644 file inside a 0700 directory is NOT in the clear: nobody but the
+    owner can reach it. Judging the file's own mode alone answers a narrower
+    question than the one this tool exists to ask, and the gap is not
+    academic — it shows up as a permanent stream of findings for files that
+    cannot be read by anyone, which is precisely how a guard's output stops
+    being read at all (superscar #2). Every directory from the file up to the
+    root must permit traversal, so one tight directory anywhere in the chain
+    is enough to close the path.
+
+    DECLARED LIMIT: this follows the resolved path only. A hard link to the
+    same inode from a permissive directory would still be reachable and this
+    function cannot see it — hard links are outside what a path-based audit
+    can answer, and saying so here is cheaper than implying otherwise.
+    """
+    group = other = True
+    try:
+        directory = path.parent.resolve()
+    except OSError:
+        return (True, True)
+    while True:
+        can_group, can_other = _dir_traversal(str(directory), cache)
+        group = group and can_group
+        other = other and can_other
+        if not (group or other) or directory.parent == directory:
+            return (group, other)
+        directory = directory.parent
 
 
 def scan(
@@ -274,6 +348,7 @@ def scan(
     """
     findings: List[Finding] = []
     seen_files: set = set()
+    traversal_cache: dict = {}  # one scan's worth — see _dir_traversal
 
     for candidate in _iter_candidate_paths(roots, max_depth, stats):
         key = os.path.abspath(candidate)
@@ -290,7 +365,16 @@ def scan(
             continue  # symlink, socket, fifo, etc. — skip, never follow
 
         mode_bits = stat.S_IMODE(lst.st_mode)
-        if mode_bits & 0o077:
+        if not mode_bits & 0o077:
+            continue
+
+        # The mode says who MAY read; the directory chain says who can get
+        # here at all. Both have to be true for the file to be exposed.
+        can_group, can_other = reachable_by(candidate, traversal_cache)
+        exposed = (bool(mode_bits & 0o070) and can_group) or (
+            bool(mode_bits & 0o007) and can_other
+        )
+        if exposed:
             findings.append(Finding(path=candidate, mode=mode_bits))
 
     findings.sort(key=lambda f: str(f.path))

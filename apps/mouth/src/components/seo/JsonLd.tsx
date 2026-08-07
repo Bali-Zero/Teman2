@@ -6,6 +6,8 @@
  * to ensure JSON-LD is present in the static HTML for Googlebot and validators.
  */
 
+import { WA_NUMBER } from "@/lib/whatsapp-utm";
+
 const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
 
 // Organization schema - for brand presence
@@ -22,11 +24,11 @@ export function OrganizationJsonLd() {
       "https://www.linkedin.com/company/balizero",
       "https://www.instagram.com/balizero",
       "https://www.facebook.com/balizero",
-      "https://wa.me/6282230102328",
+      "https://wa.me/628213454721",
     ],
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+62-859-0436-9574",
+      telephone: `+${WA_NUMBER}`,
       contactType: "customer service",
       availableLanguage: ["English", "Indonesian"],
     },
@@ -60,7 +62,7 @@ export function LocalBusinessJsonLd() {
     name: "Bali Zero",
     image: `${baseUrl}/static/balizero-logo-clean.png`,
     url: baseUrl,
-    telephone: "+62-859-0436-9574",
+    telephone: `+${WA_NUMBER}`,
     email: "info@balizero.com",
     address: {
       "@type": "PostalAddress",

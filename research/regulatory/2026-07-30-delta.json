@@ -1,0 +1,94 @@
+{
+  "run_at": "2026-07-30T07:07:59+08:00",
+  "today": "2026-07-30",
+  "yesterday_seen_count": 20,
+  "new_today_count": 0,
+  "partial": false,
+  "nb_query_errors": [],
+  "nb_query_notes": [
+    "All 4 NB-INTEL queries returned successfully. NB-INTEL-Regulation, NB-INTEL-Press, NB-INTEL-Immigration returned 'nessuna novita' with sources_used: [] (consistent with known post-UUID-switch degradation, seen across multiple prior runs).",
+    "NB-INTEL-Tax returned 'nessuna novita' but surfaced a follow-up suggestion mentioning PER-6/2026 (GloBE/GMT minimum tax guidelines) with sources_used: [] - no verbatim dated citation, treated as noise per hard rule 'no speculation, better miss than hallucinate', not added as delta."
+  ],
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, confirmed after 1 retry"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "confirmed after 1 retry"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but page reads 'Artikel tidak ditemukan', no extractable static content"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but only facet/filter markup returned, no rendered search results"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "connection timeout after 30s, confirmed after 1 retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "newest article 29 Jul 2026 (PMK 49/2026), already in seen_citations"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "newest 29/07/2026; marketplace PPh withholding piece (1 Aug) has no citable regulation number, DJP mechanism-change statement only"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "newest entries 2026-07-02 (PP 30/2026, PP 31/2026)"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "newest item 27 Jul 2026, operational press release, no regulation citation"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry 2026-07-07 (31/MK/EF.2/2026 exchange-rate KMK)"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry UU Nomor 2 Tahun 2026; page sorts hierarchically not by date"
+    }
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PMK 49/2026",
+    "SE-9/PJ/2026"
+  ]
+}

@@ -104,24 +104,28 @@ code**, never by grepping for "N passed".
    value is readable from **inside** a running machine
    (`fly ssh console -C printenv`), which is where it was read. Installed on the
    Pro; **3/3 refresh tokens now refresh** (probed without writing).
-2. **Folder access — THE BLOCKER, and it needs a re-consent.** Measured on all
-   four token rows of the mailbox: every stored grant is
-   `ZohoMail.messages.ALL ZohoMail.accounts.READ`. So `GET /messages/view`
-   answers **200** — the loop can read the inbox — while
-   `GET /accounts/<id>/folders` answers **401 `INVALID_OAUTHSCOPE`**. The loop
-   can read the mail but cannot see the folders it is supposed to route into,
-   and no retry will change that.
+2. **Folder access — RESOLVED 2026-08-05.** It was the blocker: every stored
+   grant was `ZohoMail.messages.ALL ZohoMail.accounts.READ`, so
+   `GET /messages/view` answered **200** while
+   `GET /accounts/<id>/folders` answered **401 `INVALID_OAUTHSCOPE`** — the loop
+   could read the mail and not see the folders it routes into.
    - The `accounts.READ` payload was checked for a folder list as a way around
      it: it has none (`emailAddress` and `sendMailDetails` are its only nested
-     lists), so there is no path to a folder id with the present grant.
-   - `get_authorization_url` **already requests `ZohoMail.folders.READ`** — the
-     stored grant simply predates it. One re-consent fixes it permanently.
-   - That re-consent is a Zoho web login as the mailbox owner plus an Accept:
-     the one category this session cannot do for you. Steps are in §8.
-3. **The six folders** (`_Visa _PTPMA _Tax _Property _Admin _Noise`) — still
-   **NOT verified**, and cannot be until step 2 is done: listing them is exactly
-   the call that 401s. The loop does not create them; a missing folder leaves the
-   mail in the inbox and marks the run degraded.
+     lists), so there was no path to a folder id with that grant.
+   - Fixed by a Self Client re-consent (§8), **not** by the redirect flow this
+     runbook originally prescribed — that flow cannot work for this client at
+     all. The grant now carries `ZohoMail.folders.READ` and listing succeeds.
+   - Root cause of the narrow grant, fixed in code: `/admin/zoho/auth` carried
+     its own hardcoded scope list, drifted from `ZohoOAuthService.SCOPES` and
+     naming no folder scope at all. See §9.
+3. **The six folders** (`_Visa _PTPMA _Tax _Property _Admin _Noise`) — **CREATED
+   2026-08-05**. They were absent (the mailbox had 16 folders, none of them one
+   of the six) and `POST /folders` was refused by the stored grant. Closed
+   without a second consent via the Self Client `client_credentials` grant —
+   §8b has the exact call and the two routes that do NOT work. Verified through
+   the service's own `list_folders`, and then by the loop: `--dry-run` now exits
+   **0** with `missing_folders: []`, `errors: []`, routing 7 of 13 and leaving
+   the 6 it refuses to guess about where a human sees them.
 4. **Install the plist** — deliberately NOT done, and the order matters. The
    plist names `/Users/nuzantara/nuzantara/scripts/zoho-mail-loop.sh`,
    which exists on the Pro only after this branch merges and the checkout is
@@ -292,39 +296,445 @@ user to an account they asked to leave).
   (id 25). Deleting production data is not this branch's business, and the
   ordering makes it harmless. Someone should still clean it up.
 
-## 8. The one action this session cannot do — the re-consent
+## 8. The re-consent — DONE 2026-08-05, and it was not the flow this said
 
-Everything else is done. This is a Zoho login plus an Accept, which is a consent
-only the mailbox owner holds.
+> CORRECTION. This section described a browser-redirect flow: fetch a URL from
+> `/admin/zoho/auth`, open it, accept, get redirected to the callback. That flow
+> **cannot work for this client**, and following it costs an hour before the
+> reason appears.
+>
+> The Zoho client is a **Self Client**. A Self Client has no redirect URI —
+> there is no field for one in the API console — so the authorize URL answers
+> _"Invalid Redirect Uri"_ before any consent screen is ever shown. Zoho hands
+> the grant code straight to the operator in the console instead.
+>
+> Worth recording how long that stayed hidden: `curl` on the authorize URL
+> returned the sign-in page, which reads like success. Zoho validates
+> `redirect_uri` only **after** login, so an unauthenticated request can never
+> see the error. The check was structurally incapable of failing.
 
-1. Ask the backend for the consent URL. `/admin/zoho/auth` is **not** a page: it
-   is a JSON endpoint guarded by a header, and it returns the URL.
+**What was actually done** (2026-08-05): the operator generated a grant code in
+the API console (Generate Code tab, no redirect URI involved), and it was
+exchanged server-side with **no `redirect_uri` parameter**. The exchange is
+single-use and expires in minutes, so it is done in one pass, not dry-run first.
+Granted scope, read back from the exchange reply rather than assumed:
 
-   ```bash
-   curl -s -H "X-Admin-Secret: $ADMIN_SECRET_KEY" \
-     https://nuzantara-rag.fly.dev/admin/zoho/auth
-   ```
+```
+ZohoInvoice.fullaccess.all ZohoMail.accounts.READ ZohoMail.messages.ALL
+ZohoMail.folders.READ ZohoMail.attachments.READ ZohoMail.attachments.CREATE
+```
 
-2. Open the URL it returns in a browser signed in as `zero@balizero.com`. The
-   consent screen must list **`ZohoMail.folders.READ`** — verified locally: the
-   URL requests `accounts.READ`, `messages.READ/CREATE/UPDATE/DELETE`,
-   `folders.READ` and both attachment scopes, with `access_type=offline` and
-   `prompt=consent`. Accept.
-3. Zoho redirects to `https://nuzantara-rag.fly.dev/api/integrations/zoho/callback`,
-   which exchanges the code and stores the numeric accountId against
-   `https://mail.zoho.com` — so the row it writes is a usable one, and
-   `ON CONFLICT (user_id, account_id)` updates the existing good row in place
-   rather than adding a third.
-4. Confirm the grant actually widened. The honest check is the API, **not** the
-   `scopes` column — that column records what was _asked for_ at connect time
-   and is not updated on conflict, so it can read wider than the real grant:
+`ZohoMail.folders.READ` is present — the thing the whole exercise was about —
+and the token was written to all four rows for this mailbox.
 
-   ```bash
-   cd apps/backend-rag
-   PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
-   ```
+**Proof it took**, measured, not inferred: `--dry-run` now reports
+`"seen": 13, "errors": []`. It lists the folders, lists the unread mail, fetches
+each body and its headers, and classifies. Before, it stopped at `"seen": 0`
+with `list_emails failed`.
 
-   Exit **2** with `INVALID_OAUTHSCOPE` means the consent did not take. Exit 0 or
-   1 means it did, and the JSON summary lists which of the six folders exist.
+### 8b. The six folders — CREATED 2026-08-05, without a second consent
 
-5. Then §3.4 (install the plist) and §3.5 (flip `MAIL_LOOP_DRY_RUN` to 0).
+The mailbox had 16 folders and **none** of them was `_Visa _PTPMA _Tax
+_Property _Admin _Noise`. `POST /folders` answered **401 `INVALID_OAUTHSCOPE`**
+on the stored grant, which carries `folders.READ` — reading folders and creating
+one are different permissions.
+
+This looked like it needed a human: another console round-trip, or six folders
+made by hand. It did not. **A Zoho Self Client can mint a token for its own app
+with `grant_type=client_credentials`** — no interactive consent, no console, no
+browser:
+
+```bash
+curl -s https://accounts.zoho.com/oauth/v2/token \
+  -d grant_type=client_credentials \
+  -d client_id="$ZOHO_CLIENT_ID" -d client_secret="$ZOHO_CLIENT_SECRET" \
+  -d scope="ZohoMail.folders.CREATE,ZohoMail.folders.READ" \
+  -d soid="ZohoMail.<zoid>"
+```
+
+`soid` is load-bearing and is the whole trick: **without it the same request is
+declined**. The `<zoid>` is the numeric account id, i.e. what
+`ZohoEmailService._get_account_id()` already resolves (here
+`1228340000000008002`). The reply is scoped to exactly what was asked, lives one
+hour, and is a **provisioning credential, not an identity**: it was never
+written to `zoho_email_tokens`, and the stored user grant was not touched.
+
+With it, the six folders were created in one pass and verified through the
+_other_ channel — the service's own `list_folders` on the stored user token,
+which is what the loop actually reads. A 200 on a create call is not evidence
+the loop can see the folder.
+
+> Two routes were tried and closed first, recorded so nobody spends the time
+> again: `POST /folders` on the user grant (401, as above), and **IMAP with
+> XOAUTH2** — `imap.zoho.com` and `imappro.zoho.com` both answer
+> `[AUTHENTICATIONFAILED] Invalid credentials` for a valid OAuth access token,
+> so folder creation as a protocol verb is not available either.
+
+Confirm with the loop itself rather than by looking at the mailbox:
+
+```bash
+cd apps/backend-rag
+PYTHONPATH=. .venv/bin/python -m backend.services.mail_loop.cli --dry-run
+```
+
+**Measured after provisioning** — the green condition, exit **0**:
+
+```json
+{
+  "seen": 13,
+  "routed": 7,
+  "left_in_inbox": 6,
+  "unroutable": 6,
+  "message_errors": 0,
+  "unaccounted": 0,
+  "drafted": 7,
+  "draft_failures": 0,
+  "missing_folders": [],
+  "errors": [],
+  "degraded": false
+}
+```
+
+The six left in the inbox are the ones the classifier refuses to guess about;
+leaving them where a human sees them is the intended behaviour, not a shortfall.
+Note that `missing_folders` only became trustworthy in this change — see §9.
+
+`unaccounted` must always read `0`. It is `seen - routed - left_in_inbox -
+message_errors`: every message the run picks up ends in exactly one of those
+three places, so a non-zero value means one ended somewhere nobody recorded —
+and the run is reported degraded. See §11 for why that counter exists and what
+it replaced.
+
+3. Then §3.4 (install the plist) and §3.5 (flip `MAIL_LOOP_DRY_RUN` to 0).
+
+## 9. The loop had never been run against the real backend
+
+The package was written against an _imagined_ `ZohoEmailService`. Nine read
+sites, one cause: Zoho puts camelCase on the wire (`folderId`, `messageId`,
+`fromAddress`), the service deliberately translates that into the snake_case
+shape its ten other consumers use (`folder_id`, `message_id`,
+`from: {address}`), and the loop read the wire names while being wired to the
+service. Everything missed, silently:
+
+| what the loop read        | what it got           | consequence                                                                                                                                                                 |
+| ------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `folderName` / `folderId` | nothing               | **no folder ever resolved.** The inbox id degraded to the literal string `"inbox"`, and Zoho answered `UNABLE_TO_PARSE_DATA_TYPE` — an error that points at them, not at us |
+| `messageId` (2 sites)     | nothing               | every message would have read as _"arrived without an id, skipped"_                                                                                                         |
+| `threadId`                | nothing               | the learning pass could never match a sent reply                                                                                                                            |
+| `fromAddress` / `sender`  | nothing               | **every draft addressed to nobody**                                                                                                                                         |
+| `content` / `body`        | nothing               | classification fell back to the 100-char preview — a KITAS question in paragraph three is invisible                                                                         |
+| `headers`                 | never returned at all | `is_bulk` permanently false; no newsletter could ever be detected as bulk                                                                                                   |
+
+Two more, found in the same pass:
+
+- `get_email` **requires** a `folder_id` and the loop called it without one, so
+  every message would have raised `ValueError` anyway;
+- `get_email` **marks the message read**. The loop selects on `is_unread`, so a
+  `--dry-run` — which promises to mutate nothing — would have marked the entire
+  unread inbox as read, and the next real run would have been blind to exactly
+  the mail it was meant to file. It also re-listed 50 messages per fetch.
+
+**Why 20 green tests never saw any of it:** the fake spoke the wire names too. A
+fixture agreeing with the code about a vocabulary neither shares with production
+is not evidence. The fixtures now speak the shape the service produces, and
+`test_backend_contract.py` puts the fake at the **HTTP boundary** instead, so
+everything above it is the real transform. It is mutation-verified: reverting
+the folder lookup turns 17 tests red, deleting the sender branch 2, and adding
+a `mark_read` back into the read path 1.
+
+**Also cured, same class:** `missing_folders` was computed lazily, one message
+at a time, only when a message happened to classify into a folder. An empty list
+therefore meant _either_ "all six are present" _or_ "the check never ran" — and
+during the failure above it read empty for a mailbox that had none of them. It
+is now checked up front against the listing the run already holds.
+
+And the reason the grant was narrow in the first place: `/admin/zoho/auth`
+carried its **own hardcoded copy** of the scope list
+(`ZohoInvoice.fullaccess.all,ZohoMail.messages.ALL` — no folders at all) that
+had drifted from `ZohoOAuthService.SCOPES`. That endpoint is the one humans are
+sent to; the mail loop names it verbatim in its own error message. It now builds
+the scope from the service's list, pinned by `test_zoho_consent_scope.py`.
+
+## 10. Six of seven live routings rested on a coincidence
+
+Once the loop could finally read the mailbox (§9), the next question was not
+_does it route_ but _on what_. Measured on the real inbox, not reasoned:
+
+> **7 of 13 messages routed, and 6 of those 7 won their lane on a single soft
+> marker** — five on `tax`, one on `meeting` — with **no decisive instrument
+> anywhere in the run**.
+
+`tax` sits in the footer of every invoice, receipt and SaaS bill ever sent. The
+loop was filing client mail into `_Tax` on the strength of a vendor's small
+print. The routing **rate** said the organ was working; the routing **basis**
+said it was guessing.
+
+### The rule the code already contained
+
+`_DECISIVE` defines a strong instrument as one with _"no ordinary-language twin,
+so a single hit is not a coincidence"_. The contrapositive is in that same
+comment and was never enforced: a soft marker's single hit **can** be a
+coincidence, and the count path routed on it anyway — one hit against a
+runner-up of zero.
+
+Winning a landslide of one is not evidence. A lane whose hits are all **weak**
+now steps aside. Weak markers still **score** — they break ties and confirm
+strong ones — they simply cannot be the sole reason to move somebody's mail.
+
+### Step aside, do not poison — the defect in the first version
+
+The first cut checked for weak-only **after** picking the winner, and
+adversarial review broke it with a measured case:
+
+> `"I need help with a work permit for my staff. Could we set a meeting or an
+appointment next week?"`
+
+ADMIN wins the count 2-1 on `appointment` + `meeting`, both weak; VISA holds
+`work permit`, which is not. Checking afterwards collapsed the **whole verdict**
+to UNKNOWN, discarding the one marker that was right. Weak-only lanes are now
+dropped **before** ranking, so UNKNOWN happens only when nothing non-weak
+survives anywhere — which is what the rule always claimed and now does.
+
+Closing that hole moved a second one rather than shutting it: an uncorroborated
+short permit index, denied the decisive path, simply won the count path instead.
+Both paths now ask the same question, in `_lane_is_credible`.
+
+### Short decisive codes need a second opinion
+
+`C2` and `D12` are visa indexes. They are also how this island writes an
+address — _"Villa C2, Jalan Raya"_ — and the decisive path returns before every
+other check, so one accidental hit moved mail with nothing to appeal to.
+
+`_NEEDS_CORROBORATION` keeps them decisive but only alongside another marker in
+the same lane. This costs nothing measurable: over 106 live messages `c1` fired
+**15 times and never once alone**, `pma` 3 of 3.
+
+### Was it tuned into silence? No — it got slightly better
+
+One morning's unread mail is too thin to answer that; those 13 were mostly
+noise. Measured over **106 messages** (Inbox plus Sent, since every sent message
+is a reply to a genuine enquiry):
+
+|                 | decisive instrument | strong soft marker | left for a human |
+| --------------- | ------------------- | ------------------ | ---------------- |
+| Inbox (46)      | 11                  | 10                 | 25               |
+| Sent (60)       | 30                  | 19                 | 11               |
+| **Total (106)** | **41**              | **30**             | **36**           |
+
+**71 of 106 still route** — three MORE than the first version of the rule
+allowed, because a weak lane stepping aside now leaves a strong one standing
+instead of taking it down. Carried by real instruments: `kitas` x16, `c1` x12,
+`npwp` x4, `pt pma` x3, `sktt` x2, `e33g` x2, `kbli` x1.
+
+The declared cost is pinned in `test_the_recall_cost_of_the_weak_set_is_visible`:
+a bare "buy a villa in Ubud", a bare Italian "visto", `soggiorno` and `oss` now
+stay in the inbox. A message left visible costs a human one glance; a message
+filed wrongly costs them the message.
+
+### Three Law 2 leaks closed, and the biggest was not a log
+
+Two log lines interpolated the **email subject** — one truncated to 40
+characters (a smaller leak, not redaction), one in full.
+
+The third was larger and was found by the same review: `draft.py` passed the
+prompt as `claude -p <prompt>`, putting the client's whole message — name,
+address, body — on the **process command line**, which is world-readable on
+macOS (`ps -A -ww -o args` returned the argv of 299 processes owned by other
+users on this machine). It goes in on **stdin** now; verified live that
+`claude -p` reads it there.
+
+The two state files were also landing `0644` in a `0755` directory. They are
+written by `state_io.write_private`, created at `0600` by `tempfile.mkstemp`
+rather than chmod'd afterwards — the first version did chmod afterwards and its
+docstring claimed the bytes were "never observable at a wider mode", which the
+review measured and disproved. The claim is true now because the code changed,
+not because the wording softened.
+
+### What the mutations caught
+
+| mutation                               | tests red |
+| -------------------------------------- | --------- |
+| weak/credibility filter removed        | 12        |
+| corroboration set emptied              | 1         |
+| prompt put back into argv              | 1         |
+| chmod-after-write restored             | 5         |
+| subject put back in the draft log line | 1         |
+| draft log line deleted outright        | 1         |
+| failure log line deleted outright      | 1         |
+
+The last two matter most. The **first** innocence check asserted the id and lane
+appeared _"somewhere in caplog"_, and deleting the draft line outright left the
+suite **green** — the routing line a few statements earlier carries the same id
+and the same lane. A test that accepts any line is not testing a line.
+
+The corpus also caught two of its own rows going vacuous under the change:
+`test_negative_context_premise_holds` failed because a weak `villa` can no
+longer carry a lane in either direction, and
+`test_ambiguous_soft_markers_refuse_to_guess` had quietly stopped being a tie.
+Neither check was weakened — the villa suppression moved to the level where it
+still bites, and the tie example was rebuilt from two non-weak lanes.
+
+### Declared limits
+
+- Absence of a lone short-code routing across 106 messages is not proof it
+  cannot happen. It is evidence there was no live defect, which is why the
+  corroboration rule was added and nothing else in `_DECISIVE` was touched.
+- The generated landmine corpus cannot reach **homographs**: `_landmines()`
+  keeps pairs where the marker is a strict substring of an ordinary word, so a
+  marker that _equals_ a whole ordinary word (`visto`, `tanah`, `imposte`) is
+  structurally outside the sweep. Those rows are hand-written, and that is why.
+
+---
+
+## 11. An alarm that fires on the correct outcome
+
+**Measured 2026-08-05, the second non-dry-run.** The run saw 12 messages,
+classified all 12 as unroutable, left all 12 in the inbox — the intended
+behaviour — and reported:
+
+```json
+{
+  "seen": 12,
+  "routed": 0,
+  "left_in_inbox": 12,
+  "drafted": 0,
+  "draft_failures": 0,
+  "errors": [],
+  "degraded": true
+}
+```
+
+Exit **1**, heartbeat `degraded`, a P0 to the gateway. Nothing was wrong. The
+rule read `if self.seen and self.routed == 0: return True` — written when
+"routed nothing" could only mean the router was stuck, and untrue the first
+morning the inbox simply held nothing this classifier can defend a lane for.
+
+An alarm that fires on the correct outcome is an alarm nobody reads, which is
+how the next real one gets missed. The same night the gateway had already
+spooled a P0 for budget overflow.
+
+### The first fix was dead code, and mutation said so
+
+The narrowing was `routed == 0 and unroutable < seen`, with a new `unroutable`
+counter. It passed guilt and innocence. Then deleting **the whole branch**
+changed no test — and the reason was not a missing test:
+
+> with `routed == 0` and neither `errors` nor `missing_folders`, every seen
+> message has necessarily been counted `unroutable`, so `unroutable < seen` is
+> false by construction.
+
+The branch was **unreachable**. It read like a guard, ran on every run, and
+could never fire — superscar #2 in miniature, inside the fix for something
+else. Worse, its guilt test passed through the `errors or missing_folders`
+branch a few lines above: the premise was vacuous and the assertion still
+green. A guilt test that reaches the verdict by another road proves nothing
+about the road it names.
+
+### What replaced it: a conservation law
+
+Every message the run picks up ends in exactly one place — it moved
+(`routed`), it stayed on purpose (`left_in_inbox`: declined, or its folder was
+missing), or handling it raised (`message_errors`). So:
+
+```
+unaccounted = seen - routed - left_in_inbox - message_errors
+```
+
+must be `0`, and a non-zero value is degraded. It turns non-zero **the day
+someone adds a fourth ending** — the silent `return` (skip old mail, skip our
+own address, a guard added in a hurry) that would otherwise let a half-run
+report success. It cannot go dead the way its predecessor did, because it is
+not a statement about today's branches.
+
+Its guilt test injects that fourth ending rather than waiting for it: it
+monkeypatches `_handle_one` into a silent no-op and asserts the run is reported
+degraded with `errors` and `missing_folders` both empty — the branch under
+test, and no other.
+
+### The law's first version could read −1, which is worse than dead
+
+The paragraph above originally continued "it is zero on every path the code has
+today". Adversarial review measured that claim and reproduced the opposite on a
+live path:
+
+```
+seen 1  routed 1  left_in_inbox 0  message_errors 1
+unaccounted = -1
+moves [(['m1'], 'F-VISA')]
+errors ['message m1: Zoho API 500 while saving draft']
+```
+
+`routed += 1` sat inside `_handle_one`, **before** drafting. `_draft_reply`
+handles `DraftUnavailable` itself, but anything else — Zoho refusing to store
+the reply, the pending buffer failing to write — propagated to the caller's
+per-message handler, which added `message_errors` for a message it had already
+counted as routed. Two endings, one message.
+
+The negative was truthy, so that particular run still read degraded. The real
+damage is that **a sum can cancel**: a `−1` here silently absorbs a genuine
+`+1` elsewhere in the same run, and the law reports balanced while hiding two
+distinct defects. A conservation law that can net out is not a conservation
+law — and it fails quiet, where the dead branch it replaced at least failed
+loud under mutation.
+
+The cure was not a bigger check but a **smaller surface**. `_handle_one` now
+returns an ending and touches none of the three counters; the caller increments
+exactly one of them, in a single `if/elif`, and a crash after the move is
+reported as a draft failure because the message's ending was settled when it
+moved. There is deliberately **no `else`** on that mapping: an unmapped ending
+falls through to no counter, which is exactly what `unaccounted` is for.
+
+`unroutable` stays where it is because it is a _reason_, not an ending — it
+takes no part in the subtraction and cannot unbalance it.
+
+Both shapes are now pinned: the post-move crash (`routed == 1`,
+`message_errors == 0`, `unaccounted == 0`) and a run carrying one of each
+defect, which must read `unaccounted == 1` rather than netting to zero.
+
+### And the verdict now names its own cause
+
+`unaccounted` is the only term of `degraded` with no second symptom: no folder
+in the list, no error string, no failed draft. A DEGRADED line that omits it
+prints `routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0` and
+leaves the reader guessing. The line carries every term of the verdict it
+announces, and the clean line carries `unroutable` so a quiet day can be told
+from a dead one at a glance — same exit code, same `routed=0`, opposite
+meaning.
+
+`cli._report()` was pulled out of `_amain` for exactly this: the wording is
+worth a test, and it was unreachable without a database.
+
+### Mutation table
+
+| mutant                                 | tests turned red |
+| -------------------------------------- | ---------------- |
+| conservation branch deleted            | 1                |
+| `unaccounted` hardcoded to 0           | 1                |
+| a crashed message not accounted for    | 1                |
+| a declined message not counted as left | 4                |
+| DEGRADED line drops `unaccounted`      | 1                |
+| clean line drops `unroutable`          | 1                |
+| post-move draft crash propagates again | 1                |
+| `else` swallows the unmapped ending    | 2                |
+| `routed` incremented in both places    | 9                |
+
+### Declared limits
+
+- The law says a message reached _an_ ending, never that it was the _right_
+  one. Routing a tax question into `_Visa` is accounted for and clean; that is
+  §10's problem, not this one's.
+- `unaccounted` can no longer go negative _by construction_, but the
+  construction is **one increment per message**, not "one increment site per
+  counter" — `message_errors` has two sites (a message with no id, and the
+  per-message `except`), each followed immediately by `continue` so the
+  `if/elif` below is unreachable after either. An earlier draft of this section
+  and of the docstrings claimed the stronger property; it was never true, and
+  round-2 review caught it in the very commit whose message said the
+  overclaiming docstrings had been corrected. Nothing mechanically forbids a
+  future edit from adding an increment that is not followed by `continue`; what
+  would catch it is the same corpus — the post-move-crash test asserts
+  `message_errors == 0` on a routed message, and the net-out test asserts a run
+  carrying one defect of each sign reads `1`, not `0`.
+- The wrapper reads only the exit code, so `unaccounted` reaches a human
+  through the log line and the JSON, not through a distinct alert. A run
+  degraded _only_ by the law raises the same P0 as any other.

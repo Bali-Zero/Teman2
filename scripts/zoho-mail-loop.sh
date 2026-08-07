@@ -201,6 +201,48 @@ if ! "$VENV_PY" -c "import asyncpg" >/dev/null 2>&1; then
     exit 2
 fi
 
+# --- resolve the claude CLI ONCE, here, not 40 times inside the loop ---
+#
+# Measured on the first non-dry-run run (2026-08-05): every message routed and
+# every draft failed with "claude CLI not on PATH". The plist's PATH is
+# /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin — a deliberate
+# minimal PATH — and the CLI installs to ~/.local/bin, which a launchd job has
+# no reason to inherit. `draft.py::_resolve_cli` had predicted this failure in
+# its own error text; nobody had armed the other half.
+#
+# Resolved here rather than in draft.py because it is an ENVIRONMENT fact, not a
+# code fact: the same module works from a login shell. `draft.py` checks
+# CLAUDE_CLI_PATH first, so exporting it is the documented handshake.
+#
+# The symlink is the target, never the versioned path behind it
+# (~/.local/share/claude/versions/<n>) — pinning the version means the next
+# upgrade silently breaks drafting.
+#
+# NOT fatal. Routing without drafting is worth doing, and the loop already
+# reports DEGRADED (exit 1) when drafts fail, which alerts through the case
+# below. Exiting 2 here would throw away the half that works. Reported once,
+# with the paths actually tried, because "not on PATH" without a list is the
+# least useful failure in this repo's history.
+if [ -z "${CLAUDE_CLI_PATH:-}" ] || [ ! -x "${CLAUDE_CLI_PATH:-}" ]; then
+    for candidate in "$(command -v claude 2>/dev/null || true)" \
+                     "$HOME/.local/bin/claude" \
+                     "/opt/homebrew/bin/claude" \
+                     "/usr/local/bin/claude"; do
+        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+            CLAUDE_CLI_PATH="$candidate"
+            break
+        fi
+    done
+fi
+if [ -n "${CLAUDE_CLI_PATH:-}" ] && [ -x "${CLAUDE_CLI_PATH:-}" ]; then
+    export CLAUDE_CLI_PATH
+    log "claude CLI: $CLAUDE_CLI_PATH"
+else
+    log "WARN: no claude CLI found (tried PATH, ~/.local/bin, /opt/homebrew/bin, /usr/local/bin) -- routing will run, drafting will not"
+    alert digest mail-loop-no-cli \
+        "zoho-mail-loop: claude CLI not found on this machine -- mail is being routed but no drafts are written"
+fi
+
 log "start (dry_run=${MAIL_LOOP_DRY_RUN:-0})"
 heartbeat starting "mail loop starting (dry_run=${MAIL_LOOP_DRY_RUN:-0})"
 

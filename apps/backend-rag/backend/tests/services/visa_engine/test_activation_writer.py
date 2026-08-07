@@ -36,6 +36,7 @@ rationale — never point this at ``nuzantara_test``/``nuzantara_dev``):
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -197,10 +198,12 @@ async def test_activation_periods_adjacent(repo: VisaEngineRepository) -> None:
 
     async with repo.db_pool.acquire() as conn:
         closed_upper = await conn.fetchval(
-            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1", pack_1
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1",
+            pack_1,
         )
         new_lower = await conn.fetchval(
-            "SELECT lower(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1", pack_2
+            "SELECT lower(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1",
+            pack_2,
         )
     assert closed_upper is not None
     assert closed_upper == new_lower
@@ -306,9 +309,345 @@ async def test_partial_legal_overlap_rejected(repo: VisaEngineRepository) -> Non
     # trigger's RAISE unwinds the close-step UPDATE too).
     async with repo.db_pool.acquire() as conn:
         still_open = await conn.fetchval(
-            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1", pack_1
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1",
+            pack_1,
         )
     assert still_open is None
+
+
+# --------------------------------------------------------------------------
+# F5 / migration 267: replace the COMPLETE open activation set using only
+# signed-pack-derived intervals. A narrowing correction therefore travels
+# with signed carry-forward segment(s), preserving exact prior coverage.
+# --------------------------------------------------------------------------
+
+
+async def _seed_narrowing_replacement(
+    repo: VisaEngineRepository,
+) -> tuple[uuid.UUID, tuple[uuid.UUID, uuid.UUID]]:
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    boundary = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    end = datetime(2027, 1, 1, tzinfo=timezone.utc)
+    old_pack, carry_pack, correction_pack = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=old_pack,
+        sequence=1,
+        legal_period=_bounded_range(start, end),
+        kid="key-old",
+        signed_at=start,
+        note="old-wide-pack",
+        payload_sha256=_pack_hash(1),
+    )
+    await _insert_pack(
+        repo,
+        pack_id=carry_pack,
+        sequence=2,
+        legal_period=_bounded_range(start, boundary),
+        kid="key-carry",
+        signed_at=start + timedelta(days=1),
+        note="signed-carry-forward",
+        payload_sha256=_pack_hash(2),
+        previous_payload_sha256=_pack_hash(1),
+    )
+    await _insert_pack(
+        repo,
+        pack_id=correction_pack,
+        sequence=3,
+        legal_period=_bounded_range(boundary, end),
+        kid="key-correction",
+        signed_at=start + timedelta(days=2),
+        note="narrowed-correction",
+        payload_sha256=_pack_hash(3),
+        previous_payload_sha256=_pack_hash(2),
+    )
+    old_activation = await repo.activate_rule_pack(
+        rule_pack_id=old_pack,
+        activated_by="ops.zero",
+        activation_reason="initial-wide-period",
+    )
+    return old_activation, (carry_pack, correction_pack)
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_narrows_with_signed_carry_forward_at_one_boundary(
+    repo: VisaEngineRepository,
+) -> None:
+    old_activation, (carry_pack, correction_pack) = await _seed_narrowing_replacement(repo)
+
+    # Caller order is deliberately reversed; the DB orders by signed sequence.
+    replacement_ids = await repo.replace_activation_set(
+        rule_pack_ids=(correction_pack, carry_pack),
+        activated_by="ops.zero",
+        activation_reason="legal-period-narrowing",
+    )
+    assert len(replacement_ids) == 2
+
+    async with repo.db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, rule_pack_id, lower(system_period) AS lo,
+                   upper(system_period) AS hi, activated_by_principal
+            FROM public.visa_ruleset_activations
+            ORDER BY lo, rule_pack_id
+            """
+        )
+    old = next(row for row in rows if row["id"] == old_activation)
+    replacements = [row for row in rows if row["id"] in replacement_ids]
+    assert old["hi"] is not None
+    assert len(replacements) == 2
+    assert {row["rule_pack_id"] for row in replacements} == {carry_pack, correction_pack}
+    assert {row["lo"] for row in replacements} == {old["hi"]}
+    assert {row["hi"] for row in replacements} == {None}
+    assert len({row["activated_by_principal"] for row in replacements}) == 1
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_preserves_explicit_disjoint_coverage(
+    repo: VisaEngineRepository,
+) -> None:
+    jan, jun = datetime(2026, 1, 1, tzinfo=timezone.utc), datetime(2026, 6, 1, tzinfo=timezone.utc)
+    jul, end = datetime(2026, 7, 1, tzinfo=timezone.utc), datetime(2027, 1, 1, tzinfo=timezone.utc)
+    ids = [uuid.uuid4() for _ in range(4)]
+    periods = [
+        _bounded_range(jan, jun),
+        _bounded_range(jul, end),
+        _bounded_range(jan, jun),
+        _bounded_range(jul, end),
+    ]
+    for index, (pack_id, legal) in enumerate(zip(ids, periods, strict=True), start=1):
+        await _insert_pack(
+            repo,
+            pack_id=pack_id,
+            sequence=index,
+            legal_period=legal,
+            kid=f"key-disjoint-{index}",
+            signed_at=jan + timedelta(days=index),
+            note=f"disjoint-{index}",
+            payload_sha256=_pack_hash(index),
+            previous_payload_sha256=None if index == 1 else _pack_hash(index - 1),
+        )
+    await repo.activate_rule_pack(
+        rule_pack_id=ids[0], activated_by="ops", activation_reason="old-a"
+    )
+    await repo.activate_rule_pack(
+        rule_pack_id=ids[1], activated_by="ops", activation_reason="old-b"
+    )
+
+    replacement_ids = await repo.replace_activation_set(
+        rule_pack_ids=ids[2:], activated_by="ops", activation_reason="replace-disjoint-set"
+    )
+    assert len(replacement_ids) == 2
+    async with repo.db_pool.acquire() as conn:
+        open_periods = await conn.fetch(
+            "SELECT legal_period FROM public.visa_ruleset_activations "
+            "WHERE upper(system_period) IS NULL ORDER BY lower(legal_period)"
+        )
+    assert [row["legal_period"] for row in open_periods] == periods[2:]
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_replay_is_idempotent_and_token_conflict_fails(
+    repo: VisaEngineRepository,
+) -> None:
+    _, replacement_packs = await _seed_narrowing_replacement(repo)
+    first = await repo.replace_activation_set(
+        rule_pack_ids=replacement_packs,
+        activated_by="ops.zero",
+        activation_reason="retry-safe",
+    )
+    second = await repo.replace_activation_set(
+        rule_pack_ids=tuple(reversed(replacement_packs)),
+        activated_by="ops.zero",
+        activation_reason="retry-safe",
+    )
+    assert second == first
+    async with repo.db_pool.acquire() as conn:
+        assert await conn.fetchval("SELECT count(*) FROM visa_ruleset_activations") == 3
+
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="replay conflicts"):
+        await repo.replace_activation_set(
+            rule_pack_ids=replacement_packs,
+            activated_by="ops.other",
+            activation_reason="retry-safe",
+        )
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_gap_or_broken_chain_rolls_back_without_closing_old(
+    repo: VisaEngineRepository,
+) -> None:
+    old_activation, (carry_pack, correction_pack) = await _seed_narrowing_replacement(repo)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="exactly equal"):
+        await repo.replace_activation_set(
+            rule_pack_ids=(correction_pack,),
+            activated_by="ops.zero",
+            activation_reason="implicit-gap-rejected",
+        )
+
+    # A complete-coverage pack with a non-head previous hash fails before close.
+    bad_pack = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=bad_pack,
+        sequence=4,
+        legal_period=_bounded_range(
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2027, 1, 1, tzinfo=timezone.utc),
+        ),
+        kid="key-bad-chain",
+        signed_at=datetime(2026, 1, 4, tzinfo=timezone.utc),
+        note="bad-chain",
+        payload_sha256=_pack_hash(4),
+        previous_payload_sha256=_pack_hash(2),
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="hash chain"):
+        await repo.replace_activation_set(
+            rule_pack_ids=(bad_pack,),
+            activated_by="ops.zero",
+            activation_reason="broken-chain-rejected",
+        )
+    async with repo.db_pool.acquire() as conn:
+        assert (
+            await conn.fetchval(
+                "SELECT upper(system_period) FROM visa_ruleset_activations WHERE id = $1",
+                old_activation,
+            )
+            is None
+        )
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM visa_ruleset_activations WHERE upper(system_period) IS NULL"
+            )
+            == 1
+        )
+    assert carry_pack != correction_pack
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_rejects_empty_duplicate_unknown_mixed_and_overlap(
+    repo: VisaEngineRepository,
+) -> None:
+    old_activation, (carry_pack, correction_pack) = await _seed_narrowing_replacement(repo)
+    for invalid_ids, message in (
+        ((), "non-empty"),
+        ((carry_pack, carry_pack), "unique"),
+        ((carry_pack, None), "cannot contain null"),
+        ((uuid.uuid4(),), "unknown rule_pack_id"),
+    ):
+        with pytest.raises(asyncpg.exceptions.RaiseError, match=message):
+            await repo.replace_activation_set(
+                rule_pack_ids=invalid_ids,  # type: ignore[arg-type]
+                activated_by="ops.zero",
+                activation_reason="invalid-set-rejected",
+            )
+
+    staging_pack = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=staging_pack,
+        sequence=2,
+        legal_period=_bounded_range(
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2027, 1, 1, tzinfo=timezone.utc),
+        ),
+        kid="key-staging",
+        signed_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        note="mixed-scope",
+        payload_sha256=_pack_hash(9),
+        environment="STAGING",
+        previous_payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="same scope"):
+        await repo.replace_activation_set(
+            rule_pack_ids=(carry_pack, staging_pack),
+            activated_by="ops.zero",
+            activation_reason="mixed-scope-rejected",
+        )
+
+    overlap_a, overlap_b = uuid.uuid4(), uuid.uuid4()
+    for pack_id, sequence, legal, prior_hash in (
+        (
+            overlap_a,
+            4,
+            _bounded_range(
+                datetime(2026, 1, 1, tzinfo=timezone.utc),
+                datetime(2026, 8, 1, tzinfo=timezone.utc),
+            ),
+            _pack_hash(3),
+        ),
+        (
+            overlap_b,
+            5,
+            _bounded_range(
+                datetime(2026, 7, 1, tzinfo=timezone.utc),
+                datetime(2027, 1, 1, tzinfo=timezone.utc),
+            ),
+            _pack_hash(4),
+        ),
+    ):
+        await _insert_pack(
+            repo,
+            pack_id=pack_id,
+            sequence=sequence,
+            legal_period=legal,
+            kid=f"key-overlap-{sequence}",
+            signed_at=datetime(2026, 1, sequence, tzinfo=timezone.utc),
+            note=f"overlap-{sequence}",
+            payload_sha256=_pack_hash(sequence),
+            previous_payload_sha256=prior_hash,
+        )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="legal periods overlap"):
+        await repo.replace_activation_set(
+            rule_pack_ids=(overlap_a, overlap_b),
+            activated_by="ops.zero",
+            activation_reason="overlap-rejected",
+        )
+
+    async with repo.db_pool.acquire() as conn:
+        assert (
+            await conn.fetchval(
+                "SELECT upper(system_period) FROM visa_ruleset_activations WHERE id = $1",
+                old_activation,
+            )
+            is None
+        )
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_concurrent_identical_calls_serialize_to_one_set(
+    repo: VisaEngineRepository,
+) -> None:
+    _, replacement_packs = await _seed_narrowing_replacement(repo)
+
+    async def replace() -> tuple[uuid.UUID, ...]:
+        return await repo.replace_activation_set(
+            rule_pack_ids=replacement_packs,
+            activated_by="ops.zero",
+            activation_reason="concurrent-retry",
+        )
+
+    first, second = await asyncio.gather(replace(), replace())
+    assert first == second
+    async with repo.db_pool.acquire() as conn:
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM visa_ruleset_activations WHERE upper(system_period) IS NULL"
+            )
+            == 2
+        )
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_rejects_unbounded_segment_count(
+    repo: VisaEngineRepository,
+) -> None:
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="exceeds 64"):
+        await repo.replace_activation_set(
+            rule_pack_ids=tuple(uuid.uuid4() for _ in range(65)),
+            activated_by="ops.zero",
+            activation_reason="segment-limit",
+        )
 
 
 # --------------------------------------------------------------------------
@@ -334,7 +673,9 @@ async def test_activate_rejects_blank_activated_by(repo: VisaEngineRepository) -
         payload_sha256=_pack_hash(1),
     )
     with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
-        await repo.activate_rule_pack(rule_pack_id=pack_id, activated_by="   ", activation_reason="ok-reason")
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by="   ", activation_reason="ok-reason"
+        )
 
 
 @pytest.mark.asyncio
@@ -396,7 +737,9 @@ async def test_activate_rejects_blank_activation_reason(repo: VisaEngineReposito
     with pytest.raises(
         asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
     ):
-        await repo.activate_rule_pack(rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="")
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by="ops.alice", activation_reason=""
+        )
 
 
 @pytest.mark.asyncio
@@ -449,7 +792,9 @@ async def test_activate_rejects_oversized_activation_reason(repo: VisaEngineRepo
 
 
 @pytest.mark.asyncio
-async def test_activate_accepts_boundary_length_actor_and_reason(repo: VisaEngineRepository) -> None:
+async def test_activate_accepts_boundary_length_actor_and_reason(
+    repo: VisaEngineRepository,
+) -> None:
     """Innocence: exactly 120 chars (the token-format boundary itself, not
     one-over) must NOT raise, for either column."""
     legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
@@ -517,7 +862,9 @@ async def test_activate_rejects_null_activated_by(repo: VisaEngineRepository) ->
     )
     with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_id, activated_by=None, activation_reason="ok-reason"  # type: ignore[arg-type]
+            rule_pack_id=pack_id,
+            activated_by=None,
+            activation_reason="ok-reason",  # type: ignore[arg-type]
         )
 
 
@@ -541,7 +888,9 @@ async def test_activate_rejects_null_activation_reason(repo: VisaEngineRepositor
         asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
     ):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_id, activated_by="ops.alice", activation_reason=None  # type: ignore[arg-type]
+            rule_pack_id=pack_id,
+            activated_by="ops.alice",
+            activation_reason=None,  # type: ignore[arg-type]
         )
 
 
@@ -619,7 +968,8 @@ async def test_activated_by_principal_stamped_and_unspoofable(repo: VisaEngineRe
             "someone-else-entirely",
         )
         row_b = await conn.fetchrow(
-            "SELECT activated_by_principal FROM visa_ruleset_activations WHERE id = $1", activation_b
+            "SELECT activated_by_principal FROM visa_ruleset_activations WHERE id = $1",
+            activation_b,
         )
     assert row_b["activated_by_principal"] == session_user
     assert row_b["activated_by_principal"] != "someone-else-entirely"
@@ -700,9 +1050,7 @@ async def test_activation_close_must_be_finite_guilt(repo: VisaEngineRepository)
     )
 
     async with repo.db_pool.acquire() as conn:
-        with pytest.raises(
-            asyncpg.exceptions.RaiseError, match="finite system_period"
-        ):
+        with pytest.raises(asyncpg.exceptions.RaiseError, match="finite system_period"):
             await conn.execute(
                 """
                 UPDATE visa_ruleset_activations
@@ -944,7 +1292,8 @@ async def test_activate_sequence_rollback_via_function_raises(repo: VisaEngineRe
     # UPDATE inside the failed call was rolled back with everything else.
     async with repo.db_pool.acquire() as conn:
         pack_2_upper = await conn.fetchval(
-            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1", pack_2
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1",
+            pack_2,
         )
     assert pack_2_upper is None
 
@@ -988,7 +1337,8 @@ async def test_activate_hash_chain_break_via_function_raises(repo: VisaEngineRep
 
     async with repo.db_pool.acquire() as conn:
         pack_1_upper = await conn.fetchval(
-            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1", pack_1
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE rule_pack_id = $1",
+            pack_1,
         )
     assert pack_1_upper is None  # untouched — rejected call rolled back atomically
 
@@ -1017,28 +1367,55 @@ async def test_grant_scaffold_role_aware(repo: VisaEngineRepository) -> None:
             "(F1+F2 Option-1 scaffold, migration 251 header)"
         )
     async with repo.db_pool.acquire() as conn:
-        has_select = await conn.fetchval(
-            "SELECT has_table_privilege('visa_activation_executor', 'public.visa_rule_packs', 'SELECT')"
+        direct_table_privileges = await conn.fetchval(
+            """
+            SELECT bool_or(
+                has_table_privilege('visa_activation_executor', table_name, privilege)
+            )
+            FROM unnest(
+                ARRAY[
+                    'public.visa_rule_packs',
+                    'public.visa_ruleset_activations'
+                ]::text[]
+            ) AS tables(table_name)
+            CROSS JOIN unnest(
+                ARRAY[
+                    'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE',
+                    'REFERENCES', 'TRIGGER', 'MAINTAIN'
+                ]::text[]
+            ) AS privileges(privilege)
+            """
         )
-        has_insert = await conn.fetchval(
-            "SELECT has_table_privilege('visa_activation_executor', 'public.visa_rule_packs', 'INSERT')"
-        )
-        has_execute = await conn.fetchval(
+        has_activate_execute = await conn.fetchval(
             "SELECT has_function_privilege("
             "'visa_activation_executor', 'public.visa_activate_rule_pack(uuid,text,text)', 'EXECUTE')"
         )
-    assert has_execute
+        has_replace_execute = await conn.fetchval(
+            "SELECT has_function_privilege("
+            "'visa_activation_executor', "
+            "'public.visa_replace_activation_set(uuid[],text,text)', 'EXECUTE')"
+        )
+    assert has_activate_execute
+    assert has_replace_execute
     # P0-1 innocence: NEVER direct table access on the signed-pack table —
     # an executor with SELECT+INSERT there could insert a structurally-
     # valid but Ed25519-forged pack and activate it via EXECUTE, defeating
     # the "only signed packs become active" invariant (see this migration's
     # header, F1+F2(b)).
-    assert not has_select
-    assert not has_insert
+    assert not direct_table_privileges
 
 
 @pytest.mark.asyncio
-async def test_function_not_executable_by_unprivileged_role(repo: VisaEngineRepository) -> None:
+@pytest.mark.parametrize(
+    "function_signature",
+    [
+        "public.visa_activate_rule_pack(uuid,text,text)",
+        "public.visa_replace_activation_set(uuid[],text,text)",
+    ],
+)
+async def test_function_not_executable_by_unprivileged_role(
+    repo: VisaEngineRepository, function_signature: str
+) -> None:
     """REVOKE ALL ON FUNCTION ... FROM PUBLIC (F1+F2(c)) holds unconditionally
     — independent of the role-provisioning state. Postgres grants EXECUTE to
     PUBLIC by default at CREATE FUNCTION time; migration 251 explicitly
@@ -1060,13 +1437,32 @@ async def test_function_not_executable_by_unprivileged_role(repo: VisaEngineRepo
             pytest.skip("test DB role lacks CREATE ROLE — cannot probe PUBLIC-execute directly")
         try:
             has_exec = await conn.fetchval(
-                "SELECT has_function_privilege("
-                "$1, 'public.visa_activate_rule_pack(uuid,text,text)', 'EXECUTE')",
+                "SELECT has_function_privilege($1, $2, 'EXECUTE')",
                 probe_role,
+                function_signature,
             )
             assert has_exec is False
         finally:
             await conn.execute(f"DROP ROLE IF EXISTS {probe_role}")
+
+
+@pytest.mark.asyncio
+async def test_replace_activation_set_writer_is_security_definer_and_hardened(
+    repo: VisaEngineRepository,
+) -> None:
+    async with repo.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT p.prosecdef, p.proconfig
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public'
+              AND p.oid = 'public.visa_replace_activation_set(uuid[],text,text)'::regprocedure
+            """
+        )
+    assert row is not None
+    assert row["prosecdef"] is True
+    assert "search_path=pg_catalog, pg_temp" in (row["proconfig"] or [])
 
 
 # --------------------------------------------------------------------------
@@ -1189,7 +1585,9 @@ async def test_truncate_rejected_on_visa_ruleset_activations(repo: VisaEngineRep
 
 
 @pytest.mark.asyncio
-async def test_insert_still_works_after_truncate_guard_installed(repo: VisaEngineRepository) -> None:
+async def test_insert_still_works_after_truncate_guard_installed(
+    repo: VisaEngineRepository,
+) -> None:
     """Innocence at the writer level: adding the two statement-level guards
     must not perturb the normal INSERT path the writer function relies on."""
     legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
@@ -1230,7 +1628,7 @@ async def test_insert_still_works_after_truncate_guard_installed(repo: VisaEngin
 
 @pytest.mark.asyncio
 async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepository) -> None:
-    from .conftest import _read_migration_251
+    from .conftest import _read_migration_251, _read_migration_267
 
     suffix = uuid.uuid4().hex[:10]
     owner_role = f"visa_test_owner_{suffix}"
@@ -1246,6 +1644,7 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
 
     legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
     pack_id = uuid.uuid4()
+    replacement_pack_id = uuid.uuid4()
     await _insert_pack(
         repo,
         pack_id=pack_id,
@@ -1255,6 +1654,17 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
         signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
         note="pack-real-boundary",
         payload_sha256=_pack_hash(1),
+    )
+    await _insert_pack(
+        repo,
+        pack_id=replacement_pack_id,
+        sequence=2,
+        legal_period=legal,
+        kid="key-real-boundary",
+        signed_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        note="pack-real-boundary-replacement",
+        payload_sha256=_pack_hash(2),
+        previous_payload_sha256=_pack_hash(1),
     )
 
     async with repo.db_pool.acquire() as conn:
@@ -1297,14 +1707,23 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
                 await conn.execute(
                     f"ALTER FUNCTION public.visa_activate_rule_pack(uuid, text, text) OWNER TO {owner_role}"
                 )
+                await conn.execute(
+                    "ALTER FUNCTION public.visa_replace_activation_set(uuid[], text, text) "
+                    f"OWNER TO {owner_role}"
+                )
                 for fn in trigger_functions:
                     await conn.execute(f"ALTER FUNCTION public.{fn}() OWNER TO {owner_role}")
                 await conn.execute(
-                    f"REVOKE INSERT, UPDATE, DELETE ON public.visa_rule_packs, "
+                    f"REVOKE ALL PRIVILEGES ON public.visa_rule_packs, "
                     f"public.visa_ruleset_activations FROM {serving_role}"
                 )
                 await conn.execute(
                     f"GRANT EXECUTE ON FUNCTION public.visa_activate_rule_pack(uuid, text, text) "
+                    f"TO {executor_role}"
+                )
+                await conn.execute(
+                    "GRANT EXECUTE ON FUNCTION "
+                    "public.visa_replace_activation_set(uuid[], text, text) "
                     f"TO {executor_role}"
                 )
                 # DISCOVERED WHILE WRITING THIS TEST (P1-6): `CREATE OR
@@ -1336,9 +1755,9 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
                 JOIN pg_namespace n ON n.oid = p.pronamespace
                 WHERE n.nspname = 'public' AND p.proname = ANY($1::text[])
                 """,
-                ["visa_activate_rule_pack", *trigger_functions],
+                ["visa_activate_rule_pack", "visa_replace_activation_set", *trigger_functions],
             )
-            assert len(owners) == 5
+            assert len(owners) == 6
             for row in owners:
                 assert row["owner"] == owner_role, (
                     f"{row['proname']} owned by {row['owner']!r}, expected {owner_role!r}"
@@ -1365,6 +1784,17 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
                 )
             assert isinstance(activation_id, uuid.UUID)
 
+            async with conn.transaction():
+                await conn.execute(f"SET LOCAL ROLE {executor_role}")
+                replacement_ids = await conn.fetchval(
+                    "SELECT public.visa_replace_activation_set($1::uuid[], $2, $3)",
+                    [replacement_pack_id],
+                    "ops.alice",
+                    "boundary-replacement-test",
+                )
+            assert len(replacement_ids) == 1
+            assert isinstance(replacement_ids[0], uuid.UUID)
+
             # --- P1-5 (iii): the writer FAILS permission-denied for the
             #     (now-unprivileged) serving role — proves the boundary
             #     against the REAL serving-role identity, not a throwaway
@@ -1382,9 +1812,11 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
             # --- P1-6: migration 251's OWN rollback SQL executes cleanly
             #     when run AS the ledger-owner role, post-transfer — the
             #     documented answer to "who runs rollbacks post-hardening".
+            _, rollback_267 = _read_migration_267()
             _, rollback_251 = _read_migration_251()
             async with conn.transaction():
                 await conn.execute(f"SET LOCAL ROLE {owner_role}")
+                await conn.execute(rollback_267)
                 await conn.execute(rollback_251)
         finally:
             # Defensive teardown regardless of assertion outcome above:

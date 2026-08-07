@@ -83,6 +83,7 @@ jobs:
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
+              scripts/tests/test_home_fork_skipped_visibility.py|\
               scripts/tests/test_proprioception_home_fork_merge.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
@@ -125,6 +126,12 @@ jobs:
               scripts/tests/test_prepush_tip_drift.sh|\
               scripts/verify_connectome_run.sh|\
               scripts/tests/test_connectome_alert_honesty.sh|\
+              scripts/wa_session_liveness.py|\
+              scripts/tests/test_wa_session_liveness.py|\
+              infra/launchagents/wrappers/wa-session-liveness.sh|\
+              scripts/tests/test_wa_session_liveness_wrapper.sh|\
+              infra/launchagents/wrappers/cron-agent.sh|\
+              scripts/tests/test_cron_agent_oauth_cascade.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
@@ -136,6 +143,8 @@ jobs:
               scripts/tests/test_docs_audit.py|\
               scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
+              scripts/lib/git_merge_state.sh|\
+              scripts/tests/test_docs_inventory_regen_merge_warning.sh|\
               scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
@@ -148,6 +157,8 @@ jobs:
               scripts/test_cron_state_alert.sh|\
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
+              scripts/test_cron_single_voice.sh|\
+              apps/evaluator/nlm_deep_research/scripts/*|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
               scripts/ci/queue_rearm.sh|\
@@ -162,11 +173,21 @@ jobs:
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
+              scripts/drive_token_watchdog.py|\
+              scripts/tests/test_drive_watchdog_fly_path.py|\
+              scripts/tests/test_drive_watchdog_tier_ratchet.py|\
+              apps/zantara-media/zantara_media/*|\
+              apps/zantara-media/tests/*|\
+              scripts/tests/test_zantara_media_suite_has_a_runner.py|\
+              .github/workflows/magazine-auto-assets.yml|\
               scripts/tests/test_ci_service_images_use_mirror.py|\
               scripts/tests/test_lint_workflow_errexit_decap.py|\
               scripts/lint_workflow_errexit_decap.py|\
               scripts/lint_retracted_claims.py|\
               infra/retracted-claims/registry.json|\
+              scripts/lint_public_asset_refs.py|\
+              scripts/tests/test_lint_public_asset_refs.py|\
+              infra/asset-lint/public-asset-refs-config.json|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -208,7 +229,9 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_lint_home_fork.py \
+            scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
+            scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
@@ -229,6 +252,7 @@ jobs:
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
+            scripts/tests/test_wa_session_liveness.py \
             scripts/tests/test_prepush_classify.py \
             scripts/tests/test_husky_pii_pass_overmatch.py \
             scripts/tests/test_docs_audit.py \
@@ -242,6 +266,8 @@ jobs:
             scripts/tests/test_intake_dsn_guard_covers_every_var.py \
             scripts/tests/test_husky_prepush_venv_guard.py \
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
+            scripts/tests/test_drive_watchdog_fly_path.py \
+            scripts/tests/test_drive_watchdog_tier_ratchet.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
@@ -252,6 +278,30 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: apps/zantara-media suite has a runner (replaces the garuda alert pin)
+        if: steps.paths.outputs.relevant == 'true'
+        # 2026-08-07, GARUDA decommission. This step was born pinning ONE corpus
+        # (test_alerts_gateway.py) because nothing else ran apps/zantara-media's
+        # tests — "which is how the alert path stayed mute for 141 nights". That
+        # module is gone with the pipeline it alerted for.
+        #
+        # Deleting the step outright would have re-opened exactly that hole, so
+        # the first attempt ran the whole suite here. It cannot: THIS job is the
+        # lean deterministic core (see the header) and installs nothing, so the
+        # suite dies at collection on `pydantic`. The only job with the app's
+        # dependencies is magazine-auto-assets.yml — which is where the suite now
+        # runs, over the whole tests/ DIRECTORY rather than three named files.
+        #
+        # That job is not required, this one is. So what runs here is the
+        # dependency-free guard that the runner over there stays a directory:
+        # coverage lives where the environment is, and a required check stops it
+        # narrowing back. Guilt+innocence in the file itself.
+        #
+        # DECLARED GAP (unchanged): test_immune_enforcement_trigger_symmetry.py
+        # only reads the loop's `scripts/**.py` entries, so it cannot vouch for
+        # this step.
+        run: python -m pytest scripts/tests/test_zantara_media_suite_has_a_runner.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'
@@ -276,6 +326,16 @@ jobs:
           # be mutation-killed here, not on the BSD-xargs dev machines.
           python -m pip install --quiet ruff
           bash scripts/tests/test_precommit_print_gate.sh
+
+      - name: The regen warns when it runs mid-merge (advice, never a refusal)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Named explicitly, NOT left to the `scripts/tests/` sweep — that sweep
+          # is continue-on-error, so a test parked there is green by construction
+          # (W108: the defect only surfaced once the test was ARMED on every PR).
+          # The corpus builds real git repos in a tmp dir; nothing touches this
+          # checkout.
+          bash scripts/tests/test_docs_inventory_regen_merge_warning.sh
 
       - name: No run-block decapitates its own failure branch (W101, 4th instance)
         if: steps.paths.outputs.relevant == 'true'
@@ -347,6 +407,20 @@ jobs:
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
 
+      - name: One voice per cron failure (payload + wrapper must not both send)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The far side of the two steps above. Giving the wrappers a voice closed a
+          # real silence and opened a smaller one: the 20 nlm_deep_research payloads
+          # already alarmed for themselves, and 19 run under a wrapper that alarms too
+          # — one failure, two P0s ~2s apart, measured on run_nb2_pipeline 2026-08-06.
+          # Neither message contained the other (the payload names the log path, the
+          # wrapper quotes 600 bytes of raw stdout), so the wrapper now carries the
+          # payload's sentence. Innocence matters as much as guilt here:
+          # run_peraturan_ingestion.sh runs from crontab with NO wrapper, so an
+          # unconditional deferral would have made it mute.
+          bash scripts/test_cron_single_voice.sh
+
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -368,6 +442,39 @@ jobs:
           #                bare path is unreachable, not merely unused.
           # Mutation-verified: reverting each cure turns the matching case red.
           bash scripts/tests/test_connectome_alert_honesty.sh
+
+      - name: wa-mirror liveness wrapper corpus (a cron armed to nothing must say so)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Two wa-mirror sessions died 8 and 10 days with every probe green: the
+          # PID survives a revoked WhatsApp session, so `ps` and the LaunchAgent
+          # both agreed while nothing was being mirrored. The organ asks the only
+          # question that distinguishes them — when did this line last write a row.
+          # This corpus judges its WRAPPER, in a fake repo, because reading a
+          # wrapper cannot tell "it did not fire" from "it never got there" (W107):
+          #   payload/interpreter missing → exit 2, never 0 (W81)
+          #   the organ's exit code CAPTURED, not inferred from surviving (W101)
+          # Mounted piece by piece on purpose: with organ and interpreter torn out
+          # together, disarming the first guard still exited 2 via the second, and
+          # the mutant survived — to judge a guard it has to be the only thing broken.
+          bash scripts/tests/test_wa_session_liveness_wrapper.sh
+
+      - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured on Pro 2026-08-07: three of four numbered OAuth seats revoked,
+          # the fourth alive, and every agent job still died on seat 1. The rotate-or-
+          # stop classifier judged the SHAPE of the sentence — its whole-text anchor
+          # knows "authentication failed" while the CLI says "Failed to authenticate.
+          # API Error: 401 OAuth access token has been revoked." (stdout, exit 1), so
+          # a hard refusal read as a final answer. Superscar #3 under-match, and #2:
+          # a five-deep cascade that had never once rotated on the commonest failure.
+          # The anchor's strictness is NOT the bug and must survive — an agent that
+          # SUCCEEDS while discussing rate limits must not rotate. Severity is bound
+          # to the exit code instead; both halves are pinned here, and the end-to-end
+          # half runs the wrapper in a fake world (W107) so "did not rotate" is
+          # distinguishable from "never got there".
+          bash scripts/tests/test_cron_agent_oauth_cascade.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
@@ -443,6 +550,23 @@ jobs:
         run: |
           if [ -f scripts/lint_doc_executable_refs.py ]; then
             python scripts/lint_doc_executable_refs.py
+          fi
+
+      # Public-asset-refs lint runs FOR REAL on every PR, UNGATED — same
+      # reasoning as doc-executable-refs above, plus one that is specific to it:
+      # the defect it catches is introduced by FRONTEND PRs (a new `src=` in
+      # apps/mouth), which are exactly the PRs the immune-relevant sentinel
+      # classifies as NOT relevant. Gating this behind `steps.paths.outputs.relevant`
+      # would arm it only for PRs that cannot contain the defect — the W108
+      # GOTCHA verbatim ("il difetto è emerso solo dopo aver ARMATO il test su
+      # ogni PR"). Pure tree scan, no $HOME and no network, so CI can enforce it
+      # directly. Known-broken references live in the shrink-only registry at
+      # infra/asset-lint/public-asset-refs-config.json (they are carried debt,
+      # not exemptions — the lint fails if one goes stale).
+      - name: Public-asset-refs lint (code names only assets that exist in public/)
+        run: |
+          if [ -f scripts/lint_public_asset_refs.py ]; then
+            python scripts/lint_public_asset_refs.py
           fi
 
       # TCC-Desktop-paths lint runs FOR REAL on every PR (same reasoning as

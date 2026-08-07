@@ -28,6 +28,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import asyncpg
 import httpx
@@ -71,6 +72,36 @@ def _read_bridge_api_key() -> str:
     return os.getenv("BRIDGE_API_KEY", "").strip() or _read_keychain(_KEYCHAIN_BRIDGE_ACCOUNT)
 
 
+def _filter_valid_rows(rows: list[Any]) -> list[dict[str, object]]:
+    """Split query rows into push-worthy vs discarded, and LOG the discard.
+
+    `q.received_by IS NOT NULL` does not catch `received_by = ''` (empty
+    string) — those rows are unrouted/unassigned intake documents, not a real
+    worker's gate. Pushing `{"user_email": "", ...}` fails Fly-side Pydantic
+    validation (`DocCountItem.user_email` has `min_length=1`) for the WHOLE
+    request body, silently failing the sync for every user in the same push
+    (W97 — a filter that shrinks a list without saying so is the scar this
+    repo has already paid for). Discard empty/blank emails here, before the
+    POST, and always log how many were dropped out of how many seen — never a
+    silent list-shrink. No PII in the log: counts only, never which documents.
+    """
+    valid: list[dict[str, object]] = []
+    discarded = 0
+    for r in rows:
+        user_email = (r["user_email"] or "").strip()
+        if not user_email:
+            discarded += 1
+            continue
+        valid.append({"user_email": user_email, "pending_count": int(r["pending_count"])})
+    if discarded:
+        logger.warning(
+            "[gate_count_pusher] discarded %d/%d row(s) with empty/blank user_email "
+            "(unassigned intake_queue.received_by) before push",
+            discarded, len(rows),
+        )
+    return valid
+
+
 async def _compute_counts(pool: asyncpg.Pool) -> list[dict[str, object]]:
     """Per-user pending-document count, by-receiver, matching the gate evaluator.
 
@@ -97,10 +128,7 @@ async def _compute_counts(pool: asyncpg.Pool) -> list[dict[str, object]]:
             """,
             list(_DOC_PENDING_STATUSES),
         )
-    return [
-        {"user_email": r["user_email"], "pending_count": int(r["pending_count"])}
-        for r in rows
-    ]
+    return _filter_valid_rows(rows)
 
 
 async def run_one_push() -> int:

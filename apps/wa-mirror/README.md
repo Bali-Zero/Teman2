@@ -3,7 +3,13 @@
 **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17)
 **Runs on**: Mini-Pro2 (24/7 server)
 **Language**: Node.js 22 + `@whiskeysockets/baileys`
-**Data store**: PostgreSQL `nuzantara_rag` (tables `whatsapp_*`, migrations 173/175/177)
+**Data store**: PostgreSQL **`nuzantara_dev` su `127.0.0.1:5432`** (tables `whatsapp_*`,
+migrations 173/175/177). ATTENZIONE: il bridge NON legge `apps/wa-mirror/.env` — il
+launcher (`~/scripts/wa-mirror-launcher/start-one.sh`) sovrascrive
+`WA_MIRROR_DATABASE_URL` da `~/.wa-mirror.env`. Il `.env` in questa cartella punta al
+prod `nuzantara_rag` via `:15432` ed e' un DEPISTAGGIO: quella tabella e' ferma al
+2026-05-25, data in cui il mirror e' passato al DB locale. Verifica sempre sul processo:
+`ps eww -p <pid> | tr ' ' '\n' | grep WA_MIRROR_DATABASE_URL`
 
 ## Goal
 
@@ -16,7 +22,7 @@ After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web
 ## What is NOT this bridge
 
 - **NOT** a reply bot. Team members keep using WhatsApp normally. v1 captures the one-to-one message stream for audit/continuity and does not send messages.
-- **NOT** a replacement for the Meta Cloud API at `backend/channels/whatsapp/` — that handles the official Bali Zero number `+62 822 3010 2328`. wa-mirror handles the **personal numbers** of the team in parallel.
+- **NOT** a replacement for the Meta Cloud API at `backend/channels/whatsapp/` — that handles the Meta-verified Bali Zero business line, the one the bot answers on (`SUPPORT_WHATSAPP` in `backend/app/core/config.py` is the SSOT; the line it names is not the same one this README used to claim). wa-mirror handles the **work numbers** of the team in parallel.
 - **NOT** a Meta API integration. Uses Baileys (reverse-engineered WhatsApp Web protocol). Operates within the standard "Linked Devices" surface — see "Risks" below.
 
 ## Architecture
@@ -185,6 +191,60 @@ Not implemented in this worker slice:
 - kita frontend timeline panel wiring.
 - Any send operation or dashboard reply flow.
 
+## The launcher, and where it really lives
+
+The LaunchAgent `com.balizero.wa-mirror-launcher` runs
+`apps/wa-mirror/scripts/supervise-launcher.sh` from this repo — but that file is a
+thin, versioned supervisor. It **delegates by design** to the HOME copy:
+
+```sh
+LAUNCHER="${WA_MIRROR_LAUNCHER_START_ALL:-${HOME}/scripts/wa-mirror-launcher/start-all.sh}"
+```
+
+So on the Pro the scripts that actually execute are the ones under
+`~/scripts/wa-mirror-launcher/`, not their twins in `scripts/` here. That split is
+deliberate (the roster `~/.wa-mirror.accounts.json` carries e164 + email and stays
+HOME-only), but it is also exactly the shape of superscar #1: a fix can land in the
+repo and never reach the copy that runs.
+
+As of 2026-08-06 all eight launcher files are declared in
+`infra/home-fork/declared-pairs.json` (scope `pro`), so `scripts/lint_home_fork.py --check`
+compares live↔repo on every run and the drift can no longer be silent. Two of them
+were measured DIVERGED at declaration time, in opposite directions:
+
+| file | direction | what differs |
+|---|---|---|
+| `_lib.sh`, `start-all.sh` | **live is behind** | the W77 lifecycle gate (`get_expected_status` / `get_assigned_node`) exists only in the repo copy, which is not the copy that runs |
+| `status.sh` | **repo was behind** | the M4 (2026-07-20) logged-out detection — brought into the repo in the same commit as the declaration |
+
+The `_lib.sh` / `start-all.sh` gap is worth stating plainly, because it is quiet: the
+documented way to retire or pin an account is to set `expected_status` or
+`assigned_node` in the roster (see `accounts.example.json`), and `assigned_node` is
+the family #10 split-brain antidote. Today nothing breaks — measured 2026-08-06, the
+live roster has 7 accounts and **none** carries either field, so the gate would be a
+no-op anyway. But the moment someone sets one, it will be **ignored in silence**,
+because the code that reads it is not the code that executes. Realigning the live side
+from the repo is an apply-step on a running mirror and is tracked in the modus ledger.
+
+### Control center
+
+`scripts/api_server.py` + `scripts/nuzantara_control_center.html` are the operator UI
+for this launcher. They had never been tracked anywhere until 2026-08-06 — the only
+copy was on one machine's disk (the Pro; M5 carries a partial copy of the launcher
+that does not include the HTML at all).
+
+### Re-linking an account after a logout
+
+A revoked WhatsApp linked-device does not come back on its own — the bridge stops
+retrying by design. The re-link is a QR pairing and needs the person's own phone:
+
+```sh
+~/scripts/wa-mirror-launcher/start-one.sh <name> --qr
+```
+
+`status.sh` shows `🔓LOGGED-OUT` for accounts in that state (that is what the M4 fix
+above added); before it, such an account displayed as `🟢 RUNNING (linked)`.
+
 ## Files
 
 ```
@@ -208,5 +268,12 @@ apps/wa-mirror/
 │   └── PKWT_CLAUSE.md           (1-line for employment contract)
 └── scripts/
     ├── onboard.ts               (QR code flow for new team member)
-    └── status.ts                (list active sessions)
+    ├── status.ts                (list active sessions)
+    ├── supervise-launcher.sh    (LaunchAgent entrypoint; delegates to the HOME copy)
+    ├── _lib.sh, start-*.sh, stop-*.sh, status.sh
+    │                            (versioned twins of ~/scripts/wa-mirror-launcher/*,
+    │                             declared in infra/home-fork/declared-pairs.json)
+    ├── api_server.py            (control-center backend)
+    └── nuzantara_control_center.html
+                                 (control-center UI)
 ```

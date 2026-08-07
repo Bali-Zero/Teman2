@@ -2,140 +2,28 @@
   "applier": "backend/scripts/kg_whatchanged_cure.py",
   "entries": [
     {
-      "code": "46411",
-      "entity_id": "kbli:46411",
-      "md5": "da0631e60526981c9b2e68dd6b0d0c66",
-      "new": "Renumbered/adjusted from KBLI 2020. 46411 stabile.",
-      "old": "Renumbered/adjusted from KBLI 2020. 46411 stabile. KBLI 2025 mantiene la distribuzione delle fibre tessili come categoria separata dalla lavorazione (manifattura tessile, Categoria C) e dalla vendita al dettaglio (47",
-      "passes": ["midword_truncation"]
+      "code": "47401",
+      "entity_id": "kbli:47401",
+      "md5": "0568ab6d926a7cda61e187f9bde2be75",
+      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 47401 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+      "old": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 47401 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). No structural changes to the retail classification.",
+      "passes": ["residual_continuity_claim"]
     },
     {
-      "code": "46415",
-      "entity_id": "kbli:46415",
-      "md5": "e0171795348a8f41725c27f60199217c",
-      "new": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (46415) is not supported by our records — our crosswalk sources on file record 46419, 46694 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). Verifica e aggiornamento NIB ora richiesti dopo la chiusura della finestra di giugno 2026.",
-      "old": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 46415 (Perdagangan Besar Perlengkapan Jahit) → KBLI 2025: 46415 (confermato). Verifica e aggiornamento NIB ora richiesti dopo la chiusura della finestra di giugno 2026.",
-      "passes": ["contradicted_predecessor"]
+      "code": "63900",
+      "entity_id": "kbli:63900",
+      "md5": "9c586af3a38cbc5161aeb8c1b5c5316c",
+      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 63900 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+      "old": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 63900 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). No structural changes.",
+      "passes": ["residual_continuity_claim"]
     },
     {
-      "code": "46442",
-      "entity_id": "kbli:46442",
-      "md5": "0233f13194c9f3a63ced3f8b3a46ca46",
-      "new": "Renumbered/adjusted from KBLI 2020. Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020.",
-      "old": "Renumbered/adjusted from KBLI 2020. Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020. La transizione al KBLI 2025 non altera la struttura fond",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "46496",
-      "entity_id": "kbli:46496",
-      "md5": "f92e44a2bb6a9abcf40a83dff9860793",
-      "new": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (46496) is not supported by our records — our crosswalk sources on file record 46499, 47854 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). Verifica e aggiornamento NIB ora richiesti dopo la chiusura della finestra di giugno 2026.",
-      "old": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 46496 (Perdagangan Besar Tas, Dompet, Koper, Ransel) → KBLI 2025: 46496 (confermato). Verifica e aggiornamento NIB ora richiesti dopo la chiusura della finestra di giugno 2026.",
-      "passes": ["contradicted_predecessor"]
-    },
-    {
-      "code": "46631",
-      "entity_id": "kbli:46631",
-      "md5": "54ff345741884fcf6e78f65f115a0c2c",
-      "new": "Renumbered/adjusted from KBLI 2020.",
-      "old": "Renumbered/adjusted from KBLI 2020. In KBLI 2020 il codice 45401 copriva vendita moto nuove; in KBLI 2025 la distribuzione wholesale è isolata in 46631 (nuove) separata da 46632 (usate) e dalla vendita retail (45xxx)",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "49231",
-      "entity_id": "kbli:49231",
-      "md5": "1079c5b814eeae6808086aadfe1c3872",
-      "new": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 49431 → KBLI 2025: 49231 (ANGKUTAN BERMOTOR UNTUK BARANG UMUM) + 49232 (BARANG KHUSUS).",
-      "old": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 49431 → KBLI 2025: 49231 (ANGKUTAN BERMOTOR UNTUK BARANG UMUM) + 49232 (BARANG KHUSUS). Verifica quale sotto-codice copre il tipo di merce trasportata — merci pericolose",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "49296",
-      "entity_id": "kbli:49296",
-      "md5": "b8087a118293da120b30075542dbd36f",
-      "new": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (49299) is not supported by our records — our crosswalk sources on file record 49424 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). Verifica e aggiornamento NIB da eseguire ora dopo la chiusura della finestra di giugno 2026.",
-      "old": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 49299 → KBLI 2025: 49296 (codice dedicato ojek motor, nuovo). Verifica e aggiornamento NIB da eseguire ora dopo la chiusura della finestra di giugno 2026.",
-      "passes": ["contradicted_predecessor"]
-    },
-    {
-      "code": "64210",
-      "entity_id": "kbli:64210",
-      "md5": "6fef37427cf06adaf2b905b12382278e",
-      "new": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (64190) is not supported by our records — our crosswalk sources on file record 64200 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
-      "old": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 64190 → KBLI 2025: 64210 (AKTIVITAS PERUSAHAAN INDUK — codice specifico, nuovo). Struttura raccomandata: holding con 64210 costituita PRIMA delle subsidiary operative, p",
-      "passes": ["contradicted_predecessor", "midword_truncation"]
-    },
-    {
-      "code": "64995",
-      "entity_id": "kbli:64995",
-      "md5": "32b137f8e6238713e137cd2c0d32283b",
-      "new": "No KBLI-2020 predecessor is recorded for this code. Codice completamente nuovo in KBLI 2025 (parte nuova Categoria V — Carbon & Environment). Nessuna migrazione da KBLI 2020 necessaria. Solo nuova registrazione.",
-      "old": "Renumbered/adjusted from KBLI 2020. Codice completamente nuovo in KBLI 2025 (parte nuova Categoria V — Carbon & Environment). Nessuna migrazione da KBLI 2020 necessaria. Solo nuova registrazione. Concordanza KBLI 202",
-      "passes": ["false_renumbering_claim", "midword_truncation"]
-    },
-    {
-      "code": "71203",
-      "entity_id": "kbli:71203",
-      "md5": "623c90ac593b4caae5fb1f7a39d3d693",
-      "new": "Renumbered/adjusted from KBLI 2020. Completely new code in KBLI 2025. No direct equivalent in KBLI 2020 (was part of generic 71200).",
-      "old": "Renumbered/adjusted from KBLI 2020. Completely new code in KBLI 2025. No direct equivalent in KBLI 2020 (was part of generic 71200). Companies must evaluate if their verification/validation activities fall here or in",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "85594",
-      "entity_id": "kbli:85594",
-      "md5": "d2bd798ff970b62e78157fdd153b30e5",
-      "new": "Renumbered/adjusted from KBLI 2020. Code stable. Kemenkes regulatory framework adds a significant layer beyond other education codes.",
-      "old": "Renumbered/adjusted from KBLI 2020. Code stable. Kemenkes regulatory framework adds a significant layer beyond other education codes. UU Kesehatan 17/2023 removed IDI endorsement requirement — opening medical trainin",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "85691",
-      "entity_id": "kbli:85691",
-      "md5": "03e299d1f2e77c8bdedd5d1a61fd4007",
-      "new": "No KBLI-2020 predecessor is recorded for this code. Consolidated in BNSP framework. KBLI 2025 reclassification maintains existing structure with minor updates.",
-      "old": "Renumbered/adjusted from KBLI 2020. Consolidated in BNSP framework. KBLI 2025 reclassification maintains existing structure with minor updates. Four separate codes (85691–85694) cover different certification origin t",
-      "passes": ["false_renumbering_claim", "midword_truncation"]
-    },
-    {
-      "code": "85692",
-      "entity_id": "kbli:85692",
-      "md5": "7edbc398613fda25612e357b9258adff",
-      "new": "No KBLI-2020 predecessor is recorded for this code. Part of the KBLI 2025 four-code sertifikasi profesi structure. Map activities carefully to correct sub-code based on certification source type.",
-      "old": "Renumbered/adjusted from KBLI 2020. Part of the KBLI 2025 four-code sertifikasi profesi structure. Map activities carefully to correct sub-code based on certification source type.",
-      "passes": ["false_renumbering_claim"]
-    },
-    {
-      "code": "90111",
-      "entity_id": "kbli:90111",
-      "md5": "ac8447837724a6e8bf8d043de55b5e05",
-      "new": "Renumbered/adjusted from KBLI 2020. From Indonesia's rich literary tradition (sastra — Pramoedya, Chairil Anwar) to digital copywriting.",
-      "old": "Renumbered/adjusted from KBLI 2020. From Indonesia's rich literary tradition (sastra — Pramoedya, Chairil Anwar) to digital copywriting. The literary heritage of Malay-Indonesian literature transforms into contempora",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "90112",
-      "entity_id": "kbli:90112",
-      "md5": "c9df692d4e33775620d66c1220180b5a",
-      "new": "Renumbered/adjusted from KBLI 2020. Balinese gamelan meets digital music production.",
-      "old": "Renumbered/adjusted from KBLI 2020. Balinese gamelan meets digital music production. Bali's sacred musical tradition (gamelan, kecak rhythms) reinvents itself as inspiration for contemporary ambient music and world m",
-      "passes": ["midword_truncation"]
-    },
-    {
-      "code": "90113",
-      "entity_id": "kbli:90113",
-      "md5": "e912c1890705b17a432929f09b89e8f6",
-      "new": "No KBLI-2020 predecessor is recorded for this code. Indonesia has a vibrant post-Reformasi (1998) journalistic tradition.",
-      "old": "Renumbered/adjusted from KBLI 2020. Indonesia has a vibrant post-Reformasi (1998) journalistic tradition. Independent digital journalism (Tirto, Vice Indonesia, Kumparan) represents the modern evolution of a press th",
-      "passes": ["false_renumbering_claim", "midword_truncation"]
-    },
-    {
-      "code": "93299",
-      "entity_id": "kbli:93299",
-      "md5": "7b6d8bfbe62deaa36fe39ea167c70666",
-      "new": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 93299 YTDL (Yang Tidak Dapat Diklasifikasikan di Tempat Lain). Residual code — high probability of restructuring in KBLI 2025 with new specific codes.",
-      "old": "Renumbered/adjusted from KBLI 2020. KBLI 2020: 93299 YTDL (Yang Tidak Dapat Diklasifikasikan di Tempat Lain). Residual code — high probability of restructuring in KBLI 2025 with new specific codes. Monitor BPS update",
-      "passes": ["midword_truncation"]
+      "code": "96210",
+      "entity_id": "kbli:96210",
+      "md5": "ed564442d08fc64b8b2c96d3dcda8bfb",
+      "new": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 96210 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+      "old": "Our records do not support this code number carrying over from KBLI 2020: no crosswalk source we hold records 96210 as its own KBLI-2020 predecessor, so a 2020 registration under this number should not be assumed to carry over. The 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). Hair salons have been consistently classified across both KBLI versions.",
+      "passes": ["residual_continuity_claim"]
     }
   ],
   "spec_id": "kg_whatchanged",

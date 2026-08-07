@@ -149,3 +149,89 @@ def test_the_online_channel_answer_names_the_fork(catalogue: dict[str, dict]) ->
     description = kbli_notebook_chat.KNOWN_KBLI_CODES["47901"]["description"]
     assert "47221" in description, "the restricted-category caveat must survive"
     assert "PRODUCT CATEGORY" in description.upper()
+
+
+# --------------------------------------------------------------------------
+# The SIXTH surface: the prose beside the field
+# --------------------------------------------------------------------------
+
+
+def _openness_claims(description: str) -> list[str]:
+    """Sentences of a hardcoded description that assert foreign openness.
+
+    Sentence-scoped and affirmative-only, for the reason the sibling detector
+    in `scripts/kbli_filiera/editorial_record_conformance.py` learned the hard
+    way: a proximity match convicts "this is NOT open to foreign ownership",
+    which is the correct sentence to write. A clause that RESERVES the activity
+    is likewise innocent — "reserved for Koperasi and UMKM ... 0%" contains
+    neither an openness claim nor a lie.
+    """
+    sentences = [s.strip() for s in re.split(r"(?<=\.)\s+", description) if s.strip()]
+    return [
+        s
+        for s in sentences
+        if re.search(r"TERBUKA|100\s*%|open to foreign", s, re.I)
+        and not re.search(r"\bnot\b|\bno\b|cannot|never|reserved", s, re.I)
+    ]
+
+
+def test_no_hardcoded_description_asserts_openness_the_catalogue_denies(
+    catalogue: dict[str, dict],
+) -> None:
+    """The field and the prose are TWO assertions, and only one was guarded.
+
+    `test_no_hardcoded_pma_status_contradicts_the_catalogue` compares
+    `entry["pma_status"]` and stops there. But the whole entry — description
+    included — is injected verbatim into the LLM context that answers on
+    WhatsApp and web chat, so a description reading "PMA: TERBUKA (open to
+    foreigners, 100%)" reaches a client exactly as the field would.
+
+    Found live: the UMKM split-heir cure moved `96100` (laundry) to TERBATAS at
+    a 0% ceiling, the field test went red and was fixed, and the description
+    kept its own sentence promising 100%. Correcting the field alone would have
+    left the guarded copy right and the unguarded copy wrong — the shape this
+    file's fourth test already names, one surface further out.
+    """
+    offenders = [
+        (code, claim)
+        for code, entry in kbli_notebook_chat.KNOWN_KBLI_CODES.items()
+        if code in catalogue
+        and isinstance(catalogue[code].get("pma_max_asing"), int)
+        and catalogue[code]["pma_max_asing"] < 100
+        for claim in _openness_claims(str(entry.get("description") or ""))
+    ]
+    assert offenders == [], (
+        "hardcoded description promises foreign openness on a code the catalogue "
+        f"caps below 100%: {offenders}"
+    )
+
+
+def test_guilt_the_prose_guard_catches_the_defect_that_created_it() -> None:
+    """The exact sentence `96100` carried before the UMKM cure."""
+    assert _openness_claims(
+        "Laundry and dry cleaning services. PMA: TERBUKA (open to foreigners, 100%). "
+        "Risk level is SCALE-DEPENDENT."
+    ) == ["PMA: TERBUKA (open to foreigners, 100%)."]
+
+
+def test_innocence_a_reservation_sentence_is_not_an_openness_claim() -> None:
+    """What replaced it. Naming the 0% ceiling must not read as promising 100%."""
+    assert (
+        _openness_claims(
+            "Laundry and dry cleaning services. PMA: reserved for Koperasi and UMKM "
+            "(Perpres 49/2021 Lampiran II) — maximum foreign ownership 0%, a PT PMA "
+            "cannot take this bidang usaha."
+        )
+        == []
+    )
+
+
+def test_innocence_an_open_code_may_still_say_it_is_open(catalogue: dict[str, dict]) -> None:
+    """A guard that forbade the words would force every honest page to lie by omission."""
+    assert _openness_claims("Sale of goods. PMA: TERBUKA (open to foreigners, 100%).") != []
+    open_codes = [
+        c
+        for c in kbli_notebook_chat.KNOWN_KBLI_CODES
+        if c in catalogue and catalogue[c].get("pma_max_asing") == 100
+    ]
+    assert open_codes, "premise: some hardcoded codes are genuinely 100% open"

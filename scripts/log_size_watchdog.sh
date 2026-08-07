@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# log_size_watchdog.sh — Telegram alert if any ~/logs/*.err.log > 1MB
+# log_size_watchdog.sh — Telegram alert if an ~/logs/*.err.log passes the
+#                        size at which the rotator will actually trim it
 #
 # Wave 1 fix 2026-05-19 (4-LLM panel synthesis 3/3 quorum).
 #
@@ -10,10 +11,36 @@
 # watchdog running hourly, Telegram would have alerted within 1h of
 # the first cumulative MB — 84× faster MTTR.
 #
-# Threshold rationale: 1 MB (Codex + DeepSeek 1MB recommendation,
-# overridden Gemini's 5MB). 1 MB is ~5000-10000 stack-frame lines of
-# typical Python traceback — well above any healthy daily growth for
-# our cron-style scripts. False-positive rate empirically <1/month.
+# Threshold rationale — REVISED 2026-08-06 after measuring the channel.
+#
+# It was a standalone 1 MB ("false-positive rate empirically <1/month",
+# Codex + DeepSeek panel 2026-05-19). Measured over the 29.5 days to
+# 2026-08-06: this script produced 1798 of the organism's 5202 Telegram
+# events — 34.6%, the single loudest source on the fleet, 19 files each
+# re-announced roughly every 6 hours for a month.
+#
+# None of them was a false positive, and none was actionable either.
+# The cure — log-rotate-run.sh — trims error logs at 10 MB. Between the
+# 1 MB alarm line and the 10 MB cure line was a dead zone: every one of
+# the 11 files then over the line sat at 1.1-7.1 MB, so all of them were
+# permanently loud and permanently ineligible for rotation. Three had
+# stopped being written altogether (mtime 04/07, 21/07, 31/07) and would
+# have been announced forever.
+#
+# This gap had already been found once. log-rotate-run.sh carries its own
+# comment dated 2026-07-20 naming the "1-50MB dead zone" and lowering its
+# error threshold 50 -> 10 MB to close it. That closed it half way; the
+# population simply lived in what was left.
+#
+# So the value is not the defect — the INDEPENDENCE is. An alarm line and
+# a cure line maintained as two unrelated constants will drift apart again
+# the next time either is tuned. This threshold now DERIVES from the
+# rotator's own knob, and scripts/tests/test_log_watchdog_dead_zone.py
+# fails the build if the two ever separate. An alarm must name a condition
+# some organ will act on; otherwise it is a metronome that teaches everyone
+# to ignore the channel where the real ones arrive.
+#
+# Measurement: research/operations/2026-08-06-telegram-messaging-study.md
 #
 # Cooldown: 6h per file (state in ~/.agent/decisions/state/log_size_*).
 # Avoids spam when an issue is acknowledged but not yet fixed.
@@ -24,7 +51,12 @@
 
 set -uo pipefail
 
-THRESHOLD_BYTES=1048576  # 1 MB
+# The rotator's error-log knob is the SSOT: alarm where the cure acts, so an
+# operator who tunes one moves both. LOG_SIZE_WATCHDOG_THRESHOLD_MB overrides
+# for the rare case where they must genuinely differ — and the tripwire test
+# reads the DEFAULTS, so an override cannot silently reopen the dead zone.
+THRESHOLD_MB="${LOG_SIZE_WATCHDOG_THRESHOLD_MB:-${PRO_LOG_ROTATE_ERR_THRESHOLD_MB:-10}}"
+THRESHOLD_BYTES=$(( THRESHOLD_MB * 1048576 ))
 COOLDOWN_SEC=21600       # 6h between repeat alerts on the same file
 LOG_DIR="${HOME}/logs"
 STATE_DIR="${HOME}/.agent/decisions/state"
@@ -72,7 +104,7 @@ while IFS= read -r f; do
     rel_path="${f#$HOME/}"
 
     # Notification gateway (cohort-3): log housekeeping = informative → digest tier
-    msg="📊 Log size alert: ~/${rel_path} = ${size_mb} MB (>1MB threshold). $(tail -1 "$f" 2>/dev/null | head -c 200)"
+    msg="📊 Log size alert: ~/${rel_path} = ${size_mb} MB (>${THRESHOLD_MB}MB threshold). $(tail -1 "$f" 2>/dev/null | head -c 200)"
     gateway="$(dirname "$0")/tg_notify.py"
     [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$gateway" --tier digest --source log-size-watchdog \

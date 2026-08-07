@@ -68,7 +68,14 @@ _FETCH_LOOKBACK = timedelta(minutes=35)  # small buffer for cron drift
 # When the customer sends that prefilled text, the id is an exact key — no
 # time-window guessing needed, so both lookbacks can be generous.
 _LEAD_ID_RE = re.compile(r"\bli_[a-z0-9]{6,20}\b")
-_LEAD_ID_MSG_LOOKBACK = timedelta(hours=48)
+# 7 days, matching the intent TTL rather than sitting under it: an intent
+# older than that has expired, so nothing beyond this window could match
+# anyway, and anything inside it still can. At the previous 48h a token that
+# arrived three days ago was invisible while its intent was still alive — a
+# real case, measured on 2026-08-05 (four inbound tokens sat unseen at 6-15
+# days old). Cheap to widen: the query already filters on the token, so the
+# extra days add rows only when there is something to match.
+_LEAD_ID_MSG_LOOKBACK = timedelta(days=7)
 _MIN_NATIONAL_DIGITS = 7  # refuse suffix phone-matching on shorter fragments
 
 
@@ -136,26 +143,54 @@ def extract_lead_ids(text: str | None) -> list[str]:
 # ----------------------------------------------------------------------
 
 
-async def run(dsn: str) -> dict[str, int]:
+async def run(dsn: str, mirror_dsn: str | None = None) -> dict[str, int]:
     """Single pass: deterministic Lead-ID matching first, then the
-    phone+time-window fallback. Returns counts for observability logs."""
+    phone+time-window fallback. Returns counts for observability logs.
+
+    `mirror_dsn`, when set, is a SECOND connection used for exactly one query:
+    reading the live wa-mirror on the machine that owns it. Every write still
+    goes to `dsn`. See `_fetch_lead_id_messages_mirror` for why the split
+    exists and what is allowed to cross between the two.
+    """
     pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
+    mirror_pool = (
+        await asyncpg.create_pool(mirror_dsn, min_size=1, max_size=2) if mirror_dsn else None
+    )
     try:
         # ── Pass 1: deterministic — "Lead ID: li_…" in inbound WA text ──
         async with pool.acquire() as conn:
             ttl_intents = await _fetch_unmatched_intents_full_ttl(conn)
-            lead_id_msgs = await _fetch_lead_id_messages(conn)
+            if mirror_pool is None:
+                lead_id_msgs = await _fetch_lead_id_messages(conn)
+            else:
+                async with mirror_pool.acquire() as mirror_conn:
+                    lead_id_msgs = await _fetch_lead_id_messages(conn, mirror_conn)
 
         unmatched = {i["id"]: i for i in ttl_intents}
         det_matched = 0
         det_unresolved = 0
         for msg in lead_id_msgs:
-            for lead_id in extract_lead_ids(msg["text"]):
+            for lead_id in msg["lead_ids"]:
                 intent = unmatched.get(lead_id)
                 if intent is None:
                     continue
                 async with pool.acquire() as conn:
                     client_id = msg["client_id"]
+                    if client_id is None and msg["source_table"] == "wa_mirror":
+                        # Law 2 boundary, and the reason this branch is spelled
+                        # out instead of folded into the line below: a
+                        # mirror-sourced sender is resolved where the mirror
+                        # lives, or not at all. Falling through to the phone
+                        # lookup would carry a WhatsApp-derived number to the
+                        # cloud that the 2026-05-24 cutover exists to keep it
+                        # away from.
+                        det_unresolved += 1
+                        logger.info(
+                            "lead_id %s seen (src=wa_mirror) with no local client_id "
+                            "— refusing to resolve it by phone off-machine",
+                            lead_id,
+                        )
+                        continue
                     if client_id is None:
                         client_id = await _resolve_client_by_phone(
                             conn, normalise_phone(msg["phone"])
@@ -199,6 +234,12 @@ async def run(dsn: str) -> dict[str, int]:
         return {
             "ttl_intents_seen": len(ttl_intents),
             "lead_id_messages_seen": len(lead_id_msgs),
+            # Split out because the two sources fail independently, and a
+            # single total hid that one of them had been returning nothing
+            # since 2026-05-25 while the organ logged a healthy pass.
+            "lead_id_messages_mirror": sum(
+                1 for m in lead_id_msgs if m["source_table"] == "wa_mirror"
+            ),
             "matched_lead_id": det_matched,
             "lead_id_unresolved_sender": det_unresolved,
             "intents_seen": len(intents),
@@ -208,6 +249,8 @@ async def run(dsn: str) -> dict[str, int]:
         }
     finally:
         await pool.close()
+        if mirror_pool is not None:
+            await mirror_pool.close()
 
 
 async def _fetch_unmatched_intents_full_ttl(conn: asyncpg.Connection) -> list[dict[str, Any]]:
@@ -236,21 +279,17 @@ async def _fetch_unmatched_intents_full_ttl(conn: asyncpg.Connection) -> list[di
     ]
 
 
-async def _fetch_lead_id_messages(conn: asyncpg.Connection) -> list[dict[str, Any]]:
-    """Inbound WA messages (last 48h) whose text contains a `li_` token.
+async def _fetch_lead_id_messages_meta(conn: asyncpg.Connection) -> list[dict[str, Any]]:
+    """Fly-side source: inbound text on the Meta business number webhook.
 
-    Two sources, queried separately (schemas differ):
-    - meta_inbox_messages: the Meta business number webhook (live).
-    - whatsapp_message_context: the wa-mirror of team numbers (sync to this
-      DB stale since 2026-05-25, kept covered for when it revives).
+    Bodies are consumed here and never carried out of this function — callers
+    receive the extracted `li_` tokens only.
     """
     cutoff = datetime.now(timezone.utc) - _LEAD_ID_MSG_LOOKBACK
-    out: list[dict[str, Any]] = []
-
     rows = await conn.fetch(
         """
         SELECT m.body AS text, t.counterpart_phone AS phone,
-               NULL AS client_id, m.created_at AS msg_at
+               m.created_at AS msg_at
           FROM meta_inbox_messages m
           JOIN meta_inbox_threads t ON t.thread_id = m.thread_id
          WHERE m.direction = 'inbound'
@@ -261,21 +300,39 @@ async def _fetch_lead_id_messages(conn: asyncpg.Connection) -> list[dict[str, An
         """,
         cutoff,
     )
-    out.extend(
+    return [
         {
-            "text": r["text"],
+            "lead_ids": extract_lead_ids(r["text"]),
             "phone": r["phone"],
-            "client_id": r["client_id"],
+            "client_id": None,
             "msg_at": r["msg_at"],
             "source_table": "meta_inbox",
         }
         for r in rows
-    )
+    ]
 
+
+async def _fetch_lead_id_messages_mirror(conn: asyncpg.Connection) -> list[dict[str, Any]]:
+    """wa-mirror source: inbound text on the team numbers.
+
+    Read on whichever machine owns the mirror. When `WA_MIRROR_DATABASE_URL`
+    is set this runs against the Pro's LOCAL Postgres, which is the only place
+    the live mirror exists — the copy on Fly froze on 2026-05-25 when the
+    mirror was deliberately cut off from the cloud ([[decision_wa_mirror_local
+    _only_cutover_2026_05_24]], Symbiosis Law 2 / UU PDP).
+
+    That cutover is why this function is careful about what it hands back.
+    The body is read and DISCARDED here; only two values travel onward, and
+    neither is PII: the `li_` token (a nanoid this system minted itself) and
+    the mirror's own `client_id` (an id the CRM minted). `phone` is returned
+    as None ON PURPOSE — a mirror-sourced sender is resolved on the machine
+    that holds the mirror or not at all, so no WhatsApp-derived phone number
+    can ride out to the cloud in a lookup. run() enforces the other half.
+    """
+    cutoff = datetime.now(timezone.utc) - _LEAD_ID_MSG_LOOKBACK
     rows = await conn.fetch(
         """
         SELECT COALESCE(NULLIF(body, ''), message_text) AS text,
-               COALESCE(counterpart_phone, sender_phone) AS phone,
                client_id,
                COALESCE(message_date, created_at) AS msg_at
           FROM whatsapp_message_context
@@ -287,16 +344,30 @@ async def _fetch_lead_id_messages(conn: asyncpg.Connection) -> list[dict[str, An
         """,
         cutoff,
     )
-    out.extend(
+    return [
         {
-            "text": r["text"],
-            "phone": r["phone"],
+            "lead_ids": extract_lead_ids(r["text"]),
+            "phone": None,
             "client_id": r["client_id"],
             "msg_at": r["msg_at"],
             "source_table": "wa_mirror",
         }
         for r in rows
-    )
+    ]
+
+
+async def _fetch_lead_id_messages(
+    conn: asyncpg.Connection,
+    mirror_conn: asyncpg.Connection | None = None,
+) -> list[dict[str, Any]]:
+    """Inbound WA messages (last 48h) carrying a `li_` token, both sources.
+
+    `mirror_conn` is the wa-mirror's own database when one is configured; with
+    no second DSN both queries run on `conn`, which preserves the pre-2026-08
+    behaviour (the Fly copy of the mirror table simply returns nothing).
+    """
+    out = await _fetch_lead_id_messages_meta(conn)
+    out.extend(await _fetch_lead_id_messages_mirror(mirror_conn or conn))
     return out
 
 
@@ -522,8 +593,14 @@ def main() -> int:
     if not dsn:
         logger.error("DATABASE_URL not set")
         return 2
+    # Optional second DSN: the database that owns the LIVE wa-mirror (the Pro's
+    # local Postgres). Unset is a valid, quieter configuration — the mirror
+    # source then reads the Fly copy, which has been frozen since the
+    # 2026-05-24 local-only cutover and simply returns nothing.
+    mirror_dsn = os.getenv("WA_MIRROR_DATABASE_URL") or None
+    logger.info("wa-mirror source: %s", "local DSN" if mirror_dsn else "none (Fly copy)")
     try:
-        result = asyncio.run(run(dsn))
+        result = asyncio.run(run(dsn, mirror_dsn))
     except Exception:
         logger.exception("lead_intent_matcher: top-level failure")
         return 1

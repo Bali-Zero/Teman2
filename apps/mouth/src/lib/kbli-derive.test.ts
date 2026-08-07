@@ -35,6 +35,38 @@ describe("resolveLicenseType (explicit value wins, else derive)", () => {
     expect(resolveLicenseType(null, "Rendah")).toBe("NIB");
   });
 
+  // A licence NAME cut off mid-sentence is unusable and must not be shown.
+  // Measured 2026-08-05: canonical carries `"NIB dan"` on 21 codes — literally
+  // "NIB and" — and it reached TEN render sites including the page <title> and
+  // the schema.org JSON-LD Google reads.
+  it("treats a truncated licence NAME as absent and derives instead", () => {
+    expect(resolveLicenseType("NIB dan", "Menengah Tinggi")).toBe(
+      "NIB + Sertifikat Standar",
+    );
+    expect(resolveLicenseType("NIB dan", "Tinggi")).toBe("NIB + Izin");
+    expect(
+      resolveLicenseType("Sertifikasi Cara Budi Daya Ternak Yang", "Rendah"),
+    ).toBe("NIB");
+  });
+
+  it("INNOCENCE — a COMPLETE name containing 'dan' is kept untouched", () => {
+    // The whole risk of the rule above: "NIB dan Sertifikat Standar" contains
+    // `dan` but ends on `Standar`, so it is not truncated and must survive.
+    // (Also asserted by the first test in this block, deliberately twice.)
+    expect(resolveLicenseType("NIB dan Sertifikat Standar", "Rendah")).toBe(
+      "NIB dan Sertifikat Standar",
+    );
+    expect(resolveLicenseType("NIB dan Izin", "Tinggi")).toBe("NIB dan Izin");
+  });
+
+  it("drops only the truncated entries from the array form", () => {
+    expect(
+      resolveLicenseType(["NIB dan", "NIB dan Sertifikat Standar"], "Tinggi"),
+    ).toBe("NIB dan Sertifikat Standar");
+    // ...and derives when every entry is unusable, rather than showing nothing.
+    expect(resolveLicenseType(["NIB dan", "  "], "Tinggi")).toBe("NIB + Izin");
+  });
+
   // The real dataset stores perizinan as an ARRAY on ~99.5% of scales (often empty []).
   // A naive (perizinan || "").trim() crashed at runtime — these guard that regression.
   it("handles the array form: joins distinct non-empty entries", () => {

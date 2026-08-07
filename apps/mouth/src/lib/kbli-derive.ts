@@ -22,6 +22,8 @@
  * differently; here we derive once in the transformer).
  */
 
+import { isSourceTruncated } from "./kbli-obligation-truncation";
+
 /** License type derived from the risk tier when the explicit `perizinan` is empty (Pasal 124(4)). */
 export function licenseForRisk(risk: string | null | undefined): string {
   const r = (risk || "").trim();
@@ -35,13 +37,40 @@ export function licenseForRisk(risk: string | null | undefined): string {
 }
 
 /**
+ * A licence NAME that stops mid-sentence is unusable, and is treated exactly
+ * like an absent one so the risk-derived fallback below fires.
+ *
+ * Measured 2026-08-05: canonical carries **`"NIB dan"` on 21 codes** (and the
+ * knowledge graph on 12, plus `"Sertifikasi Cara Budi Daya Ternak Yang"` on 2).
+ * `"NIB dan"` — literally *"NIB and"* — was rendered as the licence type at TEN
+ * sites, including `KBLIStructuredData` (schema.org JSON-LD that reaches Google)
+ * and `kbli-meta` (the page `<title>`).
+ *
+ * WHY THE FALLBACK AND NOT THE `[cut off]` LABEL used for obligation TEXT: two
+ * of those ten sites are metadata, where a UI annotation would be actively
+ * wrong — you do not put "[cut off in the official source]" inside a page title
+ * or structured data. `licenseForRisk` is not a guess at what the truncated
+ * string said: it applies the documented OSS-RBA rule risk-tier → licence-tier,
+ * which is already this product's behaviour for the ~1,338 codes whose
+ * `perizinan` is empty. Treating an unusable name as absent reuses that
+ * established path rather than inventing a second one.
+ */
+function usableLicenceName(value: string | null | undefined): string {
+  const trimmed = (value || "").trim();
+  // Innocence: a COMPLETE name that merely contains `dan` — "NIB dan
+  // Sertifikat Standar" — ends on `Standar` and is kept, pinned by test.
+  return trimmed && !isSourceTruncated(trimmed) ? trimmed : "";
+}
+
+/**
  * Resolve the license type for a scale: the explicit value if present, else derived from risk.
  *
  * IMPORTANT: in the real dataset `perizinan` is an ARRAY on ~99.5% of scales (the legacy
  * `string` type in kbli-types was a lie — it is a `string[]`, frequently empty `[]`), and a
  * bare `string` on the ~20 legacy records. Handle BOTH: join the distinct non-empty array
- * entries; fall back to the scalar; and when nothing is explicit (empty array / empty string),
- * derive from the risk tier. Mirrors the Swift app's permitText (scalar → array → derive).
+ * entries; fall back to the scalar; and when nothing is explicit (empty array / empty string /
+ * a name truncated mid-sentence), derive from the risk tier. Mirrors the Swift app's permitText
+ * (scalar → array → derive).
  */
 export function resolveLicenseType(
   perizinan: string | string[] | null | undefined,
@@ -49,12 +78,12 @@ export function resolveLicenseType(
 ): string {
   if (Array.isArray(perizinan)) {
     const distinct = Array.from(
-      new Set(perizinan.map((x) => (x || "").trim()).filter(Boolean)),
+      new Set(perizinan.map(usableLicenceName).filter(Boolean)),
     );
     if (distinct.length > 0) return distinct.join(" · ");
     return licenseForRisk(risk);
   }
-  const p = (perizinan || "").trim();
+  const p = usableLicenceName(perizinan);
   if (p) return p;
   return licenseForRisk(risk);
 }

@@ -1,0 +1,196 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_umkm_reserved_openness_2026_08_06",
+    "population": "6 of the 34 codes whose prose asserts national foreign-ownership openness the record denies. These six share one record fact: the bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, so pma_max_asing is 0 — a PT PMA cannot hold it ANYWHERE in Indonesia.",
+    "why_these_six_first": "Not the largest group, the most expensive. Four of them (96210, 96220, 96100, 95291) carry a sentence that contradicts ITSELF — 'nationally open to full foreign ownership, but a PT PMA cannot register this activity anywhere in Indonesia'. If it were nationally open to full foreign ownership a PT PMA could hold it; the reservation IS the national position, not something a separate rule then blocks. A reader of the first half goes looking for the structure that unlocks the second. The other two (95220, 95299) are worse: their bodies still tell the whole story as a BALI problem — 'national openness remains real' — which sends a client to register in Jakarta, where it is refused too.",
+    "who_wrote_the_text_being_replaced": "27 of the 31 first-measured contradicting bodies carry _l3_regen.source = LLM_EDITORIAL_GROUNDED, model = deepseek-v4-pro, confidence = LOW. No human authored them. An earlier round of this lane declined to touch them citing Legge 5; that deference was protecting an authorship that does not exist, and Zero withdrew it on 2026-08-06.",
+    "replacement_is_whole_field_not_sentence": "A cross-family review refuted the sentence-level version of this cure: 95220's body carries the false premise in four separate places, so patching one leaves the paragraph contradicting itself. Every entry here replaces the WHOLE field. Where a body holds true facts unrelated to ownership — 95299's scope and its exclusion list, 95220's scope paragraph — those paragraphs are carried over VERBATIM by construction, because the previous spec's failure mode was deleting true licensing and zoning facts while fixing an ownership sentence.",
+    "what_is_deliberately_kept": "The Bali moratorium on 95220 and 95299 is REAL (l4_bali.blocked = true, sourced to Governor's letter B.27.000/642/PM/DPMPTSP, 13 May 2026) and is kept — demoted from THE reason to a second, independent restriction, with an explicit sentence that relocating to another province lifts only that one. 96220's disambiguation from spa (96230) and fitness is kept verbatim: it is the kind of fact an earlier cure in this directory lost.",
+    "machine_gate": "Every replacement is checked before the spec is written: no percentage may appear that differs from the record's pma_max_asing, and re-running the detector over the patched record must report zero remaining openness assertions. Both passed on all 21 fields.",
+    "grading": "Every replacement is graded by a cross-family seat instructed to refute what was WRITTEN, not what was removed (W113: a correction is read as the safe part of a diff, and no adversarial round is usually pointed at it).",
+    "graded": {
+      "seat": "GLM 5.2 (cross-family), instructed to refute what was WRITTEN",
+      "raised": 3,
+      "confirmed": [
+        "95291.whatYouNeed asserted 'in Bali the block is reinforced by a separate, permanent moratorium on PMA registration for low and medium-low risk activities'. The record does mark 95291 blocked in Bali, but with reason CHIUSO_PMA_NO_BESAR — the SAME Perpres allocation. Presenting it as a second, independent restriction invents one. The reviewer reached the right finding from a WRONG premise (it claimed 95291 is not Bali-blocked at all; it is), which is why the verdict was re-derived on disk and not applied as given.",
+        "95291.whatYouNeed cited 'entry 57', which belongs to 96210 (Pangkas rambut) in the l4_bali locator, not to 95291. Removed. 'page 16' is kept: data/kbli-filiera/perpres-umkm-reservation.json carries the row {code 95291, column dialokasikan, page 16, text 'Vermak pakaian', title_corroborated}."
+      ],
+      "refuted": [
+        "96220's citation of old KBLI code 96112, \"Salon kecantikan\" was called a possible fabrication. It is on disk and corroborated: perpres-umkm-reservation.json row {code 96112, column dialokasikan, page 16, text 'Salon kecantikan', read_from text-layer, title_corroborated true}. The citation stays."
+      ],
+      "not_a_defect": [
+        "'a PT PMA cannot hold it anywhere in Indonesia' on cap 0 + dialokasikan — reviewer agreed this is the correct reading of a presidential regulation's scope, not an overstatement.",
+        "the scope and exclusion paragraphs of 95220 and 95299 are carried over verbatim."
+      ]
+    },
+    "consumer_map": "Derived from apps/mouth/src/lib/kbli-data.server.ts, not assumed. GOLD CONTENT TAKES PRECEDENCE for the editorial fields it carries, so on the 428 gold codes the website already shows a correct whatYouNeed/zantaraOpener while canonical still lies — 15 of the 34 affected codes are in gold. But gold carries NO editorial.* keys, so headline/standfirst/body/pullQuote come from canonical on every code, and Qdrant is built from canonical on every field. The website shows the editorial lies to everyone; the RAG channels get all of them."
+  },
+  "codes": {
+    "96210": {
+      "judul": "Aktivitas Penataan dan Pangkas Rambut",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "a44189a772da9acbb9806f79ccac78faa29f78fdad6cc0677288210ca649ff36",
+          "old_excerpt": "Hairdressing in Bali: Open Nationally, Closed to PMA Registration",
+          "new": "Hairdressing Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "2ec331bfe7b159e6680fce3fa490888f4d740ac867b7481584c2c6b44321dc0c",
+          "old_excerpt": "Hair and facial-hair services are nationally open to full foreign ownership, but a PT PMA cannot register this",
+          "new": "Hair and facial-hair services are allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts the activity out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "whatYouNeed": {
+          "old_sha256": "29c77e9b8fa6c5c0acd27517290ee176cadaffea6d4d281e132fd1dd1438e964",
+          "old_excerpt": "Although nationally open 100% to foreign investment, a PT PMA cannot register this activity anywhere in Indone",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021 as amended by 49/2021 allocates it to Koperasi and UMKM (Lampiran II, the *dialokasikan* column), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "zantaraOpener": {
+          "old_sha256": "c5e6aefa674c1eb9d112ffb8e5ee1f5e1b516c551cde3b21ff7b6d77f36c50a4",
+          "old_excerpt": "Opening a salon or barbershop in Bali? 96210 is low risk and nationally 100% PMA-open, but it's allocated to K",
+          "new": "Opening a salon or barbershop in Bali? 96210 is low risk, but it's allocated to Koperasi and UMKM — foreign ownership is 0% and a PT PMA cannot register it anywhere in Indonesia."
+        }
+      }
+    },
+    "96220": {
+      "judul": "Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "e43679bd3857df6065a5faba5fbf427dfa5a0c5f47f8a206dab45e26d39e9468",
+          "old_excerpt": "Beauty Beyond the Clinic: Open Nationally, Closed to PMA Nationwide",
+          "new": "Beauty Beyond the Clinic: Reserved for Koperasi and UMKM, Closed to PT PMA Nationwide"
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "d2434998d7903ad58855bfb7f1629c081867c2d0462641719cce568d2078d18e",
+          "old_excerpt": "For foreign investors, that distinction is decisive: a 100% national ceiling does not override the Perpres ann",
+          "new": "For foreign investors the position is single, not layered: the Perpres annex allocates this bidang usaha to Koperasi and UMKM, so the national ceiling is 0%."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "1f1ce3f8d8ea5ac7a17cdfab6dd376dc34a9c0a6a23b76f2f414935f1bc0f4a1",
+          "old_excerpt": "From nail art and brows to makeup and facial massage, this activity is nationally open to full foreign ownersh",
+          "new": "From nail art and brows to makeup and facial massage, this activity is allocated to Koperasi and UMKM — foreign ownership is 0%, and it cannot be registered by a PT PMA anywhere in Indonesia today."
+        },
+        "whatYouNeed": {
+          "old_sha256": "83de08519454023a9dd90879702632fc71725b88f208ab982c7a27205a6e2a94",
+          "old_excerpt": "Nationally this activity is 100% open to foreign ownership. Nationwide, however, a PT PMA still cannot registe",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Peraturan Presiden 10/2021, as amended by 49/2021, allocates this beauty-care activity to Koperasi and UMKM in its Lampiran II — the annex names it, under the old KBLI code 96112, \"Salon kecantikan,\" as *dialokasikan* — and a business field allocated that way is closed to PT PMA regardless of scale. That allocation is specific to this beauty-care line; it does not extend to spa (96230) or fitness activities."
+        }
+      }
+    },
+    "96100": {
+      "judul": "Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "5f7a61eac17df396ed36db89f3359db1f2c46b0491a6f34144753369498024a0",
+          "old_excerpt": "Laundry in Indonesia: Open Nationally, Closed to PMA",
+          "new": "Laundry in Indonesia: Reserved for Koperasi and UMKM, Closed to PT PMA"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "d59a28af07cd85a092f973efb7f83708268e5240c4419a130e2e1473a7240502",
+          "old_excerpt": "This activity ranges from everyday laundry to linen care and reusable-diaper services—but a nationally open fo",
+          "new": "This activity ranges from everyday laundry to linen care and reusable-diaper services — and it is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and makes it unregistrable by a PT PMA anywhere in Indonesia."
+        }
+      }
+    },
+    "95291": {
+      "judul": "Aktivitas Vermak Pakaian",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "24c9c61f9679f69e7d7cb2b37929def8ba4645298747aa32036982cace8e72c3",
+          "old_excerpt": "Commercial Clothes Alterations: Nationally Open, Closed to PMA Nationwide",
+          "new": "Commercial Clothes Alterations: Reserved for Koperasi and UMKM, Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "ea4323f154da9da4fce58df95c453b2ced64ee350f1a10e13629584434b61d8e",
+          "old_excerpt": "Commercial clothes alterations are nationally open to full foreign ownership, but a PT PMA cannot register thi",
+          "new": "Commercial clothes alterations are allocated to Koperasi and UMKM, so foreign ownership is 0% and a PT PMA cannot register this activity anywhere in Indonesia."
+        },
+        "whatYouNeed": {
+          "old_sha256": "b159018f3c125695d12a9ec0a4539962161fc4546ff2eeae29ad6066515a4da2",
+          "old_excerpt": "Nationally, this activity is fully open (100%) to foreign-owned companies. But Perpres 49/2021's Lampiran II a",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 49/2021's Lampiran II allocates this bidang usaha to Koperasi and UMKM (KBLI 95291, \"Vermak pakaian\", page 16), so a PT PMA cannot register it anywhere in Indonesia — and that same allocation, not a separate provincial rule, is the reason the record marks it closed to PMA in Bali."
+        }
+      }
+    },
+    "95220": {
+      "judul": "Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "19715f5a891992e0e07b6cd58203befcbb85086e1e9d799d98fa4253b2e17994",
+          "old_excerpt": "Household and Garden Equipment Repair: Open Nationally, Blocked for PMA in Bali",
+          "new": "Household and Garden Equipment Repair: Reserved for Koperasi and UMKM, and Blocked for PMA in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "fe1dd5cc8b38bf10cc8a79b035fc75386b13fda4c4754e7adb467f53a3533a87",
+          "old_excerpt": "This activity spans the repair and upkeep of household appliances and home-and-garden equipment, open national",
+          "new": "This activity spans the repair and upkeep of household appliances and home-and-garden equipment, open to all business scales but allocated to Koperasi and UMKM — foreign ownership is 0% nationwide, and PMA registration is separately blocked in Bali."
+        },
+        "whatYouNeed": {
+          "old_sha256": "a6ed24716108562b0f151ea8f9808d8e6441463d43c6dbfee8a7dbcc35b518ce",
+          "old_excerpt": "Nationally, this KBLI is 100% open for foreign-owned (PMA) companies. However, in Bali it is currently blocked",
+          "new": "The national foreign-ownership ceiling for this KBLI is 0%: Perpres 49/2021's Lampiran II allocates the bidang usaha to Koperasi and UMKM, so a PT PMA cannot hold it anywhere in Indonesia. In Bali a second, independent restriction applies as well — the activity falls under a low/medium-low risk classification, blocked for PMA by the provincial moratorium in force since 13 May 2026. Moving the registration to another province does not lift the first restriction."
+        },
+        "editorial.body": {
+          "old_sha256": "988b0851e848b88a6ddd79e387e61886d50f99d029741a3268334b6de82600a6",
+          "old_excerpt": "A foreign investor cannot obtain PMA registration for this activity in Bali today. That is the decisive local ",
+          "new": "A foreign investor cannot obtain PMA registration for this activity — and the reason is national, not local. Perpres 10/2021 as amended by 49/2021 allocates this bidang usaha to Koperasi and UMKM in its Lampiran II, which sets the foreign-ownership ceiling at 0% and puts the activity out of reach of a PT PMA anywhere in Indonesia. Bali adds a second, independent restriction on top of that, but moving the registration to another province would not lift the first.\n\nThe work itself is practical, broad and firmly rooted in the maintenance economy of everyday life. It covers repair and servicing for household equipment including refrigerators, stoves, washing machines, clothes dryers, air conditioners, electric irons, vacuum cleaners and other electrical household goods. It also includes the repair and maintenance of home-and-garden equipment: lawn mowers, edgers, snow and leaf sweepers, trimmers and related equipment. In clear terms, this is the business of restoring the machines and appliances that keep homes and gardens functioning.\n\nThe activity is open to Micro, Small, Medium and Large businesses. That range gives the classification room to accommodate a compact repair operation as well as a larger service business, without changing the basic nature of the registered activity: repair and maintenance of household and home-and-garden equipment. Scale, however, does not change the ownership position: a bidang usaha allocated to Koperasi and UMKM is closed to a PT PMA at every scale.\n\nBali requires a separate reading, and it is additional rather than decisive. Its status is Blocked (risk class) because the relevant OSS risk assessment at the Large scale is Low or Medium-Low across every scope, and Bali’s permanent, province-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA. The moratorium was identified in the record in May 2026 and is sourced to the Governor’s letter B.27.000/642/PM/DPMPTSP. The practical conclusion is that two restrictions apply at once: the national allocation to Koperasi and UMKM, which no province can lift, and the Bali moratorium on top of it."
+        }
+      }
+    },
+    "95299": {
+      "judul": "Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "efa3b8daeb752dab0f8eaba924217c256d11dade9b4cce65ac52db10507dd0a6",
+          "old_excerpt": "Full foreign ownership is available nationally, but not through PMA registration for this activity in Bali.",
+          "new": "The national allocation to Koperasi and UMKM sets foreign ownership at 0%; the Bali moratorium sits on top of it, not instead of it."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "6f733f45706745d7d7b75018e98cf5f806017ea0bc92f3ebb3b38c131d6c27f7",
+          "old_excerpt": "This broad repair activity is nationally open to full foreign ownership, yet PMA registration in Bali is block",
+          "new": "This broad repair activity is allocated to Koperasi and UMKM — foreign ownership is 0% nationwide — and PMA registration in Bali is separately blocked under the province's permanent risk-based moratorium."
+        },
+        "whatYouNeed": {
+          "old_sha256": "450d097c51902899db552465313a94e1abb59c60fc4db01eb58ca25aeeba2881",
+          "old_excerpt": "Nationally, this KBLI is open to 100% foreign ownership, but in Bali it is currently blocked for PMA companies",
+          "new": "The national foreign-ownership ceiling for this KBLI is 0%: Perpres 49/2021's Lampiran II allocates the bidang usaha to Koperasi and UMKM, so a foreign-owned company cannot register it anywhere in Indonesia. In Bali a separate moratorium on low-risk activities blocks PMA registration as well — but it is the second restriction, not the first."
+        },
+        "editorial.body": {
+          "old_sha256": "e5f737b3ff1d610b26ddbee3479761af0046cc588b4204af03b03ff58c88cfda",
+          "old_excerpt": "A foreign investor is unable to register this activity in Bali today. That conclusion sits beside a more permi",
+          "new": "A foreign investor is unable to register this activity, and the restriction is national before it is local. Perpres 10/2021 as amended by 49/2021 allocates this bidang usaha to Koperasi and UMKM in its Lampiran II, setting the foreign-ownership ceiling at 0% for a PT PMA anywhere in Indonesia. Bali adds a second restriction of its own: every scope at the large-business scale is assessed by OSS as Low or Medium-Low risk, placing the activity within the province-wide, permanent moratorium on PMA registration for those risk bands.\n\nThe activity is the practical craft of keeping personal and household possessions in use. Its scope includes repairing and maintaining bicycles, electric bicycles, monowheels, hoverboards and kick scooters; repairing or altering jewellery; and repairing watches, clocks, wall clocks and their components, from straps and cases to movement frames. It also reaches sporting equipment other than sporting guns, books, musical instruments, toys and similar goods, as well as other personal and household articles. Piano tuning and key duplication are expressly within the scope.\n\nIts boundaries matter because this is a repair classification, not a catch-all for every workshop task. It excludes, among other things, metal engraving, repairs to sporting or recreational guns, repairs to powered hand tools, restoration of organs and other historic musical instruments, and repairs to time locks, time-and-date stamps and other time-recording equipment. For a business built around everyday objects rather than industrial equipment, the category is therefore broad in consumer-facing practice while still clearly delimited.\n\nRegistration is open across Mikro, Kecil, Menengah and Besar business scales, but scale does not change the ownership position: a bidang usaha allocated to Koperasi and UMKM is closed to a PT PMA at every scale. In Bali the provincial rule adds a further block — all Low and Medium-Low risk KBLI activities are blocked island-wide and permanently, under the Bali moratorium dated May 2026. The honest reading is that two independent restrictions apply, and relocating to another province would lift only the second."
+        }
+      }
+    }
+  }
+}

@@ -204,6 +204,12 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
             continue
         if not payload:
             continue
+        # Filled BEFORE the verdict gate on purpose: the national ceiling is a
+        # different fact from the Bali verdict, and a point that carries the cap
+        # but not the Bali layer must still hand the cap over. Never overwritten
+        # — the two payload-built constructors already set it from the same read.
+        if result.pma_max_asing is None:
+            result.pma_max_asing = _payload_value(payload, "pma_max_asing")
         blocked = _payload_value(payload, "bali_blocked")
         if blocked is None:
             continue
@@ -216,6 +222,149 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
             result.bali_status,
             result.bali_blocked,
         )
+
+
+# --------------------------------------------------------------- national scope
+#
+# WHY THIS EXISTS. The note below used to open EVERY block with "This is a
+# PROVINCIAL restriction ... an activity can be 100% open nationally and still be
+# unregistrable in Bali." That is true of the Bali moratorium and false of the
+# rest: measured 2026-08-05 on `data/source_documents/KBLI_2025_FINAL_CLEAN.json`,
+# 518 codes carry `l4_bali.blocked` and **77** of them are closed to a PT PMA
+# everywhere in Indonesia. Asked about 64110 in production, the bot was right on
+# the substance and then framed a Bank Indonesia State monopoly as a provincial
+# rule — an answer whose natural next step for the reader is "then I will
+# register it in Jakarta".
+#
+# THE RULE IS DELIBERATELY THE PAGE'S RULE, code for code and status for status
+# (`apps/mouth/src/lib/kbli-bali-block.ts::isNationalClosure`). Two surfaces
+# answering the same question from the same record must not each grow their own
+# list — that is how `/kbli/69104` came to say one thing while WhatsApp said
+# another. They cannot share a module across Python and TypeScript, so the
+# identity is pinned by a test that reads the TypeScript file instead.
+#
+# The third input, the national ceiling, is the page's `nationallyClosed`
+# derivation: `pma_status == TERTUTUP` or a ceiling of 0%. It carries 63 of the
+# 77 on its own; the status set and the code list exist for the 14 where
+# `pma_status` says TERBUKA/100 while the activity is reserved by name.
+_NATIONAL_CLOSURE_STATUSES: dict[str, str] = {
+    "CHIUSO_REGOLATORE_SETTORIALE": "a sectoral regulator reserves the activity nationwide",
+    "CHIUSO_PMA_NO_BESAR": (
+        "the activity is allocated to Koperasi/UMKM by Perpres 49/2021 Lampiran II, "
+        "a bidang usaha a PT PMA cannot take"
+    ),
+}
+
+_NATIONAL_CLOSURE_CODES: dict[str, str] = {
+    "01287": "narcotics/medicinal-plant cultivation, TERTUTUP nationally",
+    "47111": "minimarket/supermarket retail, reserved to Indonesian citizens (WNI)",
+    "47112": "minimarket/supermarket retail, reserved to Indonesian citizens (WNI)",
+    "59131": "film/video distribution, TERTUTUP nationally",
+    "69102": "legal consultancy, reserved to Indonesian-licensed advocates (UU 18/2003)",
+    "69104": "notary/PPAT, a personal State office open to WNI only (UU 30/2004 as am. UU 2/2014)",
+    "86201": "a solo doctor's practice, closed to foreign nationals under Kemenkes health law",
+    "86202": "a solo specialist practice, closed to foreign nationals under Kemenkes health law",
+}
+
+
+# The pipeline's own vocabulary, rendered in words — a SECOND route into the
+# same leak, and the measurement is stated exactly because it is not the route
+# that was bleeding.
+#
+# The live leak was the note's own `Verdict code: {bali_status}` suffix: 450 of
+# the 518 blocked codes handed the model a symbol, and production repeated
+# `CHIUSO_REGOLATORE_SETTORIALE` to a client. Deleting that suffix is the cure.
+#
+# This helper covers the other way in: `bali_reason` is quoted to the model
+# verbatim, so a symbol written INSIDE a reason sentence would leak just the
+# same. Measured 2026-08-05 on the canonical: 9 reasons quote a symbol
+# (`OK_or_HIGHER_RISK` x6, `CHIUSO_MORATORIA_BALI` x2, `pma_cap_verified` x1)
+# and **none of the 9 is on a blocked code**, so today this guards a population
+# of ZERO — said plainly rather than counted as nine fixes. It is here because
+# the reason text is rewritten by cure lanes most weeks and a blocked code's
+# reason is one edit away from carrying one; its own mutation test proves it
+# bites, so it is defence-in-depth, not decoration.
+#
+# The sentence is still passed through; only the tokens are spoken. The fallback
+# — underscores to spaces — is what makes it fail-CLOSED: a symbol nobody has
+# mapped yet degrades to readable words instead of reaching a client.
+_INTERNAL_SYMBOL_RE = re.compile(r"\b[A-Za-z]+(?:_[A-Za-z]+)+\b")
+
+_SYMBOL_PLAIN_TEXT: dict[str, str] = {
+    "OK_or_HIGHER_RISK": "not reached by the moratorium",
+    "APERTO_BALI_RISCHIO_ALTO": "open in Bali at a higher risk tier",
+    "BLOCCATO_CLASSE_RISCHIO": "blocked by its risk class",
+    "BLOCCATO_DIPENDE_SCOPE": "blocked depending on the declared scope",
+    "CHIUSO_BALI": "closed in Bali",
+    "CHIUSO_BALI_PROPOSTO": "proposed for closure in Bali",
+    "CHIUSO_MORATORIA_BALI": "closed by the Bali moratorium",
+    "CHIUSO_PMA_NO_BESAR": "allocated to Koperasi/UMKM, not open to a PT PMA",
+    "CHIUSO_REGOLATORE_SETTORIALE": "closed by the sectoral regulator",
+    "NON_CLASSIFICABILE": "not classifiable from the data we hold",
+    "pma_cap_verified": "foreign-ownership cap verified",
+}
+
+
+def _speak_internal_symbols(text: object) -> str:
+    """Render pipeline enum tokens as words, leaving the sentence otherwise intact.
+
+    Takes `object`, not `str`, deliberately. This runs on EVERY answer, and the
+    reason is ASSIGNED onto the model from a Qdrant payload — Pydantic does not
+    validate on assignment, so a point storing a number there would hand `re.sub`
+    a non-string and 500 the answer. The first draft did exactly that and took 8
+    sibling tests down with it; a cosmetic step must never be able to kill the
+    answer it decorates.
+    """
+    if not isinstance(text, str):
+        text = str(text)
+    return _INTERNAL_SYMBOL_RE.sub(
+        lambda m: _SYMBOL_PLAIN_TEXT.get(m.group(0), m.group(0).replace("_", " ")),
+        text,
+    )
+
+
+def _is_zero_ceiling(value: object) -> bool:
+    """True only for a REAL 0% cap — absence must never read as a closure.
+
+    The indexer writes an absent cap as `""` and `_payload_value` maps `""`/None
+    to the default, so absence arrives as `None`. Comparing either to 0 is
+    already False in Python; this helper exists so that a later "tidy-up" to
+    `int(value or 0)` — which would turn every point without the field into a
+    national closure — has to argue with a named function and its test.
+
+    A digit STRING counts. The canonical stores integers and a string should not
+    occur, but if one ever does, the failure has to land on the safe side: `"0"`
+    read as "no ceiling recorded" is the reading that tells a client an activity
+    closed to foreign capital is open.
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value == 0
+    if isinstance(value, str):
+        text = value.strip()
+        return text.isdigit() and int(text) == 0  # "" is not a digit string
+    return False
+
+
+def _national_closure_basis(result: "KBLISearchResult") -> str | None:
+    """Why this activity is closed to a PT PMA nationwide, or None if it is not.
+
+    Returns a PHRASE, not a boolean, because the note has to tell the reader what
+    closed it: "closed nationally" with no basis is the kind of assertion this
+    lane keeps having to withdraw.
+    """
+    by_code = _NATIONAL_CLOSURE_CODES.get(result.code)
+    if by_code:
+        return by_code
+    by_status = _NATIONAL_CLOSURE_STATUSES.get(result.bali_status or "")
+    if by_status:
+        return by_status
+    if (result.pma_status or "").strip().upper() == "TERTUTUP":
+        return "the national PMA list closes the activity (TERTUTUP)"
+    if _is_zero_ceiling(result.pma_max_asing):
+        return "the national foreign-ownership ceiling is 0%"
+    return None
 
 
 def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
@@ -238,20 +387,69 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
     * **The reason is passed through, never re-worded.** It is the sentence the
       adjudication wrote, and it already names its own instrument — a summary
       here would be a second opinion drifting away from the page.
+
+    Two more, added 2026-08-05 (see `_national_closure_basis` above):
+
+    * **Scope before wording.** A block is described as provincial only when it
+      IS provincial. 77 of the 518 are national, and calling those "a Bali
+      restriction" hands the reader the wrong next step.
+    * **No internal symbol reaches the model.** The note used to end with
+      `Verdict code: CHIUSO_REGOLATORE_SETTORIALE`, and production repeated that
+      token to a client. The vocabulary of the pipeline is not the vocabulary of
+      an answer — the page has held that line since 2026-07-25
+      (`kbli-status-labels.ts::INTERNAL_ENUM_LABELS`); this was the surface that
+      had not. The symbol still goes to the log, where it belongs.
+
+    NOT handled here, and measured rather than assumed: an activity that is
+    nationally closed and carries NO Bali verdict at all. Today that set is
+    empty (0 of 1,559), and widening the silence-on-absence contract to cover a
+    population of zero would trade a proven innocence property for nothing.
     """
     if result.bali_blocked is None:
         return ""
+
+    national = _national_closure_basis(result)
+    # Coerce BEFORE `.strip()`, not after: `(42 or "").strip()` raises, and that
+    # ordering bug predates this change — it has been one malformed payload away
+    # from a 500 since the field was added.
+    reason = _speak_internal_symbols(result.bali_reason or "").strip()
+
     if not result.bali_blocked:
+        if national:
+            # 79122 today, and the shape is what matters: the moratorium does not
+            # reach it, so the old text said "NOT blocked" and stopped — a
+            # sentence whose only reading is "go ahead" on an activity closed to
+            # foreign capital outright. "Not blocked in Bali" is not permission.
+            return (
+                "NOT blocked by the Bali provincial moratorium — but this activity is "
+                "closed to a foreign-owned company (PT PMA) at the NATIONAL level "
+                f"({national}), so the absence of a Bali block is NOT permission. You "
+                "MUST NOT present it as registrable by a PT PMA."
+            )
         return (
             "BALI: this activity is NOT blocked for a PT PMA by the Bali provincial "
             "moratorium. National ownership rules still apply separately."
         )
-    reason = (result.bali_reason or "").strip()
+
+    if national:
+        note = (
+            "CLOSED TO A FOREIGN-OWNED COMPANY (PT PMA) — NATIONALLY, not only in Bali. "
+            f"The closure is {national}, so it applies everywhere in Indonesia: "
+            "registering the activity in another province does NOT change the answer, "
+            "and there is no Jakarta route around it."
+        )
+        if reason:
+            note = f"{note} Stated cause: {reason}"
+        return (
+            f"{note} You MUST say a PT PMA cannot register this activity anywhere in "
+            "Indonesia and give this cause. Do NOT describe it as a Bali-only "
+            "restriction and do NOT offer another province as an alternative."
+        )
+
     note = (
         "BALI — BLOCKED FOR A FOREIGN-OWNED COMPANY (PT PMA). This is a PROVINCIAL "
         "restriction and it is independent of the national PMA status above: an "
-        f"activity can be 100% open nationally and still be unregistrable in Bali. "
-        f"Verdict code: {result.bali_status}."
+        "activity can be 100% open nationally and still be unregistrable in Bali."
     )
     if reason:
         note = f"{note} Stated cause: {reason}"
@@ -431,12 +629,16 @@ async def _generate_kbli_explanation_gemini(
 
 @cached(
     ttl=43200,
-    prefix="kbli_explain_v28",
+    prefix="kbli_explain_v29",
 )  # Cache explanations for 12 hours.
 # v28 (2026-08-03): the Bali provincial verdict now reaches the model. The bump is
 # NOT cosmetic — this cache is 12h deep and keyed on the prefix, so every answer
 # already stored under v27 was generated blind to the Bali block and would keep
 # being served for half a day after the deploy. A cure the cache hides is not live.
+# v29 (2026-08-05): 77 national closures are no longer framed as Bali-provincial,
+# and no internal verdict symbol reaches the model. Same reason for the bump, and
+# it bites harder here: an answer cached under v28 is one that told a client to
+# try another province, and it would keep saying so for 12 hours after deploy.
 async def _generate_kbli_explanation(
     query: str,
     results: list[KBLISearchResult],
@@ -621,14 +823,14 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     },
     "96210": {
         "title": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
-        "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches.",
-        "pma_status": "TERBUKA",
+        "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Pangkas rambut/ barber shop' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha.",
+        "pma_status": "TERBATAS",
         "risk_category": "Rendah",
     },
     "96220": {
         "title": "AKTIVITAS PERAWATAN KECANTIKAN DAN PERAWATAN KECANTIKAN LAINNYA",
-        "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning.",
-        "pma_status": "TERBUKA",
+        "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Salon kecantikan' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha.",
+        "pma_status": "TERBATAS",
         "risk_category": "Verify at OSS",
     },
     "96230": {
@@ -639,8 +841,8 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     },
     "96100": {
         "title": "AKTIVITAS PENCUCIAN DAN PEMBERSIHAN PRODUK TEKSTIL DAN BULU",
-        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service. PMA: TERBUKA (open to foreigners, 100%). Risk level is SCALE-DEPENDENT: Mikro/Kecil/Menengah = Rendah (NIB only); Besar = Tinggi (NIB + Izin required).",
-        "pma_status": "TERBUKA",
+        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Penatu' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha. Risk level is SCALE-DEPENDENT: Mikro/Kecil/Menengah = Rendah (NIB only); Besar = Tinggi (NIB + Izin required).",
+        "pma_status": "TERBATAS",
         "risk_category": "Rendah (Mikro/Kecil/Menengah) — Tinggi (Besar)",
     },
     "96900": {
@@ -1131,6 +1333,12 @@ async def chat_kbli(
                         + "...",
                         score=round(r.get("score", 0.0), 4),
                         pma_status=_payload_value(p, "pma_status", default="Verify at OSS"),
+                        # No default: absence must stay None, never 0% (see the
+                        # field's own comment). This is the ONE constructor that
+                        # fills the Bali verdict itself, so the choke-point
+                        # backfill skips it — the cap has to be taken here or it
+                        # is never taken at all.
+                        pma_max_asing=_payload_value(p, "pma_max_asing"),
                         risk_category=_payload_value(p, "kategori_risiko", default="Verify at OSS"),
                         bali_status=_payload_value(p, "bali_status"),
                         # No default: a missing field must stay None so the note

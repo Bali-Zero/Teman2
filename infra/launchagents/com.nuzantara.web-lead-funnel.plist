@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Web-lead funnel report: how many leads our own surfaces deliver.
+         Weekly, because the number it reports moves on the scale of weeks and
+         a daily digest on a quiet funnel trains the reader to ignore it.
+
+         PRO ONLY. The arrival half of the funnel lives in the Pro's local
+         Postgres (the wa-mirror was deliberately cut off from Fly on
+         2026-05-24, Symbiosis Law 2). Run elsewhere it reports arrivals as
+         UNKNOWN rather than zero, which is correct but useless.
+
+         One-shot cron via StartCalendarInterval — NO KeepAlive (scar W67:
+         one-shot payload + KeepAlive = crash-loop signature).
+         NO inline secrets (scar 2026-04-29): the wrapper sources
+         ~/.nuzantara-secrets.env at runtime. -->
+    <key>Label</key>
+    <string>com.nuzantara.web-lead-funnel</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara-deploy/scripts/web_lead_funnel_report_run.sh</string>
+    </array>
+
+    <!-- Monday 09:00 WITA, after the team is in. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>REPO_ROOT</key>
+        <string>/Users/nuzantara/nuzantara-deploy</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/web-lead-funnel.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/web-lead-funnel.launchd.log</string>
+</dict>
+</plist>

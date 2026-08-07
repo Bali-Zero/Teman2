@@ -749,7 +749,7 @@ build-backend = "setuptools.build_meta"
 - Verify dedup by content_hash
 - Verify DLP quarantine flow
 - Run first real batch
-- Document in `docs/GARUDA_INDEXER_OPS.md`
+- Document in `docs/archive/2026-08-decommissioned/GARUDA_INDEXER_OPS.md`
 
 ### Sprint 5.2 — IG Carousel curator pilot (3-5 days)
 
@@ -808,7 +808,7 @@ _(Same as v1)_
 - [ ] DLP quarantine tested with mock NIK pattern
 - [ ] Telegram CRITICAL alerts wired
 - [ ] First real batch indexed (whatever is in GARUDA/ today)
-- [ ] `docs/GARUDA_INDEXER_OPS.md` runbook
+- [ ] `docs/archive/2026-08-decommissioned/GARUDA_INDEXER_OPS.md` runbook
 
 ---
 

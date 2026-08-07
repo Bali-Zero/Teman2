@@ -188,6 +188,93 @@ def cell_at(line: str, tick_x: int) -> str:
     return _LEADING_NUMBER_RE.sub("", left[:cut].strip(" -\t")).strip(" -\t")
 
 
+# A numbered item in the annex's leftmost column. The annex is not a flat table:
+# an item that ends in a colon is a PARENT bidang usaha whose scope governs the
+# indented rows beneath it, and those rows carry only a bare name.
+#
+#     1   Pertanian tanaman pangan dengan luas kurang dari 25 Ha:
+#            Padi hibrida        01121   V
+#            Jagung              01111   V
+#
+# Reading the child cell alone yields "Jagung" and loses "dengan luas kurang dari
+# 25 Ha" — the words that decide whether the reservation covers the whole KBLI
+# code or only smallholdings. Emitting the child WITHOUT its parent hands every
+# downstream reader an activity whose scope has been silently widened, and no
+# amount of care further down can recover what was never in the row. Measured
+# 2026-08-06 against the vaulted PDF: three parents carry such a qualifier
+# ("... kurang dari 25 Ha", and twice "... teknologi sederhana dan madya").
+# The annex numbers its items in BOTH forms, interleaved and with no pattern:
+# `48.   Jasa Penginapan:` and `49     Aktivitas konsultansi ...` sit two rows
+# apart. Requiring whitespace immediately after the digits saw only the second,
+# which cost twice over: 4 colon-terminated PARENTS were invisible (`Jasa
+# Penginapan:` governs the whole accommodation family — hotels, homestays,
+# villas), and, worse, a dotted item no longer CLOSED the parent above it, so
+# its rows inherited a heading that does not govern them. `10214` (fish
+# processing, item `3.`) was carrying `Pemungutan hasil hutan` — forest
+# harvesting, item 2 — as its parent.
+#
+# Measured on the emitted artifact, both directions, and re-derived independently
+# by a cross-family review of this diff: of the 13 ROWS whose governing parent
+# changes, ZERO lose a restricting parent and ZERO gain one; `parent-qualified`
+# is 19 before and 19 after. So no verdict moved — the defect was live and had
+# not yet bitten. That is the reason to fix it now rather than the reason not to.
+# (An earlier draft of this note said "76 line-positions". That is a different
+# unit — positions inside `governing_headings`, not emitted rows — and it was
+# never re-measured, so it is stated here in the unit the claim is checked in.)
+# Two admitted forms, and they do NOT share a spacing rule. `48.` may be followed
+# by a single space; a bare `49` still demands two, exactly as before. Collapsing
+# both to `\.?\s{1,}` was the first draft and an independent review named the
+# cost: it also admits `"2 body"` under a parent, which closes that parent on a
+# line the annex never numbered. Zero such lines exist in the vaulted PDF today —
+# which is the argument for spending one alternation now rather than discovering
+# it in a re-issue.
+#
+# `(?!\d)` on the heading is the second half of the same care: `1. 500 juta
+# rupiah:` would otherwise become a parent named "500 juta rupiah". No real item
+# heading in this annex begins with a digit — asserted on the artifact, not
+# assumed.
+_NUMBERED_ITEM_RE = re.compile(r"^\s{0,14}\d{1,3}(?:\.\s{1,}|\s{2,})(?!\d)(\S.*?)\s*$")
+
+
+def governing_headings(text: str) -> dict[tuple[int, int], str | None]:
+    """(page, line index) -> the numbered parent heading in force at that line.
+
+    A numbered item ALWAYS closes the previous parent: one that ends in a colon
+    opens a new one, one that does not is a standalone row and leaves the lines
+    after it parentless. Without that reset a parent leaks down the page and
+    adopts rows from the next section — a probe written for this defect did
+    exactly that and reported retail-trade codes as children of a construction
+    heading (W107: the probe that measures a disease can have it).
+
+    THE COLON IS A FORM AND PARENTHOOD IS AN ENTITY, and this rule knowingly
+    judges by the form. `42  Dekorasi yang menggunakan teknologi sederhana dan
+    madya` has no colon and governs `43304`/`43305` all the same, so those two
+    lose their qualifier here. The entity rule was written and MEASURED — "a
+    numbered item carrying no KBLI code of its own is a heading" — and discarded:
+    a standalone row often carries its code on a LATER line, so that rule adopted
+    50 parents where there are 8, and would have moved ~41 rows out of the
+    owner's list on a bad inference. That is the harm this module's own caveat
+    warned about, in the direction it warned about. Eight verified parents beat
+    fifty guessed ones; the miss is declared here and `43304` currently lands in
+    `split-heirs`, where nothing acts on it.
+
+    Second declared limit: a heading that WRAPS across lines contributes only its
+    first line. That truncates a parent's words, it never invents them, so a
+    qualifier can be missed but never fabricated — and `parent_heading` is
+    evidence for a reader, not an automatic verdict.
+    """
+    out: dict[tuple[int, int], str | None] = {}
+    parent: str | None = None
+    for page_no, page in enumerate(text.split("\f"), start=1):
+        for n, line in enumerate(page.splitlines()):
+            m = _NUMBERED_ITEM_RE.match(line)
+            if m:
+                label = m.group(1).rstrip()
+                parent = label[:-1].strip() if label.endswith(":") else None
+            out[(page_no, n)] = parent
+    return out
+
+
 def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> list[int]:
     """Which lines belong to the table row whose tick is on line `i`.
 
@@ -221,7 +308,30 @@ def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> li
 
     span = [i]
     seen_code = has_code(i)
+    # A line between two ticks cannot belong to both rows, and until 2026-08-06
+    # both claimed it: this row walked DOWN over it and the next row walked UP
+    # over it. In this annex the activity sits ABOVE its code+tick line, so the
+    # next row is usually the rightful owner — measured, SEVEN rows had eaten
+    # their neighbour's cell, e.g. `42912` recorded as "pelabuhan bukan perikanan
+    # pelabuhan perikanan", which is its own activity plus the whole of `42913`'s.
+    #
+    # …and a BLANK LINE, which is the annex's own row separator. Without it two
+    # rows both claimed the lines between their ticks — measured, SEVEN rows had
+    # eaten their neighbour's cell, `42912` recorded as "pelabuhan bukan
+    # perikanan pelabuhan perikanan", its own activity plus the whole of
+    # `42913`'s, which then reads as one wider activity than the annex reserves.
+    #
+    # Two narrower rules were tried first and MEASURED before shipping, because
+    # this is the function whose docstring warns that truncating produces a WRONG
+    # bucket rather than a missing one: (a) cede the whole gap whenever the next
+    # row walks upward — killed the fusion and truncated six legitimate wraps
+    # (`42209`, `71102` lost "teknologi sederhana dan madya" off their own tails)
+    # and dropped `41020` entirely; (b) up XOR down — same six casualties, since
+    # the annex really does wrap a cell ACROSS its tick line. Only the blank line
+    # separates rows without cutting a wrap, because it is what the DOCUMENT uses.
     for j in range(i + 1, following):
+        if not lines[j].strip():
+            break
         if _ROW_START_RE.match(lines[j]) or _PAGE_FURNITURE_RE.match(lines[j]):
             break
         if has_code(j):
@@ -231,7 +341,7 @@ def row_line_span(lines: list[str], i: int, ticks: list[int], tick_x: int) -> li
         span.append(j)
     if not cell_at(lines[i], tick_x):
         for j in range(i - 1, previous, -1):
-            if _PAGE_FURNITURE_RE.match(lines[j]):
+            if _PAGE_FURNITURE_RE.match(lines[j]) or not lines[j].strip():
                 break
             span.insert(0, j)
             if _ROW_START_RE.match(lines[j]) or has_code(j):
@@ -244,6 +354,8 @@ def parse(text: str, titles: dict[str, str], known: frozenset[str]) -> dict:
     unresolved: list[dict] = []
     tick_histogram: dict[int, int] = {}
     consumed: set[tuple[int, str]] = set()
+
+    headings = governing_headings(text)
 
     for page_no, page in enumerate(text.split("\f"), start=1):
         lines = page.splitlines()
@@ -276,6 +388,11 @@ def parse(text: str, titles: dict[str, str], known: frozenset[str]) -> dict:
                     "column": column,
                     "page": page_no,
                     "text": activity,
+                    # The parent bidang usaha this row is indented under, or
+                    # None for a row that stands on its own. Emitted for EVERY
+                    # row, not only qualified ones, so a reader can tell "no
+                    # parent" from "parent not looked for".
+                    "parent_heading": headings.get((page_no, i)),
                     "read_from": read_from,
                     # True only when the row's own words independently corroborate the
                     # decoded digits. A row without it is not wrong — it is single-witness.

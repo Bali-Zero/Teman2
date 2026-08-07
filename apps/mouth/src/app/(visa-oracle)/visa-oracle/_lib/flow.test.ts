@@ -1,571 +1,587 @@
 import { describe, expect, it } from "vitest";
+import { CATEGORY_KEYS, getLane, QUESTIONS, type OracleFacts } from "./tree";
 import {
+  INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
   computeNextNode,
+  createInterviewSnapshot,
   flowReducer,
+  getCategoryQuestionIds,
   getTreeSteps,
   initialFlowState,
   isEditableTreeStep,
+  restoreInterviewSnapshot,
   type FlowState,
 } from "./flow";
 
-function step(
+function reduce(
   state: FlowState,
   action: Parameters<typeof flowReducer>[1],
 ): FlowState {
   return flowReducer(state, action);
 }
 
-describe("flow.ts — full happy path", () => {
-  it("walks framing → in_indonesia → category → tourism_duration → review_gate → confirmation → verdict", () => {
+function expectQuestion(state: FlowState, questionId: string): void {
+  expect(state.history[state.history.length - 1]).toEqual({
+    kind: "question",
+    questionId,
+  });
+}
+
+function answer(
+  state: FlowState,
+  questionId: string,
+  value: string,
+): FlowState {
+  expectQuestion(state, questionId);
+  return reduce(state, { type: "ANSWER", questionId, value });
+}
+
+function startOffshore(category?: string): FlowState {
+  let state = initialFlowState("en");
+  state = reduce(state, { type: "ADVANCE" });
+  state = answer(state, "in_indonesia", "no");
+  state = answer(state, "overstay_days", "0");
+  state = answer(state, "nationalities", "IT");
+  state = answer(state, "birth_date", "1990-02-03");
+  if (category) state = answer(state, "category", category);
+  return state;
+}
+
+const CATEGORY_CASES: ReadonlyArray<{
+  category: (typeof CATEGORY_KEYS)[number];
+  branch: readonly [questionId: string, value: string][];
+}> = [
+  {
+    category: "tourism",
+    branch: [
+      ["stay_days", "30"],
+      ["entry_pattern", "SINGLE"],
+    ],
+  },
+  {
+    category: "business",
+    branch: [
+      ["business_activity", "meetings"],
+      ["work_indonesia_compensation", "no"],
+      ["stay_days", "14"],
+      ["entry_pattern", "SINGLE"],
+    ],
+  },
+  {
+    category: "work",
+    branch: [
+      ["work_payer", "yes"],
+      ["work_indonesia_compensation", "yes"],
+      ["work_sponsor_confirmed", "yes"],
+      ["work_role", "specialist"],
+      ["stay_days", "365"],
+    ],
+  },
+  {
+    category: "invest",
+    branch: [
+      ["investment_vehicle", "pt_pma"],
+      ["investment_pt_pma", "yes"],
+      ["investment_capital_idr", "1000000000"],
+      ["investment_paid_up_capital_idr", "500000000"],
+      ["investment_role", "SHAREHOLDER_DIRECTOR"],
+      ["stay_days", "730"],
+    ],
+  },
+  {
+    category: "remote",
+    branch: [
+      ["remote_clients", "foreign"],
+      ["remote_compensation", "no"],
+      ["remote_employer_country", "US"],
+      ["remote_pt_pma", "no"],
+      ["stay_days", "365"],
+    ],
+  },
+  {
+    category: "family",
+    branch: [
+      ["family_relation", "SPOUSE"],
+      ["marital_status", "MARRIED"],
+      ["family_sponsor_nationalities", "ID"],
+      ["family_marriage_registered", "yes"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "365"],
+    ],
+  },
+  {
+    category: "retirement",
+    branch: [
+      ["retirement_basis", "passive_income"],
+      ["secondhome_passive_income_usd", "3000"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "365"],
+    ],
+  },
+  {
+    category: "study",
+    branch: [
+      ["study_level", "POSTGRADUATE"],
+      ["study_admission_confirmed", "yes"],
+      ["study_sponsor_confirmed", "yes"],
+      ["stay_days", "365"],
+    ],
+  },
+  {
+    category: "diaspora",
+    branch: [
+      ["diaspora_connection", "former_wni"],
+      ["diaspora_documents", "yes"],
+      ["stay_days", "365"],
+    ],
+  },
+  {
+    category: "other",
+    branch: [
+      ["other_purpose", "medical"],
+      ["other_paid_activity", "no"],
+      ["stay_days", "30"],
+      ["entry_pattern", "SINGLE"],
+    ],
+  },
+];
+
+describe("the ten behavioral interview branches", () => {
+  it.each(CATEGORY_CASES)(
+    "$category reaches review and confirmation without a dead end",
+    ({ category, branch }) => {
+      let state = startOffshore(category);
+      state = answer(state, "trip_scope", "single");
+      for (const [questionId, value] of branch) {
+        state = answer(state, questionId, value);
+      }
+      expectQuestion(state, "review_gate");
+      state = answer(state, "review_gate", "none");
+      expect(state.history[state.history.length - 1]).toEqual({
+        kind: "confirmation",
+      });
+      state = reduce(state, { type: "ADVANCE" });
+      expect(state.history[state.history.length - 1]).toEqual({
+        kind: "verdict",
+      });
+    },
+  );
+
+  it("covers exactly the ten category keys", () => {
+    expect(CATEGORY_CASES.map(({ category }) => category)).toEqual(
+      CATEGORY_KEYS,
+    );
+  });
+
+  it("uses only registered questions in every branch", () => {
+    for (const { category, branch } of CATEGORY_CASES) {
+      const facts = Object.fromEntries(branch) as OracleFacts;
+      const ids = getCategoryQuestionIds({ ...facts, category });
+      expect(ids.every((id) => QUESTIONS[id] !== undefined)).toBe(true);
+    }
+  });
+});
+
+describe("retirement evidence branches", () => {
+  it.each([
+    [
+      "bank_deposit",
+      [
+        "retirement_basis",
+        "secondhome_deposit_usd",
+        "secondhome_state_bank",
+        "secondhome_own_name",
+        "secondhome_passive_income_usd",
+        "stay_days",
+      ],
+    ],
+    [
+      "passive_income",
+      [
+        "retirement_basis",
+        "secondhome_passive_income_usd",
+        "family_sponsor_confirmed",
+        "stay_days",
+      ],
+    ],
+    [
+      "family_sponsor",
+      [
+        "retirement_basis",
+        "secondhome_passive_income_usd",
+        "family_sponsor_confirmed",
+        "stay_days",
+      ],
+    ],
+  ] as const)(
+    "%s collects every fact needed before review",
+    (retirementBasis, expectedQuestionIds) => {
+      expect(
+        getCategoryQuestionIds({
+          category: "retirement",
+          retirement_basis: retirementBasis,
+        }),
+      ).toEqual(expectedQuestionIds);
+    },
+  );
+
+  it.each([
+    {
+      basis: "bank_deposit",
+      answers: [
+        ["secondhome_deposit_usd", "100000"],
+        ["secondhome_state_bank", "yes"],
+        ["secondhome_own_name", "yes"],
+        ["secondhome_passive_income_usd", "3000"],
+        ["stay_days", "365"],
+      ],
+    },
+    {
+      basis: "passive_income",
+      answers: [
+        ["secondhome_passive_income_usd", "3000"],
+        ["family_sponsor_confirmed", "yes"],
+        ["stay_days", "365"],
+      ],
+    },
+    {
+      basis: "family_sponsor",
+      answers: [
+        ["secondhome_passive_income_usd", "3000"],
+        ["family_sponsor_confirmed", "yes"],
+        ["stay_days", "365"],
+      ],
+    },
+  ] as const)(
+    "$basis reaches the review gate without a dead end",
+    ({ basis, answers }) => {
+      let state = startOffshore("retirement");
+      state = answer(state, "trip_scope", "single");
+      state = answer(state, "retirement_basis", basis);
+      for (const [questionId, value] of answers) {
+        state = answer(state, questionId, value);
+      }
+      expectQuestion(state, "review_gate");
+    },
+  );
+
+  it("prunes deposit evidence when the retirement basis changes", () => {
+    let state = startOffshore("retirement");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "retirement_basis", "bank_deposit");
+    state = answer(state, "secondhome_deposit_usd", "100000");
+    state = answer(state, "secondhome_state_bank", "yes");
+    state = answer(state, "secondhome_own_name", "yes");
+    state = answer(state, "secondhome_passive_income_usd", "3000");
+
+    state = reduce(state, {
+      type: "EDIT",
+      questionId: "retirement_basis",
+    });
+    state = answer(state, "retirement_basis", "family_sponsor");
+
+    expect(state.facts.secondhome_deposit_usd).toBeUndefined();
+    expect(state.facts.secondhome_state_bank).toBeUndefined();
+    expect(state.facts.secondhome_own_name).toBeUndefined();
+    expect(state.facts.secondhome_passive_income_usd).toBeUndefined();
+    expectQuestion(state, "secondhome_passive_income_usd");
+  });
+});
+
+describe("onshore/offshore canonical fact collection", () => {
+  it("collects exact onshore status, active overstay and application channel", () => {
     let state = initialFlowState("en");
-    expect(state.history).toEqual([{ kind: "framing" }]);
-
-    state = step(state, { type: "ADVANCE" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "in_indonesia",
-    });
-
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "category",
-    });
-
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "tourism_duration",
-    });
-
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "tourism_duration",
-      value: "short",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "review_gate",
-    });
-
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "review_gate",
-      value: "none",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "confirmation",
-    });
-
-    state = step(state, { type: "ADVANCE" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "verdict",
-    });
-
-    expect(state.facts).toEqual({
-      in_indonesia: "no",
-      category: "tourism",
-      tourism_duration: "short",
-      review_gate: "none",
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "current_status_code", "C1");
+    state = answer(state, "overstay_days", "0");
+    state = answer(state, "wants_onshore_conversion", "yes");
+    state = answer(state, "application_channel", "ONSHORE_CONVERSION");
+    expectQuestion(state, "nationalities");
+    expect(state.facts).toMatchObject({
+      current_status_code: "C1",
+      overstay_days: "0",
+      wants_onshore_conversion: "yes",
+      application_channel: "ONSHORE_CONVERSION",
     });
   });
 
-  it("onshore + urgent date skips straight to review_gate (design doc §4, no algorithmic routing)", () => {
-    const today = new Date(Date.UTC(2026, 6, 17));
+  it("asks active overstay offshore but skips onshore-only status fields", () => {
     let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "yes",
-      today,
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "permit_expiry",
-    });
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "no");
+    expectQuestion(state, "overstay_days");
+    state = answer(state, "overstay_days", "0");
+    expectQuestion(state, "nationalities");
+    expect(state.facts.current_status_code).toBeUndefined();
+    expect(state.facts.application_channel).toBeUndefined();
+  });
 
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "permit_expiry",
-      value: "2026-07-18",
-      today,
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
+  it("records unknown current status without substituting a code", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    expectQuestion(state, "current_status_code");
+    state = reduce(state, { type: "SKIP", questionId: "current_status_code" });
+    expect(state.facts.current_status_code).toBe("unsure");
+    expectQuestion(state, "overstay_days");
+  });
+
+  it.each([
+    [0, "urgent"],
+    [1, "urgent"],
+    [2, "urgent"],
+    [60, "extend"],
+    [61, "planning"],
+  ] as const)("keeps %i permit days in the %s display lane", (days, lane) => {
+    const today = new Date(2026, 6, 17, 12);
+    const expiry = new Date(2026, 6, 17 + days, 12);
+    const iso = `${expiry.getFullYear()}-${String(expiry.getMonth() + 1).padStart(2, "0")}-${String(expiry.getDate()).padStart(2, "0")}`;
+    expect(getLane({ in_indonesia: "yes", permit_expiry: iso }, today)).toBe(
+      lane,
+    );
+  });
+
+  it("never derives active overstay days from an expired permit date", () => {
+    const next = computeNextNode(
+      { kind: "question", questionId: "permit_expiry" },
+      { in_indonesia: "yes", permit_expiry: "2020-01-01" },
+    );
+    expect(next).toEqual({
       kind: "question",
-      questionId: "review_gate",
+      questionId: "current_status_code",
     });
   });
 });
 
-describe("flow.ts — back navigation", () => {
-  it("restores the previous node, keeping facts still reachable on the truncated history", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "work",
-    });
-    const beforeBack = state;
-
-    state = step(state, { type: "BACK" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "category",
-    });
-    // "category" is still on the truncated history, so its fact survives —
-    // unaffected by finding #1's pruning (that only drops facts for
-    // questions no longer reachable from the current history).
-    expect(state.facts).toEqual(beforeBack.facts);
-
-    state = step(state, { type: "BACK" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "in_indonesia",
-    });
-  });
-
-  it("is a no-op at the framing root", () => {
-    const state = initialFlowState("en");
-    const after = step(state, { type: "BACK" });
-    expect(after).toEqual(state);
-  });
-});
-
-describe("flow.ts — fact pruning across an abandoned branch (finding #1, adversarial review 2026-07-17)", () => {
-  it("drops facts from a branch abandoned via Back once a different branch is chosen", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "work",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "work_payer",
-      value: "yes",
-    });
+describe("editing, pruning and branch projection", () => {
+  it("editing category removes stale descendants from the abandoned branch", () => {
+    let state = startOffshore("work");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "work_payer", "yes");
+    state = answer(state, "work_indonesia_compensation", "yes");
     expect(state.facts.work_payer).toBe("yes");
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "review_gate",
-    });
 
-    // Back past review_gate, back past work_payer, to category — then take
-    // a DIFFERENT branch that never asks work_payer.
-    state = step(state, { type: "BACK" });
-    state = step(state, { type: "BACK" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "category",
-    });
-
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "tourism_duration",
-    });
-
-    // Before finding #1's fix, `work_payer: "yes"` from the abandoned
-    // "work" branch would still be sitting in `state.facts` here, silently
-    // feeding `mock-engine.ts`'s candidate matching and completeness check
-    // even though the user is now on the tourism branch and was never
-    // asked work_payer again.
+    state = reduce(state, { type: "EDIT", questionId: "category" });
+    state = answer(state, "category", "tourism");
     expect(state.facts.work_payer).toBeUndefined();
+    expect(state.facts.work_indonesia_compensation).toBeUndefined();
+    expectQuestion(state, "trip_scope");
+  });
+
+  it("editing in_indonesia prunes every onshore descendant", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "current_status_code", "C1");
+    state = answer(state, "overstay_days", "0");
+    state = answer(state, "wants_onshore_conversion", "yes");
+    state = answer(state, "application_channel", "STATUS_BRIDGING");
+
+    state = reduce(state, { type: "EDIT", questionId: "in_indonesia" });
+    state = answer(state, "in_indonesia", "no");
+    expect(state.facts.permit_expiry).toBeUndefined();
+    expect(state.facts.current_status_code).toBeUndefined();
+    expect(state.facts.application_channel).toBeUndefined();
+    expectQuestion(state, "overstay_days");
+  });
+
+  it("back is a real history step and prunes the removed answer", () => {
+    let state = startOffshore("tourism");
+    expectQuestion(state, "trip_scope");
+    state = reduce(state, { type: "BACK" });
+    expectQuestion(state, "category");
     expect(state.facts.category).toBe("tourism");
+    state = reduce(state, { type: "BACK" });
+    expectQuestion(state, "birth_date");
+    expect(state.facts.category).toBeUndefined();
   });
 
-  it("also prunes on EDIT (confirmation screen jump-back), not only BACK", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "remote",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "remote_clients",
-      value: "foreign",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "remote_income",
-      value: "above",
-    });
-    expect(state.facts.remote_clients).toBe("foreign");
-    expect(state.facts.remote_income).toBe("above");
-
-    state = step(state, { type: "EDIT", questionId: "category" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-
-    expect(state.facts.remote_clients).toBeUndefined();
-    expect(state.facts.remote_income).toBeUndefined();
-  });
-});
-
-describe("flow.ts — edit from confirmation", () => {
-  it("jumps back to the target question, truncating the stack", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "work",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "work_payer",
-      value: "yes",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "review_gate",
-      value: "none",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "confirmation",
-    });
-
-    state = step(state, { type: "EDIT", questionId: "category" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "category",
-    });
-    // facts from the edited-past answer are retained until re-answered
-    expect(state.facts.category).toBe("work");
-
-    // re-answering re-derives the forward path from the new facts
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "tourism_duration",
-    });
-  });
-});
-
-describe("flow.ts — SELECT_CATEGORY and REVIEW_ANSWERS (finding #15)", () => {
-  it("SELECT_CATEGORY jumps back to category, re-answers it, and prunes the abandoned branch's facts", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "work",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "work_payer",
-      value: "no",
-    });
-    expect(state.facts.work_payer).toBe("no");
-
-    state = step(state, { type: "SELECT_CATEGORY", category: "remote" });
-    expect(state.facts.category).toBe("remote");
-    expect(state.facts.work_payer).toBeUndefined();
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "remote_clients",
-    });
+  it("category leaves describe interview branches, with one selected", () => {
+    const before = getTreeSteps(
+      { kind: "question", questionId: "category" },
+      { in_indonesia: "no", overstay_days: "0" },
+    );
+    expect(
+      before.categoryLeaves?.every((leaf) => leaf.status === "pending"),
+    ).toBe(true);
+    const after = getTreeSteps(
+      { kind: "question", questionId: "trip_scope" },
+      { in_indonesia: "no", overstay_days: "0", category: "study" },
+    );
+    expect(
+      after.categoryLeaves?.filter((leaf) => leaf.status === "done"),
+    ).toEqual([{ key: "study", status: "done" }]);
   });
 
-  it("REVIEW_ANSWERS jumps back to confirmation without discarding facts ahead of it", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "tourism_duration",
-      value: "short",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "review_gate",
-      value: "none",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "confirmation",
-    });
-    state = step(state, { type: "ADVANCE" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "verdict",
-    });
-
-    state = step(state, { type: "REVIEW_ANSWERS" });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "confirmation",
-    });
-    expect(state.facts.tourism_duration).toBe("short");
-  });
-});
-
-describe("flow.ts — permit_expiry NotSure short-circuits to review (finding #7)", () => {
-  it("routes straight to review_gate on an unsure compliance deadline, never guessing a lane", () => {
-    const current = { kind: "question" as const, questionId: "permit_expiry" };
-    const next = computeNextNode(current, {
-      in_indonesia: "yes",
-      permit_expiry: "unsure",
-    });
-    expect(next).toEqual({ kind: "question", questionId: "review_gate" });
-  });
-});
-
-describe("flow.ts — language switch preserves facts", () => {
-  it("SET_LANGUAGE never touches history or facts", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "work",
-    });
-    const beforeSwitch = { history: state.history, facts: state.facts };
-
-    state = step(state, { type: "SET_LANGUAGE", language: "id" });
-    expect(state.language).toBe("id");
-    expect(state.history).toEqual(beforeSwitch.history);
-    expect(state.facts).toEqual(beforeSwitch.facts);
-  });
-});
-
-describe("flow.ts — computeNextNode determinism", () => {
-  it("is a pure function of (current, facts, today)", () => {
-    const current = { kind: "question" as const, questionId: "category" };
-    const facts = { category: "remote" };
-    const a = computeNextNode(current, facts);
-    const b = computeNextNode(current, { ...facts });
-    expect(a).toEqual(b);
-    expect(a).toEqual({ kind: "question", questionId: "remote_clients" });
-  });
-});
-
-describe("flow.ts — getTreeSteps", () => {
-  it("marks the trunk done/current/pending and fans out category leaves once reached", () => {
-    const current = { kind: "question" as const, questionId: "category" };
-    const facts = { in_indonesia: "no" };
-    const { trunk, categoryLeaves } = getTreeSteps(current, facts);
-
-    const categoryStep = trunk.find((s) => s.id === "category");
-    expect(categoryStep?.status).toBe("current");
-    const framingStep = trunk.find((s) => s.id === "framing");
-    expect(framingStep?.status).toBe("done");
-
-    expect(categoryLeaves).not.toBeNull();
-    expect(categoryLeaves?.length).toBe(10);
-    expect(categoryLeaves?.every((l) => l.status === "pending")).toBe(true);
-  });
-
-  it("prunes every leaf except the chosen category once answered", () => {
-    const current = { kind: "question" as const, questionId: "work_payer" };
-    const facts = { in_indonesia: "no", category: "work" };
-    const { categoryLeaves } = getTreeSteps(current, facts);
-
-    const chosen = categoryLeaves?.find((l) => l.key === "work");
-    expect(chosen?.status).toBe("done");
-    const others = categoryLeaves?.filter((l) => l.key !== "work") ?? [];
-    expect(others.every((l) => l.status === "pruned")).toBe(true);
-  });
-
-  it("returns no category leaves before the category step is reached", () => {
-    const current = { kind: "question" as const, questionId: "in_indonesia" };
-    const { categoryLeaves } = getTreeSteps(current, {});
-    expect(categoryLeaves).toBeNull();
-  });
-});
-
-describe("flow.ts — isEditableTreeStep (tree tap-to-edit, interaction #6)", () => {
-  it("is editable: a completed real question step", () => {
+  it("only completed question steps are editable", () => {
     expect(
       isEditableTreeStep({
-        id: "category",
-        labelI18nKey: "tree.category",
+        id: "nationalities",
+        labelI18nKey: "tree.nationalities",
         status: "done",
       }),
     ).toBe(true);
-  });
-
-  it("is NOT editable: 'framing'/'confirmation'/'verdict' even when marked done — EDIT only truncates to a question node", () => {
-    for (const id of ["framing", "confirmation", "verdict"]) {
-      expect(
-        isEditableTreeStep({ id, labelI18nKey: `tree.${id}`, status: "done" }),
-      ).toBe(false);
-    }
-  });
-
-  it("is NOT editable: a real question step that isn't 'done' yet", () => {
-    for (const status of ["current", "pending", "pruned"] as const) {
-      expect(
-        isEditableTreeStep({
-          id: "category",
-          labelI18nKey: "tree.category",
-          status,
-        }),
-      ).toBe(false);
-    }
-  });
-
-  it("end-to-end: dispatching EDIT on an editable step id truncates history exactly like the confirmation card's Edit button", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-    const { trunk } = getTreeSteps(
-      state.history[state.history.length - 1],
-      state.facts,
-    );
-    const categoryStep = trunk.find((s) => s.id === "category")!;
-    expect(isEditableTreeStep(categoryStep)).toBe(true);
-
-    state = step(state, { type: "EDIT", questionId: categoryStep.id });
-    expect(state.history[state.history.length - 1]).toEqual({
-      kind: "question",
-      questionId: "category",
-    });
+    expect(
+      isEditableTreeStep({
+        id: "confirmation",
+        labelI18nKey: "tree.confirmation",
+        status: "done",
+      }),
+    ).toBe(false);
   });
 });
 
-describe("flow.ts — trunk 'done' status is history-derived, not ordinal (P0 fix, Codex GPT-5.6-terra xhigh adversarial review 2026-07-18)", () => {
-  it("onshore + permit_expiry=unsure skips 'category' via computeNextNode straight to review_gate — the category trunk step is never 'done' and never editable, even though it sits earlier in ordinal order than review_gate", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "yes",
+describe("resume snapshot validation", () => {
+  it("serializes language-neutral facts and restores in a different language", () => {
+    const state = startOffshore("tourism");
+    const snapshot = createInterviewSnapshot(
+      state,
+      new Date("2026-08-03T00:00:00Z"),
+    );
+    expect(JSON.stringify(snapshot)).not.toContain('"en"');
+    const restored = restoreInterviewSnapshot(snapshot, "id");
+    expect(restored?.language).toBe("id");
+    expect(restored?.facts).toEqual(state.facts);
+  });
+
+  it("rejects an unknown schema version", () => {
+    expect(
+      restoreInterviewSnapshot({
+        schemaVersion: INTERVIEW_SNAPSHOT_SCHEMA_VERSION + 1,
+        attempt: 0,
+        history: [{ kind: "framing" }],
+        facts: {},
+        updatedAtIso: "2026-08-03T00:00:00Z",
+      }),
+    ).toBeNull();
+  });
+
+  it("fails closed on a typo status code instead of treating it as KNOWN", () => {
+    const snapshot = {
+      schemaVersion: INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
+      attempt: 0,
+      updatedAtIso: "2026-08-03T00:00:00Z",
+      history: [
+        { kind: "framing" },
+        { kind: "question", questionId: "in_indonesia" },
+        { kind: "question", questionId: "permit_expiry" },
+        { kind: "question", questionId: "current_status_code" },
+        { kind: "question", questionId: "overstay_days" },
+      ],
+      facts: {
+        in_indonesia: "yes",
+        permit_expiry: "2026-09-01",
+        current_status_code: "C22",
+      },
+    };
+    const restored = restoreInterviewSnapshot(snapshot);
+    expect(restored?.history[restored.history.length - 1]).toEqual({
+      kind: "question",
+      questionId: "current_status_code",
     });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "permit_expiry",
-      value: "unsure",
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
+    expect(restored?.facts.current_status_code).toBeUndefined();
+  });
+
+  it("invalidates the legacy composite overstay/blacklist value", () => {
+    let state = startOffshore("tourism");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "stay_days", "30");
+    state = answer(state, "entry_pattern", "SINGLE");
+    const snapshot = createInterviewSnapshot(state);
+    const legacy = {
+      ...snapshot,
+      history: [...snapshot.history, { kind: "confirmation" as const }],
+      facts: {
+        ...snapshot.facts,
+        review_gate: "overstay_or_blacklist",
+      },
+    };
+    const restored = restoreInterviewSnapshot(legacy);
+    expect(restored?.history[restored.history.length - 1]).toEqual({
       kind: "question",
       questionId: "review_gate",
     });
-    expect(state.facts.category).toBeUndefined();
-
-    const current = state.history[state.history.length - 1];
-    const { trunk } = getTreeSteps(current, state.facts);
-    const categoryStep = trunk.find((s) => s.id === "category")!;
-    expect(categoryStep.status).not.toBe("done");
-    expect(isEditableTreeStep(categoryStep)).toBe(false);
+    expect(restored?.facts.review_gate).toBeUndefined();
   });
 
-  it("onshore + urgent permit_expiry (1-2 days remaining) also skips 'category' straight to review_gate — same guarantee", () => {
-    const today = new Date(Date.UTC(2026, 6, 17));
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "yes",
-      today,
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "permit_expiry",
-      value: "2026-07-18", // 1 day remaining from `today` → "urgent" lane
-      today,
-    });
-    expect(state.history[state.history.length - 1]).toEqual({
+  it("rejects non-canonical country-code sets and out-of-range integers", () => {
+    const state = startOffshore();
+    const snapshot = createInterviewSnapshot(state);
+    const badCountry = {
+      ...snapshot,
+      facts: { ...snapshot.facts, nationalities: "US,IT" },
+    };
+    expect(
+      restoreInterviewSnapshot(badCountry)?.facts.nationalities,
+    ).toBeUndefined();
+
+    const unknownCountry = {
+      ...snapshot,
+      facts: { ...snapshot.facts, nationalities: "ZZ" },
+    };
+    expect(
+      restoreInterviewSnapshot(unknownCountry)?.facts.nationalities,
+    ).toBeUndefined();
+
+    const tooManyCountries = {
+      ...snapshot,
+      facts: { ...snapshot.facts, nationalities: "AU,FR,ID,IT,US" },
+    };
+    expect(
+      restoreInterviewSnapshot(tooManyCountries)?.facts.nationalities,
+    ).toBeUndefined();
+
+    const onshoreHistory = [
+      { kind: "framing" as const },
+      { kind: "question" as const, questionId: "in_indonesia" },
+      { kind: "question" as const, questionId: "permit_expiry" },
+      { kind: "question" as const, questionId: "current_status_code" },
+      { kind: "question" as const, questionId: "overstay_days" },
+      { kind: "question" as const, questionId: "wants_onshore_conversion" },
+    ];
+    const badOverstay = {
+      schemaVersion: INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
+      attempt: 0,
+      updatedAtIso: "2026-08-03T00:00:00Z",
+      history: onshoreHistory,
+      facts: {
+        in_indonesia: "yes",
+        permit_expiry: "2026-09-01",
+        current_status_code: "C1",
+        overstay_days: "36501",
+      },
+    };
+    const restored = restoreInterviewSnapshot(badOverstay);
+    expect(restored?.history[restored.history.length - 1]).toEqual({
       kind: "question",
-      questionId: "review_gate",
+      questionId: "overstay_days",
     });
-    expect(state.facts.category).toBeUndefined();
+    expect(restored?.facts.overstay_days).toBeUndefined();
+  });
+});
 
-    const current = state.history[state.history.length - 1];
-    const { trunk } = getTreeSteps(current, state.facts);
-    const categoryStep = trunk.find((s) => s.id === "category")!;
-    expect(categoryStep.status).not.toBe("done");
-    expect(isEditableTreeStep(categoryStep)).toBe(false);
+describe("attempt and verdict navigation", () => {
+  it("increments attempt only on a true restart", () => {
+    let state = startOffshore("tourism");
+    const attempt = state.attempt;
+    state = reduce(state, { type: "EDIT", questionId: "category" });
+    expect(state.attempt).toBe(attempt);
+    state = reduce(state, { type: "RESTART" });
+    expect(state.attempt).toBe(attempt + 1);
+    expect(state.facts).toEqual({});
   });
 
-  it("regression guard: a genuinely-answered category step is still 'done' and editable (the fix must not over-correct into never-editable)", () => {
-    let state = initialFlowState("en");
-    state = step(state, { type: "ADVANCE" });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "in_indonesia",
-      value: "no",
-    });
-    state = step(state, {
-      type: "ANSWER",
-      questionId: "category",
-      value: "tourism",
-    });
-    const current = state.history[state.history.length - 1];
-    const { trunk } = getTreeSteps(current, state.facts);
-    const categoryStep = trunk.find((s) => s.id === "category")!;
-    expect(categoryStep.status).toBe("done");
-    expect(isEditableTreeStep(categoryStep)).toBe(true);
+  it("SELECT_CATEGORY reuses the interview and prunes the prior branch", () => {
+    let state = startOffshore("work");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "work_payer", "yes");
+    state = reduce(state, { type: "SELECT_CATEGORY", category: "study" });
+    expect(state.facts.category).toBe("study");
+    expect(state.facts.work_payer).toBeUndefined();
+    expectQuestion(state, "trip_scope");
   });
 });

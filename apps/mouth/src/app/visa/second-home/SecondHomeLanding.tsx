@@ -7,13 +7,9 @@ import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
 
-// PricingTool SSOT key (bali_zero_official_prices_2026.json). Matches the
-// key registered in PRICING_FALLBACK (components/book/book-data.ts).
+// Exact PricingTool SSOT identity (bali_zero_official_prices_2026.json).
 const E33_LIVE_PRICE_KEY = "E33 Second Home (5 Years)";
-// Static fallback — never blank, never a stranding spinner. Kept identical
-// to PRICING_FALLBACK's entry for this key so the figure never visibly
-// shifts between "live" and "fallback" states.
-const E33_FALLBACK_PRICE = "IDR 39,000,000";
+const E33_LIVE_PRICE_CATEGORY = "kitas_permits";
 
 /**
  * E33 Second Home Visa landing — Fit-Memo funnel (2026-07-24).
@@ -23,7 +19,7 @@ const E33_FALLBACK_PRICE = "IDR 39,000,000";
  *  - Base E33: USD 130,000 own-name deposit at a state-owned (BUMN) bank
  *    OR USD 1,000,000 completed strata-title property. First grant up to
  *    5 years, renewable (10-year cumulative cap, Pasal 113).
- *  - Price: IDR 39,000,000 all-inclusive for the base E33 — NEVER
+ *  - Price: one all-inclusive PricingTool amount for the base E33 — NEVER
  *    decomposed into PNBP + service fee. Dependent add-on is DRAFT, so no
  *    dependent price appears anywhere on this page.
  *  - The fit memo is FREE; there is no "apply now" flow — the only CTA is
@@ -95,13 +91,14 @@ function LanguageSwitcher() {
 
 export function SecondHomeLanding() {
   const { t } = useTranslation();
-  const { price: livePrice } = usePricingData(E33_LIVE_PRICE_KEY);
-  const price = livePrice ?? E33_FALLBACK_PRICE;
+  const { price } = usePricingData(E33_LIVE_PRICE_KEY, E33_LIVE_PRICE_CATEGORY);
 
-  const faqItems = [1, 2, 3, 4, 5, 6].map((n) => ({
-    q: t(`secondHome.faq.q${n}`),
-    a: t(`secondHome.faq.a${n}`),
-  }));
+  const faqItems = [1, 2, 3, 4, 5, 6]
+    .filter((n) => n !== 6 || price !== null)
+    .map((n) => ({
+      q: t(`secondHome.faq.q${n}`),
+      a: t(`secondHome.faq.a${n}`, price ? { price } : undefined),
+    }));
 
   return (
     <div style={{ display: "grid", gap: "var(--space-6, 3rem)" }}>
@@ -134,41 +131,43 @@ export function SecondHomeLanding() {
         >
           {t("secondHome.hero.subtitle")}
         </p>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "var(--space-3, 1rem)",
-            marginTop: "var(--space-2, 0.5rem)",
-          }}
-        >
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              style={{ ...cardStyle, padding: "var(--space-3, 1rem)" }}
-            >
+        {price ? (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "var(--space-3, 1rem)",
+              marginTop: "var(--space-2, 0.5rem)",
+            }}
+          >
+            {[1, 2, 3].map((n) => (
               <div
-                style={{
-                  fontFamily: "var(--font-serif, Georgia, serif)",
-                  fontSize: "1.3rem",
-                  color: "var(--accent-funnel-text, var(--accent-funnel))",
-                }}
+                key={n}
+                style={{ ...cardStyle, padding: "var(--space-3, 1rem)" }}
               >
-                {t(`secondHome.hero.stat${n}v`)}
+                <div
+                  style={{
+                    fontFamily: "var(--font-serif, Georgia, serif)",
+                    fontSize: "1.3rem",
+                    color: "var(--accent-funnel-text, var(--accent-funnel))",
+                  }}
+                >
+                  {t(`secondHome.hero.stat${n}v`)}
+                </div>
+                <div
+                  style={{
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {t(`secondHome.hero.stat${n}l`)}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {t(`secondHome.hero.stat${n}l`)}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       {/* ── TWO QUALIFYING ROUTES ── */}

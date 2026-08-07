@@ -221,8 +221,33 @@ CONFORMANCE_EXIT_CANNOT_VERIFY = 4
 # machine template earns a rebuild. Measured 2026-08-02: all 50 machine-shaped
 # rows in the live divergent set carry exactly these three sections and nothing
 # else, so a row with a hand-added section is refused rather than overwritten.
+#
+# THE CURE COULD NOT RE-CURE ITS OWN OUTPUT (measured 2026-08-05).
+#
+# This set held the three sections of the 2026-02-18 SEED. But `build_content`
+# also writes `## Perizinan` (always) and `## Catatan Verifikasi` (when there is
+# a data note) — sections the seed never had. So every row this tool wrote
+# failed its own `is_machine_template` and was refused on the next run as
+# hand-written prose that must not be destroyed: prose the machine itself wrote.
+# Measured on the live table: of the 55 rows cured on 2026-08-03, **0** were
+# still recognised — all 55 were frozen against any future licensing update.
+#
+# The listed constant is now the seed's three PLUS everything the builder emits,
+# and `test_the_builders_own_output_is_recognised_by_the_recogniser` regenerates
+# real content and asserts the round trip — so adding a section to
+# `build_content` without declaring it here fails CI instead of silently
+# freezing the rows it writes.
 MACHINE_TEMPLATE_SECTIONS = frozenset(
-    {"Informasi Umum", "Deskripsi Kegiatan Usaha", "Investasi Asing (PMA)"}
+    {
+        # the 2026-02-18 seed
+        "Informasi Umum",
+        "Deskripsi Kegiatan Usaha",
+        "Investasi Asing (PMA)",
+        # emitted by build_content — see the round-trip test
+        "Perizinan",
+        "Kewajiban",
+        "Catatan Verifikasi",
+    }
 )
 _SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
 
@@ -319,6 +344,61 @@ def is_machine_template(code: str, content: str | None) -> bool:
         return False
     sections = {m.strip() for m in _SECTION_RE.findall(text)}
     return bool(sections) and sections <= MACHINE_TEMPLATE_SECTIONS
+
+
+def selector_conflict(
+    *, quarantined: bool, licensing_absent: bool, machine_template: bool
+) -> str | None:
+    """Pure. The refusal message when more than one scope selector is on, or None.
+
+    The three selectors choose populations three different WAYS — a canonical
+    marker, a detector's verdict about live state, and the stored text itself —
+    so a union has no single sentence that describes what acted, and the run
+    report is the only record of a write to a client-facing table. They also
+    carry OPPOSITE duties: the quarantine scope deliberately destroys stored
+    content (it is fabricated by definition) while the table scope refuses to.
+    Silently letting one win is how a run destroys prose under a flag the
+    operator thought meant something narrower.
+
+    Pure and out here because the refusal lives in `main`, which no test can
+    execute (it opens a real connection) — inline, a mutation disabling the
+    check survived the whole suite.
+    """
+    chosen = [
+        name
+        for name, on in (
+            ("--all-quarantined", quarantined),
+            ("--all-licensing-absent", licensing_absent),
+            ("--all-machine-template", machine_template),
+        )
+        if on
+    ]
+    if len(chosen) < 2:
+        return None
+    return (
+        f"{' and '.join(chosen)} select DIFFERENT populations DIFFERENT ways (marker vs detector "
+        "state vs stored text) — refusing to union them, because the run report could no longer "
+        "say which scope acted. Run them separately."
+    )
+
+
+def select_machine_template_rows(
+    codes: list[str], table_rows: dict[str, dict]
+) -> tuple[list[str], int]:
+    """Pure. The `--all-machine-template` population: of the codes queried, the
+    rows the table actually holds, narrowed to the ones whose STORED TEXT is a
+    machine seed. Returns (kept, how many were present) so the caller can print
+    N of M rather than a bare N (W97).
+
+    It lives out here, and `main` does nothing but call it, on purpose: while it
+    was three lines inlined in `main` a mutation that replaced the predicate with
+    `True` — rebuild every row present, including 316 pieces of hand-written
+    editorial prose — SURVIVED the whole suite, because the test re-implemented
+    the filter instead of calling it. A decision that only exists inside an
+    un-runnable function is a decision nothing tests.
+    """
+    present = [c for c in codes if c in table_rows]
+    return [c for c in present if is_machine_template(c, table_rows[c]["content"])], len(present)
 
 
 def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str | None:
@@ -458,6 +538,93 @@ def _render_per_skala_entry(entry: dict) -> str:
     )
 
 
+# The extraction carries markup on ~1.8% of obligation strings (1,524 of 86,241
+# requirement+obligation entries, measured 2026-08-05). Stripped, never
+# rendered: this text is read by an LLM and spoken to a client, and `<strong>`
+# is not a fact.
+_HTML_TAG_RE = re.compile(r"<[a-zA-Z/][^>]*>")
+
+# Beyond this, the obligation block would dominate the document it is part of.
+# Measured on canonical: 1,490 of 1,559 records (95.6%) fit whole; 69 do not,
+# and those say so IN THE TEXT rather than being quietly cut (W97 — a silent
+# truncation reads downstream as "this is everything").
+KEWAJIBAN_BLOCK_MAX_CHARS = 8000
+
+
+def _scale_label(entry: dict) -> str:
+    label = _join(entry.get("skala_usaha"))
+    scope = entry.get("scope_uraian")
+    return f"{label} ({scope})" if scope else label
+
+
+def build_kewajiban_section(record: dict) -> list[str]:
+    """The statutory obligations, grouped by the scales that share them.
+
+    WHY THIS EXISTS (measured on canonical 2026-08-05, 9,095 per-scale rows):
+
+        perizinan    non-empty in     17 rows  (0.19%)
+        persyaratan  non-empty in  5,369 rows  (59%)
+        kewajiban    non-empty in  8,951 rows  (98%)
+
+    `## Perizinan` renders `perizinan` and nothing else — the ONE field that is
+    empty 99.8% of the time — so the channel's answer about what a business must
+    actually do was `Perizinan: N/A` for practically the whole catalogue, while
+    the field carrying the real obligations was dropped. On `96230` (a day spa)
+    canonical holds "Memiliki Sertifikat Standar Usaha Pariwisata" and "Memiliki
+    Sertifikat Laik Sehat (SLS)" — the SLHS itself — and the channel was telling
+    clients the requirements were "still pending". The WEBSITE already renders
+    them (`balizero.com/kbli/96230` prints "Laik Sehat"), so this is the same
+    shape as the rest of this lane: the page tells the truth, the channel does not.
+
+    GROUPED, not per-scale-repeated, because the same obligation is usually
+    carried by every scale: rendering it once per row costs 3.5M characters
+    catalogue-wide against 1.1M grouped, and a client does not need "Sertifikat
+    Laik Sehat" four times. The scales are NAMED on each group, because 912 of
+    1,341 records genuinely differ by scale — collapsing them to one block would
+    lose which scale an obligation belongs to.
+
+    `persyaratan` is deliberately NOT rendered here: 6% of its entries are
+    multi-line OSS document checklists (max 6,622 chars) whose bounded shape is
+    a separate design question, ledgered rather than guessed at. Stating that is
+    the point — an omission nobody wrote down reads as "there was nothing".
+    """
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for entry in record.get("per_skala") or []:
+        if not isinstance(entry, dict):
+            continue
+        raw = entry.get("kewajiban") or []
+        if not isinstance(raw, list):
+            raw = [raw]
+        cleaned = tuple(
+            text
+            for text in (_HTML_TAG_RE.sub("", str(v)).strip() for v in raw if v)
+            if text
+        )
+        if not cleaned:
+            continue
+        groups.setdefault(cleaned, []).append(_scale_label(entry))
+
+    if not groups:
+        return []
+
+    lines: list[str] = []
+    budget = KEWAJIBAN_BLOCK_MAX_CHARS
+    dropped = 0
+    for obligations, scales in groups.items():
+        bullet = f"- **{', '.join(scales)}**: " + "; ".join(obligations)
+        if len(bullet) > budget and lines:
+            dropped += 1
+            continue
+        budget -= len(bullet)
+        lines.append(bullet)
+    if dropped:
+        lines.append(
+            f"- _({dropped} ulteriori kelompok kewajiban tidak ditampilkan di sini "
+            f"karena panjang — tanyakan skala usaha tertentu untuk rinciannya.)_"
+        )
+    return ["", "## Kewajiban", *lines]
+
+
 def build_perizinan_section(record: dict) -> str:
     """The licensing section — the ONLY place licensing/risk facts can enter
     the cured content. Two branches, both provenance-bound:
@@ -504,6 +671,7 @@ def build_cured_content(code: str, record: dict) -> str:
     if pma_nota:
         lines.append(f"- Catatan PMA: {pma_nota}")
     lines += ["", "## Perizinan", build_perizinan_section(record)]
+    lines += build_kewajiban_section(record)
     if data_note:
         lines += ["", "## Catatan Verifikasi", data_note]
     return "\n".join(lines).strip() + "\n"
@@ -648,6 +816,18 @@ async def main() -> int | None:
         "1,423 rows no --only list ever named. Refuses if the detector cannot verify.",
     )
     ap.add_argument(
+        "--all-machine-template",
+        action="store_true",
+        help="rebuild every row the table itself shows to be a machine-seed document, i.e. every "
+        "row `is_machine_template` accepts (299 of 1,563 measured 2026-08-05). TABLE-selected: "
+        "the population is a property of the stored text, not of a marker or a detector, so this "
+        "is the only selector that can DELIVER a change to the builder — the other three each "
+        "answer a narrower question and together they reach a few dozen rows. Lossless by "
+        "construction: a machine-seed row is regenerated from the same canonical fields it was "
+        "built from. The other 1,264 rows keep their hand-written prose and are named, not "
+        "silently skipped.",
+    )
+    ap.add_argument(
         "--conformance-script",
         type=Path,
         default=CONFORMANCE_SCRIPT,
@@ -683,15 +863,25 @@ async def main() -> int | None:
     dataset = await load_dataset(args.dataset)
 
     canonical_rows_by_code: dict[str, int] = {}
-    if args.all_quarantined and args.all_licensing_absent:
-        logger.error(
-            "--all-quarantined and --all-licensing-absent are two DIFFERENT populations selected "
-            "two different ways (marker vs state) — refusing to union them, because the run "
-            "report could no longer say which scope acted. Run them separately."
-        )
+    conflict = selector_conflict(
+        quarantined=args.all_quarantined,
+        licensing_absent=args.all_licensing_absent,
+        machine_template=args.all_machine_template,
+    )
+    if conflict:
+        logger.error("%s", conflict)
         return
 
-    if args.all_quarantined:
+    if args.all_machine_template:
+        # Every code the canonical carries. The table-shaped narrowing happens
+        # below, after the rows are read — the predicate is a property of the
+        # STORED TEXT, so it cannot be evaluated before the fetch, and it is the
+        # SAME `rebuild_reason` the other gate calls rather than a second copy
+        # of it (two predicates for one decision is how they start disagreeing).
+        codes = [str(r.get("kode_kbli_2025")) for r in dataset if r.get("kode_kbli_2025")]
+        if args.only:
+            logger.warning("--only ignored: --all-machine-template takes precedence")
+    elif args.all_quarantined:
         codes = quarantined_codes(dataset)
         if args.only:
             logger.warning("--only ignored: --all-quarantined takes precedence")
@@ -756,7 +946,28 @@ async def main() -> int | None:
         # revoked regulation), so "preserve what a human wrote" would preserve
         # exactly what the cure exists to destroy. Same code, opposite duty,
         # decided by which selector chose the row.
-        if args.all_licensing_absent:
+        if args.all_machine_template:
+            # Table-selected: keep ONLY rows whose stored text is a machine seed.
+            # `contradicted-licensing-claim` is deliberately NOT admitted here —
+            # that reason needs the detector's per-code `canonical_rows`, which
+            # this path does not have, and inventing a second count for it is
+            # exactly the drift W105 describes. A broad rebuild must be the
+            # lossless case and nothing else.
+            keep, n_present = select_machine_template_rows(codes, table_rows)
+            logger.info(
+                "table-selected scope: %d machine-seed row(s) of %d present in the table "
+                "(%d canonical codes queried); the other %d keep hand-written prose and are NOT "
+                "rebuilt — closing them needs prose re-authored around the new rows, not a script",
+                len(keep),
+                n_present,
+                len(codes),
+                n_present - len(keep),
+            )
+            codes = keep
+            if not codes:
+                logger.warning("no machine-seed row in the table — nothing to do")
+                return
+        elif args.all_licensing_absent:
             keep, refused = [], []
             for code in codes:
                 row = table_rows.get(code)

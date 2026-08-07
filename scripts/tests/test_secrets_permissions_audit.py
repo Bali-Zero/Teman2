@@ -18,7 +18,21 @@ import pytest
 _MODULE_PATH = Path(__file__).parents[1] / "secrets_permissions_audit.py"
 
 
-def _load_module() -> ModuleType:
+def _load_module(open_chain: bool = True) -> ModuleType:
+    """Load the auditor.
+
+    `open_chain=True` (the default) declares that every directory above the
+    file under test permits traversal. That is not decoration: macOS puts
+    pytest's `tmp_path` under a 0700 `/var/folders/.../T`, so a file written
+    there is unreachable BY CONSTRUCTION and `scan()` rightly ignores it.
+    Tests about name matching, mode bits, depth caps or output shape are not
+    tests about reachability — they say so here, rather than letting the
+    machine's own filesystem quietly decide their result (which would make
+    them pass in Linux CI and fail on every developer's Mac).
+
+    The reachability tests themselves pass `open_chain=False` and exercise
+    the real function.
+    """
     spec = importlib.util.spec_from_file_location(
         "secrets_permissions_audit", _MODULE_PATH
     )
@@ -26,6 +40,8 @@ def _load_module() -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    if open_chain:
+        module.reachable_by = lambda path, cache=None: (True, True)
     return module
 
 
@@ -308,3 +324,205 @@ def test_non_blind_clean_scan_exits_0(tmp_path, capsys):
     payload = _json.loads(capsys.readouterr().out)
     assert payload["blind"] is False
     assert payload["files_traversed"] >= 1
+
+
+# --------------------------------------------------------------------------
+# Effective reachability (2026-08-06): the mode says who MAY read, the
+# directory chain says who can get there. Both must hold for exposure.
+#
+# These tests declare the chain instead of inheriting the machine's, on
+# purpose: on macOS `/var/folders/.../T` is 0700, so anything written under
+# pytest's tmp_path is unreachable by construction. A test built on it would
+# pass its innocence case for a reason that has nothing to do with the code,
+# and fail its guilt case on every developer machine.
+# --------------------------------------------------------------------------
+
+
+def _chain(module: ModuleType, monkeypatch: pytest.MonkeyPatch, table: dict) -> None:
+    """Declare (group_x, other_x) per directory; anything absent is 0755."""
+    monkeypatch.setattr(
+        module,
+        "_dir_traversal",
+        lambda d, cache=None, _t=table: _t.get(d, (True, True)),
+    )
+
+
+def test_one_tight_directory_anywhere_in_the_chain_closes_the_path() -> None:
+    """INNOCENCE: the walk must go all the way up, not one level."""
+    module = _load_module(open_chain=False)
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        # The file's own directory is wide open; its GRANDparent is not.
+        _chain(module, monkeypatch, {"/a": (False, False)})
+        monkeypatch.setattr(Path, "resolve", lambda self: self)
+        group, other = module.reachable_by(Path("/a/b/c/creds.env"))
+    finally:
+        monkeypatch.undo()
+
+    assert (group, other) == (False, False)
+
+
+def test_a_fully_permissive_chain_stays_reachable() -> None:
+    """GUILT: without this the innocence test above could pass vacuously."""
+    module = _load_module(open_chain=False)
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        _chain(module, monkeypatch, {})
+        monkeypatch.setattr(Path, "resolve", lambda self: self)
+        group, other = module.reachable_by(Path("/a/b/c/creds.env"))
+    finally:
+        monkeypatch.undo()
+
+    assert (group, other) == (True, True)
+
+
+def test_group_and_other_are_judged_separately() -> None:
+    """A chain can admit the group and refuse everyone else."""
+    module = _load_module(open_chain=False)
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        _chain(module, monkeypatch, {"/a": (True, False)})
+        monkeypatch.setattr(Path, "resolve", lambda self: self)
+        group, other = module.reachable_by(Path("/a/b/creds.env"))
+    finally:
+        monkeypatch.undo()
+
+    assert group is True
+    assert other is False
+
+
+def test_unstattable_directory_is_treated_as_reachable() -> None:
+    """FAIL-CLOSED: cannot-verify is not clean (W106b).
+
+    A guard that answers 'unreachable' when it simply could not look would
+    absolve exactly the file it exists to catch.
+    """
+    module = _load_module(open_chain=False)
+
+    assert module._dir_traversal("/definitely/not/a/real/directory/xyzzy") == (
+        True,
+        True,
+    )
+
+
+def test_scan_skips_a_readable_file_that_nobody_can_reach(tmp_path: Path) -> None:
+    """INNOCENCE, end to end: 0644 under an unreachable chain is not a finding.
+
+    This is the class that made every fleet run report the same documentation
+    files forever, which is how a guard stops being read.
+    """
+    module = _load_module()
+    secret = tmp_path / "credentials.env"
+    secret.write_text("x")
+    secret.chmod(0o644)
+
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        monkeypatch.setattr(module, "reachable_by", lambda p, cache=None: (False, False))
+        findings = module.scan([tmp_path])
+    finally:
+        monkeypatch.undo()
+
+    assert findings == []
+
+
+def test_a_symlinked_root_is_audited_not_silently_dropped(tmp_path: Path) -> None:
+    """GUILT: the caller NAMED this root; auditing nothing is not 'clean'.
+
+    Live case that found this: the memory directory every runbook cites,
+    `~/.claude/projects/<project>/memory`, is reached through two symlinks.
+    Auditing it returned count 0, roots_existing 0, exit 0 — a clean verdict
+    over zero files, with the blind-scan guard unable to fire because it
+    requires at least one root to exist.
+    """
+    module = _load_module()
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    secret = real_dir / "creds.env"
+    secret.write_text("x")
+    secret.chmod(0o644)
+    link = tmp_path / "link"
+    link.symlink_to(real_dir)
+
+    stats: dict = {}
+    findings = module.scan([link], stats=stats)
+
+    assert [f.path.name for f in findings] == ["creds.env"]
+    assert stats["roots_existing"] == 1
+    assert stats["files_traversed"] == 1
+
+
+def test_a_symlink_met_during_the_walk_is_still_not_followed(tmp_path: Path) -> None:
+    """INNOCENCE: resolving a NAMED root must not loosen the walk itself.
+
+    Paired with the test above: a link the caller named is audited, a link
+    the walk stumbles into is not — that asymmetry is the whole point, and
+    without this test the fix could quietly become 'follow every symlink'.
+    """
+    module = _load_module()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    outside_secret = outside / "creds.env"
+    outside_secret.write_text("x")
+    outside_secret.chmod(0o644)
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "escape").symlink_to(outside)
+
+    findings = module.scan([root])
+
+    assert findings == []
+
+
+def test_a_broken_symlink_root_is_treated_as_a_missing_path(tmp_path: Path) -> None:
+    """A link to nowhere is the documented missing-root case, not a crash."""
+    module = _load_module()
+    dangling = tmp_path / "dangling"
+    dangling.symlink_to(tmp_path / "does-not-exist")
+
+    stats: dict = {}
+    findings = module.scan([dangling], stats=stats)
+
+    assert findings == []
+    assert stats.get("roots_existing", 0) == 0
+
+
+def test_the_real_root_and_its_symlink_are_walked_once(tmp_path: Path) -> None:
+    """Naming a directory twice, once through a link, must not double-report."""
+    module = _load_module()
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    secret = real_dir / "creds.env"
+    secret.write_text("x")
+    secret.chmod(0o644)
+    link = tmp_path / "link"
+    link.symlink_to(real_dir)
+
+    findings = module.scan([real_dir, link])
+
+    assert len(findings) == 1
+
+
+def test_scan_still_reports_the_same_file_when_the_chain_is_open(
+    tmp_path: Path,
+) -> None:
+    """GUILT, end to end, same file: only the chain differs.
+
+    Paired with the test above so that neither can pass because the file was
+    never a candidate in the first place.
+    """
+    module = _load_module()
+    secret = tmp_path / "credentials.env"
+    secret.write_text("x")
+    secret.chmod(0o644)
+
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        monkeypatch.setattr(module, "reachable_by", lambda p, cache=None: (True, True))
+        findings = module.scan([tmp_path])
+    finally:
+        monkeypatch.undo()
+
+    assert [f.path.name for f in findings] == ["credentials.env"]
+    assert findings[0].mode == 0o644
