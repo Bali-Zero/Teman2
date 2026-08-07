@@ -163,6 +163,74 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
     }
 
 
+# ------------------------------------------------------- machine-aware remedy selection
+
+# A registry entry's fix_hint is a STATIC string chosen at authoring time — it cannot
+# know which machine or which finding-shape it will be printed for. Two entries in
+# DEFAULT_REGISTRY carry a standing decision that a generic remedy actively violates on
+# one machine, the same disease probe_guardian_freshness already cured for freshness
+# ITSELF (per-item `machines` scoping, W106b/#2): before printing a remedy, ask whether
+# a standing decision already forbids it. These two small pure functions are that ask —
+# called once per matching entry in main()'s probe loop, never touching the registry's
+# static fix_hint for anything else.
+
+_BEHIND_RE = re.compile(r"main checkout: (-?\d+) behind origin/main")
+_LEDGER_STALE_RE = re.compile(r"^LEDGER STALE: (\S+) differs from origin/main")
+
+
+def _git_alignment_remedy(entry: dict, machine: str, ev: list[str]) -> str:
+    """m5's main checkout is BY DESIGN left behind origin/main — Rule 0 of this
+    organ's own SessionStart contract (scripts/hooks/proprioception_sessionstart.sh)
+    and the probe_home_fork_scripts docstring above (W106b, 2026-07-27): pulling it
+    races live worktrees. The registry's static "interactive pull" fix_hint is correct
+    on pro/mini, where the checkout IS auto-pulled and 0-behind is the norm — return it
+    UNCHANGED there. On m5, override it only when the behind-count is actually part of
+    this finding (a fully RECONCILED probe, or one driven by ledger-drift alone at
+    behind=0, has nothing to caveat about pulling — the by-design text must not appear
+    spuriously): state the by-design truth instead of prescribing the destructive act,
+    and name the ledger as the one actionable half when it is stale too.
+    """
+    default = entry["fix_hint"]
+    if machine != "m5":
+        return default
+    behind = -1
+    for e in ev:
+        m = _BEHIND_RE.search(e)
+        if m:
+            behind = int(m.group(1))
+            break
+    if behind <= 0:
+        return default
+    by_design = ("m5's main checkout is deliberately left behind origin/main by design "
+                 "(pulling it races live worktrees — see probe_home_fork_scripts docstring, "
+                 "W106b): do NOT pull it, interactively or from an agent session.")
+    ledger = None
+    for e in ev:
+        m = _LEDGER_STALE_RE.search(e)
+        if m:
+            ledger = m.group(1)
+            break
+    if ledger:
+        return (f"{by_design} The actionable half is the ledger: refresh just that file from "
+                f"origin/main (e.g. `git checkout origin/main -- {ledger}` in the main "
+                f"checkout, not a full pull) so TRIAGE stops reading stale state.")
+    return f"{by_design} No other actionable half in this finding right now."
+
+
+def _arsenal_seats_vcr_m5_remedy(entry: dict) -> str:
+    """arsenal_seats_vcr_m5 is registered machines: ["m5"] only — every call to this
+    function IS on m5 by construction. docs/runbooks/arsenal-probe.md names Mini as
+    the primary for arsenal-seat freshness (the healer refreshes there every <=20h);
+    the sibling `arsenal_seats` entry (mini/pro) is what that cadence actually feeds.
+    FRESHNESS_EXPIRED here, between m5's own interactive runs, is the expected state of
+    a non-primary pilot subset — not a live-seat outage — so say that BEFORE the check
+    command, or the finding reads as arsenal trouble it usually isn't.
+    """
+    return ("Mini is the documented primary for arsenal-seat freshness "
+            '(docs/runbooks/arsenal-probe.md "Mini (primary)"); FRESHNESS_EXPIRED on m5 '
+            "between interactive runs is expected, not a seat outage. " + entry["fix_hint"])
+
+
 # ---------------------------------------------------------------- builtins
 
 def probe_git_alignment(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
@@ -801,8 +869,13 @@ def main() -> int:
             status, n, ev = UNPROBEABLE, 0, [f"probe timed out after {timeout}s"]
         except Exception as e:  # a probe must never kill the organ
             status, n, ev = UNPROBEABLE, 0, [f"{type(e).__name__}: {str(e)[:140]}"]
+        fix_hint = entry["fix_hint"]
+        if entry["id"] == "git_alignment":
+            fix_hint = _git_alignment_remedy(entry, me, ev)
+        elif entry["id"] == "arsenal_seats_vcr_m5":
+            fix_hint = _arsenal_seats_vcr_m5_remedy(entry)
         results.append(verdict(entry["id"], entry["boundary"], entry["class"], status,
-                               entry["severity"], n, ev, entry["fix_hint"], t0))
+                               entry["severity"], n, ev, fix_hint, t0))
 
     if args.fleet:
         self_path = Path(__file__) if "__file__" in globals() and Path(__file__).exists() else None
