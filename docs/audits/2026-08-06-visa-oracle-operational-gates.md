@@ -5,6 +5,9 @@ Date: 2026-08-07
 Candidate implementation: `8fb5c1290` (rebased on synchronized `main`
 `cd343655c`)
 
+Independently reviewed delivery SHA: `635bbccd00ba5ad578eaaadcd27415918b2e1bc1`
+against the frozen `cd343655c` baseline.
+
 Activation verdict: **NO-GO**
 
 This record converts the remaining production-readiness bullets into concrete,
@@ -58,15 +61,15 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
 
 ## Gate state after this execution
 
-| Gate                       | Before                  | After                                                                                                                                                                                                                                                                                                           |
-| -------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G0 inventory               | PASS                    | PASS                                                                                                                                                                                                                                                                                                            |
-| G1 contracts and sources   | BLOCKED                 | PASS; official announcement evidence approved, hashed and archived; optional Kepmen PDFs remain a non-blocking corroboration gap                                                                                                                                                                                |
-| G2 engine harness          | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                |
-| G3 UI states/categories    | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                |
-| G4 public engine authority | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                |
-| G5 automated suites        | PASS                    | PASS on the rebased operational candidate: 1,667 backend Visa Engine/router tests passed with one expected provisioning skip; 3,178 Mouth Vitest tests, typecheck, 15/15 desktop/320 px Playwright, 16 retention-operation tests, four Cell sensor tests and the unmocked disposable full-stack smoke are green |
-| G6 independent review      | PASS on prior candidate | **RE-GRADE REQUIRED.** `6558afaa1` closed with 0 BLOCKER and 0 MEDIUM; the rebased migration-267/retention delta must receive an independent exact-SHA review before this record may claim final G6 closure                                                                                                     |
+| Gate                       | Before                  | After                                                                                                                                                                                                                                                                                                                                |
+| -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G0 inventory               | PASS                    | PASS                                                                                                                                                                                                                                                                                                                                 |
+| G1 contracts and sources   | BLOCKED                 | PASS; official announcement evidence approved, hashed and archived; optional Kepmen PDFs remain a non-blocking corroboration gap                                                                                                                                                                                                     |
+| G2 engine harness          | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                                     |
+| G3 UI states/categories    | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                                     |
+| G4 public engine authority | PASS                    | PASS (unchanged)                                                                                                                                                                                                                                                                                                                     |
+| G5 automated suites        | PASS                    | PASS on the rebased operational candidate: 1,667 backend Visa Engine/router tests passed with one expected provisioning skip; 3,178 Mouth Vitest tests, typecheck, 15/15 desktop/320 px Playwright, 16 retention-operation tests, four Cell sensor tests and the unmocked disposable full-stack smoke are green                      |
+| G6 independent review      | PASS on prior candidate | **PASS on `635bbccd0`: 0 BLOCKER / 0 MEDIUM.** The independent grader reproduced 78 critical activation/CLI/preflight/DB tests plus the privacy, retention/TTL and Cell gates. The concurrent `029e6ca43` drift touched only `.claude/skills/modus/PENDING-ARMS.md` and was classified LOW merge hygiene outside the frozen baseline |
 
 ## Privacy Policy V1 implementation evidence
 
@@ -96,10 +99,10 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
   [privacy desktop](screenshots/visa-oracle-v2/visa-oracle-privacy-v1-desktop.png)
   and
   [privacy 320 px](screenshots/visa-oracle-v2/visa-oracle-privacy-v1-mobile-320.png).
-- Independent G6 review on `6558afaa1` proved that unexpected function grants,
-  direct DML grants, runtime capability membership and combined pack-write /
-  activation authority all fail the production preflight. Its final verdict
-  was 0 BLOCKER and 0 MEDIUM.
+- Independent G6 review on `635bbccd0` proved that unexpected function grants,
+  direct table grants, runtime capability membership, combined pack-write /
+  activation authority and one-login/two-`SET ROLE` ceremonies all fail the
+  gate. Its final verdict was 0 BLOCKER and 0 MEDIUM.
 
 ## Pricing and UI correction evidence
 
