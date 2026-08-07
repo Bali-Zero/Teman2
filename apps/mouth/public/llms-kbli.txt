@@ -841,7 +841,7 @@
 47216 | Perdagangan Eceran Hasil Kehutanan dan Perburuan | TERBUKA | 100% | Rendah
 47219 | Perdagangan Eceran Hasil Pertanian Lainnya | TERBUKA | 100% | Rendah
 47221 | Perdagangan Eceran Minuman Beralkohol | TERBATAS | special | Tinggi / Rendah
-47222 | Perdagangan Eceran Minuman Tidak Beralkohol | TERTUTUP | 0% | Rendah
+47222 | Perdagangan Eceran Minuman Tidak Beralkohol | TERBATAS | 0% | Rendah
 47230 | Perdagangan Eceran Rokok dan Tembakau | TERBUKA | 100% | Rendah
 47241 | Perdagangan Eceran Beras | TERBUKA | 100% | Rendah
 47242 | Perdagangan Eceran Roti, Kue Kering, serta Kue Basah dan Sejenisnya | TERBUKA | 100% | Rendah
