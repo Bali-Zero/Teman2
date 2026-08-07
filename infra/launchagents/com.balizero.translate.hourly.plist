@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>OLLAMA_MODEL</key>
+		<string>aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.balizero.translate.hourly</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/zsh</string>
+		<string>-lc</string>
+		<string>/Users/nuzantara/nuzantara/scripts/translate-articles-cron-wrapper.sh</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/translate-hourly.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/translate-hourly.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Minute</key>
+		<integer>30</integer>
+	</dict>
+</dict>
+</plist>
