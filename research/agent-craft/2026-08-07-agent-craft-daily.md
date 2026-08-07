@@ -26,6 +26,7 @@ Per la risposta: (1) cita verbatim le fonti rilevanti tra i tuoi 86 sources, (2)
     > *"We propose Reflexion, a novel framework to reinforce language agents not by updating weights, but instead through linguistic feedback. Concretely, Reflexion agents verbally reflect on task feedback signals, then maintain their own reflective text in an episodic memory buffer to induce better decision-making in subsequent trials."* [3] Questo approccio permette all'agente di migliorare attraverso l'auto-riflessione sugli errori commessi nei tentativi precedenti [4].
 *   **Kim et al. 2025 (Error Amplification in Multi-Agent Topologies):**
     > *"Multi-agent error amplification 17.2× (Kim et al. 2025 arxiv 2512.08296) is real but task-dependent — orchestrator-led shrinks to 4.4×, sequential tasks favor single-agent, parallelizable tasks favor centralized multi-agent."* [5] Lo studio dimostra empiricamente che *"For sequential pipelines (brief → storyboard → layout → critic in chain, like WR2): single-agent batte multi-agent di 39–70%"* [6], identificando dinamiche distruttive come la *"capability saturation"* e il *"tool-coordination trade-off"* [7].
+    > RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ---
 
@@ -37,6 +38,7 @@ Per la risposta: (1) cita verbatim le fonti rilevanti tra i tuoi 86 sources, (2)
     Invece di un feedback linguistico puramente simulato, integriamo il comportamento umano reale tramite la cattura del **`designer_override_diff`** (la differenza esatta tra la bozza prodotta dall'agente e la versione finale modificata e pubblicata da Damar su Canva) [9, 11, 12]. Ogni domenica alle 02:30 WITA, lo script `_reflexion-synthesis.py` estrae queste discrepanze e sintetizza fino a 10 lezioni verbali concrete, inserendole in `voice/on-tone-examples.md` (miglioramento del tono) o direttamente nella `constitution.md` come nuove regole rigide [9, 12].
 *   **Mitigazione dell'amplificazione d'errore di Kim et al. 2025:**
     La nostra pipeline di produzione editoriale WR2 è intrinsecamente sequenziale [13]. Consapevoli che il multi-agente in flussi sequenziali può degradare le prestazioni [6, 13], **abbiamo strutturato la pipeline su una topologia rigorosamente centralizzata gestita da `wr2-design-architect` come orchestratore di stato con sub-agenti lavoratori stateless** (evitando passaggi P2P decentralizzati che amplificano l'errore fino a 17.2×) [14, 15]. L'uso di sub-agenti è qui giustificato esclusivamente per l'isolamento del contesto e per evitare il "context rot" su sessioni lunghe [13]. Al contrario, per task puramente paralleli (come il nostro *Bipolar Verifier* cross-LLM), sfruttiamo con successo la topologia centralizzata/collaborativa su *agent-teams*, dove il dibattito tra pari ha dimostrato di aumentare la precisione su discrepanze regolatorie complesse [16, 17].
+    > RETRACTED[kim-2025-17x-error-amplification-as-cause]: la cifra 17.2× citata qui sopra come motivazione della topologia centralizzata misura `Independent` (nessun coordinamento), non il peer-to-peer che la pipeline evita; l'error-propagation come causa è unsupported (Table 4, p=0.658). La scelta architetturale di WR2 (centralizzato, sub-agenti stateless) resta valida su basi di repo, non su questo paper.
 
 ---
 
@@ -92,6 +94,8 @@ Dobbiamo automatizzare e rendere robusta la pipeline di **Reflexion** per cattur
 ### [6] source `354fe331…`
 
 > Corrected guidance for Bali Zero stack The old rule (wr2-design-architect.md:338, lines 91+129+338, also pre-T2.91, pre-T2.271): "NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding)." The corrected rule : For sequential pipelines (brief → storyboard → layout → critic in chain, like WR2): single-agent batte multi-agent di 39–70% . Multi-agent in WR2 is justified by context-isolation and model-routing economy (Sonnet workers + Opus critic + Haiku vision-pre-pass), not by parallelism gain. Don't pretend it's a parallelism win. For parallelizable tasks (multi-perspective client case, multi-source regulatory check, cross-LLM bipolar verifier): centralized multi-agent batte single-agent di +80.9% . This is where agent teams shines. Peer-to-peer is not banned — it's 4× worse than centralized, but on parallelizable tasks it's still often better than single-agent. Use it when the task genuinely needs cross-agent challenge (devil's advocate, scientific debate pattern in agent-teams docs). Independent (no coordination) is the real trap — 17.2× amplification. Never spawn N parallel sessions and merge results without any lead.
+>
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: citazione datata — "Independent (no coordination) is the real trap — 17.2× amplification" misura `Independent`, non il peer-to-peer; vedi Table 4 (p=0.658, unsupported come causa) e Table 5 (Decentralized 0.477 > Centralized 0.463). Non ripristinare come motivazione della regola no-peer-to-peer. Anche "+80.9%" citato qui sopra è un solo abbinamento task-architettura, non un guadagno generale del centralized (Table 5: Centralized 0.463 < single-agent 0.466).
 
 ### [7] source `354fe331…`
 
@@ -100,10 +104,14 @@ Dobbiamo automatizzare e rendere robusta la pipeline di **Reflexion** per cattur
 ### [8] source `6445c350…`
 
 > Tipo : Claude Code subagent (Type A) in ~/.claude/agents/wr2-design-architect.md Modello : Opus 4.7 via OAuth MAX (zero costi, CLAUDE.md HARD RULE compliance) Pattern : orchestrator centralizzato + 4 specialist subagents (NO peer-to-peer — Google 17.2× error amplification finding) Sub-agents pianificati : brief-interpreter (Sonnet), storyboarder (Sonnet), layout-composer (Sonnet), critic (Opus vision-capable), publisher (Haiku) Skill base : ~/.claude/skills/bali-zero-brand/ — closed-namespace tokens + constitution + voice + layouts Memory layers : episodic (SQLite), semantic (file cortex), procedural (skill library), reflective (weekly cron synthesis) Growth pattern : Voyager curriculum + Reflexion post-mortem Quality gates : token compliance → critic panel (4 rubric) → CLIP similarity → diffusion variance hallucination check → human review
+>
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: "Google 17.2× error amplification finding" citato qui misura `Independent` (nessun coordinamento), non il pattern peer-to-peer che la citazione vorrebbe escludere; unsupported come causa (Table 4, p=0.658). La regola no-peer-to-peer resta, su basi di repo, non su questo paper.
 
 ### [9] source `d0adf453…`
 
 > Hard guardrails (process-level) Centralized state : you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding). Human-in-loop on publish : you do NOT publish to Instagram. Damar publishes manually. Your output stops at Canva (via existing wr2-canva-apply skill). No autonomous skill writes to main : skill changes go to _proposed/ . Antonello commits to main weekly. Cost = zero : only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, DeepSeek API ($0.01/query OK). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime. No emoji in user-facing output : respond in clean text. Antonello has hard rule on this in CLAUDE.md.
+>
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: stesso errore di attribuzione — 17.2× è la misura di `Independent`, non del peer-to-peer vietato da questo guardrail; Table 5 mostra `Decentralized` (il vero peer-to-peer) più alto di `Centralized` (0.477 > 0.463). Non citare questo paper per la regola, in nessuna direzione.
 
 ### [10] source `b67fe2b2…`
 
@@ -112,6 +120,8 @@ Dobbiamo automatizzare e rendere robusta la pipeline di **Reflexion** per cattur
 ### [11] source `b67fe2b2…`
 
 > Why: empirical validation of architectural choices Why: The lessons file lessons_multi_agent_topology_kim_2025.md documented Kim et al. 2025 (arxiv 2512.08296) — multi-agent independent topology = 17.2× error amplification, centralized = 4.4×, peer-to-peer messy. This pilot tested peer-to-peer on a parallelizable task (each verifier reads the same claim independently from a different angle) and observed: No error amplification observed — 3/3 unanimous on 4 of 6 sub-claims Peer-to-peer IMPROVED precision on the 1 disagreement: fact-checker R0 PASS 0.85 on NPWP → R1 FAIL 0.80 after seeing peer evidence (PMK 112/2022 Pasal 6). Convergence in 1 exchange. Discovery beyond ground truth : ground-truth marked KEP-37/PJ/2026 as "hallucination". Team found the decree DOES exist (web evidence: ats-konsultama.com, veritask.ai, peraturanpajak.com) but governs SPT Masa Pajak Desember 2025, NOT Q3 2026. "Real but mis-attributed" is a different failure mode than "hallucinated number" — finer-grained than the single-LLM devils-advocate 7-pass caught.
+>
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: la lessons file citata qui (`lessons_multi_agent_topology_kim_2025.md`) portava l'attribuzione sbagliata — 17.2× è `Independent`, non peer-to-peer. Il pilot descritto in QUESTA stessa citazione ha infatti osservato "no error amplification" e un MIGLIORAMENTO di precisione col peer-to-peer — coerente con la ritrattazione (`Decentralized` più alto in Table 5), non con la cifra originale.
 
 ### [12] source `6445c350…`
 
@@ -148,3 +158,7 @@ Dobbiamo automatizzare e rendere robusta la pipeline di **Reflexion** per cattur
 ### [20] source `75dec1b4…`
 
 > Counter-hypothesis to test : maybe the topic itself has a small audience ceiling. Bali waste/license-environmental is a niche-of-niche even for investors. Need to compare against another environmental post if Bali Zero has one in archive. Action : scrape past 30-day @balizero0 history for environmental-domain carouseli. Action items : ✅ Added to empirical dataset row ☐ Open post on IG, screenshot caption + hashtags + slide 2 → audit retroactively ☐ Add environmental as 5th category in _empirical-metrics next revision ☐ wr2-storyboarder.md: add explicit environmental-compliance S-pattern guidance ☐ wr2-critic.md Rubric 5.2: extend retro-analysis hook (consume _empirical-metrics performance data when available, not just structural check)
+
+---
+
+> **Nota W90 (2026-08-08)**: NB-AGENTS sources predate the 2026-08-02 retraction — the notebook still serves the retracted framing; source refresh tracked separately.
