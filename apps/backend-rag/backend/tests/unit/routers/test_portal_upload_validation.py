@@ -463,6 +463,43 @@ def test_upload_rejects_doctype_entity_in_unreferenced_xml_before_side_effects(
     assert portal_service.upload_document.await_count == 0
 
 
+def test_upload_rejects_utf16_entity_amplification_before_side_effects(
+    client: TestClient,
+    portal_service: AsyncMock,
+) -> None:
+    entity_declarations = ['<!ENTITY synthetic0 "synthetic">']
+    for level in range(1, 7):
+        previous = f"&synthetic{level - 1};" * 10
+        entity_declarations.append(f'<!ENTITY synthetic{level} "{previous}">')
+    malicious_xml = (
+        '<?xml version="1.0" encoding="UTF-16"?>'
+        f"<!DOCTYPE w:document [{' '.join(entity_declarations)}]>"
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        "<w:body><w:p><w:r><w:t>&synthetic6;</w:t></w:r></w:p></w:body>"
+        "</w:document>"
+    ).encode("utf-16")
+    malicious = _replace_zip_member(
+        _synthetic_docx(),
+        "word/document.xml",
+        malicious_xml,
+    )
+
+    response = client.post(
+        "/api/portal/documents/upload",
+        data={"document_type": "synthetic"},
+        files={
+            "file": (
+                "utf16-entity-amplification.docx",
+                malicious,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+
+    assert response.status_code == 415
+    assert portal_service.upload_document.await_count == 0
+
+
 @pytest.mark.parametrize(
     "member_name",
     [

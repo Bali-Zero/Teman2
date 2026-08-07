@@ -14,6 +14,7 @@ from typing import Final, Protocol
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile, ZipInfo
 
+from defusedxml import ElementTree as DefusedElementTree
 from docx import Document
 from PIL import Image
 from pypdf import PdfReader
@@ -377,7 +378,11 @@ def _parse_bounded_xml(payload: bytes) -> ElementTree.Element:
     lowered = payload.lower()
     if b"<!doctype" in lowered or b"<!entity" in lowered:
         raise ValueError("OOXML document declarations are not allowed")
-    return ElementTree.fromstring(payload)
+    # The byte scan is only a fast path: UTF-16/32 declarations do not contain
+    # contiguous ASCII markers.  The hardened parser enforces the same rule
+    # independently of the XML encoding and rejects entity expansion before
+    # building an ElementTree.
+    return DefusedElementTree.fromstring(payload)
 
 
 def _read_bounded_docx_xml(archive: ZipFile, name: str) -> bytes:

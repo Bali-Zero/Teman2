@@ -678,24 +678,6 @@ class LKPMService:
     # Submission Tracking
     # ------------------------------------------------------------------
 
-    async def approve_draft(self, draft_id: int) -> dict[str, Any]:
-        """Mark draft as approved by client."""
-        async with self.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE lkpm_reports SET
-                    client_approved = TRUE,
-                    client_approved_at = NOW(),
-                    status = $1,
-                    updated_at = NOW()
-                WHERE id = $2
-                """,
-                LKPMStatus.APPROVED.value,
-                draft_id,
-            )
-        logger.info("Draft %s approved by client", draft_id)
-        return {"success": True, "draft_id": draft_id, "status": "approved"}
-
     async def approve_draft_for_actor(
         self,
         draft_id: int,
