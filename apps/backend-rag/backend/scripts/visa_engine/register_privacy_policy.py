@@ -231,12 +231,21 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                 "policy path could not be derived from this module's location "
                 "(no full repository checkout present); pass --policy-file explicitly"
             )
-        if not canonical.is_file():
-            parser.error(
-                f"--policy-file was not provided and the canonical checked-in "
-                f"policy path does not exist: {canonical}; pass --policy-file explicitly"
-            )
-        args.policy_file = str(canonical)
+        else:
+            # `canonical` is only ever bound here -- this `else:` only runs
+            # when the `try` above did NOT raise, so the value is always
+            # initialized on every path that reaches it. `parser.error()` is
+            # typed `NoReturn` (it always raises `SystemExit`), but that
+            # contract isn't visible to every static analyzer -- moving the
+            # dependent read into `try/except/else` makes the initialization
+            # provably sound without relying on any NoReturn inference at
+            # all, rather than suppressing the finding.
+            if not canonical.is_file():
+                parser.error(
+                    f"--policy-file was not provided and the canonical checked-in "
+                    f"policy path does not exist: {canonical}; pass --policy-file explicitly"
+                )
+            args.policy_file = str(canonical)
     return args
 
 
