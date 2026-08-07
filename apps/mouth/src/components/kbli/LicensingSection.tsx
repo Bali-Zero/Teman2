@@ -1075,6 +1075,79 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         </div>
       )}
 
+      {/* ── PERPRES SLICE-DISCLOSURE FRAME (a restricted bidang usaha hides
+          inside an otherwise-open code) ── Independent axis, own condition,
+          never chained to riskDispute/baliBlocked — perpres_slice_disclosure_
+          relation.py only ever emits this for BROADER-adjudicated codes
+          (whole-code pma.status renders open), so it can co-occur with either
+          frame above. One paragraph per row (30111 carries two: a warship
+          slice at 49% and a Pinisi/Cadik slice at 0%). */}
+      {kbli.perpresSlice && kbli.perpresSlice.length > 0 && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">⚠️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              One activity inside this code is foreign-capital restricted
+            </span>
+          </div>
+          {kbli.perpresSlice.map((row, i) => (
+            <p
+              key={`${row.locator}-${i}`}
+              className="text-sm leading-relaxed text-[var(--foreground-secondary)]"
+              style={i > 0 ? { marginTop: "0.5rem" } : undefined}
+            >
+              One specific activity inside this code — &quot;{row.bidangUsaha}
+              &quot; —{" "}
+              {row.foreignCapPct === 0 ? (
+                row.condition ? (
+                  // A phased cap (0% at establishment, opening later — e.g.
+                  // 58130 press: 49% via capital market for expansion) is NOT
+                  // an absolute closure. The unqualified "no foreign equity
+                  // in that slice" sentence is false for the expansion phase
+                  // on these rows — render the condition verbatim instead of
+                  // asserting the absolute.
+                  <>
+                    is reserved for domestic capital at establishment under
+                    Perpres 10/2021 (as amended) — {row.condition}.
+                  </>
+                ) : (
+                  <>
+                    is reserved for domestic capital under Perpres 10/2021 (as
+                    amended): no foreign equity in that slice.
+                  </>
+                )
+              ) : (
+                <>
+                  is capped at 49% foreign ownership under Perpres 10/2021 (as
+                  amended){row.condition ? `, ${row.condition}` : ""}.
+                </>
+              )}
+            </p>
+          ))}
+          {/* One closing sentence for the WHOLE frame, not per row: on a
+              multi-row code (30111 — warship 49% + Pinisi/Cadik 0%), "the
+              rest of the code is open" repeated after the warship row would
+              be false — the Pinisi slice, named in the very next row, is not
+              open. State it once, after every row has had its say. */}
+          <p
+            className="text-sm leading-relaxed text-[var(--foreground-secondary)]"
+            style={{ marginTop: "0.5rem" }}
+          >
+            Everything else in this code is open as shown. Check which side your
+            exact activity falls on before filing.
+          </p>
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
       <KeyFacts
         licensing={kbli.licensing}

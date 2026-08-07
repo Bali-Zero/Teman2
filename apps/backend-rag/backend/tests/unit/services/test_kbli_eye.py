@@ -196,11 +196,18 @@ def test_umkm_reserved_is_tri_state_and_rare(records: list[dict]) -> None:
     cure's one-heir proof could not reach them; they were decided on the reverse
     direction instead (each absorbs no OTHER 2020 code) by two independent
     cross-family lanes. `None` again does not move, and for the same reason.
+
+    1455 -> 1453 / 89 -> 91 on 2026-08-07 (#3749): the 21021/22 adjudication
+    flip (RENAMED -> PLAIN, Perpres 49/2021 Lampiran III caps both at 0%
+    foreign) moves both codes out of TERBUKA. Neither is named reserved
+    (no `UMKM only` kondisi, no `DIALOKASIKAN` marker), so they leave the
+    `False` population and land in `None` — undetermined, same as every
+    other TERBUKA-exit that carries no UMKM basis. `True` does not move.
     """
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
     assert verdicts.count(True) == 15
-    assert verdicts.count(False) == 1455
-    assert verdicts.count(None) == 89
+    assert verdicts.count(False) == 1453
+    assert verdicts.count(None) == 91
     # The counts above are population pins and will move again with the data.
     # This one is the invariant underneath them, and it must not: `False` means
     # exactly "TERBUKA and not named as reserved" — never a guess from silence.
@@ -241,10 +248,13 @@ def test_the_cure_only_ever_shrinks_the_rejected_bucket(records: list[dict]) -> 
     # of TERBUKA *and* sets its cap to 0 in the same write. The four are the SPLIT
     # HEIRS — 96210 barbering, 96220 beauty salons, 96100 laundries, 55105 one-star
     # hotels — whose 2020 ancestor fanned out, so the prior cure had to leave them.
-    # The DIFFERENCE is unchanged at 27 across both moves, and that is the real
-    # content of this test's name: nothing new became wrongly-rejected.
-    assert len(old_rejected) == 104
-    assert len(new_rejected) == 77
+    # 2026-08-07 (#3749): both grew by the same two more (104->106, 77->79) —
+    # 21021/22 (RENAMED -> PLAIN) leave TERBUKA *and* their adjudicated cap is
+    # 0%, same both-buckets-move shape as the split heirs above.
+    # The DIFFERENCE is unchanged at 27 across all three moves, and that is the
+    # real content of this test's name: nothing new became wrongly-rejected.
+    assert len(old_rejected) == 106
+    assert len(new_rejected) == 79
     assert len(old_rejected - new_rejected) == 27
     # The counts above move with the data; THIS is the property that must not.
     assert new_rejected <= old_rejected, "the cure must never REJECT something new"
