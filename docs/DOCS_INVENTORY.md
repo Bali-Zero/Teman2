@@ -837,8 +837,8 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/superpowers/specs/2026-04-10-olympus-v3-intelligence-design.md | LIVE | 2026-04-09 | 2026-07-08 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-11-visa-planner-design.md | LIVE | 2026-04-11 | 2026-07-10 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-12-dna-recording-design.md | LIVE | 2026-04-15 | 2026-07-14 | — | 3 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-14-curator-agent-garuda-design-v2.md | LIVE | 2026-04-15 | 2026-07-14 | — | 2 | 0 | no | — | — |
-| docs/superpowers/specs/2026-04-14-curator-agent-garuda-design.md | LIVE | 2026-04-15 | 2026-07-14 | — | 1 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-14-curator-agent-garuda-design-v2.md | LIVE | 2026-08-07 | 2026-11-05 | — | 2 | 0 | no | — | — |
+| docs/superpowers/specs/2026-04-14-curator-agent-garuda-design.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md | LIVE | 2026-04-14 | 2026-07-13 | — | 2 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-14-organism-phase2-riflessi-design.md | LIVE | 2026-04-15 | 2026-07-14 | — | 2 | 0 | no | — | — |
 | docs/superpowers/specs/2026-04-15-libri-sacri-canonici-design.md | LIVE | 2026-04-15 | 2026-07-14 | — | 3 | 0 | no | — | — |
