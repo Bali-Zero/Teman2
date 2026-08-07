@@ -553,7 +553,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/operations/cron-canonical-2026-05-20.md | LIVE | 2026-05-19 | 2026-08-17 | — | 0 | 0 | no | — | — |
 | docs/operations/docs-guardian-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/operations/docs-history-analyzer-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | — |
-| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-06 | 2026-11-04 | — | 1 | 0 | no | — | — |
+| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/operations/nb-mitochondrial-monitor.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
 | docs/operations/wa-mirror-email-manifest-runbook.md | LIVE | 2026-05-26 | 2026-08-24 | — | 0 | 0 | no | — | — |
 | docs/ops/2026-04-30-followup-cell-cron-sensor.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
@@ -604,7 +604,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/2026-06-03-residual-ops-hub.md | LIVE | 2026-06-03 | 2026-09-01 | — | 1 | 0 | no | — | — |
 | docs/runbooks/README.md | LIVE | 2026-08-07 | 2026-11-05 | — | 11 | 0 | no | — | — |
 | docs/runbooks/agent-worktree-broker.md | LIVE | 2026-07-16 | 2026-10-14 | — | 4 | 0 | no | — | — |
-| docs/runbooks/arsenal-probe.md | LIVE | 2026-08-05 | 2026-11-03 | — | 2 | 0 | no | — | — |
+| docs/runbooks/arsenal-probe.md | LIVE | 2026-08-07 | 2026-11-05 | — | 2 | 0 | no | — | — |
 | docs/runbooks/auth-sentinel.md | LIVE | 2026-07-12 | 2026-10-10 | — | 1 | 0 | no | — | — |
 | docs/runbooks/autonomous-agents-decision-sheet.md | LIVE | 2026-07-05 | 2026-10-03 | — | 1 | 0 | no | — | — |
 | docs/runbooks/autonomous-lab-runtime-placement.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
