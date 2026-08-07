@@ -549,7 +549,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/operations/cron-canonical-2026-05-20.md | LIVE | 2026-05-19 | 2026-08-17 | — | 0 | 0 | no | — | — |
 | docs/operations/docs-guardian-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/operations/docs-history-analyzer-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | — |
-| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-06 | 2026-11-04 | — | 1 | 0 | no | — | — |
+| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/operations/nb-mitochondrial-monitor.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
 | docs/operations/wa-mirror-email-manifest-runbook.md | LIVE | 2026-05-26 | 2026-08-24 | — | 0 | 0 | no | — | — |
 | docs/ops/2026-04-30-followup-cell-cron-sensor.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
