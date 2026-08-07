@@ -228,20 +228,36 @@ def test_absent_src_root_is_operational_not_clean(tmp_path: Path) -> None:
 # ------------------------------------------------- the real config, live
 
 
-def test_real_config_is_loadable_and_registry_entries_carry_a_reason() -> None:
+def test_real_config_registry_entries_carry_a_reason() -> None:
     """A registry entry without a stated reason is an exemption wearing a
-    disguise. Every entry must say what was MEASURED."""
+    disguise. Every entry must say what was MEASURED.
+
+    The registry is ALLOWED to be empty — that is the goal state, and it became
+    empty on 2026-08-07 when all nine founding entries were cured. An earlier
+    version of this test asserted the list was non-empty, which would have made
+    curing the last defect turn the suite red: a test that punishes you for
+    fixing the thing it exists to track. The invariant is the SHAPE of whatever
+    entries exist, never that any exist.
+    """
     repo_root = Path(__file__).resolve().parents[2]
-    cfg = json.loads(
-        (repo_root / "infra" / "asset-lint" / "public-asset-refs-config.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    entries = cfg["known_missing"]
-    assert entries, "registry present but empty — did the config get truncated?"
-    for entry in entries:
+    cfg_path = repo_root / "infra" / "asset-lint" / "public-asset-refs-config.json"
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    assert "known_missing" in cfg, "registry key absent — did the config get truncated?"
+    for entry in cfg["known_missing"]:
         assert entry.get("path", "").startswith("/")
         assert len(entry.get("reason", "")) > 40, f"thin reason on {entry.get('path')}"
+
+
+def test_empty_registry_still_catches_a_new_defect(tmp_path: Path) -> None:
+    """Guilt with an EMPTY registry — the state the repo is now in. Without
+    this, "0 entries" and "the gate stopped looking" are indistinguishable."""
+    repo, cfg = build_tree(
+        tmp_path,
+        {"app/page.tsx": '<img src="/images/brand-new-typo.png" />'},
+        public_files=["images/real.png"],
+        config_overrides={"known_missing": []},
+    )
+    assert run(repo, cfg) == EXIT_FINDINGS
 
 
 def test_real_repo_is_clean_under_the_lint() -> None:
