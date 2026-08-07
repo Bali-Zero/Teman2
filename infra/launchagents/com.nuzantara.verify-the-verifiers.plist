@@ -13,10 +13,12 @@
     </dict>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag/.venv/bin/python</string>
-        <string>/Users/nuzantara/nuzantara-deploy/scripts/verify_the_verifiers.py</string>
-        <string>--scope</string>
-        <string>all</string>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>
+set -euo pipefail
+exec "/Users/nuzantara/nuzantara-deploy/apps/backend-rag/.venv/bin/python" "/Users/nuzantara/nuzantara-deploy/scripts/verify_the_verifiers.py" --scope all
+</string>
     </array>
     <key>WorkingDirectory</key>
     <string>/Users/nuzantara/nuzantara-deploy</string>
