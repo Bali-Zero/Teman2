@@ -500,6 +500,38 @@ def test_runner_manifest_is_exact_and_contains_four_incident_corpora() -> None:
     )
 
 
+def test_wr2_contract_world_environment_is_an_explicit_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+) -> None:
+    """The direct-wrapper probe must not inherit host credentials or toggles."""
+    monkeypatch.setenv("FLY_API_TOKEN", "must-not-leak")
+    monkeypatch.setenv("DATABASE_URL", "must-not-leak")
+    monkeypatch.setenv("WR2_CRON_ENABLED", "false")
+    monkeypatch.setenv("RUNTIME_TRUTH_EVIDENCE_FD", "99")
+
+    world = tmp_path / "world"
+    world.mkdir()
+    _, _, environment = gauntlet._prepare_wr2_world(
+        repo_root=REPO_ROOT,
+        world=world,
+        nc_exit=0,
+        database_url_present=True,
+    )
+
+    assert environment == {
+        "NUZANTARA_REPO_ROOT": str(world / "repo"),
+        "NUZANTARA_SECRETS": str(world / "secrets.env"),
+        "ORGANISM_LAST_SEEN_DIR": str(world / "organism"),
+        "WR2_LOG_DIR": str(world / "logs"),
+        "WR2_CRON_ALERT": "false",
+        "PATH": os.pathsep.join((str(world / "bin"), os.defpath)),
+        "HOME": str(world),
+        "TMPDIR": str(world / "tmp"),
+        "LC_ALL": "C",
+    }
+
+
 def test_workflow_steps_match_exact_structural_contract_and_order() -> None:
     text = _workflow_text()
     meta_index, meta_step = named_step(text, META_STEP_NAME)

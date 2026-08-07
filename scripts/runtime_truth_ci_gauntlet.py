@@ -376,20 +376,23 @@ def _prepare_wr2_world(
         encoding="utf-8",
     )
     sidecar = world / f"organism/{WR2_GUARD_ORGAN_ID}.json"
-    wrapper_env = os.environ.copy()
-    wrapper_env.pop("RUNTIME_TRUTH_EVIDENCE_FD", None)
-    wrapper_env.update(
-        {
-            "NUZANTARA_REPO_ROOT": str(world / "repo"),
-            "NUZANTARA_SECRETS": str(secrets),
-            "ORGANISM_LAST_SEEN_DIR": str(world / "organism"),
-            "WR2_LOG_DIR": str(world / "logs"),
-            "WR2_CRON_ALERT": "false",
-            "PATH": os.pathsep.join((str(world / "bin"), wrapper_env.get("PATH", ""))),
-            "HOME": str(world),
-            "TMPDIR": str(world / "tmp"),
-        }
-    )
+    # The production wrapper sources a secrets file and otherwise inherits its
+    # launchd environment.  The contract world must prove only its four cases,
+    # never accidentally consume a developer/CI credential, proxy setting, or
+    # ambient toggle.  Keep the executable search path intentionally minimal:
+    # the fake ``nc`` wins, then only the platform's standard command paths
+    # remain for bash, mkdir, dirname, and friends.
+    wrapper_env = {
+        "NUZANTARA_REPO_ROOT": str(world / "repo"),
+        "NUZANTARA_SECRETS": str(secrets),
+        "ORGANISM_LAST_SEEN_DIR": str(world / "organism"),
+        "WR2_LOG_DIR": str(world / "logs"),
+        "WR2_CRON_ALERT": "false",
+        "PATH": os.pathsep.join((str(world / "bin"), os.defpath)),
+        "HOME": str(world),
+        "TMPDIR": str(world / "tmp"),
+        "LC_ALL": "C",
+    }
     return wrapper, sidecar, wrapper_env
 
 
