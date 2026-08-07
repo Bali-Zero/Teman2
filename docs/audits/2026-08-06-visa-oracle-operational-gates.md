@@ -2,8 +2,8 @@
 
 Date: 2026-08-07
 
-Candidate implementation: `d819bdfc3` (rebased on synchronized `main`
-`f24d4973b`)
+Candidate implementation: `8fb5c1290` (rebased on synchronized `main`
+`cd343655c`)
 
 Activation verdict: **NO-GO**
 
@@ -145,6 +145,10 @@ in Drive. The ministerial PDFs are optional corroboration, not G1 blockers.
   writer cannot execute either. The read-only preflight now asserts an exact
   function and table-privilege matrix, including PostgreSQL 17 `MAINTAIN` while
   retaining PostgreSQL 15 CI compatibility.
+- The independent re-grade found that the single-pack ceremony originally
+  compared `current_user`, allowing one login with two `SET ROLE` identities to
+  appear separated. It now compares `session_user`, rejects a superuser login
+  even after role switching, and has a dedicated adversarial regression test.
 - The retention worker's actual direct read of the approved, non-PII policy row
   is now represented in both its boundary check and the preflight allowlist.
   Every other table privilege for that executor remains forbidden.
