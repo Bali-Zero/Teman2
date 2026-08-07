@@ -68,6 +68,7 @@ MIGRATION_NUMBERS = (
     265,
     266,
     267,
+    268,
 )
 TEST_RULE_PACK_ID = "8a57d996-c7f2-5abc-9c31-4128a29ed848"
 
