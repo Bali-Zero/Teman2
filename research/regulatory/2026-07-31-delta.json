@@ -1,0 +1,94 @@
+{
+  "run_at": "2026-07-31T07:10:25+08:00",
+  "today": "2026-07-31",
+  "yesterday_seen_count": 20,
+  "new_today_count": 0,
+  "partial": false,
+  "nb_query_errors": [],
+  "nb_query_notes": [
+    "All 4 NB-INTEL queries returned successfully. NB-INTEL-Regulation, NB-INTEL-Press, NB-INTEL-Immigration returned 'nessuna novita' with sources_used: [] (consistent with known post-UUID-switch degradation, seen across multiple prior runs).",
+    "NB-INTEL-Tax returned 'nessuna novita' but surfaced a follow-up suggestion mentioning SE-9/PJ/2026 (crypto-asset service provider client-data disclosure circular) with sources_used: [] - citation already present in yesterday's seen_citations, not added as delta."
+  ],
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, confirmed after 1 retry"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "confirmed after 1 retry"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but page reads 'Artikel tidak ditemukan', no extractable static content"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "HTTP 200, Drupal search form page only, results loaded via JS/AJAX, zero static dated entries"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "connection timeout after 30s, confirmed after 1 retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "newest articles 30 Jul 2026, marketplace PPh Pasal 22 prep pieces, no citable new regulation number"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "newest 30/07/2026, operational/statistical DJP news, no citable regulation number"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "newest dated entries 2026-07-02 (PP 30/2026, PP 31/2026), page not strictly date-sorted"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "jenis=PMK filter appears ignored by search, returned generic UU/PP listing; entries matched already in seen_citations (e.g. UU Nomor 5 Tahun 2026)"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest dated item 24 Jul 2026, football tournament arrival press release, no regulation citation"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry UU Nomor 2 Tahun 2026; page sorts hierarchically not by date (same read as prior runs)"
+    }
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PMK 49/2026",
+    "SE-9/PJ/2026"
+  ]
+}
