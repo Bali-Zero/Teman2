@@ -114,6 +114,37 @@ def sha256_file(path: Path) -> Optional[str]:
         return None
 
 
+def _plutil_recovered_plist(plist_path: Path) -> Optional[Any]:
+    """Recover a plist `plistlib` rejects but macOS's own parser accepts.
+
+    Root cause seen in production (2026-08-07, Pro): a `<!-- ... -->` comment
+    body containing a literal `--` (e.g. documenting a `--apply`/`--cleanup`
+    flag) is invalid per the strict XML spec that Expat enforces, but
+    `plutil`/CoreFoundation tolerate it — the exact same plist launchd itself
+    loads and runs fine (`plutil -lint` reports these files OK). Without this
+    fallback the census silently loses coverage on the affected plist's
+    payload — an under-match blind spot on the very guard meant to catch
+    home-fork drift. Re-serializing through `plutil -convert xml1 -o -`
+    drops comments and normalizes the file so plistlib can read the result;
+    a plist plutil ALSO rejects (binary garbage, truly malformed) still
+    returns None here, unchanged from the pre-fallback behavior.
+    """
+    try:
+        proc = subprocess.run(
+            ["plutil", "-convert", "xml1", "-o", "-", str(plist_path)],
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        return plistlib.loads(proc.stdout)
+    except Exception:  # noqa: BLE001 — genuinely unrecoverable, caller reports it
+        return None
+
+
 def _git_stdout(repo_root: Path, *args: str) -> Optional[bytes]:
     """stdout of a git command as BYTES, or None on any failure.
 
@@ -495,10 +526,12 @@ def discover_undeclared(
             try:
                 payload = plistlib.loads(plist_path.read_bytes())
             except Exception as exc:  # noqa: BLE001 — fail-visible, not fail-open
-                errors.append(
-                    f"plist unreadable/unparseable ({type(exc).__name__}): {plist_path}"
-                )
-                continue
+                payload = _plutil_recovered_plist(plist_path)
+                if payload is None:
+                    errors.append(
+                        f"plist unreadable/unparseable ({type(exc).__name__}): {plist_path}"
+                    )
+                    continue
             if not isinstance(payload, dict):
                 errors.append(f"plist root is not a dict: {plist_path}")
                 continue
