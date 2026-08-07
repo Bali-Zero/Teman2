@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "run_id": "my-client-launch-2026-08-04-wave0",
   "state": "CLEAN_CURRENT_ORIGIN_MAIN_DELIVERY_LOCAL_PRODLIKE_PASS_INDEPENDENT_VERIFIED_PUBLIC_LIVE_NO_GO_AUTHENTICATED_LIVE_BLOCKED",
-  "generated_at_utc": "2026-08-07T07:48:29Z",
+  "generated_at_utc": "2026-08-07T07:56:31Z",
   "coordinator": "Sol",
   "repository": {
     "path": "/Users/nuzantara/nuzantara",
@@ -39,17 +39,17 @@
   "live": {
     "origin": "https://my.balizero.com",
     "provider": "Vercel",
-    "deployment_id": "dpl_B9gKkYCKTgaYL4NotuYyNcXATAvm",
-    "vercel_request_id": "sin1::bx7vt-1786076348648-4a7f93c02828",
-    "matched_path": "/portal",
-    "observed_at_utc": "2026-08-07T04:19:08Z",
+    "deployment_id": "dpl_31x5uPfshuTTa2mwsNRdzvRRQqgc",
+    "vercel_request_id": "sin1::wfnsm-1786089271672-2a3ca968d04c",
+    "matched_path": "/portal/vault",
+    "observed_at_utc": "2026-08-07T07:56:31Z",
     "deployed_commit_sha": null,
     "deployment_sha_status": "BLOCKED_BY_VERCEL_PORTAL_READONLY_ACCESS",
     "previous_observation": {
-      "deployment_id": "dpl_95hCGEK5FuwgqirVsqRpwvtRKjwt",
-      "vercel_request_id": "sin1::sc2n7-1786019044314-7af3c270934e",
+      "deployment_id": "dpl_B9gKkYCKTgaYL4NotuYyNcXATAvm",
+      "vercel_request_id": "sin1::bx7vt-1786076348648-4a7f93c02828",
       "matched_path": "/portal",
-      "observed_at_utc": "2026-08-06T12:24:04Z"
+      "observed_at_utc": "2026-08-07T04:19:08Z"
     }
   },
   "source_counts": {
@@ -211,12 +211,12 @@
   },
   "live_public_sweep": {
     "result": "NO_GO",
-    "observed_at_utc": "2026-08-07T04:19:08Z",
-    "deployment_id": "dpl_B9gKkYCKTgaYL4NotuYyNcXATAvm",
+    "observed_at_utc": "2026-08-07T07:56:31Z",
+    "deployment_id": "dpl_31x5uPfshuTTa2mwsNRdzvRRQqgc",
     "unauthenticated_auth_gate": "FAIL_SERVER_GATE_PASS_CLIENT_REDIRECT",
     "unauthenticated_page_gate": "FAIL; 20/20 canonical static protected portal routes returned initial HTTP 200 instead of HTTP 307; a real anonymous Chromium session then reached login-upgraded client-side for all 20",
     "protected_deep_link_context_gate": "FAIL; /portal/vault?folder=annual reached bare /portal/login-upgraded without redirect context",
-    "deployed_client_bundle_gate": "FAIL_VERIFIED; the public authenticated-layout chunk waits 100 ms then routes missing sessions with router.push('/portal/login'), proving a pre-deep-link-fix client contract; exact Vercel commit SHA remains unavailable",
+    "deployed_client_bundle_gate": "FAIL_VERIFIED; anonymous browser hydration on the current deployment changes the query-bearing protected deep link to bare /portal/login-upgraded, proving a pre-deep-link-fix client contract; exact Vercel commit SHA remains unavailable",
     "kita_to_my_product_boundary_gate": "PASS; kita root redirects to login, kita portal routes redirect 301 to the same my path with query preserved and noindex, nofollow, and my root redirects to portal login",
     "public_auth_route_gate": "PASS_CONTENT_FAIL_METADATA; login, forgot-password, register, magic-link and magic rendered their correct semantic states, but only login advertised noindex, nofollow",
     "anonymous_authorization_api_gate": "PASS_SAMPLED; 10/10 protected GETs across the frontend gateway and direct backend returned HTTP 401",
@@ -246,6 +246,16 @@
     "login_visible_controls_at_both_viewports": "one email input and one submit button",
     "application_console_errors_current_deployment": 0,
     "font_preload_warnings_current_deployment": 4,
+    "current_deployment_recheck": {
+      "deterministic_http_observed_at_utc": "2026-08-07T07:53:42.312Z",
+      "browser_observed_through_utc": "2026-08-07T07:56:31Z",
+      "deployment_id_source": "public Next static asset query parameter",
+      "vercel_request_id": "sin1::wfnsm-1786089271672-2a3ca968d04c",
+      "cross_engine_result": "Chromium, Firefox and WebKit all reached bare /portal/login-upgraded from /portal/vault?folder=annual",
+      "console_result": "Chromium emitted zero application errors and four font-preload warnings; Firefox emitted one CSP Report-Only worker violation; WebKit emitted nine CSP Report-Only errors",
+      "responsive_result": "login controls remained present at 360x800 and 1440x900 with document scroll width equal to viewport width",
+      "safety": "GET only; anonymous fresh browser sessions; no credentials, cookies, local storage, response bodies or client data inspected or retained"
+    },
     "finding_ids": [
       "BZP-LIVE-ANON-PROTECTED-ROUTING-001",
       "BZP-CSP-001",
