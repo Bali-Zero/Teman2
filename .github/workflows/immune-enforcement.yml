@@ -301,6 +301,13 @@ jobs:
           done
           exit $fail
 
+      - name: Runtime Truth meta-contract (external to runner)
+        if: steps.paths.outputs.relevant == 'true'
+        env:
+          HOME: ${{ runner.temp }}/runtime-truth-home
+          TMPDIR: ${{ runner.temp }}/runtime-truth-tmp
+        run: python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
+
       - name: Runtime Truth CI gauntlet (four incident contracts)
         if: steps.paths.outputs.relevant == 'true'
         env:

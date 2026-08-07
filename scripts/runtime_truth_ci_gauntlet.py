@@ -27,11 +27,20 @@ PYTEST_TARGETS: Final[tuple[str, ...]] = (
     "apps/evaluator/nlm_deep_research/tests/test_run_verdict.py",
     "scripts/tests/test_launchd_liveness_expected_nonzero.py",
     "scripts/tests/test_proprioception_run_wrap_exit_code.py",
-    "scripts/tests/test_runtime_truth_ci_gauntlet.py",
 )
 SHELL_TARGETS: Final[tuple[str, ...]] = (
     "scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh",
 )
+SHELL_CASES: Final[dict[str, tuple[str, ...]]] = {
+    "scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh": (
+        "pg_proxy_unreachable",
+        "database_url_local_missing",
+        "pg_proxy_reachable",
+        "heartbeat_self_heal",
+    ),
+}
+SHELL_EVIDENCE_PROTOCOL: Final = "runtime-truth-shell-v1"
+SHELL_EVIDENCE_FD_ENV: Final = "RUNTIME_TRUTH_EVIDENCE_FD"
 PYTEST_OPTIONS: Final[tuple[str, ...]] = ("-q", "--strict-markers")
 
 LOGGER = logging.getLogger("runtime-truth-ci-gauntlet")
@@ -55,10 +64,17 @@ class PytestEvidence:
     skipped_by_file: collections.Counter[str] = dataclasses.field(
         default_factory=collections.Counter
     )
+    xfail_by_file: collections.Counter[str] = dataclasses.field(
+        default_factory=collections.Counter
+    )
+    xpass_by_file: collections.Counter[str] = dataclasses.field(
+        default_factory=collections.Counter
+    )
     collected_nodeids: set[str] = dataclasses.field(default_factory=set)
     executed_nodeids: set[str] = dataclasses.field(default_factory=set)
     skipped_reports: set[str] = dataclasses.field(default_factory=set)
     xfail_reports: set[str] = dataclasses.field(default_factory=set)
+    xpass_reports: set[str] = dataclasses.field(default_factory=set)
 
     def _relative_path(self, path: pathlib.Path) -> str:
         resolved = path.resolve()
@@ -98,7 +114,24 @@ class PytestEvidence:
             self.skipped_reports.add(f"{report.when}:{report.nodeid}")
             self.skipped_by_file[relative_path] += 1
         if getattr(report, "wasxfail", None):
-            self.xfail_reports.add(f"{report.when}:{report.nodeid}")
+            if report.skipped:
+                self.xfail_reports.add(f"{report.when}:{report.nodeid}")
+                self.xfail_by_file[relative_path] += 1
+            else:
+                self.xpass_reports.add(f"{report.when}:{report.nodeid}")
+                self.xpass_by_file[relative_path] += 1
+
+
+@dataclasses.dataclass(frozen=True)
+class ShellEvidence:
+    """Case-level evidence read from a dedicated file descriptor."""
+
+    target: str
+    collected: int
+    executed: int
+    passed: int
+    failed: int
+    skipped: int
 
 
 def _validate_targets(repo_root: pathlib.Path, targets: Sequence[str]) -> None:
@@ -146,16 +179,21 @@ def validate_pytest_evidence(
     if evidence.skipped_reports:
         errors.append(f"skipped={sorted(evidence.skipped_reports)}")
     if evidence.xfail_reports:
-        errors.append(f"xfail/xpass={sorted(evidence.xfail_reports)}")
+        errors.append(f"xfail={sorted(evidence.xfail_reports)}")
+    if evidence.xpass_reports:
+        errors.append(f"xpass={sorted(evidence.xpass_reports)}")
 
     for target in targets:
         collected = evidence.collected_by_file[target]
         executed = evidence.executed_by_file[target]
         skipped = evidence.skipped_by_file[target]
-        if executed != collected or skipped:
+        xfailed = evidence.xfail_by_file[target]
+        xpassed = evidence.xpass_by_file[target]
+        if executed != collected or skipped or xfailed or xpassed:
             errors.append(
                 f"per-file evidence {target}: collected={collected} "
-                f"executed={executed} skipped={skipped}"
+                f"executed={executed} skipped={skipped} "
+                f"xfail={xfailed} xpass={xpassed}"
             )
 
     if errors:
@@ -224,21 +262,124 @@ def _prepare_hermetic_directories() -> None:
         pathlib.Path(os.environ[name]).mkdir(parents=True, exist_ok=True)
 
 
-def run_shell_contracts(repo_root: pathlib.Path) -> None:
-    for relative_path in SHELL_TARGETS:
-        target = repo_root / relative_path
-        if not target.is_file():
-            raise GauntletContractError(f"mandatory shell target missing: {relative_path}")
-        completed = subprocess.run(
-            ["bash", str(target)],
-            cwd=repo_root,
-            env=os.environ.copy(),
-            check=False,
+def _parse_shell_evidence(
+    *,
+    relative_path: str,
+    expected_cases: Sequence[str],
+    raw_evidence: str,
+    exit_code: int,
+) -> ShellEvidence:
+    errors: list[str] = []
+    if not expected_cases:
+        errors.append("case manifest is empty")
+    if len(expected_cases) != len(set(expected_cases)):
+        errors.append("case manifest contains duplicates")
+
+    outcomes: dict[str, str] = {}
+    for line_number, line in enumerate(raw_evidence.splitlines(), start=1):
+        parts = line.split("\t")
+        if len(parts) != 3 or parts[0] != SHELL_EVIDENCE_PROTOCOL:
+            errors.append(f"invalid evidence line {line_number}: {line!r}")
+            continue
+        _, case_id, outcome = parts
+        if not case_id or outcome not in {"passed", "failed", "skipped"}:
+            errors.append(f"invalid evidence line {line_number}: {line!r}")
+            continue
+        if case_id in outcomes:
+            errors.append(f"duplicate shell case evidence: {case_id}")
+            continue
+        outcomes[case_id] = outcome
+
+    expected = set(expected_cases)
+    actual = set(outcomes)
+    missing = sorted(expected - actual)
+    unexpected = sorted(actual - expected)
+    if missing:
+        errors.append(f"missing shell cases={missing}")
+    if unexpected:
+        errors.append(f"unexpected shell cases={unexpected}")
+
+    evidence = ShellEvidence(
+        target=relative_path,
+        collected=len(expected_cases),
+        executed=len(outcomes),
+        passed=sum(outcome == "passed" for outcome in outcomes.values()),
+        failed=sum(outcome == "failed" for outcome in outcomes.values()),
+        skipped=sum(outcome == "skipped" for outcome in outcomes.values()),
+    )
+    if exit_code != 0:
+        errors.append(f"exit_code={exit_code}")
+    if not (
+        evidence.collected == evidence.executed == evidence.passed
+        and evidence.failed == 0
+        and evidence.skipped == 0
+    ):
+        errors.append(
+            f"collected={evidence.collected} executed={evidence.executed} "
+            f"passed={evidence.passed} failed={evidence.failed} "
+            f"skipped={evidence.skipped}"
         )
-        if completed.returncode != 0:
-            raise GauntletContractError(
-                f"shell contract failed: {relative_path} exit_code={completed.returncode}"
+    if errors:
+        raise GauntletContractError(
+            f"shell contract failed: {relative_path}; " + "; ".join(errors)
+        )
+    return evidence
+
+
+def run_shell_contract(
+    *,
+    repo_root: pathlib.Path,
+    relative_path: str,
+    expected_cases: Sequence[str],
+) -> ShellEvidence:
+    """Run one shell corpus and verify case evidence without parsing stdout."""
+    target = repo_root / relative_path
+    if not target.is_file():
+        raise GauntletContractError(f"mandatory shell target missing: {relative_path}")
+
+    read_fd, write_fd = os.pipe()
+    child_env = os.environ.copy()
+    child_env[SHELL_EVIDENCE_FD_ENV] = str(write_fd)
+    try:
+        try:
+            completed = subprocess.run(
+                ["bash", str(target)],
+                cwd=repo_root,
+                env=child_env,
+                check=False,
+                pass_fds=(write_fd,),
             )
+        except OSError as exc:
+            os.close(read_fd)
+            raise GauntletContractError(
+                f"shell contract could not start: {relative_path}: {exc}"
+            ) from exc
+    finally:
+        os.close(write_fd)
+
+    with os.fdopen(read_fd, encoding="utf-8") as evidence_stream:
+        raw_evidence = evidence_stream.read()
+    return _parse_shell_evidence(
+        relative_path=relative_path,
+        expected_cases=expected_cases,
+        raw_evidence=raw_evidence,
+        exit_code=completed.returncode,
+    )
+
+
+def run_shell_contracts(repo_root: pathlib.Path) -> tuple[ShellEvidence, ...]:
+    if set(SHELL_CASES) != set(SHELL_TARGETS):
+        raise GauntletContractError(
+            "shell target manifest and case manifest do not match exactly"
+        )
+    return tuple(
+        run_shell_contract(
+            repo_root=repo_root,
+            relative_path=relative_path,
+            expected_cases=SHELL_CASES[relative_path],
+        )
+        for relative_path in SHELL_TARGETS
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -254,25 +395,44 @@ def main(argv: Sequence[str] | None = None) -> int:
             repo_root=REPO_ROOT,
             targets=PYTEST_TARGETS,
         )
-        run_shell_contracts(REPO_ROOT)
+        shell_evidence = run_shell_contracts(REPO_ROOT)
     except GauntletContractError as exc:
         LOGGER.error("RUNTIME_TRUTH_FAIL %s", exc)
         return 1
 
     LOGGER.info(
-        "RUNTIME_TRUTH_PASS files=%d collected=%d executed=%d skipped=0 shell=%d",
+        "RUNTIME_TRUTH_PASS files=%d collected=%d executed=%d skipped=0 "
+        "xfail=0 xpass=0 "
+        "shell_collected=%d shell_executed=%d shell_passed=%d "
+        "shell_failed=0 shell_skipped=0",
         len(evidence.collected_by_file),
         len(evidence.collected_nodeids),
         len(evidence.executed_nodeids),
-        len(SHELL_TARGETS),
+        sum(result.collected for result in shell_evidence),
+        sum(result.executed for result in shell_evidence),
+        sum(result.passed for result in shell_evidence),
     )
     for target in PYTEST_TARGETS:
         LOGGER.info(
-            "RUNTIME_TRUTH_FILE path=%s collected=%d executed=%d skipped=%d",
+            "RUNTIME_TRUTH_FILE path=%s collected=%d executed=%d skipped=%d "
+            "xfail=%d xpass=%d",
             target,
             evidence.collected_by_file[target],
             evidence.executed_by_file[target],
             evidence.skipped_by_file[target],
+            evidence.xfail_by_file[target],
+            evidence.xpass_by_file[target],
+        )
+    for result in shell_evidence:
+        LOGGER.info(
+            "RUNTIME_TRUTH_SHELL path=%s collected=%d executed=%d passed=%d "
+            "failed=%d skipped=%d",
+            result.target,
+            result.collected,
+            result.executed,
+            result.passed,
+            result.failed,
+            result.skipped,
         )
     return 0
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import pathlib
 import re
 from collections.abc import Mapping
@@ -17,8 +18,10 @@ REPO_ROOT: Final = pathlib.Path(__file__).resolve().parents[2]
 WORKFLOW_RELATIVE: Final = ".github/workflows/immune-enforcement.yml"
 WORKFLOW: Final = REPO_ROOT / WORKFLOW_RELATIVE
 RUNNER_RELATIVE: Final = "scripts/runtime_truth_ci_gauntlet.py"
+RUNNER: Final = REPO_ROOT / RUNNER_RELATIVE
 META_TEST: Final = "scripts/tests/test_runtime_truth_ci_gauntlet.py"
-STEP_NAME: Final = "Runtime Truth CI gauntlet (four incident contracts)"
+META_STEP_NAME: Final = "Runtime Truth meta-contract (external to runner)"
+RUNNER_STEP_NAME: Final = "Runtime Truth CI gauntlet (four incident contracts)"
 
 INCIDENT_CORPORA: Final[frozenset[str]] = frozenset(
     {
@@ -32,13 +35,29 @@ EXPECTED_PYTEST_TARGETS: Final[tuple[str, ...]] = (
     "apps/evaluator/nlm_deep_research/tests/test_run_verdict.py",
     "scripts/tests/test_launchd_liveness_expected_nonzero.py",
     "scripts/tests/test_proprioception_run_wrap_exit_code.py",
-    META_TEST,
 )
 EXPECTED_SHELL_TARGETS: Final[tuple[str, ...]] = (
     "scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh",
 )
-EXPECTED_STEP: Final[dict[str, object]] = {
-    "name": STEP_NAME,
+EXPECTED_SHELL_CASES: Final[dict[str, tuple[str, ...]]] = {
+    "scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh": (
+        "pg_proxy_unreachable",
+        "database_url_local_missing",
+        "pg_proxy_reachable",
+        "heartbeat_self_heal",
+    ),
+}
+EXPECTED_META_STEP: Final[dict[str, object]] = {
+    "name": META_STEP_NAME,
+    "if": "steps.paths.outputs.relevant == 'true'",
+    "env": {
+        "HOME": "${{ runner.temp }}/runtime-truth-home",
+        "TMPDIR": "${{ runner.temp }}/runtime-truth-tmp",
+    },
+    "run": f"python -m pytest {META_TEST} -q",
+}
+EXPECTED_RUNNER_STEP: Final[dict[str, object]] = {
+    "name": RUNNER_STEP_NAME,
     "if": "steps.paths.outputs.relevant == 'true'",
     "env": {
         "HOME": "${{ runner.temp }}/runtime-truth-home",
@@ -112,6 +131,10 @@ def _workflow_text() -> str:
     return WORKFLOW.read_text(encoding="utf-8")
 
 
+def _runner_text() -> str:
+    return RUNNER.read_text(encoding="utf-8")
+
+
 def parse_workflow(text: str) -> dict[str, object]:
     document = yaml.load(text, Loader=UniqueKeyLoader)
     if not isinstance(document, dict):
@@ -125,29 +148,67 @@ def _mapping(value: object, label: str) -> Mapping[str, object]:
     return value
 
 
-def runtime_truth_step(text: str) -> dict[str, object]:
+def antidotes_steps(text: str) -> list[object]:
     document = parse_workflow(text)
     jobs = _mapping(document.get("jobs"), "jobs")
     antidotes = _mapping(jobs.get("antidotes"), "jobs.antidotes")
     steps = antidotes.get("steps")
     if not isinstance(steps, list):
         raise WorkflowContractError("jobs.antidotes.steps must be a sequence")
+    return steps
+
+
+def named_step(text: str, name: str) -> tuple[int, dict[str, object]]:
+    steps = antidotes_steps(text)
     matches = [
-        step
-        for step in steps
-        if isinstance(step, dict) and step.get("name") == STEP_NAME
+        (index, step)
+        for index, step in enumerate(steps)
+        if isinstance(step, dict) and step.get("name") == name
     ]
     if len(matches) != 1:
-        raise WorkflowContractError(
-            f"expected one {STEP_NAME!r} step, found {len(matches)}"
-        )
+        raise WorkflowContractError(f"expected one {name!r} step, found {len(matches)}")
     return matches[0]
 
 
-def validate_runtime_truth_step(step: Mapping[str, object]) -> None:
-    if dict(step) != EXPECTED_STEP:
+def runtime_truth_step(text: str) -> dict[str, object]:
+    return named_step(text, RUNNER_STEP_NAME)[1]
+
+
+def validate_exact_step(
+    step: Mapping[str, object], expected: Mapping[str, object]
+) -> None:
+    if dict(step) != dict(expected):
         raise WorkflowContractError(
             f"runtime truth step differs from exact contract: {dict(step)!r}"
+        )
+
+
+def validate_runner_entrypoint(text: str) -> None:
+    """Require the executable entrypoint to delegate to ``main`` structurally."""
+    try:
+        module = ast.parse(text)
+    except SyntaxError as exc:
+        raise WorkflowContractError(f"runner is not valid Python: {exc}") from exc
+
+    expected = ast.parse(
+        'if __name__ == "__main__":\n    raise SystemExit(main())\n'
+    ).body[0]
+    candidates = [
+        node
+        for node in module.body
+        if isinstance(node, ast.If)
+        and isinstance(node.test, ast.Compare)
+        and isinstance(node.test.left, ast.Name)
+        and node.test.left.id == "__name__"
+    ]
+    if len(candidates) != 1:
+        raise WorkflowContractError(
+            f"expected one runner __name__ entrypoint, found {len(candidates)}"
+        )
+    entrypoint = candidates[0]
+    if entrypoint is not module.body[-1] or ast.dump(entrypoint) != ast.dump(expected):
+        raise WorkflowContractError(
+            "runner entrypoint must end with raise SystemExit(main())"
         )
 
 
@@ -177,15 +238,31 @@ def _remove_sentinel_entry(text: str, relative_path: str) -> str:
 def test_runner_manifest_is_exact_and_contains_four_incident_corpora() -> None:
     assert gauntlet.PYTEST_TARGETS == EXPECTED_PYTEST_TARGETS
     assert gauntlet.SHELL_TARGETS == EXPECTED_SHELL_TARGETS
-    assert frozenset(gauntlet.PYTEST_TARGETS[:-1] + gauntlet.SHELL_TARGETS) == (
+    assert gauntlet.SHELL_CASES == EXPECTED_SHELL_CASES
+    assert frozenset(gauntlet.PYTEST_TARGETS + gauntlet.SHELL_TARGETS) == (
         INCIDENT_CORPORA
     )
 
 
-def test_workflow_step_matches_exact_structural_contract() -> None:
-    step = runtime_truth_step(_workflow_text())
-    validate_runtime_truth_step(step)
-    assert step == EXPECTED_STEP
+def test_workflow_steps_match_exact_structural_contract_and_order() -> None:
+    text = _workflow_text()
+    meta_index, meta_step = named_step(text, META_STEP_NAME)
+    runner_index, runner_step = named_step(text, RUNNER_STEP_NAME)
+    validate_exact_step(meta_step, EXPECTED_META_STEP)
+    validate_exact_step(runner_step, EXPECTED_RUNNER_STEP)
+    assert meta_index < runner_index
+
+
+def test_runner_entrypoint_delegates_to_main_structurally() -> None:
+    assert validate_runner_entrypoint(_runner_text()) is None
+
+
+def test_guilt_runner_entrypoint_early_exit_is_rejected() -> None:
+    original = _runner_text()
+    mutated = original.replace("raise SystemExit(main())", "raise SystemExit(0)")
+    assert mutated != original
+    with pytest.raises(WorkflowContractError, match="SystemExit\\(main\\(\\)\\)"):
+        validate_runner_entrypoint(mutated)
 
 
 @pytest.mark.parametrize(
@@ -201,7 +278,7 @@ def test_guilt_exit_zero_and_collect_only_break_step_contract(
     mutated_step = dict(runtime_truth_step(_workflow_text()))
     mutated_step["run"] = mutated_run
     with pytest.raises(WorkflowContractError):
-        validate_runtime_truth_step(mutated_step)
+        validate_exact_step(mutated_step, EXPECTED_RUNNER_STEP)
 
 
 def test_runner_rejects_real_runtime_skip(tmp_path: pathlib.Path) -> None:
@@ -246,6 +323,41 @@ def test_runner_rejects_real_collect_only(tmp_path: pathlib.Path) -> None:
         )
 
 
+def test_runner_rejects_real_xfail(tmp_path: pathlib.Path) -> None:
+    target = tmp_path / "test_xfail_probe.py"
+    target.write_text(
+        "import pytest\n\n@pytest.mark.xfail(reason='mutant')\n"
+        "def test_probe():\n    assert False\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(gauntlet.GauntletContractError, match="xfail="):
+        gauntlet.run_pytest_contract(repo_root=tmp_path, targets=(target.name,))
+
+
+def test_runner_rejects_real_xpass(tmp_path: pathlib.Path) -> None:
+    target = tmp_path / "test_xpass_probe.py"
+    target.write_text(
+        "import pytest\n\n@pytest.mark.xfail(reason='mutant')\n"
+        "def test_probe():\n    assert 1 == 1\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(gauntlet.GauntletContractError, match="xpass="):
+        gauntlet.run_pytest_contract(repo_root=tmp_path, targets=(target.name,))
+
+
+def test_shell_contract_rejects_exit_zero_with_zero_structured_cases(
+    tmp_path: pathlib.Path,
+) -> None:
+    target = tmp_path / "fake_shell_contract.sh"
+    target.write_text("echo '0 passed, 0 failed'\nexit 0\n", encoding="utf-8")
+    with pytest.raises(gauntlet.GauntletContractError, match="executed=0"):
+        gauntlet.run_shell_contract(
+            repo_root=tmp_path,
+            relative_path=target.name,
+            expected_cases=("guilt", "innocence", "fix", "self_heal"),
+        )
+
+
 def test_every_corpus_subject_harness_and_workflow_are_exact_triggers() -> None:
     entries = sentinel_entries(_workflow_text())
     missing = uncovered_subjects(TRIGGER_SUBJECTS, entries)
@@ -281,8 +393,12 @@ def test_required_safe_events_are_structural_and_ungated() -> None:
             assert "paths-ignore" not in event_config
 
 
-def test_meta_test_is_run_and_self_triggered() -> None:
-    assert META_TEST in gauntlet.PYTEST_TARGETS
+def test_meta_test_is_external_to_runner_and_self_triggered() -> None:
+    assert META_TEST not in gauntlet.PYTEST_TARGETS
+    meta_index, meta_step = named_step(_workflow_text(), META_STEP_NAME)
+    runner_index, _ = named_step(_workflow_text(), RUNNER_STEP_NAME)
+    validate_exact_step(meta_step, EXPECTED_META_STEP)
+    assert meta_index < runner_index
     assert uncovered_subjects(
         frozenset({META_TEST}), sentinel_entries(_workflow_text())
     ) == []

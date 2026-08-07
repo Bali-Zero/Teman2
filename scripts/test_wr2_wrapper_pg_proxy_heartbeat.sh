@@ -38,9 +38,24 @@ WRAPPER_SRC="$SCRIPT_DIR/wr2-cron-wrapper.sh"
 HEARTBEAT_SRC="$SCRIPT_DIR/lib/heartbeat.sh"
 PASS=0
 FAIL=0
+EVIDENCE_FD="${RUNTIME_TRUTH_EVIDENCE_FD:-}"
 
-ok()  { PASS=$((PASS+1)); printf '  ok    %s\n' "$1"; }
-bad() { FAIL=$((FAIL+1)); printf '  FAIL  %s\n     -> %s\n' "$1" "${2:-}"; }
+record_result() {  # record_result <case_id> <passed|failed>
+    [[ -n "$EVIDENCE_FD" ]] || return 0
+    printf 'runtime-truth-shell-v1\t%s\t%s\n' "$1" "$2" >&"$EVIDENCE_FD"
+}
+
+ok() {  # ok <case_id> <label>
+    PASS=$((PASS+1))
+    record_result "$1" passed
+    printf '  ok    %s\n' "$2"
+}
+
+bad() {  # bad <case_id> <label> <detail>
+    FAIL=$((FAIL+1))
+    record_result "$1" failed
+    printf '  FAIL  %s\n     -> %s\n' "$2" "${3:-}"
+}
 
 # ---------------------------------------------------------------- fake world
 # Real heartbeat.sh copied in (not stubbed) — the whole point of this test is
@@ -97,9 +112,9 @@ make_world 1   # nc fails: pg-proxy unreachable
 rc="$(run_wrapper some.module)"
 st="$(sidecar_status "$ORGAN")"
 if [[ "$rc" == "74" && "$st" == "error" ]]; then
-    ok "GUILT: pg-proxy unreachable still writes status=error"
+    ok pg_proxy_unreachable "GUILT: pg-proxy unreachable still writes status=error"
 else
-    bad "GUILT: pg-proxy unreachable" "rc=$rc status=$st"
+    bad pg_proxy_unreachable "GUILT: pg-proxy unreachable" "rc=$rc status=$st"
 fi
 
 # --------------------------------------------------------------- INNOCENCE
@@ -111,9 +126,11 @@ printf '' > "$W/secrets.env"   # DATABASE_URL_LOCAL absent
 rc="$(run_wrapper some.module)"
 st="$(sidecar_status "$ORGAN")"
 if [[ "$rc" == "74" && "$st" == "error" ]]; then
-    ok "INNOCENCE: DATABASE_URL_LOCAL guard (same organ id) still error, not ok"
+    ok database_url_local_missing \
+        "INNOCENCE: DATABASE_URL_LOCAL guard (same organ id) still error, not ok"
 else
-    bad "INNOCENCE: DATABASE_URL_LOCAL guard" "rc=$rc status=$st"
+    bad database_url_local_missing \
+        "INNOCENCE: DATABASE_URL_LOCAL guard" "rc=$rc status=$st"
 fi
 
 # ------------------------------------------------------------------ THE FIX
@@ -121,9 +138,10 @@ make_world 0   # nc succeeds: pg-proxy reachable
 rc="$(run_wrapper some.module)"
 st="$(sidecar_status "$ORGAN")"
 if [[ "$rc" == "0" && "$st" == "ok" ]]; then
-    ok "FIX: pg-proxy reachable writes status=ok — the sidecar now has a voice"
+    ok pg_proxy_reachable \
+        "FIX: pg-proxy reachable writes status=ok — the sidecar now has a voice"
 else
-    bad "FIX: pg-proxy reachable" "rc=$rc status=$st"
+    bad pg_proxy_reachable "FIX: pg-proxy reachable" "rc=$rc status=$st"
 fi
 
 # --------------------------------------------------------------- SELF-HEAL
@@ -136,9 +154,11 @@ printf '#!/bin/sh\nexit 0\n' > "$W/bin/nc"; chmod +x "$W/bin/nc"
 rc="$(run_wrapper some.module)"
 st2="$(sidecar_status "$ORGAN")"
 if [[ "$st1" == "error" && "$rc" == "0" && "$st2" == "ok" ]]; then
-    ok "SELF-HEAL: an error sidecar clears to ok on the next good run"
+    ok heartbeat_self_heal \
+        "SELF-HEAL: an error sidecar clears to ok on the next good run"
 else
-    bad "SELF-HEAL: sidecar did not clear" "st1=$st1 rc=$rc st2=$st2"
+    bad heartbeat_self_heal \
+        "SELF-HEAL: sidecar did not clear" "st1=$st1 rc=$rc st2=$st2"
 fi
 
 echo
