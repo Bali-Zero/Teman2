@@ -562,14 +562,12 @@ async def _send_via_resend(
     )
 
 
-# Include test endpoints only in non-production environments
-import os
-
-if os.getenv("ENVIRONMENT", "development").lower() != "production":
-    from backend.app.modules.notifications.test_endpoint import router as test_router
-
-    router.include_router(test_router)
-
+# NOTE: test_endpoint.py (staging-only manual test router, self-documented
+# "remove before production") was deleted 2026-08-08 — it queried the
+# never-provisioned client_documents table in all 3 handlers, so it could
+# never have worked in staging or prod. The conditional include that used
+# to mount it here is gone with it.
+#
 # NOTE: admin_router (prefix="/api/admin/notifications") is intentionally NOT
 # nested here. Nesting it under this router (prefix="/api/notifications") gave
 # the double-prefixed path /api/notifications/api/admin/notifications/* — a 404
