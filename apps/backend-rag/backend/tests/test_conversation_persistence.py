@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from backend.core.retention_policy import ALLOW_CLOCK_DELETE_ENV, RETENTION_MIN_DAYS
 from backend.db.repositories.conversation_repository import ConversationRepository
 
 
@@ -53,10 +54,15 @@ async def test_conversation_repository_limit(mock_db_pool: tuple) -> None:
 
 
 @pytest.mark.asyncio
-async def test_conversation_cleanup(mock_db_pool: tuple) -> None:
-    """Test cleanup of old conversations."""
+async def test_conversation_cleanup(monkeypatch: pytest.MonkeyPatch, mock_db_pool: tuple) -> None:
+    """Cleanup still deletes — at a policy-legal window, with the opt-in set.
+
+    This test asked for `days=30` until 2026-08-08. That window is now refused;
+    the deletion path itself is unchanged, which is what this asserts.
+    """
+    monkeypatch.setenv(ALLOW_CLOCK_DELETE_ENV, "1")
     pool, conn = mock_db_pool
     repo = ConversationRepository(pool)
     conn.execute.return_value = "DELETE 3"
-    result = await repo.cleanup_old_conversations(days=30)
+    result = await repo.cleanup_old_conversations(days=RETENTION_MIN_DAYS)
     assert result == 3
