@@ -75,6 +75,26 @@ P0_BUDGET = _env_num("TG_P0_BUDGET", 12, int)
 # Small on purpose: a flapping cron must not become the next source that eats
 # the channel. See the comment at the budget decision below for the measurement.
 CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
+# ── Daytime reserve (2026-08-07) ─────────────────────────────────────────────
+# The budget was spent first-come-first-served, and the nightly cron batch
+# empties it before dawn. Measured on Pro over 7 clean days (07-31 → 08-06):
+# **68 of the 98 sent P0s (69%) fired between 00:00 and 02:59**, and between
+# 08:00 and 23:00 essentially nothing got through except cron-fail reserve
+# draws — while 275 further P0s (74% of a true demand of 53/day) went to the
+# digest. The lane was therefore CLOSED during the hours its only reader is
+# awake: anything breaking at 14:00 could not reach him. 18 of those 68
+# pre-dawn slots were green bulletins that never carried a red in seven days.
+#
+# So the night may spend at most P0_BUDGET - DAY_RESERVE; the remainder is held
+# for the daytime window. This changes WHICH P0s interrupt, not how many.
+#
+# `cron-fail:` is EXEMPT from the night sub-cap, deliberately: W106 IS a 03:21
+# "the Postgres backup failed", and holding one back to protect the afternoon
+# would be that same scar wearing a new face. A cron failure at night still
+# faces only the full budget and its own reserve, exactly as before.
+DAY_RESERVE = _env_num("TG_P0_DAY_RESERVE", 5, int)
+DAY_START_H = _env_num("TG_P0_DAY_START_HOUR", 8, int)
+DAY_END_H = _env_num("TG_P0_DAY_END_HOUR", 24, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 # A condition that PERSISTS is not news each time it is re-measured. After the
 # first send, each further send of the same live condition mutes it for longer.
@@ -384,6 +404,7 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
 
     send_meta = False
     drew_from_reserve = False
+    held_for_day = False
     today = time.strftime("%Y-%m-%d", time.localtime(now))
 
     with _spool_lock(spool):
@@ -447,7 +468,14 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             budget.clear()
             budget.update({"date": today, "sent": 0, "overflow": 0, "cron_reserve": 0})
 
-        if budget["sent"] >= P0_BUDGET:
+        hour = time.localtime(now).tm_hour
+        is_day = DAY_START_H <= hour < DAY_END_H
+        is_cron_fail = key.startswith("cron-fail:")
+        night_cap = max(0, P0_BUDGET - DAY_RESERVE)
+        # A cron failure is never subject to the night sub-cap (see DAY_RESERVE).
+        effective = P0_BUDGET if (is_day or is_cron_fail) else night_cap
+
+        if budget["sent"] >= effective:
             # A cron JOB FAILURE draws on its own small reserve once the shared
             # budget is gone. Measured 2026-07-27 on Pro: the P0 budget is hit on
             # 8 of 21 days and 68% of it (155 of 228 sent P0s) is one chatty
@@ -456,7 +484,7 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             # 03:21 "the Postgres backup failed" returned p0_overflow_spooled and
             # went to the digest, and production then spent 27 hours with no
             # backup at all.
-            if key.startswith("cron-fail:") and budget.get("cron_reserve", 0) < CRON_FAIL_RESERVE:
+            if is_cron_fail and budget.get("cron_reserve", 0) < CRON_FAIL_RESERVE:
                 budget["cron_reserve"] = budget.get("cron_reserve", 0) + 1
                 drew_from_reserve = True
                 record["p0_cron_reserve"] = True
@@ -465,6 +493,14 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             else:
                 budget["overflow"] += 1
                 record["p0_overflow"] = True
+                # Distinguish "the day's budget is gone" from "the night has
+                # spent its share and the rest is held for daylight" — they are
+                # different states, and the meta message below must not claim
+                # the first while the second is true (W106's second-degree
+                # defect: the diagnosis that ages with the cure).
+                if not is_day and budget["sent"] < P0_BUDGET:
+                    record["p0_night_holdback"] = True
+                    held_for_day = True
                 _append(spool, "pending.jsonl", record)
                 send_meta = budget["overflow"] == 1
                 _save_state(spool, state)
@@ -477,10 +513,19 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
     if over:
         if send_meta:
             token, chat = resolve_credentials()
-            meta = (
-                f"🔕 [{machine}] Budget P0 esaurito ({P0_BUDGET}/{P0_BUDGET} oggi). "
-                f"I successivi P0 finiscono nel digest."
-            )
+            if held_for_day:
+                meta = (
+                    f"🌙 [{machine}] Quota P0 notturna esaurita "
+                    f"({max(0, P0_BUDGET - DAY_RESERVE)}/{P0_BUDGET}); "
+                    f"{DAY_RESERVE} slot restano per le "
+                    f"{int(DAY_START_H):02d}-{int(DAY_END_H):02d}. I P0 notturni "
+                    f"successivi vanno nel digest — i cron-fail passano lo stesso."
+                )
+            else:
+                meta = (
+                    f"🔕 [{machine}] Budget P0 esaurito ({P0_BUDGET}/{P0_BUDGET} oggi). "
+                    f"I successivi P0 finiscono nel digest."
+                )
             if DRY_RUN or (token and chat):
                 send_telegram(token, chat, meta)
             else:
@@ -583,6 +628,70 @@ def selftest() -> int:
             "a non-cron P0 is NOT let through by the reserve",
             notify("p0", "t", "an unrelated failure", "other:thing") == "p0_overflow_spooled",
         )
+
+        # ---- daytime reserve (2026-08-07) ----------------------------------
+        # GUILT: the nightly batch spent the whole budget before dawn (68 of 98
+        # sent P0s fired 00:00-02:59 on the live fleet), so the lane was shut
+        # for the hours its reader is awake. The night must now stop at
+        # P0_BUDGET - DAY_RESERVE.
+        # INNOCENCE ×2, and the second is the one that matters: the very P0 the
+        # night refused goes through in daylight (the slots are held, not
+        # destroyed), and a `cron-fail:` at night is NEVER held — W106 is a
+        # 03:21 backup failure, and protecting the afternoon with it would be
+        # the same scar with a new face.
+        # The window is pinned by the knobs, not by the wall clock, so this is
+        # deterministic at any hour CI happens to run.
+        global DAY_RESERVE, DAY_START_H, DAY_END_H
+        P0_BUDGET, CRON_FAIL_RESERVE, DAY_RESERVE = 4, 2, 2  # night may spend 2 of 4
+
+        night = spool / "night"
+        night.mkdir()
+        os.environ["TG_SPOOL_DIR"] = str(night)
+        DAY_START_H, DAY_END_H = 25, 25  # no hour qualifies → always night
+        check("night: 1st P0 sends", notify("p0", "n", "the disk is full") == "sent")
+        check("night: 2nd P0 sends", notify("p0", "n", "the token was revoked") == "sent")
+        check(
+            "night: 3rd P0 is HELD for the day",
+            notify("p0", "n", "a third distinct thing broke") == "p0_overflow_spooled",
+        )
+        nstate = json.loads((night / "state.json").read_text())
+        check(
+            "…and the budget is NOT exhausted (2 of 4 spent)",
+            nstate["p0_budget"]["sent"] == 2 and nstate["p0_budget"]["sent"] < P0_BUDGET,
+        )
+        held = [json.loads(x) for x in (night / "pending.jsonl").read_text().splitlines()]
+        check("…the held record says WHY", any(r.get("p0_night_holdback") for r in held))
+        meta = (night / "sent-dry.jsonl").read_text()
+        check("…and the meta message does not claim the budget is spent",
+              "notturna" in meta and "Budget P0 esaurito" not in meta)
+        # The exemption cannot be proven by ONE night cron-fail: without it the
+        # call still succeeds — by drawing the cron reserve. The difference is
+        # only visible once that reserve would be gone, and it is the whole
+        # point: night cron-fails must not BURN the reserve that the 03:21
+        # backup failure needs. With the exemption the budget (4) carries them
+        # and the reserve (2) is still untouched behind it, so four pass;
+        # without it only the two the reserve can cover do. A first draft
+        # asserted a single cron-fail here and a mutation that deleted the
+        # exemption sailed straight through it.
+        for i, what in enumerate(
+            ["the backup did not run", "the mirror died", "the disk filled", "the token expired"]
+        ):
+            check(
+                f"night: cron-fail {i + 1}/4 passes WITHOUT burning the reserve (W106)",
+                notify("p0", "cron:x", what, f"cron-fail:job-{i}") == "sent",
+            )
+
+        day = spool / "day"
+        day.mkdir()
+        os.environ["TG_SPOOL_DIR"] = str(day)
+        DAY_START_H, DAY_END_H = 0, 24  # every hour qualifies → always day
+        check("day: 1st P0 sends", notify("p0", "d", "the disk is full") == "sent")
+        check("day: 2nd P0 sends", notify("p0", "d", "the token was revoked") == "sent")
+        check(
+            "day: the 3rd — refused at night — GOES THROUGH",
+            notify("p0", "d", "a third distinct thing broke") == "sent",
+        )
+        os.environ["TG_SPOOL_DIR"] = str(spool)
 
         # ---- identity: measurements are not identity (2026-08-06) ----------
         # GUILT: the three loudest sources on the live fleet each embed a

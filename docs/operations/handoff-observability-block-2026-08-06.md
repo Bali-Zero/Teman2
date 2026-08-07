@@ -135,11 +135,38 @@ DONE in 1s: 0 new, 0 re-translated (stale source), 847 already fresh, 745 unstam
 ```
 
 `847 + 745 = 1592`, sulle 1593 di `id`+`it`: internamente coerente. Ma il mio conteggio
-indipendente di `source_sha256` sulle stesse due lingue dà **426 timbrate / 1167 no** — anche
-questo somma a 1593. **Due misure della stessa proprietà, tagli diversi.** Ipotesi non verificate:
-«already fresh» dell'organo non significa «timbrato»; oppure la mia sonda leggeva solo i primi
-2000 byte e alcune frontmatter sono più lunghe. **Riconciliare questo è il PRIMO lavoro** —
-partire dal numero sbagliato butta il lavoro E lo fa sopravvivere nel report finale.
+indipendente di `source_sha256` sulle stesse due lingue dava **426 timbrate / 1167 no** —
+**RETRACTED 2026-08-07** (sbagliato di quasi un fattore 2; non cancellato, resta annotato
+perché chi legge dopo lo trovi già smentito invece di ri-derivarlo da capo — W113).
+
+**Ri-misurato oggi, lettura FULL-FILE con le stesse `split_frontmatter`/`read_stamp` di
+`scripts/translate-articles.py` (non reinventate): 847 timbrate / 746 non-timbrate sui 1593
+file `id`+`it` su disco.** Coincide con l'847 «already fresh» del log dell'organo qui sopra —
+il log riporta 0 stale, quindi ogni file timbrato è ANCHE fresco, e le due misure indipendenti
+(mia, oggi; dell'organo, ieri 19:30) collimano esattamente. `746 = 745 + 1`: il file in più è
+un **orfano invisibile al loop** — `immigration/driving-license-bali-foreigners-2026.id.mdx`
+esiste sul disco ma la sua sorgente inglese (`driving-license-bali-foreigners-2026.mdx`) è
+sparita, quindi `discover_articles()` non lo scopre mai e non entra né negli 847 né nei 745
+(PR #3736, aperta in parallelo sullo stesso reperto, lo rende visibile a livello di codice).
+
+Le due ipotesi lasciate aperte:
+
+- **«already fresh ≠ timbrato» — REFUTATA dal codice.** `freshness_verdict()`
+  (`scripts/translate-articles.py:165-180`) ritorna `"fresh"` _solo_ quando `stamp == digest`,
+  e uno stamp esiste solo se il campo è già scritto: «already fresh» IMPLICA timbrato, il
+  contrario non regge.
+- **byte-cap sulla mia sonda — CONFERMATA, ed è la causa.** Leggevo solo i primi ~2000
+  caratteri di ogni file. `stamp_frontmatter()` (riga 146) aggiunge `source_sha256` **per
+  ultimo** nel blocco frontmatter, e la SEO frontmatter di questo corpus supera regolarmente i
+  2KB — la sonda mancava sistematicamente proprio i file con frontmatter lunga, non a caso.
+  Ri-eseguita oggi con lo STESSO taglio (`_STAMP_RE.search(text[:2000])`, la regex dell'organo,
+  non una reinventata): degli 847 file davvero timbrati, **425 hanno il timbro oltre il
+  carattere 2000** (persi dal taglio) e **422 sono catturati entro il taglio** —
+  `422 + 425 = 847`. Una ri-esecuzione byte-capped riproduce **422**, stesso ordine di
+  grandezza del vecchio 426 sbagliato: il meccanismo è dimostrato riproducibile, non solo
+  affermato.
+
+**Riconciliato: il lavoro parte da 847/746, non dal numero vecchio.**
 
 ### §4 — il battito di `pro.translate_hourly` mente, l'organo sta bene `[famiglia #2, rovesciata]`
 
