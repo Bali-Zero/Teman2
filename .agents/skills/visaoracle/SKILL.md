@@ -215,7 +215,7 @@ true→false`) — verified deliberate (G1 packet point 9, fail-closed
   conclusive).** Not a fact-collection gap — a live SHADOW `evaluate` call
   (`mode:CURATED`, innocuous) with ALL 40 facts supplied (IT/TOURISM/10d/valid
   passport) still returned `HUMAN_REVIEW_REQUIRED`, citing 15 review reasons, all
-  `hr.d1-*`/`hr.d2-*`/`hr.d12-*` (consular-visa siblings), zero mention of B1.
+  `hr.d1-*`/`hr.d2-*`/`hr.d12-*` (multiple-entry e-visa siblings), zero mention of B1.
   Mechanism: 31/63 `PRODUCTS`-scoped `HUMAN_REVIEW` rules in the active pack (seq 3,
   content = `rulepack-prod-002.source.json`) are keyed on `intent.purposes` alone
   (± `stay_days`) — always TRUE for the declared purpose, regardless of which

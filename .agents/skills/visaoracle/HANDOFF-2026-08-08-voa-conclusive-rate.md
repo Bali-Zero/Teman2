@@ -149,7 +149,7 @@ not require `intent.entry_pattern == MULTIPLE` (even though D1 is literally
 all 5 D1 rules still fired). D2 ("Visa Kunjungan Bisnis" — business) and D12 ("Visa
 Kunjungan Pra-Investasi" — pre-investment) rules match on `TOURISM`/`FAMILY` too, not
 just their own domain purpose (`BUSINESS_MEETINGS`/`INVESTMENT`). None of the three
-discriminate "applicant actually wants this consular route" from "applicant is
+discriminate "applicant actually wants this multiple-entry route" from "applicant is
 eligible for the simpler automated product (B1) in the same purpose-set".
 
 Meanwhile `el.b1.tourism` (ELIGIBILITY, on B1 = VOA) is:
@@ -204,7 +204,7 @@ eligible candidate evaluated in the same purpose-set.
 active pack — 65 total (2 GLOBAL + 63 PRODUCTS). **31/63 (≈half) are keyed on
 `intent.purposes` alone (± `stay_days`)** — spanning every interview category: `e23`
 (EMPLOYMENT/KITAS work), `e30` (STUDY), `e31` (FAMILY/sponsor), `d1/d2/d12`
-(TOURISM/BUSINESS/INVESTMENT via consular visas). This is why the prod ledger is
+(TOURISM/BUSINESS/INVESTMENT via multiple-entry e-visas). This is why the prod ledger is
 100% `HUMAN_REVIEW_REQUIRED` across 6,610 decisions — it is not TOURISM-specific, it
 is the default shape of **any** category that has a "sibling" product with
 always-review-required policy in the same purpose-set.
@@ -256,7 +256,7 @@ end-to-end correctly; `mode:CURATED` is a display flag only).
    validity to become _real_ checks (rather than always-true flags), the
    corresponding `FactPath` entries need to be added to the closed vocabulary
    (`enums.py` `FactPath` + contract migration). Today D1/D2/D12 human review is
-   review-by-design, so this only matters if the goal is to automate those consular
+   review-by-design, so this only matters if the goal is to automate those multiple-entry
    routes too, not just B1.
 
 No changes to `evaluate_path.py`, the router, or `fact-mapper.ts` are needed for the
