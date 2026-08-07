@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 49 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 52 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -50,6 +50,8 @@
 | [`synthetic-probe-cleanup.md`](synthetic-probe-cleanup.md) | Runbook — Synthetic probe cleanup emergency |
 | [`telegram-notification-gateway.md`](telegram-notification-gateway.md) | Telegram notification gateway — tg_notify / tg_digest_flush / lint |
 | [`visa-engine-key-ceremony.md`](visa-engine-key-ceremony.md) | Visa Engine — Ed25519 Key Ceremony (2026-07-19) |
+| [`visa-oracle-privacy-enforce-gate.md`](visa-oracle-privacy-enforce-gate.md) | Visa Oracle privacy and ENFORCE gate |
+| [`visa-oracle-retention-operations.md`](visa-oracle-retention-operations.md) | Visa Oracle retention operations |
 | [`voice-concierge-local-audio.md`](voice-concierge-local-audio.md) | Runbook — Voice concierge local audio |
 | [`wa-media-pull-worker.md`](wa-media-pull-worker.md) | Runbook — WhatsApp media PULL worker (Anello 1, sovereign-local) |
 | [`wa-mirror-account-relink.md`](wa-mirror-account-relink.md) | Runbook — wa-mirror account re-link (QR) |
@@ -58,4 +60,5 @@
 | [`wr2-ig-feedback-loop.md`](wr2-ig-feedback-loop.md) | Runbook — WR2 IG-metrics feedback loop (Damar → published) |
 | [`wr2-orchestrator-pdf-render-runbook.md`](wr2-orchestrator-pdf-render-runbook.md) | WR2 Orchestrator PDF Render — Production Runbook |
 | [`wr2-perfect-prod.md`](wr2-perfect-prod.md) | Runbook — WR2 carousel pipeline (operatore non-dev) |
+| [`zoho-mail-loop.md`](zoho-mail-loop.md) | Zoho mail loop — runbook (born as the M5 -> Pro handoff) |
 <!-- DOCSYNC:RUNBOOKS_INDEX_END -->

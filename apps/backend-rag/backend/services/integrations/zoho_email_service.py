@@ -18,6 +18,7 @@ Features:
 import logging
 import re
 import time
+from email.parser import HeaderParser
 from typing import Any
 
 import asyncpg
@@ -34,6 +35,54 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
+
+
+def _decode_body(response: httpx.Response) -> Any:
+    """The error body as data, or as text when it is not JSON at all.
+
+    `response.json()` raises on a non-JSON body, and Zoho does send one: a
+    request to the wrong host answers `API endpoint not found` in plain text.
+    Letting that raise turns a diagnosable HTTP error into an unrelated
+    JSONDecodeError three frames away from the request that caused it.
+    """
+    if not response.content:
+        return {}
+    try:
+        return response.json()
+    except ValueError:
+        return response.text[:200]
+
+
+def zoho_error_code(payload: Any) -> str:
+    """The errorCode Zoho actually sent, whatever shape it arrived in.
+
+    Zoho is not consistent here, and the inconsistency is not cosmetic. An
+    authorization failure arrives as a LIST:
+
+        [2, {"msg": "Error while processing!", "errorCode": "INVALID_OAUTHSCOPE", ...}]
+
+    and the previous code coerced every non-dict body to `{}`, so the one reply
+    that says exactly what is wrong was reported as `API error: unknown`. That
+    cost a real diagnosis: a missing OAuth scope, a dead token, a malformed
+    account id and a wrong API host all printed `unknown`, which made them
+    indistinguishable from each other — the guardian that must diagnose was the
+    one lying.
+    """
+    if isinstance(payload, list):
+        payload = next((item for item in payload if isinstance(item, dict)), {})
+    if not isinstance(payload, dict):
+        return "unknown"
+
+    data = payload.get("data")
+    if isinstance(data, dict) and data.get("errorCode"):
+        return str(data["errorCode"])
+    if payload.get("errorCode"):
+        return str(payload["errorCode"])
+
+    status = payload.get("status")
+    if isinstance(status, dict) and status.get("description"):
+        return str(status["description"])
+    return "unknown"
 
 
 def sanitize_filename(filename: str, max_length: int = 200) -> str:
@@ -259,16 +308,12 @@ class ZohoEmailService:
         )
 
         if response.status_code >= 400:
-            error_data = response.json() if response.content else {}
-            # Zoho (or an intermediary proxy/gateway) can return a non-dict JSON
-            # body on error (e.g. a bare list or string) — never trust the shape.
-            if not isinstance(error_data, dict):
-                error_data = {}
+            error_data = _decode_body(response)
             logger.warning(
                 f"[Email API] Error: {method} {endpoint} user={user_id} "
                 f"status={response.status_code} error={error_data}",
             )
-            raise ValueError(f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}")
+            raise ValueError(f"API error: {zoho_error_code(error_data)}")
 
         logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
         response_data = response.json()
@@ -323,6 +368,36 @@ class ZohoEmailService:
             "Junk": "spam",
         }
         return type_map.get(folder_type, "custom")
+
+    async def create_folder(
+        self,
+        user_id: str,
+        folder_name: str,
+        parent_folder_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a mail folder.
+
+        Additive by design: Zoho rejects a duplicate name itself, so this does
+        not pre-check — a caller that wants idempotence reads `list_folders`
+        first. Returns the raw `data` block, which carries the new folderId.
+
+        Args:
+            user_id: User ID
+            folder_name: Name of the folder to create
+            parent_folder_id: Optional parent, for a nested folder
+
+        Returns:
+            The created folder as Zoho reports it
+        """
+        logger.info("[Email] Creating folder %r for user=%s", folder_name, user_id)
+        payload: dict[str, Any] = {"folderName": folder_name}
+        if parent_folder_id:
+            payload["parentFolderId"] = parent_folder_id
+
+        response = await self._request(user_id, "POST", "/folders", json_data=payload)
+        data = response.get("data")
+        return data if isinstance(data, dict) else {}
 
     # ═══════════════════════════════════════════
     # EMAIL OPERATIONS
@@ -507,6 +582,91 @@ class ZohoEmailService:
             "date": email.get("receivedTime") or email.get("sentDateInGMT"),
             "attachments": self._parse_attachments(email.get("attachments", [])),
         }
+
+    async def get_message_content(
+        self,
+        user_id: str,
+        folder_id: str,
+        message_id: str,
+    ) -> str:
+        """
+        Fetch one message body. Reads only — nothing is mutated, nothing re-listed.
+
+        `get_email` above cannot serve a reader that must not disturb the
+        mailbox, for two reasons that are easy to miss:
+
+          * it calls `mark_read` on every fetch. For the web UI that is right —
+            a human opened the mail. For a batch pass it is not: the mail loop
+            selects on `is_unread`, so a --dry-run (which promises to mutate
+            nothing) would silently mark the whole unread inbox as read, and the
+            next real run would be blind to exactly the mail it was meant to file.
+          * it re-lists 50 messages to recover metadata the caller already holds,
+            making a pass over N messages cost N listings plus N fetches.
+
+        Returns the body as Zoho stores it — usually HTML. Callers that need
+        plain text strip it themselves; this method does not guess.
+
+        Args:
+            user_id: User ID
+            folder_id: Folder the message lives in (Zoho requires it in the path)
+            message_id: Message ID
+
+        Returns:
+            The message content, or "" when Zoho reports none
+        """
+        response = await self._request(
+            user_id,
+            "GET",
+            f"/folders/{folder_id}/messages/{message_id}/content",
+        )
+        data = response.get("data")
+        if not isinstance(data, dict):
+            return ""
+        return str(data.get("content") or "")
+
+    async def get_message_headers(
+        self,
+        user_id: str,
+        folder_id: str,
+        message_id: str,
+    ) -> dict[str, str]:
+        """
+        Fetch a message's RFC-822 headers as a dict.
+
+        Only the folder-scoped path exists: `/messages/{id}/header` answers 404
+        `URL_RULE_NOT_CONFIGURED` (measured against the live API, not inferred).
+        Zoho returns the headers as one raw blob under `headerContent`, so it is
+        parsed with the stdlib parser rather than split by hand — headers fold
+        across lines and repeat, and a naive `split(":")` gets both wrong.
+
+        Best-effort: an unparseable or absent blob yields `{}`. The caller uses
+        these for bulk/auto-submitted detection, where a missing header means
+        "no evidence", never "not bulk".
+
+        Args:
+            user_id: User ID
+            folder_id: Folder the message lives in
+            message_id: Message ID
+
+        Returns:
+            Header name -> value, last occurrence winning
+        """
+        response = await self._request(
+            user_id,
+            "GET",
+            f"/folders/{folder_id}/messages/{message_id}/header",
+        )
+        data = response.get("data")
+        blob = ""
+        if isinstance(data, dict):
+            blob = str(data.get("headerContent") or "")
+        elif isinstance(data, str):
+            blob = data
+        if not blob.strip():
+            return {}
+
+        parsed = HeaderParser().parsestr(blob)
+        return {key: str(value) for key, value in parsed.items()}
 
     def _parse_attachments(self, attachments: list) -> list[dict]:
         """Parse attachment metadata to match frontend EmailAttachment format."""

@@ -3,6 +3,15 @@
 **Date:** 2026-02-12
 **Issue:** Meta WhatsApp Business API limita l'uso di Claude Max e Gemini CLI per risposte manuali del team
 
+> ⚠️ **Stale on the numbers (noted 2026-08-05).** This is a February snapshot and
+> its reasoning is kept as written, but every phone number in it has since moved.
+> The diagram below still labels `+62 813 3805 1876` the "Numero Principale": that
+> line is **retired**. Today the Meta-verified bot line is whatever
+> `SUPPORT_WHATSAPP` names in `apps/backend-rag/backend/app/core/config.py`, and
+> the public CTA on balizero.com is a team member's work line
+> (`WA_NUMBER` in `apps/mouth/src/lib/whatsapp-utm.ts`). Read the architecture
+> here, never the digits.
+
 ---
 
 ## 🔍 Situazione Attuale

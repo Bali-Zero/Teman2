@@ -48,7 +48,7 @@ export default async function KBLIHomePage({
         <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[#141416]">
           {/* Balinese ornamental pattern */}
           <div
-            className="absolute inset-0 opacity-100"
+            className="hidden lg:block absolute inset-0 opacity-100"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3C/svg%3E")`,
               backgroundSize: "200px 200px",
@@ -64,19 +64,19 @@ export default async function KBLIHomePage({
           />
           {/* Ambient orbs — subtle red and white for Indonesian flag feel */}
           <div
-            className="absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]"
+            className="hidden lg:block absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]"
             style={{
               background: "radial-gradient(circle, #dc2626, transparent)",
             }}
           />
           <div
-            className="absolute top-[-10%] right-[15%] w-[400px] h-[400px] rounded-full opacity-[0.04] blur-[100px]"
+            className="hidden lg:block absolute top-[-10%] right-[15%] w-[400px] h-[400px] rounded-full opacity-[0.04] blur-[100px]"
             style={{
               background: "radial-gradient(circle, #ffffff, transparent)",
             }}
           />
           <div
-            className="absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]"
+            className="hidden lg:block absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]"
             style={{
               background: "radial-gradient(circle, #dc2626, transparent)",
             }}
@@ -160,18 +160,27 @@ export default async function KBLIHomePage({
                   <div className="flex justify-center py-1.5 pb-2.5">
                     <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
                   </div>
-                  {/* Screen with video */}
+                  {/* Screen — an editorial still, deliberately NOT a UI mock-up
+                      and NOT a video. What stood here was a <video> whose src
+                      was /videos/kbli-demo.mp4, a path that never existed in
+                      public/ (the real dir is public/video/, singular), so
+                      production served a broken player with visible controls.
+                      The asset is encoded at exactly 812x572 — the 406x286
+                      screen at 2x — so the browser is never left to guess a
+                      crop. No `priority`: the parent column is `hidden lg:flex`,
+                      so on phones this never enters the viewport and the default
+                      lazy loading keeps its ~109KB off a surface that cannot
+                      display it. */}
                   <div
                     className="rounded-[18px] bg-black/60 overflow-hidden"
                     style={{ height: 286 }}
                   >
-                    <video
-                      src="/videos/kbli-demo.mp4"
-                      autoPlay
-                      loop
-                      playsInline
-                      controls
-                      className="w-full h-full object-cover block rounded-[18px]"
+                    <Image
+                      src="/images/kbli-navigator-hero.jpg"
+                      alt="Aerial photograph at first light of inland Bali, looking down at the line where one permitted land use ends and another begins: flooded rice terraces on the left, a row of workshops and warehouses on the right, a single road running between them."
+                      width={812}
+                      height={572}
+                      className="w-full h-full object-cover"
                     />
                   </div>
                   {/* Home bar */}

@@ -63,6 +63,12 @@ case "$TIER" in
 esac
 TIMEOUT="${CRON_AGENT_TIMEOUT:-$DEFAULT_TIMEOUT}"
 
+# Floor for a single cascade attempt (see run_agent's allocation comment). The
+# slowest agent job measured succeeding on Pro takes 118s; 300s is ~2.5x that,
+# and the global TIMEOUT above still caps the whole cascade. Per-job override:
+# CRON_AGENT_MIN_ATTEMPT_SECONDS.
+MIN_ATTEMPT_SECONDS="${CRON_AGENT_MIN_ATTEMPT_SECONDS:-300}"
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [$JOB_NAME] $*" >> "$LOG_FILE"; }
@@ -119,12 +125,16 @@ claude_stderr_retryable() {
 
 claude_stdout_retryable() {
     local stdout_file="$1"
-    python3 - "$stdout_file" <<'PY'
+    # Optional: the exit code the CLI just returned. When non-zero, stdout is a
+    # CLI diagnostic rather than an agent answer — see the anchor note below.
+    local exit_code="${2:-}"
+    python3 - "$stdout_file" "$exit_code" <<'PY'
 import json
 import re
 import sys
 
 text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+exit_code = sys.argv[2] if len(sys.argv) > 2 else ""
 broad = re.compile(
     r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
     r"usage limit|weekly limit|hit your limit|capacity|overloaded|"
@@ -175,6 +185,26 @@ retryable = (
     bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
     or bool(whole.fullmatch(text))
 )
+
+# The whole-text anchor above judges the SHAPE of the sentence: it only fires
+# when the entire output IS one of the phrasings it knows. That strictness is
+# deliberate and must stay — an agent that SUCCEEDS and happens to discuss
+# "rate limits" in its answer must not rotate the seat.
+#
+# But it made the cascade decorative against the commonest auth failure there
+# is. The CLI prints, on stdout, exit 1:
+#     Failed to authenticate. API Error: 401 OAuth access token has been revoked.
+# The anchor knows "authentication failed", not "Failed to authenticate", so it
+# refused to match and the loop broke at the first seat instead of rotating to
+# a live one. Measured 2026-08-07 on Pro: three of four numbered seats revoked,
+# the fourth alive, and every agent job died on seat 1 regardless.
+#
+# So bind the severity to the EXIT CODE, not to the wording. A non-zero exit
+# means the CLI itself refused; its stdout is a diagnostic, and any auth/quota
+# marker anywhere in it is the entity we care about. Exit 0 keeps the anchor.
+if not retryable and exit_code not in ("", "0") and not isinstance(payload, dict):
+    retryable = bool(broad.search(text))
+
 raise SystemExit(0 if retryable else 1)
 PY
 }
@@ -182,7 +212,8 @@ PY
 claude_retryable_files() {
     local stdout_file="$1"
     local stderr_file="$2"
-    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file"
+    local exit_code="${3:-}"
+    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file" "$exit_code"
 }
 
 claude_oauth_env() {
@@ -351,6 +382,26 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
         local attempts_left=$(( ${#tokens[@]} - idx ))
         local attempt_timeout=$(( remaining / attempts_left ))
+        # Equal division assumes every attempt consumes its slice. A cascade is
+        # the opposite: a DEAD seat is refused in seconds and costs nothing,
+        # while the ONE seat that works needs real time. So an equal split
+        # starves the only attempt that was ever going to succeed — and it gets
+        # worse the healthier the fleet is. Measured on Pro 2026-08-07, right
+        # after all four seats were re-issued: 600s / 5 entries = 120s each,
+        # and `indexing-daily` (a job that takes 118s) passed with two seconds
+        # to spare while `weekly-dep-audit` was killed on all five in turn —
+        # five healthy seats, five timeouts, no work done. The wrapper already
+        # grants a legitimate long agent run 30 minutes of background ceiling
+        # (see CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS below); a 120s slice
+        # contradicts that by 15x.
+        #
+        # So: floor every attempt at a real working slice. Fast-failing seats
+        # never reach the floor (they are refused long before it), so rotation
+        # keeps its full depth; only a seat that is genuinely working gets the
+        # time. The global deadline is still the hard backstop — the cap on the
+        # next line means the floor can never overrun it.
+        [[ $attempt_timeout -lt $MIN_ATTEMPT_SECONDS ]] && attempt_timeout=$MIN_ATTEMPT_SECONDS
+        [[ $attempt_timeout -gt $remaining ]] && attempt_timeout=$remaining
         [[ $attempt_timeout -lt 1 ]] && attempt_timeout=1
 
         local env_args=()
@@ -385,7 +436,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
 
         # OAuth quota/auth diagnostics can exit 0: classify before success.
-        if claude_retryable_files "$attempt_out" "$attempt_err"; then
+        if claude_retryable_files "$attempt_out" "$attempt_err" "$exit_code"; then
             log "$label: OAuth account unavailable, trying next"
             output=""
             rm -f "$attempt_out" "$attempt_err"

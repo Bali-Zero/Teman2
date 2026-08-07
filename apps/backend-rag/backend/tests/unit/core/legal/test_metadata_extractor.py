@@ -59,6 +59,20 @@ PRESIDEN REPUBLIK INDONESIA"""
         assert result["number"] == "15"
         assert result["year"] == "2023"
 
+    def test_extract_peraturan_presiden(self):
+        """Perpres sources retain their own canonical legal type."""
+        text = """PERATURAN PRESIDEN REPUBLIK INDONESIA
+NOMOR 43 TAHUN 2011
+TENTANG HAL UJI
+"""
+        extractor = LegalMetadataExtractor()
+        result = extractor.extract(text)
+
+        assert result["type"] == "PERATURAN PRESIDEN"
+        assert result["type_abbrev"] == "Perpres"
+        assert result["number"] == "43"
+        assert result["year"] == "2011"
+
     def test_extract_keputusan_presiden(self):
         """Test extracting metadata from KEPUTUSAN PRESIDEN"""
         text = """KEPUTUSAN PRESIDEN REPUBLIK INDONESIA

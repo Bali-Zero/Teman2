@@ -16,6 +16,8 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from backend.middleware.visa_oracle_privacy import is_private_visa_evaluation
+
 logger = logging.getLogger(__name__)
 
 # In-memory rate limit storage (fallback) with eviction
@@ -299,7 +301,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if not allowed:
-            logger.warning(f"⚠️ Rate limit exceeded: {user_id} on {request.url.path}")
+            if is_private_visa_evaluation(request.method, request.url.path):
+                logger.warning("Visa Oracle evaluation rate limit exceeded")
+            else:
+                logger.warning(f"⚠️ Rate limit exceeded: {user_id} on {request.url.path}")
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={

@@ -383,7 +383,7 @@
       "q5": "Can my family join me on a Second Home Visa?",
       "a5": "A family add-on is available — eligible family members can join through dependent routes. The current dependent rules and costs are confirmed individually during the free fit memo.",
       "q6": "How much does the Second Home Visa cost with Bali Zero?",
-      "a6": "IDR 39,000,000 all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
+      "a6": "{{price}} all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
     },
     "cta": {
       "title": "Start with a free fit memo",

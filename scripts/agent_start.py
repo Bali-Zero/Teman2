@@ -108,8 +108,24 @@ TASK_METADATA_FILENAME = ".agent-task.json"
 # SYMLINK_TARGETS entry, and .husky/.gitignore does not cover it, so without
 # this the broker's own shim symlink would read as `?? .husky/_` and re-create
 # the very never-cleanup-eligible bug the node_modules note describes.
+# `apps/mouth/node_modules` is listed for that same reason, and the reason is
+# NOT visible on every machine — which is exactly why it is listed rather than
+# left to the ignore rules. Measured 2026-08-07 across the fleet: the symlink
+# reads as ignored on M5 and Pro purely because a BARE `node_modules` line sits
+# in their `.git/info/exclude` — a local, untracked, per-machine file. Mini has
+# no such line (0 matches), and the repo's own .gitignore only carries the
+# directory-only `node_modules/`, which does not match a symlink-to-a-directory.
+# So on Mini this entry would read `?? apps/mouth/node_modules` and permanently
+# trip the WIP guard. Trusting one machine's clean `git status` here would have
+# been trusting a machine-local accident.
 BROKER_GENERATED_FILES = frozenset(
-    {".agent-task.json", ".env.worktree", "node_modules", ".husky/_"}
+    {
+        ".agent-task.json",
+        ".env.worktree",
+        "node_modules",
+        "apps/mouth/node_modules",
+        ".husky/_",
+    }
 )
 LSOF_FALLBACK_PATHS: tuple[Path, ...] = (Path("/usr/sbin/lsof"),)
 
@@ -152,10 +168,25 @@ ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9\-]{0,63}$")
 # lands exactly where CLAUDE.md mandates all agent work happen. Measured
 # 2026-07-16: three probe pushes from two worktrees, no gate; symlink the dir in
 # and the same push runs the full suite.
+# `apps/mouth/node_modules` is load-bearing for the same class of reason as
+# `.husky/_`, one layer down. This is an npm WORKSPACE monorepo, so a workspace
+# package's own deps are installed NESTED (`apps/mouth/node_modules/<pkg>`), not
+# hoisted to the root — `recharts` lives only there. Node resolves upward from
+# the importing file, so a worktree that symlinks only the ROOT node_modules
+# still finds nothing, and `npm run typecheck` dies with
+# `TS2307: Cannot find module 'recharts'` on two files. That is the command the
+# pre-commit hook runs whenever apps/mouth TS/TSX is staged, so without this
+# every mouth lane hits a hard failure whose cause names a package the lockfile
+# demonstrably resolves — and the obvious readings ("the lock is broken", "the
+# dep is missing") are both wrong. Measured 2026-08-07: only 5 of 37 live
+# worktrees had this directory, each because someone ran the install by hand.
+# Reproduced and proven in a fresh worktree before this change: typecheck exits
+# 2 without the symlink and 0 with it, nothing else altered.
 SYMLINK_TARGETS: tuple[tuple[str, str], ...] = (
     ("apps/backend-rag/.venv", "apps/backend-rag/.venv"),
     ("apps/backend-rag/.env", "apps/backend-rag/.env"),
     ("node_modules", "node_modules"),
+    ("apps/mouth/node_modules", "apps/mouth/node_modules"),
     (".husky/_", ".husky/_"),
 )
 

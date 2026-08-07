@@ -244,6 +244,14 @@ class SearchService:
         logger.info("✅ SearchService initialized with Qdrant URL: %s", qdrant_url)
         logger.info("✅ Using dependency injection for modular services")
 
+    @staticmethod
+    def _requires_current_law_guard(collection_name: str) -> bool:
+        """Return whether this collection may contain current-law legal sources."""
+        return canonicalize_collection_name(collection_name) in {
+            "legal_unified",
+            "tax_genius",
+        }
+
     async def _route_search_query(
         self,
         query: str,
@@ -536,11 +544,24 @@ class SearchService:
             tier_values = []
 
         # Build combined filter
-        chroma_filter = build_search_filter(tier_filter=tier_filter_dict, exclude_repealed=True)
+        chroma_filter = build_search_filter(
+            tier_filter=tier_filter_dict,
+            exclude_repealed=True,
+            exclude_historical=self._requires_current_law_guard(collection_name),
+        )
 
         # Control filter application
         if apply_filters is False:
-            chroma_filter = None
+            # Tier/repeal tuning can be intentionally disabled by internal
+            # callers, but historical evidence is never eligible as current law.
+            chroma_filter = (
+                build_search_filter(
+                    exclude_repealed=False,
+                    exclude_historical=True,
+                )
+                if self._requires_current_law_guard(collection_name)
+                else None
+            )
 
         return query_embedding, collection_name, vector_db, chroma_filter, tier_values
 
@@ -1370,6 +1391,7 @@ class SearchService:
                 chroma_filter = build_search_filter(
                     tier_filter=tier_filter_dict,
                     exclude_repealed=True,
+                    exclude_historical=self._requires_current_law_guard(collection_name),
                 )
 
                 # Search this collection (async) - track duration

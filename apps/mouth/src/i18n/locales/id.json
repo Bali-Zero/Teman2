@@ -383,7 +383,7 @@
       "q5": "Apakah keluarga saya bisa ikut dengan Visa Second Home?",
       "a5": "Tersedia add-on keluarga — anggota keluarga yang memenuhi syarat dapat ikut melalui jalur dependen. Aturan dependen terkini dan biayanya dikonfirmasi secara individual dalam fit memo gratis.",
       "q6": "Berapa biaya Visa Second Home dengan Bali Zero?",
-      "a6": "IDR 39.000.000 all-inclusive untuk E33 dasar — satu angka, semua sudah termasuk. Fit memo untuk menilai jalur Anda gratis."
+      "a6": "{{price}} all-inclusive untuk E33 dasar — satu angka, semua sudah termasuk. Fit memo untuk menilai jalur Anda gratis."
     },
     "cta": {
       "title": "Mulai dengan fit memo gratis",

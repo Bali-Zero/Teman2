@@ -320,15 +320,41 @@ def emit_alert(probes: list[Probe]) -> bool:
     for p in actions:
         lines.append(f"\n• {p.arm} ({p.family}): {p.detail}\n  → {p.fix_cmd}")
     msg = "".join(lines)
+    # The condition is WHICH credentials need a gesture — the headline says only
+    # how many, and `condition_identity()` reads the first line with digits
+    # stripped. Without this, "1 credenziale" for Codex and "1 credenziale" for
+    # Agy two hours later derive the same identity and the second is muted: a
+    # different credential, needing a different gesture, silently lost. The set
+    # is sorted so the same two arms in either scan order stay one condition.
+    condition = "auth:" + ",".join(sorted(p.arm for p in actions))
     try:
         from sentinel_lib import alerter
-        return alerter.send_alert(msg, level="WARNING")
+        return alerter.send_alert(msg, level="WARNING", condition=condition)
     except Exception:  # noqa: BLE001 — fallback diretto al gateway
         tg = REPO / "scripts" / "tg_notify.py"
         if tg.exists():
-            _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
-                  "--dedup-key", f"auth-sentinel-{host}", msg])
-            return True
+            # The SAME key string the primary path would have produced —
+            # literally, not "morally the same". The alerter builds
+            # `sentinel:<condition>:<level>`; a fallback that invents
+            # `auth-sentinel-<host>-<condition>` gives one condition two
+            # identities, so a first send through the primary and a second
+            # through the fallback both get through and walk past the ladder.
+            # An exception branch is not a place where identity may be cheaper,
+            # and "the same identity" has to mean the same bytes.
+            #
+            # `_run` returns (exit_code, output) — the earlier `rc = _run(...)`
+            # compared a TUPLE to 0 and was always False. And the exit code is
+            # not the verdict either: tg_notify.main() returns 0 even when both
+            # notify() and its emergency spool fail, so judge the OUTCOME LINE
+            # (W104 — read the reply, never the exit status).
+            _rc, out = _run(["python3", str(tg), "--tier", "p0", "--source", "auth-sentinel",
+                             "--dedup-key", f"sentinel:{condition}:warning", "--", msg])
+            outcome = ""
+            for line in (out or "").splitlines():
+                if line.startswith("tg_notify:"):
+                    outcome = line.split(":", 1)[1].strip().split(" ")[0]
+            return outcome in ("sent", "spooled", "logged", "deduped",
+                               "p0_overflow_spooled", "p0_unsent_spooled")
     return False
 
 

@@ -29,6 +29,11 @@ import {
 import { kbliApi, KBLIDetail, KBLISearchResult } from "@/lib/api/kbli.api";
 import { toast } from "sonner";
 import { useSessionStorage } from "@/lib/hooks/optimized/useLocalStorage";
+import {
+  describeObligation,
+  TRUNCATION_HINT,
+  TRUNCATION_NOTE,
+} from "@/lib/kbli-obligation-truncation";
 import KBLIInspector, {
   getPmaBadge,
   getRiskBadge,
@@ -42,6 +47,7 @@ import { useTypewriter } from "./hooks/useTypewriter";
 import LegacyAlert from "./components/LegacyAlert";
 import BlackBookModal from "./components/BlackBookModal";
 import { KBLI_CONCORDANCE_2025 } from "./concordance";
+import { summariseLicences } from "@/lib/kbli-licence-summary";
 
 // =============================================================================
 // CONSTANTS & HELPERS
@@ -660,7 +666,13 @@ const InspectorChoreographed = ({
 
   // Copy/Export (2C)
   const handleCopy = () => {
-    const licList = data.licenses.map((l) => l.type).join(", ") || "None";
+    // `|| "None"` here asserted "no licence required" out of an EMPTY list —
+    // 284 codes render `licenses: []` and canonical states obligations for 125
+    // of them. The resolver declares the gap instead. See kbli-licence-summary.
+    const licList = summariseLicences(
+      data.licenses.map((l) => l.type),
+      data.licensing_status,
+    );
     const text = `KBLI ${data.code} — ${data.title} | PMA: ${pmaBadge.label} | Risk: ${getRiskBadge(data.risk_profile).label} | Licenses: ${licList} | Sector: ${data.sector}`;
     navigator.clipboard.writeText(text).then(() => {
       toast.success("Copied to clipboard");
@@ -838,7 +850,16 @@ const InspectorChoreographed = ({
                         <span
                           className={`font-medium text-silver group-hover:text-white transition-colors ${idx === 0 ? "text-sm" : "text-xs"}`}
                         >
-                          {lic.type}
+                          {describeObligation(lic.type).text}
+                          {describeObligation(lic.type).truncated && (
+                            <span
+                              className="text-[#c98a3a]"
+                              title={TRUNCATION_HINT}
+                            >
+                              {" "}
+                              […{TRUNCATION_NOTE}]
+                            </span>
+                          )}
                         </span>
                         <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
                           {lic.sla}
@@ -862,14 +883,26 @@ const InspectorChoreographed = ({
                             What you need to do:
                           </p>
                           <ul className="space-y-1">
-                            {lic.requirements.slice(0, 3).map((req, ridx) => (
-                              <li
-                                key={ridx}
-                                className="text-[11px] text-[#888] leading-tight"
-                              >
-                                &bull; {req}
-                              </li>
-                            ))}
+                            {lic.requirements.slice(0, 3).map((req, ridx) => {
+                              const duty = describeObligation(req);
+                              return (
+                                <li
+                                  key={ridx}
+                                  className="text-[11px] text-[#888] leading-tight"
+                                >
+                                  &bull; {duty.text}
+                                  {duty.truncated && (
+                                    <span
+                                      className="text-[#c98a3a]"
+                                      title={TRUNCATION_HINT}
+                                    >
+                                      {" "}
+                                      […{TRUNCATION_NOTE}]
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       )}

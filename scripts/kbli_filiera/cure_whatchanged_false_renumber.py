@@ -92,19 +92,30 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
     ALL_PASSES,
     FALSE_CLAIM,
     HONEST_CLAIM,
+    CURED_CONTINUITY_MARKER,
     PASS_CONTRADICTED_PREDECESSOR,
     PASS_FALSE_CLAIM,
+    PASS_FALSE_CONTINUITY,
+    PASS_RESIDUAL_CONTINUITY,
     PASS_TRUNCATED,
     TRUNCATION_LENGTH,
     WhatChangedError,
+    claims_ambiguous_continuity,
+    claims_number_unchanged,
+    contradicted_continuity,
     contradicted_predecessors,
+    contradicts_own_correction,
     drop_contradicted_predecessor,
+    drop_false_continuity,
+    drop_residual_continuity,
     has_no_recorded_predecessor,
     is_truncated_midword,
+    number_is_discontinuous,
     plan_text,
     recorded_predecessors,
     swap_false_claim,
     trim_to_last_complete_sentence,
+    unconfirmed_continuity_sentence,
 )
 
 # The re-exports above are unused *inside* this module by construction — they exist
@@ -115,21 +126,32 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
 __all__ = [
     # re-exported from _whatchanged_basis (single module object — see comment above)
     "ALL_PASSES",
+    "CURED_CONTINUITY_MARKER",
     "FALSE_CLAIM",
     "HONEST_CLAIM",
     "PASS_CONTRADICTED_PREDECESSOR",
     "PASS_FALSE_CLAIM",
+    "PASS_FALSE_CONTINUITY",
+    "PASS_RESIDUAL_CONTINUITY",
     "PASS_TRUNCATED",
     "TRUNCATION_LENGTH",
     "WhatChangedError",
+    "claims_ambiguous_continuity",
+    "claims_number_unchanged",
+    "contradicted_continuity",
     "contradicted_predecessors",
+    "contradicts_own_correction",
     "drop_contradicted_predecessor",
+    "drop_false_continuity",
+    "drop_residual_continuity",
     "has_no_recorded_predecessor",
     "is_truncated_midword",
+    "number_is_discontinuous",
     "plan_text",
     "recorded_predecessors",
     "swap_false_claim",
     "trim_to_last_complete_sentence",
+    "unconfirmed_continuity_sentence",
     # this module's own surface
     "CODE_FIELD",
     "DEFAULT_CANONICAL",
@@ -139,6 +161,7 @@ __all__ = [
     "SIDECAR_DATASET_PATH",
     "SIDECAR_PATH",
     "SYNC_SCRIPT",
+    "ambiguous_continuity_census",
     "canonical_index",
     "gold_entries",
     "main",
@@ -350,6 +373,42 @@ def thin_outcomes(planned: list[tuple[str, str, str, list[str]]]) -> list[str]:
     return sorted(thin)
 
 
+def ambiguous_continuity_census(
+    records: list[dict[str, Any]], gold: dict[str, Any], by_code: dict[str, dict[str, Any]]
+) -> list[tuple[str, str]]:
+    """[(code, surface)] the continuity pass deliberately DOES NOT cure.
+
+    Pass D only fires on wordings that assert the NUMBER carried over. "Direct
+    match from KBLI 2020" is ambiguous between that and a clean 1:1 ACTIVITY
+    mapping onto a different number, so it is excluded — but excluding it
+    silently would read as "there was nothing else", which is the failure mode
+    a bounded sweep owes the reader a number for. These are the entries that a
+    broader pattern WOULD have taken: ambiguous wording, on a record whose own
+    code no crosswalk layer records.
+    """
+    found: list[tuple[str, str]] = []
+    for record in records:
+        text = str(((record.get("intel_2026") or {}).get("whatChanged") or ""))
+        if (
+            claims_ambiguous_continuity(text)
+            and not claims_number_unchanged(text)
+            and number_is_discontinuous(record)
+        ):
+            found.append((str(record[CODE_FIELD]), "canonical"))
+    for code, entry in gold.items():
+        record = by_code.get(str(code))
+        if record is None:
+            continue  # judged by the canonical record or not at all
+        text = str((entry or {}).get("whatChanged") or "")
+        if (
+            claims_ambiguous_continuity(text)
+            and not claims_number_unchanged(text)
+            and number_is_discontinuous(record)
+        ):
+            found.append((str(code), "gold"))
+    return sorted(found)
+
+
 def _report(label: str, planned: list[tuple[str, str, str, list[str]]]) -> None:
     print(f"\n{label}: {len(planned)} record(s) to rewrite")
     for name in ALL_PASSES:
@@ -409,6 +468,14 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(gold_orphans)} {gold_orphans}"
     )
 
+    ambiguous = ambiguous_continuity_census(records, gold, by_code)
+    print(
+        f"\nambiguous continuity wording, REPORTED not cured "
+        f"(\"direct match from KBLI 2020\" — could mean the same number or a 1:1 "
+        f"activity mapping; the record's own code is in no crosswalk layer): "
+        f"{len(ambiguous)} {ambiguous}"
+    )
+
     if args.kg_pull:
         pull = json.loads(args.kg_pull.read_text(encoding="utf-8"))
         spec = plan_kg_spec(pull, by_code)
@@ -438,10 +505,26 @@ def main(argv: list[str] | None = None) -> int:
     for code, _, new_text, _ in gold_plan:
         gold[code]["whatChanged"] = new_text
 
-    _write_json(args.canonical, dataset, canonical_indent)
-    logger.info("wrote %d canonical record(s) to %s", len(canonical_plan), args.canonical)
-    _write_json(args.gold, gold_doc, gold_indent)
-    logger.info("wrote %d gold entry(ies) to %s", len(gold_plan), args.gold)
+    # A surface with nothing to rewrite is not written AT ALL. Re-serialising it
+    # is not a no-op: on 2026-08-05 a run that reported "wrote 0 gold entry(ies)"
+    # still stripped the trailing newline from `kbli-gold-all.json`, so the diff
+    # carried a file the run had just declared untouched — and `prettier --check`
+    # then failed on a change nobody made. A tool that says it wrote nothing must
+    # leave the bytes alone.
+    if canonical_plan:
+        _write_json(args.canonical, dataset, canonical_indent)
+    logger.info(
+        "wrote %d canonical record(s) to %s",
+        len(canonical_plan),
+        args.canonical if canonical_plan else "(nothing to write — file untouched)",
+    )
+    if gold_plan:
+        _write_json(args.gold, gold_doc, gold_indent)
+    logger.info(
+        "wrote %d gold entry(ies) to %s",
+        len(gold_plan),
+        args.gold if gold_plan else "(nothing to write — file untouched)",
+    )
 
     run_sync_script()
     update_sidecar()

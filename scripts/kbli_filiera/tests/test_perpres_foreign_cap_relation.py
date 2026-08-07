@@ -9,6 +9,7 @@ a different law.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ if _FILIERA_DIR not in sys.path:
 
 from perpres_foreign_cap_relation import (  # noqa: E402
     INSTRUMENT,
+    OUT_PATH,
     RELATION,
     caps_by_code,
     classify_join,
@@ -91,6 +93,17 @@ def test_innocence_a_record_matching_the_law_is_never_a_divergence():
     assert [i["kbli_2025"] for i in res["agree"]] == ["25200"]
 
 
+def test_guilt_a_coincidental_cap_match_with_the_wrong_status_is_a_disagreement():
+    """Cap alone is not agreement: a record whose max_asing coincidentally
+    equals the law's number while pma_status says TERBUKA (or anything but
+    TERBATAS) has NOT adopted the restriction — it is a status divergence a
+    cap-only comparison would silently wave through as `agree`."""
+    res = classify_join(RELATION, [_record("25200", ["25200"], 49, status="TERBUKA")])
+    assert res["agree"] == []
+    assert [i["kbli_2025"] for i in res["disagree"]] == ["25200"]
+    assert res["disagree"][0]["catalogue_status"] == "TERBUKA"
+
+
 def test_innocence_a_code_the_instrument_does_not_mention_is_not_judged():
     res = classify_join(RELATION, [_record("62010", ["62010"], 100)])
     assert res["agree"] == res["disagree"] == res["ambiguous"] == []
@@ -146,3 +159,32 @@ def test_check_writes_nothing(tmp_path, monkeypatch):
     dataset.write_text('{"data": []}')
     assert mod.main(["--check", "--dataset", str(dataset)]) == 0
     assert not sentinel.exists()
+
+
+# --- the two sources of one fact (W105 seam) --------------------------------
+#
+# `data/kbli-filiera/perpres-foreign-caps.json` is written FROM `RELATION`
+# (relation_rows()), but a second compiler (perpres_body_default_relation.py)
+# reads the JSON back as its OWN input, independent of RELATION. That makes
+# the JSON a real second representation of the same fact, not a throwaway
+# export — a hand-edit to the JSON (or a RELATION change nobody re-ran the
+# emit for) would silently feed `perpres_body_default_relation.py` a
+# different annex than the one this module believes in, and nothing here
+# would notice. This proves the two are identical, field-by-field, on every
+# run of this suite.
+
+
+def test_the_committed_json_matches_relation_rows_field_by_field():
+    assert OUT_PATH.exists(), (
+        f"{OUT_PATH} is missing — run `python scripts/kbli_filiera/"
+        "perpres_foreign_cap_relation.py` (no --check) to emit it"
+    )
+    on_disk = json.loads(OUT_PATH.read_text())
+    assert on_disk["rows"] == relation_rows(), (
+        "data/kbli-filiera/perpres-foreign-caps.json has drifted from RELATION "
+        "— re-run `python scripts/kbli_filiera/perpres_foreign_cap_relation.py` "
+        "(no --check) and commit the result; perpres_body_default_relation.py "
+        "reads this file as its own input, so a stale copy silently feeds it a "
+        "different annex than the one RELATION describes"
+    )
+    assert on_disk["instrument"] == INSTRUMENT

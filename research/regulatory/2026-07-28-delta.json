@@ -1,0 +1,44 @@
+{
+  "run_at": "2026-07-28T07:19:42+08:00",
+  "today": "2026-07-28",
+  "yesterday_seen_count": 20,
+  "new_today_count": 0,
+  "partial": false,
+  "nb_query_errors": [],
+  "nb_query_notes": [
+    "All 4 NB-INTEL queries returned successfully but with sources_used: [] (empty) - consistent with the known post-UUID-switch degradation of the NB-INTEL family noted in CLAUDE.md.",
+    "NB-INTEL-Tax answer included an unsolicited note about the permanent closure of 833 kitchens under the Makan Bergizi Gratis (MBG) program, announced 2026-07-27 by the Kepala BGN. Not a verbatim regulatory citation with number/year and not a Bali Zero service-line match (visa/tax/property/regulatory-HR/company) - not treated as a delta per the no-speculation rule; flagged here for manual review only."
+  ],
+  "unreachable_sources": [
+    {"url": "https://www.hukumonline.com/berita/", "reason": "http_403", "note": "Cloudflare/WAF block, confirmed after 1 retry"},
+    {"url": "https://muc.co.id/article", "reason": "http_403", "note": "confirmed after 1 retry"},
+    {"url": "https://ortax.org/news", "reason": "empty_shell", "note": "HTTP 200 but page reads 'Artikel tidak ditemukan', no extractable static content"}
+  ],
+  "sources_checked_no_delta": [
+    {"url": "https://news.ddtc.co.id/", "reason": "checked_no_new", "note": "3 citations found (SE-9/PJ/2026, PMK 49/2026, SE-8/PJ/2026) all already in seen_citations from 2026-07-27"},
+    {"url": "https://ikpi.or.id/berita/", "reason": "checked_no_new"}
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PMK 49/2026",
+    "SE-9/PJ/2026"
+  ]
+}

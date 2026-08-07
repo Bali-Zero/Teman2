@@ -1,0 +1,27 @@
+{
+  "code": "90200",
+  "adjudicated": "team-lead brief, 2026-08-07 — implement verbatim, do not re-author",
+  "facts_basis": {
+    "canonical_titles_and_verdicts": {
+      "90200": "Aktivitas Seni Pertunjukan — bps_2020_ancestors.codes = [90011, 90021, 90022, 90024]"
+    },
+    "rejected_claims_deliberately_excluded": [
+      "\"New in KBLI 2025 — no equivalent in KBLI 2020\" — contradicted by canonical's own bps_2020_ancestors field, which names four 2020 codes this record merges"
+    ]
+  },
+  "why": "The live gold whatChanged for 90200 (Aktivitas Seni Pertunjukan) said 'New in KBLI 2025 — no equivalent in KBLI 2020. Register fresh on OSS.' Canonical's own bps_2020_ancestors field for this code names four 2020 ancestor codes (90011, 90021, 90022, 90024 — performing-arts activities and venues), so the card asserted the opposite of what canonical records: a holder of any of those four 2020 codes would read 'no equivalent' and wrongly conclude nothing carries forward, instead of being told this IS their code now. Same class as 86101 (PR #3xxx precedent): a whatChanged/whatItMeans field asserting something canonical's own structured data contradicts.",
+  "fields": {
+    "whatChanged": {
+      "old": "New in KBLI 2025 — no equivalent in KBLI 2020. Register fresh on OSS.",
+      "new": "Merged in KBLI 2025 from four KBLI 2020 codes (90011, 90021, 90022, 90024 — performing-arts activities and venues). If you held any of those, this is your code now."
+    }
+  },
+  "untouched_fields": [
+    "whatItMeans",
+    "whatYouNeed",
+    "zantaraOpener",
+    "baliContext",
+    "youllAlsoNeed",
+    "tkaInfo"
+  ]
+}

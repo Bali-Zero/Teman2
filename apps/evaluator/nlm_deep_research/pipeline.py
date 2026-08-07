@@ -26,6 +26,7 @@ from .handoff import generate_handoff, save_handoff, validate_handoff_schema
 from .invariants import InvariantSeverity, check_all_invariants
 from .query_decomposer import QueryDecomposer
 from .registry import SourceRegistry
+from .run_verdict import verdict
 from .source_management import (
     LifecycleStage,
     NotebookHealthInput,
@@ -717,11 +718,13 @@ def main():
     result = pipeline.run()
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
-    # An intentional calendar skip (weekend halt) is a healthy no-op, not a
-    # failure — exit 0 so set-euo cron wrappers don't record a fake death.
-    if result.get("halt_reason") == "weekend":
-        sys.exit(0)
-    sys.exit(0 if result.get("phases", {}).get("preflight", {}).get("passed") else 1)
+    # The exit code must report the WORK, not the gate. One rule for all
+    # eight pipelines lives in run_verdict.py — see its docstring for the
+    # night this was measured.
+    code, reason = verdict(result)
+    if code:
+        print(f"[verdict] FAILED: {reason}", file=sys.stderr)
+    sys.exit(code)
 
 
 if __name__ == "__main__":

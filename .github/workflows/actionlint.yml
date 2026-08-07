@@ -36,7 +36,13 @@ jobs:
   lint:
     name: actionlint — workflow schema + expression gate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 5 → 12 (2026-08-06). This job sat exactly ON the floor its own new step
+    # enforces, while gaining work (a pip install + a second lint) — and the
+    # floor clears a bad checkout, it does not clear a bad checkout PLUS a release
+    # download PLUS two linters. Being at the edge of the rule you are writing is
+    # how you get bitten by it — and this job WAS: on the merge-queue ref its own
+    # checkout ran 4m59s and the 5-minute budget killed it.
+    timeout-minutes: 12
     env:
       ACTIONLINT_VERSION: "1.7.12"
       ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
@@ -51,6 +57,12 @@ jobs:
           echo "${ACTIONLINT_SHA256}  actionlint.tgz" | sha256sum -c -
           tar xzf actionlint.tgz actionlint
           chmod +x actionlint
+
+      - name: Checkout-budget floor (a job's floor is the checkout, not its script)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/lint_workflow_timeout_floor.py
 
       - name: Lint all workflow files
         run: |

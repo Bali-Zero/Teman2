@@ -43,7 +43,499 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-03 — keep current)
+## 1. LIVE STATE (last update 2026-08-05 — keep current)
+
+**🟢 2026-08-06 — THE BOT/MCP HALF IS SHIPPED, SYNCED AND PROVEN LIVE (#3648, `b5dd5f37ca`). Both
+web surfaces were already live (#3645/#3646); this closes the third.** Every step measured, none
+inferred: deploy `success` → the code proven INSIDE the running container (`grep -c
+licensing_disclosure /app/backend/app/routers/kbli_notebook.py` = 2, cache key `kbli_inspect_v3`) →
+`kg_kbli_resync.py --apply` → verified by INDEPENDENT SQL on prod rather than by the script's own
+report: `properties.pp28_sources` **0 → 1,384** KBLI nodes, **390 inherited**.
+
+Reconciliation that holds, which is what makes it a proof: 1,419 updated + 139 unchanged + 1 missing
+(`01122`, declared) = 1,559 canonical codes; and 1,384 = 390 inherited + 994 self-sourced. The 390 was
+derived twice by different routes — Python over `KBLI_2025_FINAL_CLEAN.json`, and SQL over `kg_nodes`
+— and agreed.
+
+Live payloads, read off prod:
+
+- `inspect_kbli 62110` → `licensing_content_inherited_from` `["62011","62019","62015","62013","62012"]`
+  plus the note naming them.
+- `56101` (8 licences rendered) and `01111` (6) → **both fields `null`**. Innocence for the RIGHT
+  reason: each renders licences, so the silence is the self-sourced verdict, not an empty-list side
+  effect.
+
+**Fleet reach measured on the KG after the sync: 390 inherited → 305 get the note, 85 render zero
+licences and are correctly silent.** Say 305, never 390 —
+[[lesson_a_cures_own_count_is_not_the_count_of_rows_that_gained_the_thing_2026_08_05]].
+
+**THE PROPAGATION FACT THAT MAKES THIS DIFFERENT FROM THE PMA CURE, and the trap it avoids:**
+`inspect_kbli` reads `pma_status` from **Qdrant first** and `kg_nodes` only as a fallback — which is
+why `kg_kbli_resync.py` was a no-op on that field and the twenty perpres codes needed
+`kbli_qdrant_pma_sync.py`. `pp28_sources` is NOT on that path: it is read from `props`, bound from
+`SELECT * FROM kg_nodes WHERE entity_id = $1`. **Verified in the router before running the apply**,
+because the same-shaped sync had already been a wasted write once on this lane.
+
+**NEVER query `inspect_kbli` between a deploy and its data sync.** The version bump evicts at deploy,
+so any call in that window writes a fresh entry WITHOUT the cure and hides it for the 30-day TTL.
+This proof was taken with no such call in between.
+
+**What that live call also exposed, and it is the case for #3650 (open):** `62110` VIDEO GAME
+DEVELOPMENT is served `Izin Produksi Alat Peralatan Pertahanan dan Keamanan`, `Izin Industri
+Pertahanan`, `Sertifikat Persetujuan Kelaikan Fasilitas Produksi Pertahanan`, the placeholder `Izin
+Usaha`, and a truncated `NIB dan`. The note now warns the client; #3650 removes the placeholder.
+An independent review of #3650 returned DEFECTIVE, and **verifying its objection is what found the
+bigger defect**: 0 live permit-typed nodes open with a meN- verb outside the enumerated 23 (its
+counterexample was constructed), but **97 nodes on 62 codes carry `kewajiban` as an id token while
+`entity_type` files them as permits** — noun-phrase duties (`Laporan Penomoran Telekomunikasi`) that
+no verb list can catch. Innocence measured before shipping: 0 of those 97 carry a permit-shaped name.
+
+**🔴🟡 2026-08-05 — WE TELL A VIDEO-GAME STUDIO IT NEEDS THREE DEFENCE-INDUSTRY LICENCES, AND CANONICAL
+IS WHERE IT COMES FROM: 62110 INHERITED ITS PP 28 LICENSING FROM FIVE OTHER CODES.** Read this section
+to the CORRECTION at its end — the first verdict here (a refusal built on one canonical field) was
+wrong within the hour, and the corrected finding is the larger one.
+
+This closes the declared gap left open by #3625 ("the 11,245 node-silent edges are untouched and still
+wrong in places") with a NUMBER and a NO, not with a fix.
+
+**The harm, proven on the live endpoint, not inferred.** `inspect_kbli 62110` (VIDEO GAME DEVELOPMENT)
+returns six licences whose `requirements` is `[]`, and three of them are defence permits: `Izin Produksi
+Alat Peralatan Pertahanan dan Keamanan`, `Sertifikat Persetujuan Kelaikan Fasilitas Produksi Pertahanan`,
+`Izin Industri Pertahanan`. A fourth is `Penyelenggara Sistem Elektronik Lingkup Privat`. The
+canonical-backed obligations cure could not touch them **by construction**: a target that states no
+obligation has nothing to compare against canonical, so it is KEPT.
+
+**Provenance names the mechanism and does not separate right from wrong.** All five non-OSS-tier targets
+on 62110 carry one and the same `source_chunk_ids` entry, `2933b2b9-4853-53ad-ab23-e630571011aa`, and
+that chunk produced REQUIRES edges for **exactly one** KBLI code — 62110. So the error is one bad
+extraction, not a shared over-linked node like the four agricultural ones; there is no "this node is
+attached to 888 codes" signal to key on. The chunk text itself is a Qdrant point id and is not
+resolvable from Postgres — a pointer, not evidence (W65).
+
+**The population, measured this turn.** REQUIRES edges out of `kbli:%` whose target is a PERMIT type
+(`classify_requires_target` → `license`: `perizinan`, `izin_usaha`, `license`, `nib`, `permit_type`,
+`penetapan`) **and** states no obligations: **3,222** (code, target) pairs. By entity type —
+`izin_usaha` 1,935 rows / 647 codes / 506 distinct targets · `license` 1,167 / 967 / 4 · `nib` 100 ·
+`penetapan` 10 · `permit_type` 9 · `perizinan` 2.
+
+**THE TEMPTING PREDICATE, AND WHY IT IS REFUSED** — ⚠️ **read the CORRECTION below before using any
+number in this paragraph: it was measured against one canonical field and the missing one changes the
+diagnosis.** The obligations cure compares the target's
+`kewajiban` against canonical's; the obvious sequel compares the target's NAME against canonical's
+`perizinan` for the same code. Measured over all 3,222: **NO_OVERLAP 1,925** (624 codes, 495 names) ·
+SUBPHRASE_OF_CANONICAL 634 · EXACT 614 · CANONICAL_SILENT 38 · CODE_ABSENT 9 · CANONICAL_INSIDE_NAME 2.
+
+Read the 1,925 and the cure dies: its biggest members are `Sertifikat Tingkat Komponen Dalam Negeri`
+(172 codes), `Surat Persetujuan Penilaian TKDN Penggunaan Mesin Produksi Dalam Negeri` (103), `UMKU`
+(83), `Izin Edar Pangan Olahan` (38), the CPPOB and PMR food-safety permits (~90 between them), the
+medical-device `Izin Edar` family. **Those are real permits the businesses really need.** Canonical's
+`perizinan` states the **OSS main tier only** — `NIB dan Sertifikat Standar` and its siblings — while
+the graph's `izin_usaha` targets are overwhelmingly the **UMKU sub-licence layer**. The two vocabularies
+describe DIFFERENT LAYERS of licensing, so absence from one is not denial by the other, and a name
+comparison reads "contradicted" on the whole second layer.
+
+> **The predicate that worked for obligations does not transfer to names, and the reason is structural,
+> not a tuning problem.** Same shape as the 1,341 duplicate `BELONGS_TO` rows: the cure that looks
+> obvious would have quietly destroyed data while wearing the shape of a fix.
+
+**🔴 CORRECTED ONE HOUR AFTER MERGING IT — WE DO HOLD THE UMKU LAYER, AND THE DEFENCE PERMITS ARE IN
+CANONICAL.** The paragraph above shipped in #3643 saying the UMKU layer was absent from canonical and
+that a per-code adjudication would need a source "which we do not hold". **Both halves are false**, and
+they were false because the refusal enumerated ONE canonical field. `per_skala_legacy[].pb_umku` is the
+UMKU layer: **930 codes, 1,316 entries, 645 distinct values**, and its vocabulary is exactly the one the
+refusal called "contradicted" — `Sertifikat Tingkat Komponen Dalam Negeri`, the TKDN machine approval,
+`Sertifikat Laik Sehat`, `Pelepasan Varietas Tanaman Perkebunan`.
+
+Re-measured with the reference it should have used from the start (`perizinan` ∪ `pb_umku`, both
+`per_skala` and `per_skala_legacy`, bulleted cells split): **EXACT 1,358 · SUBPHRASE 817 ·
+CANONICAL_INSIDE_NAME 29 · NO_OVERLAP 971** (497 codes, 328 names) · CANONICAL_SILENT 38 · CODE_ABSENT 9. The graph mirrors canonical far more closely than the first pass could see.
+
+**And that flips the diagnosis of the 62110 case entirely.** Canonical's own record for VIDEO GAME
+DEVELOPMENT carries, verbatim in `per_skala_legacy[2].pb_umku`:
+
+> `- Pendaftaran Penyelenggara Sistem Elektronik Lingkup Privat (dalam hal memiliki sistem elektronik
+yang dipergunakan) - Izin Penetapan Indust ri Pertahanan - Sertifikat Persetujuan Kelaik an Fasilitas
+Produ ksi Pertahanan … - Izin Produksi Alat Peralatan Pertahanan dan Keamanan`
+
+So the KG is **faithfully reproducing canonical**, not inventing. #3625's "CANONICAL IS CLEAN — this is
+an EDGE defect" holds for the agricultural OBLIGATIONS and **does not generalise to this class**. (The
+mid-word spaces — `Indust ri`, `Kelaik an`, `Produ ksi` — are the PDF text-layer damage this lane has
+met before; the text is a bad extraction, not a bad transcription by us.)
+
+**THE MECHANISM IS RECORDED IN THE DATA AND NOTHING SURFACES IT.** `62110.pp28_sources` is
+`["62011", "62019", "62015", "62013", "62012"]`: 62110 is a NEW 2025 code with no PP 28/2021 row of its
+own, so its licensing was filled from its KBLI-2020 ancestors — computer-programming codes. Measured
+across the file: **390 of 1,559 codes carry `pp28_sources` naming ONLY OTHER codes** (plus 88 that mix
+own + others, 906 that are self-sourced, 175 empty), and **217 of those 390 inherit a `pb_umku` permit
+that belongs to a different code**. The ancestry itself can be wrong — `02101 Pengelolaan Hutan` (forest
+management) is sourced from `['63111']` (data processing / hosting).
+
+**This is the north star's own words made measurable**: _"zero silent cross-vintage fill anywhere in the
+catalog"_. The fill is not silent in the data — `pp28_sources` is a complete audit trail — it is silent
+on the SURFACES. A client reading `/kbli/62110` or asking the bot is told it needs a defence-production
+permit, with nothing saying that requirement was inherited from a different code.
+
+**WHAT WOULD ACTUALLY CLOSE IT** (not built): DISCLOSURE, not deletion. A permit whose only support is
+an INHERITED `pp28_sources` entry should say so — same family as the `[… cut off in the official
+source]` label, and derivable from a field we already carry on every record, with no new government
+source needed. Deletion stays refused for the original reason, which survives correction: the layers are
+real and most of these permits are real.
+
+**✅ THE WEB HALF IS SHIPPED, DEPLOYED AND PROVEN LIVE (#3645, merge `9a0a8e8adc`).** The disclosure is
+split across two surfaces on purpose, because the same fact has opposite correct answers on each:
+
+- **Indexed `<meta>` goes SILENT on the licence type** — a `<title>` has no room for a qualifier.
+  `verifiedLicenseType` now also requires `contentInheritedFrom == null`; `verifiedRiskLabel` is
+  **untouched**, because the risk tier on these codes IS 2025-native. One flag for both would have
+  suppressed a true fact to qualify a different one. `kbliMetaDescription` also had
+  `risk && license ? … : null`, which dropped BOTH when only the licence was ungated — it now falls
+  back to the risk sentence alone.
+- **The page body KEEPS the licence and names the source** (#3646) — a body has room to qualify, so
+  going silent there would destroy true information instead of framing it.
+
+**PROVEN by a before/after captured on prod, not by inference.** Before (commit `0f6f3e67f3`) and after
+(`9a0a8e8adc`, which is #3645's own merge commit):
+
+| code                 | inherited?                | before                                      | after              |
+| -------------------- | ------------------------- | ------------------------------------------- | ------------------ |
+| `62110` video games  | **yes**, from 5 codes     | `Medium-Low risk, license: NIB + Sert. St.` | `Medium-Low risk.` |
+| `56101` restaurant   | no (own code in the list) | `… license: NIB + Sert. St.`                | **unchanged**      |
+| `01111` corn farming | no                        | `… license: NIB + Sert. St.`                | **unchanged**      |
+
+Two innocence controls and one guilt, all three read on the live site. The risk tier survives on
+`62110` — that is the asymmetry working.
+
+**The gate binds on 336, not 337.** A raw `_l2_source === "OSS_RBA_resiko_2025"` count gives 337;
+`49213` (Angkutan Perkotaan) carries a `per_skala_disputed_pp28_collision` block, so `deriveProvenance`
+resolves it to `detached` before it can reach `oss_native`. My own first count said 337 — it measured
+the MARKER, the test pins the GATE. Same shape as every other probe lesson in this file.
+
+**🟡 `inspect_kbli` IS THE REMAINING SURFACE, and its blocker is measured rather than guessed.** It
+renders the inherited `pb_umku` permits as licences to the bot and the MCP. Two facts bound the fix:
+the backend Dockerfile copies `backend` / `scripts` / `training-data` / `*.py` but **not `data/`**, so
+the router cannot read canonical from disk; and `kg_nodes` for `kbli:62110` and `kbli:56101` carry
+**no `pp28_sources` property at all**. So the path is a sync that writes the field onto the nodes — the
+pattern `kg_kbli_resync.py` already uses for `pma_status` — applied from Pro. NOT a second derived copy
+inside the backend: that is a HOME-fork by construction (superscar #1) and would drift from canonical
+silently.
+
+**Left standing from the refusal, because it is still true**: comparing a licence name against
+`perizinan` ALONE reads "contradicted" across the whole UMKU layer, and what remains at NO_OVERLAP after
+the union is dominated by **mis-typed nodes rather than wrong permits** — `Izin Usaha` (174 codes), bare
+`UMKU` (81), `Badan Hukum` (16), `Perizinan Berusaha` (8), and sentences that are obligations or table
+headings carrying `entity_type='izin_usaha'`: `Menjamin mutu yang dihasilkan sesuai standar`, `Layanan
+keluhan pelanggan`, `Kewajiban Pelaku Usaha`, `Lokasi industri berada pada Provinsi bersangkutan`. Those
+are rendered to clients as licences to obtain. Named here, not cured here.
+
+**THE FIELD TRAP THAT BIT TWICE IN ONE NIGHT — read this before writing any canonical licence probe.**
+`per_skala[].perizinan` is populated on **6 of 1,559 codes** (17 of 9,095 scale entries).
+`per_skala_legacy[].perizinan` is populated on **1,254**. **299** codes state no licence name anywhere.
+`kewajiban` lives on `per_skala`; `perizinan` effectively lives on `per_skala_legacy` — the same split
+that made #3639's first description false. A first pass of the measurement above read only `per_skala`
+and reported **3,206 of 3,222** edges as CANONICAL_SILENT: a clean, believable "there is nothing here to
+cure", manufactured entirely by looking at the wrong field. It was caught only because 3,206/3,222 is
+too tidy to be true — the same reflex as the zero in #3642's before-state.
+
+**Smaller, unambiguous, and NOT cured here** (measured, ledgered): `NOT_APPLICABLE_OSS` (50 codes) and
+`PENDING_REGULATION` (10) are `licensing_status` ENUM VALUES materialised as `kg_nodes` and
+REQUIRES-linked to the codes that carry them. They land in `related_requirements.systems`, so
+`inspect_kbli 84111` returns `licensing_status: "NOT_APPLICABLE_OSS"` and, one field below,
+`related_requirements: {"systems": ["NOT_APPLICABLE_OSS"]}` — the same fact twice, once as a status and
+once as a "related requirement". Noise rather than a false claim, and `related_requirements` has **zero
+consumers outside the router** (grepped repo-wide: producer in `kbli_notebook.py`, and this file) — so
+it reaches a reader only as a field of the `inspect_kbli` response, never through a rendered web page.
+Low harm, hence ledgered rather than shipped. It does not overturn the audit two sections below: that
+verdict is that no OBLIGATION TEXT travels through this field and that the classifier's drift is
+fail-safe, and both still hold.
+
+**🟢 2026-08-05 — THE OBLIGATIONS BLOCK IS LIVE ON `chat_kbli`, AND THE THREE NUMBERS IT PRODUCED ARE
+ALL RIGHT.** `kbli_documents_cure.py --all-machine-template --apply` ran from the deployed image:
+**299** rows selected by the recogniser, **170** rewritten, **129** already byte-identical (all with
+`per_skala = 0` — an honest no-op, verified per code before the apply), and **87** rows now carry a
+`## Kewajiban` block — exactly the subset of the 170 for which canonical states any obligation. Before
+this, `count(*) FILTER (WHERE content ILIKE '%## Kewajiban%')` on the live table was **0 of 1,563**.
+
+- **PROVE-LIVE on the whole consumer map, which is one reader.** `grep`ping the repo for
+  `kbli_documents` outside tests/scripts returns exactly one file — `kbli_notebook_chat.py`, i.e.
+  `chat_kbli` (the `apps/mouth` TS hit is a comment, not a query). Asked about `25200` obligations,
+  the bot now answers grouped **by scale**: Mikro/Kecil get the industry-data + safety + MSDS set,
+  Menengah adds the disaster-evacuation SOP, Besar adds ISO 9001 — the exact per-scale shape
+  `build_kewajiban_section` emits. Positive control with the shared mechanism: all five tokens it
+  printed (`ISO 9001`, `SOP evakuasi bencana`, `Lembar Data Keselamatan Bahan`, `Menengah (Seluruh)`,
+  `Besar (Seluruh)`) were read back out of the DB row before crediting the channel with reading it.
+- **The 1,260 refused rows keep hand-written prose and this is BY DESIGN** — closing them needs prose
+  re-authored around the new rows (Legge 5), not a script. The refusal is declared in the apply log.
+- **CORRECTION to a note written before this ran:** `96230` was named as the code that would surface
+  _"Sertifikat Laik Sehat"_. It did not, and the cure is fine — `96230` is a hand-written editorial
+  row (`KBLI 96230: … WHAT IT MEANS:`), refused by the recogniser, never in the 299. A PROVE-LIVE
+  exemplar must be picked FROM the apply log, never from memory of "a code that has this fact":
+  [[lesson_a_cures_own_count_is_not_the_count_of_rows_that_gained_the_thing_2026_08_05]].
+
+**🟢 2026-08-05 — WE TOLD AN UMRAH TRAVEL AGENCY TO CLEAR PLANTATION LAND, ON A PUBLIC PAGE. CURED,
+APPLIED AND PROVEN LIVE.** PR #3625 merged (`4410bd48`); the apply ran from Pro at 16:57 WITA:
+**1,711 edge ROWS deleted across 1,707 pairs on 1,029 codes, 0 refusals, RC=0.**
+`kbli_notebook.py:466` renders each REQUIRES-edge target's `properties.kewajiban` verbatim as the
+code's `requirements`.
+
+- **IT WAS NEVER "FOUR BAD NODES" — that is how it was FOUND.** The deletable set spans **563 distinct
+  target nodes**; the four named ones (`0bf540b11cf6`, `55be853cd247`, `c7cd8d6c86e5`, `41a60205c6c0`)
+  are **1,116 of 1,707 = 65%**, leaving 591 over 559 other targets. A cure written against the four
+  names would have left a third of the lie standing. (An earlier note here said 1,118; measured: 1,116.)
+- **THE SECOND CONSUMER, missing from this corner until now — write it down or it gets left out
+  again.** `balizero.com/kbli-explorer` calls the same endpoint and prints these lines under the
+  heading **"What you need to do:"**, `.slice(0, 3)` — so a client saw exactly the three wrong ones.
+  Proven by searching **all 31** chunks the served page references (no sampling): only
+  `app/kbli-explorer/page-76f6af2d1b5d8ba9.js` carries both the heading and `kbli-notebook/inspect`,
+  and the bundle's host is `https://nuzantara-rag.fly.dev` — the backend the cure landed on. The
+  remaining readers (`/kbli/<code>` SEO pages, apps/kbli-navigator, `KBLIEye`) read the static
+  canonical JSON, a DIFFERENT store, and were never affected. `chat_kbli` has **zero** occurrences of
+  `kewajiban|persyaratan|REQUIRES`.
+- **PROVE-LIVE, anonymous, with positive controls sharing the mechanism** (HTTP 200 = what the public
+  page gets): on `79122` and `62110`, `pembukaan lahan tanpa bakar` / `good agriculture practices` /
+  `Menteri Pertanian` / `"skala"` are all **0**, while `Pembimbing Ibadah` (79122) and `konten SARA`
+  (62110) are still **1** — the zeros are real, not an empty response.
+- **Population proof, not two exemplars:** the four nodes went from **979 KBLI codes to 9**. Eight of
+  the nine are genuinely agricultural (corn, sugarcane, coconut, oil palm, tea, beverage crops,
+  rubber, tobacco curing) and SHOULD carry them.
+- **The ninth is the whole refusal class, and it is one code.** Both `CANNOT_JUDGE_CANONICAL_SILENT`
+  verdicts sit on **`91300`** (cultural-heritage restoration): its canonical row exists with
+  `per_skala = 0`, so the predicate cannot prove the agricultural edge wrong and KEEPS it — "absence
+  of a statement is not a denial". Visibly wrong to a human, unprovable by the rule: named residue,
+  not a miss. Closing it means giving 91300 canonical obligations.
+- **DECLARED GAP, measured not assumed:** the **11,245 node-silent** edges are untouched and DO
+  contain real errors — `62110` (video games) is still REQUIRES-linked to `Izin Industri Pertahanan`
+  and a defence-production permit. Those targets state no obligations, so this predicate is blind to
+  them by construction. That is a separate lane, not a follow-up of this one.
+- Arithmetic reconciles end to end: 15,030 pairs + 25 duplicate rows = 15,055 rows; −1,711 = **13,344**
+  measured after. **1,029 kg_nodes carry `_disputed_requires_obligations`** — one per acted code, so
+  nothing was deleted without an archive; per-code transaction, archive and delete land together.
+- **The innocence is per code, not per node** — 79122 lost land-clearing and KEPT its pilgrimage
+  duties (5 edges remain). `kg_kbli_license_fix.py` cannot do this: its verdict is whole-code.
+- A cross-family refuter returned **DEFECTIVE** with four real findings (undecoded HTML entities = a
+  latent false-DELETE; a non-list `kewajiban` iterated character by character; "never silent-delete"
+  not binding when there is no node to archive on; a tautological wiring pin). All fixed; 34 tests,
+  mutation 10/10; scope unchanged at 1,707.
+- **Cache:** 7 chunks of ≤150 over all 1,029 codes — **5 entries found, 5 evicted, 0 survived**. The
+  `0/150` on chunk 1 is a TRUE zero: the positive control showed the tool still sees
+  `kbli_inspect_v2_79122`/`_62110`. The cache is sparse — only inspected codes have entries.
+- **GOTCHA paid here:** on Pro the fly credential in `~/.nuzantara-secrets.env` is **unauthorized**
+  and `~/.fly/config.yml` is the live one — the **inverse** of the 2026-07-26 W106 reading. Probe by
+  doing the work (`machines list`), never `auth whoami`, and never hardcode which side wins.
+
+**🟢 2026-08-05 — TWO MORE DEFECTS ON THE SAME ENDPOINT, BOTH SHIPPED AND PROVEN LIVE.** Reading
+`kbli_notebook.py` to cure the edges above surfaced two independent lies in what it returns. Neither
+was found by a report: both by asking "what does this field say when the data is EMPTY?".
+
+- **#3634 — `Licenses: None` was an ASSERTION built out of a data gap** (merged `55548f24`,
+  PROMOTED, proven in the served chunk). The `kbli-explorer` copy button built
+  `licenses.map(l=>l.type).join(", ") || "None"`. Unlike text on a page this line **travels** —
+  clients paste it into emails and quotes, where no on-screen caveat follows. Measured: **284 of
+  1,559** codes render `licenses: []` and canonical states obligations for **125** of them; sharpest
+  is **`07101` iron-sand mining**, which the SAME response flags `REGULATED` / risk `Tinggi` while
+  the copied line read `Licenses: None`. Live `licensing_status`: `REGULATED` 1,266 ·
+  `PENDING_REGULATION` 217 · `NOT_APPLICABLE_OSS` 75 · null 6 · `NOT_IN_KBLI_2025` 4 — **only
+  `NOT_APPLICABLE_OSS` genuinely means no OSS licence is required**, the rest mean we hold no rows.
+  Cure is a pure resolver (`apps/mouth/src/lib/kbli-licence-summary.ts`) with guilt+innocence tests,
+  so the two labels are one decision instead of a ternary inline in a click handler.
+- **#3635 — `related_codes` showed each sibling twice, and the limit paid for it** (merged
+  `10060600`, deployed 11:59:58Z, proven live). The KG holds **1,341 duplicated `(source, sector)`
+  `BELONGS_TO` rows** — histogram exactly `{2: 1341}`, every duplicated pair twice, never three
+  times. `LIMIT 6` ran BEFORE any dedup, so `79122` returned `['79110','79110','79121','79121']`:
+  six rows spent on two codes. After the cure (DISTINCT + self-exclusion in SQL, plus
+  `related_codes_from_rows` as an independent second line): `79122` → six distinct siblings,
+  `56101` → six. **The 1,341 duplicate ROWS are deliberately still there** — `BELONGS_TO` is shared
+  with CRM and joined pairwise by `mediated_edges_builder`, so a data-level dedup needs its own
+  blast-radius analysis. Curing the READER first was the reversible half.
+
+**MEASURED LIMITS OF THIS ENDPOINT — declared, deliberately NOT "fixed", each with its number.**
+Every one of these was a candidate cure that the measurement talked me out of:
+
+- **Why the 11,245 node-silent edges are not curable with data we hold** (the gap the KG block
+  above declares): the predicate would need licence TYPES, and canonical names one in **6 of 1,559**
+  rows. A full scan of the Qdrant OSS collection — **10,825 of 10,825 points, no sampling** — yields
+  **160** (1.5%). **58** codes carry a defence permit; sorting those is per-code legal judgment
+  (Legge 5), not a script. So `62110` video games stays REQUIRES-linked to `Izin Industri
+Pertahanan` until someone rules on it, and saying so is more honest than a heuristic.
+- **222 codes render `sector: "N/A"` and `related_codes: []`** — no `BELONGS_TO` edge at all.
+  Canonical can place **42** of them, and **all 42 are multi-sector** — there are exactly 42
+  multi-sector codes in the whole corpus, so the KG builder skipped every code it could not assign
+  to ONE sector. `"N/A"` asserts nothing false; inventing one sector for a two-sector code would be
+  the plausible-but-wrong assertion. **Field-name trap paid here:** asking canonical for `sektor_id`
+  / `sektor` gives "5 of 222"; the real key is **`sektors`** (plural, a list) and gives 42.
+- **877 `kewajiban` strings end in a bare dangling conjunction** across ~169 codes
+  (`"Melaporkan ikan hasil tangkapan dan"`), and `62110` carries a licence literally named
+  `"NIB dan"`. Split from the 127 that are legitimate Indonesian list style (`"…; dan"` = item N).
+  **NOT trimmed:** dropping `dan` yields a grammatical sentence that **understates a legal duty** —
+  the dangling word at least signals incompleteness. The real fix is re-extraction from PP 28/2021.
+- **`_resolve_risk_profile` falls back to `licenses[0].risk_level` with no `ORDER BY`** — a latent
+  fragility, not a live defect: **218** codes lack a Qdrant risk (159 have no licence edges at all,
+  59 have edges that all AGREE, **0 disagree**). Self-audit of the edge cure's blast radius:
+  **0 of the 218** were touched.
+
+**Method note that outlived both fixes:** the post-promote PROVE-LIVE for #3634 returned a
+believable **zero across all 31 chunks** — the edge was serving cached pre-promote HTML pointing at
+the OLD chunk hash. Twenty seconds later the hash had moved and both labels were there. **Compare
+the chunk hash before believing a post-deploy zero**, and always run a positive control.
+
+**THE ENDPOINT IS NOW SWEPT FIELD BY FIELD — every one of `KBLIDetail`'s twelve has a number.** Both
+cures above were found by asking one question of one field ("what does this say when the data is
+EMPTY?"), which is a reason to ask it of ALL of them rather than stop at the two that bit. Enumerated
+from the response model, not from a sample of responses — the field you did not enumerate is where
+the lie survives.
+
+| field                        | state                                            | number                                                                           |
+| ---------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `code`/`title`/`description` | identity                                         | —                                                                                |
+| `pma_status`                 | cured (perpres caps, earlier lanes)              | 20 patched, 14 deliberately unadjudicated                                        |
+| `licensing_status`           | enumerated                                       | REGULATED 1,266 · PENDING 217 · `NOT_APPLICABLE_OSS` 75 · null 6 · not-in-2025 4 |
+| `sector`                     | honest gap                                       | 222 `"N/A"`; the 42 placeable are the 42 multi-sector codes                      |
+| `risk_profile`               | latent fragility, ledgered                       | 218 without Qdrant risk; **0** with disagreeing licences                         |
+| `licenses`                   | **cured** #3625 (obligations) + #3634 (gap≠None) | 1,707 pairs detached · 284 empty lists relabelled                                |
+| `related_requirements`       | **audited — no obligation text leaks**           | see below; one noise finding added 2026-08-05 (status enums in `systems`)        |
+| `related_codes`              | **cured** #3635                                  | 1,341 duplicate rows collapsed at the reader                                     |
+| `expert_legal`               | universally absent                               | **0 of 1,568** kbli nodes carry it — always `null`, asserts nothing              |
+
+**`related_requirements` got the closest look and came back clean, which is worth recording as
+loudly as a defect** — it renders the SAME REQUIRES edges the cure above deleted from, so it was the
+obvious place for the lie to have a second door. It does not: it renders target NAMES only, never
+their `kewajiban`, so no obligation text travels through it. And `kbli_requires_kind.py` carries the
+W106 signature in its own docstring — _"this classification was derived from a census, and a census
+is a snapshot"_ — with nothing re-measuring it, so it was re-measured here:
+
+- **35 distinct target entity types reach that list today; the classifier knows 30.** The census HAS
+  drifted — 6 types have appeared since: `fasilitas`, `pekerja`, `kbli`, `entity`, `parameter`,
+  `jabatan`, totalling **16 edge rows** over 8 target names.
+- **The fail-safe direction held, and that is the finding.** All 8 are things a business _is_ or
+  _has_ — a port facility, ship crew (`Awak Kapal`), a Regent's office (`Bupati/Walikota`), an R&D
+  activity, a consumer-complaint service, `UMKM`. **Not one is a permit that got demoted to
+  `other`**, which is the only drift that would cost a client something (a licence they are never
+  shown). A missing badge on 16 edges is the acceptable failure the module designed for.
+- Mapped-but-unused: `pasal` has a bucket and **0** live rows. Harmless; noted so a future reader
+  does not read its absence as a bug.
+
+**🟢 2026-08-05 — "MELAPORKAN IKAN HASIL TANGKAPAN DAN". THE SENTENCE STOPS THERE, AND EVERY SURFACE
+PRINTED IT LIKE A COMPLETE INSTRUCTION.** #3637 merged (`a532487e`), deployed and PROVEN LIVE.
+1,714 legal duties end mid-sentence; one is literally `". Produk yang"`.
+
+- **This entry exists because a note in this corner was WRONG, and it is the most reusable thing
+  here.** The earlier note said _"877 obligations end mid-sentence — deliberately NOT fixed, because
+  trimming understates a legal duty."_ The reasoning is right and still stands, but it only rules out
+  **trimming**. It said nothing about the client, who was reading a cut-off duty as a complete one.
+  **A ruling about one remedy is not a ruling about the defect.** Same shape as `Licenses: None`: a
+  gap rendered as an assertion. The cure LABELS and never alters — `describeObligation` returns the
+  source text byte-identical, and a mutant that trims is killed by test.
+- **And the count was wrong because it looked at ONE FIELD:** `kewajiban` **1,241** over 229 codes
+  **plus `persyaratan` 473** over 92 = **1,714**, not 877. On the graph the endpoint reads: **234**
+  rows over 104 codes, 39 distinct strings, the widest sitting on **35** codes.
+- **FOUR render sites.** Beyond the two obvious ones, BOTH halves of `LicensingSection.tsx` (the
+  static `/kbli/<code>` pages), which carry the larger population. **Naming trap, the third of the
+  night** (after `sektors` and `kode_kbli_2025`): the ENDPOINT's `requirements` is fed from
+  `kewajiban`, the STATIC page's `requirements` is `persyaratan`. Same word, different fields.
+- **The word list is DATA-DERIVED.** A first draft guarded eight further prepositions; measured
+  against both stores each matched **zero**. Kept: `dan`/`atau`/`yang`/`di`, word-boundary anchored —
+  a substring match would falsely flag **17 complete duties**, sharpest being the Hajj obligations
+  ending **"ke Arab Saudi"** on `79122`. That is now an innocence test.
+- **THE LANE IS BOUNDED, and the boundary is the useful part.** Asking the same question of every
+  other text field, both stores: `judul` **0** · `uraian` **0** · `pma_nota`/`pma_kondisi` **0** ·
+  kg_nodes titles+descriptions **0**. **The truncation lives entirely in the PP 28/2021 + OSS
+  extraction and never in the BPS classification data** — that is where a re-extraction must aim, and
+  why the visible page headings were never wrong.
+- **PROVE-LIVE, and the correspondence is exact — label count == truncated count on every page:**
+  `62110` renders `Menjamin konten … konten SARA dan [… cut off in the official source]`, **1 label
+  for 1 truncated duty**; `01111` 7 duties/0 truncated/**0** labels; `18113` 4/0/**0**; `79122` with
+  "Arab Saudi" ×23 → **0**. That last one is the proof that matters.
+- **BOTH PROVE-LIVE mistakes were mine, and both are exemplar-selection:** the first exemplar came
+  from CANONICAL, but `03120`'s page has **zero** obligations (detached-licensing code) — that zero
+  read like "the cure failed". The second ignored **which tier the page opens by default**
+  (`licensing[0]`): on `01111` the truncated string exists but sits in a tier that is not rendered.
+  **Pick the exemplar from what the PAGE SERVES, and from the branch that actually renders.**
+- **Follow-on — licence NAMES. ⚠️ THE PARAGRAPH THAT STOOD HERE WAS WRONG, and correcting it is
+  worth more than the fix.** It said #3639 cured `"NIB dan"` on "21 codes, Google structured data and
+  the page title" by making `resolveLicenseType` treat an unusable name as absent. **#3639 is inert.**
+  `resolveLicenseType` is fed from `per_skala[].perizinan`, where `"NIB dan"` appears on **zero**
+  codes; the 21 canonical occurrences live under **`per_skala_legacy[].perizinan`**, written for audit
+  by `build_kbli_l2_oss_risk.py` and read by nothing that renders. #3639 was dequeued mid-flight, its
+  description corrected to say it is defence-in-depth, and merged on those honest terms.
+  - **The live before-state had already said so and was nearly read backwards.** `62110`, `47301`,
+    `96100`, `15112` served `"NIB dan"` **zero** times and the derived `NIB + …` 18/14/1/14 times.
+    That zero meant "you are measuring the wrong path", not "already fine". **A zero in a
+    before-state is a claim about your probe as much as about the world.**
+  - **The live path is the ENDPOINT** (#3642): `kbli_notebook.py` sets `licenses[].type` straight
+    from the KG node name, so it reaches the explorer's licence cards AND the clipboard line that
+    travels into client emails. Measured on prod: `"NIB dan"` on **10** codes
+    (`03110 15112 15113 20293 25119 25933 28171 61901 62110 62191`) and
+    `"Sertifikasi Cara Budi Daya Ternak Yang"` on **2** (`01445 01469`).
+  - **`62110` is the anchor case — it carries guilt AND innocence in ONE response:** a licence typed
+    `"NIB dan"` (scale Besar) alongside two typed `"NIB dan Sertifikat Standar"`, which contain `dan`
+    but end on `Standar` and must be copied verbatim. Verify there, not on a page.
+  - Labelled, never trimmed and never replaced: trimming to `"NIB"` states a weaker licence than the
+    law requires, replacing it invents the ending, dropping it hides a licence the business needs.
+  - **✅ MERGED, DEPLOYED AND PROVEN LIVE 2026-08-05.** #3642 merged as `0f6f3e67f3`; the frontend
+    does not go live unattended (it lands `STAGED`), so `scripts/vercel_prod_deploy.py` built it and,
+    after eight probes still showed the old build at terminal READY, promoted it — HTTP 201, and
+    `balizero.com/api/health` now reports `commit: 0f6f3e67f3…`, **which is #3642's own merge commit**.
+    Proof of BEHAVIOUR, not just of shipping: the `kbli-licence-summary.ts` read out of that exact
+    deployed commit, run against the exact `licenses[].type` list `inspect_kbli 62110` returned in
+    the same turn, produces
+    `… NIB dan Sertifikat Standar, NIB dan Sertifikat Standar, NIB dan […cut off in the official source]`
+    — the label **once**, on the truncated name, with both complete `NIB dan Sertifikat Standar`
+    entries and `Izin Usaha` left bare. The served explorer chunk carries the shared module (note
+    present, `Confirm the full wording at oss.go.id` present, negative control 0).
+
+**🔴 SETTLED — DO NOT DEDUP `kg_edges`, AND DO NOT ADD THE UNIQUE CONSTRAINT.** #3635 left the 1,341
+duplicated `BELONGS_TO` rows in place and ledgered a blast-radius analysis. It has been done, and
+BOTH halves of the stated reason were wrong:
+
+- **Wrong table.** `mediated_edges_builder` / `evidence_dossier` / `admin_crm_kg` all operate on
+  **`crm_kg_edges`**; only `kbli_notebook.py` and `kbli_documents_phantom_cure.py` touch `kg_edges`
+  with `BELONGS_TO`. The shared relationship-type NAME is not a shared table.
+- **And the rows are not redundant.** Whole table: 2,118 duplicated triples / 2,161 excess rows over
+  16 relationship types, of which only **423** are byte-identical. The KBLI slice: **all 1,341**
+  differ in **BOTH** `source_chunk_ids` and `confidence`; **zero** byte-identical. They are two
+  independent EXTRACTIONS of one fact, each recording which passage asserted it and how confidently.
+  **Deleting either destroys provenance.**
+- `crm_kg_edges` HAS `UNIQUE (source, target, relationship_type)` (migration 167) and `kg_edges` does
+  not. That looks like the asymmetry-between-twins defect and is **not**: multi-evidence rows are this
+  table's design, and the writers' `ON CONFLICT (relationship_id)` is consistent with it.
+- **The reader-side dedup (#3635) is the correct and complete cure** — collapse at render, keep every
+  evidence row. Right answer, better reason. Method note worth keeping: the root-cause hunt stopped
+  at "here is the missing guard" and would have shipped the wrong fix; the next question —
+  _"and is the thing that guard would prevent actually wrong?"_ — reversed the conclusion.
+
+**🟢 2026-08-05 — THE `whatChanged` LANE: FOUR STORES, AND THE CURE ITSELF LEFT A CONTRADICTION IN
+THREE OF THEM.** #3610 cured 13 codes still telling clients _"Direct 1:1 match from KBLI 2020 — code
+and scope unchanged"_ on records whose own crosswalk denies it. Promoting it (prod was serving a
+build **two commits behind** — nothing on this project goes live unattended) proved all 13 live:
+`lie=0 cure=2` on each, innocence held on `01111/01112/01113`, whose records agree they are
+continuous.
+
+**What the promotion exposed is the lesson worth keeping.** The removal pattern knew two phrasings of
+the claim; **"No structural changes" is a third** and was in neither, so on `47401` and `63900` the
+cure deleted the sentences it recognised and published the honest replacement **next to a sentence
+denying it** — live on the website and in the KG. And the first draft of the fix repeated the disease
+a generation lower: written from those two, it missed `96210` (_"Hair salons have been consistently
+classified across both KBLI versions"_), found only by pulling the KG's own vintage of all sixteen
+cured texts.
+
+Two halves, and only one changes what a client reads: **widening the removal pattern alone would have
+cured nothing** — re-derived on the shipped catalogue, **zero** records are still convicted, so a
+record whose convicting wording was already taken is refused by `drop_false_continuity`. The repair
+pass (`residual_continuity_claim`, #3619) decides **without reading a record**: an already-retracted
+text that still asserts continuity is an internal contradiction. What makes a measured-only pattern
+safe is the organ beside it — pass D's replacement ends at `(GARUDA-FILIERA).`, so a cured text that
+does not end there goes **red** instead of reaching a client, and the organ **refuses** rather than
+cures.
+
+**The KG cure is applied and verified by an independent path** (read-only Postgres, not the writer):
+13 cured / 13 archived / 0 drift, and the corpus-wide count of nodes asserting continuity fell
+725 → 713, exactly −13 minus the two that still carried residue. Innocence: the 6 records whose
+crosswalk agrees (`47112 47242 47751 47761 47774 47782`) are untouched — `47242` is word-for-word the
+shape of `47401`'s pre-cure text with the opposite truth.
+
+**Still open in this lane:** the 4 unadjudicated layer disagreements (`91212 91222 91424 91425`, BPS
+vs `pp28_sources`) — the replacement sentence deliberately asserts only the NEGATIVE for that reason;
+and `reindex_kbli_2025_final.py::build_embedding_text` still bakes the old Bali framing into the
+vectors (embedding model FROZEN → payload-only merge is the precedented fix).
 
 **🟢 2026-08-03 (night) — THE CHAT CHANNEL NOW CARRIES THE BALI VERDICT, AND THE STORE ALWAYS KNEW.**
 Production was asked whether a PT PMA can open a massage parlour (86995) in Bali and answered _"Yes,
@@ -396,9 +888,10 @@ promised; it now has a number.
 
 **THE STRUCTURAL FINDING, bigger than the 35: the cap attaches to the (bidang usaha, KBLI) PAIR, never
 to the code.** Entry 7 caps `30111` at 49% as a warship yard; entry 8 caps **the same code** at 0% as a
-builder of pinisi, cadik and traditional wooden vessels — and the body says so explicitly (art. 3(3):
-where one KBLI spans several bidang usaha, the requirement applies only to the bidang usaha named in the
-column). Our single `pma_max_asing` integer cannot express that, nor a phase-dependent cap (`58130`: 0%
+builder of pinisi, cadik and traditional wooden vessels — and the body says so explicitly (**Pasal 6 ayat (3)** for
+Lampiran III; the twin for Lampiran II is Pasal 5 ayat (5)): where one KBLI covers more than one bidang
+usaha, the requirement applies only to the bidang usaha named in that column. (Corrected 2026-08-06 at the
+source — this said `art. 3(3)`, which does not exist; Pasal 3 has two ayat.) Our single `pma_max_asing` integer cannot express that, nor a phase-dependent cap (`58130`: 0%
 at establishment, 49% via the capital market for expansion; broadcasting 20% likewise), nor a
 conditional one. **Any future cure that picks one number for such a code is asserting something the
 instrument does not say** — those codes are reported `ambiguous` and are not auto-patchable by

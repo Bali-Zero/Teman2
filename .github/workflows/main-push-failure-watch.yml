@@ -66,6 +66,7 @@ on:
     # note and why fixing the two source name: lines is a separate PR.
     workflows:
       - actionlint
+      - alarm/cure alignment (log-size watchdog vs rotator)
       - adversarial-review-gate
       - AI PR review (advisory)
       - asyncpg-lint
@@ -105,6 +106,7 @@ on:
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
       - Frontend Live Sentinel
+      - Frontend typecheck (apps/mouth)
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement

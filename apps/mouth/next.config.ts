@@ -240,6 +240,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/id/insights/pbb-property-tax-indonesia",
+        destination: "/taxes/pbb-property-tax-indonesia",
+        permanent: true,
+      },
+      {
         source: "/it/tax-for-freelancers-indonesia-2026",
         destination: "/it/taxes/freelancer-tax-guide",
         permanent: true,

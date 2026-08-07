@@ -100,7 +100,7 @@ import json
 import logging
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -120,7 +120,12 @@ CODE_KEY = "kode_kbli"
 _SCROLL_PAGE_LIMIT = 256
 
 
-LAYERS = ("pma", "bali")
+LAYERS = ("pma", "bali", "whatchanged")
+
+# The blob the RETRIEVER hands to the LLM. Stored under two keys that
+# `reindex_kbli_2025_final.py::build_payload` fills with the SAME string, so both
+# are rewritten from the same source and neither is left behind.
+PROSE_KEYS = ("content", "text")
 
 
 @dataclass(frozen=True)
@@ -136,6 +141,10 @@ class Target:
     code: str
     layer: str
     fields: dict[str, Any]
+    # The canonical record itself, carried so the prose repair reads the SAME
+    # source as the flat fields. Two lookups of one record is how the two
+    # representations end up disagreeing.
+    record: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -146,6 +155,14 @@ class CodePlan:
     target: Target
     point_ids: list[Any]
     current: dict[Any, dict[str, Any]]
+    # pid -> {payload key -> repaired blob}. Empty for layers that own no prose,
+    # and empty for a point already carrying the truthful prose.
+    prose: dict[Any, dict[str, str]] = field(default_factory=dict)
+    # Points whose blob is not shaped the way the repair assumes. Reported and
+    # NEVER written: a blob we cannot locate the block in is a blob we do not
+    # understand, and overwriting it would be a guess (W84 — a refusal is not
+    # an empty finding).
+    unshaped: list[Any] = field(default_factory=list)
 
     @property
     def found(self) -> bool:
@@ -153,14 +170,25 @@ class CodePlan:
 
     def stale_points(self) -> list[Any]:
         """Point ids whose payload disagrees with the canonical on ANY field of
-        the layer. Judging on one field would leave the others uncured — that is
-        how a point ends up reading TERBATAS at 100%."""
+        the layer, OR whose prose still carries the old wording. Judging on one
+        field would leave the others uncured — that is how a point ends up
+        reading TERBATAS at 100%, and how a point ends up reading TERBATAS in
+        its flat field while its blob still says TERBUKA / 100."""
         out = []
         for pid in self.point_ids:
             cur = self.current.get(pid, {})
             if any(cur.get(key) != value for key, value in self.target.fields.items()):
                 out.append(pid)
+            elif self.prose.get(pid):
+                out.append(pid)
         return out
+
+    def payload_for(self, pid: Any) -> dict[str, Any]:
+        """What to `set_payload` on ONE point: the layer's flat fields plus, when
+        this point needed it, the repaired blob. Per-point because the blob is
+        per-point — a single shared body would copy one point's prose onto every
+        other point of the code."""
+        return {**self.target.fields, **self.prose.get(pid, {})}
 
 
 def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
@@ -190,7 +218,151 @@ def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     }, None
 
 
-_LAYER_READERS = {"pma": _pma_fields, "bali": _bali_fields}
+def _whatchanged_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
+    """A PROSE-ONLY layer: `whatChanged` has no flat payload key at all.
+
+    Measured 2026-08-05 on `kbli_2025_final_hybrid`: the payload carries 29 flat
+    keys and `whatChanged` is not among them — the sentence exists only inside
+    the `content`/`text` blob, under `## Intelligence 2026`. So this layer owns
+    no flat field and returns an empty mapping; everything it repairs is prose.
+    """
+    intel = rec.get("intel_2026")
+    if not isinstance(intel, dict) or not intel.get("whatChanged"):
+        return None, "canonical record carries no intel_2026.whatChanged — nothing authoritative to sync"
+    return {}, None
+
+
+_LAYER_READERS = {
+    "pma": _pma_fields,
+    "bali": _bali_fields,
+    "whatchanged": _whatchanged_fields,
+}
+
+
+# ---------------------------------------------------------------------------
+# PROSE REPAIR — the same fact, in the other representation
+#
+# WHY THIS EXISTS (measured on prod 2026-08-05, during the prove-live of the
+# whatChanged cure):
+#
+#   `--layer pma` synced the FLAT keys and stopped there. But the payload also
+#   holds `content`/`text` — `build_embedding_text(record)`, the blob the
+#   retriever hands to the LLM verbatim — and that blob still opened with
+#
+#       ## Status PMA: TERBUKA
+#       - Kepemilikan asing maksimal: 100
+#
+#   on all 20 codes the Perpres 49/2021 cure had capped. Among them `25200`
+#   (arms and ammunition, real cap 49%) and `79122` (Umrah/Hajj travel, real cap
+#   **0%**). `inspect_kbli` reads the flat field and was cured; the RAG channel
+#   reads the blob and was not. TWO REPRESENTATIONS OF ONE FACT, and the cure
+#   reached one of them — the same shape as every other scar in this lane.
+#
+#   So the fact's owner repairs BOTH. Putting the blob repair in a second tool
+#   is exactly the two-writers arrangement the module docstring above forbids:
+#   they would disagree precisely when it matters.
+#
+# FIDELITY TO THE GENERATOR: these renderers must emit what a full re-index
+# would emit, character for character, or the next re-index silently reverts the
+# cure and the two disagree again. That is asserted, not asserted-by-comment:
+# `test_prose_repair_matches_the_real_generator` runs the REAL
+# `build_embedding_text` over canonical records and requires the repair to be a
+# no-op on its fresh output. The trap it caught: `build_embedding_text` writes
+# the cap line under `if entry.get("pma_max_asing")`, so a cap of **0 is falsy**
+# and the line is OMITTED — for `79122` the truthful blob has no cap line at all,
+# and a repair that wrote `- Kepemilikan asing maksimal: 0` would diverge.
+#
+# WHAT IS NOT CLAIMED: the VECTOR is not re-computed (the embedding model is
+# FROZEN). The old sentence still shapes retrieval RANKING; what changes is the
+# text the model is given once the point is retrieved. Ranking drift is a
+# re-index question, ledgered separately — but a wrong sentence in the context
+# window is what reaches a client, and that is what this removes.
+# ---------------------------------------------------------------------------
+
+_PMA_HEADING = "## Status PMA:"
+_WHATCHANGED_PREFIX = "- whatChanged: "
+
+
+def render_pma_block(rec: dict) -> list[str]:
+    """The `## Status PMA:` block exactly as `build_embedding_text` writes it.
+
+    FIVE lines, not two. The first draft rendered only status + cap and the
+    generator-fidelity organ failed on the very first record (`01131`): the real
+    block also carries `- Kondisi:`, `- Prioritas:` and `- Nota:`, so a repair
+    that knew about two of them would have DELETED a priority-sector note from
+    every point it touched — silent data loss dressed as a cure. Any field added
+    to the generator's block must be added here, and that test is what says so.
+    """
+    lines = [f"{_PMA_HEADING} {rec.get('pma_status')}"]
+    if rec.get("pma_max_asing"):  # 0 is falsy THERE, so it must be falsy HERE
+        lines.append(f"- Kepemilikan asing maksimal: {rec['pma_max_asing']}")
+    if rec.get("pma_kondisi"):
+        lines.append(f"- Kondisi: {rec['pma_kondisi']}")
+    if rec.get("pma_prioritas"):
+        lines.append(f"- Prioritas: {rec['pma_prioritas']}")
+    if rec.get("pma_nota"):
+        lines.append(f"- Nota: {rec['pma_nota']}")
+    return lines
+
+
+def _replace_block(blob: str, start_pred, stop_pred, new_lines: list[str]) -> str | None:
+    """Swap one contiguous run of lines. Returns None when the block is absent —
+    a caller must treat that as "this point is not shaped the way I assume" and
+    refuse, never as "nothing to do"."""
+    lines = blob.split("\n")
+    try:
+        i = next(n for n, ln in enumerate(lines) if start_pred(ln))
+    except StopIteration:
+        return None
+    j = i + 1
+    while j < len(lines) and not stop_pred(lines[j]):
+        j += 1
+    return "\n".join(lines[:i] + new_lines + lines[j:])
+
+
+def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
+    return _replace_block(
+        blob,
+        lambda ln: ln.startswith(_PMA_HEADING),
+        lambda ln: not ln.startswith("- "),
+        render_pma_block(rec),
+    )
+
+
+def rewrite_whatchanged_prose(rec: dict, blob: str) -> str | None:
+    """Replace EXACTLY ONE line.
+
+    `build_embedding_text` emits each intel entry as a single `- {k}: {v}` part,
+    and measured on canonical 2026-08-05 **zero** of the 1,559 `whatChanged`
+    values contain a newline (longest 665 chars) — so the block is one line and
+    a multi-line span rule is not just unnecessary, it is wrong: the first draft
+    consumed lines until the next `- `/`## `, which on `20112` swallowed the
+    generator's own truncation marker `(... dipotong untuk batas panjang.)`.
+
+    A value that DID contain a newline would silently break the round trip, so
+    it is refused rather than written.
+
+    Refusing when the line is absent matters just as much: for 101 of 1,559
+    records the generator truncates before `## Intelligence 2026` ever appears,
+    and appending a line there would put content AFTER a marker that tells the
+    reader the document stopped.
+    """
+    text = (rec.get("intel_2026") or {}).get("whatChanged")
+    if not text or "\n" in text:
+        return None
+    lines = blob.split("\n")
+    for n, ln in enumerate(lines):
+        if ln.startswith(_WHATCHANGED_PREFIX):
+            lines[n] = f"{_WHATCHANGED_PREFIX}{text}"
+            return "\n".join(lines)
+    return None
+
+
+_LAYER_PROSE = {
+    "pma": rewrite_pma_prose,
+    "bali": None,  # the Bali block is not repaired here — see the ledger line
+    "whatchanged": rewrite_whatchanged_prose,
+}
 
 
 def build_targets(
@@ -219,7 +391,7 @@ def build_targets(
         if fields is None:
             refusals.append(f"{code}: {why}")
             continue
-        targets[code] = Target(code=code, layer=layer, fields=fields)
+        targets[code] = Target(code=code, layer=layer, fields=fields, record=rec)
     return targets, refusals
 
 
@@ -282,7 +454,36 @@ def build_plan(code: str, target: Target, points: list[dict]) -> CodePlan:
         p["id"]: {key: (p.get("payload") or {}).get(key) for key in target.fields}
         for p in points
     }
-    return CodePlan(code=code, target=target, point_ids=ids, current=current)
+    rewrite = _LAYER_PROSE.get(target.layer)
+    prose: dict[Any, dict[str, str]] = {}
+    unshaped: list[Any] = []
+    if rewrite is not None:
+        for p in points:
+            payload = p.get("payload") or {}
+            repaired: dict[str, str] = {}
+            for key in PROSE_KEYS:
+                blob = payload.get(key)
+                if not isinstance(blob, str) or not blob:
+                    continue
+                new = rewrite(target.record, blob)
+                if new is None:
+                    # The block this layer owns is not in the blob. Not "already
+                    # correct" — unknown. Recorded so the run says so out loud.
+                    unshaped.append(p["id"])
+                    repaired = {}
+                    break
+                if new != blob:
+                    repaired[key] = new
+            if repaired:
+                prose[p["id"]] = repaired
+    return CodePlan(
+        code=code,
+        target=target,
+        point_ids=ids,
+        current=current,
+        prose=prose,
+        unshaped=unshaped,
+    )
 
 
 def _describe(values: dict[str, Any]) -> str:
@@ -302,10 +503,21 @@ def apply_plan(
         logger.info("  %s: NOT FOUND — no point matches %s=%s", plan.code, CODE_KEY, plan.code)
         return 0
 
+    for pid in plan.unshaped:
+        logger.warning(
+            "  %s: point %s carries no %r block in its blob — REFUSING to rewrite prose "
+            "we cannot locate (the point is left exactly as found)",
+            plan.code,
+            pid,
+            plan.target.layer,
+        )
+
     stale = plan.stale_points()
     if not stale:
         logger.info(
-            "  %s: already agrees with canonical (%s)", plan.code, _describe(plan.target.fields)
+            "  %s: already agrees with canonical (%s)",
+            plan.code,
+            _describe(plan.target.fields) or f"{plan.target.layer} prose",
         )
         return 0
 
@@ -324,17 +536,32 @@ def apply_plan(
 
     for pid in stale:
         cur = plan.current.get(pid, {})
+        repaired = plan.prose.get(pid, {})
         logger.info(
-            "  %s: point %s  %s -> %s%s",
+            "  %s: point %s  %s -> %s%s%s",
             plan.code,
             pid,
             _describe({k: cur.get(k) for k in plan.target.fields}),
             _describe(plan.target.fields),
+            f"  [+prose: {', '.join(sorted(repaired))}]" if repaired else "",
             "" if apply else "  (dry-run, not written)",
         )
 
     if not apply:
         return 0
+
+    # One request per point when prose is involved — the blob is per-point, and a
+    # single shared body would stamp one point's repaired text onto every other
+    # point of the same code.
+    if plan.prose:
+        for pid in stale:
+            resp = http.post(
+                f"{url_base}/collections/{collection}/points/payload",
+                headers=headers,
+                json={"payload": plan.payload_for(pid), "points": [pid]},
+            )
+            resp.raise_for_status()
+        return len(stale)
 
     resp = http.post(
         f"{url_base}/collections/{collection}/points/payload",
@@ -365,9 +592,11 @@ def main() -> int:
         choices=LAYERS,
         default="pma",
         help="which payload layer to sync: 'pma' (national ownership: pma_status, "
-        "pma_max_asing) or 'bali' (provincial verdict: bali_status, bali_blocked, "
-        "bali_reason, has_bali_l4). One layer per run, on purpose — the two answer "
-        "different questions from different instruments.",
+        "pma_max_asing, AND the '## Status PMA:' block inside the content/text blob), "
+        "'bali' (provincial verdict: bali_status, bali_blocked, bali_reason, "
+        "has_bali_l4) or 'whatchanged' (prose-only: the '- whatChanged:' line inside "
+        "the blob, which has no flat payload key). One layer per run, on purpose — "
+        "they answer different questions from different instruments.",
     )
     args = ap.parse_args()
 

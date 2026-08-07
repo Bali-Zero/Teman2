@@ -27,7 +27,25 @@ OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 # silently produced no output until OLLAMA_MODEL was overridden in the plist.
 # Keep the code default in sync with the host so a manual run works out of the box.
 MODEL = os.environ.get("OLLAMA_MODEL", "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m")
-ARTICLES_DIR = Path(__file__).resolve().parent.parent / "apps" / "mouth" / "src" / "content" / "articles"
+def _repo_root() -> Path:
+    """Resolve the repo root the script writes into.
+
+    mouth main-dirt fix (2026-08-07): this script had zero git awareness and wrote
+    hourly straight into the main checkout's tracked working tree (com.balizero.
+    translate.hourly ran it directly against ~/nuzantara) — 48 files sat dirty for
+    2+ days, tripping the git_alignment proprioception gate. NUZANTARA_REPO_ROOT
+    (same env var / same convention as apps/backend-rag/backend/services/sota_loop/
+    m13_weekly.py) lets scripts/translate-articles-cron-wrapper.sh point this at an
+    isolated worktree instead, so the main checkout stays untouched. Falls back to
+    the historical Path(__file__)-derived root for manual/ad-hoc runs — unchanged
+    behavior when the env var is unset.
+    """
+    env = os.environ.get("NUZANTARA_REPO_ROOT")
+    return Path(env) if env else Path(__file__).resolve().parent.parent
+
+
+REPO_ROOT = _repo_root()
+ARTICLES_DIR = REPO_ROOT / "apps" / "mouth" / "src" / "content" / "articles"
 
 LANG_NAMES = {
     "id": "Bahasa Indonesia",
@@ -254,6 +272,77 @@ def discover_articles(category: str | None = None) -> list[dict]:
     return articles
 
 
+# ── Orphan detection (2026-08-07) ───────────────────────────────────────────
+#
+# discover_articles() derives every translation target as
+# ``<slug>.mdx`` -> ``<slug>.<lang>.mdx`` IN THE SAME DIRECTORY. If an
+# English article is later moved to a different category folder, any
+# translation left behind next to the old (now-absent) source becomes
+# permanently invisible to this organ: never fresh, never stale, never
+# counted — it is not reachable from discover_articles() by construction,
+# so the freshness loop can silently drift from a whole-tree disk census
+# forever with no signal anywhere.
+#
+# Measured live 2026-08-07: disk census of id+it translation files = 1593,
+# while discover_articles() x {id,it} visits 1592 slots. The one-file gap is
+# apps/mouth/src/content/articles/immigration/driving-license-bali-foreigners-2026.id.mdx
+# — its English source and .it sibling both live under lifestyle/ now; the
+# immigration/ copy has no <slug>.mdx neighbour left.
+#
+# This pass is REPORT-ONLY by design: it costs nothing (pure filesystem
+# glob+exists, no model call), covers all four language suffixes regardless
+# of --lang/targets, and must never change `targets`, never trigger a
+# translation, and never affect the process exit code. Disposition of an
+# orphan (move the file back, delete it, restore the English source) is a
+# client-facing content call for a human, not something this cron decides.
+_ORPHAN_SUFFIX_RE = re.compile(r"^(.+)\.(id|it|ru|fr)\.mdx$")
+
+
+def discover_orphan_translations(category: str | None = None) -> list[Path]:
+    """Translation files whose English `<slug>.mdx` source is missing from
+    their own directory. Pure filesystem check — no model, no writes."""
+    orphans: list[Path] = []
+    if not ARTICLES_DIR.exists():
+        return orphans
+
+    for cat_dir in sorted(ARTICLES_DIR.iterdir()):
+        if not cat_dir.is_dir() or cat_dir.name.startswith("."):
+            continue
+        if category and category != "all" and cat_dir.name != category:
+            continue
+
+        for mdx_file in sorted(cat_dir.glob("*.mdx")):
+            name = mdx_file.name
+            if ".sync-conflict-" in name:
+                continue
+            m = _ORPHAN_SUFFIX_RE.match(name)
+            if not m:
+                continue  # an English source itself, not a translation
+            stem = m.group(1)
+            src_path = cat_dir / f"{stem}.mdx"
+            if not src_path.exists():
+                orphans.append(mdx_file)
+
+    return orphans
+
+
+def _log_orphans(orphans: list[Path]) -> None:
+    """Shared reporting for both --dry-run and the real run. Never gates."""
+    if not orphans:
+        return
+    logger.warning(
+        f"\n{len(orphans)} ORPHAN translation(s): no <slug>.mdx source in the "
+        f"same directory (never fresh/stale/unstamped — invisible to every "
+        f"freshness check above). Report only — not translated, not moved:"
+    )
+    for o in orphans:
+        try:
+            rel = o.relative_to(REPO_ROOT)
+        except ValueError:
+            rel = o
+        logger.warning(f"  ORPHAN: {rel}")
+
+
 def translate_article(article: dict, lang: str, force: bool, skip_existing: bool) -> str:
     """Translate one article. Returns a verdict (see freshness_verdict + main)."""
     src_path: Path = article["path"]
@@ -466,6 +555,10 @@ def main():
         logger.error("No articles found. Check ARTICLES_DIR path.")
         sys.exit(1)
 
+    # Orphan translations (2026-08-07): scanned once, over the full category
+    # scope, independent of --slug/--limit/--lang — report-only, never gates.
+    orphans = discover_orphan_translations(args.category)
+
     # Filter by slug if specified
     if args.slug:
         articles = [a for a in articles if a["slug"] == args.slug]
@@ -509,7 +602,9 @@ def main():
                 if action in ("CREATE", "RE-TRANSLATE", "FORCE"):
                     logger.info(f"  [{action}] {art['category']}/{art['slug']}.{lang}.mdx")
         summary = ", ".join(f"{v} {k}" for k, v in sorted(preview.items())) or "nothing"
-        logger.info(f"\nTotal: {len(articles)} articles x {len(targets)} languages — {summary}")
+        orphan_note = f", {len(orphans)} orphan(s)" if orphans else ""
+        logger.info(f"\nTotal: {len(articles)} articles x {len(targets)} languages — {summary}{orphan_note}")
+        _log_orphans(orphans)
         return
 
     # Check Ollama connectivity
@@ -551,7 +646,8 @@ def main():
         f"DONE in {elapsed:.0f}s: {tally.get('written', 0)} new, "
         f"{tally.get('retranslated', 0)} re-translated (stale source), "
         f"{fresh} already fresh, "
-        f"{unstamped} unstamped, {skipped} skipped, {failed} FAILED"
+        f"{unstamped} unstamped, {skipped} skipped, {failed} FAILED, "
+        f"{len(orphans)} orphan(s)"
     )
     logger.info(f"Average: {elapsed/max(written,1):.1f}s per translation")
     if unstamped:
@@ -560,6 +656,7 @@ def main():
             f"freshness checking. They are NOT auto-translated. To vouch for a set of them: "
             f"--stamp-baseline <listfile>"
         )
+    _log_orphans(orphans)
 
     # Innervation W1.3 sidecar emission. Best-effort — never raises back to
     # the caller. The genome aggregator polls this file; absent file =
@@ -585,6 +682,11 @@ def main():
             sidecar_status = "degraded"
         else:
             sidecar_status = "ok"  # every target is provably current
+        # orphan_translations is informational ONLY — it must never flip
+        # sidecar_status. Orphans are a pre-existing filesystem condition
+        # (source moved category), not something this run caused or can fix;
+        # an hourly cron that starts alarming on day-1 of a new counter is a
+        # new W-class problem (Family #2), not a cure.
         (out_dir / "pro.translate_hourly.json").write_text(_json.dumps({
             "ts": time.time(),
             "status": sidecar_status,
@@ -596,6 +698,7 @@ def main():
                 "unstamped": unstamped,
                 "skipped": skipped,
                 "failed": failed,
+                "orphan_translations": len(orphans),
                 "elapsed_s": round(elapsed, 1),
             },
         }), encoding="utf-8")

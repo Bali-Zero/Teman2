@@ -179,6 +179,7 @@ Full list: see `.github/CODEOWNERS`.
      on top of its predecessors. Speculation does not weaken the property C3 exists to verify: entry
      2 is still built on entry 1's merge result, and if entry 1 is ejected, entries built on it are
      rebuilt rather than merged. What changes is only how many are in flight while you watch.
+
 5. **Gradual re-open.** Widen from canary-only PRs to the general `gh pr merge --auto --squash`
    population per the whitelist (§3) and manual arms alike. Watch `merge-queue-watch.yml` and
    `Main-push Failure Watch` (see below) closely through this window — they are the two automated
@@ -324,6 +325,41 @@ gh pr ready <N> --undo            # convert to draft → removed from queue
 # fix → push → gh pr ready <N>    # re-queue when green
 ```
 
+#### Step 3b — When you need to PUSH to a queued branch (measured 2026-08-05)
+
+A queued branch is **protected**: every push is rejected with
+
+```
+remote: error: GH006: Protected branch update failed
+remote: - A pull request for this branch has been added to a merge queue.
+```
+
+This is the shape that bites: an adversarial review lands _after_ the PR was
+enqueued, finds a real defect, and the version already in the queue — the one
+with the defect — merges while you are still typing the fix. Dequeue first,
+push second, re-arm third.
+
+**`gh pr merge <N> --disable-auto` does NOT dequeue.** It prints
+`! Pull request ... is already queued to merge` and **exits 0** — a no-op that
+reads like a success. Verified live: the entry stayed at `pos=1`.
+
+The one that works:
+
+```bash
+PRID=$(gh pr view <N> --repo <owner/repo> --json id -q .id)
+gh api graphql -f query='mutation($id:ID!){ dequeuePullRequest(input:{id:$id}){ clientMutationId } }' -f id="$PRID"
+git push                                  # now accepted
+gh pr merge <N> --auto --repo <owner/repo>  # re-arm
+```
+
+The input field is **`id`**, not `pullRequestId` — the obvious guess returns
+`argumentNotAccepted`. Confirm with the queue itself, never with the exit code:
+
+```bash
+gh api graphql -f query='{ repository(owner:"<owner>", name:"<repo>") { mergeQueue(branch:"main") { entries(first:20){nodes{position state pullRequest{number}}} } } }' \
+  --jq '.data.repository.mergeQueue.entries.nodes[] | "pos=\(.position) \(.state) #\(.pullRequest.number)"'
+```
+
 ---
 
 ## 6bis. Queue parameters, and the one knob NOT to turn
@@ -448,6 +484,34 @@ Two traps while measuring this:
 - **The PR body is truncated on large group PRs.** A group titled "32 updates" listed only 13
   `from X to Y` pairs, so a major-version scan over the body silently covered under half of them.
   Read the **diff**, not the narration.
+
+---
+
+## 6quinquies. Ledger PRs (`.claude/skills/modus/PENDING-ARMS.md`): `mergeable: false` is a lie
+
+`.gitattributes` declares `.claude/skills/modus/PENDING-ARMS.md merge=union` — a built-in git driver
+that resolves by keeping both sides' lines, exactly right for an append-only registry. **GitHub's
+mergeability computation does not apply `.gitattributes` merge drivers**: it runs a plain three-way
+merge and reports `mergeable: false` / `mergeStateStatus: DIRTY` on a PR that touches this file even
+when both sides are perfectly union-mergeable. Measured on PR #3527 (same base `04b3eb38e`, same head
+`aa7d97029`): GitHub said `dirty`, `git merge --no-commit` succeeded cleanly in **both** directions.
+
+**The documented server-side fix does not work here either** — `gh pr update-branch` fails with
+`"Cannot update PR branch due to conflicts"` on exactly this class of PR.
+
+**A `dirty`/`false` reading on a ledger-touching PR is expected, not a real conflict.** The only path:
+
+```bash
+git -C <worktree> merge origin/main    # local merge, NOT gh pr update-branch
+git -C <worktree> push
+```
+
+Two things NOT to do when you see this:
+
+- Do not hunt for a conflict that does not exist — burns a cycle for nothing.
+- Do not hand-edit the ledger to "resolve" it. That drops the other side's open rows — precisely the
+  loss `merge=union` exists to prevent. Verify after any ledger merge that the open-row count did not
+  drop: `python3 scripts/pending_arms_report.py --json` before and after, compare `counts.total`.
 
 ---
 

@@ -6,7 +6,7 @@ describe("HandoffWaLink", () => {
   it("generates a wa.me URL with encoded quiz summary", () => {
     render(
       <HandoffWaLink
-        phone="+6285156005858"
+        phone="+628213454721"
         nationality="ITA"
         purpose="investor"
         durationMonths={12}
@@ -16,7 +16,7 @@ describe("HandoffWaLink", () => {
     );
     const link = screen.getByRole("link", { name: /whatsapp/i });
     const href = link.getAttribute("href")!;
-    expect(href.startsWith("https://wa.me/6285156005858?text=")).toBe(true);
+    expect(href.startsWith("https://wa.me/628213454721?text=")).toBe(true);
     const decoded = decodeURIComponent(href.split("?text=")[1]);
     expect(decoded).toContain("ITA");
     expect(decoded).toContain("investor");
@@ -28,7 +28,7 @@ describe("HandoffWaLink", () => {
   it("normalises leading + in phone", () => {
     render(
       <HandoffWaLink
-        phone="+6285156005858"
+        phone="+628213454721"
         nationality="USA"
         purpose="other"
         durationMonths={6}
@@ -37,7 +37,7 @@ describe("HandoffWaLink", () => {
       />,
     );
     const href = screen.getByRole("link").getAttribute("href")!;
-    expect(href).toContain("wa.me/6285156005858");
+    expect(href).toContain("wa.me/628213454721");
     expect(href).not.toContain("wa.me/+");
   });
 });

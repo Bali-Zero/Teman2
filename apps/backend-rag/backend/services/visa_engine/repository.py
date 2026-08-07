@@ -107,7 +107,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, TypeAlias
 from uuid import UUID
@@ -390,3 +390,30 @@ class VisaEngineRepository(BaseRepository):
             # UUID-shaped crash deeper in a caller.
             raise RuntimeError("visa_activate_rule_pack returned no row")
         return row["activation_id"]
+
+    async def replace_activation_set(
+        self,
+        *,
+        rule_pack_ids: Sequence[UUID],
+        activated_by: str,
+        activation_reason: str,
+    ) -> tuple[UUID, ...]:
+        """Atomically replace the complete open activation set for one scope.
+
+        This is a thin wrapper around migration 267's ``SECURITY DEFINER``
+        function. The database derives scope/legal periods from immutable pack
+        rows, verifies exact multirange coverage plus sequence/hash continuity,
+        and uses one lock/clock boundary. The caller must first cryptographically
+        verify every signed pack; this repository intentionally performs no
+        policy or signature logic.
+        """
+
+        row = await self.fetchrow_safe(
+            "SELECT public.visa_replace_activation_set($1::uuid[], $2, $3) AS activation_ids",
+            list(rule_pack_ids),
+            activated_by,
+            activation_reason,
+        )
+        if row is None:
+            raise RuntimeError("visa_replace_activation_set returned no row")
+        return tuple(row["activation_ids"])

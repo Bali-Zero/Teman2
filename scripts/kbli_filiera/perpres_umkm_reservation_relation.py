@@ -77,13 +77,27 @@ Each divergent row is instead sorted by WHY it cannot simply be applied:
   the LARGEST of the divergent ones — which is why it must not be reported as a
   single number.
 
-Known floor on `segment-qualified`, declared rather than silently absorbed: a
-grade qualifier can live in the numbered PARENT heading instead of the row
-("35. Konstruksi bangunan yang menggunakan teknologi sederhana dan madya:"
-governs `42911`/`42912`/`42913` below it). Those rows are left in `whole-row`
-on purpose. Inheriting a parent's qualifier would move rows OUT of the owner's
-list on an inference, and a question wrongly withdrawn is worse than a question
-wrongly asked.
+* `parent-qualified` — the row's own words name a whole activity, but the
+  numbered PARENT heading it is indented under restricts the scope: "Pertanian
+  tanaman pangan dengan luas kurang dari 25 Ha:" governs `01111`/`01121`/… below
+  it, whose cells read only "Jagung", "Padi hibrida". 19 rows, three headings
+  (the 25-Ha one and twice "teknologi sederhana dan madya").
+
+  THIS BUCKET EXISTS BECAUSE ITS ABSENCE COST SOMETHING (2026-08-06). Until that
+  day this paragraph was a prose caveat saying such rows are "left in
+  `whole-row` on purpose", reasoning that a question wrongly withdrawn is worse
+  than one wrongly asked. The reasoning still holds — that is why this is a
+  NAMED bucket and not a silent absorption into `segment-qualified`. What did
+  not hold is leaving the qualifier out of the DATA: `parse_perpres_lampiran2`
+  emitted the child cell alone, so the 21-agent adjudication of the 85
+  `whole-row` codes was handed "Jagung" with no way to learn about the 25 Ha,
+  and both model families agreed to reserve the whole code. ELEVEN of the 39
+  codes it proposed to patch sit under a restricting parent. The patch was
+  withdrawn before merge by a cross-family review of the finished
+  determination; nothing reached a client. A limitation that lives only in a
+  docstring does not travel with the rows, and the reader who needed it was
+  never going to open this file (superscar #3 / W115: a comment that states an
+  invariant does not enforce it).
 
 Usage:
     python scripts/kbli_filiera/perpres_umkm_reservation_relation.py --check [--json]
@@ -108,6 +122,16 @@ EXIT_OK, EXIT_CANNOT_VERIFY = 0, 4
 # word, and this list is deliberately short: an unrecognised qualifier falls to
 # `whole-row`, where a human reads it, rather than being silently absorbed.
 _SEGMENT_RE = re.compile(r"\b(sederhana|madya|kecil|mikro|kualifikasi)\b", re.IGNORECASE)
+
+# The same idea applied to the PARENT bidang usaha a row is indented under. The
+# annex writes the scope once, on the heading, and the children carry a bare
+# name — so "Jagung" is reserved only as part of "Pertanian tanaman pangan
+# dengan luas kurang dari 25 Ha". Adds the area/quantity forms the row-level
+# expression never needs, because a heading is where a threshold is written.
+_PARENT_QUALIFIER_RE = re.compile(
+    r"\b(kurang dari|lebih dari|sederhana|madya|kecil|mikro|kualifikasi)\b",
+    re.IGNORECASE,
+)
 
 # Statuses that leave a foreign investor able to take the activity. TERTUTUP is
 # already closed to everyone, so a reservation adds nothing a client would see.
@@ -223,6 +247,9 @@ def classify(
         return "activity-unknown", record, heirs
     if _SEGMENT_RE.search(row["text"]):
         return "segment-qualified", record, heirs
+    parent = row.get("parent_heading")
+    if parent and _PARENT_QUALIFIER_RE.search(parent):
+        return "parent-qualified", record, heirs
     return "whole-row", record, heirs
 
 

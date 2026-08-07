@@ -127,7 +127,7 @@ export default function VisaPage() {
           ? {
               label: "Contact your team",
               onClick: () =>
-                window.open("https://wa.me/6282230102328", "_blank"),
+                window.open("https://wa.me/628213454721", "_blank"),
             }
           : {
               label: "Chat with your team",

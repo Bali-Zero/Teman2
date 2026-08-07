@@ -6,9 +6,12 @@ _ensure_drive_folder_exists, _get_kg_extractor, detect_legal_document.
 
 from __future__ import annotations
 
+import hashlib
 import os
+from datetime import date, datetime, timezone
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -61,12 +64,18 @@ def service():
     return _build_service()
 
 
-def _common_ingest_patches():
-    """Return the patches commonly needed for ingest_legal_document tests.
+@pytest.fixture(autouse=True)
+def _source_file_bytes():
+    """Parser mocks still need stable source bytes for content-bound identities."""
+    with patch(
+        "backend.services.ingestion.legal_ingestion_service.Path.read_bytes",
+        return_value=b"unit-test-legal-source",
+    ):
+        yield
 
-    TeamDriveService is imported inside a try/except block in the source code,
-    so its import failure is already handled gracefully. We do not mock it.
-    """
+
+def _common_ingest_patches():
+    """Return the patches commonly needed for ingest_legal_document tests."""
     return (
         patch(
             "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
@@ -159,6 +168,442 @@ class TestIngestSuccess:
             assert result["chunks_created"] == 10
             assert result["tier"] == "golden"
             assert result["legal_metadata"]["type_abbrev"] == "UU"
+
+    @pytest.mark.asyncio
+    async def test_archives_in_dedicated_legal_root_idempotently(
+        self, service: MagicMock
+    ) -> None:
+        service.cleaner.clean.return_value = "cleaned legal text"
+        service.metadata_extractor.extract.return_value = {
+            "type": "Peraturan Presiden",
+            "type_abbrev": "Perpres",
+            "number": "43",
+            "year": "2011",
+            "topic": "Test",
+            "status": None,
+            "full_title": "Perpres 43/2011",
+        }
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 2,
+                "chunks_upserted": 2,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 2,
+            }
+        )
+        drive = MagicMock()
+        drive.archive_file_idempotent = AsyncMock(
+            return_value=(
+                {
+                "id": "drive_file_43",
+                "webViewLink": "https://drive.example/43",
+                "md5Checksum": hashlib.md5(b"archive source").hexdigest(),
+                },
+                "reused",
+            )
+        )
+        archive_pool = MagicMock()
+        service.indexer._get_db_pool = AsyncMock(return_value=archive_pool)
+        legal_settings = SimpleNamespace(
+            legal_drive_root_folder_id="legal_root",
+            legal_drive_impersonate_user="legal-archive@example.com",
+            google_drive_root_folder_id="generic_root",
+        )
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with (
+            p1,
+            p2 as mock_logger,
+            p3,
+            p4,
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ServiceAccountDriveService",
+                return_value=drive,
+            ) as service_account_cls,
+            patch("backend.app.core.config.settings", legal_settings),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.Path.read_bytes",
+                return_value=b"archive source",
+            ),
+        ):
+            mock_logger.start_ingestion.return_value = "doc_legal_root"
+            result = await service.ingest_legal_document(file_path="/tmp/perpres_43_2011.pdf")
+
+        assert result["success"] is True
+        assert result["drive_archive"]["status"] == "reused"
+        service_account_cls.assert_called_once_with(
+            root_folder_id="legal_root",
+            delegated_user="legal-archive@example.com",
+        )
+        drive.archive_file_idempotent.assert_awaited_once_with(
+            folder_id="legal_root",
+            file_content=b"archive source",
+            file_name="perpres_43_2011.pdf",
+            mime_type="application/pdf",
+            db_pool=archive_pool,
+            require_distributed_lock=False,
+        )
+        metadata = service.indexer.index_legal_document.await_args.kwargs["metadata"]
+        assert metadata["drive_file_id"] == "drive_file_43"
+
+    @pytest.mark.asyncio
+    async def test_historical_source_is_namespaced_and_has_a_retrieval_guard(
+        self, service: MagicMock
+    ) -> None:
+        service.cleaner.clean.return_value = "cleaned legal text"
+        service.metadata_extractor.extract.return_value = {
+            "type": "Peraturan Presiden",
+            "type_abbrev": "Perpres",
+            "number": "43",
+            "year": "2011",
+            "topic": "Test",
+            "status": None,
+            "full_title": "Perpres 43/2011",
+        }
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 2,
+                "chunks_upserted": 2,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 2,
+            }
+        )
+        service.vector_db.ensure_keyword_payload_index = AsyncMock()
+        service.vector_db.scroll_strict = AsyncMock(
+            return_value=[
+                {
+                    "id": "old-current-point",
+                    "payload": {"document_id": "Perpres_43_2011"},
+                }
+            ]
+        )
+        service.vector_db.set_payload_by_filter = AsyncMock()
+        service.vector_db.delete_by_filter = AsyncMock(
+            return_value={"success": True}
+        )
+        archive_pool = MagicMock()
+        service.indexer._get_db_pool = AsyncMock(return_value=archive_pool)
+        drive = MagicMock()
+        drive.archive_file_idempotent = AsyncMock(
+            return_value=(
+                {
+                    "id": "drive_file_43",
+                    "webViewLink": "https://drive.example/43",
+                    "md5Checksum": hashlib.md5(b"unit-test-legal-source").hexdigest(),
+                },
+                "reused",
+            )
+        )
+        legal_settings = SimpleNamespace(
+            legal_drive_root_folder_id="legal_root",
+            legal_drive_impersonate_user="legal-archive@example.com",
+            google_drive_root_folder_id="generic_root",
+        )
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with (
+            p1,
+            p2 as mock_logger,
+            p3,
+            p4,
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ServiceAccountDriveService",
+                return_value=drive,
+            ),
+            patch("backend.app.core.config.settings", legal_settings),
+        ):
+            mock_logger.start_ingestion.return_value = "doc_historical"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/perpres_43_2011.pdf",
+                retrieval_scope="historical_only",
+                source_url="https://www.peraturan.go.id/id/perpres-no-43-tahun-2011",
+                effective_date=date(2011, 7, 18),
+                observed_at=datetime(2026, 8, 5, tzinfo=timezone.utc),
+            )
+
+        assert result["success"] is True
+        index_call = service.indexer.index_legal_document.await_args
+        assert index_call.kwargs["document_id"] == "Perpres_43_2011__historical"
+        assert index_call.kwargs["metadata"]["retrieval_scope"] == "historical_only"
+        assert index_call.kwargs["metadata"]["source_url"].endswith("perpres-no-43-tahun-2011")
+        service.vector_db.ensure_keyword_payload_index.assert_has_awaits(
+            [call("retrieval_scope"), call("metadata.retrieval_scope")],
+        )
+        drive.archive_file_idempotent.assert_awaited_once()
+        assert drive.archive_file_idempotent.await_args.kwargs["db_pool"] is archive_pool
+        assert drive.archive_file_idempotent.await_args.kwargs["require_distributed_lock"] is True
+        service.vector_db.set_payload_by_filter.assert_awaited_once_with(
+            metadata_filter={"document_id": "Perpres_43_2011"},
+            payload={"retrieval_scope": "historical_only"},
+        )
+        service.vector_db.delete_by_filter.assert_awaited_once_with(
+            metadata_filter={"document_id": "Perpres_43_2011"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_historical_reclassification_quarantines_previous_current_points(
+        self, service: MagicMock
+    ) -> None:
+        vector_db = MagicMock()
+        vector_db.scroll_strict = AsyncMock(
+            return_value=[
+                {"id": "flat", "payload": {"document_id": "PP_1_2024"}},
+                {
+                    "id": "nested",
+                    "payload": {
+                        "metadata": {
+                            "document_id": "PP_1_2024",
+                            "source_url": "https://example.test/source",
+                        }
+                    },
+                },
+            ]
+        )
+        vector_db.set_payload_by_filter = AsyncMock()
+
+        quarantined = await service._quarantine_current_points(vector_db, "PP_1_2024")
+
+        assert quarantined == ["flat", "nested"]
+        vector_db.set_payload_by_filter.assert_awaited_once_with(
+            metadata_filter={"document_id": "PP_1_2024"},
+            payload={"retrieval_scope": "historical_only"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_collection_override_uses_request_local_qdrant_client(
+        self, service: MagicMock
+    ) -> None:
+        base_vector_db = service.vector_db
+        base_indexer_qdrant = service.indexer.qdrant
+        request_vector_db = MagicMock(collection_name="tax_genius")
+        service.cleaner.clean.return_value = "cleaned tax regulation"
+        service.metadata_extractor.extract.return_value = {
+            "type": "Peraturan Menteri Keuangan",
+            "type_abbrev": "PMK",
+            "number": "1",
+            "year": "2024",
+            "topic": "Tax",
+            "status": "active",
+            "full_title": "PMK 1/2024",
+        }
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 1,
+                "chunks_upserted": 1,
+                "parent_documents": 0,
+                "total_bab": 0,
+                "total_pasal": 1,
+            }
+        )
+
+        with (
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                return_value="raw tax regulation",
+            ),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ingestion_logger"
+            ) as mock_logger,
+            patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
+                return_value="tax_genius",
+            ),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.QdrantClient",
+                return_value=request_vector_db,
+            ),
+        ):
+            mock_logger.start_ingestion.return_value = "tax_request"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/pmk.pdf",
+                collection_name="tax_genius",
+            )
+
+        assert result["success"] is True
+        assert service.vector_db is base_vector_db
+        assert service.indexer.qdrant is base_indexer_qdrant
+        assert (
+            service.indexer.index_legal_document.await_args.kwargs["qdrant_client"]
+            is request_vector_db
+        )
+
+    @pytest.mark.asyncio
+    async def test_historical_ingestion_fails_when_archive_integrity_fails(
+        self, service: MagicMock
+    ) -> None:
+        from backend.services.integrations.service_account_drive_service import (
+            DriveArchiveIntegrityError,
+        )
+
+        service.vector_db.ensure_keyword_payload_index = AsyncMock()
+        service.indexer._get_db_pool = AsyncMock(return_value=MagicMock())
+        service.indexer.index_legal_document = AsyncMock()
+        drive = MagicMock()
+        drive.archive_file_idempotent = AsyncMock(
+            side_effect=DriveArchiveIntegrityError("checksum mismatch")
+        )
+        legal_settings = SimpleNamespace(
+            legal_drive_root_folder_id="legal_root",
+            legal_drive_impersonate_user="legal-archive@example.com",
+            google_drive_root_folder_id="generic_root",
+        )
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with (
+            p1,
+            p2 as mock_logger,
+            p3,
+            p4,
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ServiceAccountDriveService",
+                return_value=drive,
+            ),
+            patch("backend.app.core.config.settings", legal_settings),
+        ):
+            mock_logger.start_ingestion.return_value = "bad_archive"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/collision.pdf",
+                retrieval_scope="historical_only",
+            )
+
+        assert result["success"] is False
+        assert "archive integrity" in result["error"]
+        service.indexer.index_legal_document.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_current_ingestion_reports_archive_collision_but_continues(
+        self, service: MagicMock
+    ) -> None:
+        from backend.services.integrations.service_account_drive_service import (
+            DriveArchiveIntegrityError,
+        )
+
+        service.cleaner.clean.return_value = "corrected current law"
+        service.metadata_extractor.extract.return_value = {
+            "type": "Peraturan Pemerintah",
+            "type_abbrev": "PP",
+            "number": "5",
+            "year": "2024",
+            "topic": "Correction",
+            "status": "active",
+            "full_title": "PP 5/2024",
+        }
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer._get_db_pool = AsyncMock(return_value=MagicMock())
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 1,
+                "chunks_upserted": 1,
+                "parent_documents": 0,
+                "total_bab": 0,
+                "total_pasal": 1,
+            }
+        )
+        drive = MagicMock()
+        drive.archive_file_idempotent = AsyncMock(
+            side_effect=DriveArchiveIntegrityError("checksum mismatch")
+        )
+        legal_settings = SimpleNamespace(
+            legal_drive_root_folder_id="legal_root",
+            legal_drive_impersonate_user="legal-archive@example.com",
+            google_drive_root_folder_id="generic_root",
+        )
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with (
+            p1,
+            p2 as mock_logger,
+            p3,
+            p4,
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ServiceAccountDriveService",
+                return_value=drive,
+            ),
+            patch("backend.app.core.config.settings", legal_settings),
+        ):
+            mock_logger.start_ingestion.return_value = "current_correction"
+            result = await service.ingest_legal_document(file_path="/tmp/PP_5_2024.pdf")
+
+        assert result["success"] is True
+        assert result["drive_archive"] == {
+            "status": "failed",
+            "reason": "archive_integrity",
+        }
+        service.indexer.index_legal_document.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_post_quarantine_failure_requires_human_review_without_rollback(
+        self, service: MagicMock
+    ) -> None:
+        service.cleaner.clean.return_value = "historical source text"
+        service.metadata_extractor.extract.return_value = {
+            "type": "Peraturan Presiden",
+            "type_abbrev": "Perpres",
+            "number": "43",
+            "year": "2011",
+            "topic": "Historical source",
+            "status": None,
+            "full_title": "Perpres 43/2011",
+        }
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer._get_db_pool = AsyncMock(return_value=MagicMock())
+        service.indexer.index_legal_document = AsyncMock(
+            side_effect=RuntimeError("embedding unavailable")
+        )
+        service.vector_db.ensure_keyword_payload_index = AsyncMock()
+        service.vector_db.scroll_strict = AsyncMock(
+            return_value=[{"id": "old-current", "payload": {}}]
+        )
+        service.vector_db.set_payload_by_filter = AsyncMock()
+        service.vector_db.delete_by_filter = AsyncMock()
+        drive = MagicMock()
+        drive.archive_file_idempotent = AsyncMock(
+            return_value=(
+                {
+                    "id": "archive-43",
+                    "md5Checksum": hashlib.md5(b"unit-test-legal-source").hexdigest(),
+                },
+                "reused",
+            )
+        )
+        legal_settings = SimpleNamespace(
+            legal_drive_root_folder_id="legal_root",
+            legal_drive_impersonate_user="legal-archive@example.com",
+            google_drive_root_folder_id="generic_root",
+        )
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with (
+            p1,
+            p2 as mock_logger,
+            p3,
+            p4,
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ServiceAccountDriveService",
+                return_value=drive,
+            ),
+            patch("backend.app.core.config.settings", legal_settings),
+        ):
+            mock_logger.start_ingestion.return_value = "failed_reconciliation"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/perpres_43_2011.pdf",
+                retrieval_scope="historical_only",
+            )
+
+        assert result["success"] is False
+        assert result["reconciliation_status"] == "HUMAN_REVIEW_REQUIRED"
+        assert result["current_scope_state"] == "QUARANTINED_OR_UNKNOWN"
+        service.vector_db.set_payload_by_filter.assert_awaited_once_with(
+            metadata_filter={"document_id": "Perpres_43_2011"},
+            payload={"retrieval_scope": "historical_only"},
+        )
+        service.vector_db.delete_by_filter.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_ingestion_with_tier_override(self, service: MagicMock) -> None:
@@ -358,6 +803,28 @@ class TestSkipPricing:
 
 
 class TestMetadataFallback:
+    def test_incomplete_metadata_identity_is_bound_to_source_content(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            build_content_bound_legal_doc_id,
+        )
+
+        metadata = {
+            "type_abbrev": "DOC",
+            "number": "UNKNOWN",
+            "year": "UNKNOWN",
+        }
+        first = build_content_bound_legal_doc_id(metadata, "a" * 64)
+        second = build_content_bound_legal_doc_id(metadata, "b" * 64)
+
+        assert first == "DOC_UNKNOWN_UNKNOWN_aaaaaaaaaaaaaaaa"
+        assert second == "DOC_UNKNOWN_UNKNOWN_bbbbbbbbbbbbbbbb"
+        assert first != second
+
+        type_unknown = {"type_abbrev": "DOC", "number": "43", "year": "2011"}
+        assert build_content_bound_legal_doc_id(type_unknown, "c" * 64) == (
+            "DOC_43_2011_cccccccccccccccc"
+        )
+
     @pytest.mark.asyncio
     async def test_metadata_unknown_with_category(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "cleaned text"
@@ -483,13 +950,7 @@ class TestEnsureDriveFolder:
     @pytest.mark.asyncio
     async def test_finds_existing_folder(self, service: MagicMock) -> None:
         mock_drive = AsyncMock()
-        mock_drive.list_files = AsyncMock(
-            return_value={
-                "files": [
-                    {"name": "BALI ZERO", "type": "folder", "id": "folder_1"},
-                ],
-            }
-        )
+        mock_drive.find_folder = AsyncMock(return_value={"id": "folder_1"})
 
         mock_settings = MagicMock()
         mock_settings.google_drive_root_folder_id = "root_123"
@@ -504,7 +965,7 @@ class TestEnsureDriveFolder:
     @pytest.mark.asyncio
     async def test_creates_missing_folder(self, service: MagicMock) -> None:
         mock_drive = AsyncMock()
-        mock_drive.list_files = AsyncMock(return_value={"files": []})
+        mock_drive.find_folder = AsyncMock(return_value=None)
         mock_drive.create_folder = AsyncMock(return_value={"id": "new_folder_id"})
 
         mock_settings = MagicMock()
@@ -520,7 +981,7 @@ class TestEnsureDriveFolder:
     @pytest.mark.asyncio
     async def test_list_fails_creates_directly(self, service: MagicMock) -> None:
         mock_drive = AsyncMock()
-        mock_drive.list_files = AsyncMock(side_effect=Exception("API error"))
+        mock_drive.find_folder = AsyncMock(side_effect=Exception("API error"))
         mock_drive.create_folder = AsyncMock(return_value={"id": "fallback_id"})
 
         mock_settings = MagicMock()
@@ -536,7 +997,7 @@ class TestEnsureDriveFolder:
     @pytest.mark.asyncio
     async def test_list_and_create_both_fail(self, service: MagicMock) -> None:
         mock_drive = AsyncMock()
-        mock_drive.list_files = AsyncMock(side_effect=Exception("API error"))
+        mock_drive.find_folder = AsyncMock(side_effect=Exception("API error"))
         mock_drive.create_folder = AsyncMock(side_effect=Exception("Create also failed"))
 
         mock_settings = MagicMock()
@@ -553,7 +1014,7 @@ class TestEnsureDriveFolder:
     async def test_multi_level_path(self, service: MagicMock) -> None:
         """Test creating nested folder structure."""
         mock_drive = AsyncMock()
-        mock_drive.list_files = AsyncMock(return_value={"files": []})
+        mock_drive.find_folder = AsyncMock(return_value=None)
         mock_drive.create_folder = AsyncMock(
             side_effect=[{"id": "lvl1"}, {"id": "lvl2"}, {"id": "lvl3"}]
         )

@@ -517,7 +517,11 @@ class TestSearchService:
 
     @pytest.mark.asyncio
     async def test_prepare_search_context_apply_filters_false(self, search_service):
-        """Test _prepare_search_context with apply_filters=False"""
+        """Internal tuning may not disable the current-law historical guard."""
+        search_service.query_router.route_query.return_value = {
+            "collection_name": "legal_unified",
+            "collections": ["legal_unified"],
+        }
         (
             embedding,
             collection,
@@ -528,10 +532,46 @@ class TestSearchService:
             query="test query",
             user_level=1,
             tier_filter=None,
-            collection_override=None,
+            collection_override="legal_unified",
             apply_filters=False,
         )
-        # When apply_filters=False, chroma_filter should be None
+        assert chroma_filter == {"retrieval_scope": {"$ne": "historical_only"}}
+
+    @pytest.mark.asyncio
+    async def test_tax_genius_cannot_disable_historical_guard(self, search_service):
+        """Tax legal sources use the same current-law guard as legal_unified."""
+        search_service.query_router.route_query.return_value = {
+            "collection_name": "tax_genius",
+            "collections": ["tax_genius"],
+        }
+        _, collection, _, chroma_filter, _ = await search_service._prepare_search_context(
+            query="test tax query",
+            user_level=1,
+            tier_filter=None,
+            collection_override="tax_genius",
+            apply_filters=False,
+        )
+
+        assert collection == "tax_genius"
+        assert chroma_filter == {"retrieval_scope": {"$ne": "historical_only"}}
+
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_apply_filters_false_non_legal_is_unfiltered(
+        self, search_service
+    ):
+        search_service.query_router.route_query.return_value = {
+            "collection_name": "visa_oracle",
+            "collections": ["visa_oracle"],
+        }
+        _, collection, _, chroma_filter, _ = await search_service._prepare_search_context(
+            query="test query",
+            user_level=1,
+            tier_filter=None,
+            collection_override="visa_oracle",
+            apply_filters=False,
+        )
+
+        assert collection == "visa_oracle"
         assert chroma_filter is None
 
     @pytest.mark.asyncio

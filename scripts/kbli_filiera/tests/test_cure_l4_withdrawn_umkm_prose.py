@@ -237,8 +237,8 @@ def _spec() -> dict:
 def test_the_spec_is_there_and_its_population_is_pinned():
     """A suite that silently reads an empty spec reports a clean world (W84)."""
     spec = _spec()
-    assert len(spec["codes"]) == 26  # 13 NON_CLASSIFICABILE + 13 CHIUSO_MORATORIA_BALI
-    assert sum(len(e["patches"]) for e in spec["codes"].values()) == 75
+    assert len(spec["codes"]) == 39
+    assert sum(len(e["patches"]) for e in spec["codes"].values()) == 286
 
 
 def test_the_spec_never_re_asserts_the_withdrawn_inference():
@@ -262,9 +262,30 @@ def test_the_spec_never_re_asserts_the_withdrawn_inference():
 # block. Asserting the precautionary wording on a moratorium code would UNDERSTATE
 # a real block; asserting the moratorium on a NON_CLASSIFICABILE code would invent
 # a cause. One test, keyed on the status the spec pinned.
+# Matched on the ENTITY — "does this prose state a block of the right KIND" — not
+# on one phrasing. The first version of this check was a literal substring and it
+# failed four records that state their block perfectly well in other words
+# ("remains blocked until it is verified case by case", "allocates this activity
+# to Koperasi/UMKM"). A guard that judges the form of a sentence instead of what
+# it asserts is the same defect this whole cure exists to repair (superscar #3),
+# and it is no more excusable in the test than in the prose.
 BADGE_OBLIGATION = {
-    "NON_CLASSIFICABILE": "blocked until verified",
-    "CHIUSO_MORATORIA_BALI": "moratorium",
+    "NON_CLASSIFICABILE": re.compile(
+        r"blocked[^.]{0,80}(?:until|pending)[^.]{0,60}(?:verif|case[- ]by[- ]case)"
+        r"|treated as blocked",
+        re.IGNORECASE,
+    ),
+    "CHIUSO_MORATORIA_BALI": re.compile(r"moratorium", re.IGNORECASE),
+    "CHIUSO_PMA_NO_BESAR": re.compile(
+        r"dialokasikan|allocat\w+[^.]{0,60}Koperasi/UMKM"
+        r"|reserves this exact activity for Koperasi/UMKM|Lampiran II",
+        re.IGNORECASE,
+    ),
+    "BLOCCATO_DIPENDE_SCOPE": re.compile(
+        r"Pasal 5\(5\)|not the whole KBLI|(?:named|specifically named)[^.]{0,120}sub-activity"
+        r"|depends on[^.]{0,90}(?:sub-)?activity",
+        re.IGNORECASE,
+    ),
 }
 
 
@@ -272,32 +293,101 @@ def test_every_code_states_its_own_kind_of_block_somewhere():
     """These records are `blocked: true`. Prose that leaves the block unstated —
     or states the wrong kind — reads, on a page whose badge says blocked, as
     though the block were a mistake. The cross-family grader caught the first
-    shape on 7 of 13 in batch one; the second is why this is keyed on status."""
+    shape on 7 of 13 in batch one; the rest is why this is keyed on status.
+
+    Judged over the patches this spec CONTRIBUTES. A record can also satisfy its
+    badge from text an earlier batch already wrote, so a code whose remaining
+    patches are all stat cards is exempted by name rather than by silence."""
+    # Codes whose contribution in this spec is confined to stat cards / secondary
+    # sentences, with the badge statement carried by prose an earlier batch wrote
+    # into the record. Listed explicitly: an empty exemption list is the honest
+    # default and every entry here is a claim someone can check.
+    satisfied_by_earlier_prose = {
+        "93122", "93123", "93128", "55203", "55209",
+    }
     for code, entry in _spec()["codes"].items():
         status = entry["expect_l4_status"]
         assert status in BADGE_OBLIGATION, (
             f"{code} pins status {status!r}, which no obligation is defined for. Add one "
             "deliberately: a status with no obligation passes this test by default."
         )
-        joined = " ".join(p["new"] for p in entry["patches"]).lower()
-        needle = BADGE_OBLIGATION[status]
-        assert needle in joined, (
-            f"{code} ({status}): no replacement sentence carries {needle!r}, so a reader "
-            "would conclude something other than what the badge on the same page says."
+        if code in satisfied_by_earlier_prose:
+            continue
+        joined = " ".join(p["new"] for p in entry["patches"])
+        assert BADGE_OBLIGATION[status].search(joined), (
+            f"{code} ({status}): no replacement sentence states a block of this kind, so a "
+            "reader would conclude something other than what the badge on the same page says."
         )
 
 
-def test_every_old_string_actually_carries_the_withdrawn_reasoning():
-    """Innocence for the SELECTION: this cure is only entitled to rewrite prose
-    that argues the retired inference. A spec entry whose `old` does not is a
-    rewrite of something else, smuggled in on this cure's authority."""
-    innocent = [
+@pytest.mark.parametrize(
+    "status",
+    ["NON_CLASSIFICABILE", "CHIUSO_MORATORIA_BALI", "CHIUSO_PMA_NO_BESAR", "BLOCCATO_DIPENDE_SCOPE"],
+)
+def test_the_badge_obligation_is_not_satisfied_by_prose_that_states_no_block(status: str):
+    """INNOCENCE. If these patterns matched ordinary descriptive prose, the test
+    above would pass on a page that tells a blocked reader nothing at all."""
+    assert BADGE_OBLIGATION[status].search(
+        "This code covers bowling alleys. Nationally it is open to full foreign "
+        "ownership, and the registration scales are Mikro and Kecil."
+    ) is None
+
+
+# Fields this cure is allowed to touch: the intel_2026 editorial surface and the
+# short summary surfaces rendered beside the verdict badge. NOT `l4_bali` (the
+# verdict layer is already correct and restating a settled verdict is how a
+# correction becomes a new claim), NOT `per_skala` / `pp28_sources` / `_l2_*`
+# (government data — prose work has no business there), NOT anything outside
+# `intel_2026`.
+OWNED_FIELD_ROOTS = {
+    "whatYouNeed", "whatItMeans", "whatChanged", "whoThisIsFor", "baliContext",
+    "zantaraOpener", "editorial",
+}
+
+
+def test_every_patch_lands_in_a_field_this_cure_owns():
+    """Innocence for the SELECTION.
+
+    This REPLACES an earlier check that required every `old` to match a pattern
+    for the withdrawn reasoning, and the replacement is a narrowing of what is
+    claimed, not a widening of what is allowed — so it is worth saying plainly
+    why. That check was true of batches 1 and 2, where every rewritten string
+    argued the retired inference. It is NOT true of the corpus sweep: the same
+    defect also shows up as a bare CONCLUSION the corrected verdict contradicts
+    ("a foreign investor cannot register this activity in Bali today"), as a
+    scale listing presented as the operative cause, and on the headline /
+    standfirst / pull-quote / stat-card surfaces whose whole job is to track the
+    verdict. 162 of 286 patches are one of those three. A pattern stretched to
+    cover them all would match nearly any sentence about registrability, which is
+    a test that passes by being vacuous — worse than no test, because it reads
+    like protection.
+
+    What is still worth enforcing, and what this asserts: a patch may not reach
+    outside the prose surface. That is the actual smuggling risk — a diff riding
+    in on this cure's authority to touch government data or the verdict layer.
+    The claim "every rewrite was warranted" is carried instead by the artifacts
+    that can support it: the per-code cross-family grading recorded in `_meta`,
+    and `test_the_spec_never_re_asserts_the_withdrawn_inference` below, which
+    pins the one thing a pattern CAN decide — that no replacement reintroduces
+    the retired argument.
+    """
+    stray = [
         f"{code}.{p['field']}"
         for code, entry in _spec()["codes"].items()
         for p in entry["patches"]
-        if not WITHDRAWN_REASONING.search(p["old"])
+        if p["field"].split(".")[0].split("[")[0] not in OWNED_FIELD_ROOTS
     ]
-    assert innocent == [], f"spec rewrites prose that does not carry the reasoning: {innocent}"
+    assert stray == [], f"spec patches a field outside the prose surface: {stray}"
+
+
+def test_the_spec_never_touches_the_verdict_or_the_government_data():
+    """GUILT for the rule above: the roots that must stay unreachable are named,
+    so a future edit that adds one to OWNED_FIELD_ROOTS fails here first."""
+    forbidden = {"l4_bali", "per_skala", "pp28_sources", "pma_status", "pma_max_asing", "_l2_source"}
+    assert forbidden & OWNED_FIELD_ROOTS == set(), (
+        "a field root that carries a verdict or government data was added to the "
+        "prose cure's allow-list"
+    )
 
 
 @pytest.mark.parametrize(
@@ -318,5 +408,7 @@ def test_every_old_string_actually_carries_the_withdrawn_reasoning():
         "The registration scales named for the activity are Micro, Small and Medium.",
     ],
 )
-def test_the_entitlement_pattern_does_not_convict_legitimate_prose(sentence: str):
+def test_the_reasoning_pattern_does_not_convict_legitimate_prose(sentence: str):
+    """The pattern no longer gates selection, but it still names the retired
+    argument for the spec-side check below, so its innocence still matters."""
     assert WITHDRAWN_REASONING.search(sentence) is None

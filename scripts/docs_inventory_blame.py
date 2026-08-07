@@ -293,6 +293,15 @@ def _is_earned_flip(
         # sides are normalised here rather than in `parse_prev_flipped`, whose
         # other caller (`docs_audit.classify`) matches raw cells against raw
         # cells and is correct as it stands.
+        # `_row_key`, so the predicate is handed an IDENTITY and not a spelling:
+        # a raw `` `docs/x/README.md` `` has the basename "README.md`", which
+        # the directory-index rule would not recognise. Belt-and-braces, and
+        # said so rather than overstated — measured 2026-08-07, a decorated row
+        # is already charged as drift upstream for ANY basename, so no bypass
+        # is reachable through this argument today. It is normalised because
+        # the predicate's contract is about the document, and because the
+        # upstream behaviour that makes it moot is not this function's to rely on.
+        path=_row_key(committed_cells.get("File", "")),
         trusted_ref_has_prior_flip=_row_key(committed_cells.get("File", ""))
         in {_row_key(p) for p in prior_flips},
         generated_refs_in=generated_cells.get("refs_in", ""),

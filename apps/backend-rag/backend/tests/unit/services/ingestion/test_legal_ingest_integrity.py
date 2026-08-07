@@ -46,7 +46,7 @@ def test_preflight_allows_explicit_process_env_override() -> None:
         environment="development",
     )
 
-    validate_legal_ingest_preflight(preflight)
+    assert validate_legal_ingest_preflight(preflight) is None
 
 
 def test_preflight_rejects_wrong_target_collection() -> None:
@@ -88,7 +88,7 @@ def test_preflight_accepts_tax_genius_canonical() -> None:
         environment="development",
     )
 
-    validate_legal_ingest_preflight(preflight)
+    assert validate_legal_ingest_preflight(preflight) is None
 
 
 def test_allowed_canonical_collections_contains_legal_and_tax() -> None:
@@ -168,6 +168,48 @@ async def test_hierarchical_indexer_rejects_zero_qdrant_upserts() -> None:
 
     qdrant.upsert_documents.assert_awaited_once()
     assert qdrant.upsert_documents.await_args.kwargs["flatten_payload"] is True
+
+
+@pytest.mark.asyncio
+async def test_hierarchical_indexer_uses_request_local_qdrant_override() -> None:
+    from backend.core.legal.hierarchical_indexer import HierarchicalChunk, HierarchicalIndexer
+
+    default_qdrant = MagicMock()
+    default_qdrant.upsert_documents = AsyncMock()
+    request_qdrant = MagicMock()
+    request_qdrant.upsert_documents = AsyncMock(
+        return_value={"success": True, "documents_added": 1}
+    )
+    indexer = HierarchicalIndexer(
+        structure_parser=MagicMock(),
+        qdrant_client=default_qdrant,
+        embeddings=MagicMock(),
+    )
+    chunk = HierarchicalChunk(
+        chunk_id="PMK_1_2024_Pasal_1",
+        text="Pasal 1 text",
+        document_id="PMK_1_2024",
+        chapter_id=None,
+        section_id=None,
+        article_id="PMK_1_2024_Pasal_1",
+        hierarchy_path="PMK_1_2024/Pasal_1",
+        hierarchy_level=3,
+        parent_chunk_ids=["PMK_1_2024"],
+        sibling_chunk_ids=[],
+        bab_title=None,
+        bab_full_text=None,
+        metadata={"retrieval_scope": "current"},
+    )
+
+    added = await indexer._upsert_hierarchical_chunks(
+        [chunk],
+        [[0.1] * 1536],
+        qdrant_client=request_qdrant,
+    )
+
+    assert added == 1
+    request_qdrant.upsert_documents.assert_awaited_once()
+    default_qdrant.upsert_documents.assert_not_awaited()
 
 
 @pytest.mark.asyncio

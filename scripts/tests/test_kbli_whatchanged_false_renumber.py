@@ -28,11 +28,15 @@ from scripts.kbli_filiera import cure_whatchanged_false_renumber as cure
 from scripts.kbli_filiera.cure_whatchanged_false_renumber import (
     PASS_CONTRADICTED_PREDECESSOR,
     PASS_FALSE_CLAIM,
+    PASS_FALSE_CONTINUITY,
     PASS_TRUNCATED,
     WhatChangedError,
+    claims_ambiguous_continuity,
+    claims_number_unchanged,
     contradicted_predecessors,
     has_no_recorded_predecessor,
     is_truncated_midword,
+    number_is_discontinuous,
     plan_text,
     recorded_predecessors,
     trim_to_last_complete_sentence,
@@ -242,6 +246,121 @@ def test_recorded_predecessors_reads_all_three_layer_shapes():
 
 
 # ---------------------------------------------------------------------------
+# PASS D — "your number is unchanged" where the crosswalk says it changed
+# ---------------------------------------------------------------------------
+#
+# The client-facing shape of this one: a business reads "Unchanged from KBLI
+# 2020 — direct match" on /kbli/90130 and concludes its existing NIB number
+# still classifies it. Our own crosswalk records 90021/90029/90030/90090 as that
+# code's 2020 origin — the number did NOT carry over, and "no action needed" is
+# the wrong inference to hand someone. Measured on the shipped catalogue
+# 2026-08-05: 17 (code, surface) pairs across 14 codes.
+
+CONTINUITY_TEXT = "Unchanged from KBLI 2020 — direct match."
+
+
+def _discontinuous(what_changed=CONTINUITY_TEXT):
+    """A record whose own code (99999) is in NO layer — the number changed."""
+    return _record(what_changed=what_changed, bps_2020_ancestors={"codes": ["11111", "22222"]})
+
+
+def test_d_fires_when_the_records_own_code_is_in_no_layer():
+    assert _passes(_discontinuous()) == [PASS_FALSE_CONTINUITY]
+
+
+def test_d_does_not_fire_when_the_code_carried_over_for_real():
+    # The innocence case that carries the pass: a record whose 2020 origin IS
+    # itself. Most "unchanged" sentences in the catalogue are TRUE, and a cure
+    # that deleted them would destroy correct prose on the majority to fix 14.
+    rec = _record(what_changed=CONTINUITY_TEXT, bps_2020_ancestors={"codes": ["99999", "11111"]})
+    assert _passes(rec) == []
+    assert number_is_discontinuous(rec) is False
+
+
+def test_d_does_not_fire_on_a_text_that_claims_no_continuity():
+    rec = _discontinuous(what_changed="Split from a broader 2020 activity. Verify your NIB.")
+    assert _passes(rec) == []
+
+
+def test_d_refuses_when_no_layer_holds_anything():
+    # Nothing on file cannot contradict anything. Pass A owns the "no
+    # predecessor recorded" statement; convicting here would delete prose
+    # against zero evidence.
+    rec = _record(what_changed=CONTINUITY_TEXT)
+    assert _passes(rec) == []
+    assert number_is_discontinuous(rec) is False
+
+
+def test_d_refuses_when_the_layer_rows_are_unreadable():
+    # Rows on file that yield no code: UNDECIDABLE, which is not CLEAN. Same
+    # standing rule as pass C — this pass has no basis to delete.
+    rec = _record(what_changed=CONTINUITY_TEXT, bps_2020_ancestors={"note": "locator only"})
+    assert _passes(rec) == []
+    assert number_is_discontinuous(rec) is False
+
+
+def test_d_names_no_2020_code_at_all():
+    # The strongest constraint on this pass, and the one that cost the most to
+    # learn: an earlier draft enumerated the record's recorded predecessors, and
+    # on 4 of the 14 live codes that enumeration contradicted the BPS crosswalk
+    # (91212's record says 91012, BPS says 91022). Those records hold only the
+    # weaker layer, so the function could not see the disagreement. The negative
+    # — this number is not its own 2020 predecessor — is what survives an
+    # independent check, so it is all the sentence may assert.
+    rec = _discontinuous()
+    out, passes = plan_text(CONTINUITY_TEXT, rec)
+    assert passes == [PASS_FALSE_CONTINUITY]
+    # No carve-out on this assertion: the replacement must not contain the
+    # trigger phrase at all. An earlier version subtracted "carrying over
+    # unchanged from KBLI 2020" before checking — working around the collision
+    # instead of seeing it, which is exactly how the non-idempotence shipped.
+    assert "unchanged from KBLI 2020" not in out.lower()
+    assert "11111" not in out and "22222" not in out
+    assert "99999" in out  # the code being described, never a substitute for it
+    assert "unconfirmed" in out
+
+
+def test_d_leaves_the_ambiguous_wording_alone_when_it_stands_by_itself():
+    # "Direct match from KBLI 2020" can mean the same NUMBER or a clean 1:1
+    # ACTIVITY mapping onto a different one — 49213's own prose resolves it the
+    # second way. Alone, it is not evidence of the defect and is never cured.
+    rec = _discontinuous(what_changed="Direct match from KBLI 2020. Verify your NIB.")
+    assert _passes(rec) == []
+    assert claims_ambiguous_continuity(str(rec["intel_2026"]["whatChanged"])) is True
+
+
+def test_d_removes_the_ambiguous_wording_once_the_narrow_pattern_convicts():
+    # 96210, measured: "Direct match from KBLI 2020. Same code, same scope. …"
+    # Leaving sentence one behind publishes the overturned rationale next to the
+    # correction, in one breath. Guilt is decided narrow; removal takes both.
+    text = "Direct match from KBLI 2020. Same code, same scope. Hair salons are stable."
+    rec = _discontinuous(what_changed=text)
+    out, passes = plan_text(text, rec)
+    assert passes == [PASS_FALSE_CONTINUITY]
+    assert "Direct match from KBLI 2020" not in out
+    assert "Same code, same scope" not in out
+    assert out.endswith("Hair salons are stable.")  # unrelated prose survives verbatim
+
+
+def test_d_and_c_compose_when_one_sentence_carries_both_claims():
+    # Pass C takes the sentence first; pass D must then find nothing and say so
+    # by not claiming a pass, instead of raising on a text that is now correct.
+    text = "KBLI 2020: 46415 — unchanged from KBLI 2020."
+    rec = _record(what_changed=text, bps_2020_ancestors={"codes": ["11111"]})
+    out, passes = plan_text(text, rec)
+    assert PASS_CONTRADICTED_PREDECESSOR in passes
+    assert PASS_FALSE_CONTINUITY not in passes
+    assert "unchanged from KBLI 2020" not in out.lower()
+
+
+def test_d_replacement_speaks_about_our_records_not_about_the_regulator():
+    out, _ = plan_text(CONTINUITY_TEXT, _discontinuous())
+    assert "Our records do not support" in out
+    for forbidden in ("was renumbered to", "is now", "BPS abolished", "you must re-register"):
+        assert forbidden.lower() not in out.lower()
+
+
+# ---------------------------------------------------------------------------
 # COMPOSITION — passes must survive each other
 # ---------------------------------------------------------------------------
 
@@ -269,9 +388,19 @@ def test_detection_uses_the_original_length_not_the_rewritten_one():
 
 
 def test_plan_text_is_idempotent_on_every_shape():
+    # Pass D was added to this list AFTER it shipped a replacement sentence that
+    # contained its own trigger phrase ("…carrying over unchanged from KBLI
+    # 2020"). The cure re-convicted its own output, so a successful `--apply`
+    # left the live-file organs red — the only visible symptom, because every
+    # unit test still passed. A pass whose cured text is not in this loop is a
+    # pass that can quietly do that again.
     for text, rec in (
         (NAMED_TEXT, _record(what_changed=NAMED_TEXT, kbli_2020_source="46694")),
         (cure.FALSE_CLAIM + " body.", _record(what_changed=cure.FALSE_CLAIM + " body.")),
+        (CONTINUITY_TEXT, _discontinuous()),
+        ("Direct match from KBLI 2020. Same code, same scope.", _discontinuous(
+            what_changed="Direct match from KBLI 2020. Same code, same scope."
+        )),
     ):
         once, first_passes = plan_text(text, rec)
         assert first_passes  # it fired
@@ -362,6 +491,49 @@ def _canonical_records():
 
 def _gold():
     return cure.gold_entries(json.loads(GOLD.read_text(encoding="utf-8")))
+
+
+BPS_EDGES = [
+    REPO_ROOT / "data" / "kbli-filiera" / "bps-crosswalk" / "edges-lampiran5.json",
+    REPO_ROOT / "data" / "kbli-filiera" / "bps-crosswalk" / "edges-lampiran10.json",
+]
+
+
+def _bps_self_edges() -> set[str]:
+    """Codes the government crosswalk maps to THEMSELVES — the ones that really did
+    carry over. Not "codes present on the 2020 side": a first version of this organ
+    used that and failed on 4 records, correctly. A 2020 code can be re-used as a
+    2025 code for a different activity while its own 2025 heir is a new number —
+    a shuffle, where "unchanged" is still false. The only edge that refutes the
+    verdict is X(2020) → X(2025)."""
+    self_edges: set[str] = set()
+    for path in BPS_EDGES:
+        for row in json.loads(path.read_text(encoding="utf-8")):
+            old, new = row.get("kbli_2020"), row.get("kbli_2025")
+            if old and new and str(old) == str(new):
+                self_edges.add(str(old))
+    return self_edges
+
+
+def test_pass_d_never_convicts_a_code_the_government_crosswalk_maps_to_itself():
+    # The innocence organ for pass D, and the only check here that asks a source
+    # OTHER than the record's own fields. The pass reads the record, so a
+    # record-derived check would only agree with itself (W100); these edge files
+    # are the transcription of Peraturan BPS 7/2025 lampiran 5 + 10. Measured
+    # 2026-08-05: 908 codes carry a self-edge, 454 records are marked
+    # discontinuous, and the intersection is EMPTY — the verdict is corroborated
+    # for the whole population, not only the 14 this cure rewrites.
+    self_edges = _bps_self_edges()
+    assert len(self_edges) > 500, "the edge files did not load — a blind pass is not a clean one"
+
+    records = _canonical_records()
+    guilty = {str(r[cure.CODE_FIELD]) for r in records if number_is_discontinuous(r)}
+    assert guilty, "no record is discontinuous — the predicate is inert, not innocent"
+    overlap = sorted(guilty & self_edges)
+    assert overlap == [], (
+        f"{len(overlap)} code(s) are marked discontinuous by their own record yet the BPS "
+        f"crosswalk maps them to themselves: {overlap[:10]} — pass D would delete a TRUE sentence"
+    )
 
 
 def test_no_canonical_record_still_carries_any_of_the_three_defects():
@@ -492,3 +664,456 @@ def test_live_sidecar_datasetSha256_matches_the_live_dataset_hash():
     assert sidecar["datasetSha256"] == f"sha256:{sha}", (
         "sidecar datasetSha256 is stale — run cure.update_sidecar() or bump it by hand"
     )
+
+
+# ---------------------------------------------------------------------------
+# Pass D — the wording census was measured on TWO surfaces, and the third
+# spoke differently (2026-08-05)
+# ---------------------------------------------------------------------------
+
+# The nine shapes below are LIVE `kg_nodes.properties.whatChanged` values, read
+# from prod on 2026-08-05. All nine sat on records where `number_is_discontinuous`
+# was already True, on codes whose website copy had ALREADY been cured — so the
+# site told the truth while WhatsApp and webchat kept saying the number carried
+# over. The narrow pattern of #3602 was written from canonical + gold wordings
+# and was blind to every one of them.
+LIVE_KG_ASSERTIONS = (
+    "Direct 1:1 match from KBLI 2020 — code and scope unchanged.",
+    "Direct match from KBLI 2020. No structural changes. Web portals and "
+    "information services keep the same code and scope.",
+)
+
+# …and the two the widening still refuses, on purpose. Neither asserts the
+# DIGITS carried over: the first names a different number in the same breath,
+# the second speaks about the activity classification.
+LIVE_KG_REFUSALS = (
+    "Direct match from KBLI 2020, but the PP28 source code is 68200 — the old "
+    "general real estate services code.",
+    "Direct match from KBLI 2020. Traditional health services classification unchanged.",
+)
+
+
+@pytest.mark.parametrize("text", LIVE_KG_ASSERTIONS)
+def test_pass_d_convicts_the_live_kg_wordings_it_used_to_read_as_innocent(text):
+    """GUILT. A pattern written from the instances you looked at catches the
+    instances you looked at — these are the ones nobody had looked at."""
+    record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
+    assert number_is_discontinuous(record), "premise: the record must be discontinuous"
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY in passes, f"still innocent to the guard: {text!r}"
+
+
+@pytest.mark.parametrize("text", LIVE_KG_ASSERTIONS)
+def test_pass_d_leaves_the_same_wordings_alone_when_the_number_really_did_carry_over(text):
+    """INNOCENCE. The conjunction is what protects the ~908 codes the government
+    crosswalk maps to themselves: identical prose, continuous record, no verdict."""
+    record = {"kode_kbli_2025": "01111", "kbli_2020_source": "01111"}
+    assert not number_is_discontinuous(record), "premise: the record must be continuous"
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+
+
+@pytest.mark.parametrize("text", LIVE_KG_REFUSALS)
+def test_pass_d_still_refuses_the_two_shapes_that_assert_something_narrower(text):
+    """The declared limit stays declared — these are census rows, not cures."""
+    record = {"kode_kbli_2025": "68210", "kbli_2020_source": "68200"}
+    assert number_is_discontinuous(record)
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+    assert claims_ambiguous_continuity(text), "…and it must still be REPORTED by the census"
+
+
+# ---------------------------------------------------------------------------
+# …and a quotation of the claim is not an assertion of it
+# ---------------------------------------------------------------------------
+
+# Verbatim from canonical `52101` on 2026-08-05. A hand-written correction that
+# QUOTES the label it corrects. The first draft of the widening matched inside
+# that quotation and spliced the replacement into the middle of a dangling
+# quote — output that was not merely a false positive but gibberish, and that
+# would have overwritten an image-verified five-parent merge with "the mapping
+# is unconfirmed". W113: the probe judged by FORM and caught the citation living
+# inside the retraction.
+SCAR_52101 = (
+    "Renumbered/merged from KBLI 2020 52108 + fishery post-harvest services codes "
+    "— activity scope from 52108, code number reused (corrected 2026-07-19 — the "
+    "previous 'Direct 1:1 match... code and scope unchanged' label was a false "
+    "narrative)."
+)
+
+
+def test_a_correction_that_quotes_the_claim_is_not_convicted_of_making_it():
+    record = {"kode_kbli_2025": "52101", "kbli_2020_source": "52108"}
+    assert number_is_discontinuous(record), "premise: 52101 is not its own predecessor"
+    cured, passes = plan_text(SCAR_52101, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+    assert cured == SCAR_52101, "the text must come back untouched, not merely unconvicted"
+
+
+def test_the_live_52101_record_is_not_convicted_by_the_shipped_predicates():
+    """Scar pin on the real file, not on a fixture: if a future widening starts
+    convicting this record again, this goes red before it reaches a client."""
+    records = _canonical_records()
+    record = next(
+        r for r in records if str(r.get(cure.CODE_FIELD) or "") == "52101"
+    )
+    text = (record.get("intel_2026") or {}).get("whatChanged") or record.get("whatChanged") or ""
+    assert "code and scope unchanged" in text, (
+        "premise gone: 52101 no longer quotes the label it corrects, so this pin "
+        "is testing nothing — re-anchor it or delete it"
+    )
+    _, passes = plan_text(text, record)
+    assert PASS_FALSE_CONTINUITY not in passes
+
+
+def test_an_unbalanced_quote_masks_nothing_and_an_apostrophe_fabricates_nothing():
+    """Both directions of the twin the quotation guard could have birthed (W94):
+    a greedy quote scan that swallows the rest of the text hides real claims,
+    and treating every `'` as a delimiter turns "don't … it's" into a region.
+
+    Every fixture carries the 2020 match marker on purpose. Without it the weak
+    phrase does not convict at all, so the test would go green while exercising
+    NOTHING of the quotation guard — passing for the wrong reason is not passing.
+    """
+    record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
+    marker = "Direct 1:1 match from KBLI 2020"
+    unbalanced = f"a stray ' quote opens here. {marker} — code and scope unchanged."
+    apostrophes = f"We don't say it's settled: {marker} — code and scope unchanged."
+    both_quoted_and_bare = (
+        f"A note reading 'code and scope unchanged' — and separately, "
+        f"{marker} — code and scope unchanged."
+    )
+    # Codex, reviewing this diff on fresh context, opened with this one: three
+    # straight `"` in a text the scan paired two-of-three, masking a REAL
+    # assertion inside a region the text never balanced — the guard breaking its
+    # own "unbalanced masks nothing" promise on the first try.
+    odd_double_quotes = f'"{marker} — the code and scope remain unchanged. It calls it "legacy".'
+    for text in (unbalanced, apostrophes, both_quoted_and_bare, odd_double_quotes):
+        _, passes = plan_text(text, record)
+        assert PASS_FALSE_CONTINUITY in passes, f"masked by the quotation guard: {text!r}"
+
+
+def test_a_surface_with_nothing_to_rewrite_is_not_written_at_all():
+    """A run that reports "wrote 0 gold entry(ies)" must leave the bytes alone.
+
+    It did not: re-serialising the untouched surface stripped the trailing
+    newline from `kbli-gold-all.json`, so the diff carried a file the run had
+    just declared untouched and `prettier --check` failed on a change nobody
+    made. Pinned on the SOURCE because the effect is an absence — there is no
+    output to assert against.
+    """
+    import inspect
+
+    source = inspect.getsource(cure.main)
+    assert "if gold_plan:" in source and "if canonical_plan:" in source, (
+        "main() writes a surface unconditionally again — a cure with an empty "
+        "plan for one surface must not touch that surface's file"
+    )
+
+
+def test_known_gap_an_accidental_straight_quote_pair_can_mask_a_real_assertion():
+    """DECLARED LIMIT, not an accident — found by adversarial probing of the
+    quotation guard before it shipped, and left in rather than papered over.
+
+    A straight `'` is genuinely ambiguous between a quotation mark and an
+    apostrophe, and no lexical rule separates "'twas" from an opening quote. So
+    an archaic contraction opening and a possessive plural closing can enclose a
+    REAL assertion and hide it. Every alternative considered was a magic
+    threshold on region length or sentence count — a frozen measurement (W106)
+    dressed up as a rule, which is worse than a stated gap.
+
+    It fails in the SAFE direction: the text is left alone, never rewritten —
+    the same direction `_CONTINUITY_AMBIGUOUS` already chose. And the shape does
+    not occur in this corpus, which is machine-written provenance sentences.
+
+    If this ever goes red, the guard got SMARTER — re-read it, then delete this.
+    """
+    record = {"kode_kbli_2025": "74199", "kbli_2020_source": "74190"}
+    marker = "Direct 1:1 match from KBLI 2020"
+    masked = f"'twas said: {marker} — code and scope unchanged, per the workers' file."
+    assert claims_number_unchanged(masked.replace("'", "")) is True, (
+        "premise: with the apostrophes removed this text IS a conviction, so the "
+        "assertion below is measuring the guard and not the absence of a claim"
+    )
+    _, passes = plan_text(masked, record)
+    assert PASS_FALSE_CONTINUITY not in passes, (
+        "the known gap closed — the guard now sees through an accidental "
+        "apostrophe pair; update the note above and drop this test"
+    )
+
+    # …and the near neighbours that must NOT fall into the same hole.
+    for text in (
+        f"Rock 'n' roll aside, {marker} — code and scope unchanged.",
+        f"The '90s aside: {marker} — code and scope unchanged.",
+        f"Ministers' and workers' filings: {marker} — code and scope unchanged.",
+    ):
+        _, passes = plan_text(text, record)
+        assert PASS_FALSE_CONTINUITY in passes, f"gap widened to: {text!r}"
+
+
+# ---------------------------------------------------------------------------
+# PASS E — the claim left standing beside its own retraction
+#
+# #3610 widened the CONVICTION around the assertion and left the REMOVAL written
+# around two phrasings. "No structural changes" is a third phrasing of the same
+# assertion and was in neither, so on the two records that used it the cure
+# deleted the sentences it recognised and published the honest replacement next
+# to a sentence denying it. Measured live on the site and in the KG the same day.
+#
+# Two halves, and only one of them changes what a client reads: widening the
+# removal protects a population of ZERO on this corpus (nothing is convicted any
+# more), so the repair pass is not decoration on top of the widening — it IS the
+# cure. `test_e_widening_alone_would_have_cured_nothing` states that in numbers.
+# ---------------------------------------------------------------------------
+
+def _what_changed(record) -> str:
+    """Same accessor the surfaces use — the field is nested on some, flat on others."""
+    return (record.get("intel_2026") or {}).get("whatChanged") or record.get("whatChanged") or ""
+
+
+def _canonical_record(code: str):
+    return next(r for r in _canonical_records() if str(r.get(cure.CODE_FIELD) or "") == code)
+
+
+RESIDUE_47401 = (
+    "Our records do not support this code number carrying over from KBLI 2020: no "
+    "crosswalk source we hold records 47401 as its own KBLI-2020 predecessor, so a "
+    "2020 registration under this number should not be assumed to carry over. The "
+    "2020-to-2025 mapping for this code is unconfirmed pending re-verification "
+    "(GARUDA-FILIERA). No structural changes to the retail classification."
+)
+RESIDUE_63900 = (
+    "Our records do not support this code number carrying over from KBLI 2020: no "
+    "crosswalk source we hold records 63900 as its own KBLI-2020 predecessor, so a "
+    "2020 registration under this number should not be assumed to carry over. The "
+    "2020-to-2025 mapping for this code is unconfirmed pending re-verification "
+    "(GARUDA-FILIERA). No structural changes."
+)
+
+# Verbatim pre-cure texts of the two records, read off the KG's own
+# `_whatChanged_cure` archive on 2026-08-05 — the input that produced the residue.
+PRE_CURE = {
+    "47401": (
+        "Unchanged from KBLI 2020 — direct match. Direct match from KBLI 2020 — "
+        "same code, same scope. No structural changes to the retail classification."
+    ),
+    "63900": (
+        "Direct match from KBLI 2020. No structural changes. Web portals and "
+        "information services keep the same code and scope."
+    ),
+}
+
+
+@pytest.mark.parametrize("text", [RESIDUE_47401, RESIDUE_63900])
+def test_e_fires_on_a_correction_that_contradicts_itself(text):
+    assert cure.contradicts_own_correction(text) is True
+    out = cure.drop_residual_continuity(text)
+    assert "No structural changes" not in out
+    assert cure.CURED_CONTINUITY_MARKER in out, "the retraction itself must survive"
+    assert out.endswith("(GARUDA-FILIERA).")
+
+
+def test_e_deletes_and_never_writes_a_second_retraction():
+    """Pure deletion: the honest sentence is already there — that is the precondition."""
+    out = cure.drop_residual_continuity(RESIDUE_63900)
+    assert out.count(cure.CURED_CONTINUITY_MARKER) == 1
+
+
+def test_e_marker_is_really_part_of_the_replacement_it_stands_for():
+    """A marker that drifts out of the replacement would silently make pass E dead."""
+    assert cure.CURED_CONTINUITY_MARKER in cure.unconfirmed_continuity_sentence("63900")
+
+
+@pytest.mark.parametrize(
+    "code,text",
+    [
+        # The six whose OWN crosswalk agrees the code carried over. 47242 is the
+        # one that matters: its prose is word-for-word the shape of 47401's
+        # pre-cure text — same sentences, opposite truth — so this pass must be
+        # deciding on the retraction's presence and not on the phrasing.
+        ("47242", PRE_CURE["47401"].replace(" to the retail classification", "")),
+        (
+            "71101",
+            "Direct match from KBLI 2020 to 2025 — the code and scope remain the "
+            "same. No structural changes, just the usual periodic review of risk "
+            "classifications.",
+        ),
+        (
+            "47112",
+            "Direct match from KBLI 2020 with no structural changes. Same code, "
+            "same scope, same licensing.",
+        ),
+    ],
+)
+def test_e_does_not_fire_on_a_continuity_claim_that_was_never_retracted(code, text):
+    assert cure.contradicts_own_correction(text) is False
+    with pytest.raises(WhatChangedError):
+        cure.drop_residual_continuity(text)
+
+
+def test_e_a_quotation_of_the_phrase_is_not_an_assertion_of_it():
+    """Same rule pass D already honours — a correction may quote what it corrects."""
+    quoted = (
+        "Our records do not support this code number carrying over from KBLI 2020: "
+        'no crosswalk source we hold records 63900 (the previous "No structural '
+        'changes" label was a false narrative).'
+    )
+    assert cure.contradicts_own_correction(quoted) is False
+
+
+def test_e_refuses_rather_than_publish_a_text_that_lost_its_retraction():
+    """If deletion would take the honest sentence too, refuse — never publish the stump."""
+    fused = (
+        "Our records do not support this code number carrying over from KBLI 2020 "
+        "and there are no structural changes."
+    )
+    assert cure.contradicts_own_correction(fused) is True
+    with pytest.raises(WhatChangedError, match="refusing to publish"):
+        cure.drop_residual_continuity(fused)
+
+
+@pytest.mark.parametrize("code,text", sorted(PRE_CURE.items()))
+def test_e_a_fresh_conviction_now_leaves_no_residue_for_e_to_clean(code, text):
+    """The other half: the widened REMOVAL means pass D no longer creates this.
+
+    Run on the two real pre-cure texts against their real canonical records —
+    the exact inputs that produced the defect. Pass E must not appear: if it
+    does, D is still leaving the residue and E is papering over it.
+    """
+    record = _canonical_record(code)
+    out, passes = plan_text(text, record)
+    assert number_is_discontinuous(record) is True, "premise: this record denies continuity"
+    assert passes == [PASS_FALSE_CONTINUITY]
+    assert "No structural changes" not in out
+
+
+def test_e_widening_alone_would_have_cured_nothing():
+    """The measurement that decides the shape of this fix, re-derived at test time.
+
+    Nothing in the shipped catalogue is convicted any more, so a fix that only
+    widened the removal pattern would have guarded a population of ZERO while
+    two contradictions stayed live on the website and in the KG. If this ever
+    goes non-zero, a NEW convicted record appeared — cure it; do not relax this.
+    """
+    records = _canonical_records()
+    convicted = [
+        r["kode_kbli_2025"]
+        for r in records
+        if _what_changed(r)
+        and claims_number_unchanged(_what_changed(r))
+        and number_is_discontinuous(r)
+    ]
+    assert convicted == [], f"uncured convicted records reappeared: {convicted}"
+
+
+def test_e_no_shipped_surface_publishes_a_correction_that_contradicts_itself():
+    """The live-file organ. Canonical, the website's copy and the desktop app's copy."""
+    offenders = {}
+    for surface in (
+        CANONICAL,
+        REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json",
+        REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.json",
+    ):
+        payload = json.loads(surface.read_text())
+        rows = payload["data"] if isinstance(payload, dict) else payload
+        bad = [
+            r.get("kode_kbli_2025")
+            for r in rows
+            if cure.contradicts_own_correction(_what_changed(r) or "")
+        ]
+        if bad:
+            offenders[surface.name] = bad
+    assert offenders == {}, f"a retraction is published beside the claim it retracts: {offenders}"
+
+
+RESIDUE_96210 = (
+    "Our records do not support this code number carrying over from KBLI 2020: no "
+    "crosswalk source we hold records 96210 as its own KBLI-2020 predecessor, so a "
+    "2020 registration under this number should not be assumed to carry over. The "
+    "2020-to-2025 mapping for this code is unconfirmed pending re-verification "
+    "(GARUDA-FILIERA). Hair salons have been consistently classified across both "
+    "KBLI versions."
+)
+
+# The retraction pass D writes always ends here, by construction.
+_RETRACTION_END = "(GARUDA-FILIERA)."
+
+
+def test_e_fires_on_the_third_phrasing_too():
+    """`96210` — found only by pulling the KG's own vintage of all sixteen cured
+    texts, after the first draft of this pass had shipped with a pattern written
+    from the two records that bit. Same assertion, wording nobody had seen."""
+    assert cure.contradicts_own_correction(RESIDUE_96210) is True
+    out = cure.drop_residual_continuity(RESIDUE_96210)
+    assert "consistently classified" not in out
+    assert out.endswith(_RETRACTION_END)
+
+
+def test_e_the_replacement_pass_d_writes_really_does_end_where_the_organ_assumes():
+    """The organ below is only sound while this holds — so assert it, don't assume it."""
+    assert cure.unconfirmed_continuity_sentence("63900").endswith(_RETRACTION_END)
+
+
+def test_e_no_cured_text_carries_an_unreviewed_tail():
+    """THE ORGAN that makes a measured-only pattern safe instead of merely lucky.
+
+    Pass D's replacement ends at `(GARUDA-FILIERA).`, and on every one of the
+    sixteen cured records the guilty passage ran to the end of the text — so a
+    cured text with anything after that marker contains a sentence the cure never
+    considered. All three found so far were the same assertion in a new wording.
+
+    This is deliberately a REFUSAL, not a cure: deleting an unrecognised tail
+    would throw away information nobody read. A fourth phrasing goes red here and
+    gets judged. If a genuinely legitimate tail ever appears, add it to a named
+    allow-list in this test with the reason — do not widen the rule.
+
+    Scoped to pass D's marker on purpose: pass C's replacement ends the same way
+    and DOES carry legitimate tails (46415, 46496, 49296, 64210 — operational NIB
+    advice), so a rule written over both would be red on four innocent records.
+    """
+    offenders = {}
+    for surface in (
+        CANONICAL,
+        REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json",
+        REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.json",
+        GOLD,
+    ):
+        payload = json.loads(surface.read_text(encoding="utf-8"))
+        rows = payload["data"] if isinstance(payload, dict) and "data" in payload else payload
+        rows = rows if isinstance(rows, list) else list(rows.values())
+        for row in rows:
+            text = _what_changed(row)
+            if cure.CURED_CONTINUITY_MARKER not in text:
+                continue
+            head, _, tail = text.partition(_RETRACTION_END)
+            if tail.strip():
+                offenders.setdefault(surface.name, []).append(
+                    (row.get(cure.CODE_FIELD) or row.get("kode_kbli"), tail.strip())
+                )
+    assert offenders == {}, (
+        "a cured record carries text after its own retraction — read it before "
+        f"deciding whether it is a fourth phrasing of the claim: {offenders}"
+    )
+
+
+@pytest.mark.parametrize(
+    "text", [RESIDUE_47401, RESIDUE_63900, RESIDUE_96210], ids=["47401", "63900", "96210"]
+)
+def test_e_is_actually_wired_into_the_one_decision_function(text):
+    """Every surface cures through `plan_text` and nothing else — so the pass being
+    CORRECT is worth nothing unless `plan_text` calls it.
+
+    Added because mutation testing killed five of six mutants and this one SURVIVED:
+    deleting pass E's three lines from `plan_text` left the whole corpus green. The
+    direct-call tests exercised the function, and the live-file organs passed because
+    the shipped data was already cured — so nothing was asserting the wiring. A cure
+    disconnected from its only caller is a cure that never runs on the next record.
+    """
+    record = _record(what_changed=text)
+    assert claims_number_unchanged(text) is False, (
+        "premise: the residue phrasing must NOT be a conviction trigger, otherwise "
+        "this is measuring pass D and the wiring of E stays untested"
+    )
+    cured, passes = plan_text(text, record)
+    assert passes == [cure.PASS_RESIDUAL_CONTINUITY]
+    assert cured.endswith(_RETRACTION_END)

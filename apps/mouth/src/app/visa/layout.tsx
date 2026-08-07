@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
 import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
+
+export const metadata: Metadata = {
+  title: "Bali Visa Eligibility & Selection",
+  description:
+    "Find the right Indonesia & Bali visa for your stay. Compare C1, D12, E33G, KITAS, and long-term residency options.",
+  alternates: {
+    canonical: "https://balizero.com/visa",
+  },
+};
 
 const montserrat = Montserrat({
   subsets: ["latin"],

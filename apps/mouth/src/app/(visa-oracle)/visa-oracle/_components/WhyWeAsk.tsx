@@ -4,20 +4,26 @@ import { useId, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { HelpCircle } from "lucide-react";
 import type { Language } from "../_lib/flow";
+import type { QuestionDecisionMapping } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
 
 export interface WhyWeAskProps {
   language: Language;
   i18nKey: I18nKey;
-  regulation: string;
+  decisionMapping: QuestionDecisionMapping;
 }
 
 /**
  * The "gov-demo armor" (design doc §3): a disclosure glyph on every
- * sensitive question, revealing one sentence + the mapped regulation.
- * Collapsed by default so it never competes with the question itself.
+ * sensitive question. Until a claim-level source ledger is frozen, it shows
+ * the exact engine fact boundary (or clearly labels human-only context)
+ * instead of presenting a historical regulation as proof of a live claim.
  */
-export function WhyWeAsk({ language, i18nKey, regulation }: WhyWeAskProps) {
+export function WhyWeAsk({
+  language,
+  i18nKey,
+  decisionMapping,
+}: WhyWeAskProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const reducedMotion = useReducedMotion();
@@ -50,9 +56,15 @@ export function WhyWeAsk({ language, i18nKey, regulation }: WhyWeAskProps) {
           >
             <p style={{ margin: 0 }}>{translate(language, i18nKey)}</p>
             <span className="oracle-whyweask__regulation">
-              {translate(language, "whyweask.regulation_prefix", {
-                regulation,
-              })}
+              {decisionMapping.kind === "FACT"
+                ? translate(language, "whyweask.fact_prefix", {
+                    facts: decisionMapping.factPaths.join(", "),
+                  })
+                : decisionMapping.kind === "REVIEW_ONLY"
+                  ? translate(language, "whyweask.review_only", {
+                      facts: decisionMapping.factPaths.join(", "),
+                    })
+                  : translate(language, "whyweask.human_context")}
             </span>
           </motion.div>
         )}

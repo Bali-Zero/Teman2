@@ -153,7 +153,7 @@ Hard fail if a non-always-untranslated ID term appears on first use without Engl
 
   6.6.1 **Elegant CTA allowed** (added 2026-05-09, revised same day): a single optional `elegant-close` slide MAY follow statement-bomb (so the carousel ends statement-bomb → elegant-close at slides N-1, N). Elegant-close uses soft consultant language, NOT sales language. Permitted patterns:
 
-- TWO reach lines: email `ZANTARA@BALIZERO.COM` + WhatsApp `+62 821 3107 363` (both = same Bali Zero Zantara front-desk, listing both is informational not pushy)
+- TWO reach lines: email `ZANTARA@BALIZERO.COM` + WhatsApp `+62 821 3454 721` (both = same Bali Zero Zantara front-desk, listing both is informational not pushy)
 - A soft conditional invite: "IF YOUR CASE TOUCHES THIS — A 30-MIN CALL CONFIRMS NEXT STEPS." or "WHEN YOU'RE READY — WE'VE WALKED THIS PATH 5,000 TIMES."
 
 Forbidden in elegant-close:

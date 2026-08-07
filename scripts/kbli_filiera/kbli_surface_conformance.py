@@ -97,7 +97,22 @@ PHANTOM_MARKER = "NOT_IN_KBLI_2025"
 # applied uniformly wherever no annex names the code — never flagged here,
 # because flagging it would just restate the pre-existing "no annex" default,
 # not surface new information.
-SPECIFIC_CITATION_BUCKETS = {"named-in-annex", "priority-lampiran-i"}
+#
+# `priority-lampiran-i` was in this set until 2026-08-06 and FAILED that very
+# test. Measured on the artifact: its 175 codes carry **exactly one distinct
+# cite** between them — "Perpres 49/2021 Lampiran I — priority business field
+# (Pasal 3(1)(a))" — which names no code, no percentage, no ownership treatment
+# (0 of its cites mention asing/%/foreign/modal). `named-in-annex` by contrast
+# has **61 distinct cites across 270 codes**, several carrying the KBLI-2020
+# crosswalk that earned the entry ("… via KBLI-2020 47911").
+#
+# So the check was demanding an adjudicated FOREIGN-OWNERSHIP basis for 173
+# codes whose citation asserts nothing about ownership — judging by which
+# bucket a code sits in rather than by what its citation actually says
+# (superscar #3). The compiler already knew: `perpres_body_default_relation.py`
+# records that priority listing "incentivises, it never restricts". A backlog
+# of 414 was really 241.
+SPECIFIC_CITATION_BUCKETS = {"named-in-annex"}
 
 SNAPSHOT_SQL = """
 SELECT coalesce(json_agg(json_build_object(

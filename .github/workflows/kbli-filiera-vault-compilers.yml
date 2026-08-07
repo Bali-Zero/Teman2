@@ -18,6 +18,10 @@ on:
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/kbli-filiera/coverage-baseline.json"
       - "apps/mouth/data/perpres-locators.json"
+      - "apps/mouth/data/kbli-gold-all.json"
+      - "apps/mouth/data/kbli-risk-disputes.json"
+      - "apps/mouth/data/kbli-perpres-slice-disclosures.json"
+      - "data/kbli-filiera/perpres-foreign-caps.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
   push:
     branches:
@@ -27,6 +31,10 @@ on:
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/kbli-filiera/coverage-baseline.json"
       - "apps/mouth/data/perpres-locators.json"
+      - "apps/mouth/data/kbli-gold-all.json"
+      - "apps/mouth/data/kbli-risk-disputes.json"
+      - "apps/mouth/data/kbli-perpres-slice-disclosures.json"
+      - "data/kbli-filiera/perpres-foreign-caps.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
 
 permissions:
@@ -40,7 +48,9 @@ jobs:
   kbli-filiera-vault-compilers:
     name: kbli-filiera-vault-compilers
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
+    # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -95,3 +105,34 @@ jobs:
           set -e
           echo "locators exit: ${LOCATORS_RC}"
           exit "${LOCATORS_RC}"
+
+      # Same reasoning as the locators step above, for the newer artifact:
+      # `--emit` writes apps/mouth/data/kbli-perpres-slice-disclosures.json,
+      # which puts a restricted-slice disclosure on 12 public pages. Belt and
+      # suspenders with the pytest freshness test in
+      # test_perpres_slice_disclosure.py (same captured-exit shape, W101/W108).
+      - name: Perpres slice disclosures still match the join + ADJUDICATION
+        run: |
+          set -uo pipefail
+          set +e
+          python scripts/kbli_filiera/perpres_slice_disclosure_relation.py --check-artifact
+          SLICE_RC=$?
+          set -e
+          echo "slice-disclosure exit: ${SLICE_RC}"
+          exit "${SLICE_RC}"
+
+      # --strict (armed 2026-08-07, perpres_foreign_cap_relation.py docstring):
+      # every DISAGREE/AMBIGUOUS row from the join must be adjudicated
+      # (apply_perpres_foreign_caps.ADJUDICATION, any verdict) and
+      # NO_DESCENDANT must be empty — a restriction the instrument names and
+      # we simply never located is as unadjudicated as one we found and
+      # shrugged at. Same captured-exit shape as the steps above.
+      - name: Perpres foreign-cap relation --strict (every divergence adjudicated)
+        run: |
+          set -uo pipefail
+          set +e
+          python scripts/kbli_filiera/perpres_foreign_cap_relation.py --strict
+          STRICT_RC=$?
+          set -e
+          echo "strict exit: ${STRICT_RC}"
+          exit "${STRICT_RC}"

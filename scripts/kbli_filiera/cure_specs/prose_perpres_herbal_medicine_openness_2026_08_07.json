@@ -1,0 +1,74 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "adjudicated": "team-lead brief item C, 2026-08-07 — 21021/21022 flipped RENAMED -> PLAIN on primary-source research (UU 17/2023 + Peraturan BPOM 25/2023 + SEB 4.S/2026 + OSS RBA old-title serving), canonical patched TERBUKA/100 -> TERBATAS/0 via apply_perpres_foreign_caps.py --apply. This spec cures the downstream consequence: canonical's OWN intel_2026 prose (separate from apps/mouth/data/kbli-gold-all.json, cured by cure_gold_pma_line.py in the same change) still asserted national openness on both codes — caught by editorial_record_conformance.py's needs_an_author tripwire going 0 -> 2 after the canonical flip.",
+    "source": "research/operations — see the PR description for the full four-leg citation"
+  },
+  "codes": {
+    "21021": {
+      "judul": "Industri Bahan Baku Obat Bahan Alam untuk Manusia",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #5"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "d8d195a7afb55f18d50ddf0f51ed7f1586a87226e0d215d251eaa075ed745fe1",
+          "old_excerpt": "National rules allow 100% foreign ownership (PMA) for this KBLI. In Bali, it is classified as medium",
+          "new": "The national foreign-ownership ceiling for this activity is 0% — Perpres 10/2021 as amended by 49/2021 reserves it for domestic capital (Lampiran III entry #5), presumed to carry over from the KBLI 2020 code this one renamed (UU 17/2023; no contrary OSS/BKPM guidance found). In Bali, it is classified as medium-high to high risk, so it is not blocked by the local moratorium, but the PT PMA route itself is unavailable nationwide; you will need to secure a suitable industrial address and navigate additional licensing steps based on the risk level—verification per location is required."
+        },
+        "editorial.headline": {
+          "old_sha256": "4175254136a25390ffb06d040bcaea39da3ecc56f345b39967e65e4f7d2b93e9",
+          "old_excerpt": "Natural-Medicine Raw Materials, Open Nationally and Usable in Bali",
+          "new": "Natural-Medicine Raw Materials, Reserved for Domestic Capital Nationwide"
+        },
+        "editorial.body": {
+          "old_sha256": "28ee695ae7be904f9f67dfe161f45ad04d4d5649a0e6c2648556f2bf8dccdfa1",
+          "old_excerpt": "This activity sits upstream in the natural-medicine chain. The record describes an industry for proc",
+          "new": "This activity sits upstream in the natural-medicine chain. The record describes an industry for processing many kinds of extracts and simplisia, galenic preparations, additives, and other materials used in making natural medicines for humans. Some of those materials may have active properties and some may not; some may be transformed in processing and some may remain substantially unchanged. The important point is functional: these are inputs used in the processing of natural-medicine products, even where not every original ingredient remains visible in the bulk product.\n\nThat makes the code useful for founders whose business is not the retail face of wellness, nor the branding of finished consumer products, but the industrial preparation of the materials behind them. It is a production-side classification: a way to place extraction, preparation, and ingredient handling inside the formal KBLI map without overstating the activity as finished-medicine manufacturing. A company using this code should be able to describe its work in the language of the record: processing extracts, simplisia, galenic preparations, additives, or other materials for use in natural-medicine production for humans.\n\nThe scale picture is broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar, so it can describe a small operation as well as a larger industrial setup, provided the actual business remains within this scope. At the national level, PMA is classified as TERBATAS, with the foreign-ownership ceiling at 0% — Perpres 10/2021 as amended by 49/2021 reserves this bidang usaha for domestic capital (Lampiran III entry #5). That restriction is presumed to carry over from the KBLI 2020 code this one renamed (UU 17/2023 Pasal 1; Peraturan BPOM 25/2023; no contrary OSS/BKPM guidance found), and it should not be diluted into a vague caveat: a PT PMA cannot hold this activity.\n\nThe Bali picture does not change that national answer. The record marks Bali as OK_or_HIGHER_RISK, with the reason: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium — so this is not a Bali-specific block layered on top of an otherwise-open national position. The honest reading is the reverse of what an older version of this page said: nationally this activity is closed to foreign capital, and Bali's risk classification is a separate, secondary fact about licensing authority, not about ownership."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "02330b4e1429fa5269ced4142dc5d9464622579c010d8127b805d3fa62f5f4f7",
+          "old_excerpt": "The honest reading is therefore simple: nationally this activity is foreign-open, and for Bali the r",
+          "new": "The honest reading is the reverse of an older read of this page: nationally this activity is closed to foreign capital — reserved for domestic capital under Perpres 10/2021 as amended by 49/2021."
+        }
+      }
+    },
+    "21022": {
+      "judul": "Industri Produk Obat Bahan Alam untuk Manusia",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #6"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "6b4bbaf656acbff52602c8ba37f8923c47a0e537e5cda53b337d5d2d457c5647",
+          "old_excerpt": "Nationally, this is fully open to 100% foreign ownership. In Bali, it’s not blocked by the local mor",
+          "new": "Nationally, the foreign-ownership ceiling is 0% — Perpres 10/2021 as amended by 49/2021 reserves this activity for domestic capital (Lampiran III entry #6), presumed to carry over from the KBLI 2020 code this one renamed (UU 17/2023; no contrary OSS/BKPM guidance found). In Bali, it’s not blocked by the local moratorium, but it falls into medium-high to high risk, so approval will depend on a per-address verification (location and compliance check) — a PT PMA route is not available regardless."
+        },
+        "editorial.headline": {
+          "old_sha256": "f1091464e892723fea12e2ff6c54615b076d926ed13061777c25d85ba5a92e09",
+          "old_excerpt": "Natural-Medicine Manufacturing for a Fully Open PMA Setup",
+          "new": "Natural-Medicine Manufacturing — Reserved for Domestic Capital, No PMA Route"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "6e4bc30010c617751b31b144ba5ae23efd04b3d13dc692431519e8f82fedc485",
+          "old_excerpt": "KBLI 21022 covers human natural-medicine product manufacturing, open nationally to full foreign owne",
+          "new": "KBLI 21022 covers human natural-medicine product manufacturing. The national record reserves it for domestic capital — a PT PMA cannot register this activity, in Bali or anywhere else in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "f7bd451fad77fb3a4753ab0b990667acabf38ed040d4f55ca335ad358fda9f0b",
+          "old_excerpt": "KBLI 21022 is about the industrial processing of natural-medicine products for human use. Its scope ",
+          "new": "KBLI 21022 is about the industrial processing of natural-medicine products for human use. Its scope is broad, but specific: it covers products made from natural resources in raw form, or not yet through further processing, drawn from plants, animals, microorganisms, minerals, or mixtures of those materials. In practical terms, the record points to an unusually wide range of final forms: powders and instant powders, sliced preparations, pills, dodol or jenang, pilis, tapel, pastilles, tablets, capsules, liquids, solutions, emulsions and suspensions, effervescent products, films, strips, gummy chewables, ointments, lotions, creams and gels, external-use medicinal aerosols, plasters, and suppositories. It also includes the making of jamu drinks and health or food supplements that are not pharmaceutical products.\n\nThat scope matters because the activity is not framed as a narrow retail or service category. It is a manufacturing code: the defining act is the processing of natural inputs into finished natural-medicine or related non-pharmaceutical health products for people. The record does not add separate permit conditions, product thresholds, capital figures, or approval timelines, so none should be read into the category here. What can be said, with confidence, is that this code sits on the production side of the natural-health economy, covering both traditional formats and more contemporary delivery forms when they are within the listed natural-medicine and non-pharmaceutical supplement scope.\n\nFor registration scale, the record is clean. The activity is open to Mikro, Kecil, Menengah, and Besar. That means the code is not described here as belonging only to large factories or only to small producers; the record makes it available across the full scale range it lists. Nationally, the PMA status is also clear, but in the other direction: it is marked TERBATAS, with a pma_max_asing value of 0. Put plainly, Perpres 10/2021 as amended by 49/2021 reserves this activity for domestic capital (Lampiran III entry #6) — a restriction presumed to carry over from the KBLI 2020 code this one renamed (UU 17/2023 Pasal 1; Peraturan BPOM 25/2023; no contrary OSS/BKPM guidance found).\n\nThe Bali picture is a separate, secondary fact — it does not reopen what the national record closes. For Bali, the record assigns the status OK_or_HIGHER_RISK; its reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That means Bali's own moratorium rule is not the thing standing in a PT PMA's way here — the national ownership cap is. Based only on this record, KBLI 21022 is reserved for domestic capital nationwide, and no Bali-specific reasoning changes that."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "fc14f5ef106ef2de4db87301480cbefcfae26153eb8ff7d836ac6052e05102d8",
+          "old_excerpt": "Based only on this record, KBLI 21022 is nationally foreign-open up to 100% and is not blocked for P",
+          "new": "Based only on this record, KBLI 21022 is reserved for domestic capital nationwide — the PT PMA route is unavailable, in Bali and everywhere else in Indonesia."
+        }
+      }
+    }
+  }
+}

@@ -148,7 +148,7 @@ class TestResponseSanitizerIntegration:
         """Test that contact info is not duplicated"""
         from backend.utils.response_sanitizer import add_contact_if_appropriate
 
-        response = "Info here. Contact us on WhatsApp +62 859 0436 9574"
+        response = "Info here. Contact us on WhatsApp +62 821 3454 721"
         result = add_contact_if_appropriate(response, "business")
         # Should not add duplicate contact
         assert result.count("+62") == 1

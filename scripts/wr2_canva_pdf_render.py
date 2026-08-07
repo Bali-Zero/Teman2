@@ -1152,7 +1152,7 @@ def render_elegant_close(c: canvas.Canvas, s: dict[str, Any],
     heading = (s.get("heading") or "").upper()
     body = s.get("body") or ""
     email = s.get("email") or "zantara@balizero.com"
-    whatsapp = s.get("whatsapp") or "wa.me/6285954680980"
+    whatsapp = s.get("whatsapp") or "wa.me/628213454721"
 
     hd_size, hd_lines = adaptive_heading(
         heading, ctx.font_bold, W - 120, max_size=40, min_size=28, max_lines=2)

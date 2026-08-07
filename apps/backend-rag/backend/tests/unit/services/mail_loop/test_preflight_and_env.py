@@ -1,0 +1,481 @@
+"""Corpus for the three defences added when this loop was armed on the Pro.
+
+Each one pins a failure that was OBSERVED, not imagined:
+
+  1. The loop must refuse to run when the Zoho client credentials are absent.
+     `ZohoOAuthService._refresh_token` reads Zoho's `invalid_client` reply as a
+     dead USER token and writes `token_expires_at = NOW() - INTERVAL '1 year'`,
+     which trips the "invalidated, reconnect required" guard for EVERY other
+     consumer — including the live backend, which has the right credentials.
+     `invalid_client` is a statement about the CALLER, never about the token.
+     Three probe runs from a machine that simply lacked the pair invalidated all
+     three of zero@balizero.com's rows before the cause was known.
+
+  2. `DATABASE_URL` from the environment must win over the app settings. The DSN
+     in `apps/backend-rag/.env` is stale (its role is refused by the live proxy),
+     and settings are read only when the process cwd happens to sit next to that
+     file.
+
+  3. Drafting must ATTEMPT the CLI when `CLAUDE_CODE_OAUTH_TOKEN` is unset. The
+     CLI also authenticates with its own OAuth session and answers perfectly well
+     with no variable exported; refusing on the variable judged a proxy for the
+     capability and reported every draft as impossible on a machine where
+     drafting works.
+
+Hermetic by construction: the modules `cli` imports lazily are replaced with
+fakes, so this file needs no asyncpg, no settings, no mailbox — the property the
+rest of this suite has and should keep.
+"""
+
+from __future__ import annotations
+
+import sys
+import types
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from backend.services.mail_loop import cli as cli_module
+from backend.services.mail_loop import draft as draft_module
+
+# --------------------------------------------------------------------------- #
+# fakes
+# --------------------------------------------------------------------------- #
+
+
+class _FakeConn:
+    async def fetchrow(self, *_args: Any, **_kwargs: Any) -> dict[str, str]:
+        return {"id": "USER-1"}
+
+
+class _Acquire:
+    async def __aenter__(self) -> _FakeConn:
+        return _FakeConn()
+
+    async def __aexit__(self, *_exc: Any) -> bool:
+        return False
+
+
+class _FakePool:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def acquire(self) -> _Acquire:
+        return _Acquire()
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _FakeOAuth:
+    def __init__(self, client_id: str, client_secret: str) -> None:
+        self.client_id = client_id
+        self.client_secret = client_secret
+
+
+class _FakeService:
+    """Records every call. A Zoho call made while the preflight should have
+    blocked is the whole defect, so `calls` IS the assertion."""
+
+    def __init__(self, client_id: str = "cid", client_secret: str = "sec") -> None:
+        self.oauth_service = _FakeOAuth(client_id, client_secret)
+        self.calls: list[str] = []
+
+    async def list_folders(self, _user_id: str) -> list[dict[str, Any]]:
+        self.calls.append("list_folders")
+        # A provisioned mailbox, in the shape ZohoEmailService actually returns.
+        # This used to be `[]`, which the loop read as a clean run — an empty
+        # folder list is not an inbox with nothing in it, it is a mailbox we
+        # could not see, and the two must not share an exit code.
+        return [
+            {"folder_id": "F-INBOX", "folder_name": "Inbox"},
+            {"folder_id": "F-SENT", "folder_name": "Sent"},
+            {"folder_id": "F-VISA", "folder_name": "_Visa"},
+            {"folder_id": "F-PTPMA", "folder_name": "_PTPMA"},
+            {"folder_id": "F-TAX", "folder_name": "_Tax"},
+            {"folder_id": "F-PROPERTY", "folder_name": "_Property"},
+            {"folder_id": "F-ADMIN", "folder_name": "_Admin"},
+            {"folder_id": "F-NOISE", "folder_name": "_Noise"},
+        ]
+
+    async def list_emails(self, *_a: Any, **_k: Any) -> dict[str, Any]:
+        self.calls.append("list_emails")
+        return {"emails": []}
+
+    async def close(self) -> None:
+        self.calls.append("close")
+
+
+@pytest.fixture
+def wired(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Install fake `asyncpg` and `zoho_email_service` modules for `cli._amain`.
+
+    `_amain` imports both lazily, so replacing them in `sys.modules` is enough
+    and nothing real is ever constructed.
+    """
+    state: dict[str, Any] = {"dsn": None, "service": _FakeService()}
+
+    async def fake_create_pool(dsn: str, **_kwargs: Any) -> _FakePool:
+        state["dsn"] = dsn
+        return _FakePool()
+
+    fake_asyncpg = types.ModuleType("asyncpg")
+    fake_asyncpg.create_pool = fake_create_pool  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "asyncpg", fake_asyncpg)
+
+    fake_zoho = types.ModuleType("backend.services.integrations.zoho_email_service")
+    fake_zoho.ZohoEmailService = lambda _pool: state["service"]  # type: ignore[attr-defined]
+    monkeypatch.setitem(
+        sys.modules, "backend.services.integrations.zoho_email_service", fake_zoho
+    )
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
+    monkeypatch.setenv("MAIL_LOOP_USER_ID", "USER-1")
+    return state
+
+
+def _run(tmp_path: Path) -> int:
+    return cli_module.main(["--dry-run", "--state-dir", str(tmp_path)])
+
+
+# --------------------------------------------------------------------------- #
+# 1. preflight — the token-invalidation guard
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("client_id", "client_secret", "label"),
+    [
+        ("", "", "both absent"),
+        ("", "sec", "id absent"),
+        ("cid", "", "secret absent"),
+    ],
+)
+def test_missing_zoho_client_credentials_refuse_before_any_call(
+    wired: dict[str, Any], tmp_path: Path, client_id: str, client_secret: str, label: str
+) -> None:
+    """GUILT: no credentials -> exit 2, and Zoho is never touched.
+
+    The second half matters more than the exit code: reaching Zoho at all is
+    what invalidates the stored token for everyone else.
+    """
+    wired["service"] = _FakeService(client_id, client_secret)
+
+    assert _run(tmp_path) == 2, label
+    assert "list_folders" not in wired["service"].calls, (
+        f"{label}: the loop called Zoho without client credentials — that call "
+        "is what marks a live production token as permanently invalid"
+    )
+
+
+def test_credentials_present_the_loop_runs(
+    wired: dict[str, Any], tmp_path: Path
+) -> None:
+    """INNOCENCE: with credentials the preflight is invisible.
+
+    Without this row the guard could be a bare `return 2` and still look green.
+    """
+    assert _run(tmp_path) == 0
+    assert "list_folders" in wired["service"].calls
+
+
+# --------------------------------------------------------------------------- #
+# 2. DSN resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_database_url_env_is_used_verbatim(
+    wired: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://chosen/one")
+    _run(tmp_path)
+    assert wired["dsn"] == "postgresql://chosen/one"
+
+
+def test_no_dsn_anywhere_is_exit_2_not_a_traceback(
+    wired: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing DSN is a diagnosable exit code, never a pydantic stack trace.
+
+    The settings fallback validates the WHOLE app config (JWT_SECRET_KEY,
+    API_KEYS); importing it raises unless those unrelated secrets are present.
+    """
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    broken = types.ModuleType("backend.app.core.config")
+
+    def _explode() -> None:
+        raise RuntimeError("settings validation failed: JWT_SECRET_KEY must be set")
+
+    broken.__getattr__ = lambda _name: _explode()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", broken)
+
+    assert _run(tmp_path) == 2
+
+
+# --------------------------------------------------------------------------- #
+# 3. drafting authenticates two ways
+# --------------------------------------------------------------------------- #
+
+
+class _Completed:
+    def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _request() -> draft_module.DraftRequest:
+    return draft_module.DraftRequest(
+        subject="KITAS renewal",
+        body="What documents do you need?",
+        sender_name="someone@example.com",
+        language="en",
+        intent="visa",
+        style_block="(none)",
+    )
+
+
+def test_draft_attempts_the_cli_without_the_token_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE: an unset token must not pre-empt a CLI that can authenticate."""
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **_kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+
+    assert draft_module.generate(_request()) == "Dear client, ..."
+    assert seen["argv"][0] == "/fake/claude", "the CLI was never invoked"
+
+
+def test_draft_reports_the_clis_real_error_when_it_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: a CLI that cannot authenticate still fails — with ITS reason.
+
+    This is what the removed pre-check was really protecting, and the CLI's own
+    message is strictly more informative than a guess about a variable.
+    """
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    monkeypatch.setattr(
+        draft_module.subprocess,
+        "run",
+        lambda *_a, **_k: _Completed(1, stderr="Invalid API key / not logged in"),
+    )
+
+    with pytest.raises(draft_module.DraftUnavailable) as excinfo:
+        draft_module.generate(_request())
+    assert "not logged in" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# A failure a re-consent would clear must be exit 2, not exit 1.
+#
+# Exit 1 means "some of it worked, try again tomorrow". A missing OAuth scope is
+# not that: the loop can read the mailbox but cannot list the folders it routes
+# into, so every future run fails identically. A daily cron answering "degraded"
+# forever is the exact shape this repo keeps paying for — green enough to
+# ignore, broken enough to be useless.
+# ---------------------------------------------------------------------------
+
+
+def test_missing_scope_is_a_blocker_not_a_degradation() -> None:
+    """GUILT: Zoho's own error code is recognised, whatever surrounds it."""
+    errors = ["list_folders failed: API error: INVALID_OAUTHSCOPE"]
+    assert cli_module._consent_blocker(errors) == errors[0]
+
+
+def test_the_reconnect_sentence_is_a_blocker() -> None:
+    """GUILT: raised verbatim by ZohoOAuthService when a token is invalidated."""
+    errors = ["Zoho token invalidated — reconnect required at /admin/zoho/auth"]
+    assert cli_module._consent_blocker(errors) is errors[0]
+
+
+def test_a_transient_refresh_failure_is_not_a_consent_problem() -> None:
+    """INNOCENCE, and the one an independent review had to point out.
+
+    The first version of the blocker matched the prose "reconnect required",
+    which the shared OAuth service raised for FOUR different situations — one of
+    them being any non-200 from Zoho's token endpoint. A 502 would have been
+    reported as "the grant does not cover folders, re-authorise", sending a
+    human to re-run the consent flow: the exact act that created the duplicate
+    token rows the row-ordering now has to work around. The service no longer
+    names the consent endpoint for retryable faults, and this pins it.
+    """
+    assert (
+        cli_module._consent_blocker(
+            [
+                "list_folders failed: Token refresh temporarily unavailable "
+                "(HTTP 502) — retryable, not a consent problem",
+            ]
+        )
+        is None
+    )
+
+
+def test_a_caller_side_credential_fault_is_not_a_consent_problem() -> None:
+    """INNOCENCE: `invalid_client` means OUR secrets are wrong, not the user's
+    grant. Re-consenting cannot fix it, so it must not be advertised as the
+    remedy."""
+    assert (
+        cli_module._consent_blocker(
+            [
+                "list_folders failed: Zoho rejected OUR client credentials "
+                "(invalid_client): ZOHO_CLIENT_ID/ZOHO_CLIENT_SECRET are wrong "
+                "or missing on this host. The stored token was left untouched.",
+            ]
+        )
+        is None
+    )
+
+
+def test_an_ordinary_degraded_run_is_not_a_blocker() -> None:
+    """INNOCENCE: without this, every degraded run would exit 2 and the check
+    would be indistinguishable from a broken loop."""
+    assert (
+        cli_module._consent_blocker(
+            [
+                "folder _Visa does not exist",
+                "draft failed for thread 42: claude CLI timed out",
+                "move_message failed: API error: URL_RULE_NOT_CONFIGURED",
+            ]
+        )
+        is None
+    )
+
+
+def test_no_errors_is_not_a_blocker() -> None:
+    assert cli_module._consent_blocker([]) is None
+
+
+# --------------------------------------------------------------------------- #
+# The client's message goes in on STDIN, never on the command line.           #
+#                                                                             #
+# A process's argv is world-readable on macOS: `ps -A -ww -o args` returns the #
+# full command line of every process regardless of owner. Passing the prompt   #
+# as `-p <prompt>` published a client's mail — name, address, whole body — to  #
+# every account on the machine for up to TIMEOUT_SECONDS.                     #
+#                                                                             #
+# Same threat model as the two subject-bearing log lines cured alongside, with #
+# a strictly larger payload. SYMBIOSIS Law 2 / UU PDP Art. 67-68.             #
+# --------------------------------------------------------------------------- #
+
+_ARGV_CANARY = "Zzcanary-Quenneville-77"
+
+
+def _canary_request() -> draft_module.DraftRequest:
+    return draft_module.DraftRequest(
+        subject=f"KITAS renewal for {_ARGV_CANARY}",
+        body=f"{_ARGV_CANARY} here, what documents do you need?",
+        sender_name="someone@example.com",
+        language="en",
+        intent="visa",
+        style_block="(none)",
+    )
+
+
+def test_the_prompt_never_reaches_the_command_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: the client's words must not be visible to `ps`."""
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+    draft_module.generate(_canary_request())
+
+    joined = " ".join(seen["argv"])
+    assert _ARGV_CANARY not in joined, f"the client's text is in argv: {joined!r}"
+
+
+def test_the_prompt_arrives_on_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """INNOCENCE: privacy is not amnesia — the model must still get the prompt.
+
+    Without this, deleting the prompt entirely would pass the test above while
+    producing drafts about nothing.
+    """
+    monkeypatch.setenv("CLAUDE_CLI_PATH", "/fake/claude")
+    seen: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> _Completed:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return _Completed(0, stdout="Dear client, ...")
+
+    monkeypatch.setattr(draft_module.subprocess, "run", fake_run)
+    draft_module.generate(_canary_request())
+
+    assert seen["input"], "no prompt was passed at all"
+    assert _ARGV_CANARY in seen["input"], "the prompt reached the model without the message"
+    # And the invocation is still the CLI in print mode, on the pinned model —
+    # a `-p` that lost its flag would read stdin as an interactive session.
+    assert seen["argv"][:2] == ["/fake/claude", "-p"]
+    assert draft_module.CLAUDE_MODEL in seen["argv"]
+
+
+# --------------------------------------------------------------------------- #
+# 4. The verdict must name its own cause.                                      #
+#                                                                              #
+# `degraded` has four terms. Three of them leave a second trace a reader can   #
+# find (a missing folder, an error list, a draft failure). `unaccounted` does  #
+# not: it is silent by construction — a message nobody recorded. If the        #
+# DEGRADED line omits it, the run that most needs explaining is the one that   #
+# prints `routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0` and #
+# no reason at all. That is the mute alarm this repo keeps re-learning.        #
+# --------------------------------------------------------------------------- #
+
+
+def _summary(**overrides: Any) -> Any:
+    from backend.services.mail_loop.loop import RunSummary
+
+    return RunSummary(**overrides)
+
+
+def test_a_silent_degradation_still_says_why(caplog: pytest.LogCaptureFixture) -> None:
+    """GUILT: the only term with no other symptom must appear in the line."""
+    summary = _summary(seen=3, routed=0, left_in_inbox=0, message_errors=0)
+    assert summary.unaccounted == 3, "premise: this run is degraded ONLY by the law"
+    assert not summary.errors and not summary.missing_folders
+
+    with caplog.at_level("WARNING", logger="mail_loop"):
+        code = cli_module._report(summary)
+
+    assert code == 1
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert warnings, "a degraded run must warn"
+    assert "unaccounted=3" in warnings[0], (
+        "the DEGRADED line names every term of the verdict, or the reader is "
+        f"left guessing: {warnings[0]!r}"
+    )
+
+
+def test_a_clean_run_says_how_many_it_declined(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A quiet day is clean — and the log must let a human tell it from a dead one.
+
+    Same exit code, same `routed=0`: without the count, "understood nothing and
+    said so" and "did nothing at all" read identically at 07:30.
+    """
+    summary = _summary(seen=4, routed=0, unroutable=4, left_in_inbox=4)
+    assert summary.degraded is False, "premise: a fully-declined day is not degraded"
+
+    with caplog.at_level("INFO", logger="mail_loop"):
+        code = cli_module._report(summary)
+
+    assert code == 0
+    infos = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert infos and "unroutable=4" in infos[0], infos

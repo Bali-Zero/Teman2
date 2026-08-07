@@ -71,6 +71,24 @@ export function isLicensingVerificationPending(code: KBLICode): boolean {
 }
 
 /**
+ * The other KBLI codes this code's licensing rows were carried from, for a
+ * surface that CAN qualify a claim — or null when there is nothing to declare.
+ *
+ * Complement of the `verifiedLicenseType` gate in `kbli-meta.ts`, and
+ * deliberately the opposite behaviour: an indexed `<title>`/`<meta>` has no room
+ * for a qualifier, so it goes SILENT; a page body has room, so it KEEPS the
+ * licence type and says where it came from. Same fact, two surfaces, opposite
+ * correct answers — which is why they are two helpers and not one flag.
+ *
+ * Requires rows to be served: a code with no licensing rows has no inherited
+ * claim on screen to qualify, whatever `pp28_sources` says.
+ */
+export function licensingContentInheritedFrom(code: KBLICode): string[] | null {
+  if ((code.licensing?.length ?? 0) === 0) return null;
+  return code.provenance?.licensing?.contentInheritedFrom ?? null;
+}
+
+/**
  * Derive the full provenance object for a raw KBLI record.
  *
  * State partition (exhaustive over the 1,559 catalog):
@@ -97,6 +115,30 @@ function hasRecorded2020Ancestry(raw: KBLIRawCode): boolean {
   const bps = raw.bps_2020_ancestors?.codes;
   if (Array.isArray(bps) && bps.length > 0) return true;
   return (raw.pp28_sources ?? []).length > 0;
+}
+
+/**
+ * The OTHER codes this record's PP 28 licensing content was carried from, or
+ * null when it is self-sourced or records no PP 28 source at all.
+ *
+ * Structured field only (cicatrix #3), and by ENTITY rather than truthiness:
+ * membership of the record's OWN code in `pp28_sources` is what distinguishes
+ * "this row is mine" from "this row is someone else's". A record that lists
+ * its own code alongside others is NOT treated as inherited — it has a row of
+ * its own, and the extra entries are supplements.
+ *
+ * Absence is not evidence: `pp28_sources` empty (175 codes) returns null, the
+ * same answer as self-sourced, because there is nothing recorded to inherit
+ * FROM. That is deliberately the permissive branch — this signal exists to
+ * withdraw a claim, and withdrawing one on missing data would be asserting
+ * inheritance we cannot show.
+ */
+export function pp28ContentInheritedFrom(raw: KBLIRawCode): string[] | null {
+  const sources = (raw.pp28_sources ?? []).map(String).filter(Boolean);
+  if (sources.length === 0) return null;
+  const own = String(raw.kode_kbli_2025 ?? "");
+  if (own && sources.includes(own)) return null;
+  return sources;
 }
 
 /** Provenance of the foreign-ownership verdict — DERIVED, not a constant.
@@ -127,6 +169,10 @@ export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
   // unverifiable — it beats every other licensing reading except a detach
   // (Codex gate F6: even alongside no_oss_risk, don't claim PP28/2020).
   const unknownL2 = raw._l2_source != null && !ossNative;
+  // Independent of every marker above: WHERE the PP 28 rows came from. Computed
+  // once and attached to all FOUR licensing branches (detached,
+  // unverified_source, pending_crosswalk, oss_native) so none can omit it.
+  const contentInheritedFrom = pp28ContentInheritedFrom(raw);
 
   const state = disputed
     ? "not_classifiable"
@@ -149,6 +195,7 @@ export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
             locator: null,
             vintage: null,
             noOssScope: noOssRisk,
+            contentInheritedFrom,
           }
         : state === "pending"
           ? unknownL2 || !noOssRisk
@@ -161,6 +208,7 @@ export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
                 locator: null,
                 vintage: null,
                 noOssScope: noOssRisk,
+                contentInheritedFrom,
               }
             : {
                 status: "pending_crosswalk",
@@ -171,12 +219,14 @@ export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
                 // are special/sectoral-regime — there is no row to vintage.
                 vintage: (raw.per_skala ?? []).length > 0 ? "2020" : null,
                 noOssScope: true,
+                contentInheritedFrom,
               }
           : {
               status: "oss_native",
               locator: OSS_NATIVE_L2,
               vintage: "2025",
               noOssScope: noOssRisk,
+              contentInheritedFrom,
             },
     pma: pmaProvenance(raw),
     dataNote: raw._data_note ?? null,

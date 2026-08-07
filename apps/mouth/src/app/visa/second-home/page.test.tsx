@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { I18nProvider } from "@/i18n";
+import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
 import { SecondHomeLanding } from "./SecondHomeLanding";
 
 /**
@@ -42,7 +43,12 @@ describe("SecondHomeLanding", () => {
       0,
     );
     // Single all-inclusive figure, never decomposed.
-    expect(screen.getByText("IDR 39,000,000")).toBeInTheDocument();
+    const expectedPrice = getExactSnapshotPrice(
+      "kitas_permits",
+      "E33 Second Home (5 Years)",
+    );
+    expect(expectedPrice).not.toBeNull();
+    expect(screen.getByText(expectedPrice as string)).toBeInTheDocument();
   });
 
   it("covers the senior tracks, no-work-rights, and the 90-day duty", () => {

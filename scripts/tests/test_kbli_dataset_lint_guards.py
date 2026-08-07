@@ -47,6 +47,14 @@ L10_GUILT = [
     # cap ASSERTED (no negation) — must still flag despite the cap-denial innocence class
     ("real cap asserted with ceiling noun", "This activity is capped at 67%; the foreign stake hits that ceiling and no further.", "73100", 100),
     ("real cap limited-to with noun", "The record limits the foreign stake to a 49% ceiling for this code.", "73100", 100),
+    # region named AFTER the figure — commentary on a national claim, not a regional cap.
+    # The word "Bali" anywhere in the +-80 window used to exonerate these outright, on a
+    # catalogue where every page mentions Bali (superscar #3, under-match form).
+    ("region named after the figure", "Nationally, this activity is 100% open to foreign ownership. However, in Bali, the OSS system blocks it.", "16221", 0),
+    ("Bali trailing the claim", "KBLI 41018 is nationally open to foreign ownership up to 100%, and the Bali field does not block PMA registration.", "41018", 0),
+    # a ceiling stated without ever using the word "foreign"
+    ("bare national ceiling idiom", "The national 100% ceiling does not automatically produce a Bali registration route.", "55105", 0),
+    ("ownership ceiling noun", "Nationally, the PMA status is open, with a foreign-ownership ceiling of 100%.", "50221", 49),
 ]
 
 L10_INNOCENCE = [
@@ -63,6 +71,11 @@ L10_INNOCENCE = [
     # cap-denial enumeration (01622 class): the prose lists caps only to DENY them
     ("cap-denial enumeration", "There is no capped foreign stake to explain here: the record does not impose a 67%, 49%, or minority ceiling.", "01622", 100),
     ("no-cap-here", "For this activity there is no 67% cap and no minority-partner rule — the national ceiling is the only figure.", "01622", 100),
+    # the region PRECEDES the figure, so it genuinely scopes it — including when an
+    # introductory adverbial puts a comma in between. A first draft of the precedence
+    # rule also demanded no clause break and these two said no immediately.
+    ("Bali precedes with comma", "In Bali, the applicable ceiling on foreign ownership is 49%.", "52292", 100),
+    ("provincial regime precedes", "The provincial regime sets an ownership ceiling of 67% here.", "41011", 100),
 ]
 
 

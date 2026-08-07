@@ -235,6 +235,29 @@ export interface KBLIProvenance {
     vintage: "2025" | "2020" | null;
     /** true when `_l2_status === "no_oss_risk"` (OSS ruang-lingkup 404) */
     noOssScope: boolean;
+    /**
+     * The OTHER KBLI codes this record's PP 28/2025 licensing CONTENT was
+     * carried from, or null when the record is self-sourced (or records no
+     * PP 28 source at all).
+     *
+     * `status`/`locator`/`vintage` above are derived from `_l2_source`, which
+     * names the OSS-RBA **risk** source. `pp28_sources` is a different field
+     * recording where the PP 28 rows came from, and the two disagree on **337**
+     * codes: `_l2_source === "OSS_RBA_resiko_2025"` (so the risk tier is
+     * genuinely 2025-native and `status` is `oss_native`) while every entry of
+     * `pp28_sources` names a DIFFERENT code. **217** of those inherit a
+     * `pb_umku` permit that way.
+     *
+     * `62110` (video game development) is the case that surfaced it: sourced
+     * from `["62011","62019","62015","62013","62012"]`, and its inherited
+     * `pb_umku` lists three defence-industry permits.
+     *
+     * Deliberately a SEPARATE field rather than a new `status` value: the risk
+     * claim on these codes is verified and must keep being stated; only the
+     * licensing CONTENT is inherited. Folding both into one flag would suppress
+     * a true fact to qualify a different one.
+     */
+    contentInheritedFrom: string[] | null;
   };
   /** Foreign-ownership layer — Perpres 10/2021 + 49/2021 (KBLI-2020 vintage).
    *
@@ -299,6 +322,46 @@ export interface KBLITransition {
   };
 }
 
+/**
+ * Risk-tier divergence between the gold editorial prose and the OSS record —
+ * computed by `scripts/kbli_filiera/gold_risk_dispute_relation.py`, two
+ * kinds: `zero_overlap` (the prose's claimed tier(s) share NOTHING with the
+ * record) and `universal_claim` (the prose claims one tier applies at EVERY
+ * scale, false on any other tier in the record even when the claimed tier
+ * is also present). Shipped as `data/kbli-risk-disputes.json`. The page
+ * states the record tiers, the kind (each kind renders a DIFFERENT
+ * sentence — round-3: they are false in different ways), and the fact of
+ * divergence; it never enumerates the editorial side's claimed tiers.
+ */
+export interface KBLIRiskDispute {
+  recordTiers: string[];
+  /** See kbli-risk-dispute.ts's `KBLIRiskDispute.kind` for the full contract. */
+  kind: "zero_overlap" | "universal_claim";
+  /**
+   * true when the record's `l4_bali.status` is derived from the risk tier
+   * itself (compiler-computed — see `bali_depends_on_tier()` in
+   * gold_risk_dispute_relation.py). The dispute frame appends a sentence
+   * declaring the Bali position inherits the disagreement only when set.
+   */
+  baliDependsOnTier: boolean;
+}
+
+/**
+ * One Perpres 49/2021 Lampiran III restricted slice hiding inside a code
+ * whose WHOLE-CODE `pma.status` renders 100% open (BROADER-adjudicated —
+ * see `apply_perpres_foreign_caps.ADJUDICATION` and
+ * `perpres_slice_disclosure_relation.py`). `bidangUsaha` is the annex's own
+ * text for the narrower activity the cap actually attaches to; `locator`
+ * names the annex entry. Multiple rows on one code are real (30111: a
+ * warship slice at 49% AND a Pinisi/Cadik slice at 0%).
+ */
+export interface KBLIPerpresSliceRow {
+  bidangUsaha: string;
+  foreignCapPct: 0 | 49;
+  condition: string | null;
+  locator: string;
+}
+
 /** Processed KBLI code — frontend-friendly version */
 export interface KBLICode {
   code: string;
@@ -336,6 +399,10 @@ export interface KBLICode {
     coverImage?: string | null;
     editorial?: KBLIEditorialContent;
   };
+  /** Set only when the gold editorial prose and the record's risk tier share nothing (gold_risk_dispute_relation.py). */
+  riskDispute?: KBLIRiskDispute;
+  /** Set only for BROADER-adjudicated codes carrying a restricted Perpres slice (perpres_slice_disclosure_relation.py). One or more rows. */
+  perpresSlice?: KBLIPerpresSliceRow[];
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
   baliL4?: KBLIBaliL4;
   /** Per-fact provenance + verification state (TRACK-P). Derived from structured markers only. */

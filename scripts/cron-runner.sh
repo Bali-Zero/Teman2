@@ -111,6 +111,24 @@ PY
 #
 # Deliberately fail-open: the job's exit code is the contract this wrapper
 # exists to preserve, and an alerting problem must never rewrite it.
+# ── One voice per failure (2026-08-07) ──────────────────────────────────────
+# 19 of the 20 nlm_deep_research wrappers alarm for themselves AND run under
+# this runner, so one failure sent two P0s ~2s apart. Rather than silence
+# either — measured, the job's sentence names the log path and this one's raw
+# tail does not — the payload hands us its sentence and we carry it. Contract
+# in apps/evaluator/nlm_deep_research/scripts/_alert.sh; the marker is
+# duplicated there and in cron-wrapper.sh, pinned by test_cron_single_voice.sh.
+CRON_ALERT_MARKER="CRON_ALERT_P0:"
+
+deferred_summary() {  # deferred_summary <captured-output-file> -> the job's own line
+    [ -n "${1:-}" ] && [ -f "$1" ] || return 1
+    local line
+    line="$(grep -a "^${CRON_ALERT_MARKER}" "$1" 2>/dev/null | tail -1)"
+    [ -n "$line" ] || return 1
+    line="${line#"$CRON_ALERT_MARKER"}"
+    printf '%s' "${line# }"
+}
+
 alert_failure() {  # alert_failure <job_key> <exit_code> <start_ts> <end_ts> <tail>
     local job_key="$1" exit_code="$2" start_ts="$3" end_ts="$4" tail_text="$5"
     local gateway
@@ -158,6 +176,9 @@ fi
 # true exit code despite the pipe.
 ERR_TMP="$(mktemp "${TMPDIR:-/tmp}/cron-runner.XXXXXX" 2>/dev/null || true)"
 if [ -n "$ERR_TMP" ]; then
+    # Claim the voice ONLY on the branch that can capture the payload's output:
+    # without the tmpfile a deferred alarm would be a dropped one.
+    export CRON_ALARM_OWNER="$JOB_KEY"
     /bin/bash "$SCRIPT" "$@" 2>&1 | tee "$ERR_TMP"
     EXIT_CODE="${PIPESTATUS[0]}"
 else
@@ -166,15 +187,25 @@ else
 fi
 END_TS="$(date +%s)"
 STATUS="ok"
+ALERT_BODY=""
 if [ "$EXIT_CODE" -ne 0 ]; then
     STATUS="failed"
     if [ -n "$ERR_TMP" ] && [ -s "$ERR_TMP" ]; then
         export CRON_RUNNER_LAST_ERROR="$(tail -n 40 "$ERR_TMP" 2>/dev/null | tail -c 2000)"
     fi
+    ALERT_BODY="${CRON_RUNNER_LAST_ERROR:-}"
+    # Only the human-facing alarm swaps in the job's own sentence. The RECEIPT
+    # deliberately keeps the raw tail: the DLQ autopilot classifies on
+    # last_error, and a 40-line tail carries more for it to classify than one
+    # curated line (superscar #9 — don't change a contract its readers didn't
+    # ask to change).
+    if _summary="$(deferred_summary "$ERR_TMP")" && [ -n "$_summary" ]; then
+        ALERT_BODY="$_summary"
+    fi
 fi
 [ -n "$ERR_TMP" ] && rm -f "$ERR_TMP"
 write_state "$JOB_KEY" "$STATUS" "$START_TS" "$END_TS" "$EXIT_CODE" "$SCRIPT" "$@"
 if [ "$EXIT_CODE" -ne 0 ]; then
-    alert_failure "$JOB_KEY" "$EXIT_CODE" "$START_TS" "$END_TS" "${CRON_RUNNER_LAST_ERROR:-}"
+    alert_failure "$JOB_KEY" "$EXIT_CODE" "$START_TS" "$END_TS" "$ALERT_BODY"
 fi
 exit "$EXIT_CODE"
