@@ -18,6 +18,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REAL_REGEN_SH = REPO_ROOT / "scripts" / "docs_inventory_regen.sh"
+# The wrapper sources this and REFUSES to run without it (exit 2, rather than
+# sailing on with the guard undefined — it runs without `set -e`). The fake
+# repo must therefore carry it: a world missing a real dependency is an
+# incomplete world, not a minimal one, and every test here would otherwise
+# measure the refusal instead of the control flow it was written for.
+REAL_MERGE_STATE_LIB = REPO_ROOT / "scripts" / "lib" / "git_merge_state.sh"
 
 _STUB_SYNC_OK = "#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n"
 _STUB_AUDIT_OK = "#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n"
@@ -31,6 +37,8 @@ def _make_fake_repo(tmp_path: Path, *, sync_exit: str, audit_exit: str) -> Path:
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir(parents=True)
     shutil.copy(REAL_REGEN_SH, scripts_dir / "docs_inventory_regen.sh")
+    (scripts_dir / "lib").mkdir()
+    shutil.copy(REAL_MERGE_STATE_LIB, scripts_dir / "lib" / "git_merge_state.sh")
     (scripts_dir / "docs_sync.py").write_text(sync_exit, encoding="utf-8")
     (scripts_dir / "docs_audit.py").write_text(audit_exit, encoding="utf-8")
     return tmp_path
@@ -295,3 +303,55 @@ def test_organ_alone_still_works_after_strict_validation(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     captured = (fake_repo / "scripts" / "captured_argv.txt").read_text()
     assert "--as-of" in captured.split("\n"), captured
+
+
+def test_missing_merge_state_helper_refuses_instead_of_running_half_armed(tmp_path):
+    """GUILT — a checkout missing scripts/lib/git_merge_state.sh must exit 2 and
+    say why, NOT run with the guard silently absent.
+
+    This wrapper deliberately runs without `set -e`, so a failed `.` would sail
+    straight on and leave `warn_if_merge_in_progress` undefined: the guard would
+    be gone with nothing saying so (superscar #2, exists-but-not-armed). That is
+    the one failure mode a guard must never have.
+
+    Written 2026-08-07 AFTER the refusal fired for real: the fake repo above did
+    not carry the helper, so every test in this file hit exit 2 and CI went red.
+    The harness was the thing that was wrong — but the refusal itself had no
+    test, and a behaviour discovered by breaking its neighbours is a behaviour
+    nobody pinned. It has one now.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_OK
+    )
+    (fake_repo / "scripts" / "lib" / "git_merge_state.sh").unlink()
+
+    result = _run_regen(fake_repo)
+
+    assert result.returncode == 2, (
+        "a checkout missing the merge-state helper must REFUSE (exit 2), never "
+        f"run half-armed — got {result.returncode}: {result.stdout}{result.stderr}"
+    )
+    assert "refusing to run half-armed" in result.stderr, (
+        "the refusal must name its cause, or a reader has to go find it — "
+        f"stderr was: {result.stderr}"
+    )
+
+
+def test_helper_present_does_not_disturb_a_clean_run(tmp_path):
+    """INNOCENCE, sharing the mechanism above: same fake repo, helper in place.
+
+    The fake repo is not a git repo at all, so `git rev-parse MERGE_HEAD` cannot
+    succeed and the advice must stay silent — a guard that fired here would fire
+    on every CI checkout that is not mid-merge, i.e. all of them.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_OK
+    )
+
+    result = _run_regen(fake_repo)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "a merge is still open" not in result.stderr, (
+        "the merge advice must not fire outside an open merge — "
+        f"stderr was: {result.stderr}"
+    )
