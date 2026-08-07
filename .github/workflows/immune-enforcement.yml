@@ -130,6 +130,8 @@ jobs:
               scripts/tests/test_wa_session_liveness.py|\
               infra/launchagents/wrappers/wa-session-liveness.sh|\
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
+              infra/launchagents/wrappers/cron-agent.sh|\
+              scripts/tests/test_cron_agent_oauth_cascade.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
@@ -440,6 +442,23 @@ jobs:
           # together, disarming the first guard still exited 2 via the second, and
           # the mutant survived — to judge a guard it has to be the only thing broken.
           bash scripts/tests/test_wa_session_liveness_wrapper.sh
+
+      - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured on Pro 2026-08-07: three of four numbered OAuth seats revoked,
+          # the fourth alive, and every agent job still died on seat 1. The rotate-or-
+          # stop classifier judged the SHAPE of the sentence — its whole-text anchor
+          # knows "authentication failed" while the CLI says "Failed to authenticate.
+          # API Error: 401 OAuth access token has been revoked." (stdout, exit 1), so
+          # a hard refusal read as a final answer. Superscar #3 under-match, and #2:
+          # a five-deep cascade that had never once rotated on the commonest failure.
+          # The anchor's strictness is NOT the bug and must survive — an agent that
+          # SUCCEEDS while discussing rate limits must not rotate. Severity is bound
+          # to the exit code instead; both halves are pinned here, and the end-to-end
+          # half runs the wrapper in a fake world (W107) so "did not rotate" is
+          # distinguishable from "never got there".
+          bash scripts/tests/test_cron_agent_oauth_cascade.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
