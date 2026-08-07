@@ -1,0 +1,158 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "adjudicated": "2026-08-08 sector-law brief fallout: cure_canonical_asuransi_pp14_cap.py flipped 65111/65112/65121/65122/65201/65202 from TERBUKA/100 to TERBATAS/80, but every prose field under intel_2026 (editorial.headline, editorial.standfirst, editorial.body, editorial.pullQuote, and canonical's own intel_2026.whatYouNeed on 3 of the 6) still ASSERTED national openness or a 100% ceiling — a genuine new divergence created by the canonical fix, caught by editorial_record_conformance.py's own suite (test_cure_prose_national_openness.py, test_cure_editorial_cells_from_record.py). This is the fifth lot on this lane's predicate, closing the backlog to zero. Every replacement verified against editorial_record_conformance.classify() and kbli_dataset_lint.l10_ownership_contradiction() before being pinned here.",
+  "codes": {
+    "65111": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "8d8800a2cb87a80fd31639e229f492c4e0f7b8799debec3449ae3394e8fafd54",
+          "new": "Conventional life insurance, under this code, is the business of providing protection against life-related risk through a conventional insurance arrangement. Its promise is a defined payment mechanism: a policyholder, insured person or another entitled party may receive payment when the insured dies or remains alive. The activity also includes payments due at a time specified in the agreement. The amount may be fixed and/or based on the results of fund management. This is therefore a code for operating the risk-management service itself, with policy terms determining the persons entitled to receive the stated payment.\n\nThe registrant is a business undertaking conventional life-insurance services: the organisation of risk protection and the payments prescribed by its policies. The record opens the activity at Mikro, Kecil, Menengah and Besar scales. That gives the code a wide scale range without changing its central proposition: the service exists to make the agreed payment when the insured dies or remains alive, or at another contractually specified time. The recipient remains the policyholder, insured person or another party with the contractual right to it.\n\nNationally, the PMA setting is capped: the foreign-ownership ceiling is 80% of paid-up capital, not the residual-open default the Perpres would otherwise apply. This is a sector-law cap under PP 14/2018 Pasal 5(1), amended by PP 3/2020 — Perpres 10/2021 Pasal 11(2) carves financial and banking bidang usaha out to their own sector regulations, so the Perpres's own annexes never governed this activity in the first place. Listed insurers (perseroan terbuka) are exempt from the cap, and foreign holdings that already exceeded 80% before PP 14/2018 took effect are grandfathered without a further increase. That is the national position to use; the fact that life-insurance payments may draw on fund-management results does not alter the ownership percentage given in the record.\n\nBali does not add a further restriction on top of that national cap. The provincial moratorium is a permanent, island-wide block on PMA registration for all Low and Medium-Low risk activities. This code is not marked as blocked. The record's reason is specific: at Besar scale, OSS risk is Menengah-Tinggi/Tinggi, so the activity is not caught by the moratorium. Bali's status is therefore that PMA registration proceeds under the same 80% national ceiling — the moratorium adds no lower cap of its own."
+        },
+        "editorial.headline": {
+          "old_sha256": "a5417bef9cebd498615f78fb06805df3c374f1f0892088f11d331b6486c2ab03",
+          "new": "Conventional Life Insurance: Capped at 80% Nationally, Open in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "c9a88ad698962b4649a8ad5bd9cdfdb772982f6053cade61b951f843868b9f36",
+          "new": "This activity covers conventional life insurance, capped at 80% foreign ownership nationally under PP 14/2018, and not blocked from PMA registration in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "47a4abfc9d2ddd36bec055a01c776d40f1615aff74b08c14b625b11c631abd46",
+          "new": "Bali adds no further restriction on top of the national 80% ownership cap — PMA registration proceeds at that ceiling, not a lower one."
+        },
+        "whatYouNeed": {
+          "old_sha256": "d24e91307baeb6fec4eee0b561c47c87ff09a980b1d3737ca81959bc49db16a5",
+          "new": "\n**PMA:** Capped at 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020) — listed insurers exempt, pre-2018 holdings above 80% grandfathered."
+        }
+      }
+    },
+    "65112": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "1e59e30d400d9d53734b4cd828ae49f483ad6a746829a46eec1e3727e72c9afb",
+          "new": "This activity is sharia life insurance conducted entirely under sharia principles. It concerns the management of risk on those principles for mutual assistance and protection. The arrangements provide payments tied to a participant’s death or survival, as well as other payments to a participant or another entitled party at a time set out in the agreement. The amount may be fixed and/or based on the result of fund management. Its commercial centre of gravity is therefore clear: a life-insurance undertaking whose risk management and benefit payments are framed by sharia principles.\n\nThe record opens the activity at Mikro, Kecil, Menengah, and Besar scales. That range is useful in its simplicity: scale is not used here to exclude a business from the activity. A prospective operator can read the category as available from micro through large enterprise, while keeping the focus on the defined insurance operation rather than treating the title as a loose label. The scope is specific about the mutual-help and protection purpose, the events that can support a payment, and the possibility that fund-management results affect the amount.\n\nNationally, the PMA setting is TERBATAS and the stated foreign-ownership ceiling is 80% of paid-up capital. In plain terms, the national record allows foreign ownership up to that figure, not more, for this activity. This is a sector-law cap under PP 14/2018 Pasal 5(1), amended by PP 3/2020 — Perpres 10/2021 Pasal 11(2) carves financial and banking bidang usaha out to their own sector regulations, so this activity was never governed by the Perpres's residual-open default in the first place. Listed insurers (perseroan terbuka) are exempt, and foreign holdings that already exceeded 80% before PP 14/2018 took effect are grandfathered without a further increase. For founders, the essential reading is straightforward: the recorded national ceiling is 80% of paid-up capital, not full ownership.\n\nBali does not add a further restriction on top of that national cap. The province’s rule is island-wide and permanent for PMA registrations in all Low and Medium-Low risk KBLI activities. This activity is marked OK_or_HIGHER_RISK in Bali, and its reason states that, at the Large scale, OSS risk is Medium-High/High. That is why it is not blocked by the moratorium. The Bali conclusion is precise: a foreign-owned registration for this activity proceeds under the same 80% national ceiling, which the moratorium does not lower further."
+        },
+        "editorial.headline": {
+          "old_sha256": "db5190823127cbffd48eb49ee3e3c68fa8e3b6d3c4913e1e3ef593cd128e1747",
+          "new": "Sharia Life Insurance: Capped at 80% Nationally, Not Blocked in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "852641f66b410a325a96e27a3805bacfd606dc476f7ee7d409355ffd3dabe1e5",
+          "new": "A sharia-based life-insurance activity open from Mikro to Besar scale, with a national foreign-ownership ceiling of 80% under PP 14/2018 and no block under Bali’s stated moratorium."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "324ef7022dabcbe1526cb36a3f90a7af6da444b15ab2d02253531a8e987aad77",
+          "new": "Bali adds no further restriction: this activity is not blocked by the stated provincial moratorium, and the 80% national ceiling stands."
+        }
+      }
+    },
+    "65121": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "fd750595de2a1b6a9c62cd0aec57cdedf28bec3eb9aef6465cadd03fe61342cf",
+          "new": "Conventional general insurance is the business of covering risk other than life insurance. Under this activity, an insurer provides compensation to an insured person or policyholder for loss, damage, expenses incurred, lost profits, or third-party legal liability when an uncertain event occurs. It is a defined insurance service built around the financial consequences of risk: the damage itself, the cost it creates, income forgone, or liability to another party.\n\nThe recorded scale range runs from Mikro and Kecil through Menengah to Besar. That breadth does not alter the activity’s centre of gravity. The business remains conventional general insurance, providing risk-cover services and compensation within the categories set out in its scope. For a founder reading the classification closely, the important distinction is that this is insurance other than life insurance, with the scope expressly focused on losses and liabilities arising from uncertain events.\n\nAt the national level, PMA is capped: the foreign-ownership ceiling is 80% of paid-up capital. Put plainly, the national record sets a foreign-share cap below full ownership for this activity — a sector-law figure, not the Perpres's residual-open default. The basis is PP 14/2018 Pasal 5(1), amended by PP 3/2020: Perpres 10/2021 Pasal 11(2) carves financial and banking bidang usaha out to their own sector regulations, so the Perpres 10/2021 and 49/2021 annexes cited elsewhere for this activity never actually governed its ownership figure. Listed insurers (perseroan terbuka) are exempt, and foreign holdings that already exceeded 80% before PP 14/2018 took effect are grandfathered without a further increase. That is the national position; it says something material about foreign participation, but it should not be mistaken for a substitute for the activity’s own operational definition, which remains anchored in conventional general-insurance risk coverage.\n\nBali’s position is also clear on the record, though it turns on risk classification rather than a blanket exemption. This activity is not marked as blocked for PMA registration in Bali. At the Besar scale, its OSS risk classification is Medium-High/High, placing it outside Bali’s permanent, island-wide moratorium for PMA activities classified Low or Medium-Low risk. Bali’s restriction exists, but this activity is identified as not blocked by it. The distinction is specific and useful: the national foreign-ownership position is capped at 80%, while the Bali record confirms that the moratorium adds no further bar on top of that cap for this activity."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "ed60d961bc88abb13329da4547569d2a8f924a5f26c00cb13eb15a36c9e0fd79",
+          "new": "A conventional general-insurance activity open across all recorded scales, with an 80% national PMA ownership cap under PP 14/2018 and no Bali moratorium block on this record."
+        },
+        "whatYouNeed": {
+          "old_sha256": "d24e91307baeb6fec4eee0b561c47c87ff09a980b1d3737ca81959bc49db16a5",
+          "new": "\n**PMA:** Capped at 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020) — listed insurers exempt, pre-2018 holdings above 80% grandfathered."
+        }
+      }
+    },
+    "65122": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "c326d87394e9b35320d68c279eb46f5f85d741d7b5d9a657c0c4c057b3aceb78",
+          "new": "Sharia general insurance is the business of managing risk under Sharia principles to enable mutual help and protection. It is not life insurance. Its purpose is to provide compensation to participants or policyholders after an uncertain event causes loss, damage, costs incurred, lost profits, or legal liability to a third party. That scope matters: this is an activity defined around the collective management of non-life risk and the resulting protection of participants or policyholders, rather than a loose label for any service described as Islamic finance. The stated consequences are deliberately broad, extending beyond physical damage to expenses, lost profit and third-party liability.\n\nRegistration is open across the full stated scale range: Mikro, Kecil, Menengah and Besar. The record therefore does not confine the activity to a single business size. Anyone considering the code should read that scale range together with its specific subject matter: an undertaking conducted entirely on Sharia principles, focused on managing risk and delivering the defined forms of compensation when uncertain events occur. It is that operational frame, not a broad financial-services description, that gives the activity its boundary. The listed range runs from Mikro through Besar, rather than beginning only at the largest end of business activity.\n\nAt the national level, PMA is classified as TERBATAS and permits foreign ownership up to 80% of paid-up capital — a sector-law cap under PP 14/2018 Pasal 5(1), amended by PP 3/2020, since Perpres 10/2021 Pasal 11(2) carves financial and banking bidang usaha out to their own sector regulations rather than leaving them to the Perpres's own annexes or residual-open default. Listed insurers (perseroan terbuka) are exempt, and foreign holdings that already exceeded 80% before PP 14/2018 took effect are grandfathered without a further increase. Bali does not add a further restriction through its stated island-wide PMA moratorium: the province blocks Low and Medium-Low risk KBLI activities for PMA, but this activity is not blocked. The Bali assessment says that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, or Medium-High/High; for that reason, the moratorium does not add a lower cap of its own.\n\nThat makes the Bali reading clear rather than conditional. Nationally, the position is an 80% foreign-ownership cap under PP 14/2018. In Bali, the result is an activity not caught by the provincial moratorium. The reason is narrow and explicit: the OSS risk classification at the Besar scale places the activity outside the moratorium's Low and Medium-Low filter. On the record's own terms, PMA registration in Bali proceeds under that same 80% national ceiling, not a moratorium-driven bar."
+        },
+        "editorial.headline": {
+          "old_sha256": "b95961b28e10a3d866f87e00b1196c78235601299e6f85e43e8dc66274b565e9",
+          "new": "Sharia General Insurance: Capped at 80% Nationally, Unblocked in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "a7ee5db92892e5ab093db613cece4f16f9e48895496979e5efa081070213e0f1",
+          "new": "A Sharia-based general-insurance activity capped at 80% foreign ownership nationally under PP 14/2018, and not blocked by Bali's province-wide PMA moratorium."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "8c9dd24078613787597f283c1f12008b15fa75b23954c7895b1406d143219138",
+          "new": "In plain terms, the record caps foreign ownership at 80% of paid-up capital at the national level."
+        },
+        "whatYouNeed": {
+          "old_sha256": "fefc979ae6f39da5fe9837c0ca60defdf9d430d2c54159a493cc1a188a6be96c",
+          "new": "Nationally, this activity is capped at 80% foreign ownership under PP 14/2018 Pasal 5(1). In Bali, it is not blocked by the current moratorium, but it is classified as medium-high to high risk, meaning your specific business address will need to be verified during the licensing process and you may face extra scrutiny or higher minimum capital requirements."
+        }
+      }
+    },
+    "65201": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "c4bb212900c752a0c221ef7089e2343e67107410eeff79d5bce93c84e6e034d3",
+          "new": "Conventional reinsurance is the provision of repeat risk cover for risks faced by insurance companies, guarantee companies and other reinsurance companies. Its scope is precise: it concerns conventional reinsurance services, not a generic financial-services label. The activity sits where an existing risk exposure faced by one of those named companies is itself given reinsurance protection. The same core description appears twice in the record, once as the group scope and again as the conventional reinsurance business, underscoring that re-covering risk is the defining work.\n\nA business may register this activity at Micro, Small, Medium and Large scales. That range matters because the record expressly opens the classification across all four listed scales rather than naming only one. The scale list describes who may enter the classification; it does not add a capital, licensing, tax or timing rule, and none should be inferred from it. What remains constant across those scales is the focus of the activity: providing reinsurance services connected to risk faced by the specified industry counterparties.\n\nOn national foreign investment, the answer is direct. The activity is marked TERBATAS for PMA, and the national foreign-ownership ceiling is 80% of paid-up capital — a sector-law cap under PP 14/2018 Pasal 5(1), amended by PP 3/2020. UU 40/2014 Pasal 1 angka 14 names 'perusahaan reasuransi' explicitly among the entities the law calls a Perusahaan Perasuransian, so this activity sits squarely inside the same regime as direct insurers; Perpres 10/2021 Pasal 11(2) carves financial and banking bidang usaha out to their own sector regulations, so the Perpres 10/2021 and 49/2021 citation elsewhere never actually supplied this activity's ownership figure. Listed reinsurers (perseroan terbuka) are exempt, and foreign holdings that already exceeded 80% before PP 14/2018 took effect are grandfathered without a further increase. A foreign investor is therefore constrained to that 80% ceiling recorded here, not a minority stake and not full ownership.\n\nBali does not add a further restriction on top of that national cap. Its status is OK or higher risk, and the activity is not marked as blocked for PMA. The province's permanent, island-wide moratorium blocks PMA for low- and medium-low-risk activities. For conventional reinsurance, the record's specific reasoning is that, at the Large scale, OSS risk is Medium-High/High; it is therefore not blocked by that moratorium. The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today, up to the same 80% national ceiling."
+        },
+        "editorial.headline": {
+          "old_sha256": "197aaa911313e3f1373421407919ab2e2c436b40de60ec1dcfed5c92011912dc",
+          "new": "Conventional Reinsurance: Capped at 80% Nationally, Clear in Bali"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "0bd3110cf56950bf7d95d48a20f10d85be82c6d446099954364650ff5f703809",
+          "new": "For conventional reinsurance, the national ceiling caps foreign ownership at 80% under PP 14/2018, and Bali’s risk treatment leaves the activity outside its PMA moratorium."
+        },
+        "whatYouNeed": {
+          "old_sha256": "9b84bca0baadec3f354dd1d7476714f4e8ba5de087d0c7cfc1ee46bd21339e54",
+          "new": "Nationally, this KBLI is capped at 80% foreign ownership under PP 14/2018 Pasal 5(1). In Bali, it’s considered medium-high to high risk but is not blocked by the current moratorium; however, you must verify that your specific commercial address meets all licensing requirements and location-based risk assessments before registration."
+        }
+      }
+    },
+    "65202": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "0eab3997e7406bac4bed4f1d31be907354bc4752e6d4ee0819fd9c74cd95b557",
+          "new": "Sharia reinsurance is the business of managing, under sharia principles, risks carried by sharia insurance companies, sharia guarantee companies and other sharia reinsurance companies. It is a specialised risk-management activity rather than a general insurance proposition: its subject is the exposure already faced by those financial institutions, and its operating premise is expressly sharia-based. The scope also includes sharia units within conventional reinsurance companies, provided the reinsurance business is conducted wholly according to sharia principles.\n\nThe record makes the activity available at every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the code is not framed as an activity reserved for only one size of enterprise. Its commercial identity remains consistent across those scales: managing institutional risk within the sharia insurance, guarantee and reinsurance sphere. The distinguishing boundary is therefore the kind of risk relationship and the sharia basis on which it is managed, not a separate retail-facing description.\n\nNationally, the PMA position is direct. The activity is TERBATAS and carries a foreign-ownership ceiling of 80% of paid-up capital — a sector-law cap under PP 14/2018 Pasal 5(1), amended by PP 3/2020. UU 40/2014 Pasal 1 angka 14 names 'perusahaan reasuransi syariah' explicitly among the entities the law calls a Perusahaan Perasuransian, so this activity sits inside the same regime as direct sharia insurers; Perpres 10/2021 Pasal 11(2) carves financial and banking bidang usaha out to their own sector regulations, so the Perpres 10/2021 and 49/2021 citation elsewhere never actually supplied this activity's ownership figure. Listed reinsurers (perseroan terbuka) are exempt, and foreign holdings that already exceeded 80% before PP 14/2018 took effect are grandfathered without a further increase. That is the national picture to begin with, rather than an implication drawn from the activity's financial character or the scale at which it is undertaken.\n\nBali does not add a further restriction for this activity. The provincial moratorium blocks PMA for activities assessed as Low or Medium-Low risk, island-wide and permanently. Here, however, the record identifies the Besar-scale OSS risk as Menengah-Tinggi/Tinggi—Medium-High/High—and expressly says the activity is not blocked by the moratorium. Its Bali status is OK_or_HIGHER_RISK. For a foreign-owned registration in Bali, the honest reading is therefore that this activity is not barred by the moratorium; it proceeds under the same 80% national ceiling because of the recorded higher-risk classification at the Besar scale."
+        },
+        "editorial.headline": {
+          "old_sha256": "1d54935733c2df8ef8563aa5528e164cd74ab0bb522f9b38b3e61e9b93f8d7af",
+          "new": "Sharia Reinsurance: Capped at 80% Nationally, Still Defined by Risk"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "7ee61e4f24defc68b15e51db7868b304968f9c178ccbd7df7dc5523fa0c538f9",
+          "new": "This activity manages risk under sharia principles for insurers, guarantee companies and fellow reinsurance businesses, with an 80% national ownership cap under PP 14/2018 and no Bali moratorium block."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "3eaf0cc1e08c05ed5314db10ee16a3e5670ee6c535659805f29222bfcccd6684",
+          "new": "Foreign investment is capped at 80% ownership nationally under PP 14/2018, and Bali's moratorium does not block this recorded higher-risk activity."
+        },
+        "whatYouNeed": {
+          "old_sha256": "ccfcc58b1c59f97aae3b50d122c7814af9f81d9189630ac7ab49036a52974ffd",
+          "new": "Nationally, this business field is capped at 80% foreign ownership under PP 14/2018 Pasal 5(1). In Bali, the activity is not blocked by the moratorium, but it is classified as medium-high to high risk, so you should expect additional due diligence or a need to confirm zoning compliance for each specific address before setting up."
+        }
+      }
+    }
+  }
+}

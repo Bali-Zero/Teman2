@@ -4,6 +4,13 @@
 # MAX_FOREIGN is the adjudicated foreign-ownership ceiling ("special" = a
 #   non-percentage regime, not a number). It is never defaulted: 0% means the
 #   activity is closed to foreign capital, it does not mean "unknown".
+# MAX_FOREIGN is the GENERAL ceiling under the code's governing instrument,
+#   not an unconditional one: some instruments carry their OWN statutory
+#   exemptions this single number cannot encode — e.g. PP 14/2018 Pasal 5(2)
+#   exempts listed (perseroan terbuka) insurers from its 80% cap entirely, and
+#   Pasal 6 (as amended by PP 3/2020) grandfathers pre-2018 foreign holdings
+#   above 80% without allowing a further increase. Verify the per-code page's
+#   own conditions before treating this percentage as an absolute bar.
 # RISK_LEVEL lists every tier the code's business scales carry, separated by
 #   " / " when they differ; "Not classified" when the dataset classifies
 #   none. A foreign-owned PT PMA is legally the Besar scale.
@@ -1154,15 +1161,15 @@
 64996 | Aktivitas Perbankan Bulion Konvensional | TERBUKA | 100% | Not classified
 64997 | Aktivitas Perbankan Bulion Syariah | TERBUKA | 100% | Not classified
 64999 | Aktivitas Jasa Keuangan Lainnya YTDL, Bukan Asuransi dan Dana Pensiun | TERBUKA | 100% | Tinggi
-65111 | Asuransi Jiwa Konvensional | TERBUKA | 100% | Tinggi
-65112 | Asuransi Jiwa Syariah | TERBUKA | 100% | Tinggi
-65121 | Asuransi Umum Konvensional | TERBUKA | 100% | Tinggi
-65122 | Asuransi Umum Syariah | TERBUKA | 100% | Tinggi
+65111 | Asuransi Jiwa Konvensional | TERBATAS | 80% | Tinggi
+65112 | Asuransi Jiwa Syariah | TERBATAS | 80% | Tinggi
+65121 | Asuransi Umum Konvensional | TERBATAS | 80% | Tinggi
+65122 | Asuransi Umum Syariah | TERBATAS | 80% | Tinggi
 65123 | Aktivitas Penjaminan Simpanan dan Asuransi | TERBUKA | 100% | Not classified
 65131 | Penjaminan Konvensional | TERBUKA | 100% | Tinggi
 65132 | Penjaminan Syariah | TERBUKA | 100% | Tinggi
-65201 | Reasuransi Konvensional | TERBUKA | 100% | Tinggi
-65202 | Reasuransi Syariah | TERBUKA | 100% | Tinggi
+65201 | Reasuransi Konvensional | TERBATAS | 80% | Tinggi
+65202 | Reasuransi Syariah | TERBATAS | 80% | Tinggi
 65203 | Penjaminan Ulang Konvensional | TERBUKA | 100% | Tinggi
 65204 | Penjaminan Ulang Syariah | TERBUKA | 100% | Tinggi
 65301 | Aktivitas Dana Pensiun Pemberi Kerja Konvensional | TERBUKA | 100% | Tinggi

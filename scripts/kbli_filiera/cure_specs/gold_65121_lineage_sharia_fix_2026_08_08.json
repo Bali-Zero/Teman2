@@ -1,0 +1,17 @@
+{
+  "adjudicated": "2026-08-08 fix-pack, item I: 65121's own bps_2020_ancestors.codes = ['65121'] and status_mapping = 'BPS_ONLY' — a direct 1:1 continuation of the same 2020 code, not a new classification. whatChanged self-contradicted ('existed in KBLI 2020 ... KBLI 2025 maintains the classification as new'). Separately, whatItMeans pointed sharia general insurance at '65211', a code that does not exist in this catalogue; the real sharia general-insurance code is 65122 (Asuransi Umum Syariah).",
+  "code": "65121",
+  "old_sha256": "e2b91b34de423cbe490b01dcc64d0a321ebb7929e27b510fb75dd369c2855e01",
+  "edits": [
+    {
+      "field": "whatChanged",
+      "old": "General insurance existed in KBLI 2020 under similar codes. KBLI 2025 maintains the classification as new in KBLI 2025, meaning detailed per-scale licensing data is not yet fully defined in OSS. The core regulatory framework remains OJK-based under UU 40/2014, unchanged from previous years.",
+      "new": "General insurance (65121) is a direct continuation of the same code from KBLI 2020 — not a new classification. What's still missing is PP28/2025 risk-based licensing data in OSS, which has not yet been published for this code, so detailed per-scale licensing data is not yet fully defined. The core regulatory framework remains OJK-based under UU 40/2014, unchanged from previous years."
+    },
+    {
+      "field": "whatItMeans",
+      "old": "This is NOT life insurance (65111) or syariah insurance (65211) — this is conventional general insurance.",
+      "new": "This is NOT life insurance (65111) or syariah general insurance (65122) — this is conventional general insurance."
+    }
+  ]
+}

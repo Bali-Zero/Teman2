@@ -76,8 +76,14 @@ PAIDUP10_RE = re.compile(
 # distinction the text is already drawing. Refuse rather than "fix" it.
 BOUNDARY_RE = re.compile(r"stated capital|OJK|Satuan Pendidikan Kerjasama|\bSPK\b", re.I)
 
+# 65121 was here until 2026-08-08: `cure_gold_65121_sector_law_sweep.py`
+# (sector-law brief item 2) swept every "IDR 10B"/"IDR 100 billion" figure
+# out of its zantaraOpener/whatYouNeed/baliContext entirely (POJK 23/2023's
+# actual minimum was never primary-fetched, so the hard rule is no figure at
+# all, not a corrected one) — the FIGURE_RE trigger this scan looks for no
+# longer appears anywhere in the record, so it stops surfacing here as a
+# refusal on its own; nothing left for this cure to decline.
 REFUSAL_NOTE = {
-    "65121": "OJK paid-up + PT PMA STATED capital — the two are already separated",
     "66151": "OJK paid-up + PT PMA STATED capital — the two are already separated",
     "85102": "the figure is attached to SPK registration, a sector regime with its own rules",
 }
