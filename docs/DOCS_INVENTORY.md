@@ -604,7 +604,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/2026-06-03-residual-ops-hub.md | LIVE | 2026-06-03 | 2026-09-01 | — | 1 | 0 | no | — | — |
 | docs/runbooks/README.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/runbooks/agent-worktree-broker.md | LIVE | 2026-07-16 | 2026-10-14 | — | 4 | 0 | no | — | — |
-| docs/runbooks/arsenal-probe.md | LIVE | 2026-08-05 | 2026-11-03 | — | 2 | 0 | no | — | — |
+| docs/runbooks/arsenal-probe.md | LIVE | 2026-08-07 | 2026-11-05 | — | 2 | 0 | no | — | — |
 | docs/runbooks/auth-sentinel.md | LIVE | 2026-07-12 | 2026-10-10 | — | 1 | 0 | no | — | — |
 | docs/runbooks/autonomous-agents-decision-sheet.md | LIVE | 2026-07-05 | 2026-10-03 | — | 1 | 0 | no | — | — |
 | docs/runbooks/autonomous-lab-runtime-placement.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |

@@ -16,8 +16,8 @@ CONFLICT_DIR="$HOME/.claude/memory-conflicts"
 # --- Air-M5 spoke (added 2026-06-01) ---
 # M5 = user balizero, path memory diverso, SSH richiede IdentitiesOnly+IdentityAgent=none.
 M5_ENABLED="${M5_SYNC_ENABLED:-true}"   # kill switch: M5_SYNC_ENABLED=false
-M5_IP="192.168.0.20"
-M5_TS="100.87.146.107"                  # tailscale fallback
+M5_IP="Air-M5.local"   # mDNS primario (subnet-independent), 2026-06-13 fix subnet-split
+M5_TS="air-m5-2.tail461666.ts.net"   # MagicDNS stabile (no IP hardcoded) 2026-06-01
 M5_USER="balizero"
 MEM_M5_PATH="/Users/balizero/.claude/projects/-Users-balizero/memory"
 M5_SSH_OPTS="-o ConnectTimeout=5 -o IdentitiesOnly=yes -o IdentityAgent=none -o BatchMode=yes -i $HOME/.ssh/id_ed25519"
