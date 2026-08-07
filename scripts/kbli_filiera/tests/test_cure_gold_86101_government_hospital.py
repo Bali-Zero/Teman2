@@ -42,6 +42,21 @@ def _spec(fields=None, code="86101"):
     return {"code": code, "fields": fields}
 
 
+def _canonical_file(tmp_path, records, name="canon.json"):
+    p = tmp_path / name
+    p.write_text(json.dumps({"data": records}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return p
+
+
+def _valid_canonical_records():
+    """The two facts the whole card rests on, both holding: 86101
+    government-operated/closed, 86103 the open private-hospital route."""
+    return [
+        {"kode_kbli_2025": "86101", "pma_status": "TERTUTUP", "pma_max_asing": 0},
+        {"kode_kbli_2025": "86103", "pma_status": "TERBUKA", "pma_max_asing": 100},
+    ]
+
+
 # --- the real record, post-cure ---------------------------------------------
 
 
@@ -61,6 +76,25 @@ def test_the_real_spec_names_exactly_six_fields():
         "whatItMeans", "whatYouNeed", "whatChanged",
         "zantaraOpener", "baliContext", "youllAlsoNeed",
     }
+
+
+def test_the_real_canonical_satisfies_the_facts_basis_guard():
+    """Direct check against the real, live canonical file — the guard must
+    not raise on the world it was actually adjudicated against."""
+    records = mod.load_canonical(mod.CANONICAL_PATH)
+    mod.assert_facts_basis(records)  # raises on failure; no assertion needed
+
+
+def test_the_real_cure_is_a_clean_noop_without_writing():
+    """Acceptance: real canonical (already applied) → the guard does not
+    fire and the plan is all-noop — proven WITHOUT calling `main(["--apply"])`
+    against the real gold file (W96: a test must never risk writing
+    production state, even one it believes is already a no-op)."""
+    canonical_records = mod.load_canonical(mod.CANONICAL_PATH)
+    mod.assert_facts_basis(canonical_records)  # must not raise
+    _, gold, _ = mod.load_gold(mod.GOLD_PATH)
+    verdicts = mod.plan(REAL_SPEC, gold)
+    assert verdicts and all(v["action"] == "noop" for v in verdicts.values())
 
 
 # --- guilt --------------------------------------------------------------------
@@ -144,6 +178,83 @@ def test_refuses_on_a_non_string_field(tmp_path):
     before = path.read_text(encoding="utf-8")
     assert mod.main(["--apply", "--gold", str(path), "--spec", str(spec_path)]) == 2
     assert path.read_text(encoding="utf-8") == before
+
+
+# --- guilt: the facts-basis guard (round-4 review) ----------------------------
+#
+# Everything above checks gold's OWN text against the spec's pins; none of it
+# checks the spec's PREMISE — the two canonical facts named in facts_basis
+# that the whole card rests on. These refuse on a drifted premise, fully
+# isolated from the real repo via --canonical fixtures.
+
+
+def test_refuses_when_86101_canonical_has_drifted_open(tmp_path):
+    """The card's central premise — 86101 is government-operated and closed
+    to PMA — no longer holds. Even a textually-matching write must refuse."""
+    gold_path = _gold_file(tmp_path, {"86101": {"whatItMeans": "OLD TEXT"}})
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_spec()), encoding="utf-8")
+    records = _valid_canonical_records()
+    records[0]["pma_status"] = "TERBUKA"
+    records[0]["pma_max_asing"] = 100
+    canon_path = _canonical_file(tmp_path, records)
+    before = gold_path.read_text(encoding="utf-8")
+    assert mod.main([
+        "--apply", "--gold", str(gold_path), "--spec", str(spec_path),
+        "--canonical", str(canon_path),
+    ]) == 2
+    assert gold_path.read_text(encoding="utf-8") == before
+
+
+def test_refuses_when_86103_canonical_routing_target_has_drifted(tmp_path):
+    """The card's routing target — 86103 open to foreign ownership — no
+    longer holds (e.g. capped below 100). Refuses even though 86101 itself
+    is untouched."""
+    gold_path = _gold_file(tmp_path, {"86101": {"whatItMeans": "OLD TEXT"}})
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_spec()), encoding="utf-8")
+    records = _valid_canonical_records()
+    records[1]["pma_max_asing"] = 49
+    canon_path = _canonical_file(tmp_path, records)
+    before = gold_path.read_text(encoding="utf-8")
+    assert mod.main([
+        "--apply", "--gold", str(gold_path), "--spec", str(spec_path),
+        "--canonical", str(canon_path),
+    ]) == 2
+    assert gold_path.read_text(encoding="utf-8") == before
+
+
+def test_facts_basis_guard_blocks_even_an_idempotent_noop(tmp_path):
+    """Round-4's actual finding: the guard must fire BEFORE plan() decides
+    noop, not only on a fresh write. Gold already reads the NEW text (would
+    be a clean noop on gold's own terms); canonical has drifted regardless —
+    still refuses."""
+    gold_path = _gold_file(tmp_path, {"86101": {"whatItMeans": "NEW TEXT naming the truth"}})
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_spec()), encoding="utf-8")
+    records = _valid_canonical_records()
+    records[1]["pma_status"] = "TERBATAS"  # 86103 no longer TERBUKA
+    canon_path = _canonical_file(tmp_path, records)
+    assert mod.main([
+        "--apply", "--gold", str(gold_path), "--spec", str(spec_path),
+        "--canonical", str(canon_path),
+    ]) == 2
+
+
+def test_innocence_a_valid_canonical_fixture_permits_the_write(tmp_path):
+    """The guard's other half: a fixture canonical that DOES satisfy
+    facts_basis must not block an otherwise-valid write — proves the guard
+    convicts the fact, not the presence of a --canonical override."""
+    gold_path = _gold_file(tmp_path, {"86101": {"whatItMeans": "OLD TEXT"}})
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_spec()), encoding="utf-8")
+    canon_path = _canonical_file(tmp_path, _valid_canonical_records())
+    assert mod.main([
+        "--apply", "--gold", str(gold_path), "--spec", str(spec_path),
+        "--canonical", str(canon_path),
+    ]) == 0
+    after = json.loads(gold_path.read_text(encoding="utf-8"))["data"]["86101"]
+    assert after["whatItMeans"] == "NEW TEXT naming the truth"
 
 
 # --- innocence ----------------------------------------------------------------

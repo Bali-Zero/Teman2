@@ -44,6 +44,20 @@ names a field the record does not carry; a field's LIVE text does not match
 the spec's pinned `old` (someone else already touched it, or the world moved
 under the adjudication) UNLESS it already reads as `new` (idempotent, not a
 failure); or a field named in the spec is not a string.
+
+THE FACTS-BASIS GUARD (round-4 review, 2026-08-07)
+----------------------------------------------------
+Everything above checks that gold's OWN text matches the spec's `old`/`new`
+pins — it never checked the spec's premise: `facts_basis` names two live
+canonical facts the whole card rests on (86101 government-operated/closed;
+86103 the open private-hospital routing target), and neither was verified
+against canonical before writing. A cure can be textually consistent with
+its own spec while the spec's premise has quietly gone stale underneath it
+— re-adjudication, a canonical fix, a later cure touching either code — and
+this compiler would have applied 2026-08-07's adjudicated text over a world
+that no longer matches it. `assert_facts_basis()` reads canonical directly
+and refuses, naming the drifted fact, BEFORE `plan()` runs — so this also
+gates the idempotent-noop path, not just a fresh write.
 """
 
 from __future__ import annotations
@@ -55,6 +69,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GOLD_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-gold-all.json"
+CANONICAL_PATH = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 SPEC_PATH = Path(__file__).resolve().parent / "cure_specs" / "gold_86101_government_hospital_2026_08_07.json"
 
 EXIT_OK = 0
@@ -70,6 +85,50 @@ def load_gold(path: Path) -> tuple[dict, dict, str]:
     raw = json.loads(text)
     data = raw.get("data", raw) if isinstance(raw, dict) else raw
     return raw, data, text
+
+
+def load_canonical(path: Path) -> list[dict]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    records = raw["data"] if isinstance(raw, dict) and "data" in raw else raw
+    if not isinstance(records, list):
+        raise CureError(f"{path}: expected a canonical record list")
+    return records
+
+
+def assert_facts_basis(canonical_records: list[dict]) -> None:
+    """The whole card rests on two live canonical facts, named verbatim in
+    the spec's own `facts_basis.canonical_titles_and_verdicts`: 86101 is
+    government-operated and closed to PMA; 86103 is the open private-hospital
+    routing target. If either has drifted since the spec was adjudicated —
+    re-adjudication, a canonical fix, an unrelated cure touching either code
+    — this compiler must refuse rather than apply text written for a world
+    that no longer exists. Runs before `plan()`, so it gates the
+    idempotent-noop path too, not only a fresh write."""
+    by_code = {str(r.get("kode_kbli_2025")): r for r in canonical_records}
+
+    gov = by_code.get("86101")
+    if gov is None:
+        raise CureError("86101: not in canonical — the facts_basis premise cannot be checked")
+    if gov.get("pma_status") != "TERTUTUP" or gov.get("pma_max_asing") != 0:
+        raise CureError(
+            "86101: facts_basis premise drifted — expected canonical "
+            "pma_status='TERTUTUP'/pma_max_asing=0 (government-operated, closed "
+            f"to PMA), found pma_status={gov.get('pma_status')!r}/"
+            f"pma_max_asing={gov.get('pma_max_asing')!r}. The card's premises "
+            "changed — re-adjudicate, do not apply."
+        )
+
+    priv = by_code.get("86103")
+    if priv is None:
+        raise CureError("86103: not in canonical — the facts_basis premise cannot be checked")
+    if priv.get("pma_status") != "TERBUKA" or priv.get("pma_max_asing") != 100:
+        raise CureError(
+            "86103: facts_basis premise drifted — expected canonical "
+            "pma_status='TERBUKA'/pma_max_asing=100 (the card's PMA routing "
+            f"target), found pma_status={priv.get('pma_status')!r}/"
+            f"pma_max_asing={priv.get('pma_max_asing')!r}. The card's premises "
+            "changed — re-adjudicate, do not apply."
+        )
 
 
 def plan(spec: dict, gold: dict) -> dict:
@@ -106,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--apply", action="store_true", help="write (default: dry-run)")
     ap.add_argument("--gold", default=str(GOLD_PATH))
     ap.add_argument("--spec", default=str(SPEC_PATH))
+    ap.add_argument("--canonical", default=str(CANONICAL_PATH))
     args = ap.parse_args(argv)
 
     spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
@@ -113,6 +173,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         raw, gold, original = load_gold(gold_path)
+        canonical_records = load_canonical(Path(args.canonical))
+        assert_facts_basis(canonical_records)
         verdicts = plan(spec, gold)
     except CureError as exc:
         print(f"REFUSED: {exc}")

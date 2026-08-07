@@ -81,24 +81,36 @@ def load(path: Path) -> tuple[dict, list[dict], str]:
 
 
 def plan(records: list[dict]) -> dict:
-    """Pure. Returns the patch plan or raises CureError on any precondition miss."""
+    """Pure. Returns the patch plan or raises CureError on any precondition miss.
+
+    Pin validation (`pma_cap_verified`, `pma_official_basis`) runs
+    UNCONDITIONALLY, before the noop check — round-4 review finding: the
+    previous version returned the noop verdict on `TERBATAS`/0 alone, before
+    either pin was read, so a canonical that was already cured but had since
+    had `pma_cap_verified` stripped or `pma_official_basis` drift off
+    Lampiran II would still report a clean "nothing to do". A noop must
+    stand on the same facts as a fresh cure, not merely wear the same
+    status/cap.
+    """
     by_code = {str(r.get("kode_kbli_2025")): r for r in records}
     rec = by_code.get(CODE)
     if rec is None:
         raise CureError(f"{CODE}: not in the dataset")
 
     status = rec.get("pma_status")
-    if status == "TERBATAS" and rec.get("pma_max_asing") == 0:
-        return {"code": CODE, "noop": True, "reason": "already TERBATAS/0 — idempotent"}
-    if status != "TERTUTUP":
-        raise CureError(
-            f"{CODE}: expected pma_status TERTUTUP (or already-cured TERBATAS), "
-            f"found {status!r} — the world moved, re-adjudicate before writing"
-        )
-    if rec.get("pma_max_asing") != 0:
-        raise CureError(
-            f"{CODE}: expected pma_max_asing 0, found {rec.get('pma_max_asing')!r}"
-        )
+    already_cured = status == "TERBATAS" and rec.get("pma_max_asing") == 0
+    if not already_cured:
+        if status != "TERTUTUP":
+            raise CureError(
+                f"{CODE}: expected pma_status TERTUTUP (or already-cured TERBATAS), "
+                f"found {status!r} — the world moved, re-adjudicate before writing"
+            )
+        if rec.get("pma_max_asing") != 0:
+            raise CureError(
+                f"{CODE}: expected pma_max_asing 0, found {rec.get('pma_max_asing')!r}"
+            )
+
+    # Pins that gate BOTH a fresh cure and a claimed noop — always checked.
     if rec.get("pma_cap_verified") is not True:
         raise CureError(f"{CODE}: pma_cap_verified is not True — refusing to build on it")
     basis = rec.get("pma_official_basis") or ""
@@ -107,6 +119,9 @@ def plan(records: list[dict]) -> dict:
             f"{CODE}: pma_official_basis does not cite Lampiran II line 3731 as expected "
             f"— refusing to assert the reservation on a basis that has changed: {basis[:120]!r}"
         )
+
+    if already_cured:
+        return {"code": CODE, "noop": True, "reason": "already TERBATAS/0 — idempotent"}
 
     existing_kondisi = (rec.get("pma_kondisi") or "").strip()
     patch = {"pma_status": "TERBATAS"}
@@ -125,42 +140,78 @@ def plan(records: list[dict]) -> dict:
     }
 
 
-def propagate(dry: bool = False) -> list[str]:
-    """Push canonical to every consumer copy and re-stamp the version sidecar.
-    Mirrors apply_umkm_reservations.py::propagate — proves the sync rather than
-    trusting the exit code (superscar #2)."""
+def verify_fleet(repair: bool) -> tuple[list[str], int]:
+    """Check every consumer copy + the version sidecar against canonical, and
+    optionally repair what is stale. Proves the state rather than assuming it
+    (superscar #2).
+
+    Round-4 review finding: this used to run ONLY after a fresh canonical
+    write (`propagate()`, folded in here). A noop run — canonical already
+    correctly TERBATAS/0 — skipped it entirely, so a canonical that was
+    itself fine but had ONE stale consumer copy, or a stale sidecar digest,
+    reported a clean "nothing to do" while the fleet was still wrong.
+
+    `repair=False` (dry-run, or a noop run without `--apply`): read-only —
+    reports what is stale, changes nothing on disk.
+    `repair=True`: repairs (re-syncs drifted consumers, re-stamps the
+    sidecar) and reports what it repaired; anything still broken AFTER an
+    attempted repair is a refusal, never swallowed.
+
+    Returns `(problems, repaired_count)`. `problems == []` means "all
+    consistent" — whether repair ran or there was nothing to do; any
+    non-empty `problems` is refusal-worthy on the caller's side.
+    """
     problems: list[str] = []
-    result = subprocess.run(
-        ["bash", str(SYNC_SCRIPT), "sync"], capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        problems.append(f"sync_kbli_dataset.sh exited {result.returncode}: {result.stderr[-400:]}")
-        return problems
+    repaired = 0
 
     check = subprocess.run(
         ["bash", str(SYNC_SCRIPT), "--check"], capture_output=True, text=True
     )
     if check.returncode != 0:
-        problems.append(f"consumer copies still differ after sync: {check.stdout[-400:]}")
-        return problems
+        if not repair:
+            problems.append(
+                "consumer copies drifted from canonical (dry-run — rerun with "
+                f"--apply to repair):\n{check.stdout.strip()[-800:]}"
+            )
+            return problems, repaired
+        result = subprocess.run(
+            ["bash", str(SYNC_SCRIPT), "sync"], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            problems.append(f"sync_kbli_dataset.sh exited {result.returncode}: {result.stderr[-400:]}")
+            return problems, repaired
+        repaired = result.stdout.count("synced:")
+        recheck = subprocess.run(
+            ["bash", str(SYNC_SCRIPT), "--check"], capture_output=True, text=True
+        )
+        if recheck.returncode != 0:
+            problems.append(f"consumer copies still differ after repair: {recheck.stdout[-400:]}")
+            return problems, repaired
 
     if not SIDECAR_DATASET.exists():
         problems.append(f"sidecar dataset copy missing: {SIDECAR_DATASET}")
-        return problems
+        return problems, repaired
 
     digest = "sha256:" + hashlib.sha256(SIDECAR_DATASET.read_bytes()).hexdigest()
     sidecar = json.loads(SIDECAR_VERSION.read_text(encoding="utf-8"))
     if sidecar.get("datasetSha256") == digest:
-        return problems  # content did not move; nothing to bump
+        return problems, repaired  # content did not move; nothing to bump
 
-    if not dry:
-        sidecar["datasetSha256"] = digest
-        sidecar["lastModified"] = date.today().isoformat()
-        SIDECAR_VERSION.write_text(
-            json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    if not repair:
+        problems.append(
+            f"version sidecar stale ({sidecar.get('datasetSha256')!r} != {digest!r}) "
+            "— dry-run, rerun with --apply to repair"
         )
+        return problems, repaired
+
+    sidecar["datasetSha256"] = digest
+    sidecar["lastModified"] = date.today().isoformat()
+    SIDECAR_VERSION.write_text(
+        json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    repaired += 1
     print(f"  sidecar version -> {digest}")
-    return problems
+    return problems, repaired
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -178,7 +229,19 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_REFUSED
 
     if item["noop"]:
-        print(f"{CODE}: {item['reason']} — nothing to do")
+        print(f"{CODE}: {item['reason']} — nothing to do on canonical")
+        if path.resolve() != CANONICAL.resolve():
+            print(f"not canonical ({path}) — skipping fleet verification")
+            return EXIT_OK
+        problems, repaired = verify_fleet(repair=args.apply)
+        for p in problems:
+            print(f"  FLEET PROBLEM: {p}")
+        if problems:
+            return EXIT_REFUSED
+        if repaired:
+            print(f"repaired {repaired} stale fleet artifact(s)")
+        else:
+            print("fleet consumers + sidecar all consistent")
         return EXIT_OK
 
     print(f"{CODE}: {item['was']} -> {item['patch']}")
@@ -208,11 +271,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"not canonical ({path}) — skipping consumer propagation")
         return EXIT_OK
 
-    problems = propagate()
+    problems, repaired = verify_fleet(repair=True)
     for p in problems:
-        print(f"  PROPAGATION FAILED: {p}")
+        print(f"  FLEET PROBLEM: {p}")
     if problems:
         return EXIT_REFUSED
+    if repaired:
+        print(f"repaired {repaired} stale fleet artifact(s)")
     print("consumer copies in sync with canonical")
     return EXIT_OK
 

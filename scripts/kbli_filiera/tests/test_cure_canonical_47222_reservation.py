@@ -12,6 +12,7 @@ exactly the one state it is licensed to touch, and refuse anything else.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -135,6 +136,28 @@ def test_refuses_when_the_basis_no_longer_cites_lampiran_ii(tmp_path):
     assert path.read_text(encoding="utf-8") == before
 
 
+# --- guilt: a claimed noop must stand on the same pins as a fresh cure ------
+#
+# Round-4 review finding: the old noop branch returned True on `TERBATAS`/0
+# alone, before EITHER `pma_cap_verified` or `pma_official_basis` was read —
+# so an already-cured record with one of those pins silently stripped would
+# still report a clean "nothing to do".
+
+
+def test_refuses_a_claimed_noop_whose_verified_pin_was_stripped(tmp_path):
+    path = _dataset(tmp_path, [_rec(status="TERBATAS", cap=0, verified=False)])
+    before = path.read_text(encoding="utf-8")
+    assert mod.main(["--apply", "--dataset", str(path)]) == 2
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_refuses_a_claimed_noop_whose_basis_drifted(tmp_path):
+    path = _dataset(tmp_path, [_rec(status="TERBATAS", cap=0, basis="some other note entirely")])
+    before = path.read_text(encoding="utf-8")
+    assert mod.main(["--apply", "--dataset", str(path)]) == 2
+    assert path.read_text(encoding="utf-8") == before
+
+
 # --- innocence ----------------------------------------------------------------
 
 
@@ -170,3 +193,102 @@ def test_applying_to_a_fixture_never_touches_the_repos_sidecar(tmp_path):
     assert mod.main(["--apply", "--dataset", str(path)]) == 0
     assert mod.SIDECAR_VERSION.read_bytes() == sidecar_before
     assert mod.SIDECAR_DATASET.stat().st_mtime_ns == copy_before
+
+
+# --- guilt: a claimed noop must also verify (and repair) the fleet ---------
+#
+# Round-4 review finding: the noop branch used to stop at "nothing to do on
+# canonical" and never checked whether consumer copies or the version
+# sidecar had drifted. A canonical that was itself correctly TERBATAS/0 but
+# had one stale consumer copy passed as a clean noop while the fleet was
+# still wrong. These tests wire mod.CANONICAL / SYNC_SCRIPT / SIDECAR_DATASET
+# / SIDECAR_VERSION at a throwaway fake fleet under tmp_path (never the real
+# repo — W96) with a minimal fake sync script standing in for
+# sync_kbli_dataset.sh's two relevant modes (`--check`, `sync`).
+
+
+def _wire_fake_fleet(tmp_path, monkeypatch, canonical_bytes: bytes, consumer_bytes: bytes,
+                      sidecar_digest: str | None):
+    """Point the module's fleet-facing globals at a one-consumer fake fleet.
+    Returns (canonical_path, consumer_path, sidecar_version_path)."""
+    canonical_path = tmp_path / "canon.json"
+    canonical_path.write_bytes(canonical_bytes)
+    consumer_path = tmp_path / "consumer.json"
+    consumer_path.write_bytes(consumer_bytes)
+
+    sync_script = tmp_path / "fake_sync.sh"
+    sync_script.write_text(
+        f"""#!/usr/bin/env bash
+set -euo pipefail
+CANONICAL="{canonical_path}"
+CONSUMER="{consumer_path}"
+MODE="${{1:-sync}}"
+if [[ "$MODE" == "--check" ]]; then
+  if ! cmp -s "$CANONICAL" "$CONSUMER" 2>/dev/null; then
+    echo "DRIFT: $CONSUMER differs from canonical $CANONICAL"
+    exit 1
+  fi
+  echo "ok: $CONSUMER == canonical"
+else
+  if cmp -s "$CANONICAL" "$CONSUMER" 2>/dev/null; then
+    echo "unchanged: $CONSUMER"
+  else
+    cp -f "$CANONICAL" "$CONSUMER"
+    echo "synced: $CONSUMER"
+  fi
+fi
+""",
+        encoding="utf-8",
+    )
+    sync_script.chmod(0o755)
+
+    sidecar_version_path = tmp_path / "version.json"
+    sidecar_version_path.write_text(
+        json.dumps({"datasetSha256": sidecar_digest, "lastModified": "2000-01-01"}), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(mod, "CANONICAL", canonical_path)
+    monkeypatch.setattr(mod, "SYNC_SCRIPT", sync_script)
+    monkeypatch.setattr(mod, "SIDECAR_DATASET", consumer_path)
+    monkeypatch.setattr(mod, "SIDECAR_VERSION", sidecar_version_path)
+    return canonical_path, consumer_path, sidecar_version_path
+
+
+def test_noop_repairs_a_stale_consumer_copy_when_applied(tmp_path, monkeypatch):
+    """Acceptance: a cured canonical with ONE stale consumer copy — the
+    second run must repair it, never just report "nothing to do"."""
+    cured = json.dumps({"data": [_rec(status="TERBATAS", cap=0,
+                                       kondisi="Kemitraan dengan UMKM/Koperasi")]},
+                        ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+    stale_consumer = cured.replace(b"UMKM/Koperasi", b"something else entirely")
+    digest_of_stale = "sha256:" + hashlib.sha256(stale_consumer).hexdigest()
+    canonical_path, consumer_path, sidecar_path = _wire_fake_fleet(
+        tmp_path, monkeypatch, cured, stale_consumer, digest_of_stale
+    )
+    assert mod.main(["--apply", "--dataset", str(canonical_path)]) == 0
+    assert consumer_path.read_bytes() == cured, "the stale consumer must be repaired to match canonical"
+    sidecar_after = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    assert sidecar_after["datasetSha256"] == "sha256:" + hashlib.sha256(cured).hexdigest()
+
+    # A THIRD run on the now-consistent fleet reports clean, repairs nothing
+    # further — proves this isn't re-syncing on every call regardless of need.
+    assert mod.main(["--apply", "--dataset", str(canonical_path)]) == 0
+    assert consumer_path.read_bytes() == cured
+
+
+def test_noop_dry_run_reports_a_stale_consumer_without_writing(tmp_path, monkeypatch):
+    """Without --apply, a stale fleet must be NAMED, never silently repaired
+    (dry-run's own contract) and never silently reported clean."""
+    cured = json.dumps({"data": [_rec(status="TERBATAS", cap=0,
+                                       kondisi="Kemitraan dengan UMKM/Koperasi")]},
+                        ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+    stale_consumer = cured.replace(b"UMKM/Koperasi", b"something else entirely")
+    canonical_path, consumer_path, sidecar_path = _wire_fake_fleet(
+        tmp_path, monkeypatch, cured, stale_consumer,
+        "sha256:" + hashlib.sha256(stale_consumer).hexdigest(),
+    )
+    consumer_before = consumer_path.read_bytes()
+    sidecar_before = sidecar_path.read_bytes()
+    assert mod.main(["--dataset", str(canonical_path)]) == 2
+    assert consumer_path.read_bytes() == consumer_before, "dry-run must never write the consumer copy"
+    assert sidecar_path.read_bytes() == sidecar_before, "dry-run must never write the sidecar"
