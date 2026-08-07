@@ -119,12 +119,16 @@ claude_stderr_retryable() {
 
 claude_stdout_retryable() {
     local stdout_file="$1"
-    python3 - "$stdout_file" <<'PY'
+    # Optional: the exit code the CLI just returned. When non-zero, stdout is a
+    # CLI diagnostic rather than an agent answer — see the anchor note below.
+    local exit_code="${2:-}"
+    python3 - "$stdout_file" "$exit_code" <<'PY'
 import json
 import re
 import sys
 
 text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+exit_code = sys.argv[2] if len(sys.argv) > 2 else ""
 broad = re.compile(
     r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
     r"usage limit|weekly limit|hit your limit|capacity|overloaded|"
@@ -175,6 +179,26 @@ retryable = (
     bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
     or bool(whole.fullmatch(text))
 )
+
+# The whole-text anchor above judges the SHAPE of the sentence: it only fires
+# when the entire output IS one of the phrasings it knows. That strictness is
+# deliberate and must stay — an agent that SUCCEEDS and happens to discuss
+# "rate limits" in its answer must not rotate the seat.
+#
+# But it made the cascade decorative against the commonest auth failure there
+# is. The CLI prints, on stdout, exit 1:
+#     Failed to authenticate. API Error: 401 OAuth access token has been revoked.
+# The anchor knows "authentication failed", not "Failed to authenticate", so it
+# refused to match and the loop broke at the first seat instead of rotating to
+# a live one. Measured 2026-08-07 on Pro: three of four numbered seats revoked,
+# the fourth alive, and every agent job died on seat 1 regardless.
+#
+# So bind the severity to the EXIT CODE, not to the wording. A non-zero exit
+# means the CLI itself refused; its stdout is a diagnostic, and any auth/quota
+# marker anywhere in it is the entity we care about. Exit 0 keeps the anchor.
+if not retryable and exit_code not in ("", "0") and not isinstance(payload, dict):
+    retryable = bool(broad.search(text))
+
 raise SystemExit(0 if retryable else 1)
 PY
 }
@@ -182,7 +206,8 @@ PY
 claude_retryable_files() {
     local stdout_file="$1"
     local stderr_file="$2"
-    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file"
+    local exit_code="${3:-}"
+    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file" "$exit_code"
 }
 
 claude_oauth_env() {
@@ -385,7 +410,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
 
         # OAuth quota/auth diagnostics can exit 0: classify before success.
-        if claude_retryable_files "$attempt_out" "$attempt_err"; then
+        if claude_retryable_files "$attempt_out" "$attempt_err" "$exit_code"; then
             log "$label: OAuth account unavailable, trying next"
             output=""
             rm -f "$attempt_out" "$attempt_err"

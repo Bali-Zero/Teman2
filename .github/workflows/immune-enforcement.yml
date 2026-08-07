@@ -130,6 +130,8 @@ jobs:
               scripts/tests/test_wa_session_liveness.py|\
               infra/launchagents/wrappers/wa-session-liveness.sh|\
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
+              infra/launchagents/wrappers/cron-agent.sh|\
+              scripts/tests/test_cron_agent_oauth_cascade.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
@@ -181,6 +183,9 @@ jobs:
               scripts/lint_workflow_errexit_decap.py|\
               scripts/lint_retracted_claims.py|\
               infra/retracted-claims/registry.json|\
+              scripts/lint_public_asset_refs.py|\
+              scripts/tests/test_lint_public_asset_refs.py|\
+              infra/asset-lint/public-asset-refs-config.json|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -222,6 +227,7 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_lint_home_fork.py \
+            scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
             scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
@@ -441,6 +447,23 @@ jobs:
           # the mutant survived — to judge a guard it has to be the only thing broken.
           bash scripts/tests/test_wa_session_liveness_wrapper.sh
 
+      - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured on Pro 2026-08-07: three of four numbered OAuth seats revoked,
+          # the fourth alive, and every agent job still died on seat 1. The rotate-or-
+          # stop classifier judged the SHAPE of the sentence — its whole-text anchor
+          # knows "authentication failed" while the CLI says "Failed to authenticate.
+          # API Error: 401 OAuth access token has been revoked." (stdout, exit 1), so
+          # a hard refusal read as a final answer. Superscar #3 under-match, and #2:
+          # a five-deep cascade that had never once rotated on the commonest failure.
+          # The anchor's strictness is NOT the bug and must survive — an agent that
+          # SUCCEEDS while discussing rate limits must not rotate. Severity is bound
+          # to the exit code instead; both halves are pinned here, and the end-to-end
+          # half runs the wrapper in a fake world (W107) so "did not rotate" is
+          # distinguishable from "never got there".
+          bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -515,6 +538,23 @@ jobs:
         run: |
           if [ -f scripts/lint_doc_executable_refs.py ]; then
             python scripts/lint_doc_executable_refs.py
+          fi
+
+      # Public-asset-refs lint runs FOR REAL on every PR, UNGATED — same
+      # reasoning as doc-executable-refs above, plus one that is specific to it:
+      # the defect it catches is introduced by FRONTEND PRs (a new `src=` in
+      # apps/mouth), which are exactly the PRs the immune-relevant sentinel
+      # classifies as NOT relevant. Gating this behind `steps.paths.outputs.relevant`
+      # would arm it only for PRs that cannot contain the defect — the W108
+      # GOTCHA verbatim ("il difetto è emerso solo dopo aver ARMATO il test su
+      # ogni PR"). Pure tree scan, no $HOME and no network, so CI can enforce it
+      # directly. Known-broken references live in the shrink-only registry at
+      # infra/asset-lint/public-asset-refs-config.json (they are carried debt,
+      # not exemptions — the lint fails if one goes stale).
+      - name: Public-asset-refs lint (code names only assets that exist in public/)
+        run: |
+          if [ -f scripts/lint_public_asset_refs.py ]; then
+            python scripts/lint_public_asset_refs.py
           fi
 
       # TCC-Desktop-paths lint runs FOR REAL on every PR (same reasoning as

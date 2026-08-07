@@ -5,20 +5,26 @@ import { describe, expect, it } from "vitest";
 import {
   CATEGORY_TO_PURPOSE,
   SCHEMA_VERSION,
-  TOURISM_DURATION_DAYS,
-  VIOLATION_MEMBER_FOR_OVERSTAY_OR_BLACKLIST,
   mapCurrentStatusExpiry,
   mapCurrentlyInIndonesia,
+  mapDisclosedReviewFlags,
   mapEmployerIsIndonesianEntity,
   mapOracleFactsToApplicantFacts,
   mapPurposes,
   mapRemoteClientsDerived,
   mapStayDays,
   mapViolationHistory,
+  requestCategoryForFacts,
+  stableEvaluationInputKey,
   type FactValue,
   type UnknownReasonWire,
 } from "./fact-mapper";
-import { CATEGORY_KEYS, type OracleFacts } from "./tree";
+import {
+  CATEGORY_KEYS,
+  QUESTIONS,
+  type OracleFacts,
+  type OracleQuestion,
+} from "./tree";
 
 // ---------------------------------------------------------------------------
 // The 40-key contract, extracted from models.py itself (never hand-typed —
@@ -75,6 +81,23 @@ function assertValidFactValue(value: unknown): void {
   }
 }
 
+function representativeAnswer(question: OracleQuestion): string {
+  if (question.kind === "date") return "2026-08-01";
+  if (question.kind === "country-codes") return "US";
+  if (question.kind === "status-code") return "C1";
+  if (question.kind === "number") {
+    return String(question.numberInput?.min ?? 0);
+  }
+  if (question.kind === "review-gate") return "none";
+  const answer = question.options.find(
+    (option) =>
+      question.decisionMapping.kind !== "FACT" ||
+      !question.decisionMapping.unknownValues?.includes(option.key),
+  );
+  if (!answer) throw new Error(`No representative answer for ${question.id}`);
+  return answer.key;
+}
+
 describe("mapOracleFactsToApplicantFacts — 40-key contract (acceptance test 1)", () => {
   const expectedPaths = extractApplicantFactPathsFromModelsPy();
 
@@ -99,6 +122,45 @@ describe("mapOracleFactsToApplicantFacts — 40-key contract (acceptance test 1)
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...expectedPaths].sort());
   });
+});
+
+describe("question registry -> wire coverage", () => {
+  it("never leaves an answered FACT/REVIEW_ONLY path as NOT_ASKED", () => {
+    for (const question of Object.values(QUESTIONS)) {
+      if (question.decisionMapping.kind === "HUMAN_CONTEXT") continue;
+      const result = mapFacts({
+        [question.id]: representativeAnswer(question),
+      });
+      for (const path of question.decisionMapping.factPaths) {
+        const fact = result.facts[path as keyof typeof result.facts];
+        expect(fact, `${question.id} -> ${path}`).toBeDefined();
+        expect(fact, `${question.id} -> ${path}`).not.toEqual({
+          status: "UNKNOWN",
+          reason: "NOT_ASKED",
+        });
+      }
+    }
+  });
+
+  it.each([
+    ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
+    ["business_activity", "meetings", "ACTIVITY_BOUNDARY"],
+    ["work_role", "specialist", "ACTIVITY_BOUNDARY"],
+    ["tourism_duration", "short", "ACTIVITY_BOUNDARY"],
+    ["remote_income", "above", "ACTIVITY_BOUNDARY"],
+    ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
+    ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
+    ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
+    ["diaspora_connection", "former_citizen", "ACTIVITY_BOUNDARY"],
+    ["diaspora_documents", "passport", "ACTIVITY_BOUNDARY"],
+    ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
+    ["other_paid_activity", "yes", "ACTIVITY_BOUNDARY"],
+  ])(
+    "maps HUMAN_CONTEXT %s to a conservative review flag",
+    (id, value, flag) => {
+      expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(flag);
+    },
+  );
 });
 
 describe("mapOracleFactsToApplicantFacts — discriminated-union validity (acceptance test 2)", () => {
@@ -139,10 +201,10 @@ describe("mapCurrentlyInIndonesia — in_indonesia -> immigration.currently_in_i
     });
   });
 
-  it("unsure -> KNOWN true (conservative carve-out, verbatim task brief)", () => {
+  it("unsure -> UNKNOWN UNVERIFIED even when UI navigation is conservative", () => {
     expect(mapCurrentlyInIndonesia({ in_indonesia: "unsure" })).toEqual({
-      status: "KNOWN",
-      value: true,
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
     });
   });
 
@@ -248,68 +310,89 @@ describe("mapEmployerIsIndonesianEntity — work_payer -> work.employer_is_indon
   });
 });
 
-describe("mapRemoteClientsDerived — remote_clients -> work.serves_indonesian_clients + work.indonesia_source_compensation", () => {
-  it("foreign -> KNOWN false / KNOWN false", () => {
+describe("mapRemoteClientsDerived — remote_clients -> work.serves_indonesian_clients only", () => {
+  it("foreign -> KNOWN false", () => {
     expect(mapRemoteClientsDerived({ remote_clients: "foreign" })).toEqual({
       servesIndonesianClients: { status: "KNOWN", value: false },
-      indonesiaSourceCompensation: { status: "KNOWN", value: false },
     });
   });
 
-  it("indonesian -> KNOWN true / KNOWN true", () => {
+  it("indonesian -> KNOWN true", () => {
     expect(mapRemoteClientsDerived({ remote_clients: "indonesian" })).toEqual({
       servesIndonesianClients: { status: "KNOWN", value: true },
-      indonesiaSourceCompensation: { status: "KNOWN", value: true },
     });
   });
 
-  it("mixed -> KNOWN true / KNOWN true", () => {
+  it("mixed -> KNOWN true", () => {
     expect(mapRemoteClientsDerived({ remote_clients: "mixed" })).toEqual({
       servesIndonesianClients: { status: "KNOWN", value: true },
-      indonesiaSourceCompensation: { status: "KNOWN", value: true },
-    });
-  });
-
-  it("unsure -> UNKNOWN UNVERIFIED for both", () => {
-    expect(mapRemoteClientsDerived({ remote_clients: "unsure" })).toEqual({
-      servesIndonesianClients: { status: "UNKNOWN", reason: "UNVERIFIED" },
-      indonesiaSourceCompensation: { status: "UNKNOWN", reason: "UNVERIFIED" },
-    });
-  });
-
-  it("never asked -> UNKNOWN NOT_ASKED for both", () => {
-    expect(mapRemoteClientsDerived({})).toEqual({
-      servesIndonesianClients: { status: "UNKNOWN", reason: "NOT_ASKED" },
-      indonesiaSourceCompensation: { status: "UNKNOWN", reason: "NOT_ASKED" },
-    });
-  });
-});
-
-describe("mapStayDays — tourism_duration -> intent.stay_days", () => {
-  it("short -> KNOWN 30 (the documented canonical bucket day-count)", () => {
-    expect(mapStayDays({ tourism_duration: "short" })).toEqual({
-      status: "KNOWN",
-      value: TOURISM_DURATION_DAYS.short,
-    });
-    expect(TOURISM_DURATION_DAYS.short).toBe(30);
-  });
-
-  it("medium -> KNOWN 60", () => {
-    expect(mapStayDays({ tourism_duration: "medium" })).toEqual({
-      status: "KNOWN",
-      value: 60,
-    });
-  });
-
-  it("extended -> KNOWN 90 (documented arbitrary interior representative)", () => {
-    expect(mapStayDays({ tourism_duration: "extended" })).toEqual({
-      status: "KNOWN",
-      value: 90,
     });
   });
 
   it("unsure -> UNKNOWN UNVERIFIED", () => {
-    expect(mapStayDays({ tourism_duration: "unsure" })).toEqual({
+    expect(mapRemoteClientsDerived({ remote_clients: "unsure" })).toEqual({
+      servesIndonesianClients: { status: "UNKNOWN", reason: "UNVERIFIED" },
+    });
+  });
+
+  it("never asked -> UNKNOWN NOT_ASKED", () => {
+    expect(mapRemoteClientsDerived({})).toEqual({
+      servesIndonesianClients: { status: "UNKNOWN", reason: "NOT_ASKED" },
+    });
+  });
+
+  it("never infers compensation source from client location", () => {
+    for (const remoteClients of ["foreign", "indonesian", "mixed"]) {
+      const mapped = mapFacts({ remote_clients: remoteClients });
+      expect(mapped.facts["work.indonesia_source_compensation"]).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_ASKED",
+      });
+    }
+  });
+});
+
+describe("mapStayDays — exact stay_days -> intent.stay_days", () => {
+  it("preserves an exact canonical whole-number answer", () => {
+    expect(mapStayDays({ stay_days: "31" })).toEqual({
+      status: "KNOWN",
+      value: 31,
+    });
+  });
+
+  it.each(["short", "medium", "extended"])(
+    "never converts legacy bucket %s to an invented day count",
+    (bucket) => {
+      expect(mapStayDays({ tourism_duration: bucket })).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_ASKED",
+      });
+    },
+  );
+
+  it.each(["0", "0001", "1.5", "36501", "-1", "not-a-number"])(
+    "rejects non-canonical or out-of-range input %s",
+    (stayDays) => {
+      expect(mapStayDays({ stay_days: stayDays })).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_PROVIDED",
+      });
+    },
+  );
+
+  it("accepts the sanity-range boundaries", () => {
+    expect(mapStayDays({ stay_days: "1" })).toEqual({
+      status: "KNOWN",
+      value: 1,
+    });
+    expect(mapStayDays({ stay_days: "36500" })).toEqual({
+      status: "KNOWN",
+      value: 36_500,
+    });
+  });
+
+  it("unsure -> UNKNOWN UNVERIFIED", () => {
+    expect(mapStayDays({ stay_days: "unsure" })).toEqual({
       status: "UNKNOWN",
       reason: "UNVERIFIED",
     });
@@ -328,44 +411,45 @@ describe("mapViolationHistory — review_gate -> immigration.violation_history",
     });
   });
 
-  it('"overstay_or_blacklist" alone -> KNOWN [OVERSTAY]', () => {
+  it('legacy "overstay_or_blacklist" -> UNKNOWN CONFLICTING, never a guessed enum', () => {
     expect(
       mapViolationHistory({ review_gate: "overstay_or_blacklist" }),
     ).toEqual({
-      status: "KNOWN",
-      value: [VIOLATION_MEMBER_FOR_OVERSTAY_OR_BLACKLIST],
+      status: "UNKNOWN",
+      reason: "CONFLICTING",
     });
-    expect(VIOLATION_MEMBER_FOR_OVERSTAY_OR_BLACKLIST).toBe("OVERSTAY");
   });
 
-  it("overstay_or_blacklist combined with other UI-only flags -> still KNOWN [OVERSTAY]", () => {
-    expect(
-      mapViolationHistory({
-        review_gate: "criminal_record,overstay_or_blacklist",
-      }),
-    ).toEqual({ status: "KNOWN", value: ["OVERSTAY"] });
+  it("maps split overstay and blacklist disclosures exactly", () => {
+    expect(mapViolationHistory({ review_gate: "overstay" })).toEqual({
+      status: "KNOWN",
+      value: ["OVERSTAY"],
+    });
+    expect(mapViolationHistory({ review_gate: "blacklist,overstay" })).toEqual({
+      status: "KNOWN",
+      value: ["OVERSTAY", "BLACKLIST"],
+    });
   });
 
-  it("a UI-only flag WITHOUT overstay_or_blacklist -> KNOWN empty tuple", () => {
+  it("a UI-only flag never becomes a KNOWN empty violation history", () => {
     expect(mapViolationHistory({ review_gate: "criminal_record" })).toEqual({
-      status: "KNOWN",
-      value: [],
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
     });
   });
 
-  it('"not_certain" is one of the 4 UI-only items (brief is literal/exhaustive) -> still KNOWN empty tuple, NOT a special UNVERIFIED case', () => {
+  it('"not_certain" remains UNKNOWN UNVERIFIED', () => {
     expect(mapViolationHistory({ review_gate: "not_certain" })).toEqual({
-      status: "KNOWN",
-      value: [],
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
     });
   });
 
-  it("not_certain combined with overstay_or_blacklist -> overstay_or_blacklist still wins (KNOWN [OVERSTAY])", () => {
-    expect(
-      mapViolationHistory({
-        review_gate: "not_certain,overstay_or_blacklist",
-      }),
-    ).toEqual({ status: "KNOWN", value: ["OVERSTAY"] });
+  it('rejects an impossible "none" plus flag combination as CONFLICTING', () => {
+    expect(mapViolationHistory({ review_gate: "none,overstay" })).toEqual({
+      status: "UNKNOWN",
+      reason: "CONFLICTING",
+    });
   });
 
   it("never asked -> UNKNOWN NOT_ASKED", () => {
@@ -376,11 +460,74 @@ describe("mapViolationHistory — review_gate -> immigration.violation_history",
   });
 });
 
+describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
+  it("maps UI-only disclosures to the closed backend vocabulary", () => {
+    expect(
+      mapDisclosedReviewFlags({
+        review_gate:
+          "prior_refusal,criminal_record,pep_or_sanctions,health_flag,not_certain",
+      }),
+    ).toEqual([
+      "CRIMINAL_RECORD",
+      "HEALTH_CONCERN",
+      "NOT_CERTAIN",
+      "PEP_OR_SANCTIONS",
+      "PRIOR_VISA_REFUSAL",
+    ]);
+  });
+
+  it("does not turn legal violation values into disclosed review flags", () => {
+    expect(
+      mapDisclosedReviewFlags({ review_gate: "blacklist,overstay" }),
+    ).toEqual([]);
+  });
+
+  it("keeps the backend-derived conflicting-immigration flag outside the client mapper", () => {
+    expect(
+      mapDisclosedReviewFlags({
+        in_indonesia: "no",
+        overstay_days: "5",
+        review_gate: "immigration_investigation",
+      }),
+    ).toEqual([]);
+    expect(
+      mapViolationHistory({ review_gate: "immigration_investigation" }),
+    ).toEqual({
+      status: "KNOWN",
+      value: ["IMMIGRATION_INVESTIGATION"],
+    });
+  });
+
+  it("holds unsupported retirement property context for human review", () => {
+    expect(mapDisclosedReviewFlags({ retirement_basis: "property" })).toEqual([
+      "ACTIVITY_BOUNDARY",
+    ]);
+  });
+});
+
+describe("family sponsor status — unverified human context", () => {
+  it("never turns a plausible free-text status into a KNOWN signed fact", () => {
+    const result = mapFacts({
+      family_sponsor_confirmed: "yes",
+      family_sponsor_status_code: "FOO",
+    });
+    expect(result.facts["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
+    });
+    expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+  });
+});
+
 describe("remote_income — no FactPath exists, never invented", () => {
-  it("has zero effect on the mapped output, present or absent", () => {
+  it("does not invent a FactPath and instead adds a monotone review hold", () => {
     const base: OracleFacts = { category: "remote", remote_clients: "foreign" };
     const withIncome: OracleFacts = { ...base, remote_income: "above" };
-    expect(mapFacts(withIncome)).toEqual(mapFacts(base));
+    const before = mapFacts(base);
+    const after = mapFacts(withIncome);
+    expect(after.facts).toEqual(before.facts);
+    expect(before.disclosed_review_flags).toEqual([]);
+    expect(after.disclosed_review_flags).toEqual(["ACTIVITY_BOUNDARY"]);
   });
 
   it("is never one of the 40 emitted keys", () => {
@@ -417,6 +564,16 @@ describe("mapOracleFactsToApplicantFacts — envelope shape (acceptance test 4)"
     expect(result.collected_at).not.toContain("+00:00");
     expect(result.collected_at).toBe(COLLECTED_AT.toISOString());
   });
+
+  it("includes sorted conservative review disclosures outside engine facts", () => {
+    const result = mapFacts({
+      review_gate: "prior_refusal,criminal_record",
+    });
+    expect(result.disclosed_review_flags).toEqual([
+      "CRIMINAL_RECORD",
+      "PRIOR_VISA_REFUSAL",
+    ]);
+  });
 });
 
 describe("mapOracleFactsToApplicantFacts — determinism", () => {
@@ -429,5 +586,19 @@ describe("mapOracleFactsToApplicantFacts — determinism", () => {
       review_gate: "overstay_or_blacklist",
     };
     expect(mapFacts(facts)).toEqual(mapFacts({ ...facts }));
+  });
+
+  it("binds disclosed review flags even when the 40 facts are identical", () => {
+    const baseFacts: OracleFacts = {
+      category: "tourism",
+      stay_days: "30",
+      review_gate: "pep_or_sanctions",
+    };
+    const base = mapFacts(baseFacts);
+    const flagged = mapFacts({ ...baseFacts, review_gate: "health_flag" });
+    expect(flagged.facts).toEqual(base.facts);
+    expect(stableEvaluationInputKey(base)).not.toBe(
+      stableEvaluationInputKey(flagged),
+    );
   });
 });

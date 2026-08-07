@@ -163,6 +163,102 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/admin/crm-kg/backfill-drive-documents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Trigger Backfill Drive Documents
+     * @description Backfill current CRM Drive documents into OCR and crm_kg.
+     *
+     *     Dry-run returns the candidate summary immediately. Live mode runs in a
+     *     background task. OCR/Gemini dispatch is disabled unless allow_ocr=true.
+     */
+    post: operations["trigger_backfill_drive_documents_api_admin_crm_kg_backfill_drive_documents_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/crm-kg/build-mediated": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Trigger Build Mediated
+     * @description Trigger one pass of the Tier-B mediated edge builder.
+     *
+     *     Cron-friendly: returns HTTP 200 immediately with status='started',
+     *     actual work happens in the background task. Errors are logged but
+     *     do not propagate to the caller (best-effort cron pattern).
+     */
+    post: operations["trigger_build_mediated_api_admin_crm_kg_build_mediated_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/crm-kg/garbage-collect": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Trigger Garbage Collect
+     * @description Trigger one pass of the CRM KG garbage collector (PR-D).
+     *
+     *     Soft-deletes nodes whose backing CRM data is gone, hard-deletes
+     *     edges past grace window. See garbage_collector.py docstring.
+     *
+     *     Cron-friendly: returns HTTP 200 immediately. Best-effort behavior.
+     */
+    post: operations["trigger_garbage_collect_api_admin_crm_kg_garbage_collect_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/crm-kg/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Crm Kg Health
+     * @description Quick counts of crm_kg_nodes and crm_kg_edges by type/tier.
+     *
+     *     Splits live vs soft_deleted node counts so PR-D's garbage collector
+     *     progress is visible. Useful for monitoring dashboards and verifying
+     *     the linker / builders are actually emitting data.
+     */
+    get: operations["crm_kg_health_api_admin_crm_kg_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/admin/drive/backfill": {
     parameters: {
       query?: never;
@@ -195,7 +291,13 @@ export interface paths {
     };
     /**
      * Drive Health
-     * @description Verifica stato token Google Drive (public endpoint).
+     * @description Verifica stato Drive integration (public endpoint).
+     *
+     *     Post-2026-05-10: primary auth is Service Account (domain-wide delegation
+     *     impersonating zero@balizero.com), not the legacy SYSTEM OAuth token.
+     *     Health is determined by SA reachability; OAuth SYSTEM info is reported
+     *     informationally for debugging legacy callers but does NOT influence the
+     *     overall status.
      */
     get: operations["drive_health_api_admin_drive_health_get"];
     put?: never;
@@ -220,6 +322,26 @@ export interface paths {
      * @description Trigger Google Drive changes poll (for cron jobs / OpenClaw automation).
      */
     post: operations["trigger_drive_poll_api_admin_drive_poll_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/drive/poll/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Drive Poll Status
+     * @description Read Drive poll owner status without doing Drive or OCR work.
+     */
+    get: operations["drive_poll_status_api_admin_drive_poll_status_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -302,6 +424,50 @@ export interface paths {
      *     This is a fallback when OAuth token is expired/revoked.
      */
     post: operations["use_service_account_api_admin_drive_use_service_account_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/email-health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Email Health
+     * @description Return a snapshot of the email delivery health.
+     */
+    get: operations["get_email_health_api_admin_email_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/llm-costs/record": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record Remote
+     * @description Relay a cost event emitted by a remote agent (Pro/Air cron).
+     *
+     *     Accepts the full LLMCostRecord payload and delegates to the singleton
+     *     recorder's triple-write path (Prometheus counter, Postgres insert, JSONL
+     *     append). Returns the write-result dict from record_llm_call.
+     */
+    post: operations["record_remote_api_admin_llm_costs_record_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -539,6 +705,171 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/admin/notifications/alerts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Alerts
+     * @description List alerts with filtering and pagination.
+     *     Admin only.
+     */
+    get: operations["list_alerts_api_admin_notifications_alerts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/notifications/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Dashboard
+     * @description Get notification dashboard data.
+     *     Admin only.
+     */
+    get: operations["get_dashboard_api_admin_notifications_dashboard_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/notifications/pause-client": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Pause Client Notifications
+     * @description Pause notifications for a client temporarily.
+     *     Admin only.
+     */
+    post: operations["pause_client_notifications_api_admin_notifications_pause_client_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/notifications/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Retry Failed Alerts
+     * @description Retry failed alerts.
+     *     Admin only.
+     */
+    post: operations["retry_failed_alerts_api_admin_notifications_retry_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/notifications/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Stats
+     * @description Get detailed statistics.
+     *     Admin only.
+     */
+    get: operations["get_stats_api_admin_notifications_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/pii/by-route": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Top Routes
+     * @description Top routes by violation count over the last N days.
+     */
+    get: operations["top_routes_api_admin_pii_by_route_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/pii/trend": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Pattern Trend
+     * @description Per-day violation counts per pattern for the last N days.
+     */
+    get: operations["pattern_trend_api_admin_pii_trend_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/pii/violations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Violations
+     * @description Paginated recent violations, newest first. Keyset pagination on id DESC.
+     */
+    get: operations["list_violations_api_admin_pii_violations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/admin/postgres/data": {
     parameters: {
       query?: never;
@@ -579,6 +910,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/admin/practice/auto-create": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Trigger Auto Practice Creation
+     * @description Trigger auto-creation of renewal practices for expiring visas.
+     */
+    post: operations["trigger_auto_practice_creation_api_admin_practice_auto_create_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/admin/qdrant/collections": {
     parameters: {
       query?: never;
@@ -611,6 +962,57 @@ export interface paths {
      * @description Browse Qdrant points (ADMIN ONLY)
      */
     get: operations["get_qdrant_points_api_admin_qdrant_points_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/rate-limit/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Rate Limit Stats
+     * @description Return:
+     *       - backend: "redis" | "memory" | "memory_degraded"
+     *       - connected: bool (Redis reachable)
+     *       - rate_limits_configured: count of per-route rules
+     *       - metrics: {redis_requests, redis_errors, memory_fallback_requests,
+     *                   recovery_attempts, recovery_successes}
+     *       - last_error: str | None
+     *       - in_memory_keys: current cardinality of the fallback dict
+     *       - recovery_cooldown_seconds: cooldown between reconnect attempts
+     */
+    get: operations["rate_limit_stats_api_admin_rate_limit_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/self-healing/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Self Healing Stats
+     * @description Return the current snapshot: uptime, per-check stats
+     *     (total_runs / total_success / total_failure / last_error /
+     *     last_recovery_duration_seconds), per-action stats, and per-check
+     *     circuit-breaker state.
+     */
+    get: operations["get_self_healing_stats_api_admin_self_healing_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -658,6 +1060,27 @@ export interface paths {
      * @description Get CRM activity log
      */
     get: operations["get_crm_actions_api_admin_team_activity_crm_actions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/admin/team-activity/crm-activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Crm Activity
+     * @description Query api_audit_trail for CRM endpoint activity.
+     *     Filters: time range (HH:MM today or ISO), partial user email, HTTP method.
+     */
+    get: operations["get_crm_activity_api_admin_team_activity_crm_activity_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -992,6 +1415,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/agentic-rag/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resolve Confirmation
+     * @description Resolve a pending tool confirmation request.
+     *
+     *     VASSAL Phase 3: called by the frontend WorkspaceAssistant (Phase 3B)
+     *     or by `curl` during manual testing. The user must be authenticated
+     *     (same JWT middleware as workspace-stream) and must be the same user
+     *     who triggered the request (ownership verified inside the service).
+     *
+     *     Returns 200 with ``{resolved: true}`` on success, or 404 if the
+     *     request_id is unknown, expired, or owned by another user.
+     */
+    post: operations["resolve_confirmation_api_agentic_rag_confirm_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/agentic-rag/proactive-trigger": {
     parameters: {
       query?: never;
@@ -1060,6 +1511,34 @@ export interface paths {
      *     2. conversation_id or session_id lookup from database (fallback)
      */
     post: operations["stream_agentic_rag_api_agentic_rag_stream_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/agentic-rag/workspace-stream": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Stream Workspace Agent
+     * @description Authenticated workspace agent endpoint (SSE).
+     *
+     *     **AUTH REQUIRED.** No anonymous fallback. The agent identity (email,
+     *     role, client_scope) is derived server-side from the JWT via
+     *     `get_agent_role()` + `build_agent_context()`. Any agent_* fields the
+     *     client sends in the request body are ignored.
+     *
+     *     Phase 1 scope: endpoint splitting + agent context prefix injection.
+     *     Phase 2 will add server-side tool RBAC enforcement via tool_authorizer.
+     */
+    post: operations["stream_workspace_agent_api_agentic_rag_workspace_stream_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1363,8 +1842,9 @@ export interface paths {
      * Calculate Dynamic Pricing
      * @description 💰 AGENT 6: Dynamic Pricing Service
      *
-     *     Calculate pricing based on service type, complexity, and urgency.
-     *     Accepts JSON body: {"service_type": "pt_pma", "complexity": "standard", "urgency": "normal"}
+     *     Returns official prices from PricingService (SSOT).
+     *     If query is provided, performs keyword search; otherwise returns by service_type.
+     *     Accepts JSON body: {"service_type": "visa", "query": "KITAS investor"}
      */
     post: operations["calculate_dynamic_pricing_api_agents_pricing_calculate_post"];
     delete?: never;
@@ -1476,6 +1956,50 @@ export interface paths {
     get: operations["get_completion_rates_api_analytics_completion_rates_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/analytics/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Analytics Dashboard
+     * @description Unified analytics dashboard combining RAG, CRM, team, and system metrics.
+     *
+     *     Returns cached data (Redis TTL 5min) for fast loading.
+     */
+    get: operations["get_analytics_dashboard_api_analytics_dashboard_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/analytics/funnel-event": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ingest Funnel Event
+     * @description Ingest a funnel analytics event. Never blocks the UX: unknown events
+     *     return ok=False instead of raising an error. Payload values are
+     *     PII-scrubbed (MYTHOS §6 guardrail) before storage.
+     */
+    post: operations["ingest_funnel_event_api_analytics_funnel_event_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1710,10 +2234,11 @@ export interface paths {
     put?: never;
     /**
      * Compose Article
-     * @description Compose/enrich an article with Bali Zero style.
+     * @description Compose/enrich an article with Bali Zero style via DeepSeek.
      *
-     *     NOTE: This endpoint is currently disabled. Article composition with Claude/Anthropic
-     *     has been removed. Use alternative enrichment methods.
+     *     Migrated from Claude Max OAuth (which hangs inside Fly containers on
+     *     Linux non-TTY — see ``memory/feedback_claude_cli_linux_hang.md``) to
+     *     ``deepseek-v4-flash`` (~100x cheaper, structured JSON output, clean exit).
      */
     post: operations["compose_article_api_articles_compose_post"];
     delete?: never;
@@ -1753,10 +2278,13 @@ export interface paths {
     put?: never;
     /**
      * Publish Article
-     * @description Publish an enriched article to the Bali Zero website.
+     * @description Publish an enriched article to the Bali Zero website. Admin-only.
      *
      *     Creates MDX file and optionally uploads cover image via GitHub API.
      *     Triggers Vercel auto-deploy.
+     *
+     *     Internal callers (the intel staging-publish path, itself admin-gated) must
+     *     use :func:`publish_article_internal` — they carry their own authorization.
      */
     post: operations["publish_article_api_articles_publish_post"];
     delete?: never;
@@ -1779,6 +2307,59 @@ export interface paths {
     get: operations["publish_status_api_articles_publish_status_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/assets/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Asset Upload Health
+     * @description Lightweight health probe — no Tigris call, just env config check.
+     */
+    get: operations["asset_upload_health_api_assets_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/assets/upload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload Asset
+     * @description Upload a single asset to Tigris S3, return content-addressed public URL.
+     *
+     *     Key format: `{prefix}/{session_id}/{sha256_first8}-{original_filename}`
+     *
+     *     Response:
+     *     ```json
+     *     {
+     *       "public_url": "https://nuzantara-warroom-images.fly.storage.tigris.dev/wr2-hero/c5a-2026-05-26/c9b1a93a-01-hero.jpg",
+     *       "tigris_key": "wr2-hero/c5a-2026-05-26/c9b1a93a-01-hero.jpg",
+     *       "sha256": "c9b1a93a139f7a62...",
+     *       "bytes": 1727237,
+     *       "content_type": "image/jpeg"
+     *     }
+     *     ```
+     */
+    post: operations["upload_asset_api_assets_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1956,6 +2537,53 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/auth/request-magic-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Request Magic Link
+     * @description Request a passwordless sign-in link for a registered portal client.
+     *
+     *     Enumeration-safe: the response is identical whether or not the email maps to
+     *     a portal account. A link is emailed only when the email IS an active portal
+     *     client (and is not rate-limited).
+     */
+    post: operations["request_magic_link_api_auth_request_magic_link_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/auth/revoke-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Revoke All Sessions
+     * @description Revoke all active sessions for the current user (S03-S2).
+     *
+     *     Sets a user-level revocation key in Redis. All tokens for this
+     *     user will be rejected until the key expires (24h).
+     */
+    post: operations["revoke_all_sessions_api_auth_revoke_all_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/auth/team/login": {
     parameters: {
       query?: never;
@@ -1987,6 +2615,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/auth/verify-magic/{token}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Verify Magic Link
+     * @description Verify a magic-link token and establish a portal session.
+     *
+     *     On success issues the SAME JWT + httpOnly cookie + CSRF token as a PIN login,
+     *     so the client lands authenticated. The token is single-use and consumed here.
+     */
+    get: operations["verify_magic_link_api_auth_verify_magic__token__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/autonomous-agents/client-value-predictor/run": {
     parameters: {
       query?: never;
@@ -2000,7 +2651,8 @@ export interface paths {
      * Run Client Value Predictor
      * @description 💰 Run Client LTV Predictor & Nurturing Agent
      *
-     *     Scores all clients and sends personalized nurturing messages to:
+     *     Admin-only. Scores all clients and, when nurturing outbound is armed
+     *     (``CLIENT_NURTURING_OUTBOUND_ENABLED``), sends personalized messages to:
      *     - VIP clients (LTV > 80)
      *     - High-risk clients (LTV < 30 and inactive > 30 days)
      *
@@ -2208,7 +2860,7 @@ export interface paths {
     put?: never;
     /**
      * Disable Scheduler Task
-     * @description ⏸️ Disable a scheduled task
+     * @description ⏸️ Disable a scheduled task (admin-only)
      *
      *     Args:
      *         task_name: Name of the task to disable
@@ -2231,7 +2883,7 @@ export interface paths {
     put?: never;
     /**
      * Enable Scheduler Task
-     * @description ✅ Enable a scheduled task
+     * @description ✅ Enable a scheduled task (admin-only)
      *
      *     Args:
      *         task_name: Name of the task to enable
@@ -2498,7 +3150,21 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Confirm Subscription Via Link
+     * @description Token-only confirm endpoint for the email-link flow.
+     *
+     *     The double-opt-in email (TODO #80) sends a link containing only the
+     *     token — the mouth frontend redirect (`apps/mouth/src/app/api/blog/
+     *     newsletter/confirm/route.ts`) forwards that link here. The POST
+     *     variant above still works for clients that have both subscriberId
+     *     and token.
+     *
+     *     Confirmation tokens are 256-bit URL-safe random strings
+     *     (``secrets.token_urlsafe(32)`` ~43 chars) and migration 179 enforces
+     *     a partial unique index, so token-only lookup is collision-safe.
+     */
+    get: operations["confirm_subscription_via_link_api_blog_newsletter_confirm_get"];
     put?: never;
     /**
      * Confirm Subscription
@@ -2612,6 +3278,160 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/bridge/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Events
+     * @description Pro polls this endpoint to pull queued events from the outbox.
+     */
+    get: operations["get_events_api_bridge_events_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/bridge/ingest/article": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ingest Article
+     * @description Pro pushes a published article. Currently logs and queues — full
+     *     CMS integration deferred to Phase 1.5 (post-MVP).
+     */
+    post: operations["ingest_article_api_bridge_ingest_article_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/bridge/ingest/enrichment": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ingest Enrichment
+     * @description Pro pushes a KB enrichment for the RAG. Currently queued — full
+     *     Qdrant write deferred to Phase 2 (RAG enrichment agent).
+     */
+    post: operations["ingest_enrichment_api_bridge_ingest_enrichment_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/bridge/intake-gate/doc-counts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Push Intake Gate Doc Counts
+     * @description Pro pushes a full snapshot of per-user pending-document counts (non-PII).
+     *
+     *     Upserts each (user_email, pending_count); any user NOT in the snapshot is
+     *     zeroed (no pending docs) so a cleared user's gate-1 actually clears on Fly.
+     *     Idempotent — the Pro can push every few minutes.
+     */
+    post: operations["push_intake_gate_doc_counts_api_bridge_intake_gate_doc_counts_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/bridge/skills": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Skills
+     * @description Pro polls this endpoint to pull cell:skills Redis stream entries from Fly Upstash.
+     *
+     *     Per TICKET G spec v2 (research/symbiosis/2026-05-13-ticket-G-narrow-spec.md):
+     *     - CORR-G1 (fixed 2026-05-13 post-deploy): redis client via
+     *       `_get_skills_redis_client(request)` which prefers app.state.redis_manager
+     *       but falls back to ad-hoc REDIS_URL client on light-init api process.
+     *     - CORR-G3: dedicated BRIDGE_SKILLS_API_KEY
+     *     - CORR-G4: XINFO STREAM gap detection — events_orphaned=true if
+     *       after_id < stream lowest entry ID (Pro should reset last_id to "$")
+     */
+    get: operations["get_skills_api_bridge_skills_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/bridge/wa-media/ack": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ack Wa Media
+     * @description Pro worker acks rows it has downloaded + enqueued locally. Idempotent.
+     */
+    post: operations["ack_wa_media_api_bridge_wa_media_ack_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/bridge/wa-media/pending": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Wa Media Pending
+     * @description Pro worker pulls unconsumed whatsapp_media_pending rows (metadata only).
+     */
+    get: operations["get_wa_media_pending_api_bridge_wa_media_pending_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/cell/alerts": {
     parameters: {
       query?: never;
@@ -2675,7 +3495,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/chat/stream": {
+  "/api/channels/conversations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Unified Conversations
+     * @description Unified cross-channel conversation timeline.
+     *
+     *     Returns messages from all channels sorted by timestamp, enabling
+     *     a unified inbox view across WhatsApp, Telegram, Instagram, Web, and X.
+     */
+    get: operations["unified_conversations_api_channels_conversations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/dlq": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Dlq Messages
+     * @description View Dead Letter Queue messages for debugging failed deliveries.
+     */
+    get: operations["dlq_messages_api_channels_dlq_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/dlq/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Dlq Purge
+     * @description Purge exhausted DLQ messages older than N days. Admin-only.
+     */
+    delete: operations["dlq_purge_api_channels_dlq_purge_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/dlq/{message_id}/retry": {
     parameters: {
       query?: never;
       header?: never;
@@ -2685,11 +3568,115 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Chat Stream Post
-     * @description Modern POST endpoint for chat streaming (JSON body).
-     *     Compatible with frontend Next.js client.
+     * Dlq Retry Message
+     * @description Manually retry a single failed DLQ message.
      */
-    post: operations["chat_stream_post_api_chat_stream_post"];
+    post: operations["dlq_retry_message_api_channels_dlq__message_id__retry_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Channel Health
+     * @description Get health status for all registered channels.
+     *
+     *     Returns per-channel: status (up/degraded/down), metrics, DLQ pending count.
+     *     Admin-only endpoint.
+     */
+    get: operations["channel_health_api_channels_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/health-public": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Channel Health Public
+     * @description Public liveness for the Innervation Genoma aggregator.
+     *
+     *     Returns ONLY per-channel `status` (one of `up | degraded | down`) and a
+     *     top-level `ts` (unix epoch). No metrics, no DLQ, no error_rate, no
+     *     counts — the bridge_state_reader (cell.sensors.bridge_state_reader)
+     *     polls this endpoint and maps `up→ok`, `degraded→degraded`, `down→fail`.
+     *
+     *     Unauthenticated by design: the only information disclosed is whether
+     *     each channel is currently accepting messages, which an attacker
+     *     already observes by hitting the channel webhooks themselves. No PII,
+     *     no operational secrets, no traffic numbers.
+     *
+     *     Threshold logic mirrors `/health` (the `down → degraded → up` ladder
+     *     fixed in PR #380), so the two endpoints stay consistent.
+     */
+    get: operations["channel_health_public_api_channels_health_public_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Channel Stats
+     * @description Get detailed metrics for all channels.
+     */
+    get: operations["channel_stats_api_channels_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/channels/{name}/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Channel Health
+     * @description Return current health for a known channel name.
+     *
+     *     Args:
+     *         name: one of whatsapp/telegram/instagram/web.
+     *
+     *     Returns:
+     *         {status, ts, channel, queue_depth, last_event_seen_at, metadata}.
+     *
+     *     Raises:
+     *         404: if name not in KNOWN_CHANNELS.
+     */
+    get: operations["channel_health_api_channels__name__health_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2775,6 +3762,418 @@ export interface paths {
      * @description Get collective memory statistics.
      */
     get: operations["get_collective_stats_api_collective_memory_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/alerts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Alerts
+     * @description List compliance alerts with optional filters.
+     *
+     *     Team members only see alerts for clients where
+     *     ``clients.assigned_to`` matches their email.
+     *
+     *     Args:
+     *         client_id: Filter by specific client.
+     *         category: Filter by alert category.
+     *         severity: Filter by severity level.
+     *         status_filter: Filter by alert status.
+     *         deadline_within_days: Include deadlines through today plus this many days.
+     *         active_only: Return open alerts ordered by the nearest deadline.
+     *         limit: Max rows to return (1–500).
+     *         offset: Pagination offset.
+     *         user: Authenticated user dict.
+     *         pool: DB connection pool.
+     *
+     *     Returns:
+     *         {items: [...], limit: int, offset: int}
+     */
+    get: operations["list_alerts_api_compliance_alerts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/alerts/metrics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Metrics
+     * @description Return precision/recall/F1 metrics per category (admin only).
+     *
+     *     Args:
+     *         window_days: Look-back window for outcomes (default 90 days).
+     *         category: If given, return only this category.
+     *         user: Authenticated user dict.
+     *         pool: DB connection pool.
+     *
+     *     Returns:
+     *         {by_category: {...}, overall: {...}}
+     */
+    get: operations["get_metrics_api_compliance_alerts_metrics_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/alerts/retrain": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Post Retrain
+     * @description Manually trigger threshold autotune (admin only, honors kill-switch).
+     *
+     *     Args:
+     *         body: {dry_run, category?}. dry_run previews threshold changes without
+     *               persisting them.
+     *         user: Authenticated user dict.
+     *         pool: DB connection pool.
+     *
+     *     Returns:
+     *         {changed: [...], reason: "applied"|"dry_run"|"no_change"|"autotune_disabled"}
+     */
+    post: operations["post_retrain_api_compliance_alerts_retrain_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/alerts/{alert_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Alert
+     * @description Retrieve a single alert with its outcomes and delivery trace.
+     *
+     *     Args:
+     *         alert_id: Unique alert identifier.
+     *         user: Authenticated user dict.
+     *         pool: DB connection pool.
+     *
+     *     Returns:
+     *         {alert: {...}, outcomes: [...], deliveries: [...]}
+     */
+    get: operations["get_alert_api_compliance_alerts__alert_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/alerts/{alert_id}/outcome": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Post Outcome
+     * @description Record an outcome for an alert (acted / dismissed).
+     *
+     *     Team members can only record outcomes on their own clients
+     *     (matched via ``clients.assigned_to``).
+     *
+     *     Args:
+     *         alert_id: Unique alert identifier.
+     *         body: {outcome, note?}
+     *         user: Authenticated user dict.
+     *         pool: DB connection pool.
+     *
+     *     Returns:
+     *         {alert_id, outcome, status}
+     */
+    post: operations["post_outcome_api_compliance_alerts__alert_id__outcome_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm-guardian/drive/external-owner-risks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List External Owner Risks
+     * @description List open external-owner Drive migration risks.
+     */
+    get: operations["list_external_owner_risks_api_crm_guardian_drive_external_owner_risks_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm-guardian/drive/shortcut-edges": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Shortcut Edges
+     * @description List shortcut target edges for Canonical migration planning.
+     */
+    get: operations["list_shortcut_edges_api_crm_guardian_drive_shortcut_edges_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm-guardian/drive/stale-link-candidates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Stale Link Candidates
+     * @description List Drive IDs that failed direct metadata validation.
+     */
+    get: operations["list_stale_link_candidates_api_crm_guardian_drive_stale_link_candidates_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm-guardian/drive/unlinked-items": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Unlinked Items
+     * @description List visible CRM-relevant Drive items that need entity matching.
+     */
+    get: operations["list_unlinked_items_api_crm_guardian_drive_unlinked_items_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm-guardian/drive/validation-summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Drive Validation Summary
+     * @description Return aggregate state of the read-only Drive metadata snapshot.
+     */
+    get: operations["get_drive_validation_summary_api_crm_guardian_drive_validation_summary_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/bank-transactions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Bank Transactions
+     * @description Parsed bank statement transactions, newest first.
+     */
+    get: operations["get_bank_transactions_api_crm_accounting_bank_transactions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/cashout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Cashout
+     * @description Weekly cashout rows (mirrors Asya's sheet), newest first.
+     */
+    get: operations["get_cashout_api_crm_accounting_cashout_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Confirm Reconciliation
+     * @description Confirm a payment match. Single writer of payment_status (superscar #9).
+     *
+     *     Does NOT auto-transition the practice to on_process — Zero's decision #1:
+     *     Asya moves it with a second explicit click.
+     */
+    post: operations["confirm_reconciliation_api_crm_accounting_confirm_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/export-sheet": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Export To Sheet
+     * @description On-demand push of the weekly cashout to Zero's Google Sheet.
+     *
+     *     NOT auto-sync (Zero's decision #4): Asya clicks Export. The target sheet is
+     *     pre-created+shared by Zero; we write into it via the existing SheetsService.
+     */
+    post: operations["export_to_sheet_api_crm_accounting_export_sheet_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/import-cashout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Import Cashout Pdf
+     * @description Import a weekly cashout worksheet PDF into the cashout log.
+     *
+     *     The file is Asya's already-processed 9-column worksheet (NAME/PROCESS/PNBP/
+     *     URGENT/RPTKA-IMTA/MARGIN BS/FINAL PRICE/NOTE), digitally exported (parsed with
+     *     pdfplumber — no OCR), usually stacking several weeks each opened by a
+     *     "NEW CASHOUT DD MONTH YYYY" title row.
+     *
+     *     Idempotent: re-uploading the same file replaces that week's prior import rows
+     *     instead of duplicating them, and never touches reconciliation-linked rows.
+     */
+    post: operations["import_cashout_pdf_api_crm_accounting_import_cashout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/match-candidates/{txn_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Match Candidates
+     * @description Propose invoice candidates for an incoming (credit) bank transaction.
+     *
+     *     The accountant picks the right one and calls /confirm. Never auto-confirms.
+     */
+    get: operations["match_candidates_api_crm_accounting_match_candidates__txn_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/accounting/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Summary
+     * @description Cash-basis P&L summary over the cashout log.
+     */
+    get: operations["get_summary_api_crm_accounting_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2918,11 +4317,13 @@ export interface paths {
      * List Clients
      * @description List clients with pagination and search.
      *
-     *     All authenticated users can see ALL clients.
+     *     RBAC:
+     *     - Admin/board users: See ALL clients
+     *     - Team members: Only clients assigned to them
      *
      *     FILTERS:
      *     - **status**: Filter by client status
-     *     - **assigned_to**: Filter by assigned team member (optional)
+     *     - **assigned_to**: Filter by assigned team member (optional, admin only)
      *     - **search**: Search in name, email, phone fields
      *     - **nationality**: Filter by nationality
      *     - **limit**: Max results (default: 50, max: 200)
@@ -3075,8 +4476,10 @@ export interface paths {
     put?: never;
     /**
      * Extract Passport Data
-     * @description Extract passport number and expiry date from passport image using Gemini Vision.
-     *     Updates the client record with extracted data.
+     * @deprecated
+     * @description DEPRECATED — Use /extract-passport-enhanced instead.
+     *     This endpoint only extracts 2 fields and requires a Drive URL.
+     *     Kept for backward compatibility with existing callers.
      */
     post: operations["extract_passport_data_api_crm_clients_extract_passport_post"];
     delete?: never;
@@ -3096,19 +4499,12 @@ export interface paths {
     put?: never;
     /**
      * Extract Passport Enhanced
-     * @description Enhanced passport OCR using Gemini Vision.
-     *     Extracts all visible data from passport and updates client record.
+     * @description Passport OCR using Gemini Vision — preview or persist mode.
      *
-     *     Returns:
-     *         - passport_number
-     *         - expiry_date (linked to alert)
-     *         - full_name (with fuzzy match verification)
-     *         - gender (M/F)
-     *         - date_of_birth
-     *         - birthplace (for enrichment)
-     *         - nationality
-     *         - MRZ lines (if visible)
-     *         - confidence score
+     *     Preview mode (client_id=None): stateless OCR, returns extracted fields, no DB write.
+     *     Persist mode (client_id=int): OCR + DB update + name match verification.
+     *
+     *     Accepts base64 image data directly (no Drive download).
      */
     post: operations["extract_passport_enhanced_api_crm_clients_extract_passport_enhanced_post"];
     delete?: never;
@@ -3170,11 +4566,50 @@ export interface paths {
      *
      *     Returns counts by status, top assigned team members, etc.
      *
+     *     Access Control:
+     *     - Admin: sees global stats across all clients
+     *     - Team member: sees only stats for clients assigned to them
+     *
      *     Performance: Cached for 5 minutes to reduce database load.
+     *
+     *     Cache safety: the @cached decorator hashes the call kwargs, which include
+     *     the authenticated user (a JSON-serializable dict) — so every user gets a
+     *     distinct cache entry and cannot be served another user's aggregate.
+     *     Mirrors get_practices_stats in crm_practices.py.
      */
     get: operations["get_clients_stats_api_crm_clients_stats_overview_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/clients/upsert-by-phone": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upsert Client By Phone
+     * @description Idempotent phone-keyed client upsert for wa-mirror lead promotion + strategic recap.
+     *
+     *     Atomic per phone: a transaction-scoped advisory lock serializes concurrent upserts for
+     *     the same phone (no unique constraint needed — production data has 51 live shared-phone
+     *     groups), then `SELECT ... FOR UPDATE WHERE phone_normalized = $1` picks the best match
+     *     (live first, then most-recent) and ENRICHes it, or INSERTs a fresh lead. Shared-phone
+     *     groups (spouses / reused numbers) are reported via `matched_count` for audit.
+     *     `strategic_recap` is applied only when the existing `strategic_recap_source` is not
+     *     'manual' (human edit wins).
+     *
+     *     Auth: scoped `X-CRM-Write-Key` + `WA_MIRROR_CRM_WRITE_ENABLED` flag.
+     */
+    post: operations["upsert_client_by_phone_api_crm_clients_upsert_by_phone_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3221,6 +4656,42 @@ export interface paths {
     patch: operations["update_client_api_crm_clients__client_id__patch"];
     trace?: never;
   };
+  "/api/crm/clients/{client_id}/ai-summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Client Ai Summary
+     * @description Fetch the L1 AI summary for a client (cross-folder Phase 1).
+     *
+     *     The summary is produced by the CRM-Guardian gemini CLI worker
+     *     (scripts/crm_guardian_gemini_cli_worker.py) reading Drive folder of
+     *     the client + all linked active companies (client_company_links).
+     *
+     *     Access control:
+     *       - Admin (`is_crm_admin`): can read any client's summary
+     *       - Team member: can read only clients matching their RBAC filter
+     *         (own assigned_to or null assigned_to)
+     *       - Non-team: 403
+     *
+     *     Returns 404 if client doesn't exist (or RBAC denies visibility);
+     *     200 with `status='not_generated'` and null fields if the worker hasn't
+     *     yet processed this client; 200 with `status='available'` and the JSONB
+     *     payload otherwise; 200 with `status='pending'` if a queue row is
+     *     waiting/running.
+     */
+    get: operations["get_crm_client_ai_summary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/crm/clients/{client_id}/audit-trail": {
     parameters: {
       query?: never;
@@ -3245,6 +4716,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/crm/clients/{client_id}/avatar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Client Avatar
+     * @description Serve a client's avatar image.
+     *
+     *     The list endpoint (`GET /`) omits base64 data-URI avatars to keep the page
+     *     lean (they average ~20KB, up to 518KB, and would bloat a 200-row page to
+     *     ~10MB). Cards lazy-load the image here when `has_avatar` is true.
+     *
+     *     - Stored as a `data:` URI  -> decoded and streamed as image bytes.
+     *     - Stored as an http(s) URL  -> 302 redirect to that URL.
+     *
+     *     Access Control: admin sees any client; a team member only their assigned
+     *     ones (same rule as `GET /{client_id}`).
+     */
+    get: operations["get_client_avatar_api_crm_clients__client_id__avatar_get"];
+    put?: never;
+    /**
+     * Upload Client Avatar
+     * @description Upload a client avatar to Tigris S3 and store the public URL.
+     *
+     *     Replaces the legacy path where the frontend inlined a base64 data: URI into
+     *     avatar_url (which bloated the clients list to ~10MB). The image bytes are
+     *     stored object-side and avatar_url becomes a plain public https URL.
+     *
+     *     Access Control: admin any client; team member only their assigned ones.
+     */
+    post: operations["upload_client_avatar_api_crm_clients__client_id__avatar_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/crm/clients/{client_id}/documents": {
     parameters: {
       query?: never;
@@ -3255,14 +4766,12 @@ export interface paths {
     /**
      * Get Client Documents
      * @description Get all documents for a client, optionally filtered by category.
-     *     RBAC REMOVED: All authenticated users can view documents.
      */
     get: operations["get_client_documents_api_crm_clients__client_id__documents_get"];
     put?: never;
     /**
      * Create Document
      * @description Add a document to a client. Auto-triggers OCR for passport documents.
-     *     RBAC REMOVED: All authenticated users can create documents.
      */
     post: operations["create_document_api_crm_clients__client_id__documents_post"];
     delete?: never;
@@ -3283,7 +4792,6 @@ export interface paths {
     /**
      * Create Documents Bulk
      * @description Bulk insert documents for a client - optimized for migration.
-     *     RBAC REMOVED: All authenticated users can bulk create documents.
      *
      *     This endpoint allows inserting multiple documents in a single transaction,
      *     significantly improving performance during large data migrations.
@@ -3348,7 +4856,6 @@ export interface paths {
     /**
      * Archive Document
      * @description Archive or delete a document.
-     *     RBAC REMOVED: All authenticated users can archive/delete documents.
      */
     delete: operations["archive_document_api_crm_clients__client_id__documents__doc_id__delete"];
     options?: never;
@@ -3356,9 +4863,43 @@ export interface paths {
     /**
      * Update Document
      * @description Update a document.
-     *     RBAC REMOVED: All authenticated users can update documents.
      */
     patch: operations["update_document_api_crm_clients__client_id__documents__doc_id__patch"];
+    trace?: never;
+  };
+  "/api/crm/clients/{client_id}/ensure-drive-folder": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ensure Drive Folder
+     * @description Idempotently ensure a Google Drive folder structure exists for a client.
+     *
+     *     Auth: either a normal user JWT (RBAC enforced — admin or assigned user) OR
+     *     a valid `X-Internal-Key` header matching `settings.wa_mirror_internal_key`.
+     *     Used by:
+     *       - `wa-mirror-auto-promote-leads.py` after inserting a new lead client directly in DB
+     *         (those clients bypass `POST /api/crm/clients/` so the BackgroundTask Drive creation
+     *          never fires).
+     *       - Manual repair tooling / scripts.
+     *
+     *     Behavior:
+     *       - If `clients.google_drive_folder_id` is already set → returns `{"created": False, ...}`.
+     *       - Otherwise → calls `ServiceAccountDriveService.ensure_client_folder` (awaited, NOT a
+     *         BackgroundTask) so caller knows the outcome. The ensure path holds a per-client
+     *         pg advisory lock and re-checks the column, so a concurrent creator never produces
+     *         a twin folder.
+     */
+    post: operations["ensure_drive_folder_api_crm_clients__client_id__ensure_drive_folder_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/crm/clients/{client_id}/extract-visa": {
@@ -3394,14 +4935,12 @@ export interface paths {
     /**
      * Get Family Members
      * @description Get all family members for a client.
-     *     RBAC REMOVED: All authenticated users can view family members.
      */
     get: operations["get_family_members_api_crm_clients__client_id__family_get"];
     put?: never;
     /**
      * Create Family Member
      * @description Add a family member to a client.
-     *     RBAC REMOVED: All authenticated users can create family members.
      */
     post: operations["create_family_member_api_crm_clients__client_id__family_post"];
     delete?: never;
@@ -3423,7 +4962,6 @@ export interface paths {
     /**
      * Delete Family Member
      * @description Delete a family member.
-     *     RBAC REMOVED: All authenticated users can delete family members.
      */
     delete: operations["delete_family_member_api_crm_clients__client_id__family__member_id__delete"];
     options?: never;
@@ -3431,7 +4969,6 @@ export interface paths {
     /**
      * Update Family Member
      * @description Update a family member.
-     *     RBAC REMOVED: All authenticated users can update family members.
      */
     patch: operations["update_family_member_api_crm_clients__client_id__family__member_id__patch"];
     trace?: never;
@@ -3467,7 +5004,6 @@ export interface paths {
     /**
      * Get Client Profile
      * @description Get enhanced client profile with family members, documents, and expiry alerts.
-     *     RBAC REMOVED: All authenticated users can view all client profiles.
      */
     get: operations["get_client_profile_api_crm_clients__client_id__profile_get"];
     put?: never;
@@ -3478,7 +5014,6 @@ export interface paths {
     /**
      * Update Client Profile
      * @description Update client profile fields (avatar, Google Drive folder, etc.)
-     *     RBAC REMOVED: All authenticated users can update client profiles.
      */
     patch: operations["update_client_profile_api_crm_clients__client_id__profile_patch"];
     trace?: never;
@@ -3504,6 +5039,31 @@ export interface paths {
      *     - Team members: Can only view summary of clients assigned to them
      */
     get: operations["get_client_summary_api_crm_clients__client_id__summary_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/clients/{client_id}/wa-case-intelligence": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Client Wa Case Intelligence
+     * @description Fetch Zantara Captain case cards derived from WhatsApp analysis.
+     *
+     *     This endpoint is read-only. It intentionally returns case-level intelligence
+     *     separately from clients.strategic_recap so the CRM can show per-conversation
+     *     reasoning, evidence, ideal reply, and next action without flattening multiple
+     *     cases into a single paragraph.
+     */
+    get: operations["get_crm_client_wa_case_intelligence"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3692,6 +5252,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/crm/companies/{company_id}/sync-drive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Sync Company Drive Folder
+     * @description _require_crm_admin(current_user)
+     *     Scan the company's Google Drive folder and upsert files into company_documents.
+     *     Files already tracked (by google_drive_file_id) are skipped.
+     *     Returns a summary: {added, skipped, total, docs}.
+     */
+    post: operations["sync_company_drive_folder_api_crm_companies__company_id__sync_drive_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/crm/companies/{company_id}/tax": {
     parameters: {
       query?: never;
@@ -3762,8 +5345,7 @@ export interface paths {
     /**
      * Get All Expiry Alerts
      * @description Get all expiry alerts across all clients (for team dashboard).
-     *     RBAC REMOVED: All authenticated users can view all expiry alerts.
-     *     Optional filtering by assigned_to is available as a query parameter.
+     *     Non-admin users see only alerts for their assigned clients.
      */
     get: operations["get_all_expiry_alerts_api_crm_expiry_alerts_get"];
     put?: never;
@@ -3788,6 +5370,133 @@ export interface paths {
     get: operations["get_expiry_alerts_summary_api_crm_expiry_alerts_summary_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/intelligence/evidence-dossiers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Evidence Dossiers
+     * @description Return person-first evidence dossiers for the team workspace.
+     */
+    get: operations["get_evidence_dossiers_api_crm_intelligence_evidence_dossiers_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/intelligence/workspace-ai-snapshots": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create Workspace Ai Snapshot Draft
+     * @description Save Workspace AI findings as draft intake for human review.
+     *
+     *     Draft snapshots are intentionally not consumed by the business-story UI.
+     *     A separate approval step must mark rows approved before facts can appear
+     *     inside kita.
+     */
+    post: operations["create_workspace_ai_snapshot_draft_api_crm_intelligence_workspace_ai_snapshots_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/intelligence/workspace-ai-snapshots/auto-approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Auto Approve Workspace Ai Snapshot Drafts
+     * @description Dry-run or apply policy auto-approval for reviewed Workspace AI stories.
+     */
+    post: operations["auto_approve_workspace_ai_snapshot_drafts_api_crm_intelligence_workspace_ai_snapshots_auto_approve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/intelligence/workspace-ai-snapshots/review": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Review Workspace Ai Snapshots
+     * @description Return Workspace AI snapshots awaiting team review.
+     */
+    get: operations["review_workspace_ai_snapshots_api_crm_intelligence_workspace_ai_snapshots_review_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/intelligence/workspace-ai-snapshots/{snapshot_id}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Approve Workspace Ai Snapshot Draft
+     * @description Approve a draft Workspace AI snapshot for Business Story use.
+     */
+    post: operations["approve_workspace_ai_snapshot_draft_api_crm_intelligence_workspace_ai_snapshots__snapshot_id__approve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/intelligence/{client_id}/query": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Query Notebooklm For Client
+     * @description Query NotebookLM with CRM context for a specific client.
+     *
+     *     Builds an Italian-language prompt that references the client by name and ID,
+     *     then shells out to the NLM CLI to query the CRM notebook.
+     */
+    post: operations["query_notebooklm_for_client_api_crm_intelligence__client_id__query_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3843,7 +5552,6 @@ export interface paths {
     /**
      * Get Client Timeline
      * @description Get complete interaction timeline for a client.
-     *     RBAC REMOVED: All authenticated users can view all client timelines.
      */
     get: operations["get_client_timeline_api_crm_interactions_client__client_id__timeline_get"];
     put?: never;
@@ -3886,7 +5594,6 @@ export interface paths {
     /**
      * Get Practice History
      * @description Get all interactions related to a specific practice.
-     *     RBAC REMOVED: All authenticated users can view all practice histories.
      */
     get: operations["get_practice_history_api_crm_interactions_practice__practice_id__history_get"];
     put?: never;
@@ -3944,6 +5651,114 @@ export interface paths {
      *     User must be admin or the creator of the interaction.
      */
     delete: operations["delete_interaction_api_crm_interactions__interaction_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/internal/clients/{client_id}/documents/upload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload Document Base64 Internal
+     * @description Service-to-service intake upload path.
+     *
+     *     Authenticated by ``X-CRM-Write-Key`` and hard-gated by
+     *     ``WA_MIRROR_CRM_WRITE_ENABLED``. The actual upload implementation is the same
+     *     path used by the frontend/manual reviewer; only the RBAC pre-check is skipped
+     *     because Pro-side intake already resolved and gate-checked the target client.
+     */
+    post: operations["upload_document_base64_internal_api_crm_internal_clients__client_id__documents_upload_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Crm Notifications
+     * @description Return notification_alerts for the current team member.
+     *
+     *     Filters by clients assigned_to the current user (or all clients for admins).
+     *     Notifications are sorted newest first.
+     */
+    get: operations["get_crm_notifications_api_crm_notifications_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/notifications/count": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Unread Notifications Count
+     * @description Return count of unread (pending) portal notifications for current user.
+     */
+    get: operations["get_unread_notifications_count_api_crm_notifications_count_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/notifications/{notification_id}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Mark Notification Read
+     * @description Mark a notification as read (status = 'sent').
+     */
+    patch: operations["mark_notification_read_api_crm_notifications__notification_id__read_patch"];
+    trace?: never;
+  };
+  "/api/crm/pilot/tax-company-map": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Tax Company Pilot
+     * @description Return one read-only tax company pilot map.
+     */
+    get: operations["get_tax_company_pilot_api_crm_pilot_tax_company_map_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -4219,6 +6034,46 @@ export interface paths {
      *     Performance: Cached for 5 minutes to reduce database load.
      */
     get: operations["get_practices_stats_api_crm_practices_stats_overview_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/crm/practices/stats/revenue-growth": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Practices Revenue Growth
+     * @description Month-over-month revenue growth for the practices book.
+     *
+     *     Contract consumed by the frontend (crm.api.ts::getRevenueGrowth →
+     *     useDashboardStats). The FE runs this inside a Promise.all with practice
+     *     stats + expiry alerts and has NO catch, so a 404 here previously rejected
+     *     the whole dashboard stats block on every workspace page. The route MUST
+     *     exist and return the shape below.
+     *
+     *     Response shape:
+     *         {
+     *           "current_month":  {total_revenue, paid_revenue, outstanding_revenue},
+     *           "previous_month": {total_revenue, paid_revenue, outstanding_revenue},
+     *           "growth_percentage": float,   # (curr - prev) / prev * 100, 0 if prev==0
+     *           "monthly_breakdown": [ {month, total_revenue}, ... ]  # last 6 months
+     *         }
+     *
+     *     Access Control:
+     *     - Admin (full view): revenue across all practices.
+     *     - Team member: revenue only for practices assigned to them.
+     *
+     *     Performance: cached for 5 minutes (CACHE_TTL_STATS_SECONDS).
+     */
+    get: operations["get_practices_revenue_growth_api_crm_practices_stats_revenue_growth_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4539,7 +6394,14 @@ export interface paths {
     put?: never;
     /**
      * Run All Notifiers
-     * @description Run all three notifiers in sequence. Single cron endpoint.
+     * @description Run all four notifiers in sequence. Single cron endpoint.
+     *
+     *     The response still returns HTTP 200 (unchanged for monitoring
+     *     compatibility — the Air cron wrapper treats non-200 as outright
+     *     failures) but the body now carries ``status`` = ``partial_failure`` when
+     *     any sub-task raised. Monitoring dashboards that already consume this
+     *     endpoint can treat ``status != "ok"`` as an alert condition without
+     *     causing a regression today.
      */
     post: operations["run_all_notifiers_api_cron_notifiers_all_post"];
     delete?: never;
@@ -4562,6 +6424,107 @@ export interface paths {
      * @description Send birthday emails to clients with today's birthday. Called daily from Air cron.
      */
     post: operations["run_birthday_notifier_api_cron_notifiers_birthday_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/cron/notifiers/compliance-forecast": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run Compliance Forecast
+     * @description Run the predictive compliance engine and return forecasts with revenue estimates.
+     *
+     *     Kill switch: system_settings.compliance_forecast_enabled must be "true".
+     *     Optional query param: ?scan_days=365 (default 365).
+     */
+    post: operations["run_compliance_forecast_api_cron_notifiers_compliance_forecast_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/cron/notifiers/e33-guarantee-scan": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run E33 Guarantee Scan
+     * @description Scan open E33 Second Home cases and persist Day-90 / annual-maintenance alerts.
+     *
+     *     Loads non-terminal E33 cases, builds per-case compliance forecasts
+     *     (Day-90 guarantee gate with Day 30/60/75 escalation + annual maintenance
+     *     recurrence) and feeds them to the existing AlertsEngine — same
+     *     persist/dedup/promote path as /compliance-forecast. Team dispatch only;
+     *     nothing client-facing (Legge 5).
+     *
+     *     Kill switch: system_settings.e33_guarantee_scan_enabled must be "true"
+     *     (blocked by default, same posture as visa_expiry_notifier_enabled).
+     */
+    post: operations["run_e33_guarantee_scan_api_cron_notifiers_e33_guarantee_scan_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/cron/notifiers/email-health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run Email Health
+     * @description Run retry + stale-detection + escalation + daily report for email.
+     *
+     *     Designed to be called every 30 min from Air cron. Respects the
+     *     ``email_health_monitor_enabled`` kill switch in ``system_settings``
+     *     (seeded to 'true' by migration 126).
+     *
+     *     Returns a consolidated stats dict. If any phase raises, the response
+     *     body carries ``status = "partial_failure"`` (HTTP 200) so monitoring
+     *     can distinguish a clean run from one with internal failures without
+     *     a code change to the Air cron wrapper.
+     */
+    post: operations["run_email_health_api_cron_notifiers_email_health_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/cron/notifiers/lkpm-deadlines": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run Lkpm Deadline Notifier
+     * @description Check pending LKPM reports and remind tax consultants of approaching deadlines.
+     */
+    post: operations["run_lkpm_deadline_notifier_api_cron_notifiers_lkpm_deadlines_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -5009,18 +6972,23 @@ export interface paths {
     };
     /**
      * Get Logs
-     * @description Get filtered logs.
+     * @description Get recent application logs from the in-process ring buffer.
      *
-     *     Note: This is a placeholder. In production, you would integrate with
-     *     a logging service like CloudWatch, ELK, or similar.
+     *     The ring buffer (``backend.app.services.log_ring_buffer``) is attached
+     *     to the root logger by :func:`configure_logging` and stores the last
+     *     ~2000 records. This endpoint is zero-dependency — it works in dev and
+     *     prod without flyctl auth or external aggregators like Loki / CloudWatch.
+     *
+     *     For long-term retention, scrape Fly stdout logs externally; this
+     *     endpoint is intended for live-debugging the running process.
      *
      *     Args:
-     *         module: Optional module name filter
-     *         level: Optional log level filter
-     *         limit: Maximum number of logs
+     *         module: Optional logger-hierarchy filter (e.g. ``backend.app``).
+     *         level: Optional minimum level (DEBUG, INFO, WARNING, ERROR).
+     *         limit: Maximum number of records to return (1-1000).
      *
      *     Returns:
-     *         Logs data
+     *         ``{success, logs, count, filters, timestamp}``.
      */
     get: operations["get_logs_api_debug_logs_get"];
     put?: never;
@@ -5655,8 +7623,12 @@ export interface paths {
     put?: never;
     /**
      * Scrape Url
-     * @description Mock scraper for now.
-     *     TODO: Integrate with Firecrawl or standard BeautifulSoup scraper.
+     * @description Fetch a URL and extract title + key paragraphs + quotes.
+     *
+     *     Closes TODO(#78): uses ``httpx + BeautifulSoup`` (no paid Firecrawl
+     *     dependency). Failures degrade to ``success=False`` rather than 500,
+     *     so the Dream Room can render a graceful "couldn't read this page"
+     *     state.
      */
     post: operations["scrape_url_api_dream_scrape_post"];
     delete?: never;
@@ -5676,7 +7648,17 @@ export interface paths {
     put?: never;
     /**
      * Save State
-     * @description Persist Dream Room state (Articles, Inspirations, etc.)
+     * @description Persist Dream Room state (Articles, Inspirations, etc.) to Postgres.
+     *
+     *     Closes TODO(#77): replaced the in-memory MOCK_DB (which silently lost
+     *     state on every Fly machine restart) with a JSONB-backed UPSERT in
+     *     table ``dream_room_state`` (migration 178).
+     *
+     *     The asyncpg pool installs a ``jsonb`` codec in
+     *     ``init_db_connection`` — we pass ``state`` as a Python dict and let
+     *     the codec serialize it once. Passing ``json.dumps(state)`` here would
+     *     double-encode (cf. memory:
+     *     ``discovery_jsonb_double_encoding_systemic_2026_05_14``).
      */
     post: operations["save_state_api_dream_state_post"];
     delete?: never;
@@ -5694,7 +7676,10 @@ export interface paths {
     };
     /**
      * Get State
-     * @description Retrieve persisted state
+     * @description Retrieve persisted Dream Room state (TODO #77).
+     *
+     *     Returns ``state=None`` when the user has no saved canvas — keeps the
+     *     client contract compatible with the legacy MOCK_DB.get() behaviour.
      */
     get: operations["get_state_api_dream_state__user_id__get"];
     put?: never;
@@ -5987,6 +7972,32 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/drive/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Drive Stats
+     * @description Aggregate storage statistics for the team Drive: total storage used,
+     *     files count, folders count, storage by type, largest files.
+     *
+     *     Backs the `get_drive_storage_stats` MCP tool, whose call to this exact
+     *     path (`/api/drive/stats`) predates this route's existence — every call
+     *     404'd silently (suppressed by error_monitoring.py's Drive 404 filter)
+     *     until this handler was added.
+     */
+    get: operations["drive_stats_api_drive_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/drive/status": {
     parameters: {
       query?: never;
@@ -6162,6 +8173,120 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/events/emit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Emit Test Event
+     * @description Emit a test event for debugging (admin only).
+     */
+    post: operations["emit_test_event_api_events_emit_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/events/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Event Bus Stats
+     * @description Get EventBus statistics — subscriber counts, event counts, recent traces.
+     */
+    get: operations["get_event_bus_stats_api_events_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/experience/query": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Search trajectories by FTS + filters
+     * @description Full-text search on trajectory procedures, optionally filtered by outcome, cell, tag. Results ordered by FTS rank then confidence.
+     */
+    post: operations["query_trajectories_api_experience_query_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/experience/record": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record an execution trajectory
+     * @description Persist a trajectory (success|failure|partial) in the shared Genome. Idempotent: re-posting the same trajectory_id updates procedure/tags and keeps the max confidence.
+     */
+    post: operations["record_trajectory_api_experience_record_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/experience/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Aggregate trajectory counts by outcome */
+    get: operations["trajectory_stats_api_experience_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/experience/{trajectory_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Fetch one trajectory by id */
+    get: operations["get_trajectory_api_experience__trajectory_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/federation/inbox": {
     parameters: {
       query?: never;
@@ -6254,6 +8379,144 @@ export interface paths {
      * @description Get federation overview — unread counts per node.
      */
     get: operations["federation_status_api_federation_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/funnel/session/convert": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Convert Session */
+    post: operations["convert_session_api_funnel_session_convert_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/funnel/session/touch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Touch Session */
+    post: operations["touch_session_api_funnel_session_touch_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/funnel_email/fire-due": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cron Fire Due
+     * @description Internal cron endpoint. Runs the due-row sender.
+     *
+     *     Auth: X-Internal-Key header must match INTERNAL_CRON_KEY env var.
+     *     Called by Air OpenClaw cron every 10 minutes.
+     */
+    post: operations["cron_fire_due_api_funnel_email_fire_due_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/funnel_email/unsubscribe/{token}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Unsubscribe
+     * @description One-click unsubscribe. Always returns 200 HTML so the email link
+     *     works even if the token is bogus (avoid leaking which tokens exist).
+     */
+    get: operations["unsubscribe_api_funnel_email_unsubscribe__token__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/guardian/decisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Decisions
+     * @description Get recent guardian decisions with optional filters.
+     */
+    get: operations["get_decisions_api_guardian_decisions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/guardian/risk-score": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Risk Score
+     * @description Get latest risk score and 7-day trend.
+     */
+    get: operations["get_risk_score_api_guardian_risk_score_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/guardian/risk-score/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Risk Score History
+     * @description Get full risk score history.
+     */
+    get: operations["get_risk_score_history_api_guardian_risk_score_history_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6359,6 +8622,30 @@ export interface paths {
      * @description List bonuses. Team members see only their own.
      */
     get: operations["list_bonuses_api_hr_bonuses_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/bonuses/historical": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Bonus Historical
+     * @description Pre-system bonus recaps imported from PDF (admin only).
+     *
+     *     A SEPARATE source from the bonus ledger, kept for reconciliation: the two
+     *     overlap on some months with different totals. Consumers show them side by
+     *     side and never add them together.
+     */
+    get: operations["list_bonus_historical_api_hr_bonuses_historical_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6483,6 +8770,10 @@ export interface paths {
     /**
      * Request Leave
      * @description Create a leave request.
+     *
+     *     On success, schedules a fire-and-forget email notification to the
+     *     supervisor (see hr_leave_routing.build_notification_recipients).
+     *     Email failure does NOT fail the request; it is logged as a warning.
      */
     post: operations["request_leave_api_hr_leave_request_post"];
     delete?: never;
@@ -6511,6 +8802,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/hr/leave/team-summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Team Leave Summary
+     * @description Get leave balance summary for all team members. Admin only.
+     */
+    get: operations["get_team_leave_summary_api_hr_leave_team_summary_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/hr/leave/types": {
     parameters: {
       query?: never;
@@ -6520,7 +8831,7 @@ export interface paths {
     };
     /**
      * Get Leave Types
-     * @description Return all leave types for dropdown population.
+     * @description Return all active leave types for dropdown population.
      */
     get: operations["get_leave_types_api_hr_leave_types_get"];
     put?: never;
@@ -6543,6 +8854,12 @@ export interface paths {
     /**
      * Approve Leave
      * @description Approve a leave request.
+     *
+     *     Permission: HR admins (except self) OR the delegated supervisor of
+     *     the requester. Self-approval is forbidden for everyone.
+     *
+     *     On success, schedules a fire-and-forget email notification to the
+     *     requester (with Zero/Asya in CC, dedup'd against the reviewer).
      */
     post: operations["approve_leave_api_hr_leave__request_id__approve_post"];
     delete?: never;
@@ -6563,6 +8880,12 @@ export interface paths {
     /**
      * Reject Leave
      * @description Reject a leave request.
+     *
+     *     Permission: HR admins (except self) OR the delegated supervisor of
+     *     the requester. Self-rejection is forbidden for everyone.
+     *
+     *     On success, schedules a fire-and-forget email notification to the
+     *     requester (with Zero/Asya in CC, dedup'd against the reviewer).
      */
     post: operations["reject_leave_api_hr_leave__request_id__reject_post"];
     delete?: never;
@@ -6583,6 +8906,138 @@ export interface paths {
      * @description Personal dashboard for team member.
      */
     get: operations["get_my_dashboard_api_hr_my_dashboard_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/my-late-incident/resolve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resolve My Late Incident
+     * @description Submit a reason for the logged-in user's oldest pending late incident.
+     *
+     *     Returns:
+     *         {"success": true, "state": "RESOLVED"|"RESOLVED_LATE"|"ESCALATED"}
+     *         {"success": true, "state": "clear", "message": "no pending late incident"}
+     *           when nothing is pending (idempotent no-op).
+     *
+     *     The transition matches the email-token form exactly (shared helper). Resolves
+     *     the OLDEST pending incident first (FIFO) so a backlog clears deterministically;
+     *     the gate re-probes after each call so multiple pending dates drain one per
+     *     submission.
+     */
+    post: operations["resolve_my_late_incident_api_hr_my_late_incident_resolve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/owner/cashout/overview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Overview */
+    get: operations["get_overview_api_hr_owner_cashout_overview_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/owner/cashout/sync": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger Sync */
+    post: operations["trigger_sync_api_hr_owner_cashout_sync_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/owner/cashout/sync-status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Sync Status */
+    get: operations["get_sync_status_api_hr_owner_cashout_sync_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/owner/cashout/visa-types": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Visa Types */
+    get: operations["get_visa_types_api_hr_owner_cashout_visa_types_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/owner/cashout/weeks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Weeks */
+    get: operations["list_weeks_api_hr_owner_cashout_weeks_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/hr/owner/cashout/weeks/{week_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Week */
+    get: operations["get_week_api_hr_owner_cashout_weeks__week_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6835,6 +9290,337 @@ export interface paths {
     get: operations["get_instagram_messages_api_instagram_messages__user_id__get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/gate/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Gate Status
+     * @description Per-user clearance state for the workspace login gate.
+     *
+     *     Returns (spec §3.1):
+     *         {
+     *           "blocked": bool,
+     *           "sections": {
+     *             "documents": {"count": int, "blocking": true},
+     *             "late_note": {"count": int, "blocking": true},
+     *             "deadlines": {"count": int, "blocking": true}
+     *           },
+     *           "as_of": "<iso8601>",
+     *           "degraded": bool   # true → evaluator failed, failed OPEN (F4)
+     *         }
+     *
+     *     Never 5xx on a count bug: the evaluator fails OPEN (blocked=false +
+     *     degraded=true) so a probe error cannot lock the whole company out of kita.
+     */
+    get: operations["get_gate_status_api_intake_gate_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/clients/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Clients
+     * @description Name/phone/email lookup over local CRM clients for the destination picker.
+     *
+     *     Projection includes the HUMAN DISAMBIGUATORS (phone/email/nationality):
+     *     the CRM holds many homonyms (10 bare "Walter"s) distinguishable only by
+     *     contact data — a name-only list forces blind guessing. Phone matching
+     *     activates when the query carries >=5 digits. This is a routing affordance,
+     *     not client access: a reviewer redirecting a NO_MATCH document must find ANY
+     *     client. pg_trgm-ranked, ILIKE-gated. READ-ONLY, Pro reader, local DB only.
+     */
+    get: operations["search_clients_api_intake_review_clients_search_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/clients/{client_id}/practices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Client Practices
+     * @description Open/recent practices of a client — the practice picker for approve.
+     *
+     *     READ-ONLY, minimal projection. Sorted: open practices first, then recency.
+     */
+    get: operations["list_client_practices_api_intake_review_clients__client_id__practices_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/document-categories": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Document Categories
+     * @description Active CRM document categories for the two-level review destination picker.
+     *
+     *     The review UI needs the canonical ``document_categories`` table, not a
+     *     hardcoded copy, so the reviewer can choose both the folder-level group and
+     *     the precise CRM document subtype before approve.
+     */
+    get: operations["list_document_categories_api_intake_review_document_categories_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/queue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Review Queue
+     * @description List proposals awaiting review, filtered by the caller's RBAC scope.
+     *
+     *     Admins see the entire queue. A non-admin sees ONLY rows from their own chats
+     *     (`intake_queue.received_by == caller`), including their own NO_MATCH /
+     *     AMBIGUOUS docs. NULL-received_by docs (shared business line + Drive) are
+     *     admin-only.
+     */
+    get: operations["list_review_queue_api_intake_review_queue_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Review Detail
+     * @description Full review detail for a single proposal (READ-ONLY).
+     */
+    get: operations["get_review_detail_api_intake_review__proposal_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Approve Review
+     * @description Approve a proposal — dry-run (5B) OR real commit (5C, flag-gated).
+     *
+     *     Builds the full CommitPlan and runs it through ``execute_commit``. The
+     *     ``dry_run`` argument is ``not writer_enabled()``:
+     *
+     *     * **Flag OFF (default — 5B behaviour):** dry-run. Records ONE
+     *       ``intake_commit_audit(dry_run=true)`` row, writes NOTHING to the CRM, and
+     *       leaves the proposal ``review_claimed`` (P0#9).
+     *     * **Flag ON (5C go-live):** the real atomic path runs inside THIS request's
+     *       transaction — document UPSERT + practice link + proposal advanced to
+     *       ``routed`` + audit ``committed`` — all-or-nothing. A blocked plan still writes
+     *       nothing and stays ``review_claimed``.
+     *
+     *     P0#5: the caller must hold the active claim — non-admins must present the
+     *     matching ``claim_token`` on a non-expired lease.
+     *
+     *     body: {client_id?, practice_id?, document_category?, document_subtype?,
+     *            final_fields?, claim_token?}
+     */
+    post: operations["approve_review_api_intake_review__proposal_id__approve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}/blob": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Review Blob
+     * @description Stream the original blob (image/PDF) so the reviewer SEES the document.
+     *
+     *     OCR text alone is not review-grade: the human must compare the proposal
+     *     against the actual scan. Same RBAC as detail (own-chat or admin). Served
+     *     by the Pro reader straight off the local filesystem — the blob never
+     *     persists anywhere else; ``no-store`` keeps every proxy/browser cache out
+     *     (Law 2: PII in transit to the authenticated reviewer only).
+     */
+    get: operations["get_review_blob_api_intake_review__proposal_id__blob_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Claim Review
+     * @description Atomically claim a proposal for the current reviewer.
+     *
+     *     review_pending → review_claimed. Mints a per-claim opaque token (P0#5).
+     *     A claim succeeds if the proposal is review_pending, OR if it is review_claimed
+     *     by someone whose lease has expired (steal-expired), OR if it is review_claimed
+     *     by the SAME caller on a still-live lease (P0#4 — idempotent re-claim: re-opening
+     *     your own claimed document renews the lease and returns a fresh token instead of
+     *     409). A live, unexpired claim by a DIFFERENT reviewer → 409.
+     */
+    post: operations["claim_review_api_intake_review__proposal_id__claim_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}/recover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Recover From Quarantine
+     * @description Pull a parked proposal back into review — LEVA-1 ``quarantine`` (noise) OR
+     *     LEVA-3 ``duplicate`` (already-on-profile) → ``review_pending``.
+     *
+     *     Both pre-filters are conservative but not infallible: a real document with a
+     *     degraded OCR pass can be mis-binned as noise, and a genuine SECOND copy of a
+     *     doc-type (a renewed passport, a superseding akta) may legitimately need
+     *     filing even though the client already has one. This is the recovery hatch so
+     *     nothing is ever lost, only deferred. RBAC mirrors the queue feed: admins
+     *     recover anything; a non-admin recovers ONLY proposals from their own chats
+     *     (``intake_queue.received_by == caller``); NULL-received_by (shared line +
+     *     Drive) is admin-only. NO CRM writes.
+     */
+    post: operations["recover_from_quarantine_api_intake_review__proposal_id__recover_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}/reject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reject Review
+     * @description Reject a proposal — terminal transition ``review_claimed`` → ``rejected``.
+     *
+     *     This is a **queue-management** operation: it writes ONLY the proposal status +
+     *     clears the lease. It touches NO CRM data (no ``documents``, no ``practices``),
+     *     so — unlike ``approve`` — it is NOT gated by ``INTAKE_WRITER_ENABLED``: reviewers
+     *     must be able to dispose of garbage/NO_MATCH proposals in every phase (5B and 5C),
+     *     exactly like ``claim``/``release`` (which are also un-gated).
+     *
+     *     P0#5: identical claim/lease enforcement as ``approve`` (shared helper).
+     *     Writes ONE forensic ``intake_commit_audit(outcome='rejected')`` row (who
+     *     rejected what + the reviewer's ``reason``, migration 224) — a rejection is a
+     *     HITL decision and deserves the same audit trail as an approve. Idempotent
+     *     under concurrency / re-reject: the ``status='review_claimed'`` guard makes a
+     *     second reject a 409 no-op, never a double-write.
+     *
+     *     body: {claim_token?, reason?}  — ``reason`` is persisted in the audit plan.
+     */
+    post: operations["reject_review_api_intake_review__proposal_id__reject_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intake/review/{proposal_id}/release": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Release Review
+     * @description Release a claimed proposal back to review_pending.
+     *
+     *     The claim-holder must present the claim_token (P0#5). Admins may force-release
+     *     without a token (lease-reaper / abandoned reviewer).
+     */
+    post: operations["release_review_api_intake_review__proposal_id__release_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -7500,6 +10286,75 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/intel/health/pipeline": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Pipeline Health
+     * @description Single-pane pipeline health snapshot.
+     *
+     *     AUTH: requires authenticated user via dependencies.get_current_user.
+     *     Panel review 2026-05-20 (DeepSeek HIGH finding) — even though the
+     *     payload contains only operational counters (no PII, no client data),
+     *     Symbiosis Law 2 (OSINT blindato) requires authenticated access for
+     *     internal pipeline observability.
+     *
+     *     Returns 503 if DB pool unavailable. Returns 200 with partial data on
+     *     individual query failure (degraded reporting > silent failure).
+     */
+    get: operations["get_pipeline_health_api_intel_health_pipeline_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intel/lake/observations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Post Observation */
+    post: operations["post_observation_api_intel_lake_observations_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intel/lake/observations-batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Post Observations Batch
+     * @description Used by producer outbox drain workers. Best-effort: partial success allowed.
+     *
+     *     Each observation processed independently; failures returned per-row, not
+     *     failing the whole batch.
+     */
+    post: operations["post_observations_batch_api_intel_lake_observations_batch_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/intel/metrics": {
     parameters: {
       query?: never;
@@ -7531,7 +10386,14 @@ export interface paths {
     put?: never;
     /**
      * Enqueue Post Publish
-     * @description Internal: add a slug to the post-processing queue (translate + image).
+     * @description Internal: add a slug to the post-processing queue (translate + image + SEO).
+     *
+     *     `force: true` is the reconciliation path (2026-07-17): a batch flush lost
+     *     mid-run leaves `completed_steps.image=true` recorded even though the cover
+     *     never landed on GitHub — the default ON CONFLICT below only resets 'failed'
+     *     rows, so a 'done' item with a missing cover would never be re-run. `force`
+     *     unconditionally resets status/attempts/completed_steps regardless of the
+     *     row's current status.
      */
     post: operations["enqueue_post_publish_api_intel_post_publish_queue_post"];
     delete?: never;
@@ -7551,9 +10413,29 @@ export interface paths {
     put?: never;
     /**
      * Mark Queue Done
-     * @description Poller endpoint: mark slugs as processed and remove from queue.
+     * @description Poller endpoint: mark slugs as processed.
      */
     post: operations["mark_queue_done_api_intel_post_publish_queue_done_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intel/post-publish-queue/failed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Mark Queue Failed
+     * @description Poller endpoint: mark slugs as failed with error message.
+     */
+    post: operations["mark_queue_failed_api_intel_post_publish_queue_failed_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -7574,6 +10456,26 @@ export interface paths {
     get: operations["get_pending_queue_api_intel_post_publish_queue_pending_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intel/post-publish-queue/step-done": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Mark Step Done
+     * @description Poller endpoint: mark a specific step as completed for a slug.
+     */
+    post: operations["mark_step_done_api_intel_post_publish_queue_step_done_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -7674,7 +10576,7 @@ export interface paths {
     put?: never;
     /**
      * Bulk Approve Items
-     * @description Bulk approve multiple items
+     * @description Bulk approve multiple items (admin only — feeds the public-site publish pipeline).
      */
     post: operations["bulk_approve_items_api_intel_staging_bulk_approve__type__post"];
     delete?: never;
@@ -7712,7 +10614,14 @@ export interface paths {
     };
     /**
      * List Pending Items
-     * @description List items pending approval in staging area with filtering and sorting
+     * @description List items pending approval in staging area with filtering and sorting.
+     *
+     *     include_enrichment (round-2 red-team MUST-FIX #1, scar family #9):
+     *     opt-in only. This route has no pagination and the default projection
+     *     would otherwise ship the full ~1400-2000 word enrichment object on
+     *     EVERY pending item to EVERY consumer (News Room UI, Visa Oracle UI, MCP
+     *     tool) — only scripts/wr2_topic_selector.py actually reads it, and only
+     *     from the single ranked top item. Default False keeps the payload lean.
      */
     get: operations["list_pending_items_api_intel_staging_pending_get"];
     put?: never;
@@ -7763,7 +10672,13 @@ export interface paths {
      *     2. Registers article in anti-duplicate system
      *     3. Archives to published folder
      *
-     *     Should be called after team approval (manual or via Telegram).
+     *     Admin-only: publishing pushes the article to the PUBLIC website
+     *     (balizero.com) via a GitHub PR, so it is an R3 (world-visible) action.
+     *     Being an authenticated team member is not enough.
+     *
+     *     Internal callers that carry their own authorization (e.g. the Telegram
+     *     approval quorum) must call :func:`publish_staging_item_internal` instead,
+     *     which names the actor explicitly rather than bypassing the gate.
      */
     post: operations["publish_staging_item_api_intel_staging_publish__type___item_id__post"];
     delete?: never;
@@ -7806,6 +10721,51 @@ export interface paths {
      * @description Reject item and move to archive
      */
     post: operations["reject_staging_item_api_intel_staging_reject__type___item_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intel/staging/{staging_id}/revalidate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Post Revalidate Staging
+     * @description Admin-only: trigger manual (re-)validation of a staging document.
+     *
+     *     Optional body.tier filters to a single tier; omit to run all tiers.
+     *     Full revalidation delegates to IntelStagingService if the staging row
+     *     exists. Currently returns a stub response — full wiring is done when
+     *     intel_staging_service._post_ingest_validate is hooked.
+     */
+    post: operations["post_revalidate_staging_api_intel_staging__staging_id__revalidate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/intel/staging/{staging_id}/validation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Staging Validation
+     * @description Admin-only: return per-tier validation breakdown for a staging document.
+     */
+    get: operations["get_staging_validation_api_intel_staging__staging_id__validation_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -8140,6 +11100,36 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/lead/capture": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Capture Lead
+     * @description Persist a lead intent and return the pre-filled WhatsApp URL.
+     *
+     *     Flow
+     *     ----
+     *     1. Generate intent_id up-front so the WA body can reference it.
+     *     2. Build the wa.me URL (includes intent_id in the body).
+     *     3. INSERT the row (single round-trip).
+     *     4. Return JSON.
+     *
+     *     A failed INSERT raises 500; the user sees a generic error and can
+     *     still WhatsApp us via the footer link — we don't block on our DB.
+     */
+    post: operations["capture_lead_api_lead_capture_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/legal/collections/stats": {
     parameters: {
       query?: never;
@@ -8453,6 +11443,106 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metabolic/latest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Latest metabolic snapshot
+     * @description Return the most recent MetabolicSnapshot (4 metrics: TTR, DO, IA, FE). Empty dict if the store has no snapshots yet (e.g. pre-baseline).
+     */
+    get: operations["get_latest_api_metabolic_latest_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metabolic/series/{metric_type}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Time series for one metric
+     * @description Return [(calculated_at, value), ...] for the given metric_type (ttr | ontology_density | autonomy_index | escalation_freq).
+     */
+    get: operations["get_series_api_metabolic_series__metric_type__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metabolic/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Storage statistics
+     * @description Total snapshots, first/last timestamps, DB file size.
+     */
+    get: operations["get_stats_api_metabolic_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metabolic/trends": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Trend classification per metric
+     * @description Return Improving / Stable / Degrading classification for each of the 4 metrics, computed over the last N snapshots (default 30).
+     */
+    get: operations["get_trends_api_metabolic_trends_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/frontend": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ingest Frontend Metrics
+     * @description Append a batch of frontend metrics. Best-effort: returns 202 Accepted.
+     */
+    post: operations["ingest_frontend_metrics_api_metrics_frontend_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/monitoring/abstain-rate": {
     parameters: {
       query?: never;
@@ -8569,6 +11659,70 @@ export interface paths {
      * @description Returns daily score trends for the specified number of days.
      */
     get: operations["get_scores_trend_api_monitoring_scores_trend_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/naga/claims/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Claims
+     * @description Search the Naga Claims DB.
+     *
+     *     V1: returns empty list (wired to PostgreSQL in v1.1).
+     */
+    get: operations["search_claims_api_naga_claims_search_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/naga/research": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start Research
+     * @description Start a Naga research session using the real orchestrator.
+     */
+    post: operations["start_research_api_naga_research_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/naga/session/{session_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Session
+     * @description Retrieve the status of a research session.
+     *
+     *     V1: always returns 404 (no session store yet — wired in v1.1 with PostgreSQL).
+     */
+    get: operations["get_session_api_naga_session__session_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8701,6 +11855,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/news/{news_id}/image": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Update News Image
+     * @description Update cover image URL for a news item (called by post-publish poller).
+     */
+    post: operations["update_news_image_api_news__news_id__image_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/news/{news_id}/status": {
     parameters: {
       query?: never;
@@ -8733,111 +11907,6 @@ export interface paths {
      * @description Get a single news item by slug and increment view count
      */
     get: operations["get_news_by_slug_api_news__slug__get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/notifications/api/admin/notifications/alerts": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List Alerts
-     * @description List alerts with filtering and pagination.
-     *     Admin only.
-     */
-    get: operations["list_alerts_api_notifications_api_admin_notifications_alerts_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/notifications/api/admin/notifications/dashboard": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Dashboard
-     * @description Get notification dashboard data.
-     *     Admin only.
-     */
-    get: operations["get_dashboard_api_notifications_api_admin_notifications_dashboard_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/notifications/api/admin/notifications/pause-client": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Pause Client Notifications
-     * @description Pause notifications for a client temporarily.
-     *     Admin only.
-     */
-    post: operations["pause_client_notifications_api_notifications_api_admin_notifications_pause_client_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/notifications/api/admin/notifications/retry": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Retry Failed Alerts
-     * @description Retry failed alerts.
-     *     Admin only.
-     */
-    post: operations["retry_failed_alerts_api_notifications_api_admin_notifications_retry_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/notifications/api/admin/notifications/stats": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Stats
-     * @description Get detailed statistics.
-     *     Admin only.
-     */
-    get: operations["get_stats_api_notifications_api_admin_notifications_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8931,7 +12000,7 @@ export interface paths {
      *     - External recipients → Brevo HTTP API (better deliverability + tracking)
      *
      *     Auth: X-API-Key header.
-     *     Sender is always zantara@balizero.com (alias of damar@balizero.com).
+     *     Sender is always zantara@balizero.com (alias of zero@balizero.com).
      */
     post: operations["send_direct_email_api_notifications_send_email_post"];
     delete?: never;
@@ -9002,6 +12071,160 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/observed-shell/emit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record an observed-shell event
+     * @description Record one observed-shell event from a shell-only caller.
+     *
+     *     Returns 202 Accepted (NOT 201) because the underlying ``ObservedShellBus``
+     *     is best-effort: the row may also land in the JSONL fallback if the DB
+     *     pool is unavailable, in which case the cell hasn't actually persisted
+     *     anything to PG yet but the trace is preserved.
+     *
+     *     Status validation: out-of-allowlist values are coerced to ``error`` by
+     *     ``ObservedShellBus.emit`` itself; we surface that explicitly via 422
+     *     here so misconfigured callers fail loud at integration time rather
+     *     than silently flipping their status field server-side.
+     */
+    post: operations["emit_observed_shell_event_api_observed_shell_emit_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/omnichannel/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Omnichannel Stats
+     * @description Dashboard stats: thread counts by status, channel breakdown, response times.
+     */
+    get: operations["omnichannel_stats_api_omnichannel_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/omnichannel/threads": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Threads
+     * @description List conversation threads with filters and RBAC.
+     */
+    get: operations["list_threads_api_omnichannel_threads_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/omnichannel/threads/{thread_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Thread
+     * @description Get thread detail with cross-channel message history.
+     */
+    get: operations["get_thread_api_omnichannel_threads__thread_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Thread
+     * @description Update thread status, priority, or assignment. Admin or assignee only.
+     */
+    patch: operations["update_thread_api_omnichannel_threads__thread_id__patch"];
+    trace?: never;
+  };
+  "/api/omnichannel/threads/{thread_id}/assign": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Assign Thread
+     * @description Assign thread to a team member. Admin only. Sends Telegram notification.
+     */
+    post: operations["assign_thread_api_omnichannel_threads__thread_id__assign_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/omnichannel/threads/{thread_id}/context": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Thread Context
+     * @description Get CRM enrichment for a thread (client profile, practices, alerts).
+     */
+    get: operations["get_thread_context_api_omnichannel_threads__thread_id__context_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/omnichannel/threads/{thread_id}/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Send Thread Message
+     * @description Send a message within a thread (reply or internal note).
+     */
+    post: operations["send_thread_message_api_omnichannel_threads__thread_id__messages_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/oracle/collections": {
     parameters: {
       query?: never;
@@ -9026,26 +12249,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/oracle/drive/test": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Test Drive Connection
-     * @description Test Google Drive integration
-     */
-    get: operations["test_drive_connection_api_oracle_drive_test_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/oracle/feedback": {
     parameters: {
       query?: never;
@@ -9060,26 +12263,6 @@ export interface paths {
      * @description Submit user feedback for continuous learning and system improvement
      */
     post: operations["submit_user_feedback_api_oracle_feedback_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/oracle/gemini/test": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Test Gemini Integration
-     * @description Test Google Gemini integration
-     */
-    get: operations["test_gemini_integration_api_oracle_gemini_test_get"];
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -9173,7 +12356,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/oracle/user/profile/{user_email}": {
+  "/api/partners": {
     parameters: {
       query?: never;
       header?: never;
@@ -9181,12 +12364,422 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Get User Profile Endpoint
-     * @description Get user profile with localization preferences
+     * List Partners
+     * @description List partners. Team members see only their own.
+     *
+     *     CATA-2: partner role blocked at router. Response strips sensitive
+     *     fields (NPWP, NIK, bank/IBAN/e-wallet details) — use the detail
+     *     endpoint for full data (which enforces verify_partner_access_with_role).
+     *
+     *     CRIT-8: returns a paginated envelope {partners, total, page, page_size}
+     *     instead of a raw list. v1 fetches all matching rows and slices in
+     *     Python; v1.1 should push pagination to SQL for large datasets.
      */
-    get: operations["get_user_profile_endpoint_api_oracle_user_profile__user_email__get"];
+    get: operations["list_partners_api_partners_get"];
+    put?: never;
+    /**
+     * Create Partner
+     * @description Create a new partner. Team members auto-assign to themselves.
+     */
+    post: operations["create_partner_api_partners_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/bulk-reassign": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Bulk Reassign
+     * @description Bulk-reassign multiple partners to a single user. Admin only.
+     */
+    post: operations["bulk_reassign_api_partners_bulk_reassign_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/commissions/{commission_id}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Approve Commission
+     * @description Approve a commission. Admin + finance permission.
+     */
+    post: operations["approve_commission_api_partners_commissions__commission_id__approve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/commissions/{commission_id}/clawback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Clawback Commission
+     * @description Initiate a clawback on a commission. Admin + finance permission. Returns new commission id.
+     */
+    post: operations["clawback_commission_api_partners_commissions__commission_id__clawback_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/commissions/{commission_id}/mark-paid": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Mark Paid Commission
+     * @description Mark a commission as paid. Admin + finance permission.
+     *
+     *     CRIT-2: commission-earned email is enqueued atomically inside the same
+     *     transaction that flips status to 'paid'. The send happens via /outbox/flush
+     *     or cron — eliminating the window where a Brevo failure could leave the
+     *     commission stuck in 'paid' with the email permanently lost (FSM blocks
+     *     paid->paid retry).
+     */
+    post: operations["mark_paid_commission_api_partners_commissions__commission_id__mark_paid_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/commissions/{commission_id}/waive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Waive Commission
+     * @description Waive a clawback on a commission. Admin + finance permission.
+     */
+    post: operations["waive_commission_api_partners_commissions__commission_id__waive_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/finance/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Finance Export
+     * @description Finance CSV export. Admin + finance permission required.
+     */
+    get: operations["finance_export_api_partners_finance_export_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Me
+     * @description Self-view for partner-role users. Returns their own partner record.
+     */
+    get: operations["me_api_partners_me_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/me/commissions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Me Commissions
+     * @description List commissions for the calling partner user.
+     */
+    get: operations["me_commissions_api_partners_me_commissions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/me/referrals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Me Referrals
+     * @description List referrals for the calling partner user. Client data is sterilized.
+     */
+    get: operations["me_referrals_api_partners_me_referrals_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/outbox/flush": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Flush Email Outbox
+     * @description Synchronously send pending outbox emails. Admin + finance only.
+     *
+     *     v1: synchronous — suitable for manual retries and cron.
+     *     v2 will replace with an async worker process.
+     *
+     *     Returns: {'sent': N, 'retried': N, 'dlq': N}
+     */
+    post: operations["flush_email_outbox_api_partners_outbox_flush_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/referrals/{referral_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete Referral
+     * @description Delete a referral. Admin only. Blocked if commissions exist.
+     */
+    delete: operations["delete_referral_api_partners_referrals__referral_id__delete"];
+    options?: never;
+    head?: never;
+    /**
+     * Swap Referral
+     * @description Swap a referral to a different partner. Admin only.
+     */
+    patch: operations["swap_referral_api_partners_referrals__referral_id__patch"];
+    trace?: never;
+  };
+  "/api/partners/{partner_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Partner
+     * @description Get a partner by ID. Scoped by role.
+     */
+    get: operations["get_partner_api_partners__partner_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Partner
+     * @description Update a partner. Team members can only update their own assigned partners.
+     */
+    patch: operations["update_partner_api_partners__partner_id__patch"];
+    trace?: never;
+  };
+  "/api/partners/{partner_id}/activate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Activate Partner
+     * @description Activate a partner. Admin only.
+     *
+     *     CRIT-2: welcome email is enqueued atomically inside the same transaction
+     *     that activates the partner. The send happens via /outbox/flush or cron.
+     */
+    post: operations["activate_partner_api_partners__partner_id__activate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/{partner_id}/audit-log": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Partner Audit Log
+     * @description List the audit log for a partner. Admin or team-owner only.
+     */
+    get: operations["list_partner_audit_log_api_partners__partner_id__audit_log_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/{partner_id}/commissions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Commissions
+     * @description List commissions for a partner. Scoped by role.
+     */
+    get: operations["list_commissions_api_partners__partner_id__commissions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/{partner_id}/deactivate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Deactivate Partner
+     * @description Deactivate a partner. Admin only.
+     */
+    post: operations["deactivate_partner_api_partners__partner_id__deactivate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/{partner_id}/reassign": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reassign Partner
+     * @description Reassign a partner to a different team member. Admin only.
+     */
+    post: operations["reassign_partner_api_partners__partner_id__reassign_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/partners/{partner_id}/referrals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Referrals
+     * @description List referrals for a partner. Scoped by role.
+     */
+    get: operations["list_referrals_api_partners__partner_id__referrals_get"];
+    put?: never;
+    /**
+     * Create Referral
+     * @description Record a referral for a partner. Team (owner) or admin.
+     *
+     *     CATA-3: verify_partner_access_with_role allowed actor_role='partner'
+     *     (if user.partner_id == partner_id). A partner could POST to their own
+     *     /referrals with any practice_id and trigger commission accrual for
+     *     practices they never referred. Fraud vector — blocked here.
+     *
+     *     Access rules:
+     *     - partner role: always blocked (403).
+     *     - team role: must own this partner (assigned_to == user_id) AND must
+     *       own the referenced practice's client (client.assigned_to == user_id
+     *       or fallback: practice exists — soft guard, team-or-admin is primary).
+     *     - admin role: unrestricted.
+     */
+    post: operations["create_referral_api_partners__partner_id__referrals_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -9293,6 +12886,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/portal/admin/clients/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Clients
+     * @description Fuzzy-search clients by name/email for the superuser impersonation bar.
+     *
+     *     The caller must be authenticated as a SUPERUSER_EMAILS account; the
+     *     dependency is enforced here rather than via Depends so we can return a
+     *     consistent JSON shape (the frontend treats 403 as "hide the search bar").
+     */
+    get: operations["search_clients_api_portal_admin_clients_search_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/admin/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Whoami
+     * @description Returns whether the caller is a recognised superuser.
+     *
+     *     Frontend calls this once on portal mount so it knows whether to render
+     *     the impersonation search bar. Never throws on non-superuser — just
+     *     returns is_superuser=false so the UI stays silent.
+     */
+    get: operations["whoami_api_portal_admin_me_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/portal/billing": {
     parameters: {
       query?: never;
@@ -9305,6 +12946,26 @@ export interface paths {
      * @description Get all invoices and billing summary for the authenticated client.
      */
     get: operations["get_billing_api_portal_billing_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/billing/{invoice_id}/pdf": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download Invoice Pdf
+     * @description Download an invoice PDF through the portal proxy.
+     */
+    get: operations["download_invoice_pdf_api_portal_billing__invoice_id__pdf_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -9429,6 +13090,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/portal/dashboard/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Summary
+     * @description Return 3-hero-card data + AI recap in a single round-trip.
+     */
+    get: operations["summary_api_portal_dashboard_summary_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/portal/documents": {
     parameters: {
       query?: never;
@@ -9469,8 +13150,75 @@ export interface paths {
      *     - file: The document file
      *     - document_type: Type of document (passport, nib, etc.)
      *     - practice_id: Optional practice to link to
+     *     - document_purpose: Optional client-facing note on why this document was
+     *       provided (trust UX — shown back to the client in the vault)
      */
     post: operations["upload_document_api_portal_documents_upload_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/documents/{document_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete Document
+     * @description Soft-delete a client-visible document.
+     *
+     *     The document is hidden from the vault but recoverable for 30 days
+     *     (the file stays in Google Drive and the DB row is preserved).
+     */
+    delete: operations["delete_document_api_portal_documents__document_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/documents/{document_id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download Document
+     * @description Download a client-visible document through the portal proxy.
+     *
+     *     The client never receives raw Google Drive URLs or file IDs.
+     */
+    get: operations["download_document_api_portal_documents__document_id__download_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/documents/{document_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore Document
+     * @description Restore a previously removed document (recovery path).
+     */
+    post: operations["restore_document_api_portal_documents__document_id__restore_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -9506,9 +13254,26 @@ export interface paths {
     };
     /**
      * List Subfolder Files
-     * @description List files in a subfolder of the client's Drive folder.
+     * @description Block Drive subfolder navigation from the client portal.
      */
     get: operations["list_subfolder_files_api_portal_drive_files__folder_id__list_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/family": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Family */
+    get: operations["list_family_api_portal_family_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -9595,7 +13360,7 @@ export interface paths {
      * Send Invitation
      * @description Send invitation to a client (team member action).
      *
-     *     Requires team authentication. Creates invite token and sends email via Zoho.
+     *     Requires team authentication. Creates invite token and sends email via Brevo.
      */
     post: operations["send_invitation_api_portal_invite_send_post"];
     delete?: never;
@@ -9618,6 +13383,40 @@ export interface paths {
      *     Called when client clicks invite link. Returns client info if valid.
      */
     get: operations["validate_token_api_portal_invite_validate__token__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/matters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Matters */
+    get: operations["list_matters_api_portal_matters_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/matters/{matter_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Matter Detail */
+    get: operations["get_matter_detail_api_portal_matters__matter_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -9693,6 +13492,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/portal/notifications/prefs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Prefs */
+    get: operations["get_prefs_api_portal_notifications_prefs_get"];
+    /** Put Prefs */
+    put: operations["put_prefs_api_portal_notifications_prefs_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/portal/notifications/read-all": {
     parameters: {
       query?: never;
@@ -9727,6 +13544,31 @@ export interface paths {
      * @description Mark a notification as read.
      */
     post: operations["mark_notification_read_api_portal_notifications__notification_id__read_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/portal/process/required-documents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Required Documents
+     * @description Portal-scoped wrapper around the CRM "required documents per client"
+     *     query. The workspace version (/api/crm/clients/client/{id}/...) is
+     *     staff-only and 403s for plain client JWTs, which left /portal/process
+     *     stuck in a loading spinner. Here the client id is derived from the
+     *     caller's JWT (or ?as_client= for superusers) so shareholders can read
+     *     their own process checklist without CRM RBAC.
+     */
+    get: operations["get_required_documents_api_portal_process_required_documents_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -9833,50 +13675,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/portal/taxes/": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Taxes
-     * @description Get all tax obligations for the authenticated client.
-     *
-     *     Returns:
-     *         - summary: TaxSummary (total_due, next_deadline, status)
-     *         - obligations: List[TaxObligation]
-     */
-    get: operations["get_taxes_api_portal_taxes__get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/portal/taxes/summary": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Tax Summary
-     * @description Get tax summary for dashboard card.
-     */
-    get: operations["get_tax_summary_api_portal_taxes_summary_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/portal/timeline": {
     parameters: {
       query?: never;
@@ -9929,7 +13727,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/portal/visa/": {
+  "/api/pricing/all": {
     parameters: {
       query?: never;
       header?: never;
@@ -9937,15 +13735,11 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Get Visa Status
-     * @description Get immigration status for authenticated client.
-     *
-     *     Returns:
-     *         - summary: VisaSummary
-     *         - current_visa: VisaRecord or null
-     *         - history: List[VisaRecord]
+     * Get All Prices
+     * @description Return the full official Bali Zero price catalog.
+     *     Single source of truth — never hardcode or guess prices.
      */
-    get: operations["get_visa_status_api_portal_visa__get"];
+    get: operations["get_all_prices_api_pricing_all_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -9954,7 +13748,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/portal/visa/summary": {
+  "/api/pricing/scenario": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Calculate Scenario Pricing
+     * @description Calculate comprehensive pricing for a business scenario.
+     *
+     *     Aggregates costs from KBLI, legal, tax, visa, and property Oracle collections.
+     *     Uses CrossOracleSynthesisService + bali_zero_pricing_hybrid collection.
+     */
+    post: operations["calculate_scenario_pricing_api_pricing_scenario_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/pricing/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -9962,10 +13779,46 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Get Visa Summary
-     * @description Get visa summary for dashboard card.
+     * Search Pricing
+     * @description Search the official price catalog by keyword.
+     *     Returns matching services with exact prices.
      */
-    get: operations["get_visa_summary_api_portal_visa_summary_get"];
+    get: operations["search_pricing_api_pricing_search_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/pricing/service": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Service Price
+     * @description Return the official price for ONE service, by exact catalogue key.
+     *
+     *     This is the only pricing route reachable without auth (registered in
+     *     `backend/app/auth/public_endpoints.py`), because it is what the public
+     *     website needs to render a price instead of a hardcoded literal — Golden
+     *     Rule #11 says prices come from PricingTool, and until this existed there
+     *     was no public surface through which they could.
+     *
+     *     Exact-key only, deliberately. `/search` scores and guesses, which is right
+     *     for a human typing a keyword and wrong for a page rendering a number: a
+     *     near-miss shown as "the price" is worse than no price at all.
+     *
+     *     404 for an unknown key, 503 when the catalogue itself failed to load — the
+     *     caller must be able to tell "this service does not exist" from "the price
+     *     source is down", because only the second one should fall back to a cached
+     *     literal.
+     */
+    get: operations["get_service_price_api_pricing_service_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -9987,6 +13840,258 @@ export interface paths {
      *     Returns a list of matching zone codes.
      */
     get: operations["search_kbli_api_prime_search_kbli_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/analyze": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Analyze Investment
+     * @description Full investment analysis for a geographic point.
+     *
+     *     Pipeline: resolve zone → KBLIEye compliance → scoring engine → intel search.
+     *     Returns verdict (GREEN/YELLOW/RED), score breakdown, opportunities, intel articles.
+     *
+     *     Public endpoint — rate limited to 10 req/min per IP.
+     */
+    post: operations["analyze_investment_api_prime_v2_analyze_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/density": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Zone Density
+     * @description Business density and competitor saturation for a zoning area.
+     *
+     *     Returns KBLI sector breakdown and saturation index (0-1).
+     *     Public endpoint — no authentication required.
+     */
+    get: operations["zone_density_api_prime_v2_density_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Prime Nexus Health
+     * @description Check Prime Nexus service status.
+     */
+    get: operations["prime_nexus_health_api_prime_v2_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/intelligence": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Intelligence Overlay
+     * @description CRM intelligence overlay: geocoded clients/companies within a map bounding box.
+     *
+     *     Returns GeoJSON FeatureCollection with entity markers, capped at 2000 features.
+     *     Requires authentication (nz_access_token) — not in public paths.
+     */
+    get: operations["intelligence_overlay_api_prime_v2_intelligence_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/portfolio": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Portfolio Advisor
+     * @description Portfolio health and risk concentration for a client's entities.
+     *
+     *     Returns all geocoded companies + active practices with health scores.
+     *     Requires authentication.
+     */
+    get: operations["portfolio_advisor_api_prime_v2_portfolio_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/predict": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Predict Zone Score
+     * @description Predict zone investment trend based on 3 signals.
+     *
+     *     Returns trend direction (improving/stable/declining) and predicted label shift.
+     *     Public endpoint — no authentication required.
+     */
+    get: operations["predict_zone_score_api_prime_v2_predict_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/proposal": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create Proposal
+     * @description Create a shareable investment proposal from Prime analysis.
+     *
+     *     Requires admin authentication. Returns a token for public sharing.
+     */
+    post: operations["create_proposal_api_prime_v2_proposal_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/proposal/{token}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Proposal
+     * @description Retrieve an investment proposal by token.
+     *
+     *     Public endpoint — token-based access, no authentication required.
+     */
+    get: operations["get_proposal_api_prime_v2_proposal__token__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/regulations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Regulation Feed
+     * @description Live regulation feed for a zoning area from news_items + Qdrant.
+     *
+     *     Returns recent regulatory articles relevant to the zone.
+     *     Public endpoint — no authentication required.
+     */
+    get: operations["regulation_feed_api_prime_v2_regulations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/resolve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resolve Zone
+     * @description Resolve RDTR zoning data for a geographic point.
+     *
+     *     Pipeline: Redis cache → BATARA API → GISTARU fallback → PostGIS.
+     *     Returns zone code, allowed activities, building codes, overlays.
+     *
+     *     Public endpoint — no authentication required.
+     */
+    post: operations["resolve_zone_api_prime_v2_resolve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prime/v2/temporal": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Temporal Intelligence
+     * @description Temporal activity analysis for a zoning area.
+     *
+     *     Returns time-bucketed practice and company activity with trend direction.
+     *     Requires authentication (admin only).
+     */
+    get: operations["temporal_intelligence_api_prime_v2_temporal_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -10027,12 +14132,82 @@ export interface paths {
     /**
      * Get Zoning
      * @description Return official RDTR zoning data + business opportunities for a given lat/lng.
-     *     Primary: BATARA API (live Badung DPUPR data).
-     *     Fallback: PostGIS local DB (GISTARU import, Badung only).
+     *
+     *     Delegates to PrimeNexusService.resolve() for the zone resolution pipeline
+     *     (Redis → BATARA → GISTARU → PostGIS), then enriches with price + intel.
+     *     Falls back to legacy inline logic if service is unavailable.
      */
     get: operations["get_zoning_api_prime_zoning_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/research/control/playbook": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Playbook Switch */
+    post: operations["playbook_switch_api_research_control_playbook_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/research/control/publisher": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Publisher Switch */
+    post: operations["publisher_switch_api_research_control_publisher_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/research/control/research": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Research Switch */
+    post: operations["research_switch_api_research_control_research_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/research/control/retrain": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Retrain Switch */
+    post: operations["retrain_switch_api_research_control_retrain_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -10444,6 +14619,137 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/skill/creation-proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read redacted skill-creation proposal evidence
+     * @description Returns evidence cards written by the Skill Coach dry-run evaluator. Read-only: proposals are not activated, approved, or published to HGT.
+     */
+    get: operations["creation_proposals_api_skill_creation_proposals_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/skill/merge-proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read pending skill-merge proposals (from the weekly job)
+     * @description Returns the jsonl of proposals written by the auto-merge job (Day 5 of Sprint 5.2 Week 3-4). Read-only — Zero approves manually.
+     */
+    get: operations["merge_proposals_api_skill_merge_proposals_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/skill/query": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Search skills by FTS + filters
+     * @description Full-text search on procedure / precondition / success_criterion, optionally filtered by cell, tier, and min_confidence. Results ordered by FTS rank then confidence.
+     */
+    post: operations["query_skills_api_skill_query_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/skill/record": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record a reusable skill
+     * @description Persist a skill (type='skill') in the shared Genome. Idempotent by skill_id: re-posting updates procedure/precondition/success_criterion and keeps the max confidence. Tier (if previously promoted) is preserved.
+     */
+    post: operations["record_skill_api_skill_record_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/skill/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Aggregate skill counts by tier + cell + avg confidence */
+    get: operations["skill_stats_api_skill_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/skill/top": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Return active skills at the requested tier (default tier1) */
+    get: operations["top_skills_api_skill_top_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/skill/{skill_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Fetch one skill by id */
+    get: operations["get_skill_api_skill__skill_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/team-analytics/burnout": {
     parameters: {
       query?: never;
@@ -10643,6 +14949,19 @@ export interface paths {
      *
      *     Team members use this to start their work day.
      *     One clock-in per day allowed.
+     *
+     *     SECURITY (tourniquet, 2026-07-21 — see memory
+     *     `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`):
+     *     this endpoint previously had no `Depends`, trusting user_id/email from
+     *     the request body — anyone could clock any team member in/out with a
+     *     bare unauthenticated POST. Now requires a valid session (401 if
+     *     missing/invalid). Non-admin callers ALWAYS clock themselves in — the
+     *     body's identity is ignored, not merely validated, per
+     *     `_resolve_actor_identity` (round 2: round 1's email-only check still
+     *     let user_id through unverified). Admins keep the ability to act on
+     *     behalf of another team member (existing `is_crm_admin` precedent, see
+     *     `get_admin_user` above) — the only live caller (kita app) always sends
+     *     the logged-in user's own profile, so this does not change that path.
      */
     post: operations["clock_in_api_team_clock_in_post"];
     delete?: never;
@@ -10666,6 +14985,9 @@ export interface paths {
      *
      *     Team members use this to end their work day.
      *     Must be clocked in first.
+     *
+     *     SECURITY (tourniquet, 2026-07-21): same identity gate as `clock_in`
+     *     above — see that docstring for the full rationale.
      */
     post: operations["clock_out_api_team_clock_out_post"];
     delete?: never;
@@ -10746,10 +15068,15 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List Team Members
-     * @description List active team members. Used by CRM dropdowns for assignment.
+     * Get Team Members
+     * @description Get list of team members visible to the current user.
+     *
+     *     Visibility rules:
+     *     1. User-specific visibility rules (team_member_visibility_rules table)
+     *     2. Department-based visibility (all users in same department)
+     *     3. Board/Founders see everyone
      */
-    get: operations["list_team_members_api_team_members_get"];
+    get: operations["get_team_members_api_team_members_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -10773,6 +15100,14 @@ export interface paths {
      *     - Current online/offline status
      *     - Today's hours worked
      *     - This week's summary
+     *
+     *     SECURITY (tourniquet round-2, 2026-07-21 — class-audit sibling of
+     *     clock-in/out, same PII exposure class): this endpoint previously took
+     *     `user_id` from an unauthenticated query param — anyone could read
+     *     anyone's online status / hours by enumerating user_id. Same identity
+     *     rule as clock-in/out: non-admin always gets THEIR OWN status
+     *     (`_resolve_actor_identity` ignores the query value); admin can still
+     *     query anyone.
      */
     get: operations["get_my_status_api_team_my_status_get"];
     put?: never;
@@ -10848,6 +15183,29 @@ export interface paths {
     };
     /** Get Tw Convs */
     get: operations["get_tw_convs_api_twitter_conversations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/twitter/crc-test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Test Crc Config
+     * @description Manual CRC test to verify X_CONSUMER_SECRET is properly configured.
+     *
+     *     Returns a sample CRC response so ops can validate the secret
+     *     without waiting for Twitter's callback.
+     */
+    get: operations["test_crc_config_api_twitter_crc_test_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11083,13 +15441,7 @@ export interface paths {
     put?: never;
     /**
      * Generate Image
-     * @description Generate images using Google Imagen API
-     *
-     *     Args:
-     *         request: Image generation request with prompt and parameters
-     *
-     *     Returns:
-     *         ImageGenerationResponse with generated images or error
+     * @description Generate images using Pollinations.ai (free, no API key required).
      */
     post: operations["generate_image_api_v1_image_generate_post"];
     delete?: never;
@@ -11258,6 +15610,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/lkpm/credentials/{client_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Oss Credentials
+     * @description Return OSS plaintext credentials for a company.
+     *
+     *     User explicitly requested plaintext storage + plaintext retrieval; the
+     *     team accesses credentials from the workspace and the client from their
+     *     portal. No Fernet encryption, no per-access audit row.
+     *
+     *     RBAC (any of):
+     *       - admin
+     *       - the tax consultant currently assigned to ANY Q1/2026 report of that client
+     */
+    get: operations["get_oss_credentials_api_v1_lkpm_credentials__client_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/lkpm/deadlines": {
     parameters: {
       query?: never;
@@ -11288,6 +15668,14 @@ export interface paths {
     /**
      * Get Draft
      * @description Get LKPM draft for a client/quarter.
+     *
+     *     Resolution rules for ``client_id``:
+     *       * ``client_id > 0`` — used as-is (staff calling with explicit id).
+     *       * ``client_id = 0`` + ``role='client'`` — resolve from the JWT email
+     *         (shareholders don't know their own numeric id).
+     *       * ``client_id = 0`` + superuser (zero@balizero.com) + ``?as_client=<id>``
+     *         — override to the requested id (admin impersonation, also honored as
+     *         the new ``/draft/0/...`` convention everywhere).
      */
     get: operations["get_draft_api_v1_lkpm_draft__client_id___quarter__get"];
     put?: never;
@@ -11358,6 +15746,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/lkpm/ready-pack/{client_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Generate Ready Pack Pdf
+     * @description Generate a LKPM ready-pack (PDF + XLSX), upload to Google Drive,
+     *     and optionally email the client via Brevo.
+     *
+     *     RBAC:
+     *       - Admin: full access.
+     *       - Team (non-admin): only if lkpm_reports.lkpm_assigned_to = user email
+     *         AND lkpm_assigned_to IS NOT NULL. Null-assigned reports are blocked.
+     *
+     *     Body:
+     *       period: "Q1 2026" (required — returns 400 if missing/blank).
+     *       send_email: default True.
+     *       dry_run: skip Drive + email, return hashes only.
+     *
+     *     Returns 422 if LKPM completeness validation fails.
+     *     Returns 403 if team member is not the report assignee.
+     */
+    post: operations["generate_ready_pack_pdf_api_v1_lkpm_ready_pack__client_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/lkpm/ready-pack/{draft_id}": {
     parameters: {
       query?: never;
@@ -11371,6 +15793,98 @@ export interface paths {
      */
     get: operations["get_ready_pack_api_v1_lkpm_ready_pack__draft_id__get"];
     put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lkpm/receipts/by-client/{client_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Receipts By Client
+     * @description Workspace TaxTab: OSS tanda terima across every company where the client
+     *     is a shareholder (via client_company_links). Staff-authenticated; the
+     *     portal equivalent is GET /receipts/me.
+     */
+    get: operations["get_receipts_by_client_api_v1_lkpm_receipts_by_client__client_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lkpm/receipts/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get My Receipts
+     * @description Portal: OSS tanda terima for every company where the authenticated client
+     *     is a shareholder (via client_company_links). Mirrors /history/me but at
+     *     the receipt granularity.
+     */
+    get: operations["get_my_receipts_api_v1_lkpm_receipts_me_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lkpm/receipts/{lkpm_report_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Receipts For Report
+     * @description Workspace: OSS tanda terima attached to a single lkpm_reports row.
+     */
+    get: operations["get_receipts_for_report_api_v1_lkpm_receipts__lkpm_report_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lkpm/reports/{draft_id}/assign": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Assign Lkpm Report
+     * @description Assign (or unassign) an LKPM report to a tax consultant.
+     *
+     *     RBAC: any CRM admin OR any of the 5 tax consultants in LKPM_ASSIGNEES.
+     *     The tax team is collaborative — Veronika/Kadek/Dewa Ayu/Angel/Faisha
+     *     can re-route reports between themselves without going through an admin.
+     *     Users outside both groups get 403.
+     *
+     *     Body:
+     *         lkpm_assigned_to: one of LKPM_ASSIGNEES or null to clear.
+     */
+    put: operations["assign_lkpm_report_api_v1_lkpm_reports__draft_id__assign_put"];
     post?: never;
     delete?: never;
     options?: never;
@@ -11458,7 +15972,100 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v2/bali-zero/chat-stream": {
+  "/api/v1/visa-oracle/chat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Chat
+     * @description Answer a visa question using the hybrid search pipeline.
+     *
+     *     Confidence thresholds (vector similarity scores, no cross-encoder on Fly):
+     *       < 0.30  → ABSTAIN  (no answer generated, WhatsApp handoff)
+     *       0.30-0.55 → CAUTIOUS (hedged answer via Gemini Flash)
+     *       > 0.55  → NORMAL   (standard answer via Gemini Flash)
+     */
+    post: operations["chat_api_v1_visa_oracle_chat_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/visa-oracle/handoff": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Handoff
+     * @description Build WhatsApp deep-link URL and send Telegram lead notification.
+     *
+     *     PR0 safety freeze (2026-07-17, W3) + hardening (Codex red-team round):
+     *     the recommended visa name and price used in the WhatsApp message /
+     *     Telegram summary come ONLY from the session this backend itself
+     *     persisted at /recommend time (already PricingService-derived — see
+     *     `VisaOracleService.recommend_visas`). `HandoffRequest.recommended_visas`
+     *     (client-posted) is still accepted on the wire for back-compat but is
+     *     never used for price/recommendation; a divergence is logged (no PII —
+     *     visa names/prices/session_id are not personal data).
+     *
+     *     FIX-5 (Codex red-team P1 #4): quiz facts (nationality/purpose/duration)
+     *     also prefer the server-persisted snapshot over the client-posted body —
+     *     same-session data captured by /recommend itself, before any chance for
+     *     a later handoff POST to alter it — falling back to the client body only
+     *     when no snapshot (or an empty one) exists. A body-only handoff (no
+     *     server session backing it at all) still fires the Telegram lead —
+     *     leads matter commercially — but is tagged `UNVERIFIED (no server
+     *     session):` rather than presented as if server-verified.
+     */
+    post: operations["handoff_api_v1_visa_oracle_handoff_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/visa-oracle/recommend": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Recommend
+     * @description Score and rank visa types for the given quiz answers.
+     *     No LLM — pure scoring logic from VisaOracleService.
+     *
+     *     PR0 safety freeze (2026-07-17) + hardening (Codex red-team round): the
+     *     response also carries `state` / `missing_facts` / `review_reasons`.
+     *     `visas` is [] for every state except SUPPORTED_CANDIDATES — callers must
+     *     not treat a non-empty legacy `visas` list as implying a confident match
+     *     without also checking `state`. `success=False` (still HTTP 200) is
+     *     reserved for the scoring-exception path ONLY — a genuine service
+     *     outage — so a legacy client checking only `success` sees failure on an
+     *     outage exactly as it did pre-PR0 via the old 500.
+     */
+    post: operations["recommend_api_v1_visa_oracle_recommend_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/visa-oracle/visa-types": {
     parameters: {
       query?: never;
       header?: never;
@@ -11466,10 +16073,73 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Bali Zero Chat Stream
-     * @description Streaming chat endpoint using IntelligentRouter for RAG-based responses.
+     * Get Visa Types
+     * @description Return all visa types — used by Next.js SSG at build time.
      */
-    get: operations["bali_zero_chat_stream_api_v2_bali_zero_chat_stream_get"];
+    get: operations["get_visa_types_api_v1_visa_oracle_visa_types_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/visa-oracle/visa-types/{code}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Visa Type Detail
+     * @description Return detail for a single visa type by code (slug).
+     */
+    get: operations["get_visa_type_detail_api_v1_visa_oracle_visa_types__code__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/wa-dashboard/stream": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Wa Dashboard Stream
+     * @description SSE live stream of WA messages, filtered per user RBAC.
+     *
+     *     Headers:
+     *       Last-Event-ID: <int>  -- replay messages after this id (fix #11)
+     */
+    get: operations["wa_dashboard_stream_api_v1_wa_dashboard_stream_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/wa-dashboard/stream/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Wa Dashboard Stream Health
+     * @description Diagnostic: connected users + tabs + drop count.
+     */
+    get: operations["wa_dashboard_stream_health_api_v1_wa_dashboard_stream_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11561,6 +16231,155 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/visa-oracle/evaluate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Evaluate Applicant
+     * @description Evaluate canonical applicant facts through the active rule pack.
+     *
+     *     Always HTTP 200 for well-formed requests — including the fail-closed
+     *     TEMPORARILY_UNAVAILABLE shape (surface disabled, no active pack,
+     *     crypto/evaluation fail-close). The response ``mode`` tells the v2 UI
+     *     whether the result is comparison-only CURATED or authoritative ENGINE;
+     *     it must never fabricate a result from an outage. Only request-shape
+     *     defects are 4xx.
+     */
+    post: operations["evaluateVisaOracleV2"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/check/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start Branch
+     * @description Branch selector — dumb routing by the yes/no answer from the hero.
+     */
+    post: operations["start_branch_api_visa_check_start_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/clock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit Clock */
+    post: operations["submit_clock_api_visa_clock_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/clock/{hash}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Clock */
+    get: operations["get_clock_api_visa_clock__hash__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/match": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit Match */
+    post: operations["submit_match_api_visa_match_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/match/{hash}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Match */
+    get: operations["get_match_api_visa_match__hash__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit Voa */
+    post: operations["submit_voa_api_visa_voa_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/{hash}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Voa */
+    get: operations["get_voa_api_visa_voa__hash__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/voice/elevenlabs/kbli-audit": {
     parameters: {
       query?: never;
@@ -11572,9 +16391,74 @@ export interface paths {
     put?: never;
     /**
      * Elevenlabs Kbli Audit
-     * @description ElevenLabs Tool Endpoint for KBLI Audit with Signature Verification.
+     * @deprecated
+     * @description Retired legacy ElevenLabs tool endpoint.
+     *
+     *     The production voice concierge is local-first and must not route through
+     *     external voice platforms. Keep the route as an explicit 410 so old webhook
+     *     callers fail closed with a clear migration signal.
      */
     post: operations["elevenlabs_kbli_audit_api_voice_elevenlabs_kbli_audit_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/voice/local-audio/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Local Audio Status
+     * @description Return sanitized local audio stack readiness.
+     */
+    get: operations["local_audio_status_api_voice_local_audio_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/voice/local-audio/synthesize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Local Audio Synthesize
+     * @description Synthesize local speech without persisting generated audio.
+     */
+    post: operations["local_audio_synthesize_api_voice_local_audio_synthesize_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/voice/local-audio/transcribe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Local Audio Transcribe
+     * @description Transcribe one local audio upload without persisting raw audio.
+     */
+    post: operations["local_audio_transcribe_api_voice_local_audio_transcribe_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -11602,6 +16486,345 @@ export interface paths {
      *     Expected latency: 5-8 seconds (vs 40s for agentic)
      */
     post: operations["voice_query_api_voice_query_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-inbox/threads": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Threads */
+    get: operations["list_threads_api_wa_inbox_threads_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-inbox/threads/{thread_id}/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Thread Messages */
+    get: operations["get_thread_messages_api_wa_inbox_threads__thread_id__messages_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-inbox/threads/{thread_id}/release": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Release */
+    post: operations["release_api_wa_inbox_threads__thread_id__release_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-inbox/threads/{thread_id}/send": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Send Message */
+    post: operations["send_message_api_wa_inbox_threads__thread_id__send_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-inbox/threads/{thread_id}/takeover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Takeover */
+    post: operations["takeover_api_wa_inbox_threads__thread_id__takeover_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Actions
+     * @description List action_queue rows with filters + pagination.
+     */
+    get: operations["list_actions_api_wa_actions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa/actions/owners": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Owners
+     * @description List distinct owners present in action_queue (for filter UI).
+     */
+    get: operations["list_owners_api_wa_actions_owners_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa/actions/{action_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Patch Action
+     * @description Apply a partial update (Done / Snooze / Assign / Dismiss).
+     */
+    patch: operations["patch_action_api_wa_actions__action_id__patch"];
+    trace?: never;
+  };
+  "/api/wa/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Wa Mirror Messages
+     * @description List CRM-safe wa-mirror messages for client/practice timelines.
+     */
+    get: operations["list_wa_mirror_messages_api_wa_messages_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/metrics/costs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Costs
+     * @description Top-N drafts by total cost (Imagen/Fireworks/DeepSeek/other) in period.
+     */
+    get: operations["get_costs_api_war_room_metrics_costs_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/metrics/distribution": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Distribution
+     * @description Distribution of registers in the last N days + >40% alert flag.
+     */
+    get: operations["get_distribution_api_war_room_metrics_distribution_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/metrics/funnel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Funnel
+     * @description Drafts → approved → published → leads funnel.
+     */
+    get: operations["get_funnel_api_war_room_metrics_funnel_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/metrics/heatmap": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Heatmap
+     * @description Register × metric_name heatmap (avg values + sample counts).
+     */
+    get: operations["get_heatmap_api_war_room_metrics_heatmap_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/metrics/rejections": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Rejections
+     * @description Rejection counts grouped by reason.
+     */
+    get: operations["get_rejections_api_war_room_metrics_rejections_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/metrics/timeline": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Timeline
+     * @description Timeline of published posts per day per tonal register.
+     */
+    get: operations["get_timeline_api_war_room_metrics_timeline_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/publish-ig": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Publish Ig
+     * @description Publish (or dry-validate) a WR2 carousel to Instagram, server-side.
+     *
+     *     LEGGE 5: ``confirm == False`` => dry validation only, ``publish()`` is never
+     *     called and ``approval_state`` stays ``"pending"``. ``confirm == True`` =>
+     *     ledger precondition + real publish with ``approval_state == "approved"``.
+     */
+    post: operations["publish_ig_api_war_room_publish_ig_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/war-room/upload-slide": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload Slide
+     * @description Upload ONE carousel slide PNG to Tigris, return its public Graph-fetchable URL.
+     *
+     *     The WR2 Control app renders slides locally on M5, where the Tigris creds do NOT
+     *     live — only the Fly backend has them. So the app POSTs each slide's bytes here;
+     *     this admin-gated endpoint puts them on Tigris (``public-read``) and returns the
+     *     URL the operator then passes to ``/publish-ig`` as one of ``image_urls``.
+     *
+     *     Mirrors the exact ``upload_png`` path the live dry-run exercised (2026-06-26):
+     *     deterministic key ``wr2-ig/<draft_id>/<NN>.png``, ContentType ``image/png``,
+     *     HEAD-verified. The endpoint NEVER publishes — it only hosts bytes. LEGGE 5 is
+     *     enforced at ``/publish-ig`` (the ``confirm`` flag), not here.
+     */
+    post: operations["upload_slide_api_war_room_upload_slide_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -11658,7 +16881,9 @@ export interface paths {
      *     Safety gates:
      *     - Auth required (JWT)
      *     - Rate limit: 20 msgs/phone/hour
-     *     - CRM validation: recipient must exist in clients table
+     *     - Recipient validation: must be a known CRM client (clients.phone) OR a
+     *       Bali Zero team member (team_members.whatsapp). Numbers in
+     *       WHATSAPP_TEAM_ALLOWLIST also bypass via env config (staff stay out of CRM)
      */
     post: operations["send_whatsapp_message_api_whatsapp_send_post"];
     delete?: never;
@@ -11728,7 +16953,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/x-monitor/recent": {
+  "/api/workspace/analytics/funnel": {
     parameters: {
       query?: never;
       header?: never;
@@ -11736,10 +16961,13 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Get Recent Tweets
-     * @description Get recent monitored tweets.
+     * Funnel View
+     * @description Return session counts by funnel + conversion counts by first-touch funnel.
+     *
+     *     Resilient: if optional tables are missing (e.g. in staging) we return empty
+     *     buckets rather than 500.
      */
-    get: operations["get_recent_tweets_api_x_monitor_recent_get"];
+    get: operations["funnel_view_api_workspace_analytics_funnel_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11748,18 +16976,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/x-monitor/stats": {
+  "/api/workspace/inbox": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /**
-     * Get Monitor Stats
-     * @description Get X social listening statistics.
-     */
-    get: operations["get_monitor_stats_api_x_monitor_stats_get"];
+    /** Feed */
+    get: operations["feed_api_workspace_inbox_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11768,7 +16993,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/bali-zero/chat-stream": {
+  "/api/workspace/inbox/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -11776,10 +17001,10 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Bali Zero Chat Stream
-     * @description Streaming chat endpoint using IntelligentRouter for RAG-based responses.
+     * Stats
+     * @description Aggregated counts by channel for the last 24h (owner-only).
      */
-    get: operations["bali_zero_chat_stream_bali_zero_chat_stream_get"];
+    get: operations["stats_api_workspace_inbox_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11801,8 +17026,63 @@ export interface paths {
      *
      *     Returns "initializing" immediately if service not ready.
      *     Prevents container crashes during warmup by not creating heavy objects.
+     *
+     *     Resource thresholds (Fly.io auto-restart via HTTP 503 + unhealthy status):
+     *     - Memory >90% (rag process only): HTTP 503, status="unhealthy"
+     *     - Disk /data >90%: HTTP 503, status="unhealthy"
+     *     - Disk /data >80%: HTTP 200, status="degraded"
+     *
+     *     NOTE: Fly.io [[services.http_checks]] only restarts on non-2xx responses.
+     *     Returning JSON {"status":"unhealthy"} with HTTP 200 does NOT trigger restart.
+     *     We must return HTTP 503 to make Fly.io act.
      */
     get: operations["health_check_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/collections": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Collections Health
+     * @description Collection freshness and live point count for all Qdrant collections.
+     *
+     *     Combines the CollectionManager's freshness tracking (last ingest timestamp)
+     *     with live Qdrant point counts. Useful for monitoring data staleness.
+     *
+     *     Returns:
+     *         dict: Per-collection last_updated timestamp, age, and live point count
+     */
+    get: operations["collections_health_health_collections_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/db": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Db Health
+     * @description Database health summary from Olympus Guardian.
+     */
+    get: operations["db_health_health_db_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11972,6 +17252,72 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/health/redis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Redis Health
+     * @description Redis memory health endpoint.
+     *
+     *     Returns memory usage, eviction policy, evicted keys count, and connected clients.
+     *     Used by monitoring to detect memory pressure before Redis starts evicting keys.
+     *
+     *     Returns:
+     *         dict: Redis memory health info
+     */
+    get: operations["redis_health_health_redis_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/internal/olympus/pulse": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Trigger Pulse
+     * @description Manually trigger a pulse cycle.
+     */
+    post: operations["trigger_pulse_internal_olympus_pulse_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/internal/olympus/rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Rules
+     * @description List all active Olympus rules.
+     */
+    get: operations["list_rules_internal_olympus_rules_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/media/generate-image": {
     parameters: {
       query?: never;
@@ -12124,7 +17470,18 @@ export interface paths {
     put?: never;
     /**
      * Instagram Webhook
-     * @description Handle incoming Instagram DMs via ChannelRouter.
+     * @description Handle incoming Instagram DMs — ack-first pattern (P0-6 audit 2026-04-29).
+     *
+     *     Flow:
+     *       1. Parse payload + filter echo/read/delivery events.
+     *       2. Persist each message to ``inbound_webhooks`` (idempotent on
+     *          message.mid via UNIQUE(channel, dedup_key)).
+     *       3. Synchronously route via ChannelRouter (existing behavior).
+     *       4. Return 200 OK — Meta requires this.
+     *
+     *     The WebhookProcessor (services/channels/webhook_processor.py) drains
+     *     any rows that the synchronous path missed (Fly machine crash, channel
+     *     router exception, etc.) so no inbound DM is silently lost.
      */
     post: operations["instagram_webhook_webhook_instagram_post"];
     delete?: never;
@@ -12144,10 +17501,13 @@ export interface paths {
     put?: never;
     /**
      * Telegram Webhook
-     * @description Telegram Bot API webhook endpoint.
+     * @description Telegram Bot API webhook endpoint — ack-first pattern (P0-6 audit 2026-04-29).
      *
-     *     Receives updates from Telegram and routes them through the multi-channel architecture.
-     *     Intercepts callback_query updates for intel approval voting.
+     *     Flow:
+     *       1. Parse + validate update_id (Telegram-provided idempotency key).
+     *       2. Persist payload to ``inbound_webhooks`` (idempotent on update_id).
+     *       3. Handle callback_query OR route via ChannelRouter (existing behavior).
+     *       4. Return 200 OK — Telegram requires this even on error to prevent retries.
      *
      *     Returns:
      *         Success confirmation (Telegram expects 200 OK)
@@ -12198,7 +17558,15 @@ export interface paths {
     put?: never;
     /**
      * Twitter Webhook
-     * @description Handle incoming X/Twitter DMs via Account Activity API.
+     * @description Handle incoming X/Twitter DMs — ack-first pattern (P0-6 audit 2026-04-29).
+     *
+     *     Flow:
+     *       1. Verify HMAC signature (synchronous, fast).
+     *       2. Parse + filter echo messages.
+     *       3. Persist payload to ``inbound_webhooks`` (idempotent on
+     *          direct_message_events[0].id via UNIQUE(channel, dedup_key)).
+     *       4. Synchronously route via ChannelRouter (existing behavior).
+     *       5. Return 200 OK — Twitter expects this.
      */
     post: operations["twitter_webhook_webhook_twitter_post"];
     delete?: never;
@@ -12225,10 +17593,23 @@ export interface paths {
     put?: never;
     /**
      * Whatsapp Webhook
-     * @description Handle incoming WhatsApp messages.
+     * @description Handle incoming WhatsApp messages — ack-first pattern (P0-6 audit 2026-04-29).
      *
      *     Meta sends POST requests with message events.
-     *     We process in background and return 200 immediately.
+     *     Verifies X-Hub-Signature-256 HMAC if WHATSAPP_APP_SECRET is configured.
+     *
+     *     Flow:
+     *       1. Verify HMAC signature (synchronous, fast).
+     *       2. Parse + persist payload to ``inbound_webhooks`` (idempotent on
+     *          Meta message_id via UNIQUE(channel, dedup_key)).
+     *       3. Schedule fast-path processing via FastAPI BackgroundTasks (existing
+     *          behaviour).
+     *       4. Return 200 OK in <200ms — guaranteed by virtue of (1)+(2)+(3) all
+     *          being O(1) async DB ops.
+     *
+     *     The WebhookProcessor (services/channels/webhook_processor.py) drains
+     *     any rows that the fast path missed (Fly machine crash mid-handler,
+     *     handler exception, etc.) so no inbound message is silently lost.
      */
     post: operations["whatsapp_webhook_webhook_whatsapp_post"];
     delete?: never;
@@ -12346,6 +17727,103 @@ export interface components {
       total_abstains: number;
       /** Total Queries */
       total_queries: number;
+    };
+    /**
+     * ActionPatchRequest
+     * @description Partial update — any subset of fields can be present.
+     *
+     *     Status transitions allowed:
+     *       open      -> snoozed | done | dismissed
+     *       snoozed   -> open | done | dismissed
+     *       done      -> (terminal, but allow re-open back to open if needed)
+     *       dismissed -> (terminal, allow re-open)
+     */
+    ActionPatchRequest: {
+      /** Dismiss Reason */
+      dismiss_reason?: string | null;
+      /** Owner */
+      owner?: string | null;
+      /** Resolution Notes */
+      resolution_notes?: string | null;
+      /**
+       * Snooze Days
+       * @description If set + status=snoozed, snoozed_until = NOW() + N days
+       */
+      snooze_days?: number | null;
+      /** Snoozed Until */
+      snoozed_until?: string | null;
+      /** Status */
+      status?: ("open" | "snoozed" | "done" | "dismissed") | null;
+    };
+    /** ActionQueueListResponse */
+    ActionQueueListResponse: {
+      /** Items */
+      items: components["schemas"]["ActionQueueRow"][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+    };
+    /** ActionQueueOwnersResponse */
+    ActionQueueOwnersResponse: {
+      /** Owners */
+      owners: string[];
+    };
+    /**
+     * ActionQueueRow
+     * @description CRM-safe projection of one action_queue row.
+     */
+    ActionQueueRow: {
+      /** Action Id */
+      action_id: number;
+      /** Action Type */
+      action_type: string;
+      /** Client Full Name */
+      client_full_name?: string | null;
+      /** Client Id */
+      client_id: number | null;
+      /** Conversation Id */
+      conversation_id: number | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Dismiss Reason */
+      dismiss_reason?: string | null;
+      /** Due At */
+      due_at?: string | null;
+      /** Evidence */
+      evidence?:
+        | {
+            [key: string]: unknown;
+          }
+        | unknown[]
+        | null;
+      /** Owner */
+      owner?: string | null;
+      /** Practice Id */
+      practice_id: number | null;
+      /** Practice Kind */
+      practice_kind?: string | null;
+      /** Priority */
+      priority: number;
+      /** Reason */
+      reason: string;
+      /** Recommended Action */
+      recommended_action: string;
+      /** Resolution Notes */
+      resolution_notes?: string | null;
+      /** Resolved At */
+      resolved_at?: string | null;
+      /** Snoozed Until */
+      snoozed_until?: string | null;
+      /** Status */
+      status: string;
+      /** Suggested Message Draft */
+      suggested_message_draft?: string | null;
     };
     /** AddComplianceItemRequest */
     AddComplianceItemRequest: {
@@ -12571,6 +18049,8 @@ export interface components {
       enable_vision: boolean | null;
       /** Images */
       images?: components["schemas"]["ImageInput"][] | null;
+      /** Max Steps */
+      max_steps?: number | null;
       /** Query */
       query: string;
       /** Session Id */
@@ -12633,6 +18113,30 @@ export interface components {
       total_steps: number;
       /** Workflow */
       workflow?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    /**
+     * AiSummaryResponse
+     * @description Response model for GET /api/crm/clients/{id}/ai-summary.
+     *
+     *     Wraps the JSONB blob from clients.ai_summary with freshness metadata.
+     *     The summary itself follows L1ClientSummary v2.0 schema (see
+     *     apps/backend-rag/backend/services/crm_guardian/schemas.py).
+     */
+    AiSummaryResponse: {
+      /** Client Id */
+      client_id: number;
+      /** Fingerprint */
+      fingerprint: string | null;
+      /** Generated At */
+      generated_at: string | null;
+      /** Schema Version */
+      schema_version: string | null;
+      /** Status */
+      status: string;
+      /** Summary */
+      summary: {
         [key: string]: unknown;
       } | null;
     };
@@ -12722,6 +18226,7 @@ export interface components {
       | "passport_expired"
       | "visa_warning"
       | "visa_critical"
+      | "visa_emergency"
       | "visa_expired"
       | "birthday";
     /** AnalyzeInvestmentRequest */
@@ -12745,6 +18250,219 @@ export interface components {
       lon: number;
       /** Price Idr */
       price_idr?: number | null;
+    };
+    /**
+     * ApplicantFactsData
+     * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
+     *     with all 40 keys required. Field order mirrors ``enums.FactPath``'s
+     *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
+     *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
+     *     grouping.
+     *
+     *     ``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted
+     *     ``FactPath`` string (e.g. ``"person.birth_date"``) that cannot be a
+     *     Python attribute name, so each field carries a Python-safe name
+     *     (``person_birth_date``) purely to exist in the class body, with the
+     *     dotted string as its ``alias``. Allowing the Python name to *also*
+     *     populate the model would let a caller construct
+     *     ``ApplicantFactsData(person_birth_date=...)`` directly — a name that
+     *     never appears on the wire (every real payload is alias-keyed JSON/dict),
+     *     so accepting it is pure smuggling surface with no legitimate caller.
+     */
+    ApplicantFactsData: {
+      /** Commercial.Service Fee Budget Idr */
+      "commercial.service_fee_budget_idr":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownMoney"];
+      /** Commercial.Wants Quote */
+      "commercial.wants_quote":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Family.Marriage Registered */
+      "family.marriage_registered":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Family.Relation To Sponsor */
+      "family.relation_to_sponsor":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownRelation"];
+      /** Family.Sponsor Confirmed */
+      "family.sponsor_confirmed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Family.Sponsor Nationalities */
+      "family.sponsor_nationalities":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownCountrySet"];
+      /** Family.Sponsor Status Code */
+      "family.sponsor_status_code":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownString"];
+      /** Immigration.Current Status Code */
+      "immigration.current_status_code":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownString"];
+      /** Immigration.Current Status Expiry */
+      "immigration.current_status_expiry":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownDate"];
+      /** Immigration.Currently In Indonesia */
+      "immigration.currently_in_indonesia":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Immigration.Last Entry Date */
+      "immigration.last_entry_date":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownDate"];
+      /** Immigration.Overstay Days */
+      "immigration.overstay_days":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
+      /** Immigration.Violation History */
+      "immigration.violation_history":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownViolationSet"];
+      /** Intent.Desired Entry Date */
+      "intent.desired_entry_date":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownDate"];
+      /** Intent.Entry Pattern */
+      "intent.entry_pattern":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownEntryPattern"];
+      /** Intent.Purposes */
+      "intent.purposes":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownPurposeSet"];
+      /** Intent.Requested Product Code */
+      "intent.requested_product_code":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownString"];
+      /** Intent.Stay Days */
+      "intent.stay_days":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
+      /** Investment.Investment Capital Idr */
+      "investment.investment_capital_idr":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownMoney"];
+      /** Investment.Paid Up Capital Idr */
+      "investment.paid_up_capital_idr":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownMoney"];
+      /** Investment.Proposed Role */
+      "investment.proposed_role":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownProposedRole"];
+      /** Investment.Pt Pma Committed */
+      "investment.pt_pma_committed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Person.Birth Date */
+      "person.birth_date":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownDate"];
+      /** Person.Marital Status */
+      "person.marital_status":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownMaritalStatus"];
+      /** Person.Nationalities */
+      "person.nationalities":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownCountrySet"];
+      /** Process.Application Channel */
+      "process.application_channel":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownApplicationChannel"];
+      /** Process.Wants Onshore Conversion */
+      "process.wants_onshore_conversion":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Secondhome.Bank Deposit At State Bank */
+      "secondhome.bank_deposit_at_state_bank":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Secondhome.Bank Deposit In Own Name */
+      "secondhome.bank_deposit_in_own_name":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Secondhome.Bank Deposit Usd */
+      "secondhome.bank_deposit_usd":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
+      /** Secondhome.Passive Monthly Income Usd */
+      "secondhome.passive_monthly_income_usd":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
+      /** Secondhome.Qualifying Property Value Usd */
+      "secondhome.qualifying_property_value_usd":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
+      /** Study.Admission Confirmed */
+      "study.admission_confirmed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Study.Level */
+      "study.level":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownStudyLevel"];
+      /** Study.Sponsor Confirmed */
+      "study.sponsor_confirmed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Work.Employer Country Code */
+      "work.employer_country_code":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownCountryCode"];
+      /** Work.Employer Is Indonesian Entity */
+      "work.employer_is_indonesian_entity":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Work.Indonesia Source Compensation */
+      "work.indonesia_source_compensation":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Work.Indonesian Work Sponsor Confirmed */
+      "work.indonesian_work_sponsor_confirmed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /** Work.Serves Indonesian Clients */
+      "work.serves_indonesian_clients":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+    };
+    /**
+     * ApplicationChannel
+     * @enum {string}
+     */
+    ApplicationChannel: "OFFSHORE" | "ONSHORE_CONVERSION" | "STATUS_BRIDGING";
+    /** ArticleIngestRequest */
+    ArticleIngestRequest: {
+      /**
+       * Article Id
+       * @description UUID generated by Intel Scraper
+       */
+      article_id: string;
+      /** Body Mdx */
+      body_mdx: string;
+      /** Metadata */
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /** Title */
+      title: string;
+      /**
+       * Topic
+       * @default
+       */
+      topic: string;
+    };
+    /** ArticleIngestResponse */
+    ArticleIngestResponse: {
+      /** Article Id */
+      article_id: string;
+      /** Status */
+      status: string;
     };
     /**
      * AttachmentObject
@@ -12772,6 +18490,27 @@ export interface components {
        */
       store_name: string;
     };
+    /** AvailabilityAssessmentDTO */
+    AvailabilityAssessmentDTO: {
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+      /** Reason Code */
+      reason_code: string;
+      /**
+       * Source Refs
+       * @default []
+       */
+      source_refs: string[];
+      status: components["schemas"]["AvailabilityStatus"];
+    };
+    /**
+     * AvailabilityStatus
+     * @enum {string}
+     */
+    AvailabilityStatus: "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
     /** BaliZeroTake */
     BaliZeroTake: {
       /** Hidden Insight */
@@ -12812,6 +18551,25 @@ export interface components {
       /** Total Books */
       total_books: number;
     };
+    /** BatchObservationPayload */
+    BatchObservationPayload: {
+      /** Observations */
+      observations: components["schemas"]["ObservationPayload"][];
+    };
+    /** BatchObservationResponse */
+    BatchObservationResponse: {
+      /** Accepted */
+      accepted: number;
+      /** Rejected */
+      rejected: number;
+      /** Results */
+      results: (
+        | components["schemas"]["ObservationResponse"]
+        | {
+            [key: string]: unknown;
+          }
+      )[];
+    };
     /**
      * BlogAskRequest
      * @description Request model for blog article questions
@@ -12846,6 +18604,19 @@ export interface components {
         [key: string]: unknown;
       }[];
     };
+    /** Body_assign_thread_api_omnichannel_threads__thread_id__assign_post */
+    Body_assign_thread_api_omnichannel_threads__thread_id__assign_post: {
+      /** Assignee */
+      assignee: string;
+    };
+    /** Body_import_cashout_pdf_api_crm_accounting_import_cashout_post */
+    Body_import_cashout_pdf_api_crm_accounting_import_cashout_post: {
+      /**
+       * File
+       * @description Asya's GABUNGAN cashout worksheet PDF
+       */
+      file: string;
+    };
     /** Body_transcribe_audio_api_audio_transcribe_post */
     Body_transcribe_audio_api_audio_transcribe_post: {
       /** File */
@@ -12856,13 +18627,38 @@ export interface components {
       /** File */
       file: string;
     };
+    /** Body_upload_asset_api_assets_upload_post */
+    Body_upload_asset_api_assets_upload_post: {
+      /**
+       * File
+       * @description Binary file to upload to Tigris
+       */
+      file: string;
+      /**
+       * Prefix
+       * @description Tigris key prefix (e.g. wr2-hero, wr3-broll)
+       */
+      prefix: string;
+      /**
+       * Session Id
+       * @description Session/carousel/episode slug for path nesting
+       */
+      session_id: string;
+    };
     /** Body_upload_attachment_api_integrations_zoho_attachments_post */
     Body_upload_attachment_api_integrations_zoho_attachments_post: {
       /** File */
       file: string;
     };
+    /** Body_upload_client_avatar_api_crm_clients__client_id__avatar_post */
+    Body_upload_client_avatar_api_crm_clients__client_id__avatar_post: {
+      /** File */
+      file: string;
+    };
     /** Body_upload_document_api_portal_documents_upload_post */
     Body_upload_document_api_portal_documents_upload_post: {
+      /** Document Purpose */
+      document_purpose?: string | null;
       /** Document Type */
       document_type: string;
       /** File */
@@ -12884,8 +18680,43 @@ export interface components {
     };
     /** Body_upload_legal_document_api_legal_upload_post */
     Body_upload_legal_document_api_legal_upload_post: {
+      /** Collection Name */
+      collection_name?: string | null;
+      /** Effective Date */
+      effective_date?: string | null;
       /** File */
       file: string;
+      /** Observed At */
+      observed_at?: string | null;
+      /**
+       * Retrieval Scope
+       * @default current
+       */
+      retrieval_scope: string;
+      /** Source Url */
+      source_url?: string | null;
+      /** Tier */
+      tier?: string | null;
+      /** Title */
+      title?: string | null;
+    };
+    /** Body_upload_slide_api_war_room_upload_slide_post */
+    Body_upload_slide_api_war_room_upload_slide_post: {
+      /**
+       * Draft Id
+       * @description Groups all slides of one carousel post.
+       */
+      draft_id: string;
+      /**
+       * File
+       * @description A single carousel slide PNG.
+       */
+      file: string;
+      /**
+       * Slide Index
+       * @description 0-based slide ordinal (0=cover).
+       */
+      slide_index: number;
     };
     /** BonusRateCreate */
     BonusRateCreate: {
@@ -12942,6 +18773,16 @@ export interface components {
       success: boolean;
       tier: components["schemas"]["TierLevel"];
     };
+    /** BranchStartRequest */
+    BranchStartRequest: {
+      /** In Country Now */
+      in_country_now: boolean;
+    };
+    /** BranchStartResponse */
+    BranchStartResponse: {
+      /** Branch */
+      branch: string;
+    };
     /**
      * BreadcrumbItem
      * @description Breadcrumb path item.
@@ -12953,30 +18794,208 @@ export interface components {
       name: string;
     };
     /**
-     * ChatStreamRequest
-     * @description Request model for POST /api/chat/stream
+     * BudgetBand
+     * @enum {string}
      */
-    ChatStreamRequest: {
+    BudgetBand: "under_50m" | "50m_500m" | "over_500m";
+    /** BulkReassignRequest */
+    BulkReassignRequest: {
+      /** New User Id */
+      new_user_id: string;
+      /** Partner Ids */
+      partner_ids: string[];
+      /** Reason */
+      reason: string;
+    };
+    /** BusinessAnalyzeRequest */
+    BusinessAnalyzeRequest: {
+      /** Geo Data */
+      geo_data?: {
+        [key: string]: unknown;
+      } | null;
+      investor_profile?: components["schemas"]["InvestorProfile"] | null;
+      /**
+       * Is Pma
+       * @default true
+       */
+      is_pma: boolean;
+      /** Kbli Code */
+      kbli_code?: string | null;
+      /** Land Size M2 */
+      land_size_m2?: number | null;
+      /** Lat */
+      lat: number;
+      /** Lng */
+      lng: number;
+      /** Price Idr */
+      price_idr?: number | null;
+    };
+    /**
+     * Candidate
+     * @description ``$defs/Candidate`` (spec §2). ``covered_purposes`` is deliberately a
+     *     bare ``str`` tuple, not ``tuple[VisaPurpose, ...]`` — spec §2's own
+     *     ``items`` schema for this field is ``{"type": "string"}`` with no enum
+     *     constraint (unlike every other ``covered_purposes`` field in this
+     *     package), so this class follows the spec literally.
+     */
+    Candidate: {
+      /** Covered Purposes */
+      covered_purposes: string[];
+      /** Product Code */
+      product_code: string;
+      /**
+       * Product Version Id
+       * Format: uuid
+       */
+      product_version_id: string;
+      /** Rank */
+      rank: number;
+      /** Reason Codes */
+      reason_codes: string[];
+      /** Score */
+      score: number;
+      /** Source Refs */
+      source_refs: string[];
+      /** Support Rule Ids */
+      support_rule_ids: string[];
+    };
+    /**
+     * CandidateAvailabilityDTO
+     * @description Three product concepts that must never be collapsed into one flag.
+     */
+    CandidateAvailabilityDTO: {
+      bali_zero_service_availability: components["schemas"]["AvailabilityAssessmentDTO"];
+      /**
+       * Legal Eligibility
+       * @constant
+       */
+      legal_eligibility: "SUPPORTED";
+      operational_availability: components["schemas"]["AvailabilityAssessmentDTO"];
+    };
+    /** CandidateDisplayDTO */
+    CandidateDisplayDTO: {
+      availability: components["schemas"]["CandidateAvailabilityDTO"];
+      documentation: components["schemas"]["CandidateDocumentationDTO"];
+      name: components["schemas"]["ProductNames"];
+      pricing: components["schemas"]["CandidatePricingDTO"];
+      processing_timeline: components["schemas"]["CandidateProcessingTimelineDTO"];
+      /** Product Code */
+      product_code: string;
+      /**
+       * Product Version Id
+       * Format: uuid
+       */
+      product_version_id: string;
+      /** Rank */
+      rank: number;
+      stay_policy: components["schemas"]["CandidateStayPolicyDTO"];
+      tagline: components["schemas"]["ProductNames"] | null;
+    };
+    /**
+     * CandidateDocumentationDTO
+     * @description Verified document content, with UNKNOWN distinct from a verified empty list.
+     */
+    CandidateDocumentationDTO: {
+      /** Checklist */
+      checklist: components["schemas"]["ProductNames"][];
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+      /** Reason Code */
+      reason_code: string;
+      /** Requirements */
+      requirements: components["schemas"]["ProductNames"][];
+      status: components["schemas"]["DocumentationStatus"];
+    };
+    /**
+     * CandidatePricingDTO
+     * @description Pricing status kept separate from all three eligibility/availability axes.
+     */
+    CandidatePricingDTO: {
+      /** Catalog Last Updated */
+      catalog_last_updated: string | null;
+      /** Catalog Sha256 */
+      catalog_sha256?: string | null;
+      /**
+       * Evaluated At
+       * Format: date-time
+       */
+      evaluated_at: string;
+      /** Reason Code */
+      reason_code: string;
+      /** Row Sha256 */
+      row_sha256?: string | null;
+      status: components["schemas"]["PricingAvailabilityStatus"];
+    };
+    /**
+     * CandidateProcessingTimelineDTO
+     * @description Operational processing estimate anchored to a disclosed calendar date.
+     */
+    CandidateProcessingTimelineDTO: {
+      /** Anchor Date */
+      anchor_date: string | null;
+      /** Estimated Completion From */
+      estimated_completion_from: string | null;
+      /** Estimated Completion To */
+      estimated_completion_to: string | null;
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+      /** Reason Code */
+      reason_code: string;
+      status: components["schemas"]["ProcessingTimelineStatus"];
+    };
+    /**
+     * CandidateStayPolicyDTO
+     * @description Legal stay/extension policy, never a processing-time estimate.
+     */
+    CandidateStayPolicyDTO: {
+      extension: components["schemas"]["ExtensionPolicy"];
+      stay: components["schemas"]["StayPolicy"];
+    };
+    /**
+     * CaseType
+     * @enum {string}
+     */
+    CaseType: "issuance" | "extension";
+    /** ChatRequest */
+    ChatRequest: {
+      /** Check Hash */
+      check_hash?: string | null;
       /** Conversation History */
-      conversation_history?:
-        | {
-            [key: string]: unknown;
-          }[]
-        | null;
+      conversation_history?: unknown[] | null;
+      /** Language */
+      language?: string | null;
       /** Message */
       message: string;
-      /** Metadata */
-      metadata?: {
+      /** Quiz Answers */
+      quiz_answers?: {
         [key: string]: unknown;
       } | null;
       /** Session Id */
-      session_id?: string | null;
-      /** User Id */
-      user_id?: string | null;
-      /** Zantara Context */
-      zantara_context?: {
-        [key: string]: unknown;
-      } | null;
+      session_id: string;
+    };
+    /** ChatResponse */
+    ChatResponse: {
+      /** Answer */
+      answer: string;
+      /** Confidence */
+      confidence: string;
+      /**
+       * Review Reasons
+       * @default []
+       */
+      review_reasons: string[];
+      /** Session Id */
+      session_id: string;
+      /** Sources */
+      sources: string[];
+      /** Success */
+      success: boolean;
     };
     /**
      * CheckRequest
@@ -13032,6 +19051,28 @@ export interface components {
       total_chunks: number;
     };
     /**
+     * ClaimSearchResponse
+     * @description Response for GET /api/naga/claims/search.
+     */
+    ClaimSearchResponse: {
+      /** Claims */
+      claims?: {
+        [key: string]: unknown;
+      }[];
+      /**
+       * Total
+       * @default 0
+       */
+      total: number;
+    };
+    /** ClawbackRequest */
+    ClawbackRequest: {
+      /** Amount Idr */
+      amount_idr?: number | string | null;
+      /** Reason */
+      reason: string;
+    };
+    /**
      * CleanupResult
      * @description Result of a conversation cleanup run.
      */
@@ -13059,6 +19100,11 @@ export interface components {
     ClientCreate: {
       /** Address */
       address?: string | null;
+      /**
+       * Allow Duplicate Phone
+       * @default false
+       */
+      allow_duplicate_phone: boolean;
       /** Assigned To */
       assigned_to?: string | null;
       /** Avatar Url */
@@ -13141,10 +19187,27 @@ export interface components {
     ClientResponse: {
       /** Address */
       address?: string | null;
+      /** Ai Extraction Confidence */
+      ai_extraction_confidence?: number | null;
+      /** Ai Profile Archetype */
+      ai_profile_archetype?: string | null;
+      /** Ai Profile Tier */
+      ai_profile_tier?: string | null;
+      /**
+       * Ai Red Flags Count
+       * @default 0
+       */
+      ai_red_flags_count: number;
+      /** Ai Summary Generated At */
+      ai_summary_generated_at?: string | null;
+      /** Ai Summary Status */
+      ai_summary_status?: string | null;
       /** Assigned To */
       assigned_to?: string | null;
       /** Avatar Url */
       avatar_url?: string | null;
+      /** Birthplace */
+      birthplace?: string | null;
       /** Client Type */
       client_type: string;
       /** Company Name */
@@ -13156,6 +19219,10 @@ export interface components {
       created_at: string;
       /** Created By */
       created_by?: string | null;
+      /** Current Visa Sponsor */
+      current_visa_sponsor?: string | null;
+      /** Current Visa Type */
+      current_visa_type?: string | null;
       /**
        * Custom Fields
        * @default {}
@@ -13171,6 +19238,13 @@ export interface components {
       first_contact_date?: string | null;
       /** Full Name */
       full_name: string;
+      /** Gender */
+      gender?: string | null;
+      /**
+       * Has Avatar
+       * @default false
+       */
+      has_avatar: boolean;
       /** Id */
       id: number;
       /** Last Interaction Date */
@@ -13202,11 +19276,19 @@ export interface components {
       service_interest: string[];
       /** Status */
       status: string;
+      /** Strategic Recap */
+      strategic_recap?: string | null;
+      /** Strategic Recap Source */
+      strategic_recap_source?: string | null;
+      /** Strategic Recap Updated At */
+      strategic_recap_updated_at?: string | null;
       /**
        * Tags
        * @default []
        */
       tags: string[];
+      /** Tax Consultant */
+      tax_consultant?: string | null;
       /** Tax Id */
       tax_id?: string | null;
       /**
@@ -13227,10 +19309,16 @@ export interface components {
       assigned_to?: string | null;
       /** Avatar Url */
       avatar_url?: string | null;
+      /** Birthplace */
+      birthplace?: string | null;
       /** Client Type */
       client_type?: string | null;
       /** Company Name */
       company_name?: string | null;
+      /** Current Visa Sponsor */
+      current_visa_sponsor?: string | null;
+      /** Current Visa Type */
+      current_visa_type?: string | null;
       /** Custom Fields */
       custom_fields?: {
         [key: string]: unknown;
@@ -13241,12 +19329,18 @@ export interface components {
       email?: string | null;
       /** Full Name */
       full_name?: string | null;
+      /** Gender */
+      gender?: string | null;
       /** Lead Source */
       lead_source?: string | null;
       /** Nationality */
       nationality?: string | null;
+      /** Nib */
+      nib?: string | null;
       /** Notes */
       notes?: string | null;
+      /** Npwp */
+      npwp?: string | null;
       /** Passport Expiry */
       passport_expiry?: string | null;
       /** Passport Number */
@@ -13257,10 +19351,77 @@ export interface components {
       service_interest?: string[] | null;
       /** Status */
       status?: string | null;
+      /** Strategic Recap */
+      strategic_recap?: string | null;
       /** Tags */
       tags?: string[] | null;
+      /** Tax Consultant */
+      tax_consultant?: string | null;
+      /** Tax Id */
+      tax_id?: string | null;
       /** Whatsapp */
       whatsapp?: string | null;
+    };
+    /**
+     * ClientUpsertByPhone
+     * @description Sanitized payload for service-side lead promotion. Raw WhatsApp content NEVER
+     *     crosses this boundary — only derived fields (name, note recap, strategic summary).
+     */
+    ClientUpsertByPhone: {
+      /** Assigned To */
+      assigned_to?: string | null;
+      /**
+       * Create If Missing
+       * @default true
+       */
+      create_if_missing: boolean;
+      /** Full Name */
+      full_name?: string | null;
+      /**
+       * Improve Name
+       * @default true
+       */
+      improve_name: boolean;
+      /**
+       * Lead Source
+       * @default whatsapp_auto
+       */
+      lead_source: string;
+      /** Notes Append */
+      notes_append?: string | null;
+      /**
+       * Notes Append Min Age Hours
+       * @default 24
+       */
+      notes_append_min_age_hours: number;
+      /** Phone Normalized */
+      phone_normalized: string;
+      /**
+       * Reject Ambiguous
+       * @default false
+       */
+      reject_ambiguous: boolean;
+      /**
+       * Restore If Archived
+       * @default true
+       */
+      restore_if_archived: boolean;
+      /** Strategic Recap */
+      strategic_recap?: string | null;
+    };
+    /** ClockCheckpointPayload */
+    ClockCheckpointPayload: {
+      /**
+       * At
+       * Format: date
+       */
+      at: string;
+      /** Body */
+      body: string;
+      /** Label */
+      label: string;
+      /** Title */
+      title: string;
     };
     /**
      * ClockInRequest
@@ -13310,25 +19471,34 @@ export interface components {
        */
       user_id: string;
     };
-    /**
-     * ClockResponse
-     * @description Clock-in/out response
-     */
-    ClockResponse: {
-      /** Action */
-      action?: string | null;
-      /** Bali Time */
-      bali_time?: string | null;
-      /** Error */
-      error?: string | null;
-      /** Hours Worked */
-      hours_worked?: number | null;
-      /** Message */
-      message: string;
-      /** Success */
-      success: boolean;
-      /** Timestamp */
-      timestamp?: string | null;
+    /** ClockRequest */
+    ClockRequest: {
+      /** Client Fingerprint */
+      client_fingerprint?: string | null;
+      /**
+       * Entry Date
+       * Format: date
+       */
+      entry_date: string;
+      /**
+       * In Country Now
+       * @default true
+       */
+      in_country_now: boolean;
+      visa_type: components["schemas"]["VisaType"];
+    };
+    /** CommissionMarkPaidRequest */
+    CommissionMarkPaidRequest: {
+      /** Paid Via */
+      paid_via: string;
+      /** Payment Proof Url */
+      payment_proof_url?: string | null;
+      /** Payment Reference */
+      payment_reference: string;
+      /** Receipt File Url */
+      receipt_file_url?: string | null;
+      /** Receipt Type */
+      receipt_type?: ("kwitansi" | "invoice" | "none") | null;
     };
     /**
      * CompleteRegistrationRequest
@@ -13397,14 +19567,17 @@ export interface components {
       success: boolean;
     };
     /**
-     * ConfirmRequest
-     * @description Confirm subscription request
+     * ConfirmationDecisionRequest
+     * @description Body for POST /api/agentic-rag/confirm.
      */
-    ConfirmRequest: {
-      /** Subscriberid */
-      subscriberId: string;
-      /** Token */
-      token: string;
+    ConfirmationDecisionRequest: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: "approve" | "reject";
+      /** Request Id */
+      request_id: string;
     };
     /**
      * ConnectionStatus
@@ -13431,6 +19604,16 @@ export interface components {
       email: string | null;
       /** Expires At */
       expires_at: string | null;
+    };
+    /**
+     * ContextLine
+     * @description One bullet row under 'Context:' in the WA message.
+     */
+    ContextLine: {
+      /** Label */
+      label: string;
+      /** Value */
+      value: string;
     };
     /**
      * ContributeRequest
@@ -13562,6 +19745,13 @@ export interface components {
       turn_count: number | null;
       /** User Id */
       user_id: string | null;
+    };
+    /** ConvertRequest */
+    ConvertRequest: {
+      /** Client Id */
+      client_id: string;
+      /** Session Id */
+      session_id: string;
     };
     /**
      * CopyRequest
@@ -13705,20 +19895,56 @@ export interface components {
       /** Task Type */
       task_type: string;
     };
+    /** CreateProposalRequest */
+    CreateProposalRequest: {
+      /** Analysis Snapshot */
+      analysis_snapshot?: {
+        [key: string]: unknown;
+      } | null;
+      /** Investor Email */
+      investor_email?: string | null;
+      /** Investor Name */
+      investor_name?: string | null;
+      /** Investor Nationality */
+      investor_nationality?: string | null;
+      /** Kbli Code */
+      kbli_code?: string | null;
+      /** Lat */
+      lat: number;
+      /** Lng */
+      lng: number;
+      /** Verdict Label */
+      verdict_label?: string | null;
+      /** Verdict Score */
+      verdict_score?: number | null;
+      /** Zone Code */
+      zone_code: string;
+      /** Zone Name */
+      zone_name?: string | null;
+    };
     /**
      * DailyHours
-     * @description Daily work hours
+     * @description Daily work hours.
+     *
+     *     date / clock_in / clock_out are Optional because get_daily_hours() emits
+     *     None for members still clocked in (no clock_out yet) or edge-case rows with
+     *     a NULL work_date/clock_in. The service guards those NULLs (returning None);
+     *     the model must accept them or DailyHours(**row) raises ValidationError ->
+     *     HTTP 400 on GET /api/team/hours (observed live 2026-07-09).
      */
     DailyHours: {
       /** Clock In */
-      clock_in: string;
+      clock_in?: string | null;
       /** Clock Out */
-      clock_out: string;
+      clock_out?: string | null;
       /** Date */
-      date: string;
+      date?: string | null;
       /** Email */
       email: string;
-      /** Hours Worked */
+      /**
+       * Hours Worked
+       * @default 0
+       */
       hours_worked: number;
       /** User Id */
       user_id: string;
@@ -13753,6 +19979,111 @@ export interface components {
       telegram_chat_id?: number | null;
     };
     /**
+     * Decision
+     * @description ``$defs/Decision`` (spec §2), including its five ``state``-conditional
+     *     ``allOf`` entries. PR1 only guarantees the shape is well-typed and the
+     *     five state invariants hold; *producing* a real ``Decision`` (running the
+     *     evaluator over an ``ApplicantFacts`` + compiled ``RulePack``) is PR3.
+     */
+    Decision: {
+      /** Candidates */
+      candidates: components["schemas"]["Candidate"][];
+      /** Decision Id */
+      decision_id: string | null;
+      decision_integrity: components["schemas"]["Fingerprint"] | null;
+      /**
+       * Effective At
+       * Format: date-time
+       */
+      effective_at: string;
+      /**
+       * Evaluated At
+       * Format: date-time
+       */
+      evaluated_at: string;
+      facts_fingerprint: components["schemas"]["Fingerprint"] | null;
+      /** Missing Facts */
+      missing_facts: components["schemas"]["FactPath"][];
+      /** No Path Reasons */
+      no_path_reasons: components["schemas"]["Reason"][];
+      /** Notices */
+      notices: components["schemas"]["Reason"][];
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+      outage: components["schemas"]["Outage"] | null;
+      /** Public Id */
+      public_id: string | null;
+      /** Quotes */
+      quotes: components["schemas"]["PriceQuote"][];
+      /** Review Reasons */
+      review_reasons: components["schemas"]["Reason"][];
+      rule_pack: components["schemas"]["RulePackRef"] | null;
+      /**
+       * Schema Version
+       * @constant
+       */
+      schema_version: "1.0.0";
+      state: components["schemas"]["DecisionState"];
+      /** Trace Sha256 */
+      trace_sha256: string | null;
+    } & (unknown & unknown & unknown & unknown & unknown);
+    /** DecisionRecord */
+    DecisionRecord: {
+      /** Action Taken */
+      action_taken: string;
+      /** Check Type */
+      check_type: string;
+      /** Component */
+      component: string;
+      /** Finding */
+      finding: string;
+      /** Id */
+      id: number;
+      /** Metadata */
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /** Rationale */
+      rationale?: string | null;
+      /** Risk Score */
+      risk_score?: number | null;
+      /** Rollback Plan */
+      rollback_plan?: string | null;
+      /** Run Id */
+      run_id: string;
+      /** Severity */
+      severity: string;
+      /** Timestamp */
+      timestamp: string;
+    };
+    /**
+     * DecisionState
+     * @description The exactly-one-of-five global states a Decision resolves to (spec §5.3).
+     *
+     *     Precedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack
+     *     fails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >
+     *     NEEDS_INPUT > NO_SUPPORTED_PATH.
+     * @enum {string}
+     */
+    DecisionState:
+      | "NEEDS_INPUT"
+      | "SUPPORTED_CANDIDATES"
+      | "HUMAN_REVIEW_REQUIRED"
+      | "NO_SUPPORTED_PATH"
+      | "TEMPORARILY_UNAVAILABLE";
+    /** DecisionsResponse */
+    DecisionsResponse: {
+      /** Decisions */
+      decisions: components["schemas"]["DecisionRecord"][];
+      /** Hours */
+      hours: number;
+      /** Total */
+      total: number;
+    };
+    /**
      * DeleteEmailsRequest
      * @description Request model for deleting emails.
      */
@@ -13762,6 +20093,46 @@ export interface components {
        * @description Message IDs to delete
        */
       message_ids: string[];
+    };
+    /**
+     * DisclosedReviewFlag
+     * @description UI disclosures not representable by the signed RulePack vocabulary.
+     *
+     *     These are abstention inputs, never eligibility facts.  Keeping them in a
+     *     separate closed enum prevents a free-text field from becoming an
+     *     accidental legal-rule channel.
+     * @enum {string}
+     */
+    DisclosedReviewFlag:
+      | "CRIMINAL_RECORD"
+      | "HEALTH_CONCERN"
+      | "PRIOR_VISA_REFUSAL"
+      | "NOT_CERTAIN"
+      | "PEP_OR_SANCTIONS"
+      | "SOURCE_OF_FUNDS_UNCLEAR"
+      | "DIPLOMATIC_PASSPORT"
+      | "AMBIGUOUS_SPONSOR"
+      | "ACTIVITY_BOUNDARY"
+      | "MULTI_PURPOSE_TRIP"
+      | "CONFLICTING_IMMIGRATION_STATUS";
+    /** DocCountItem */
+    DocCountItem: {
+      /** Pending Count */
+      pending_count: number;
+      /** User Email */
+      user_email: string;
+    };
+    /** DocCountsRequest */
+    DocCountsRequest: {
+      /** Counts */
+      counts?: components["schemas"]["DocCountItem"][];
+    };
+    /** DocCountsResponse */
+    DocCountsResponse: {
+      /** Upserted */
+      upserted: number;
+      /** Zeroed */
+      zeroed: number;
     };
     /**
      * DocumentChunk
@@ -13829,8 +20200,18 @@ export interface components {
     };
     /** DocumentUploadBase64 */
     DocumentUploadBase64: {
+      /** Company Id */
+      company_id?: number | null;
+      /** Document Category */
+      document_category?: string | null;
       /** Document Type */
       document_type: string;
+      /** Expected Phone Core */
+      expected_phone_core?: string | null;
+      /** Expiry Date */
+      expiry_date?: string | null;
+      /** Family Member Id */
+      family_member_id?: number | null;
       /** File */
       file: string;
       /** File Name */
@@ -13839,6 +20220,85 @@ export interface components {
       mime_type?: string | null;
       /** Notes */
       notes?: string | null;
+      /** Practice Id */
+      practice_id?: number | null;
+      /** Subfolder Hint */
+      subfolder_hint?: string | null;
+    };
+    /**
+     * DocumentationStatus
+     * @enum {string}
+     */
+    DocumentationStatus: "AVAILABLE" | "UNKNOWN";
+    /** DriveBacklogItem */
+    DriveBacklogItem: {
+      /** Backlog Type */
+      backlog_type?: string | null;
+      /** Drive Id */
+      drive_id: string;
+      /** Evidence */
+      evidence?: {
+        [key: string]: unknown;
+      };
+      /** Id */
+      id?: number | null;
+      /** Owner Domain */
+      owner_domain?: string | null;
+      /** Owner Email */
+      owner_email?: string | null;
+      /** Priority */
+      priority?: string | null;
+      /** Recommended Action */
+      recommended_action?: string | null;
+      /** Source Mix */
+      source_mix?: string | null;
+      /** Status */
+      status?: string | null;
+    };
+    /** DriveCountRow */
+    DriveCountRow: {
+      /** Count */
+      count: number;
+      /** Key */
+      key: string;
+    };
+    /** DriveMetadataItem */
+    DriveMetadataItem: {
+      /** Drive Id */
+      drive_id: string;
+      /** Error Message */
+      error_message?: string | null;
+      /** Error Status */
+      error_status?: string | null;
+      /** Mime Type */
+      mime_type?: string | null;
+      /** Name */
+      name?: string | null;
+      /** Owner Domain */
+      owner_domain?: string | null;
+      /** Owner Email */
+      owner_email?: string | null;
+      /** Source Mix */
+      source_mix?: string | null;
+      /** Validation Status */
+      validation_status: string;
+      /** Web View Link */
+      web_view_link?: string | null;
+    };
+    /** DriveValidationSummary */
+    DriveValidationSummary: {
+      /** Errors */
+      errors: number;
+      /** Mime Types */
+      mime_types?: components["schemas"]["DriveCountRow"][];
+      /** Ok */
+      ok: number;
+      /** Owner Domains */
+      owner_domains?: components["schemas"]["DriveCountRow"][];
+      /** Statuses */
+      statuses?: components["schemas"]["DriveCountRow"][];
+      /** Total */
+      total: number;
     };
     /**
      * EditStagingItemRequest
@@ -13854,7 +20314,7 @@ export interface components {
     };
     /**
      * ElevenLabsRequest
-     * @description ElevenLabs Conversational AI request.
+     * @description Legacy ElevenLabs Conversational AI request.
      */
     ElevenLabsRequest: {
       /** Conversation */
@@ -13865,6 +20325,68 @@ export interface components {
         | null;
       /** Query */
       query?: string | null;
+    };
+    /**
+     * EmailAttachment
+     * @description Email attachment (base64-encoded).
+     */
+    EmailAttachment: {
+      /** Content */
+      content: string;
+      /**
+       * Contenttype
+       * @default application/pdf
+       */
+      contentType: string;
+      /** Name */
+      name: string;
+    };
+    /**
+     * EmitRequest
+     * @description Request body for the observed-shell emit endpoint.
+     *
+     *     Mirrors ``ObservedShellBus.emit`` keyword arguments. ``payload`` and
+     *     ``trace_id`` are optional; status MUST be one of ``VALID_STATUSES``.
+     */
+    EmitRequest: {
+      /**
+       * Automation Name
+       * @description Slug for the automation, e.g. 'translate.hourly'
+       */
+      automation_name: string;
+      /**
+       * Payload
+       * @description Free-form structured payload — JSONB column
+       */
+      payload?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Status
+       * @description One of: ok | error | warning | skipped
+       */
+      status: string;
+      /**
+       * Trace Id
+       * @description Optional upstream trace ID for cross-system correlation
+       */
+      trace_id?: string | null;
+    };
+    /**
+     * EmitResponse
+     * @description Successful emit response. The endpoint never returns DB row IDs —
+     *     callers don't need them, and exposing them would couple the schema.
+     */
+    EmitResponse: {
+      /**
+       * Accepted
+       * @default true
+       */
+      accepted: boolean;
+      /** Automation Name */
+      automation_name: string;
+      /** Status */
+      status: string;
     };
     /** EmployeeCreate */
     EmployeeCreate: {
@@ -13960,6 +20482,31 @@ export interface components {
       title: string;
       tldr: components["schemas"]["TLDRSection"];
     };
+    /** EnrichmentIngestRequest */
+    EnrichmentIngestRequest: {
+      /** Content */
+      content: string;
+      /** Kb Entry Id */
+      kb_entry_id: string;
+      /** Metadata */
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /** Source */
+      source: string;
+    };
+    /** EnrichmentIngestResponse */
+    EnrichmentIngestResponse: {
+      /** Kb Entry Id */
+      kb_entry_id: string;
+      /** Status */
+      status: string;
+    };
+    /**
+     * EntryPattern
+     * @enum {string}
+     */
+    EntryPattern: "SINGLE" | "MULTIPLE";
     /** EpisodeResult */
     EpisodeResult: {
       /** Agent */
@@ -13990,6 +20537,33 @@ export interface components {
       detail: string;
     };
     /**
+     * EvaluateResponseMode
+     * @enum {string}
+     */
+    EvaluateResponseMode: "CURATED" | "ENGINE";
+    /** EventsResponse */
+    EventsResponse: {
+      /** Events */
+      events: {
+        [key: string]: unknown;
+      }[];
+      /** Last Id */
+      last_id: number;
+    };
+    /** ExtensionPolicy */
+    ExtensionPolicy: {
+      /** Allowed */
+      allowed: boolean;
+      /** Days Per Extension */
+      days_per_extension: number | null;
+      /** Maximum Extensions */
+      maximum_extensions: number;
+      /** Reason Code */
+      reason_code?: string | null;
+      /** Status */
+      status?: ("VERIFIED" | "UNKNOWN") | null;
+    };
+    /**
      * ExtractEventRequest
      * @description Request to extract and save event from message
      */
@@ -13999,6 +20573,64 @@ export interface components {
       /** Message */
       message: string;
     };
+    /**
+     * FactPath
+     * @description Every fact path the engine may ever reference — 40 applicant-collected
+     *     + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
+     *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).
+     *
+     *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
+     *     ``required_facts`` array are both typed against this enum, so a rule
+     *     that references an unknown fact path is a Pydantic ``ValidationError``
+     *     at parse time, not a runtime surprise. ``fact_registry.py`` layers typed
+     *     metadata (value kind, PII class, commercial flag) on top of this same
+     *     vocabulary — see that module's docstring for why both exist.
+     * @enum {string}
+     */
+    FactPath:
+      | "person.birth_date"
+      | "person.nationalities"
+      | "person.marital_status"
+      | "immigration.currently_in_indonesia"
+      | "immigration.current_status_code"
+      | "immigration.current_status_expiry"
+      | "immigration.last_entry_date"
+      | "immigration.overstay_days"
+      | "immigration.violation_history"
+      | "intent.purposes"
+      | "intent.stay_days"
+      | "intent.desired_entry_date"
+      | "intent.entry_pattern"
+      | "intent.requested_product_code"
+      | "work.employer_country_code"
+      | "work.employer_is_indonesian_entity"
+      | "work.serves_indonesian_clients"
+      | "work.indonesia_source_compensation"
+      | "work.indonesian_work_sponsor_confirmed"
+      | "investment.pt_pma_committed"
+      | "investment.investment_capital_idr"
+      | "investment.paid_up_capital_idr"
+      | "investment.proposed_role"
+      | "family.relation_to_sponsor"
+      | "family.sponsor_nationalities"
+      | "family.sponsor_status_code"
+      | "family.marriage_registered"
+      | "family.sponsor_confirmed"
+      | "study.level"
+      | "study.admission_confirmed"
+      | "study.sponsor_confirmed"
+      | "secondhome.bank_deposit_usd"
+      | "secondhome.bank_deposit_at_state_bank"
+      | "secondhome.bank_deposit_in_own_name"
+      | "secondhome.qualifying_property_value_usd"
+      | "secondhome.passive_monthly_income_usd"
+      | "process.application_channel"
+      | "process.wants_onshore_conversion"
+      | "commercial.service_fee_budget_idr"
+      | "commercial.wants_quote"
+      | "derived.age_years"
+      | "derived.is_minor"
+      | "derived.has_indonesian_citizenship";
     /** FamilyMemberCreate */
     FamilyMemberCreate: {
       /** Current Visa Type */
@@ -14112,6 +20744,31 @@ export interface components {
       spreadsheet_id: string;
     };
     /**
+     * Fingerprint
+     * @description ``$defs/Fingerprint`` (spec §2) — an HMAC-SHA256 integrity tag over a
+     *     ``Decision`` or its facts, distinct from the Ed25519 RulePack signature.
+     */
+    Fingerprint: {
+      /**
+       * Algorithm
+       * @constant
+       */
+      algorithm: "HMAC-SHA256";
+      /** Digest */
+      digest: string;
+      /** Key Id */
+      key_id: string;
+    };
+    /** FireDueResponse */
+    FireDueResponse: {
+      /** Due */
+      due: number;
+      /** Sent */
+      sent: number;
+      /** Skipped Render */
+      skipped_render: number;
+    };
+    /**
      * ForwardEmailRequest
      * @description Request body for forwarding an email.
      */
@@ -14127,6 +20784,47 @@ export interface components {
        */
       to: string[];
     };
+    /**
+     * FrontendMetric
+     * @description One metric sample, mirroring metrics.ts MetricValue.
+     */
+    FrontendMetric: {
+      /** Labels */
+      labels?: {
+        [key: string]: unknown;
+      } | null;
+      /** Name */
+      name: string;
+      /** Timestamp */
+      timestamp?: number | null;
+      /** Value */
+      value: number;
+    };
+    /** FrontendMetricsPayload */
+    FrontendMetricsPayload: {
+      /** Client Session */
+      client_session?: string | null;
+      /** Metrics */
+      metrics?: components["schemas"]["FrontendMetric"][];
+    };
+    /** FunnelEvent */
+    FunnelEvent: {
+      /** Event */
+      event: string;
+      /** Hostname */
+      hostname?: string | null;
+      /** Payload */
+      payload?: {
+        [key: string]: unknown;
+      };
+      /** Session Id */
+      session_id: string;
+    };
+    /**
+     * FunnelType
+     * @enum {string}
+     */
+    FunnelType: "visa" | "kbli" | "tax" | "property" | "home";
     /** GenerateRequest */
     GenerateRequest: {
       /**
@@ -14181,6 +20879,37 @@ export interface components {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
     };
+    /** HandlingResponse */
+    HandlingResponse: {
+      /** Human Handling */
+      human_handling: boolean;
+      /** Thread Id */
+      thread_id: number;
+    };
+    /** HandoffRequest */
+    HandoffRequest: {
+      /** Language */
+      language?: string | null;
+      /** Messages */
+      messages: unknown[];
+      /** Quiz Answers */
+      quiz_answers: {
+        [key: string]: unknown;
+      };
+      /** Recommended Visas */
+      recommended_visas: unknown[];
+      /** Session Id */
+      session_id: string;
+    };
+    /** HandoffResponse */
+    HandoffResponse: {
+      /** Success */
+      success: boolean;
+      /** Telegram Sent */
+      telegram_sent: boolean;
+      /** Whatsapp Url */
+      whatsapp_url: string;
+    };
     /**
      * HealthResponse
      * @description Health check response
@@ -14211,18 +20940,8 @@ export interface components {
        * @default 1
        */
       number_of_images: number;
-      /**
-       * Person Generation
-       * @default allow_adult
-       */
-      person_generation: string;
       /** Prompt */
       prompt: string;
-      /**
-       * Safety Filter Level
-       * @default block_some
-       */
-      safety_filter_level: string;
     };
     /** ImageGenerationResponse */
     ImageGenerationResponse: {
@@ -14464,6 +21183,15 @@ export interface components {
        */
       working_capital: number;
     };
+    /** InvestorProfile */
+    InvestorProfile: {
+      /** Budget Usd */
+      budget_usd?: number | null;
+      /** Business Type */
+      business_type?: string | null;
+      /** Nationality */
+      nationality?: string | null;
+    };
     /**
      * IslandHealth
      * @description Health status for a single 'island' (system component)
@@ -14515,6 +21243,10 @@ export interface components {
       } | null;
       /** Licenses */
       licenses: components["schemas"]["KBLILicense"][];
+      /** Licensing Content Inherited From */
+      licensing_content_inherited_from?: string[] | null;
+      /** Licensing Note */
+      licensing_note?: string | null;
       /** Licensing Status */
       licensing_status: string;
       /** Pma Status */
@@ -14524,6 +21256,13 @@ export interface components {
        * @default []
        */
       related_codes: string[];
+      /**
+       * Related Requirements
+       * @default {}
+       */
+      related_requirements: {
+        [key: string]: string[];
+      };
       /** Risk Profile */
       risk_profile: string;
       /** Sector */
@@ -14571,6 +21310,15 @@ export interface components {
     };
     /** KBLISearchResult */
     KBLISearchResult: {
+      /** Bali Blocked */
+      bali_blocked?: boolean | null;
+      /**
+       * Bali Reason
+       * @default
+       */
+      bali_reason: string;
+      /** Bali Status */
+      bali_status?: string | null;
       /** Code */
       code: string;
       /** Description */
@@ -14579,6 +21327,8 @@ export interface components {
       expert_legal?: {
         [key: string]: unknown;
       } | null;
+      /** Pma Max Asing */
+      pma_max_asing?: number | string | null;
       /**
        * Pma Status
        * @default UNKNOWN
@@ -14704,6 +21454,168 @@ export interface components {
       /** Resource Type */
       resource_type: string;
     };
+    /** KnownApplicationChannel */
+    KnownApplicationChannel: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["ApplicationChannel"];
+    };
+    /** KnownBoolean */
+    KnownBoolean: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: boolean;
+    };
+    /** KnownCountryCode */
+    KnownCountryCode: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: string;
+    };
+    /** KnownCountrySet */
+    KnownCountrySet: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: string[];
+    };
+    /** KnownDate */
+    KnownDate: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: string;
+    };
+    /** KnownEntryPattern */
+    KnownEntryPattern: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["EntryPattern"];
+    };
+    /** KnownMaritalStatus */
+    KnownMaritalStatus: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["MaritalStatus"];
+    };
+    /**
+     * KnownMoney
+     * @description Structurally identical to ``KnownNonNegativeInteger`` — kept as a
+     *     distinct class because spec §2 declares ``KnownMoney`` as its own
+     *     ``$def`` (semantically an IDR amount, not an arbitrary count).
+     */
+    KnownMoney: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: number;
+    };
+    /** KnownNonNegativeInteger */
+    KnownNonNegativeInteger: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: number;
+    };
+    /** KnownProposedRole */
+    KnownProposedRole: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["ProposedRole"];
+    };
+    /** KnownPurposeSet */
+    KnownPurposeSet: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: components["schemas"]["VisaPurpose"][];
+    };
+    /** KnownRelation */
+    KnownRelation: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["RelationType"];
+    };
+    /** KnownString */
+    KnownString: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: string;
+    };
+    /** KnownStudyLevel */
+    KnownStudyLevel: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["StudyLevel"];
+    };
+    /**
+     * KnownViolationSet
+     * @description No ``min_length`` (spec §2, deliberately): ``value=[]`` is a
+     *     meaningful KNOWN fact — "we asked, they have zero violations" — distinct
+     *     from ``UnknownFact`` ("we don't know").
+     */
+    KnownViolationSet: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      /** Value */
+      value: components["schemas"]["ViolationType"][];
+    };
+    /**
+     * LKPMAssignBody
+     * @description Request body for PUT /lkpm/reports/{id}/assign.
+     */
+    LKPMAssignBody: {
+      /** Lkpm Assigned To */
+      lkpm_assigned_to?: string | null;
+    };
     /**
      * LKPMClientConfig
      * @description Client configuration for LKPM reporting.
@@ -14711,6 +21623,8 @@ export interface components {
     LKPMClientConfig: {
       /** Client Id */
       client_id: number;
+      /** Company Id */
+      company_id?: number | null;
       /** Company Name */
       company_name: string;
       /** Jurnal Api Key */
@@ -14732,8 +21646,11 @@ export interface components {
        *       "building_import": 0,
        *       "equipment_domestic": 0,
        *       "equipment_import": 0,
+       *       "grand_total": 0,
        *       "land": 0,
        *       "other": 0,
+       *       "total_domestic": 0,
+       *       "total_import": 0,
        *       "vehicle_domestic": 0,
        *       "vehicle_import": 0,
        *       "working_capital": 0
@@ -14773,6 +21690,8 @@ export interface components {
       building_import: number;
       /** Client Id */
       client_id: number;
+      /** Company Id */
+      company_id?: number | null;
       /**
        * Equipment Domestic
        * @default 0
@@ -14833,16 +21752,47 @@ export interface components {
       year: number;
     };
     /**
+     * LLMCostRecord
+     * @description Payload for a single LLM call cost event.
+     */
+    LLMCostRecord: {
+      /**
+       * Cache Hit Tokens
+       * @default 0
+       */
+      cache_hit_tokens: number;
+      /** Cost Usd */
+      cost_usd: number;
+      /** Endpoint */
+      endpoint?: string | null;
+      /** Error Class */
+      error_class?: string | null;
+      /** Input Tokens */
+      input_tokens: number;
+      /** Latency Ms */
+      latency_ms: number;
+      /** Model */
+      model: string;
+      /** Output Tokens */
+      output_tokens: number;
+      /** Provider */
+      provider: string;
+      /** Request Id */
+      request_id?: string | null;
+      /** Success */
+      success: boolean;
+    };
+    /**
      * LatencyPercentilesResponse
      * @description Response model for latency percentiles.
      */
     LatencyPercentilesResponse: {
       /** Avg */
-      avg: number;
+      avg?: number | null;
       /** Max */
-      max: number;
+      max?: number | null;
       /** Min */
-      min: number;
+      min?: number | null;
       /** Percentiles */
       percentiles: {
         [key: string]: number;
@@ -14852,6 +21802,54 @@ export interface components {
       /** Total Queries */
       total_queries: number;
     };
+    /** LeadCaptureRequest */
+    LeadCaptureRequest: {
+      /** Client Fingerprint */
+      client_fingerprint?: string | null;
+      /** Context */
+      context?: {
+        [key: string]: unknown;
+      };
+      /** Result Hash */
+      result_hash?: string | null;
+      source: components["schemas"]["LeadSource"];
+      /** Utm */
+      utm?: {
+        [key: string]: unknown;
+      } | null;
+      /** Whatsapp Context */
+      whatsapp_context?: components["schemas"]["ContextLine"][];
+    };
+    /** LeadCaptureResponse */
+    LeadCaptureResponse: {
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /** Lead Intent Id */
+      lead_intent_id: string;
+      /** Whatsapp Url */
+      whatsapp_url: string;
+    };
+    /**
+     * LeadSource
+     * @enum {string}
+     */
+    LeadSource:
+      | "visa_clock"
+      | "visa_match"
+      | "garuda_voa"
+      | "kbli_decoder"
+      | "kbli_builder"
+      | "tax_gap"
+      | "zoning_check"
+      | "article"
+      | "kbli_navigator"
+      | "zantara_widget_handoff"
+      | "cta_handoff"
+      | "pricing_modal"
+      | "homepage_hero";
     /** LeaveRequestCreate */
     LeaveRequestCreate: {
       /**
@@ -14876,11 +21874,47 @@ export interface components {
       /** Reason */
       reason?: string | null;
     };
+    /** LedgerMessage */
+    LedgerMessage: {
+      /** Body */
+      body?: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Direction */
+      direction: string;
+      /** Error */
+      error?: string | null;
+      /** Id */
+      id: number;
+      /** Media Type */
+      media_type?: string | null;
+      /** Meta Message Id */
+      meta_message_id?: string | null;
+      /** Sender Role */
+      sender_role: string;
+      /** Sent At */
+      sent_at?: string | null;
+      /** Status */
+      status: string;
+    };
     /**
      * LegalDocType
      * @enum {string}
      */
-    LegalDocType: "PP" | "Perpres" | "PMK" | "Permen" | "SE" | "SKB";
+    LegalDocType:
+      | "PP"
+      | "Perpres"
+      | "PMK"
+      | "Permen"
+      | "SE"
+      | "SKB"
+      | "UU"
+      | "Perppu"
+      | "KMK"
+      | "Permenaker";
     /** LegalIngestFullRequest */
     LegalIngestFullRequest: {
       /** Anno */
@@ -14940,10 +21974,31 @@ export interface components {
        */
       collection_name?: string | null;
       /**
+       * Effective Date
+       * @description Instrument effective date
+       */
+      effective_date?: string | null;
+      /**
        * File Path
        * @description Path to legal document file
        */
       file_path: string;
+      /**
+       * Observed At
+       * @description When the source was observed
+       */
+      observed_at?: string | null;
+      /**
+       * Retrieval Scope
+       * @description Use historical_only for evidence that must not ground current-law advice
+       * @default current
+       */
+      retrieval_scope: string;
+      /**
+       * Source Url
+       * @description Canonical primary-source URL
+       */
+      source_url?: string | null;
       /**
        * Tier
        * @description Tier override (S, A, B, C, D)
@@ -14964,6 +22019,10 @@ export interface components {
       book_title: string;
       /** Chunks Created */
       chunks_created: number;
+      /** Drive Archive */
+      drive_archive?: {
+        [key: string]: unknown;
+      } | null;
       /** Error */
       error?: string | null;
       /** Legal Metadata */
@@ -14986,6 +22045,119 @@ export interface components {
       /** Total */
       total: number;
     };
+    /**
+     * LocalAudioPolicyResponse
+     * @description Policy exposed for local audio providers.
+     */
+    LocalAudioPolicyResponse: {
+      /** Allows Cloud Fallback */
+      allows_cloud_fallback: boolean;
+      /** Pii Boundary */
+      pii_boundary: string;
+      /** Requires Network */
+      requires_network: boolean;
+    };
+    /**
+     * LocalAudioProviderResponse
+     * @description Sanitized local audio provider status.
+     */
+    LocalAudioProviderResponse: {
+      /** Available */
+      available: boolean;
+      /** Detail */
+      detail: string;
+      /** Name */
+      name: string;
+      policy: components["schemas"]["LocalAudioPolicyResponse"];
+    };
+    /**
+     * LocalAudioStatusResponse
+     * @description Local audio stack readiness for the voice concierge lab.
+     */
+    LocalAudioStatusResponse: {
+      /** Constraints */
+      constraints: string[];
+      /** Enabled */
+      enabled: boolean;
+      /** Providers */
+      providers: {
+        [key: string]: components["schemas"]["LocalAudioProviderResponse"];
+      };
+      /** Ready */
+      ready: boolean;
+      /** Roundtrip Ready */
+      roundtrip_ready: boolean;
+      tts_profile: components["schemas"]["LocalAudioTTSProfileResponse"];
+      /** Turn Detection Ready */
+      turn_detection_ready: boolean;
+    };
+    /**
+     * LocalAudioSynthesizeRequest
+     * @description Local TTS request for the voice concierge lab.
+     */
+    LocalAudioSynthesizeRequest: {
+      /** Language */
+      language?: string | null;
+      /** Text */
+      text: string;
+      /** Voice */
+      voice?: string | null;
+    };
+    /**
+     * LocalAudioTTSProfileEntry
+     * @description Operational metadata for one TTS profile.
+     */
+    LocalAudioTTSProfileEntry: {
+      /** Available */
+      available: boolean;
+      /** Detail */
+      detail: string;
+      /** Latency Class */
+      latency_class: string;
+      policy: components["schemas"]["LocalAudioPolicyResponse"];
+      /** Profile */
+      profile: string;
+      /** Provider */
+      provider: string;
+      /** Quality */
+      quality: string;
+    };
+    /**
+     * LocalAudioTTSProfileResponse
+     * @description Active TTS profile and fallback policy for local audio.
+     */
+    LocalAudioTTSProfileResponse: {
+      /** Active Profile */
+      active_profile: string;
+      /** Active Provider */
+      active_provider: string;
+      /** Fallback Policy */
+      fallback_policy: string;
+      /** Latency Class */
+      latency_class: string;
+      /** Profiles */
+      profiles: {
+        [key: string]: components["schemas"]["LocalAudioTTSProfileEntry"];
+      };
+      /** Quality */
+      quality: string;
+    };
+    /**
+     * LocalAudioTranscribeResponse
+     * @description Sanitized local STT response for the voice concierge lab.
+     */
+    LocalAudioTranscribeResponse: {
+      /** Constraints */
+      constraints: string[];
+      /** Duration Seconds */
+      duration_seconds: number | null;
+      /** Language */
+      language: string | null;
+      /** Provider */
+      provider: string;
+      /** Text */
+      text: string;
+    };
     /** LogLookupRequest */
     LogLookupRequest: {
       /** Kbli Code */
@@ -14999,6 +22171,22 @@ export interface components {
       /** User Email */
       user_email: string;
     };
+    /**
+     * MagicLinkRequest
+     * @description Request body for passwordless magic-link login (FASE 6).
+     */
+    MagicLinkRequest: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+    };
+    /**
+     * MaritalStatus
+     * @enum {string}
+     */
+    MaritalStatus: "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED" | "OTHER";
     /**
      * MarkReadRequest
      * @description Request body for marking emails as read/unread.
@@ -15015,6 +22203,51 @@ export interface components {
        * @description Message IDs to update
        */
       message_ids: string[];
+    };
+    /** MatchRequest */
+    MatchRequest: {
+      budget_band: components["schemas"]["BudgetBand"];
+      /** Client Fingerprint */
+      client_fingerprint?: string | null;
+      /** Duration Months */
+      duration_months: number;
+      /** Expected Arrival Date */
+      expected_arrival_date?: string | null;
+      /** Nationality */
+      nationality: string;
+      purpose: components["schemas"]["backend__services__visa_check__match_tree__Purpose"];
+    };
+    /** MatchResponse */
+    MatchResponse: {
+      /** Alternatives */
+      alternatives: components["schemas"]["VisaType"][];
+      /** Budget Band */
+      budget_band: string;
+      /** Cost Source */
+      cost_source: string | null;
+      /** Duration Months */
+      duration_months: number;
+      /** Estimated Cost Idr */
+      estimated_cost_idr: number | null;
+      /** Hash */
+      hash: string;
+      /** Nationality */
+      nationality: string;
+      /** Pre Arrival Steps */
+      pre_arrival_steps: string[];
+      /** Processing Days */
+      processing_days: number | null;
+      /** Purpose */
+      purpose: string;
+      /** Reason */
+      reason: string;
+      recommended_visa: components["schemas"]["VisaType"] | null;
+      /** Referral Mode */
+      referral_mode: boolean;
+      /** Result Url */
+      result_url: string;
+      /** Session Jwt */
+      session_jwt?: string | null;
     };
     /**
      * MonthlySummary
@@ -15167,6 +22400,58 @@ export interface components {
       success: boolean;
     };
     /**
+     * NlmCitation
+     * @description A single citation returned by NotebookLM.
+     */
+    NlmCitation: {
+      /** Cited Text */
+      cited_text: string;
+      /** Source Id */
+      source_id: string;
+    };
+    /**
+     * NlmQueryRequest
+     * @description Request body for querying NotebookLM about a specific client.
+     */
+    NlmQueryRequest: {
+      /** Question */
+      question: string;
+    };
+    /**
+     * NlmQueryResponse
+     * @description Response from a NotebookLM client query.
+     */
+    NlmQueryResponse: {
+      /** Answer */
+      answer: string;
+      /** Citations */
+      citations: components["schemas"]["NlmCitation"][];
+    };
+    /** NotificationPrefsIn */
+    NotificationPrefsIn: {
+      /**
+       * Email Enabled
+       * @default true
+       */
+      email_enabled: boolean;
+      /**
+       * Wa Enabled
+       * @default false
+       */
+      wa_enabled: boolean;
+      /** Wa Phone */
+      wa_phone?: string | null;
+    };
+    /** NotificationPrefsOut */
+    NotificationPrefsOut: {
+      /** Email Enabled */
+      email_enabled: boolean;
+      /** Wa Enabled */
+      wa_enabled: boolean;
+      /** Wa Phone */
+      wa_phone: string | null;
+    };
+    /**
      * NotificationStats
      * @description Notification statistics.
      */
@@ -15237,6 +22522,46 @@ export interface components {
       };
       /** Timestamp */
       timestamp: string;
+    };
+    /** ObservationPayload */
+    ObservationPayload: {
+      /** Canonical Url */
+      canonical_url: string;
+      /** Content Hash */
+      content_hash: string;
+      /** Jurisdiction */
+      jurisdiction?: string | null;
+      /** Language */
+      language?: string | null;
+      /** Producer Name */
+      producer_name: string;
+      /** Published At */
+      published_at?: string | null;
+      /** Raw Payload */
+      raw_payload?: {
+        [key: string]: unknown;
+      } | null;
+      /** Score */
+      score?: number | null;
+      /** Source Domain */
+      source_domain: string;
+      /** Summary */
+      summary?: string | null;
+      /** Title */
+      title: string;
+      /** Topic Tags */
+      topic_tags?: string[] | null;
+    };
+    /** ObservationResponse */
+    ObservationResponse: {
+      /** Is Content Drift */
+      is_content_drift: boolean;
+      /** Is New Item */
+      is_new_item: boolean;
+      /** Item Id */
+      item_id: string;
+      /** Observation Id */
+      observation_id: number;
     };
     /**
      * OpenClawMetadata
@@ -15473,49 +22798,153 @@ export interface components {
       warning?: string | null;
     };
     /**
-     * PassportEnhancedRequest
-     * @description Request model for enhanced passport OCR
+     * Outage
+     * @description ``Decision.outage`` inline object (spec §2, not a separate top-level $def).
      */
-    PassportEnhancedRequest: {
-      /** Client Id */
-      client_id: number;
-      /** File Id */
-      file_id: string;
+    Outage: {
+      /** Code */
+      code: string;
+      /** Retryable */
+      retryable: boolean;
     };
-    /**
-     * PassportEnhancedResponse
-     * @description Response model for enhanced passport OCR
-     */
-    PassportEnhancedResponse: {
-      /** Birthplace */
-      birthplace?: string | null;
+    /** OutcomeBody */
+    OutcomeBody: {
+      /** Note */
+      note?: string | null;
       /**
-       * Confidence
-       * @default 0
+       * Outcome
+       * @enum {string}
        */
-      confidence: number;
-      /** Date Of Birth */
-      date_of_birth?: string | null;
-      /** Expiry Date */
-      expiry_date?: string | null;
+      outcome: "acted" | "dismissed" | "acknowledged";
+    };
+    /** PartnerCreate */
+    PartnerCreate: {
+      /** Assigned To */
+      assigned_to?: string | null;
+      /** Bank Account Holder */
+      bank_account_holder?: string | null;
+      /** Bank Account Number */
+      bank_account_number?: string | null;
+      /** Bank Name */
+      bank_name?: string | null;
+      /** Company Name */
+      company_name?: string | null;
+      /**
+       * Default Commission Type
+       * @default percentage
+       * @enum {string}
+       */
+      default_commission_type: "percentage" | "flat";
+      /**
+       * Default Commission Value
+       * @default 10.0
+       */
+      default_commission_value: number | string;
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+      /**
+       * Entity Type
+       * @enum {string}
+       */
+      entity_type: "individual" | "corporate_pt" | "corporate_cv" | "foreign";
+      /** Ewallet Number */
+      ewallet_number?: string | null;
+      /** Ewallet Type */
+      ewallet_type?: string | null;
+      /** Fiscal Address */
+      fiscal_address?: string | null;
+      /** Full Name */
+      full_name: string;
+      /** Iban */
+      iban?: string | null;
+      /** Nik */
+      nik?: string | null;
+      /** Npwp */
+      npwp?: string | null;
+      /** Office Address */
+      office_address?: string | null;
+      /**
+       * Payment Currency
+       * @default IDR
+       */
+      payment_currency: string;
+      /** Payment Notes */
+      payment_notes?: string | null;
+      /** Pdp Consent Version */
+      pdp_consent_version?: string | null;
+      /** Phone */
+      phone?: string | null;
+      /**
+       * Preferred Language
+       * @default id
+       */
+      preferred_language: string;
+      /**
+       * Tax Withholding Category
+       * @default tbd
+       * @enum {string}
+       */
+      tax_withholding_category: "pph21" | "pph23" | "exempt" | "tbd";
+      /** Terms Version */
+      terms_version?: string | null;
+      /** Work Role */
+      work_role?: string | null;
+    };
+    /** PartnerUpdate */
+    PartnerUpdate: {
+      /** Bank Account Holder */
+      bank_account_holder?: string | null;
+      /** Bank Account Number */
+      bank_account_number?: string | null;
+      /** Bank Name */
+      bank_name?: string | null;
+      /** Company Name */
+      company_name?: string | null;
+      /** Default Commission Type */
+      default_commission_type?: ("percentage" | "flat") | null;
+      /** Default Commission Value */
+      default_commission_value?: number | string | null;
+      /** Email */
+      email?: string | null;
+      /** Entity Type */
+      entity_type?:
+        | ("individual" | "corporate_pt" | "corporate_cv" | "foreign")
+        | null;
+      /** Ewallet Number */
+      ewallet_number?: string | null;
+      /** Ewallet Type */
+      ewallet_type?: string | null;
+      /** Fiscal Address */
+      fiscal_address?: string | null;
       /** Full Name */
       full_name?: string | null;
-      /** Gender */
-      gender?: string | null;
-      /** Message */
-      message?: string | null;
-      /** Mrz Line1 */
-      mrz_line1?: string | null;
-      /** Mrz Line2 */
-      mrz_line2?: string | null;
-      /** Name Match */
-      name_match?: boolean | null;
-      /** Nationality */
-      nationality?: string | null;
-      /** Passport Number */
-      passport_number?: string | null;
-      /** Success */
-      success: boolean;
+      /** Iban */
+      iban?: string | null;
+      /** Nik */
+      nik?: string | null;
+      /** Npwp */
+      npwp?: string | null;
+      /** Office Address */
+      office_address?: string | null;
+      /** Payment Currency */
+      payment_currency?: string | null;
+      /** Payment Notes */
+      payment_notes?: string | null;
+      /** Pdp Consent Version */
+      pdp_consent_version?: string | null;
+      /** Phone */
+      phone?: string | null;
+      /** Preferred Language */
+      preferred_language?: string | null;
+      /** Tax Withholding Category */
+      tax_withholding_category?: ("pph21" | "pph23" | "exempt" | "tbd") | null;
+      /** Terms Version */
+      terms_version?: string | null;
+      /** Work Role */
+      work_role?: string | null;
     };
     /**
      * PassportExtractRequest
@@ -15540,6 +22969,70 @@ export interface components {
       passport_number?: string | null;
       /** Success */
       success: boolean;
+    };
+    /**
+     * PassportPreviewRequest
+     * @description Passport OCR — preview mode (client_id=None) or persist mode (client_id=int).
+     *
+     *     Preview: stateless OCR, returns extracted fields, no DB write.
+     *     Persist: OCR + DB update (existing behavior).
+     */
+    PassportPreviewRequest: {
+      /** Client Id */
+      client_id?: number | null;
+      /** Image Base64 */
+      image_base64: string;
+      /**
+       * Mime Type
+       * @default image/jpeg
+       */
+      mime_type: string;
+    };
+    /**
+     * PassportPreviewResponse
+     * @description Response model for passport OCR (preview + persist modes)
+     */
+    PassportPreviewResponse: {
+      /** Birthplace */
+      birthplace?: string | null;
+      /**
+       * Confidence
+       * @default 0
+       */
+      confidence: number;
+      /** Date Of Birth */
+      date_of_birth?: string | null;
+      /** Full Name */
+      full_name?: string | null;
+      /** Gender */
+      gender?: string | null;
+      /** Given Names */
+      given_names?: string | null;
+      /** Issuing Country */
+      issuing_country?: string | null;
+      /** Message */
+      message?: string | null;
+      /** Mrz Line1 */
+      mrz_line1?: string | null;
+      /** Mrz Line2 */
+      mrz_line2?: string | null;
+      /** Name Match */
+      name_match?: boolean | null;
+      /** Nationality */
+      nationality?: string | null;
+      /** Passport Expiry */
+      passport_expiry?: string | null;
+      /** Passport Number */
+      passport_number?: string | null;
+      /** Success */
+      success: boolean;
+      /** Surname */
+      surname?: string | null;
+      /**
+       * Warnings
+       * @default []
+       */
+      warnings: string[];
     };
     /** PayrollCalculateRequest */
     PayrollCalculateRequest: {
@@ -15592,6 +23085,12 @@ export interface components {
       assigned_to?: string | null;
       /** Client Id */
       client_id: number;
+      /** Discount Amount */
+      discount_amount?: number | string | null;
+      /** Discount Reason */
+      discount_reason?: string | null;
+      /** Family Member Id */
+      family_member_id?: number | null;
       /** Internal Notes */
       internal_notes?: string | null;
       /** Notes */
@@ -15628,8 +23127,14 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /** Discount Amount */
+      discount_amount?: string | null;
+      /** Discount Reason */
+      discount_reason?: string | null;
       /** Expiry Date */
       expiry_date: string | null;
+      /** Family Member Id */
+      family_member_id?: number | null;
       /** Id */
       id: number;
       /** Payment Status */
@@ -15659,6 +23164,10 @@ export interface components {
       client_visible?: boolean | null;
       /** Completion Date */
       completion_date?: string | null;
+      /** Discount Amount */
+      discount_amount?: number | string | null;
+      /** Discount Reason */
+      discount_reason?: string | null;
       /** Documents */
       documents?:
         | {
@@ -15712,22 +23221,95 @@ export interface components {
       /** Html Content */
       html_content: string;
     };
+    /**
+     * PriceQuote
+     * @description ``$defs/PriceQuote`` (spec §2), including its ``status``-conditional
+     *     ``allOf`` (AVAILABLE requires non-null amount/catalog fields; otherwise
+     *     amount must be null).
+     */
+    PriceQuote: {
+      /** Amount */
+      amount: number | null;
+      /** Catalog Sha256 */
+      catalog_sha256: string | null;
+      /** Catalog Version */
+      catalog_version: string | null;
+      /**
+       * Currency
+       * @constant
+       */
+      currency: "IDR";
+      pricing_key: components["schemas"]["PricingKey"];
+      /** Product Code */
+      product_code: string;
+      /**
+       * Product Version Id
+       * Format: uuid
+       */
+      product_version_id: string;
+      /**
+       * Quote Id
+       * Format: uuid
+       */
+      quote_id: string;
+      /**
+       * Quoted At
+       * Format: date-time
+       */
+      quoted_at: string;
+      /** Reason Code */
+      reason_code: string;
+      /** Row Sha256 */
+      row_sha256: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "AVAILABLE" | "CONTACT_REQUIRED" | "UNAVAILABLE";
+      /** Valid Until */
+      valid_until: string | null;
+    };
+    /**
+     * PricingAvailabilityStatus
+     * @description Whether one exact, all-inclusive Bali Zero quote can be rendered.
+     * @enum {string}
+     */
+    PricingAvailabilityStatus:
+      | "AVAILABLE"
+      | "CONTACT_REQUIRED"
+      | "UNAVAILABLE"
+      | "UNKNOWN";
     /** PricingCalculateRequest */
     PricingCalculateRequest: {
       /**
        * Complexity
+       * @description Complexity level: standard, complex, premium
        * @default standard
        */
       complexity: string;
       /** Package */
       package?: string | null;
-      /** Service Type */
+      /** Query */
+      query?: string | null;
+      /**
+       * Service Type
+       * @description Service category: visa, kitas, business_setup, tax_consulting, legal, all
+       * @default all
+       */
       service_type: string;
       /**
        * Urgency
+       * @description Urgency level: normal, urgent, express
        * @default normal
        */
       urgency: string;
+    };
+    /** PricingKey */
+    PricingKey: {
+      /** Category */
+      category: string;
+      /** Item Key */
+      item_key: string;
     };
     /**
      * ProactiveTriggerRequest
@@ -15742,6 +23324,57 @@ export interface components {
       event_type: string;
       /** User Id */
       user_id?: string | null;
+    };
+    /**
+     * ProcessingTimelineStatus
+     * @enum {string}
+     */
+    ProcessingTimelineStatus: "AVAILABLE" | "UNKNOWN";
+    /** ProductNames */
+    ProductNames: {
+      /** En */
+      en: string;
+      /** Id */
+      id: string;
+    };
+    /**
+     * ProposedRole
+     * @enum {string}
+     */
+    ProposedRole:
+      | "SHAREHOLDER_DIRECTOR"
+      | "SHAREHOLDER_COMMISSIONER"
+      | "EMPLOYEE"
+      | "NO_OPERATIONAL_ROLE"
+      | "OTHER";
+    /** PublishIGRequest */
+    PublishIGRequest: {
+      /**
+       * Alt Texts
+       * @description Optional per-slide alt-text, aligned to image_urls by index.
+       */
+      alt_texts?: string[] | null;
+      /**
+       * Caption
+       * @description IG caption (max 2200 chars, enforced by publisher).
+       */
+      caption: string;
+      /**
+       * Confirm
+       * @description LEGGE 5 operator gate. False = dry validation (no publish). True = publish.
+       * @default false
+       */
+      confirm: boolean;
+      /**
+       * Image Urls
+       * @description Public Tigris URLs of the slides, slide 1 = cover. Max 10 (IG carousel limit).
+       */
+      image_urls: string[];
+      /**
+       * Slug
+       * @description Carousel slug (== wr2_carousel_runs.topic).
+       */
+      slug: string;
     };
     /**
      * PublishRequest
@@ -15855,6 +23488,43 @@ export interface components {
       /** Spreadsheet Id */
       spreadsheet_id: string;
     };
+    /**
+     * ReadyPackBody
+     * @description Request body for POST /lkpm/ready-pack/{client_id}.
+     */
+    ReadyPackBody: {
+      /**
+       * Dry Run
+       * @default false
+       */
+      dry_run: boolean;
+      /** Period */
+      period: string;
+      /**
+       * Send Email
+       * @default true
+       */
+      send_email: boolean;
+    };
+    /**
+     * Reason
+     * @description ``$defs/Reason`` (spec §2).
+     */
+    Reason: {
+      /** Code */
+      code: string;
+      /** Rule Ids */
+      rule_ids: string[];
+      /** Source Refs */
+      source_refs: string[];
+    };
+    /** ReassignRequest */
+    ReassignRequest: {
+      /** New User Id */
+      new_user_id: string | null;
+      /** Reason */
+      reason: string;
+    };
     /** RecallRequest */
     RecallRequest: {
       /** Agent */
@@ -15875,6 +23545,63 @@ export interface components {
       query: string;
       /** Results */
       results: components["schemas"]["EpisodeResult"][];
+    };
+    /** RecommendRequest */
+    RecommendRequest: {
+      /** Duration */
+      duration: string;
+      /** Family */
+      family: string;
+      /** Nationality */
+      nationality: string;
+      /** Purpose */
+      purpose: string;
+    };
+    /** RecommendResponse */
+    RecommendResponse: {
+      /**
+       * Missing Facts
+       * @default []
+       */
+      missing_facts: string[];
+      /**
+       * Review Reasons
+       * @default []
+       */
+      review_reasons: string[];
+      /** Session Id */
+      session_id: string;
+      /**
+       * State
+       * @enum {string}
+       */
+      state:
+        | "NEEDS_INPUT"
+        | "SUPPORTED_CANDIDATES"
+        | "HUMAN_REVIEW_REQUIRED"
+        | "NO_SUPPORTED_PATH"
+        | "TEMPORARILY_UNAVAILABLE";
+      /** Success */
+      success: boolean;
+      /** Visas */
+      visas: {
+        [key: string]: unknown;
+      }[];
+    };
+    /** ReferralCreate */
+    ReferralCreate: {
+      /** Notes */
+      notes?: string | null;
+      /** Practice Id */
+      practice_id: number;
+    };
+    /** ReferralSwap */
+    ReferralSwap: {
+      /**
+       * New Partner Id
+       * Format: uuid
+       */
+      new_partner_id: string;
     };
     /**
      * RefuteRequest
@@ -15981,6 +23708,17 @@ export interface components {
       user_id?: string | null;
     };
     /**
+     * RelationType
+     * @enum {string}
+     */
+    RelationType:
+      | "SPOUSE"
+      | "CHILD"
+      | "PARENT"
+      | "SIBLING"
+      | "DEPENDENT"
+      | "OTHER";
+    /**
      * RenameRequest
      * @description Request to rename a file/folder.
      */
@@ -16068,6 +23806,97 @@ export interface components {
       team_member_notes?: string | null;
     };
     /**
+     * ResearchRequest
+     * @description Body for POST /api/naga/research.
+     */
+    ResearchRequest: {
+      /**
+       * Channel
+       * @default api
+       */
+      channel: string;
+      /**
+       * Domain
+       * @default auto
+       */
+      domain: string;
+      /**
+       * Mode
+       * @default auto
+       */
+      mode: string;
+      /** Query */
+      query: string;
+      /**
+       * Tier
+       * @default auto
+       */
+      tier: string;
+      /**
+       * Trusted Mode
+       * @default false
+       */
+      trusted_mode: boolean;
+    };
+    /**
+     * ResearchResponse
+     * @description Unified response for research and session endpoints.
+     */
+    ResearchResponse: {
+      /** Action Items */
+      action_items?: {
+        [key: string]: unknown;
+      }[];
+      /**
+       * Avg Confidence
+       * @default 0
+       */
+      avg_confidence: number;
+      /**
+       * Claims Count
+       * @default 0
+       */
+      claims_count: number;
+      /** Domain */
+      domain: string;
+      /**
+       * Duration Ms
+       * @default 0
+       */
+      duration_ms: number;
+      /**
+       * Report
+       * @default
+       */
+      report: string;
+      /** Session Id */
+      session_id: string;
+      /**
+       * Sources Count
+       * @default 0
+       */
+      sources_count: number;
+      /** Status */
+      status: string;
+      /** Tier */
+      tier: string;
+    };
+    /** ResolveBody */
+    ResolveBody: {
+      /** Reason */
+      reason: string;
+    };
+    /** RetrainBody */
+    RetrainBody: {
+      /** Category */
+      category?: string | null;
+      /**
+       * Dry Run
+       * @default false
+       */
+      dry_run: boolean;
+    };
+    /**
      * RetrievalQualityResponse
      * @description Response model for retrieval quality metrics.
      */
@@ -16119,6 +23948,11 @@ export interface components {
       /** Success */
       success: boolean;
     };
+    /** RevalidateBody */
+    RevalidateBody: {
+      /** Tier */
+      tier?: string | null;
+    };
     /**
      * ReviewQueueStatsResponse
      * @description Response model for review queue statistics (Admin only)
@@ -16154,6 +23988,61 @@ export interface components {
        * @description Total reviews in queue
        */
       total_reviews: number;
+    };
+    /** RiskScoreHistoryResponse */
+    RiskScoreHistoryResponse: {
+      /** Days */
+      days: number;
+      /** Scores */
+      scores: components["schemas"]["RiskScoreSnapshot"][];
+    };
+    /** RiskScoreResponse */
+    RiskScoreResponse: {
+      current: components["schemas"]["RiskScoreSnapshot"] | null;
+      /** Trend */
+      trend: {
+        [key: string]: unknown;
+      }[];
+    };
+    /** RiskScoreSnapshot */
+    RiskScoreSnapshot: {
+      /** Api Contract Score */
+      api_contract_score: number;
+      /** Cache Score */
+      cache_score: number;
+      /** Dead Code Score */
+      dead_code_score: number;
+      /** Overall Score */
+      overall_score: number;
+      /** Ragas Quality */
+      ragas_quality?: number | null;
+      /** Rbac Score */
+      rbac_score: number;
+      /** Red Team Survival */
+      red_team_survival?: number | null;
+      /** Seo Health */
+      seo_health?: number | null;
+      /** Timestamp */
+      timestamp: string;
+    };
+    /**
+     * RulePackRef
+     * @description ``$defs/RulePackRef`` (spec §2). ``version`` is a bare ``str`` per
+     *     spec (no semver pattern applied here, unlike ``RulePackPayload.version``
+     *     — a reference snapshot, not the payload itself).
+     */
+    RulePackRef: {
+      /** Payload Sha256 */
+      payload_sha256: string;
+      /**
+       * Rule Pack Id
+       * Format: uuid
+       */
+      rule_pack_id: string;
+      /** Sequence */
+      sequence: number;
+      /** Version */
+      version: string;
     };
     /** SaveConversationRequest */
     SaveConversationRequest: {
@@ -16238,6 +24127,45 @@ export interface components {
       /** Status */
       status: string;
     };
+    /** ScenarioPricingRequest */
+    ScenarioPricingRequest: {
+      /**
+       * Scenario
+       * @description Business scenario, e.g. 'PT PMA restaurant Seminyak 2 directors'
+       */
+      scenario: string;
+      /**
+       * User Level
+       * @description User access level
+       * @default 3
+       */
+      user_level: number;
+    };
+    /** ScenarioPricingResponse */
+    ScenarioPricingResponse: {
+      /** Breakdown By Category */
+      breakdown_by_category: {
+        [key: string]: number;
+      };
+      /** Confidence */
+      confidence: number;
+      /** Cost Items */
+      cost_items: {
+        [key: string]: unknown;
+      }[];
+      /** Currency */
+      currency: string;
+      /** Key Assumptions */
+      key_assumptions: string[];
+      /** Scenario */
+      scenario: string;
+      /** Timeline Estimate */
+      timeline_estimate: string;
+      /** Total Recurring Cost */
+      total_recurring_cost: number;
+      /** Total Setup Cost */
+      total_setup_cost: number;
+    };
     /**
      * ScoreTrendResponse
      * @description Response model for score trends.
@@ -16273,10 +24201,26 @@ export interface components {
        */
       cover_image_base64?: string | null;
       /**
+       * Enrichment
+       * @description Full structured enricher object (the_facts/bali_zero_take/in_practice/next_steps/faq/thirty_second_brief/metadata) — carried through so wr2_topic_selector gets structured ground truth, not just truncated content. Optional: legacy callers unaffected (scar #9).
+       */
+      enrichment?: {
+        [key: string]: unknown;
+      } | null;
+      /**
        * Extraction Method
        * @default css
        */
       extraction_method: string | null;
+      /** Live News Reasons */
+      live_news_reasons?: string[] | null;
+      /**
+       * Live News Score
+       * @description Enricher live-news score 0-100
+       */
+      live_news_score?: number | null;
+      /** Liveness Tier */
+      liveness_tier?: ("breaking" | "developing" | "evergreen") | null;
       /** Published At */
       published_at?: string | null;
       /** Relevance Score */
@@ -16384,6 +24328,20 @@ export interface components {
       /** Success */
       success: boolean;
     };
+    /** SendRequest */
+    SendRequest: {
+      /** Idempotency Key */
+      idempotency_key: string;
+      /** Text */
+      text: string;
+    };
+    /** SendResponse */
+    SendResponse: {
+      /** Message Id */
+      message_id: number;
+      /** Status */
+      status: string;
+    };
     /**
      * SendWhatsAppRequest
      * @description Validated request for outbound WhatsApp messages.
@@ -16442,6 +24400,31 @@ export interface components {
        */
       ttl_hours?: number | null;
     };
+    /** ShortcutEdgeItem */
+    ShortcutEdgeItem: {
+      /** Evidence */
+      evidence?: {
+        [key: string]: unknown;
+      };
+      /** Owner Domain */
+      owner_domain?: string | null;
+      /** Owner Email */
+      owner_email?: string | null;
+      /** Resolution Status */
+      resolution_status: string;
+      /** Resolved At */
+      resolved_at?: string | null;
+      /** Shortcut Id */
+      shortcut_id: string;
+      /** Source Cluster */
+      source_cluster?: string | null;
+      /** Source Path */
+      source_path?: string | null;
+      /** Target Id */
+      target_id: string;
+      /** Target Mime Type */
+      target_mime_type?: string | null;
+    };
     /**
      * SingleConversationResponse
      * @description Single conversation with full messages
@@ -16474,6 +24457,253 @@ export interface components {
       /** Success */
       success: boolean;
     };
+    /**
+     * SkillQuery
+     * @description Read request against the Skill Registry.
+     *
+     *     FTS5 match on procedure + precondition + success_criterion (inherited
+     *     from the existing genome_fts virtual table). Optional tier filter +
+     *     min_confidence let Thinkers narrow to the trusted subset.
+     */
+    SkillQuery: {
+      /** Cell */
+      cell?: string | null;
+      /**
+       * Limit
+       * @default 20
+       */
+      limit: number;
+      /**
+       * Min Confidence
+       * @default 0
+       */
+      min_confidence: number;
+      /** Query */
+      query: string;
+      tier?: components["schemas"]["SkillTier"] | null;
+    };
+    /**
+     * SkillRecord
+     * @description Payload to register a reusable skill in the Genome.
+     *
+     *     Unlike trajectories, every skill must come with the three canonical
+     *     fields (precondition, procedure, success_criterion). The seed script
+     *     enforces this — no empty signal.
+     */
+    SkillRecord: {
+      /** Cell */
+      cell: string;
+      /**
+       * Confidence
+       * @default 0.5
+       */
+      confidence: number;
+      /** Precondition */
+      precondition: string;
+      /** Procedure */
+      procedure: string;
+      /** @default Project */
+      scope: components["schemas"]["SkillScope"];
+      /** Skill Id */
+      skill_id: string;
+      /** Success Criterion */
+      success_criterion: string;
+    };
+    /**
+     * SkillResult
+     * @description Response row — flat projection of the Genome row.
+     */
+    SkillResult: {
+      /** Cell */
+      cell: string;
+      /** Confidence */
+      confidence: number;
+      /** Precondition */
+      precondition: string;
+      /** Procedure */
+      procedure: string;
+      scope: components["schemas"]["SkillScope"];
+      /** Skill Id */
+      skill_id: string;
+      /** Success Criterion */
+      success_criterion: string;
+      tier?: components["schemas"]["SkillTier"] | null;
+      /**
+       * Uses
+       * @default 0
+       */
+      uses: number;
+      /** Valid From */
+      valid_from: string;
+    };
+    /**
+     * SkillScope
+     * @enum {string}
+     */
+    SkillScope: "Project" | "Personal";
+    /**
+     * SkillTier
+     * @enum {string}
+     */
+    SkillTier: "tier1" | "tier2";
+    /** SkillsResponse */
+    SkillsResponse: {
+      /** Events */
+      events: {
+        [key: string]: unknown;
+      }[];
+      /**
+       * Events Orphaned
+       * @default false
+       */
+      events_orphaned: boolean;
+      /** Last Stream Id */
+      last_stream_id: string;
+      /** Stream Lowest Id */
+      stream_lowest_id?: string | null;
+    };
+    /** SourceApplicabilityDTO */
+    SourceApplicabilityDTO: {
+      /**
+       * Effective At
+       * Format: date-time
+       */
+      effective_at: string;
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+      status: components["schemas"]["SourceApplicabilityStatus"];
+    };
+    /**
+     * SourceApplicabilityStatus
+     * @description Signed bitemporal/status applicability, distinct from freshness.
+     * @enum {string}
+     */
+    SourceApplicabilityStatus:
+      | "APPLICABLE"
+      | "NOT_YET_EFFECTIVE"
+      | "EXPIRED"
+      | "SUPERSEDED"
+      | "REVOKED"
+      | "UNAVAILABLE"
+      | "UNKNOWN";
+    /**
+     * SourceAuthorityType
+     * @enum {string}
+     */
+    SourceAuthorityType:
+      | "PRIMARY_LAW"
+      | "IMPLEMENTING_REGULATION"
+      | "OFFICIAL_PORTAL"
+      | "OFFICIAL_CIRCULAR"
+      | "BALI_ZERO_POLICY"
+      | "PRICING_CATALOG";
+    /** SourceFreshnessDTO */
+    SourceFreshnessDTO: {
+      /**
+       * Evaluated At
+       * Format: date-time
+       */
+      evaluated_at: string;
+      /** Max Age Seconds */
+      max_age_seconds?: number | null;
+      /** Reason Code */
+      reason_code: string;
+      status: components["schemas"]["SourceFreshnessStatus"];
+      /**
+       * Verified At
+       * Format: date-time
+       */
+      verified_at: string;
+    };
+    /**
+     * SourceFreshnessStatus
+     * @description External re-verification state under an explicit freshness policy.
+     * @enum {string}
+     */
+    SourceFreshnessStatus: "CURRENT" | "STALE" | "UNKNOWN";
+    /** SourceLocator */
+    SourceLocator: {
+      kind: components["schemas"]["SourceLocatorKind"];
+      /** Value */
+      value: string;
+    };
+    /**
+     * SourceLocatorKind
+     * @enum {string}
+     */
+    SourceLocatorKind: "ARTICLE" | "SECTION" | "PAGE" | "PARAGRAPH" | "ANCHOR";
+    /**
+     * SourceRecordDTO
+     * @description Resolved source projection required by the public outcome.
+     */
+    SourceRecordDTO: {
+      applicability: components["schemas"]["SourceApplicabilityDTO"];
+      authority_type: components["schemas"]["SourceAuthorityType"];
+      /** Canonical Url */
+      canonical_url: string;
+      /** Document Number */
+      document_number: string | null;
+      freshness: components["schemas"]["SourceFreshnessDTO"];
+      /** Is Primary Authority */
+      is_primary_authority: boolean;
+      /**
+       * Legal Period From
+       * Format: date-time
+       */
+      legal_period_from: string;
+      /** Legal Period To */
+      legal_period_to: string | null;
+      /** Locators */
+      locators: components["schemas"]["SourceLocator"][];
+      /** Publisher */
+      publisher: string;
+      /**
+       * Recorded Period From
+       * Format: date-time
+       */
+      recorded_period_from: string;
+      /**
+       * Retrieved At
+       * Format: date-time
+       */
+      retrieved_at: string;
+      /** Source Key */
+      source_key: string;
+      /**
+       * Source Record Id
+       * Format: uuid
+       */
+      source_record_id: string;
+      status: components["schemas"]["SourceStatus"];
+      /** Title */
+      title: string;
+      /**
+       * Verified At
+       * Format: date-time
+       */
+      verified_at: string;
+    };
+    /**
+     * SourceStatus
+     * @enum {string}
+     */
+    SourceStatus: "VERIFIED" | "SUPERSEDED" | "REVOKED" | "UNAVAILABLE";
+    /** SpatialResolveRequest */
+    SpatialResolveRequest: {
+      /**
+       * Lat
+       * @description Latitude
+       */
+      lat: number;
+      /**
+       * Lng
+       * @description Longitude
+       */
+      lng: number;
+    };
     /** SpeechRequest */
     SpeechRequest: {
       /**
@@ -16503,6 +24733,31 @@ export interface components {
       /** Status */
       status: string;
     };
+    /** StayPolicy */
+    StayPolicy: {
+      kind: components["schemas"]["StayPolicyKind"];
+      /** Maximum Days */
+      maximum_days: number | null;
+      /** Minimum Days */
+      minimum_days: number | null;
+    };
+    /**
+     * StayPolicyKind
+     * @enum {string}
+     */
+    StayPolicyKind: "FIXED_DAYS" | "VARIABLE_BY_GRANT" | "NOT_APPLICABLE";
+    /**
+     * StudyLevel
+     * @enum {string}
+     */
+    StudyLevel:
+      | "PRIMARY"
+      | "SECONDARY"
+      | "VOCATIONAL"
+      | "UNDERGRADUATE"
+      | "POSTGRADUATE"
+      | "RESEARCH"
+      | "OTHER";
     /**
      * SubscribeRequest
      * @description Subscribe request model
@@ -16585,35 +24840,338 @@ export interface components {
       /** Who */
       who: string;
     };
-    /**
-     * TaxSummary
-     * @description Tax summary for dashboard card.
-     */
-    TaxSummary: {
-      /** Days Until Deadline */
-      days_until_deadline?: number | null;
-      /** Next Deadline */
-      next_deadline?: string | null;
+    /** TaxCompanyPilotDocument */
+    TaxCompanyPilotDocument: {
       /**
-       * Overdue Count
-       * @default 0
+       * Confidence
+       * @default confirmed
+       * @enum {string}
        */
-      overdue_count: number;
+      confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+      /** Evidence Url */
+      evidence_url?: string | null;
       /**
-       * Pending Count
-       * @default 0
+       * Group
+       * @enum {string}
        */
-      pending_count: number;
+      group: "company" | "tax" | "lkpm" | "finance" | "person" | "coretax";
+      /** Name */
+      name: string;
+      /**
+       * Sensitivity
+       * @default internal
+       * @enum {string}
+       */
+      sensitivity:
+        | "internal"
+        | "company"
+        | "person"
+        | "financial"
+        | "credential";
+    };
+    /** TaxCompanyPilotDuplicateCandidate */
+    TaxCompanyPilotDuplicateCandidate: {
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+      /** Label */
+      label: string;
+      /** Urls */
+      urls: string[];
+    };
+    /** TaxCompanyPilotEntity */
+    TaxCompanyPilotEntity: {
+      /** Aliases */
+      aliases?: string[];
+      /** Name */
+      name: string;
+    };
+    /** TaxCompanyPilotEvidenceLink */
+    TaxCompanyPilotEvidenceLink: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "folder" | "file" | "spreadsheet" | "document";
+      /** Label */
+      label: string;
+      /** Url */
+      url: string;
+    };
+    /** TaxCompanyPilotEvidenceStory */
+    TaxCompanyPilotEvidenceStory: {
+      /** Company Name */
+      company_name: string;
+      /**
+       * Confidence
+       * @default medium
+       * @enum {string}
+       */
+      confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+      /** Evidence Items */
+      evidence_items?: components["schemas"]["TaxCompanyPilotStoryEvidence"][];
+      /** Next Action */
+      next_action: string;
+      /** Person Name */
+      person_name: string;
+      /**
+       * Portal Rule
+       * @default Client portal: download approved documents only.
+       */
+      portal_rule: string;
+      /** Recap */
+      recap: string;
+      /** Relationship Path */
+      relationship_path: string[];
+      /** Tax Owner */
+      tax_owner: string;
+      /**
+       * Team Rule
+       * @default Team workspace: open Drive evidence and shortcuts from kita.
+       */
+      team_rule: string;
+    };
+    /** TaxCompanyPilotGap */
+    TaxCompanyPilotGap: {
+      /** Code */
+      code: string;
+      /** Label */
+      label: string;
+      /**
+       * Severity
+       * @enum {string}
+       */
+      severity: "high" | "medium" | "low";
+    };
+    /** TaxCompanyPilotMap */
+    TaxCompanyPilotMap: {
+      /** Ai Recap */
+      ai_recap: string[];
+      /** Business Story */
+      business_story?: string[];
+      company: components["schemas"]["TaxCompanyPilotEntity"];
+      /**
+       * Confidence
+       * @default medium
+       * @enum {string}
+       */
+      confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+      /** Documents */
+      documents: components["schemas"]["TaxCompanyPilotDocument"][];
+      /** Drive Folders */
+      drive_folders: {
+        [key: string]: string;
+      };
+      /** Duplicate Candidates */
+      duplicate_candidates: components["schemas"]["TaxCompanyPilotDuplicateCandidate"][];
+      /** Evidence Links */
+      evidence_links: components["schemas"]["TaxCompanyPilotEvidenceLink"][];
+      /** Evidence Stories */
+      evidence_stories?: components["schemas"]["TaxCompanyPilotEvidenceStory"][];
+      /** Gaps */
+      gaps: components["schemas"]["TaxCompanyPilotGap"][];
+      /** Key */
+      key: string;
+      /** Next Best Actions */
+      next_best_actions?: components["schemas"]["TaxCompanyPilotNextAction"][];
+      /** Person Dossiers */
+      person_dossiers?: components["schemas"]["TaxCompanyPilotPersonDossier"][];
+      /** Persons */
+      persons: components["schemas"]["TaxCompanyPilotPerson"][];
+      /**
+       * Primary Entry
+       * @default person
+       * @constant
+       */
+      primary_entry: "person";
+      /**
+       * Read Only
+       * @default true
+       */
+      read_only: boolean;
+      readiness?: components["schemas"]["TaxCompanyPilotReadiness"] | null;
+      tax_member: components["schemas"]["TaxCompanyPilotTaxMember"];
+      workspace_ai?:
+        | components["schemas"]["TaxCompanyPilotWorkspaceAiSnapshot"]
+        | null;
+      /**
+       * Workspace Mode
+       * @default team_read_only
+       * @constant
+       */
+      workspace_mode: "team_read_only";
+    };
+    /** TaxCompanyPilotNextAction */
+    TaxCompanyPilotNextAction: {
+      /** Label */
+      label: string;
+      /**
+       * Owner
+       * @enum {string}
+       */
+      owner: "crm" | "tax" | "setup";
+      /** Reason */
+      reason: string;
+      /**
+       * Severity
+       * @enum {string}
+       */
+      severity: "high" | "medium" | "low";
+    };
+    /** TaxCompanyPilotPerson */
+    TaxCompanyPilotPerson: {
+      /** Evidence */
+      evidence?: string[];
+      /** Folder Url */
+      folder_url?: string | null;
+      /** Name */
+      name: string;
+      /**
+       * Relationship Confidence
+       * @default unconfirmed
+       * @enum {string}
+       */
+      relationship_confidence:
+        | "confirmed"
+        | "high"
+        | "medium"
+        | "low"
+        | "unconfirmed";
+      /** Role */
+      role?: string | null;
+      /**
+       * Role Confidence
+       * @default unconfirmed
+       * @enum {string}
+       */
+      role_confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+    };
+    /** TaxCompanyPilotPersonDossier */
+    TaxCompanyPilotPersonDossier: {
+      /** Company Name */
+      company_name: string;
+      /** Document Groups */
+      document_groups?: string[];
+      /** Drive Folder Url */
+      drive_folder_url?: string | null;
+      /** Headline */
+      headline: string;
+      /** Next Action */
+      next_action: string;
+      /** Person Name */
+      person_name: string;
+      /**
+       * Relationship Confidence
+       * @default unconfirmed
+       * @enum {string}
+       */
+      relationship_confidence:
+        | "confirmed"
+        | "high"
+        | "medium"
+        | "low"
+        | "unconfirmed";
+      /** Risk Flags */
+      risk_flags?: string[];
+      /** Tax Owner */
+      tax_owner: string;
+    };
+    /** TaxCompanyPilotReadiness */
+    TaxCompanyPilotReadiness: {
+      /** Label */
+      label: string;
+      /** Reasons */
+      reasons?: string[];
+      /** Score */
+      score: number;
       /**
        * Status
-       * @default ok
+       * @enum {string}
        */
-      status: string;
+      status: "ready" | "needs_review" | "blocked";
+    };
+    /** TaxCompanyPilotStoryEvidence */
+    TaxCompanyPilotStoryEvidence: {
       /**
-       * Total Due
-       * @default 0
+       * Audience
+       * @default team
+       * @constant
        */
-      total_due: number;
+      audience: "team";
+      /**
+       * Confidence
+       * @default confirmed
+       * @enum {string}
+       */
+      confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+      /** Detail */
+      detail: string;
+      /** Label */
+      label: string;
+      /**
+       * Source Kind
+       * @default folder
+       * @enum {string}
+       */
+      source_kind: "folder" | "file" | "spreadsheet" | "document";
+      /** Source Label */
+      source_label: string;
+      /** Source Url */
+      source_url?: string | null;
+    };
+    /** TaxCompanyPilotTaxMember */
+    TaxCompanyPilotTaxMember: {
+      /** Name */
+      name: string;
+      /** Source Folder Url */
+      source_folder_url: string;
+      /** Workspace Branch */
+      workspace_branch: string;
+    };
+    /** TaxCompanyPilotWorkspaceAiFact */
+    TaxCompanyPilotWorkspaceAiFact: {
+      /**
+       * Category
+       * @enum {string}
+       */
+      category: "identity" | "person" | "compliance" | "gap" | "next_action";
+      /**
+       * Confidence
+       * @default medium
+       * @enum {string}
+       */
+      confidence: "confirmed" | "high" | "medium" | "low" | "unconfirmed";
+      /** Detail */
+      detail: string;
+      /** Label */
+      label: string;
+      /** Source File Ids */
+      source_file_ids?: string[];
+    };
+    /** TaxCompanyPilotWorkspaceAiSnapshot */
+    TaxCompanyPilotWorkspaceAiSnapshot: {
+      /** Approved At */
+      approved_at?: string | null;
+      /** Approved By */
+      approved_by?: string | null;
+      /** Created At */
+      created_at?: string | null;
+      /** Facts */
+      facts?: components["schemas"]["TaxCompanyPilotWorkspaceAiFact"][];
+      /** Note Id */
+      note_id?: string | null;
+      /** Notebook Id */
+      notebook_id?: string | null;
+      /**
+       * Provider
+       * @default notebooklm
+       * @enum {string}
+       */
+      provider: "notebooklm" | "gemini" | "manual";
+      /** Source File Ids */
+      source_file_ids?: string[];
     };
     /**
      * TeamMember
@@ -16714,12 +25272,173 @@ export interface components {
       /** Success */
       success: boolean;
     };
+    /** ThreadMessages */
+    ThreadMessages: {
+      /** Human Handling */
+      human_handling: boolean;
+      /** Items */
+      items: components["schemas"]["LedgerMessage"][];
+      /** Last Customer At */
+      last_customer_at?: string | null;
+      /** Thread Id */
+      thread_id: number;
+      /** Window Open */
+      window_open: boolean;
+    };
+    /** ThreadSummary */
+    ThreadSummary: {
+      /** Counterpart Name */
+      counterpart_name?: string | null;
+      /** Counterpart Phone */
+      counterpart_phone: string;
+      /** Human Handling */
+      human_handling: boolean;
+      /** Last Customer At */
+      last_customer_at?: string | null;
+      /** Last Message At */
+      last_message_at?: string | null;
+      /** Thread Id */
+      thread_id: number;
+      /** Window Open */
+      window_open: boolean;
+    };
+    /** ThreadUpdateRequest */
+    ThreadUpdateRequest: {
+      /** Assigned To */
+      assigned_to?: string | null;
+      /** Priority */
+      priority?: string | null;
+      /** Status */
+      status?: string | null;
+    };
+    /** ThreadsPage */
+    ThreadsPage: {
+      /** Items */
+      items: components["schemas"]["ThreadSummary"][];
+      /** Next Cursor */
+      next_cursor?: string | null;
+    };
     /**
      * TierLevel
      * @description Book tier classifications
      * @enum {string}
      */
     TierLevel: "S" | "A" | "B" | "C" | "D";
+    /** TouchRequest */
+    TouchRequest: {
+      funnel: components["schemas"]["FunnelType"];
+      /** Lead Profile */
+      lead_profile?: {
+        [key: string]: unknown;
+      };
+      /** Session Id */
+      session_id: string;
+      /** Step State */
+      step_state?: {
+        [key: string]: unknown;
+      };
+    };
+    /**
+     * TrajectoryOutcome
+     * @enum {string}
+     */
+    TrajectoryOutcome: "success" | "failure" | "partial";
+    /**
+     * TrajectoryQuery
+     * @description Read request against the Experience Library.
+     */
+    TrajectoryQuery: {
+      /** Cell */
+      cell?: string | null;
+      /**
+       * Limit
+       * @default 20
+       */
+      limit: number;
+      outcome?: components["schemas"]["TrajectoryOutcome"] | null;
+      /** Query */
+      query: string;
+      /** Tag */
+      tag?: string | null;
+    };
+    /**
+     * TrajectoryRecord
+     * @description Payload to register an execution trajectory in the Genome.
+     */
+    TrajectoryRecord: {
+      /** Cell */
+      cell: string;
+      /**
+       * Confidence
+       * @default 0.5
+       */
+      confidence: number;
+      /** Duration Ms */
+      duration_ms?: number | null;
+      outcome: components["schemas"]["TrajectoryOutcome"];
+      /** Procedure */
+      procedure: string;
+      /**
+       * Tags
+       * @description ASCII slug tags; see module docstring.
+       */
+      tags?: string[];
+      /** Tokens */
+      tokens?: number | null;
+      /** Trajectory Id */
+      trajectory_id: string;
+    };
+    /**
+     * TrajectoryResult
+     * @description Response row from a query — flat projection of the Genome row.
+     */
+    TrajectoryResult: {
+      /** Cell */
+      cell: string;
+      /** Confidence */
+      confidence: number;
+      /** Duration Ms */
+      duration_ms?: number | null;
+      outcome: components["schemas"]["TrajectoryOutcome"];
+      /** Procedure */
+      procedure: string;
+      /** Tags */
+      tags?: string[];
+      /** Tokens */
+      tokens?: number | null;
+      /** Trajectory Id */
+      trajectory_id: string;
+      /** Valid From */
+      valid_from: string;
+    };
+    /**
+     * UnknownFact
+     * @description ``$defs/UnknownFact`` — a fact never collected/confirmed, with an
+     *     explicit reason (spec §2; mirrors ``enums.UnknownReason``'s docstring:
+     *     "no fact is ever just missing outside the type system").
+     */
+    UnknownFact: {
+      reason: components["schemas"]["UnknownReason"];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "UNKNOWN";
+    };
+    /**
+     * UnknownReason
+     * @description Why a fact is UNKNOWN rather than silently absent (spec §2 ``UnknownFact``).
+     *
+     *     No fact is ever "just missing" outside the type system — every UNKNOWN
+     *     carries one of these reasons explicitly.
+     * @enum {string}
+     */
+    UnknownReason:
+      | "NOT_ASKED"
+      | "NOT_PROVIDED"
+      | "UNVERIFIED"
+      | "CONFLICTING"
+      | "NOT_APPLICABLE";
     /**
      * UnsubscribeRequest
      * @description Unsubscribe request
@@ -16972,27 +25691,122 @@ export interface components {
       type: string;
     };
     /**
-     * VisaSummary
-     * @description Visa summary for dashboard card.
+     * ViolationType
+     * @enum {string}
      */
-    VisaSummary: {
-      /** Days Until Expiry */
-      days_until_expiry?: number | null;
-      /** Expiry Date */
-      expiry_date?: string | null;
-      /**
-       * Has Active Visa
-       * @default false
-       */
-      has_active_visa: boolean;
-      /**
-       * Status
-       * @default none
-       */
-      status: string;
-      /** Visa Type */
-      visa_type?: string | null;
+    ViolationType:
+      | "OVERSTAY"
+      | "DEPORTATION"
+      | "BLACKLIST"
+      | "IMMIGRATION_INVESTIGATION"
+      | "OTHER";
+    /** VisaOracleDisplayDTO */
+    VisaOracleDisplayDTO: {
+      /** Candidates */
+      candidates: components["schemas"]["CandidateDisplayDTO"][];
     };
+    /** VisaOracleErrorResponse */
+    VisaOracleErrorResponse: {
+      /** Detail */
+      detail: string;
+    };
+    /**
+     * VisaOracleEvaluateRequest
+     * @description Canonical facts plus conservative, non-eligibility review flags.
+     *
+     *     The extra field defaults to the empty tuple, so every existing
+     *     ``ApplicantFacts`` request remains wire-compatible.
+     */
+    VisaOracleEvaluateRequest: {
+      /**
+       * Assessment Id
+       * Format: uuid
+       */
+      assessment_id: string;
+      /**
+       * Collected At
+       * Format: date-time
+       */
+      collected_at: string;
+      /**
+       * Disclosed Review Flags
+       * @default []
+       */
+      disclosed_review_flags: components["schemas"]["DisclosedReviewFlag"][];
+      facts: components["schemas"]["ApplicantFactsData"];
+      /**
+       * Schema Version
+       * @constant
+       */
+      schema_version: "1.0.0";
+    };
+    /**
+     * VisaOracleEvaluateResponse
+     * @description Stable response envelope consumed by the frontend engine adapter.
+     */
+    VisaOracleEvaluateResponse: {
+      decision: components["schemas"]["Decision"];
+      display: components["schemas"]["VisaOracleDisplayDTO"];
+      mode: components["schemas"]["EvaluateResponseMode"];
+      /** Sources */
+      sources: components["schemas"]["SourceRecordDTO"][];
+    };
+    /** VisaOracleValidationErrorItem */
+    VisaOracleValidationErrorItem: {
+      /** Loc */
+      loc: string[];
+      /** Msg */
+      msg: string;
+      /** Type */
+      type: string;
+    };
+    /** VisaOracleValidationErrorResponse */
+    VisaOracleValidationErrorResponse: {
+      /** Detail */
+      detail: components["schemas"]["VisaOracleValidationErrorItem"][];
+    };
+    /**
+     * VisaPurpose
+     * @enum {string}
+     */
+    VisaPurpose:
+      | "TOURISM"
+      | "BUSINESS_MEETINGS"
+      | "INVESTMENT"
+      | "EMPLOYMENT"
+      | "REMOTE_WORK"
+      | "FAMILY"
+      | "STUDY"
+      | "RETIREMENT"
+      | "SECOND_HOME"
+      | "TRANSIT"
+      | "MEDICAL"
+      | "OTHER";
+    /**
+     * VisaType
+     * @enum {string}
+     */
+    VisaType:
+      | "B1"
+      | "C1"
+      | "C2"
+      | "C6"
+      | "C7"
+      | "C7A"
+      | "C7B"
+      | "C18"
+      | "C22A"
+      | "D2"
+      | "D12"
+      | "E23"
+      | "E23-FREELANCE"
+      | "E28A"
+      | "E30A"
+      | "E31"
+      | "E33"
+      | "E33E"
+      | "E33F"
+      | "E33G";
     /**
      * VisaTypeCreate
      * @description Create model
@@ -17219,6 +26033,92 @@ export interface components {
       /** Total Stay */
       total_stay?: string | null;
     };
+    /** VoaRequest */
+    VoaRequest: {
+      case_type: components["schemas"]["CaseType"];
+      /**
+       * Entry Date
+       * Format: date
+       */
+      entry_date: string;
+      /**
+       * Extension Already Used
+       * @default false
+       */
+      extension_already_used: boolean;
+      /** Nationality */
+      nationality: string;
+      /**
+       * Passport Expiry Date
+       * Format: date
+       */
+      passport_expiry_date: string;
+      purpose: components["schemas"]["backend__services__garuda_flow__intake__Purpose"];
+      /** Self Pay */
+      self_pay: boolean;
+      /** Travellers */
+      travellers: number;
+      /** Voa Expiry Date */
+      voa_expiry_date?: string | null;
+    };
+    /**
+     * VoaResponse
+     * @description Client-facing verdict. Deliberately has NO field for the D-14
+     *     filing-window-opens date, nor for the D-10/D-3/D-1 internal
+     *     checkpoints — `published_filing_deadline` (D-7) is the ONLY Safe Clock
+     *     date this schema can ever carry. D-14 is withheld not because it is
+     *     internal but because the source is self-contradictory on it (see the
+     *     module docstring above); D-7 is stated identically everywhere and is
+     *     not in doubt.
+     *
+     *     Same treatment for decline reasons: `reason_codes` carries ONLY the
+     *     stable neutral codes from `services.garuda_flow.eligibility.DeclineCode`
+     *     — never the engine-internal English audit prose
+     *     (`VoaVerdict.decline_reasons`), which can name an internal checkpoint
+     *     (e.g. "D-10 pilot threshold") and is never translated. That prose is
+     *     still persisted server-side for audit; it has no field here.
+     */
+    VoaResponse: {
+      case_type: components["schemas"]["CaseType"];
+      /** Decision */
+      decision: string;
+      /**
+       * Entry Date
+       * Format: date
+       */
+      entry_date: string;
+      /**
+       * Expiry Date
+       * Format: date
+       */
+      expiry_date: string;
+      /** Expiry Is Estimated */
+      expiry_is_estimated: boolean;
+      /** Hash */
+      hash: string;
+      /**
+       * Last Legal Day
+       * Format: date
+       */
+      last_legal_day: string;
+      /** Nationality */
+      nationality: string;
+      /** Price Idr */
+      price_idr: number | null;
+      /** Price Source */
+      price_source: string | null;
+      /**
+       * Published Filing Deadline
+       * Format: date
+       */
+      published_filing_deadline: string;
+      /** Reason Codes */
+      reason_codes: string[];
+      /** Result Url */
+      result_url: string;
+      /** Submit By Date */
+      submit_by_date: string | null;
+    };
     /**
      * VoiceQueryRequest
      * @description Simple voice query request.
@@ -17256,6 +26156,201 @@ export interface components {
       sources: string[];
     };
     /**
+     * WaCaseIntelligenceCard
+     * @description One Zantara Captain card linked to a client's WhatsApp conversation.
+     */
+    WaCaseIntelligenceCard: {
+      /** Analysis Hash */
+      analysis_hash: string;
+      /** Analysis Id */
+      analysis_id?: string | null;
+      /** Analysis Output Path */
+      analysis_output_path?: string | null;
+      /** Case Status */
+      case_status: string;
+      /** Case Type */
+      case_type?: string | null;
+      /** Chat Kind */
+      chat_kind: string;
+      /** Conversation Key */
+      conversation_key: string;
+      /** Counterpart Key */
+      counterpart_key?: string | null;
+      /** Crm Packet */
+      crm_packet?: string | null;
+      /** Display Name */
+      display_name?: string | null;
+      /** Evidence */
+      evidence?: string | null;
+      /** Flags */
+      flags: {
+        [key: string]: unknown;
+      }[];
+      /** Generated At */
+      generated_at?: string | null;
+      /** Id */
+      id: number;
+      /** Ideal Reply */
+      ideal_reply?: string | null;
+      /**
+       * Imported At
+       * Format: date-time
+       */
+      imported_at: string;
+      /** Last Message At */
+      last_message_at?: string | null;
+      /** Member Phone */
+      member_phone?: string | null;
+      /** Message Count */
+      message_count: number;
+      /** Next Action */
+      next_action?: string | null;
+      /** Priority Score */
+      priority_score: number;
+      /** Raw Sections */
+      raw_sections: {
+        [key: string]: unknown;
+      };
+      /** Reasoning Effort */
+      reasoning_effort?: string | null;
+      /** Recap */
+      recap?: string | null;
+      /** Source Model */
+      source_model: string;
+      /** Unread Count */
+      unread_count: number;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** WaCaseIntelligenceResponse */
+    WaCaseIntelligenceResponse: {
+      /** Case Count */
+      case_count: number;
+      /** Cases */
+      cases: components["schemas"]["WaCaseIntelligenceCard"][];
+      /** Client Id */
+      client_id: number;
+      /** Status */
+      status: string;
+    };
+    /** WaMediaAckRequest */
+    WaMediaAckRequest: {
+      /**
+       * Outbox Ids
+       * @description outbox row ids the Pro stored locally
+       */
+      outbox_ids: number[];
+    };
+    /** WaMediaAckResponse */
+    WaMediaAckResponse: {
+      /** Acked */
+      acked: number[];
+    };
+    /** WaMediaPendingItem */
+    WaMediaPendingItem: {
+      /** Created At */
+      created_at: string;
+      /** Declared Sha256 */
+      declared_sha256?: string | null;
+      /** Filename */
+      filename?: string | null;
+      /** From Phone */
+      from_phone?: string | null;
+      /** Media Id */
+      media_id: string;
+      /** Message Type */
+      message_type?: string | null;
+      /** Mime Type */
+      mime_type?: string | null;
+      /** Outbox Id */
+      outbox_id: number;
+      /** Phone Number Id */
+      phone_number_id?: string | null;
+      /** Sender Name */
+      sender_name?: string | null;
+      /** Wa Message Id */
+      wa_message_id?: string | null;
+    };
+    /** WaMediaPendingResponse */
+    WaMediaPendingResponse: {
+      /** Items */
+      items: components["schemas"]["WaMediaPendingItem"][];
+      /** Last Id */
+      last_id: number;
+    };
+    /**
+     * WaMirrorMessageResponse
+     * @description CRM-safe allowlist for one wa-mirror message.
+     */
+    WaMirrorMessageResponse: {
+      /**
+       * Attention Priority
+       * @description HIGH | MEDIUM | LOW | None
+       */
+      attention_priority?: string | null;
+      /** Attention Reason */
+      attention_reason?: string[] | null;
+      /**
+       * Attention Resolved
+       * @default false
+       */
+      attention_resolved: boolean;
+      /** Body */
+      body: string;
+      /** Body Truncated */
+      body_truncated: boolean;
+      /** Client Id */
+      client_id: number | null;
+      /** Counterpart Phone */
+      counterpart_phone: string | null;
+      /** Direction */
+      direction: string;
+      /** Has Media */
+      has_media: boolean;
+      /** Has Ocr */
+      has_ocr: boolean;
+      /** Id */
+      id: number;
+      /** Media Mime */
+      media_mime: string | null;
+      /** Media Type */
+      media_type: string;
+      /**
+       * Message Date
+       * Format: date-time
+       */
+      message_date: string;
+      /** Practice Id */
+      practice_id: number | null;
+      /**
+       * Source
+       * @default wa_mirror
+       */
+      source: string;
+      /** Team Member Phone */
+      team_member_phone: string | null;
+    };
+    /**
+     * WaMirrorMessagesResponse
+     * @description Paginated wa-mirror timeline response.
+     */
+    WaMirrorMessagesResponse: {
+      /** Items */
+      items: components["schemas"]["WaMirrorMessageResponse"][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+    };
+    /** WaiveRequest */
+    WaiveRequest: {
+      /** Reason */
+      reason: string;
+    };
+    /**
      * WeeklySummary
      * @description Weekly work summary
      */
@@ -17272,38 +26367,6 @@ export interface components {
       user_id: string;
       /** Week Start */
       week_start: string;
-    };
-    /**
-     * WhatsAppChange
-     * @description WhatsApp webhook change event.
-     */
-    WhatsAppChange: {
-      /** Field */
-      field: string;
-      /** Value */
-      value: {
-        [key: string]: unknown;
-      };
-    };
-    /**
-     * WhatsAppEntry
-     * @description WhatsApp webhook entry.
-     */
-    WhatsAppEntry: {
-      /** Changes */
-      changes: components["schemas"]["WhatsAppChange"][];
-      /** Id */
-      id: string;
-    };
-    /**
-     * WhatsAppWebhook
-     * @description WhatsApp webhook payload from Meta.
-     */
-    WhatsAppWebhook: {
-      /** Entry */
-      entry: components["schemas"]["WhatsAppEntry"][];
-      /** Object */
-      object: string;
     };
     /** WorkflowFeedbackRequest */
     WorkflowFeedbackRequest: {
@@ -17328,6 +26391,154 @@ export interface components {
        */
       workflow_id: string;
     };
+    /** WorkspaceAiAutoApproveDecision */
+    WorkspaceAiAutoApproveDecision: {
+      /**
+       * Approved
+       * @default false
+       */
+      approved: boolean;
+      /** Blocked Reasons */
+      blocked_reasons?: string[];
+      /** Company Id */
+      company_id?: number | null;
+      /** Company Name */
+      company_name: string;
+      /** Eligible */
+      eligible: boolean;
+      /** Fact Count */
+      fact_count: number;
+      /**
+       * Policy Version
+       * @default workspace-ai-v2-consultant-narrative
+       */
+      policy_version: string;
+      /** Reason */
+      reason: string;
+      /** Snapshot Id */
+      snapshot_id: string;
+    };
+    /** WorkspaceAiAutoApproveRequest */
+    WorkspaceAiAutoApproveRequest: {
+      /**
+       * Dry Run
+       * @default true
+       */
+      dry_run: boolean;
+      /**
+       * Limit
+       * @default 25
+       */
+      limit: number;
+    };
+    /** WorkspaceAiAutoApproveResult */
+    WorkspaceAiAutoApproveResult: {
+      /** Approved Count */
+      approved_count: number;
+      /** Blocked Count */
+      blocked_count: number;
+      /** Decisions */
+      decisions: components["schemas"]["WorkspaceAiAutoApproveDecision"][];
+      /** Dry Run */
+      dry_run: boolean;
+      /** Eligible Count */
+      eligible_count: number;
+      /** Evaluated */
+      evaluated: number;
+      /**
+       * Policy Version
+       * @default workspace-ai-v2-consultant-narrative
+       */
+      policy_version: string;
+    };
+    /** WorkspaceAiSnapshotCreate */
+    WorkspaceAiSnapshotCreate: {
+      /** Client Id */
+      client_id?: number | null;
+      /** Company Id */
+      company_id?: number | null;
+      /** Company Name */
+      company_name: string;
+      /** Facts */
+      facts?: components["schemas"]["TaxCompanyPilotWorkspaceAiFact"][];
+      /** Note Id */
+      note_id?: string | null;
+      /** Notebook Id */
+      notebook_id?: string | null;
+      /**
+       * Provider
+       * @default notebooklm
+       * @enum {string}
+       */
+      provider: "notebooklm" | "gemini" | "manual";
+      /** Source File Ids */
+      source_file_ids?: string[];
+    };
+    /** WorkspaceAiSnapshotResponse */
+    WorkspaceAiSnapshotResponse: {
+      /** Approved At */
+      approved_at?: string | null;
+      /** Approved By */
+      approved_by?: string | null;
+      /** Client Id */
+      client_id?: number | null;
+      /** Company Id */
+      company_id?: number | null;
+      /** Company Name */
+      company_name: string;
+      /** Created At */
+      created_at: string;
+      /** Created By */
+      created_by?: string | null;
+      /** Facts */
+      facts?: components["schemas"]["TaxCompanyPilotWorkspaceAiFact"][];
+      /** Id */
+      id: string;
+      /** Note Id */
+      note_id?: string | null;
+      /** Notebook Id */
+      notebook_id?: string | null;
+      /**
+       * Provider
+       * @default notebooklm
+       * @enum {string}
+       */
+      provider: "notebooklm" | "gemini" | "manual";
+      /** Source File Ids */
+      source_file_ids?: string[];
+      /** Status */
+      status: string;
+    };
+    /**
+     * WorkspaceQueryRequest
+     * @description Request schema for the authenticated workspace agent endpoint.
+     *
+     *     Subset of AgenticQueryRequest. Identity (user_id, agent_role, agent_email,
+     *     agent_name) is derived server-side from the JWT — never trust client metadata.
+     *     The `channel` field is forced to "workspace" to make the audit log actor
+     *     unambiguous regardless of what the client sends.
+     */
+    WorkspaceQueryRequest: {
+      /** Conversation History */
+      conversation_history?:
+        | components["schemas"]["ConversationMessageInput"][]
+        | null;
+      /** Conversation Id */
+      conversation_id?: number | null;
+      /**
+       * Enable Vision
+       * @default false
+       */
+      enable_vision: boolean | null;
+      /** Images */
+      images?: components["schemas"]["ImageInput"][] | null;
+      /** Query */
+      query: string;
+      /** Session Id */
+      session_id?: string | null;
+      /** Workspace Page */
+      workspace_page?: string | null;
+    };
     /** WriteRequest */
     WriteRequest: {
       /** Range */
@@ -17336,6 +26547,40 @@ export interface components {
       spreadsheet_id: string;
       /** Values */
       values: string[][];
+    };
+    /** _PlaybookBody */
+    _PlaybookBody: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "freeze" | "unfreeze";
+    };
+    /** _PublisherBody */
+    _PublisherBody: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "on" | "off";
+      /** Channel */
+      channel: string;
+    };
+    /** _ResearchBody */
+    _ResearchBody: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "pause" | "resume";
+    };
+    /** _RetrainBody */
+    _RetrainBody: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "off" | "on";
     };
     /**
      * LoginRequest
@@ -17383,16 +26628,77 @@ export interface components {
      * @description Request body for sending a direct email.
      */
     backend__app__modules__notifications__router__SendEmailRequest: {
+      /** Assigned To */
+      assigned_to?: string | null;
+      /** Attachments */
+      attachments?: components["schemas"]["EmailAttachment"][] | null;
       /** Bcc */
       bcc?: string | null;
       /** Body */
       body: string;
       /** Cc */
       cc?: string | null;
+      /** Email Type */
+      email_type?: string | null;
       /** Subject */
       subject: string;
       /** To */
       to: string;
+    };
+    /** ConfirmRequest */
+    backend__app__routers__accounting__ConfirmRequest: {
+      /** Amount Applied Idr */
+      amount_applied_idr: number;
+      /**
+       * Bank Fee Idr
+       * @default 0
+       */
+      bank_fee_idr: number;
+      /** Bank Txn Id */
+      bank_txn_id?: number | null;
+      /** Invoice Id */
+      invoice_id?: number | null;
+      /**
+       * Margin Idr
+       * @default 0
+       */
+      margin_idr: number;
+      /** Movement Date */
+      movement_date?: string | null;
+      /**
+       * New Status
+       * @default paid
+       */
+      new_status: string;
+      /**
+       * Payment Method
+       * @default bank_transfer
+       */
+      payment_method: string;
+      /** Payment Reference */
+      payment_reference?: string | null;
+      /**
+       * Pnbp Idr
+       * @default 0
+       */
+      pnbp_idr: number;
+      /**
+       * Pph Withheld Idr
+       * @default 0
+       */
+      pph_withheld_idr: number;
+      /** Practice Id */
+      practice_id: number;
+      /**
+       * Rptka Imta Idr
+       * @default 0
+       */
+      rptka_imta_idr: number;
+      /**
+       * Urgent Idr
+       * @default 0
+       */
+      urgent_idr: number;
     };
     /**
      * LoginRequest
@@ -17528,6 +26834,28 @@ export interface components {
       item_id?: string | null;
     };
     /**
+     * ConfirmRequest
+     * @description Confirm subscription request
+     */
+    backend__app__routers__newsletter__ConfirmRequest: {
+      /** Subscriberid */
+      subscriberId: string;
+      /** Token */
+      token: string;
+    };
+    /** SendMessageRequest */
+    backend__app__routers__omnichannel__SendMessageRequest: {
+      /** Channel */
+      channel?: string | null;
+      /** Content */
+      content: string;
+      /**
+       * Is Internal Note
+       * @default false
+       */
+      is_internal_note: boolean;
+    };
+    /**
      * FeedbackRequest
      * @description User feedback for continuous learning
      */
@@ -17593,6 +26921,26 @@ export interface components {
       query_id: string;
     };
     /**
+     * ClockResponse
+     * @description Clock-in/out response
+     */
+    backend__app__routers__team_activity__ClockResponse: {
+      /** Action */
+      action?: string | null;
+      /** Bali Time */
+      bali_time?: string | null;
+      /** Error */
+      error?: string | null;
+      /** Hours Worked */
+      hours_worked?: number | null;
+      /** Message */
+      message: string;
+      /** Success */
+      success: boolean;
+      /** Timestamp */
+      timestamp?: string | null;
+    };
+    /**
      * FileItem
      * @description File or folder item.
      */
@@ -17626,6 +26974,32 @@ export interface components {
       files: components["schemas"]["backend__app__routers__team_drive__FileItem"][];
       /** Next Page Token */
       next_page_token?: string | null;
+    };
+    /** ClockResponse */
+    backend__app__routers__visa_check__ClockResponse: {
+      /** Checkpoints */
+      checkpoints: components["schemas"]["ClockCheckpointPayload"][];
+      /**
+       * Entry Date
+       * Format: date
+       */
+      entry_date: string;
+      /**
+       * Expiry Date
+       * Format: date
+       */
+      expiry_date: string;
+      /** Extension Days */
+      extension_days: number;
+      /** Extensions Possible */
+      extensions_possible: number;
+      /** Hash */
+      hash: string;
+      /** Result Url */
+      result_url: string;
+      /** Session Jwt */
+      session_jwt?: string | null;
+      visa_type: components["schemas"]["VisaType"];
     };
     /**
      * SendEmailRequest
@@ -17679,6 +27053,32 @@ export interface components {
        */
       to: string[];
     };
+    /**
+     * Purpose
+     * @description The 4 VOA-permitted purposes (constants.py: "tourism, family visits,
+     *     transit and short business meetings only — no work allowed"). The enum
+     *     itself IS the ``simple_tourism`` / ``work_or_business_purpose`` guard:
+     *     there is no 5th, work-shaped value to pick.
+     * @enum {string}
+     */
+    backend__services__garuda_flow__intake__Purpose:
+      | "tourism"
+      | "family"
+      | "transit"
+      | "business-meeting";
+    /**
+     * Purpose
+     * @enum {string}
+     */
+    backend__services__visa_check__match_tree__Purpose:
+      | "work_remote"
+      | "investor"
+      | "work_employee"
+      | "family"
+      | "long_tourism"
+      | "retirement"
+      | "student"
+      | "other";
   };
   responses: never;
   parameters: never;
@@ -17915,6 +27315,108 @@ export interface operations {
       };
     };
   };
+  trigger_backfill_drive_documents_api_admin_crm_kg_backfill_drive_documents_post: {
+    parameters: {
+      query?: {
+        limit?: number;
+        dry_run?: boolean;
+        client_id?: number | null;
+        allow_ocr?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  trigger_build_mediated_api_admin_crm_kg_build_mediated_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  trigger_garbage_collect_api_admin_crm_kg_garbage_collect_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  crm_kg_health_api_admin_crm_kg_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   backfill_drive_documents_api_admin_drive_backfill_post: {
     parameters: {
       query?: never;
@@ -17960,6 +27462,28 @@ export interface operations {
     };
   };
   trigger_drive_poll_api_admin_drive_poll_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  drive_poll_status_api_admin_drive_poll_status_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -18065,6 +27589,63 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  get_email_health_api_admin_email_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  record_remote_api_admin_llm_costs_record_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LLMCostRecord"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18458,6 +28039,268 @@ export interface operations {
       };
     };
   };
+  list_alerts_api_admin_notifications_alerts_get: {
+    parameters: {
+      query?: {
+        /** @description Filter by status */
+        status?: string | null;
+        /** @description Filter by type */
+        alert_type?: string | null;
+        /** @description Filter by client */
+        client_id?: number | null;
+        /** @description Days to look back */
+        days?: number;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_dashboard_api_admin_notifications_dashboard_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardData"];
+        };
+      };
+    };
+  };
+  pause_client_notifications_api_admin_notifications_pause_client_post: {
+    parameters: {
+      query: {
+        client_id: number;
+        hours?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  retry_failed_alerts_api_admin_notifications_retry_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RetryRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RetryResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_stats_api_admin_notifications_stats_get: {
+    parameters: {
+      query?: {
+        days?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  top_routes_api_admin_pii_by_route_get: {
+    parameters: {
+      query?: {
+        days?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  pattern_trend_api_admin_pii_trend_get: {
+    parameters: {
+      query?: {
+        days?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_violations_api_admin_pii_violations_get: {
+    parameters: {
+      query?: {
+        /** @description Return violations with created_at >= since (ISO8601). Defaults to 24 hours ago. */
+        since?: string | null;
+        limit?: number;
+        /** @description Cursor from a previous page's `next_cursor`. Omit for the first page. */
+        cursor?: number | null;
+        /** @description Filter to a single pattern (ID_KTP, ID_NPWP, etc.) */
+        pattern?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_table_data_api_admin_postgres_data_get: {
     parameters: {
       query: {
@@ -18509,6 +28352,38 @@ export interface operations {
         };
         content: {
           "application/json": string[];
+        };
+      };
+    };
+  };
+  trigger_auto_practice_creation_api_admin_practice_auto_create_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+        "x-debug-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18570,6 +28445,50 @@ export interface operations {
       };
     };
   };
+  rate_limit_stats_api_admin_rate_limit_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_self_healing_stats_api_admin_self_healing_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   get_system_health_api_admin_system_health_get: {
     parameters: {
       query?: never;
@@ -18603,6 +28522,47 @@ export interface operations {
         entity_type?: string | null;
         limit?: number;
         offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_crm_activity_api_admin_team_activity_crm_activity_get: {
+    parameters: {
+      query?: {
+        /** @description HH:MM or ISO timestamp */
+        from_time?: string | null;
+        /** @description HH:MM or ISO timestamp */
+        to_time?: string | null;
+        /** @description Partial email match */
+        user?: string | null;
+        /** @description HTTP method filter (GET, POST, etc.) */
+        method?: string | null;
+        limit?: number;
       };
       header?: never;
       path?: never;
@@ -19116,6 +29076,48 @@ export interface operations {
       };
     };
   };
+  resolve_confirmation_api_agentic_rag_confirm_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConfirmationDecisionRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   trigger_proactivity_api_agentic_rag_proactive_trigger_post: {
     parameters: {
       query?: never;
@@ -19206,6 +29208,46 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["AgenticQueryRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  stream_workspace_agent_api_agentic_rag_workspace_stream_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspaceQueryRequest"];
       };
     };
     responses: {
@@ -19787,6 +29829,75 @@ export interface operations {
       };
     };
   };
+  get_analytics_dashboard_api_analytics_dashboard_get: {
+    parameters: {
+      query?: {
+        /** @description Lookback period in days */
+        period?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ingest_funnel_event_api_analytics_funnel_event_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FunnelEvent"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_monthly_report_api_analytics_monthly_report__year___month__get: {
     parameters: {
       query?: never;
@@ -20221,6 +30332,65 @@ export interface operations {
       };
     };
   };
+  asset_upload_health_api_assets_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: string | boolean;
+          };
+        };
+      };
+    };
+  };
+  upload_asset_api_assets_upload_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Asset-Upload-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_asset_api_assets_upload_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: string | number;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   generate_speech_api_audio_speech_post: {
     parameters: {
       query?: never;
@@ -20432,6 +30602,63 @@ export interface operations {
       };
     };
   };
+  request_magic_link_api_auth_request_magic_link_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MagicLinkRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  revoke_all_sessions_api_auth_revoke_all_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   team_login_api_auth_team_login_post: {
     parameters: {
       query?: never;
@@ -20452,6 +30679,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["backend__app__modules__identity__router__LoginResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  verify_magic_link_api_auth_verify_magic__token__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["backend__app__routers__auth__LoginResponse"];
         };
       };
       /** @description Validation Error */
@@ -21068,6 +31326,40 @@ export interface operations {
       };
     };
   };
+  confirm_subscription_via_link_api_blog_newsletter_confirm_get: {
+    parameters: {
+      query: {
+        /** @description Confirmation token from the email */
+        token: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   confirm_subscription_api_blog_newsletter_confirm_post: {
     parameters: {
       query?: never;
@@ -21077,7 +31369,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["ConfirmRequest"];
+        "application/json": components["schemas"]["backend__app__routers__newsletter__ConfirmRequest"];
       };
     };
     responses: {
@@ -21279,6 +31571,254 @@ export interface operations {
       };
     };
   };
+  get_events_api_bridge_events_get: {
+    parameters: {
+      query?: {
+        /** @description Return events with id > after_id */
+        after_id?: number;
+        /** @description Max events per request */
+        limit?: number;
+      };
+      header?: {
+        "X-Bridge-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ingest_article_api_bridge_ingest_article_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Bridge-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ArticleIngestRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ArticleIngestResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ingest_enrichment_api_bridge_ingest_enrichment_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Bridge-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EnrichmentIngestRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EnrichmentIngestResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  push_intake_gate_doc_counts_api_bridge_intake_gate_doc_counts_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Bridge-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DocCountsRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DocCountsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_skills_api_bridge_skills_get: {
+    parameters: {
+      query?: {
+        /** @description XREAD start ID (default 0-0 for full read) */
+        after_id?: string;
+        /** @description Max events per request */
+        count?: number;
+      };
+      header?: {
+        "X-Bridge-Skills-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ack_wa_media_api_bridge_wa_media_ack_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Bridge-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WaMediaAckRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WaMediaAckResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_wa_media_pending_api_bridge_wa_media_pending_get: {
+    parameters: {
+      query?: {
+        /** @description Return rows with id > since */
+        since?: number;
+        /** @description Max rows per request */
+        limit?: number;
+      };
+      header?: {
+        "X-Bridge-Auth"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WaMediaPendingResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_cell_alerts_api_cell_alerts_get: {
     parameters: {
       query?: {
@@ -21356,20 +31896,21 @@ export interface operations {
       };
     };
   };
-  chat_stream_post_api_chat_stream_post: {
+  unified_conversations_api_channels_conversations_get: {
     parameters: {
-      query?: never;
-      header?: {
-        authorization?: string | null;
+      query?: {
+        /** @description Filter by channel (telegram, whatsapp, etc.) */
+        channel?: string | null;
+        /** @description Filter by sender ID */
+        sender_id?: string | null;
+        limit?: number;
+        offset?: number;
       };
+      header?: never;
       path?: never;
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ChatStreamRequest"];
-      };
-    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
@@ -21377,7 +31918,211 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  dlq_messages_api_channels_dlq_get: {
+    parameters: {
+      query?: {
+        /** @description Filter by status: pending, retrying, exhausted, delivered */
+        status?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  dlq_purge_api_channels_dlq_purge_delete: {
+    parameters: {
+      query?: {
+        /** @description Purge exhausted messages older than N days */
+        older_than_days?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  dlq_retry_message_api_channels_dlq__message_id__retry_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Failed message ID to retry */
+        message_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  channel_health_api_channels_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  channel_health_public_api_channels_health_public_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  channel_stats_api_channels_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  channel_health_api_channels__name__health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
       /** @description Validation Error */
@@ -21512,6 +32257,573 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  list_alerts_api_compliance_alerts_get: {
+    parameters: {
+      query?: {
+        client_id?: number | null;
+        category?: string | null;
+        severity?: string | null;
+        status?: string | null;
+        deadline_within_days?: number | null;
+        active_only?: boolean;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_metrics_api_compliance_alerts_metrics_get: {
+    parameters: {
+      query?: {
+        window_days?: number;
+        category?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  post_retrain_api_compliance_alerts_retrain_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RetrainBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_alert_api_compliance_alerts__alert_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        alert_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  post_outcome_api_compliance_alerts__alert_id__outcome_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        alert_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OutcomeBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_external_owner_risks_api_crm_guardian_drive_external_owner_risks_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DriveBacklogItem"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_shortcut_edges_api_crm_guardian_drive_shortcut_edges_get: {
+    parameters: {
+      query?: {
+        status?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShortcutEdgeItem"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_stale_link_candidates_api_crm_guardian_drive_stale_link_candidates_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DriveMetadataItem"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_unlinked_items_api_crm_guardian_drive_unlinked_items_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DriveBacklogItem"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_drive_validation_summary_api_crm_guardian_drive_validation_summary_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DriveValidationSummary"];
+        };
+      };
+    };
+  };
+  get_bank_transactions_api_crm_accounting_bank_transactions_get: {
+    parameters: {
+      query?: {
+        /** @description unmatched | matched | manual | ignored */
+        reconciled_status?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          }[];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_cashout_api_crm_accounting_cashout_get: {
+    parameters: {
+      query?: {
+        /** @description Filter by week label, e.g. '16 - 23 JAN 26' */
+        week_label?: string | null;
+        /** @description Filter by movement type */
+        type?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          }[];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  confirm_reconciliation_api_crm_accounting_confirm_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["backend__app__routers__accounting__ConfirmRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  export_to_sheet_api_crm_accounting_export_sheet_post: {
+    parameters: {
+      query?: {
+        /** @description Optional week filter */
+        week_label?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  import_cashout_pdf_api_crm_accounting_import_cashout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_import_cashout_pdf_api_crm_accounting_import_cashout_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  match_candidates_api_crm_accounting_match_candidates__txn_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        txn_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_summary_api_crm_accounting_summary_get: {
+    parameters: {
+      query?: {
+        period_start?: string | null;
+        period_end?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21651,7 +32963,7 @@ export interface operations {
   list_clients_api_crm_clients__get: {
     parameters: {
       query?: {
-        /** @description Filter by status: active, inactive, prospect */
+        /** @description Filter by status: active, inactive, prospect, lead */
         status?: string | null;
         /** @description Filter by assigned team member email */
         assigned_to?: string | null;
@@ -21659,6 +32971,8 @@ export interface operations {
         search?: string | null;
         /** @description Filter by nationality */
         nationality?: string | null;
+        /** @description When true, return ONLY phone-keyed leads whose full_name is still a placeholder (`Lead +<digits>`, `wa:<digits>`, bare digits, or empty) — the WA-mirror auto-created leads an operator must still name. Combine with assigned_to (or rely on RBAC) to scope to one operator. */
+        unnamed?: boolean;
         /** @description Filter clients with passport expiring within N days (0=already expired) */
         passport_expiring_days?: number | null;
         /** @description Max results to return */
@@ -21930,7 +33244,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["PassportEnhancedRequest"];
+        "application/json": components["schemas"]["PassportPreviewRequest"];
       };
     };
     responses: {
@@ -21940,7 +33254,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PassportEnhancedResponse"];
+          "application/json": components["schemas"]["PassportPreviewResponse"];
         };
       };
       /** @description Validation Error */
@@ -22014,6 +33328,41 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  upsert_client_by_phone_api_crm_clients_upsert_by_phone_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ClientUpsertByPhone"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22119,6 +33468,37 @@ export interface operations {
       };
     };
   };
+  get_crm_client_ai_summary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiSummaryResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_client_audit_trail_api_crm_clients__client_id__audit_trail_get: {
     parameters: {
       query?: {
@@ -22133,6 +33513,74 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_client_avatar_api_crm_clients__client_id__avatar_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_client_avatar_api_crm_clients__client_id__avatar_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_client_avatar_api_crm_clients__client_id__avatar_post"];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
@@ -22355,6 +33803,40 @@ export interface operations {
         "application/json": components["schemas"]["DocumentUpdate"];
       };
     };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ensure_drive_folder_api_crm_clients__client_id__ensure_drive_folder_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Client ID */
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
@@ -22681,6 +34163,39 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_crm_client_wa_case_intelligence: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WaCaseIntelligenceResponse"];
         };
       };
       /** @description Validation Error */
@@ -23158,6 +34673,39 @@ export interface operations {
       };
     };
   };
+  sync_company_drive_folder_api_crm_companies__company_id__sync_drive_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        company_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_company_tax_record_api_crm_companies__company_id__tax_get: {
     parameters: {
       query?: never;
@@ -23299,6 +34847,203 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  get_evidence_dossiers_api_crm_intelligence_evidence_dossiers_get: {
+    parameters: {
+      query?: {
+        /** @description Optional company filters; repeat for multiple values. */
+        company?: string[] | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaxCompanyPilotMap"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_workspace_ai_snapshot_draft_api_crm_intelligence_workspace_ai_snapshots_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspaceAiSnapshotCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkspaceAiSnapshotResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  auto_approve_workspace_ai_snapshot_drafts_api_crm_intelligence_workspace_ai_snapshots_auto_approve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspaceAiAutoApproveRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkspaceAiAutoApproveResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  review_workspace_ai_snapshots_api_crm_intelligence_workspace_ai_snapshots_review_get: {
+    parameters: {
+      query?: {
+        status?: "draft" | "approved" | "rejected";
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkspaceAiSnapshotResponse"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  approve_workspace_ai_snapshot_draft_api_crm_intelligence_workspace_ai_snapshots__snapshot_id__approve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        snapshot_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkspaceAiSnapshotResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  query_notebooklm_for_client_api_crm_intelligence__client_id__query_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NlmQueryRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NlmQueryResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23577,6 +35322,165 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_document_base64_internal_api_crm_internal_clients__client_id__documents_upload_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DocumentUploadBase64"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_crm_notifications_api_crm_notifications_get: {
+    parameters: {
+      query?: {
+        /** @description Return only unread (pending) notifications */
+        unread_only?: boolean;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          }[];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_unread_notifications_count_api_crm_notifications_count_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: number;
+          };
+        };
+      };
+    };
+  };
+  mark_notification_read_api_crm_notifications__notification_id__read_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_tax_company_pilot_api_crm_pilot_tax_company_map_get: {
+    parameters: {
+      query: {
+        /** @description Pilot key: ocean or bimala */
+        company: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaxCompanyPilotMap"];
         };
       };
       /** @description Validation Error */
@@ -24011,6 +35915,39 @@ export interface operations {
         user_id?: string | null;
         pool?: unknown | null;
         is_admin?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_practices_revenue_growth_api_crm_practices_stats_revenue_growth_get: {
+    parameters: {
+      query?: {
+        request?: unknown;
       };
       header?: never;
       path?: never;
@@ -24553,6 +36490,94 @@ export interface operations {
     };
   };
   run_birthday_notifier_api_cron_notifiers_birthday_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  run_compliance_forecast_api_cron_notifiers_compliance_forecast_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  run_e33_guarantee_scan_api_cron_notifiers_e33_guarantee_scan_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  run_email_health_api_cron_notifiers_email_health_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  run_lkpm_deadline_notifier_api_cron_notifiers_lkpm_deadlines_post: {
     parameters: {
       query?: never;
       header?: never;
@@ -26492,6 +38517,28 @@ export interface operations {
       };
     };
   };
+  drive_stats_api_drive_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   drive_status_api_drive_status_get: {
     parameters: {
       query?: never;
@@ -26709,6 +38756,184 @@ export interface operations {
       };
     };
   };
+  emit_test_event_api_events_emit_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_event_bus_stats_api_events_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  query_trajectories_api_experience_query_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TrajectoryQuery"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  record_trajectory_api_experience_record_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TrajectoryRecord"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  trajectory_stats_api_experience_stats_get: {
+    parameters: {
+      query?: {
+        cell?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_trajectory_api_experience__trajectory_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trajectory_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TrajectoryResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_inbox_api_federation_inbox_get: {
     parameters: {
       query?: {
@@ -26856,6 +39081,226 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  convert_session_api_funnel_session_convert_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConvertRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: boolean;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  touch_session_api_funnel_session_touch_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TouchRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: boolean;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cron_fire_due_api_funnel_email_fire_due_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-internal-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FireDueResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  unsubscribe_api_funnel_email_unsubscribe__token__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_decisions_api_guardian_decisions_get: {
+    parameters: {
+      query?: {
+        /** @description Hours to look back */
+        last?: number;
+        /** @description Filter by component */
+        component?: string | null;
+        /** @description Filter by severity */
+        severity?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DecisionsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_risk_score_api_guardian_risk_score_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RiskScoreResponse"];
+        };
+      };
+    };
+  };
+  get_risk_score_history_api_guardian_risk_score_history_get: {
+    parameters: {
+      query?: {
+        days?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RiskScoreHistoryResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -27009,6 +39454,39 @@ export interface operations {
         employee_id?: number | null;
         status?: string | null;
         month?: number | null;
+        year?: number | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_bonus_historical_api_hr_bonuses_historical_get: {
+    parameters: {
+      query?: {
         year?: number | null;
       };
       header?: never;
@@ -27287,6 +39765,39 @@ export interface operations {
       };
     };
   };
+  get_team_leave_summary_api_hr_leave_team_summary_get: {
+    parameters: {
+      query?: {
+        year?: number | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_leave_types_api_hr_leave_types_get: {
     parameters: {
       query?: never;
@@ -27397,6 +39908,184 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  resolve_my_late_incident_api_hr_my_late_incident_resolve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResolveBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_overview_api_hr_owner_cashout_overview_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  trigger_sync_api_hr_owner_cashout_sync_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_sync_status_api_hr_owner_cashout_sync_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_visa_types_api_hr_owner_cashout_visa_types_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  list_weeks_api_hr_owner_cashout_weeks_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_week_api_hr_owner_cashout_weeks__week_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        week_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -27768,6 +40457,402 @@ export interface operations {
         };
         content: {
           "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_gate_status_api_intake_gate_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  search_clients_api_intake_review_clients_search_get: {
+    parameters: {
+      query: {
+        /** @description Client name fragment */
+        q: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_client_practices_api_intake_review_clients__client_id__practices_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_document_categories_api_intake_review_document_categories_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  list_review_queue_api_intake_review_queue_get: {
+    parameters: {
+      query?: {
+        /** @description review_pending|review_claimed (main feed); quarantine (LEVA-1 noise tab); duplicate (LEVA-3 already-on-profile tab) */
+        status?: string;
+        /** @description Filter by intake source. Must be within the review allowlist (WhatsApp-only by default; see INTAKE_REVIEW_SOURCES). An out-of-allowlist source returns an empty page, never Drive/Dropbox docs. */
+        source?: string | null;
+        /** @description Filter by entity_resolution.decision (AUTO_ATTACH|LINK_CANDIDATE|AMBIGUOUS|NO_MATCH) */
+        decision?: string | null;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_review_detail_api_intake_review__proposal_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  approve_review_api_intake_review__proposal_id__approve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_review_blob_api_intake_review__proposal_id__blob_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  claim_review_api_intake_review__proposal_id__claim_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  recover_from_quarantine_api_intake_review__proposal_id__recover_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reject_review_api_intake_review__proposal_id__reject_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  release_review_api_intake_review__proposal_id__release_post: {
+    parameters: {
+      query?: {
+        /** @description Token returned by /claim (required for non-admins) */
+        claim_token?: string | null;
+      };
+      header?: never;
+      path: {
+        proposal_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
       /** @description Validation Error */
@@ -28765,6 +41850,98 @@ export interface operations {
       };
     };
   };
+  get_pipeline_health_api_intel_health_pipeline_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  post_observation_api_intel_lake_observations_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Producer-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ObservationPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObservationResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  post_observations_batch_api_intel_lake_observations_batch_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-Producer-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BatchObservationPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BatchObservationResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_system_metrics_api_intel_metrics_get: {
     parameters: {
       query?: never;
@@ -28829,11 +42006,9 @@ export interface operations {
       };
     };
   };
-  get_pending_queue_api_intel_post_publish_queue_pending_get: {
+  mark_queue_failed_api_intel_post_publish_queue_failed_post: {
     parameters: {
-      query?: {
-        x_api_key?: string | null;
-      };
+      query?: never;
       header?: never;
       path?: never;
       cookie?: never;
@@ -28851,13 +42026,48 @@ export interface operations {
           };
         };
       };
-      /** @description Validation Error */
-      422: {
+    };
+  };
+  get_pending_queue_api_intel_post_publish_queue_pending_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  mark_step_done_api_intel_post_publish_queue_step_done_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -29053,6 +42263,7 @@ export interface operations {
         filter_type?: string | null;
         sort_type?: string | null;
         search?: string | null;
+        include_enrichment?: boolean;
       };
       header?: never;
       path?: never;
@@ -29196,6 +42407,76 @@ export interface operations {
       path: {
         type: string;
         item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  post_revalidate_staging_api_intel_staging__staging_id__revalidate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        staging_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RevalidateBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_staging_validation_api_intel_staging__staging_id__validation_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        staging_id: number;
       };
       cookie?: never;
     };
@@ -29764,6 +43045,39 @@ export interface operations {
       };
     };
   };
+  capture_lead_api_lead_capture_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LeadCaptureRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LeadCaptureResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_collection_stats_api_legal_collections_stats_get: {
     parameters: {
       query?: {
@@ -30039,11 +43353,7 @@ export interface operations {
   };
   upload_legal_document_api_legal_upload_post: {
     parameters: {
-      query?: {
-        title?: string | null;
-        tier?: string | null;
-        collection_name?: string | null;
-      };
+      query?: never;
       header?: never;
       path?: never;
       cookie?: never;
@@ -30192,6 +43502,153 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RecallResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_latest_api_metabolic_latest_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_series_api_metabolic_series__metric_type__get: {
+    parameters: {
+      query?: {
+        n?: number;
+      };
+      header?: never;
+      path: {
+        metric_type: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_stats_api_metabolic_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_trends_api_metabolic_trends_get: {
+    parameters: {
+      query?: {
+        window?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ingest_frontend_metrics_api_metrics_frontend_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FrontendMetricsPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: number;
+          };
         };
       };
       /** @description Validation Error */
@@ -30552,6 +44009,108 @@ export interface operations {
       };
     };
   };
+  search_claims_api_naga_claims_search_get: {
+    parameters: {
+      query: {
+        /** @description Search query for claims */
+        q: string;
+        /** @description Filter by domain */
+        domain?: string | null;
+        /** @description Filter by verification status */
+        verification?: string | null;
+        /** @description Max results (1-100) */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ClaimSearchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_research_api_naga_research_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResearchRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResearchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_session_api_naga_session__session_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResearchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_news_api_news_get: {
     parameters: {
       query?: {
@@ -30786,6 +44345,45 @@ export interface operations {
       };
     };
   };
+  update_news_image_api_news__news_id__image_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        news_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   update_news_status_api_news__news_id__status_patch: {
     parameters: {
       query: {
@@ -30841,162 +44439,6 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  list_alerts_api_notifications_api_admin_notifications_alerts_get: {
-    parameters: {
-      query?: {
-        /** @description Filter by status */
-        status?: string | null;
-        /** @description Filter by type */
-        alert_type?: string | null;
-        /** @description Filter by client */
-        client_id?: number | null;
-        /** @description Days to look back */
-        days?: number;
-        limit?: number;
-        offset?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_dashboard_api_notifications_api_admin_notifications_dashboard_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DashboardData"];
-        };
-      };
-    };
-  };
-  pause_client_notifications_api_notifications_api_admin_notifications_pause_client_post: {
-    parameters: {
-      query: {
-        client_id: number;
-        hours?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  retry_failed_alerts_api_notifications_api_admin_notifications_retry_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["RetryRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RetryResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_stats_api_notifications_api_admin_notifications_stats_get: {
-    parameters: {
-      query?: {
-        days?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -31202,7 +44644,42 @@ export interface operations {
       };
     };
   };
-  list_collections_api_oracle_collections_get: {
+  emit_observed_shell_event_api_observed_shell_emit_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-API-Key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EmitRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EmitResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  omnichannel_stats_api_omnichannel_stats_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -31224,7 +44701,230 @@ export interface operations {
       };
     };
   };
-  test_drive_connection_api_oracle_drive_test_get: {
+  list_threads_api_omnichannel_threads_get: {
+    parameters: {
+      query?: {
+        /** @description Filter: open, assigned, waiting, resolved, closed */
+        status?: string | null;
+        /** @description Filter: low, normal, high, urgent */
+        priority?: string | null;
+        /** @description Filter by assignee email */
+        assigned_to?: string | null;
+        /** @description Filter by channel */
+        channel?: string | null;
+        /** @description Search subject/preview */
+        search?: string | null;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_thread_api_omnichannel_threads__thread_id__get: {
+    parameters: {
+      query?: {
+        message_limit?: number;
+      };
+      header?: never;
+      path: {
+        thread_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_thread_api_omnichannel_threads__thread_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ThreadUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  assign_thread_api_omnichannel_threads__thread_id__assign_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Body_assign_thread_api_omnichannel_threads__thread_id__assign_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_thread_context_api_omnichannel_threads__thread_id__context_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_thread_message_api_omnichannel_threads__thread_id__messages_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["backend__app__routers__omnichannel__SendMessageRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_collections_api_oracle_collections_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -31277,28 +44977,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  test_gemini_integration_api_oracle_gemini_test_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
         };
       };
     };
@@ -31391,13 +45069,335 @@ export interface operations {
       };
     };
   };
-  get_user_profile_endpoint_api_oracle_user_profile__user_email__get: {
+  list_partners_api_partners_get: {
+    parameters: {
+      query?: {
+        assigned_to?: string | null;
+        onboarding_status?: string | null;
+        orphaned?: boolean;
+        search?: string | null;
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_partner_api_partners_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PartnerCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  bulk_reassign_api_partners_bulk_reassign_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BulkReassignRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  approve_commission_api_partners_commissions__commission_id__approve_post: {
     parameters: {
       query?: never;
       header?: never;
       path: {
-        user_email: string;
+        commission_id: string;
       };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  clawback_commission_api_partners_commissions__commission_id__clawback_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commission_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ClawbackRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  mark_paid_commission_api_partners_commissions__commission_id__mark_paid_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commission_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CommissionMarkPaidRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  waive_commission_api_partners_commissions__commission_id__waive_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commission_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WaiveRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  finance_export_api_partners_finance_export_get: {
+    parameters: {
+      query: {
+        from: string;
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  me_api_partners_me_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  me_commissions_api_partners_me_commissions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  me_referrals_api_partners_me_referrals_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  flush_email_outbox_api_partners_outbox_flush_post: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
       cookie?: never;
     };
     requestBody?: never;
@@ -31411,6 +45411,353 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_referral_api_partners_referrals__referral_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        referral_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  swap_referral_api_partners_referrals__referral_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        referral_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReferralSwap"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_partner_api_partners__partner_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_partner_api_partners__partner_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PartnerUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  activate_partner_api_partners__partner_id__activate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_partner_audit_log_api_partners__partner_id__audit_log_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_commissions_api_partners__partner_id__commissions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  deactivate_partner_api_partners__partner_id__deactivate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reassign_partner_api_partners__partner_id__reassign_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReassignRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_referrals_api_partners__partner_id__referrals_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_referral_api_partners__partner_id__referrals_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        partner_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReferralCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -31534,6 +45881,62 @@ export interface operations {
       };
     };
   };
+  search_clients_api_portal_admin_clients_search_get: {
+    parameters: {
+      query?: {
+        q?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  whoami_api_portal_admin_me_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   get_billing_api_portal_billing_get: {
     parameters: {
       query?: never;
@@ -31552,6 +45955,37 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  download_invoice_pdf_api_portal_billing__invoice_id__pdf_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        invoice_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -31699,6 +46133,28 @@ export interface operations {
       };
     };
   };
+  summary_api_portal_dashboard_summary_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
   get_documents_api_portal_documents_get: {
     parameters: {
       query?: {
@@ -31745,6 +46201,103 @@ export interface operations {
         "multipart/form-data": components["schemas"]["Body_upload_document_api_portal_documents_upload_post"];
       };
     };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_document_api_portal_documents__document_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        document_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  download_document_api_portal_documents__document_id__download_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        document_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  restore_document_api_portal_documents__document_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        document_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
@@ -31819,6 +46372,28 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_family_api_portal_family_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -31988,6 +46563,61 @@ export interface operations {
       };
     };
   };
+  list_matters_api_portal_matters_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_matter_detail_api_portal_matters__matter_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        matter_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_messages_api_portal_messages_get: {
     parameters: {
       query?: {
@@ -32123,6 +46753,59 @@ export interface operations {
       };
     };
   };
+  get_prefs_api_portal_notifications_prefs_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationPrefsOut"];
+        };
+      };
+    };
+  };
+  put_prefs_api_portal_notifications_prefs_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NotificationPrefsIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationPrefsOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   mark_all_read_api_portal_notifications_read_all_post: {
     parameters: {
       query?: never;
@@ -32174,6 +46857,28 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_required_documents_api_portal_process_required_documents_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -32347,59 +47052,6 @@ export interface operations {
       };
     };
   };
-  get_taxes_api_portal_taxes__get: {
-    parameters: {
-      query?: {
-        include_completed?: boolean;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_tax_summary_api_portal_taxes_summary_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaxSummary"];
-        };
-      };
-    };
-  };
   get_timeline_api_portal_timeline_get: {
     parameters: {
       query?: {
@@ -32455,7 +47107,7 @@ export interface operations {
       };
     };
   };
-  get_visa_status_api_portal_visa__get: {
+  get_all_prices_api_pricing_all_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -32477,7 +47129,210 @@ export interface operations {
       };
     };
   };
-  get_visa_summary_api_portal_visa_summary_get: {
+  calculate_scenario_pricing_api_pricing_scenario_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ScenarioPricingRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScenarioPricingResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_pricing_api_pricing_search_get: {
+    parameters: {
+      query: {
+        /** @description Service name or keyword */
+        q: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_service_price_api_pricing_service_get: {
+    parameters: {
+      query: {
+        /** @description Exact catalogue key, e.g. 'E33 Second Home (5 Years)' */
+        key: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_kbli_api_prime_search_kbli_get: {
+    parameters: {
+      query: {
+        q: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  analyze_investment_api_prime_v2_analyze_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BusinessAnalyzeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  zone_density_api_prime_v2_density_get: {
+    parameters: {
+      query: {
+        /** @description RDTR zone code */
+        zone_code: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  prime_nexus_health_api_prime_v2_health_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -32492,15 +47347,259 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["VisaSummary"];
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
   };
-  search_kbli_api_prime_search_kbli_get: {
+  intelligence_overlay_api_prime_v2_intelligence_get: {
     parameters: {
       query: {
-        q: string;
+        sw_lat: number;
+        sw_lng: number;
+        ne_lat: number;
+        ne_lng: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  portfolio_advisor_api_prime_v2_portfolio_get: {
+    parameters: {
+      query: {
+        client_id: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  predict_zone_score_api_prime_v2_predict_get: {
+    parameters: {
+      query: {
+        /** @description RDTR zone code */
+        zone_code: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_proposal_api_prime_v2_proposal_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateProposalRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_proposal_api_prime_v2_proposal__token__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  regulation_feed_api_prime_v2_regulations_get: {
+    parameters: {
+      query: {
+        zone_code: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  resolve_zone_api_prime_v2_resolve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SpatialResolveRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  temporal_intelligence_api_prime_v2_temporal_get: {
+    parameters: {
+      query: {
+        zone_code: string;
+        period?: string;
+        granularity?: string;
       };
       header?: never;
       path?: never;
@@ -32575,6 +47674,146 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  playbook_switch_api_research_control_playbook_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["_PlaybookBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  publisher_switch_api_research_control_publisher_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["_PublisherBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  research_switch_api_research_control_research_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["_ResearchBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  retrain_switch_api_research_control_retrain_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["_RetrainBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -33271,6 +48510,219 @@ export interface operations {
       };
     };
   };
+  creation_proposals_api_skill_creation_proposals_get: {
+    parameters: {
+      query?: {
+        status?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  merge_proposals_api_skill_merge_proposals_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  query_skills_api_skill_query_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SkillQuery"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  record_skill_api_skill_record_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SkillRecord"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  skill_stats_api_skill_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  top_skills_api_skill_top_get: {
+    parameters: {
+      query?: {
+        tier?: components["schemas"]["SkillTier"];
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_skill_api_skill__skill_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        skill_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SkillResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_burnout_signals_api_team_analytics_burnout_get: {
     parameters: {
       query?: {
@@ -33598,7 +49050,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ClockResponse"];
+          "application/json": components["schemas"]["backend__app__routers__team_activity__ClockResponse"];
         };
       };
       /** @description Validation Error */
@@ -33631,7 +49083,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ClockResponse"];
+          "application/json": components["schemas"]["backend__app__routers__team_activity__ClockResponse"];
         };
       };
       /** @description Validation Error */
@@ -33735,7 +49187,7 @@ export interface operations {
       };
     };
   };
-  list_team_members_api_team_members_get: {
+  get_team_members_api_team_members_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -33750,9 +49202,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
+          "application/json": components["schemas"]["TeamMember"][];
         };
       };
     };
@@ -33890,6 +49340,28 @@ export interface operations {
         };
         content: {
           "application/json": unknown[];
+        };
+      };
+    };
+  };
+  test_crc_config_api_twitter_crc_test_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -34514,6 +49986,39 @@ export interface operations {
       };
     };
   };
+  get_oss_credentials_api_v1_lkpm_credentials__client_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_deadlines_api_v1_lkpm_deadlines_get: {
     parameters: {
       query?: {
@@ -34673,6 +50178,43 @@ export interface operations {
       };
     };
   };
+  generate_ready_pack_pdf_api_v1_lkpm_ready_pack__client_id__post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReadyPackBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_ready_pack_api_v1_lkpm_ready_pack__draft_id__get: {
     parameters: {
       query?: never;
@@ -34683,6 +50225,131 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_receipts_by_client_api_v1_lkpm_receipts_by_client__client_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_my_receipts_api_v1_lkpm_receipts_me_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_receipts_for_report_api_v1_lkpm_receipts__lkpm_report_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lkpm_report_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  assign_lkpm_report_api_v1_lkpm_reports__draft_id__assign_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        draft_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LKPMAssignBody"];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
@@ -34846,18 +50513,164 @@ export interface operations {
       };
     };
   };
-  bali_zero_chat_stream_api_v2_bali_zero_chat_stream_get: {
+  chat_api_v1_visa_oracle_chat_post: {
     parameters: {
-      query: {
-        query: string;
-        user_email?: string | null;
-        user_role?: string;
-        conversation_history?: string | null;
-        auth_token?: string | null;
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChatRequest"];
       };
-      header?: {
-        authorization?: string | null;
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChatResponse"];
+        };
       };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  handoff_api_v1_visa_oracle_handoff_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HandoffRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HandoffResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  recommend_api_v1_visa_oracle_recommend_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RecommendRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecommendResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_visa_types_api_v1_visa_oracle_visa_types_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_visa_type_detail_api_v1_visa_oracle_visa_types__code__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        code: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  wa_dashboard_stream_api_v1_wa_dashboard_stream_get: {
+    parameters: {
+      query?: never;
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -34872,13 +50685,26 @@ export interface operations {
           "application/json": unknown;
         };
       };
-      /** @description Validation Error */
-      422: {
+    };
+  };
+  wa_dashboard_stream_health_api_v1_wa_dashboard_stream_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -34967,12 +50793,320 @@ export interface operations {
       };
     };
   };
+  evaluateVisaOracleV2: {
+    parameters: {
+      query?: {
+        traffic_source?: "real" | "synthetic_driver" | "synthetic_gold";
+        request_category?:
+          | "business"
+          | "diaspora"
+          | "family"
+          | "investor"
+          | "long_tourism"
+          | "other"
+          | "retirement"
+          | "student"
+          | "work_employee"
+          | "work_remote";
+      };
+      header?: {
+        /** @description Opaque durable replay key (max 128 ASCII) */
+        "Idempotency-Key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VisaOracleEvaluateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VisaOracleEvaluateResponse"];
+        };
+      };
+      /** @description Malformed or conflicting input */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VisaOracleErrorResponse"];
+        };
+      };
+      /** @description Idempotency key conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VisaOracleErrorResponse"];
+        };
+      };
+      /** @description Request body too large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VisaOracleErrorResponse"];
+        };
+      };
+      /** @description Unsupported media type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VisaOracleErrorResponse"];
+        };
+      };
+      /** @description Schema validation failed without echoing input values */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VisaOracleValidationErrorResponse"];
+        };
+      };
+    };
+  };
+  start_branch_api_visa_check_start_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BranchStartRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BranchStartResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  submit_clock_api_visa_clock_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ClockRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["backend__app__routers__visa_check__ClockResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_clock_api_visa_clock__hash__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["backend__app__routers__visa_check__ClockResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  submit_match_api_visa_match_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MatchRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MatchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_match_api_visa_match__hash__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MatchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  submit_voa_api_visa_voa_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VoaRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoaResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_voa_api_visa_voa__hash__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoaResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   elevenlabs_kbli_audit_api_voice_elevenlabs_kbli_audit_post: {
     parameters: {
       query?: never;
-      header?: {
-        "x-elevenlabs-signature"?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -34991,6 +51125,124 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  local_audio_status_api_voice_local_audio_status_get: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LocalAudioStatusResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  local_audio_synthesize_api_voice_local_audio_synthesize_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LocalAudioSynthesizeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  local_audio_transcribe_api_voice_local_audio_transcribe_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "x-api-key"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LocalAudioTranscribeResponse"];
         };
       };
       /** @description Not found */
@@ -35041,6 +51293,574 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_threads_api_wa_inbox_threads_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ThreadsPage"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_thread_messages_api_wa_inbox_threads__thread_id__messages_get: {
+    parameters: {
+      query?: {
+        /** @description Ledger id; return rows older than this */
+        before?: number | null;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        thread_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ThreadMessages"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  release_api_wa_inbox_threads__thread_id__release_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HandlingResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_message_api_wa_inbox_threads__thread_id__send_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SendRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SendResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  takeover_api_wa_inbox_threads__thread_id__takeover_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        thread_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HandlingResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_actions_api_wa_actions_get: {
+    parameters: {
+      query?: {
+        /** @description Exact owner match (use 'unassigned' for null/unassigned) */
+        owner?: string | null;
+        /** @description open | snoozed | done | dismissed */
+        status?: string | null;
+        min_priority?: number | null;
+        action_type?: string | null;
+        /** @description ILIKE match on reason/recommended_action */
+        search?: string | null;
+        sort?: "priority" | "due_at" | "created_at";
+        order?: "asc" | "desc";
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ActionQueueListResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_owners_api_wa_actions_owners_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ActionQueueOwnersResponse"];
+        };
+      };
+    };
+  };
+  patch_action_api_wa_actions__action_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        action_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ActionPatchRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ActionQueueRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_wa_mirror_messages_api_wa_messages_get: {
+    parameters: {
+      query?: {
+        /** @description CRM client id */
+        client_id?: number | null;
+        /** @description CRM practice id */
+        practice_id?: number | null;
+        /** @description Return unmatched wa-mirror rows with client_id/practice_id NULL */
+        prospect_only?: boolean;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WaMirrorMessagesResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_costs_api_war_room_metrics_costs_get: {
+    parameters: {
+      query?: {
+        days?: 14 | 30 | 90;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_distribution_api_war_room_metrics_distribution_get: {
+    parameters: {
+      query?: {
+        days?: 14 | 30 | 90;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_funnel_api_war_room_metrics_funnel_get: {
+    parameters: {
+      query?: {
+        days?: 14 | 30 | 90;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_heatmap_api_war_room_metrics_heatmap_get: {
+    parameters: {
+      query?: {
+        days?: 14 | 30 | 90;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_rejections_api_war_room_metrics_rejections_get: {
+    parameters: {
+      query?: {
+        days?: 14 | 30 | 90;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_timeline_api_war_room_metrics_timeline_get: {
+    parameters: {
+      query?: {
+        days?: 14 | 30 | 90;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  publish_ig_api_war_room_publish_ig_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PublishIGRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_slide_api_war_room_upload_slide_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_slide_api_war_room_upload_slide_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
       };
       /** @description Validation Error */
       422: {
@@ -35239,9 +52059,37 @@ export interface operations {
       };
     };
   };
-  get_recent_tweets_api_x_monitor_recent_get: {
+  funnel_view_api_workspace_analytics_funnel_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  feed_api_workspace_inbox_get: {
     parameters: {
       query?: {
+        /** @description Filter by channel: whatsapp|telegram|instagram|web|email */
+        channel?: string | null;
+        /** @description Filter by client_id */
+        client_id?: number | null;
+        /** @description inbound|outbound */
+        direction?: string | null;
         limit?: number;
       };
       header?: never;
@@ -35272,7 +52120,7 @@ export interface operations {
       };
     };
   };
-  get_monitor_stats_api_x_monitor_stats_get: {
+  stats_api_workspace_inbox_stats_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -35294,43 +52142,6 @@ export interface operations {
       };
     };
   };
-  bali_zero_chat_stream_bali_zero_chat_stream_get: {
-    parameters: {
-      query: {
-        query: string;
-        user_email?: string | null;
-        user_role?: string;
-        conversation_history?: string | null;
-        auth_token?: string | null;
-      };
-      header?: {
-        authorization?: string | null;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
   health_check_health_get: {
     parameters: {
       query?: never;
@@ -35347,6 +52158,50 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HealthResponse"];
+        };
+      };
+    };
+  };
+  collections_health_health_collections_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  db_health_health_db_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -35479,6 +52334,72 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  redis_health_health_redis_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  trigger_pulse_internal_olympus_pulse_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  list_rules_internal_olympus_rules_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          }[];
         };
       };
     };
@@ -35812,11 +52733,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["WhatsAppWebhook"];
-      };
-    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
@@ -35827,15 +52744,6 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

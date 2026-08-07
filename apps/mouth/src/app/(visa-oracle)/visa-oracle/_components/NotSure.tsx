@@ -10,10 +10,8 @@ export interface NotSureProps {
 }
 
 /**
- * "Not sure?" affordance (design doc §3): takes the question's conservative
- * branch (or holds for human review — the question decides which, in
- * `mock-engine.ts`) and visibly logs the assumption on the outcome page.
- * Momentum without hidden uncertainty.
+ * Records explicit uncertainty as an interview fact. The deterministic engine,
+ * never this affordance, decides whether more input or human review is needed.
  */
 export function NotSure({ language, onSkip }: NotSureProps) {
   return (

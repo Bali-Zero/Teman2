@@ -20,6 +20,7 @@ from starlette.types import ASGIApp
 
 from backend.app.utils.logging_utils import get_logger
 from backend.middleware.correlation import get_correlation_id
+from backend.middleware.visa_oracle_privacy import is_private_visa_evaluation
 from backend.services.monitoring.activity_logger import activity_logger
 
 logger = get_logger(__name__)
@@ -115,6 +116,12 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             Response
         """
+        # The anonymous payload contains sensitive immigration, nationality
+        # and family facts. Keep its exact public route out of persistent API
+        # and session audit trails; HybridAuth emits aggregate counters.
+        if is_private_visa_evaluation(request.method, request.url.path):
+            return await call_next(request)
+
         # Skip logging for excluded paths
         if not self._should_log(request.url.path):
             return await call_next(request)

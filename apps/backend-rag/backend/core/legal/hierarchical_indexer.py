@@ -87,6 +87,7 @@ class HierarchicalIndexer:
         document_text: str,
         document_id: str,
         metadata: dict[str, Any],
+        qdrant_client: Any | None = None,
     ) -> dict[str, Any]:
         """
         Indicizza documento con struttura gerarchica completa.
@@ -201,7 +202,10 @@ class HierarchicalIndexer:
 
             # 7. Upsert chunks con struttura gerarchica
             chunks_upserted = await self._upsert_hierarchical_chunks(
-                chunks_to_index, embeddings, sparse_vectors
+                chunks_to_index,
+                embeddings,
+                sparse_vectors,
+                qdrant_client=qdrant_client,
             )
 
         # 8. Upsert parent documents (BAB completi) - NO embedding, solo storage
@@ -303,9 +307,12 @@ class HierarchicalIndexer:
         chunks: list[HierarchicalChunk],
         embeddings: list[list[float]],
         sparse_vectors: list[dict[str, Any]] | None = None,
+        qdrant_client: Any | None = None,
     ) -> int:
         """Upsert chunks con payload gerarchico"""
         import uuid
+
+        qdrant = qdrant_client or self.qdrant
 
         # Namespace UUID per generare ID deterministici (stesso chunk_id → stesso UUID)
         NAMESPACE_LEGAL = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
@@ -337,9 +344,9 @@ class HierarchicalIndexer:
         for meta, cid in zip(metadatas, ids, strict=False):
             meta["chunk_id"] = cid
 
-        if sparse_vectors and hasattr(self.qdrant, "upsert_documents_with_sparse"):
+        if sparse_vectors and hasattr(qdrant, "upsert_documents_with_sparse"):
             logger.info(f"Upserting {len(ids)} chunks with Hybrid (Dense + BM25) vectors")
-            res = await self.qdrant.upsert_documents_with_sparse(
+            res = await qdrant.upsert_documents_with_sparse(
                 chunks=chunk_texts,
                 embeddings=embeddings,
                 sparse_vectors=sparse_vectors,
@@ -351,7 +358,7 @@ class HierarchicalIndexer:
                 raise RuntimeError(f"Qdrant hybrid upsert failed: {res.get('error')}")
         else:
             logger.info(f"Upserting {len(ids)} chunks with Dense vectors only")
-            res = await self.qdrant.upsert_documents(
+            res = await qdrant.upsert_documents(
                 chunks=chunk_texts,
                 embeddings=embeddings,
                 metadatas=metadatas,

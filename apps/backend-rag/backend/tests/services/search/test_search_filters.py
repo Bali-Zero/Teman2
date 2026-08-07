@@ -16,6 +16,13 @@ class TestBuildSearchFilterNoInputs:
         result = build_search_filter()
         assert result == {"status_vigensi": {"$ne": "dicabut"}}
 
+    def test_explicit_historical_guard_is_added(self):
+        result = build_search_filter(
+            exclude_repealed=False,
+            exclude_historical=True,
+        )
+        assert result == {"retrieval_scope": {"$ne": "historical_only"}}
+
 
 class TestBuildSearchFilterTierOnly:
     """Tests for tier filter without repealed exclusion."""

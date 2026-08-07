@@ -2,7 +2,13 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
-import { LazyMotion, domAnimation, m, AnimatePresence } from "framer-motion";
+import {
+  LazyMotion,
+  domAnimation,
+  m,
+  AnimatePresence,
+  MotionConfig,
+} from "framer-motion";
 import { BookShell } from "@/components/book/BookShell";
 import { ChapterSection } from "@/components/book/ChapterSection";
 import { ChapterHero } from "@/components/book/ChapterHero";
@@ -34,18 +40,25 @@ function LocaleSwitcher({
 }) {
   const locales = Object.entries(LOCALE_LABELS) as [Locale, string][];
   return (
-    <div className="fixed top-4 right-4 z-50 flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl px-2 py-1.5">
+    <div
+      data-testid="book-locale-switcher"
+      className="absolute top-2 right-2 z-40 flex max-w-[calc(100vw-1rem)] items-center gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/40 px-2 py-1.5 backdrop-blur-sm sm:fixed sm:top-4 sm:right-4 sm:z-50"
+    >
       {locales.map(([l, label]) => (
         <button
           key={l}
+          type="button"
           onClick={() => onChange(l)}
-          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all font-[family-name:var(--font-montserrat)] ${
+          aria-label={`Switch language to ${label}`}
+          aria-pressed={locale === l}
+          className={`shrink-0 rounded-lg px-2 py-1 text-xs font-medium transition-all font-[family-name:var(--font-montserrat)] sm:px-2.5 ${
             locale === l
               ? "bg-accent-warm text-white"
               : "text-white/50 hover:text-white"
           }`}
         >
-          {label}
+          <span className="hidden sm:inline">{label}</span>
+          <span className="sm:hidden">{l.toUpperCase()}</span>
         </button>
       ))}
     </div>
@@ -84,8 +97,9 @@ function ServicesSection({ locale }: { locale: Locale }) {
         {categories.map((cat) => (
           <button
             key={cat}
+            type="button"
             onClick={() => setActiveCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all font-[family-name:var(--font-montserrat)] border ${
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all motion-reduce:transition-none font-[family-name:var(--font-montserrat)] border ${
               activeCategory === cat
                 ? "bg-accent-warm border-accent-warm text-white"
                 : "border-white/15 text-white/55 hover:border-white/30 hover:text-white/80"
@@ -98,29 +112,33 @@ function ServicesSection({ locale }: { locale: Locale }) {
 
       {/* Cards */}
       <LazyMotion features={domAnimation}>
-        <AnimatePresence mode="wait">
-          <m.div
-            key={activeCategory}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl"
-          >
-            {translatedServices.map((svc) => (
-              <ServicePricingCard
-                key={svc.serviceKey}
-                title={svc.title}
-                tagline={svc.tagline}
-                serviceKey={svc.serviceKey}
-                features={svc.features}
-                waMessage={svc.waMessage}
-                badge={svc.badge}
-                ctaLabel={t.askOnWhatsApp}
-              />
-            ))}
-          </m.div>
-        </AnimatePresence>
+        <MotionConfig reducedMotion="user">
+          <AnimatePresence mode="wait">
+            <m.div
+              key={activeCategory}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              data-testid="book-service-cards"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl"
+            >
+              {translatedServices.map((svc) => (
+                <ServicePricingCard
+                  key={svc.serviceKey}
+                  title={svc.title}
+                  tagline={svc.tagline}
+                  pricingCategory={svc.pricingCategory}
+                  pricingItemKey={svc.pricingItemKey}
+                  features={svc.features}
+                  waMessage={svc.waMessage}
+                  badge={svc.badge}
+                  ctaLabel={t.askOnWhatsApp}
+                />
+              ))}
+            </m.div>
+          </AnimatePresence>
+        </MotionConfig>
       </LazyMotion>
 
       {/* View all services link */}

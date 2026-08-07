@@ -7,12 +7,13 @@ import asyncio
 import hashlib
 import logging
 import os
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field, HttpUrl
 
 from backend.app.dependencies import get_current_user
@@ -22,7 +23,10 @@ from backend.app.utils.ingest_paths import resolve_ingest_path
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.json_utils import to_jsonb
 from backend.core.legal_config import resolve_nb_target
-from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
+from backend.services.ingestion.legal_ingestion_service import (
+    CURRENT_RETRIEVAL_SCOPE,
+    LegalIngestionService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +67,13 @@ class LegalIngestRequest(BaseModel):
         None,
         description="Override collection name (default: legal_unified)",
     )
+    retrieval_scope: str = Field(
+        default=CURRENT_RETRIEVAL_SCOPE,
+        description="Use historical_only for evidence that must not ground current-law advice",
+    )
+    source_url: HttpUrl | None = Field(None, description="Canonical primary-source URL")
+    effective_date: date | None = Field(None, description="Instrument effective date")
+    observed_at: datetime | None = Field(None, description="When the source was observed")
 
 
 class LegalIngestResponse(BaseModel):
@@ -75,6 +86,7 @@ class LegalIngestResponse(BaseModel):
     structure: dict[str, Any] | None = None
     message: str
     error: str | None = None
+    drive_archive: dict[str, Any] | None = None
 
 
 @router.post("/ingest", response_model=LegalIngestResponse, status_code=status.HTTP_200_OK)
@@ -137,6 +149,10 @@ async def ingest_legal_document(
             title=request.title,
             tier_override=tier_override,
             collection_name=request.collection_name,
+            retrieval_scope=request.retrieval_scope,
+            source_url=str(request.source_url) if request.source_url else None,
+            effective_date=request.effective_date,
+            observed_at=request.observed_at,
         )
 
         return LegalIngestResponse(**result)
@@ -154,9 +170,13 @@ async def ingest_legal_document(
 @router.post("/upload", response_model=LegalIngestResponse, status_code=status.HTTP_200_OK)
 async def upload_legal_document(
     file: UploadFile = File(...),
-    title: str | None = None,
-    tier: str | None = None,
-    collection_name: str | None = None,
+    title: str | None = Form(None),
+    tier: str | None = Form(None),
+    collection_name: str | None = Form(None),
+    retrieval_scope: str = Form(CURRENT_RETRIEVAL_SCOPE),
+    source_url: HttpUrl | None = Form(None),
+    effective_date: date | None = Form(None),
+    observed_at: datetime | None = Form(None),
     current_user: dict = Depends(get_current_user),
 ) -> LegalIngestResponse:
     """
@@ -225,6 +245,10 @@ async def upload_legal_document(
             title=title,
             tier_override=tier_override,
             collection_name=collection_name,
+            retrieval_scope=retrieval_scope,
+            source_url=str(source_url) if source_url else None,
+            effective_date=effective_date,
+            observed_at=observed_at,
         )
 
         logger.info(f"Successfully ingested: {result.get('book_title', file.filename)}")

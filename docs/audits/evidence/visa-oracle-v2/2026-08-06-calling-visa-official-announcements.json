@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_id": "calling-visa-official-announcements-2026-08-06",
+  "observed_at": "2026-08-06T09:33:44Z",
+  "approval": {
+    "approver": "Zero",
+    "approved_at": "2026-08-06",
+    "decision": "Official Immigration announcements are sufficient primary evidence for the Cameroon and Guinea removals; the ministerial PDFs remain desirable corroborating archive artifacts but are not G1 blockers."
+  },
+  "announcements": [
+    {
+      "country_code": "GN",
+      "country": "Guinea",
+      "publisher": "Kantor Imigrasi Kelas II TPI Tarakan",
+      "publisher_domain": "tarakan.imigrasi.go.id",
+      "source_class": "OFFICIAL_IMMIGRATION_ANNOUNCEMENT",
+      "url": "https://tarakan.imigrasi.go.id/2024/06/negara-guinea-dihapus-dari-daftar-negara-yang-memerlukan-calling-visa/",
+      "title": "Negara Guinea Dihapus Dari Daftar Negara Yang Memerlukan Calling Visa",
+      "published_on": "2024-06-19",
+      "instrument_number": "M.HH-03.GR.01.06 Tahun 2024",
+      "instrument_established_on": "2024-06-12",
+      "operative_facts": [
+        "Guinea was removed from the Calling Visa country list.",
+        "The decision is the fifth amendment to M.HH-03.GR.01.06 Tahun 2012.",
+        "The remaining list is Afghanistan, Israel, North Korea, Liberia, Nigeria and Somalia.",
+        "The decision took effect when established on 2024-06-12."
+      ],
+      "raw_http_capture": {
+        "retrieved_at": "2026-08-06T09:33:44Z",
+        "status": 200,
+        "mime_type": "text/html",
+        "byte_size": 139052,
+        "sha256": "aabb363075e653c766a67f7ea7fc1b4224dac29cbc09031f95c4099d34378696",
+        "local_path": "docs/audits/evidence/visa-oracle-v2/2026-08-06-guinea-removal-official.html"
+      },
+      "normalized_facts_sha256": "85e33156a9822eece8c24e901ac4b18467a40fe1af8eddc8af65fcbee9755474"
+    },
+    {
+      "country_code": "CM",
+      "country": "Cameroon",
+      "publisher": "Direktorat Jenderal Imigrasi",
+      "publisher_domain": "www.imigrasi.go.id",
+      "source_class": "OFFICIAL_IMMIGRATION_ANNOUNCEMENT",
+      "url": "https://www.imigrasi.go.id/siaran_pers/2023/11/29/siaran-pers-kamerun-dicabut-dari-daftar-calling-visa-dirjen-imigrasi-ada-pertimbangan-ekonomi-dan-keamanan?lang=id-ID",
+      "title": "Kamerun Dicabut dari Daftar Calling Visa, Dirjen Imigrasi: Ada Pertimbangan Ekonomi dan Keamanan",
+      "published_on": "2023-11-29",
+      "instrument_number": "M.HH-05.GR.01.06 Tahun 2023",
+      "instrument_established_on": "2023-11-23",
+      "operative_facts": [
+        "Cameroon was removed from the Calling Visa country list.",
+        "The decision was approved on 2023-11-23.",
+        "Cameroonian visa applications no longer use the clearing-house procedure."
+      ],
+      "raw_http_capture": {
+        "retrieved_at": "2026-08-06T09:33:44Z",
+        "status": 200,
+        "mime_type": "text/html",
+        "byte_size": 47761,
+        "sha256": "484898b22629c3ca6850156054c3c2e320038f884754d8d12962ae20b22c377c",
+        "local_path": "docs/audits/evidence/visa-oracle-v2/2026-08-06-cameroon-removal-official.html"
+      },
+      "normalized_facts_sha256": "762566ef203123f0d260b3403c1252d153dfc35cb45fab4971c93142457e7d06"
+    }
+  ],
+  "canonical_country_set": ["AF", "IL", "KP", "LR", "NG", "SO"],
+  "excluded_by_official_evidence": ["CM", "GN"],
+  "excluded_by_national_authority_precedence": ["NE"],
+  "gate_effect": {
+    "g1_calling_visa_country_treatment": "DONE",
+    "missing_ministerial_pdfs": "NON_BLOCKING_CORROBORATION_GAP"
+  }
+}
