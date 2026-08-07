@@ -32,12 +32,30 @@ PRIVACY_FUNCTIONS = (
     "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,"
     "timestamp with time zone)",
 )
+# Migration 264's three BEFORE INSERT trigger functions that resolve the
+# active Zero-approved retention policy via `SELECT ... FOR SHARE`. Migration
+# 268 made all three `SECURITY DEFINER` + owned by `visa_ledger_owner` (see
+# that migration's header for the 2026-08-07 incident this closes: `FOR
+# SHARE` requires UPDATE, which the least-privilege runtime role no longer
+# holds on the locked tables). Unlike every other entry in SENSITIVE_FUNCTIONS,
+# no role is expected to hold EXECUTE on these: they are pure trigger
+# functions Postgres invokes implicitly on INSERT, never called directly by
+# any caller, and migration 268 also REVOKEs the default PUBLIC EXECUTE grant
+# as defense-in-depth. Deliberately absent from every `_function_allowlist`
+# entry below so every `function:{role}:{signature}` check expects EXECUTE
+# False across the board -- only the `owner:{signature}` check applies.
+RETENTION_BINDING_TRIGGER_FUNCTIONS = (
+    "public.bind_visa_evaluate_idempotency_retention_policy()",
+    "public.bind_visa_decision_retention_policy()",
+    "public.bind_visa_decision_payload_retention()",
+)
 SENSITIVE_FUNCTIONS = (
     ACTIVATION_FUNCTION,
     ACTIVATION_SET_FUNCTION,
     PREPARE_IDEMPOTENCY_FUNCTION,
     *RETENTION_FUNCTIONS,
     *PRIVACY_FUNCTIONS,
+    *RETENTION_BINDING_TRIGGER_FUNCTIONS,
 )
 
 SENSITIVE_TABLES = (
