@@ -226,6 +226,15 @@ if ! nc -z 127.0.0.1 15432 2>/dev/null; then
     organism_heartbeat "$GUARD_ORGAN_ID" "error" "pg-proxy 127.0.0.1:15432 unreachable"
     exit 74
 fi
+# Guard passed: clear the sidecar on the success path too. Until now this
+# organ only ever wrote "error" — a write-once-on-failure heartbeat that can
+# never self-heal, so a single historical trip reads as 17+ days of ongoing
+# outage even after the very next run passes clean (ward-round 2026-08-07,
+# wr2_wrapper_guard_pg_proxy_stale). Family-checked (W107): every OTHER
+# wrapper that calls organism_heartbeat on error (outbox-prune.sh,
+# agent_worktree_cleanup_cron.sh) already pairs it with an "ok" call on its
+# success path — this wrapper was the only sibling missing it.
+organism_heartbeat "$GUARD_ORGAN_ID" "ok" "pg-proxy reachable"
 
 # 3. Repo + venv + exec
 cd "$REPO_ROOT/apps/backend-rag"
