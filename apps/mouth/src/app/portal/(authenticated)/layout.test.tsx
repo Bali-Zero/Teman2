@@ -247,7 +247,7 @@ describe("PortalLayout", () => {
       "data-first-href",
       "/portal/partner/dashboard",
     );
-    expect(screen.getByTestId("bottom-nav")).toHaveAttribute(
+    expect(await screen.findByTestId("bottom-nav")).toHaveAttribute(
       "data-variant",
       "partner",
     );
