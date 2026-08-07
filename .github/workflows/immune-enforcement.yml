@@ -132,6 +132,7 @@ jobs:
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
               infra/launchagents/wrappers/cron-agent.sh|\
               scripts/tests/test_cron_agent_oauth_cascade.sh|\
+              scripts/tests/test_cron_agent_alert_verdict.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
@@ -143,6 +144,8 @@ jobs:
               scripts/tests/test_docs_audit.py|\
               scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
+              scripts/lib/git_merge_state.sh|\
+              scripts/tests/test_docs_inventory_regen_merge_warning.sh|\
               scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
@@ -325,6 +328,16 @@ jobs:
           python -m pip install --quiet ruff
           bash scripts/tests/test_precommit_print_gate.sh
 
+      - name: The regen warns when it runs mid-merge (advice, never a refusal)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Named explicitly, NOT left to the `scripts/tests/` sweep — that sweep
+          # is continue-on-error, so a test parked there is green by construction
+          # (W108: the defect only surfaced once the test was ARMED on every PR).
+          # The corpus builds real git repos in a tmp dir; nothing touches this
+          # checkout.
+          bash scripts/tests/test_docs_inventory_regen_merge_warning.sh
+
       - name: No run-block decapitates its own failure branch (W101, 4th instance)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -463,6 +476,20 @@ jobs:
           # half runs the wrapper in a fake world (W107) so "did not rotate" is
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
+      - name: Cron-agent alert verdict corpus (a lost alert must not buy silence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # send_telegram() discarded both channels of the notification gateway
+          # (`>/dev/null 2>&1 || true`) and then armed its 30-minute cooldown
+          # unconditionally. tg_notify.py ends in six ways and only ONE of them
+          # reached Telegram, so a merely-spooled alert also silenced its own
+          # successor and left no record of which of the six had happened.
+          # The exit code cannot carry the verdict — main() returns 0 even from
+          # its "NEVER fail the caller" except branch — so this pins that the
+          # STATUS WORD is judged (W104), read as an entity and not a substring
+          # (`p0_unsent_spooled` is one prefix away from a false "sent").
+          bash scripts/tests/test_cron_agent_alert_verdict.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true'

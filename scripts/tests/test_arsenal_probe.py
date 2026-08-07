@@ -14,6 +14,8 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import textwrap
+import time
 from pathlib import Path
 from types import ModuleType
 from typing import Optional
@@ -461,7 +463,7 @@ class _FakeProc:
 
 
 def test_probe_claude_pong_is_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
     status, ev, latency = ap.probe_claude(timeout=5)
     assert status == ap.LIVE
@@ -476,7 +478,7 @@ def test_probe_claude_strips_anthropic_api_key_from_env(monkeypatch):
         return _FakeProc(0, "PONG\n", "")
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "should-never-be-passed-through")
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     ap.probe_claude(timeout=5)
     assert "ANTHROPIC_API_KEY" not in captured_env
@@ -494,7 +496,7 @@ def test_probe_claude_falls_back_to_oauth_token_slot_1(monkeypatch):
 
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     ap.probe_claude(timeout=5)
     assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "slot1-token-value"
@@ -512,14 +514,14 @@ def test_probe_claude_never_overrides_explicit_oauth_token(monkeypatch):
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token-value")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     ap.probe_claude(timeout=5)
     assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "explicit-token-value"
 
 
 def test_probe_claude_binary_absent_is_not_installed(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (None, False))
     monkeypatch.delenv("ARSENAL_CLAUDE_BIN", raising=False)
     status, ev, latency = ap.probe_claude(timeout=5)
     assert status == ap.NOT_INSTALLED
@@ -530,7 +532,7 @@ def test_probe_claude_timeout_classifies_timeout(monkeypatch):
     def fake_run(cmd, **kwargs):
         raise ap.subprocess.TimeoutExpired(cmd=cmd, timeout=kwargs.get("timeout", 5))
 
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     status, ev, latency = ap.probe_claude(timeout=5)
     assert status == ap.TIMEOUT
@@ -543,7 +545,7 @@ def test_probe_claude_not_logged_in_classifies_auth_dead(monkeypatch):
     # through classify_generic() to a bare UNKNOWN_ERR. Same shape as kimi's
     # "No providers configured" (probe_kimi) — mirrored locally here so the
     # shared _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(
         ap.subprocess,
         "run",
@@ -557,7 +559,7 @@ def test_probe_claude_pong_mentioning_login_stays_live(monkeypatch):
     # innocence: a LIVE answer that happens to mention login in prose must
     # never be reclassified as a credential death (mirrors
     # test_probe_kimi_pong_with_provider_prose_stays_live).
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(
         ap.subprocess,
         "run",
@@ -604,34 +606,34 @@ def test_probe_glm_never_leaks_token_in_evidence(monkeypatch):
 
 
 def test_probe_agy_pong_is_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/agy")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
     status, ev, latency = ap.probe_agy(timeout=5)
     assert status == ap.LIVE
 
 
 def test_probe_agy_missing_binary_not_installed(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (None, False))
     status, ev, latency = ap.probe_agy(timeout=5)
     assert status == ap.NOT_INSTALLED
 
 
 def test_probe_kimi_pong_is_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "• PONG\n", ""))
     status, ev, latency = ap.probe_kimi(timeout=5)
     assert status == ap.LIVE
 
 
 def test_probe_kimi_missing_binary_not_installed(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (None, False))
     status, ev, latency = ap.probe_kimi(timeout=5)
     assert status == ap.NOT_INSTALLED
 
 
 def test_probe_kimi_no_providers_is_auth_dead(monkeypatch):
     # guilt: the unauthenticated kimi-code shape has no 401 marker, only prose
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
     monkeypatch.setattr(
         ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(1, "No providers configured.\n", "")
     )
@@ -642,7 +644,7 @@ def test_probe_kimi_no_providers_is_auth_dead(monkeypatch):
 def test_probe_kimi_pong_with_provider_prose_stays_live(monkeypatch):
     # innocence: a LIVE answer that happens to mention providers/login in prose
     # must never be reclassified as a credential death
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
     monkeypatch.setattr(
         ap.subprocess,
         "run",
@@ -659,7 +661,7 @@ def test_probe_kimi_uses_devnull_stdin(monkeypatch):
         captured.update(kwargs)
         return _FakeProc(0, "PONG\n", "")
 
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     ap.probe_kimi(timeout=5)
     assert captured.get("stdin") == ap.subprocess.DEVNULL
@@ -672,21 +674,21 @@ def test_probe_codex_uses_devnull_stdin(monkeypatch):
         captured.update(kwargs)
         return _FakeProc(0, "PONG\n", "")
 
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/codex")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     ap.probe_codex(timeout=5)
     assert captured.get("stdin") == ap.subprocess.DEVNULL
 
 
 def test_probe_codex_pong_is_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/codex")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
     status, ev, latency = ap.probe_codex(timeout=5)
     assert status == ap.LIVE
 
 
 def test_probe_codex_401_is_auth_dead(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/codex")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
     monkeypatch.setattr(
         ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(1, "", "401 token_revoked")
     )
@@ -706,7 +708,7 @@ def test_deepseek_retired_not_in_all_seats_or_probe_funcs():
 
 
 def test_probe_ollama_qwen_listed_is_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/ollama")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
     monkeypatch.setattr(
         ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "qwen3.5:9b\tabc\n", "")
     )
@@ -715,20 +717,70 @@ def test_probe_ollama_qwen_listed_is_live(monkeypatch):
 
 
 def test_probe_ollama_qwen_absent_is_not_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/ollama")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "llama3:8b\n", ""))
     status, ev, latency = ap.probe_ollama(timeout=5, live_gen=False)
     assert status != ap.LIVE
 
 
 def test_probe_ollama_missing_binary_not_installed(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (None, False))
     status, ev, latency = ap.probe_ollama(timeout=5, live_gen=False)
     assert status == ap.NOT_INSTALLED
 
 
+def test_probe_ollama_live_gen_passes_prompt_as_argv_not_stdin(monkeypatch):
+    # 2026-08-07: a bare `ollama run <model>` with no prompt arg drops into an
+    # interactive REPL reading stdin — under the now-unconditional stdin=DEVNULL
+    # contract that would read immediate EOF and generate nothing, silently
+    # turning every --live-gen probe into a false-dead reading. The prompt must
+    # travel as an argv token, never depend on stdin.
+    calls = []
+
+    def fake_run_probe_cmd(cmd, timeout, **kwargs):
+        calls.append(cmd)
+        if "list" in cmd:
+            return ap.ProbeResult(0, "qwen3.5:9b\tabc\n", "")
+        return ap.ProbeResult(0, "PONG\n", "")
+
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
+    monkeypatch.setattr(ap, "run_probe_cmd", fake_run_probe_cmd)
+    status, ev, latency = ap.probe_ollama(timeout=5, live_gen=True)
+    assert status == ap.LIVE
+    run_call = calls[1]
+    assert run_call[:3] == ["/usr/local/bin/ollama", "run", "qwen3.5:9b"]
+    assert ap.PONG_PROMPT in run_call
+
+
+def test_probe_ollama_live_gen_timeout_with_no_output_stays_timeout(monkeypatch):
+    # innocence: a live-gen call that times out with truly nothing produced must
+    # stay TIMEOUT, not be misread as live.
+    def fake_run_probe_cmd(cmd, timeout, **kwargs):
+        if "list" in cmd:
+            return ap.ProbeResult(0, "qwen3.5:9b\tabc\n", "")
+        return ap.ProbeResult(-1, "", "", timed_out=True)
+
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
+    monkeypatch.setattr(ap, "run_probe_cmd", fake_run_probe_cmd)
+    status, ev, latency = ap.probe_ollama(timeout=5, live_gen=True)
+    assert status == ap.TIMEOUT
+
+
+def test_probe_ollama_live_gen_recovers_partial_output_on_timeout(monkeypatch):
+    # the same judge-the-reply-not-the-timeout fix applied to the live-gen path.
+    def fake_run_probe_cmd(cmd, timeout, **kwargs):
+        if "list" in cmd:
+            return ap.ProbeResult(0, "qwen3.5:9b\tabc\n", "")
+        return ap.ProbeResult(-1, "PONG partial\n", "", timed_out=True)
+
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
+    monkeypatch.setattr(ap, "run_probe_cmd", fake_run_probe_cmd)
+    status, ev, latency = ap.probe_ollama(timeout=5, live_gen=True)
+    assert status == ap.LIVE
+
+
 def test_probe_nlm_valid_json_list_is_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/nlm")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/nlm", True))
     monkeypatch.setattr(
         ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, '[{"id": "nb1"}]', "")
     )
@@ -737,14 +789,14 @@ def test_probe_nlm_valid_json_list_is_live(monkeypatch):
 
 
 def test_probe_nlm_non_json_output_not_live(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/nlm")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/nlm", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "not json at all", ""))
     status, ev, latency = ap.probe_nlm(timeout=5)
     assert status != ap.LIVE
 
 
 def test_probe_nlm_missing_binary_not_installed(monkeypatch):
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (None, False))
     status, ev, latency = ap.probe_nlm(timeout=5)
     assert status == ap.NOT_INSTALLED
 
@@ -758,7 +810,7 @@ def test_probe_nlm_login_to_reauthenticate_classifies_auth_dead(monkeypatch):
     # arsenal-probe.md documenting "nlm AUTH_DEAD -> `nlm login` on Pro" as
     # the expected cure. Mirrored locally (kimi/claude pattern) so the shared
     # _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/nlm")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/nlm", True))
     monkeypatch.setattr(
         ap.subprocess,
         "run",
@@ -778,7 +830,7 @@ def test_probe_nlm_valid_json_mentioning_login_stays_live(monkeypatch):
     # innocence: a LIVE answer (valid JSON notebook list) that happens to
     # mention "login" inside a notebook title must never be reclassified as a
     # credential death.
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/usr/local/bin/nlm")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/nlm", True))
     monkeypatch.setattr(
         ap.subprocess,
         "run",
@@ -1239,6 +1291,288 @@ def test_bracketed_numeric_codes_still_match():
     assert ap.classify_generic("HTTP 429 too many requests", False, "codex", False) == ap.QUOTA_DEAD
 
 
+
+# ---------------------------------------------------------------------------
+# 2026-08-07 incident: arsenal_probe could hang forever and print zero bytes.
+# `timeout 60 python3 scripts/arsenal_probe.py --table` produced 0 bytes on
+# stdout+stderr on Pro (live seats claude/agy/kimi/codex/ollama/nlm all answered
+# fine interactively). Root cause, found empirically (not guessed): agy's own
+# process exits in ~1s but a detached grandchild keeps stdout's pipe fd open,
+# so subprocess.run's communicate() never sees EOF — the probe ALWAYS ate its
+# FULL per-seat timeout (verified at 12s/15s/45s cutoffs, PONG present in
+# partial stdout every single time) even though the seat is genuinely LIVE.
+# Since all seats probe concurrently and nothing prints until every future
+# resolves, agy's old 120s timeout alone explained the reported hang under any
+# outer wrapper shorter than that. Fixed by: (1) judging partial stdout for a
+# live signal BEFORE accepting TIMEOUT, generically, in every subprocess-backed
+# probe; (2) collapsing all per-seat timeouts from 30-180s down to ~15s; (3) a
+# fail-visible header printed+flushed to stderr before any probe fires; (4)
+# stdin=DEVNULL unconditional on every subprocess; (5) resolve_bin() enriched
+# with common install-root fallbacks (claude/nlm/ollama had a wrong or absent
+# fallback, causing false NOT_INSTALLED under a PATH-poor hook/launchd context).
+# ---------------------------------------------------------------------------
+
+
+def test_run_probe_cmd_stdin_devnull_prevents_stdin_read_hang(tmp_path):
+    # innocence-of-the-fix, REAL subprocess (not mocked): a fake seat that reads
+    # stdin would block forever on an inherited open pipe — exactly the shape a
+    # hook/launchd/agent-harness caller can hand this process. With stdin=DEVNULL
+    # wired unconditionally, the read() gets immediate EOF and the process exits
+    # fast, well inside a generous timeout — it must never even approach TIMEOUT.
+    script = tmp_path / "fake_seat_reads_stdin.py"
+    script.write_text(textwrap.dedent("""
+        import sys
+        data = sys.stdin.read()  # hangs forever on an open, unclosed pipe
+        print("SEAT_OK")
+    """))
+    t0 = time.monotonic()
+    res = ap.run_probe_cmd([sys.executable, str(script)], timeout=10)
+    elapsed = time.monotonic() - t0
+    assert res.timed_out is False
+    assert "SEAT_OK" in res.stdout
+    assert elapsed < 5  # nowhere near the 10s timeout — proves no hang occurred
+
+
+def test_run_probe_cmd_stdin_devnull_is_the_default(monkeypatch):
+    # guilt-of-the-old-bug: stdin_devnull used to default to False, and only
+    # kimi/codex opted in explicitly — claude/agy/ollama/nlm inherited whatever
+    # stdin this process had. The contract is now unconditional (mandate:
+    # "stdin=subprocess.DEVNULL su OGNI subprocess").
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeProc(0, "ok", "")
+
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.run_probe_cmd(["irrelevant"], timeout=5)  # no stdin_devnull kwarg passed
+    assert captured.get("stdin") == ap.subprocess.DEVNULL
+
+
+def test_run_probe_cmd_recovers_partial_output_when_process_hangs_after_replying(tmp_path):
+    # THE bug, reproduced with a REAL subprocess: prints PONG almost instantly,
+    # then never exits — the agy pipe-leak shape. run_probe_cmd must still return
+    # within its own timeout budget (never inherit the child's indefinite hang)
+    # and must hand back the partial stdout so a caller can judge the reply.
+    script = tmp_path / "fake_seat_hangs_after_reply.py"
+    script.write_text(textwrap.dedent("""
+        import time
+        print("PONG", flush=True)
+        time.sleep(30)
+    """))
+    t0 = time.monotonic()
+    res = ap.run_probe_cmd([sys.executable, str(script)], timeout=2)
+    elapsed = time.monotonic() - t0
+    assert res.timed_out is True
+    assert "PONG" in res.stdout  # the reply IS there — a caller must judge it
+    assert elapsed < 10  # bounded by the probe's own timeout, never the child's 30s sleep
+
+
+def test_probe_agy_classifies_live_when_pong_arrives_before_hard_timeout(monkeypatch):
+    # end-to-end regression for the 2026-08-07 incident: probe_agy must not
+    # report TIMEOUT for a seat that already answered PONG, even though
+    # run_probe_cmd itself hit its timeout (the live agy pipe-leak shape).
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, timeout, **kw: ap.ProbeResult(-1, "PONG\n", "", timed_out=True),
+    )
+    status, ev, latency = ap.probe_agy(timeout=2)
+    assert status == ap.LIVE
+
+
+def test_probe_agy_genuine_hang_with_no_reply_still_classifies_timeout(monkeypatch):
+    # innocence: a seat that timed out AND never said anything must still be
+    # TIMEOUT, not silently promoted to LIVE — the recovery only applies when a
+    # real live signal is present in the partial output.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, timeout, **kw: ap.ProbeResult(-1, "", "", timed_out=True),
+    )
+    status, ev, latency = ap.probe_agy(timeout=2)
+    assert status == ap.TIMEOUT
+
+
+def test_probe_claude_classifies_live_when_pong_arrives_before_hard_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, timeout, env=None: ap.ProbeResult(-1, "PONG\n", "", timed_out=True),
+    )
+    status, ev, latency = ap.probe_claude(timeout=2)
+    assert status == ap.LIVE
+
+
+def test_probe_codex_classifies_live_when_pong_arrives_before_hard_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, timeout, **kw: ap.ProbeResult(-1, "PONG\n", "", timed_out=True),
+    )
+    status, ev, latency = ap.probe_codex(timeout=2)
+    assert status == ap.LIVE
+
+
+def test_probe_kimi_classifies_live_when_pong_arrives_before_hard_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, timeout, **kw: ap.ProbeResult(-1, "PONG\n", "", timed_out=True),
+    )
+    status, ev, latency = ap.probe_kimi(timeout=2)
+    assert status == ap.LIVE
+
+
+def test_probe_nlm_genuine_timeout_with_truncated_json_stays_timeout(monkeypatch):
+    # innocence: truncated/incomplete JSON on timeout must not be misread as a
+    # live signal (json.loads legitimately fails) — TIMEOUT is still correct.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/nlm", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, timeout, **kw: ap.ProbeResult(-1, '[{"id": "nb1"', "", timed_out=True),
+    )
+    status, ev, latency = ap.probe_nlm(timeout=2)
+    assert status == ap.TIMEOUT
+
+
+# ---------------------------------------------------------------------------
+# resolve_bin() — enriched fallback + found_via_path signal (2026-08-07)
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_bin_prefers_path_when_available(monkeypatch):
+    monkeypatch.setattr(ap.shutil, "which", lambda name: f"/usr/bin/{name}" if name == "foo" else None)
+    path, via_path = ap.resolve_bin("foo")
+    assert path == "/usr/bin/foo"
+    assert via_path is True
+
+
+def test_resolve_bin_falls_back_to_common_dirs_when_path_thin(monkeypatch, tmp_path):
+    # guilt: reproduces the real 2026-08-07 bug shape — a hook/launchd context's
+    # $PATH lacks ~/.local/bin even though the binary is genuinely installed
+    # there. found_via_path=False signals "PATH-poor context", not "absent".
+    monkeypatch.setattr(ap.shutil, "which", lambda name: None)
+    fake_bin_dir = tmp_path / ".local" / "bin"
+    fake_bin_dir.mkdir(parents=True)
+    fake_bin = fake_bin_dir / "claude"
+    fake_bin.write_text("#!/bin/sh\necho fake\n")
+    real_expanduser = ap.os.path.expanduser
+    monkeypatch.setattr(
+        ap.os.path, "expanduser",
+        lambda p: str(tmp_path) + p[1:] if p.startswith("~") else real_expanduser(p),
+    )
+    path, via_path = ap.resolve_bin("claude")
+    assert path == str(fake_bin)
+    assert via_path is False
+
+
+def test_resolve_bin_genuinely_absent_returns_none_and_false(monkeypatch, tmp_path):
+    # innocence: nothing anywhere (not $PATH, not extra_paths, not common dirs)
+    # must still cleanly report absent, never crash or false-positive.
+    monkeypatch.setattr(ap.shutil, "which", lambda name: None)
+    real_expanduser = ap.os.path.expanduser
+    monkeypatch.setattr(
+        ap.os.path, "expanduser",
+        lambda p: str(tmp_path) + p[1:] if p.startswith("~") else real_expanduser(p),
+    )
+    path, via_path = ap.resolve_bin("totally-not-a-real-binary-xyz")
+    assert path is None
+    assert via_path is False
+
+
+def test_probe_claude_notes_not_on_path_when_resolved_via_fallback(monkeypatch):
+    # the distinguishing signal the mandate asked for: NOT_ON_PATH (binary present,
+    # this process's $PATH was thin) must be visibly different from a plain LIVE
+    # resolved normally — surfaced in the evidence, not a new top-level status
+    # (avoids growing the taxonomy for what is fundamentally a context footnote).
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/some/fallback/claude", False))
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
+    status, ev, latency = ap.probe_claude(timeout=5)
+    assert status == ap.LIVE
+    assert "NOT_ON_PATH" in ev
+
+
+def test_probe_claude_no_path_note_when_resolved_via_path(monkeypatch):
+    # innocence: the normal case (found via $PATH) must carry no such note.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
+    status, ev, latency = ap.probe_claude(timeout=5)
+    assert status == ap.LIVE
+    assert "NOT_ON_PATH" not in ev
+
+
+# ---------------------------------------------------------------------------
+# Fail-visible contract: header before probing, output never empty (2026-08-07)
+# ---------------------------------------------------------------------------
+
+
+def test_main_prints_header_to_stderr_before_any_probe_result(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
+    monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
+    monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (ap.LIVE, "PONG", 5))
+    code = ap.main(["--seats", "claude", "--table"])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "probing 1 seat(s)" in err
+    assert "claude" in err
+
+
+def test_main_output_never_empty_even_with_every_seat_dead(tmp_path, monkeypatch, capsys):
+    # (c) from the mandate: even with ALL seats dead, output must never be
+    # empty — the header alone (stderr, printed before any probe fires)
+    # guarantees this regardless of what every individual probe returns.
+    monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
+    monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
+    for seat in ap.ALL_SEATS:
+        monkeypatch.setitem(ap.PROBE_FUNCS, seat, lambda timeout: (ap.UNKNOWN_ERR, "dead", 1))
+    code = ap.main([])
+    out, err = capsys.readouterr()
+    assert (out + err).strip() != ""
+    assert "0 of 7 seats OK" in out
+
+
+def test_main_header_printed_even_if_every_probe_crashes(tmp_path, monkeypatch, capsys):
+    # the header is printed BEFORE run() is even called — it must survive a
+    # probe function that raises, not just one that returns a dead status.
+    monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
+    monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
+
+    def boom(timeout):
+        raise RuntimeError("simulated probe crash")
+
+    for seat in ap.ALL_SEATS:
+        monkeypatch.setitem(ap.PROBE_FUNCS, seat, boom)
+    code = ap.main([])
+    err = capsys.readouterr().err
+    assert "probing 7 seat(s)" in err
+
+
+def test_render_table_includes_n_of_m_seats_ok_line():
+    report = {
+        "machine": "pro",
+        "ts": "x",
+        "seats": [
+            {"seat": "claude", "status": ap.LIVE, "healthy": True, "latency_ms": 1, "evidence": "PONG", "required": True},
+            {"seat": "codex", "status": ap.AUTH_DEAD, "healthy": False, "latency_ms": 1, "evidence": "401", "required": True},
+        ],
+        "transitions": [],
+        "summary": {"live": 1, "dead_strict": 1, "context_limited": 0, "transient": 0},
+    }
+    table = ap.render_table(report)
+    assert "1 of 2 seats OK" in table
+
+
+def test_summary_line_includes_n_of_m_seats_ok():
+    report = {
+        "machine": "pro",
+        "seats": [{"seat": "claude"}, {"seat": "codex"}, {"seat": "glm"}],
+        "summary": {"live": 1, "dead_strict": 1, "context_limited": 1, "transient": 0},
+    }
+    line = ap.summary_line(report)
+    assert "1 of 3 seats OK" in line
+
+
 def test_probe_claude_strips_glm_session_env(monkeypatch):
     captured_env = {}
 
@@ -1247,7 +1581,7 @@ def test_probe_claude_strips_glm_session_env(monkeypatch):
         return ap.ProbeResult(0, "PONG", "")
 
     monkeypatch.setattr(ap, "run_probe_cmd", fake_run)
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/fake/claude")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/fake/claude", True))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-paid-key-must-die")
     monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "glm-token-must-die")
     monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic")

@@ -445,29 +445,36 @@ export function OutcomeSheet({
 
   return (
     <div className="oracle-outcome">
-      {outcome.provenance !== "ENGINE" && (
-        <section
-          className="oracle-origin-notice"
-          data-provenance={outcome.provenance.toLowerCase()}
-          role="status"
-        >
-          <ShieldCheck aria-hidden="true" size={20} />
-          <div>
-            <h2 className="oracle-outcome__section-title">
-              {translate(
-                language,
-                `outcome.provenance.${outcome.provenance}.title` as I18nKey,
-              )}
-            </h2>
-            <p>
-              {translate(
-                language,
-                `outcome.provenance.${outcome.provenance}.body` as I18nKey,
-              )}
-            </p>
-          </div>
-        </section>
-      )}
+      {/* A HUMAN_REVIEW_REQUIRED state already gets its own honest,
+          complete explanation below (outcome.human_review_body + the
+          review reasons) regardless of provenance — a generic non-ENGINE
+          origin notice on top of it would repeat "this is a hold, not a
+          decision" next to a section explaining a decision genuinely was
+          made and flagged for review. Skip it only for that state. */}
+      {outcome.provenance !== "ENGINE" &&
+        outcome.state !== "HUMAN_REVIEW_REQUIRED" && (
+          <section
+            className="oracle-origin-notice"
+            data-provenance={outcome.provenance.toLowerCase()}
+            role="status"
+          >
+            <ShieldCheck aria-hidden="true" size={20} />
+            <div>
+              <h2 className="oracle-outcome__section-title">
+                {translate(
+                  language,
+                  `outcome.provenance.${outcome.provenance}.title` as I18nKey,
+                )}
+              </h2>
+              <p>
+                {translate(
+                  language,
+                  `outcome.provenance.${outcome.provenance}.body` as I18nKey,
+                )}
+              </p>
+            </div>
+          </section>
+        )}
 
       {rows.length > 0 && (
         <section className="oracle-print-only">

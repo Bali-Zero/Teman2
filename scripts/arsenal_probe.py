@@ -91,14 +91,28 @@ REQUIRED_SEATS = {
     "m5": ["claude", "glm", "agy", "codex", "kimi"],
 }
 
+# 2026-08-07 incident: these used to run 30-180s. agy in particular ALWAYS consumed its
+# FULL timeout regardless of value — its own process exits in ~1s but a detached
+# grandchild inherits the stdout pipe without closing it, so subprocess.run's
+# communicate() never sees EOF (empirically verified: PONG present in partial stdout
+# at every timeout tested, from 12s to 45s). Since all seats probe concurrently in a
+# ThreadPoolExecutor and the whole run blocks on the SLOWEST one before printing
+# anything, agy's old 120s timeout alone explained "0 bytes for 60s" under any outer
+# `timeout 60` wrapper — the process was still inside as_completed(), not hung, but
+# indistinguishable from hung to anything watching stdout. ~15s per seat (mandate) is
+# empirically safe for the fast path (claude/codex/kimi/glm/ollama/nlm all replied in
+# 0.03-15s live on Pro 2026-08-07) AND for the agy-style pipe-leak case, because every
+# probe now judges the REPLY in partial stdout before accepting TIMEOUT (see the
+# `live` computed before `res.timed_out` check in each probe_* function below) — a
+# seat that already said PONG is LIVE even if its process never cleanly exits.
 DEFAULT_TIMEOUTS = {
-    "claude": 120,
-    "glm": 45,
-    "kimi": 120,
-    "agy": 120,
-    "codex": 180,
-    "ollama": 30,
-    "nlm": 60,
+    "claude": 15,
+    "glm": 15,
+    "kimi": 15,
+    "agy": 15,
+    "codex": 15,
+    "ollama": 15,
+    "nlm": 15,
 }
 OLLAMA_LIVE_GEN_TIMEOUT = 120
 
@@ -273,8 +287,13 @@ class ProbeResult:
 
 
 def run_probe_cmd(
-    cmd: list[str], timeout: float, env: Optional[dict] = None, stdin_devnull: bool = False
+    cmd: list[str], timeout: float, env: Optional[dict] = None, stdin_devnull: bool = True
 ) -> ProbeResult:
+    """Run a probe subprocess. stdin_devnull defaults to True — NON-NEGOTIABLE (2026-08-07
+    incident): every seat probe must never inherit an open stdin, because a hook/launchd/
+    agent-harness caller can hand this process a pipe that is never explicitly closed. No
+    caller in this file opts out; the parameter survives only so a test can override it.
+    """
     try:
         kwargs: dict[str, Any] = dict(
             capture_output=True, text=True, timeout=timeout, env=env
@@ -291,15 +310,44 @@ def run_probe_cmd(
         return ProbeResult(-2, "", "not found")
 
 
-def resolve_bin(name: str, extra_paths: Optional[list[str]] = None) -> Optional[str]:
+# Common install roots for the seat CLIs on this organism's machines (Pro/Mini user
+# `nuzantara`, M5 user `balizero` — both covered since these are all `~`-relative).
+# 2026-08-07 root cause: probe_claude's ONLY fallback was the wrong absolute guess
+# (/opt/homebrew/bin/claude — claude has never lived there, it's a `~/.local/bin/claude`
+# symlink) and probe_ollama/probe_nlm had NO fallback at all — so a PATH-poor calling
+# context (a hook/launchd receptor whose $PATH lacks ~/.local/bin or /opt/homebrew/bin)
+# reported NOT_INSTALLED for seats that were genuinely installed and answering fine in
+# an interactive shell seconds earlier (scar family #2 Esiste!=Armato, W108 lineage: the
+# sensor was measuring its OWN environment's poverty, not the seat's absence).
+COMMON_BIN_DIRS = ["~/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "~/.kimi-code/bin"]
+
+
+def resolve_bin(name: str, extra_paths: Optional[list[str]] = None) -> tuple[Optional[str], bool]:
+    """Resolve a seat binary. Returns (path_or_None, found_via_path).
+
+    found_via_path=True means this process's own $PATH (shutil.which) resolved it — the
+    normal case. False means resolution only succeeded via an explicit fallback candidate
+    (extra_paths or COMMON_BIN_DIRS) — the binary IS installed, this process's $PATH was
+    just thin. A caller that reports NOT_INSTALLED only after trying $PATH AND every known
+    install root has earned the right to call it that; before this fix, NOT_INSTALLED
+    could mean either thing and a probe run under a poor-$PATH context (like a hook
+    receptor) could not tell them apart — distinguishing them is the point (docs/runbooks/
+    arsenal-probe.md), not adding a new status the taxonomy has to carry forever.
+    """
     found = shutil.which(name)
     if found:
-        return found
-    for p in extra_paths or []:
+        return found, True
+    candidates = list(extra_paths or [])
+    candidates += [f"{d}/{name}" for d in COMMON_BIN_DIRS]
+    for p in candidates:
         expanded = os.path.expanduser(p)
         if Path(expanded).exists():
-            return expanded
-    return None
+            return expanded, False
+    return None, False
+
+
+def _path_note(via_path: bool) -> str:
+    return "" if via_path else "[NOT_ON_PATH: resolved via fallback dir, binary present but $PATH was thin] "
 
 
 # ---------------------------------------------------------------- credential loaders
@@ -373,9 +421,16 @@ def http_post_json(
 
 def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp = os.environ.get("ARSENAL_CLAUDE_BIN") or resolve_bin("claude", ["/opt/homebrew/bin/claude"])
+    env_bin = os.environ.get("ARSENAL_CLAUDE_BIN")
+    if env_bin:
+        binp, via_path = env_bin, True
+    else:
+        # claude has never lived at /opt/homebrew/bin — it's a ~/.local/bin/claude
+        # symlink (verified 2026-08-07); COMMON_BIN_DIRS now covers this generically,
+        # this stays as the accurate, seat-specific first guess.
+        binp, via_path = resolve_bin("claude", ["~/.local/bin/claude"])
     if not binp:
-        return NOT_INSTALLED, "claude binary not found", 0
+        return NOT_INSTALLED, "claude binary not found (checked $PATH + common install dirs)", 0
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # scar-load-bearing: never let the paid key leak in
     # A stray GLM-session env (AUTH_TOKEN + base URL) would silently probe z.ai
@@ -397,10 +452,15 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
         [binp, "-p", PONG_PROMPT, "--model", "claude-sonnet-5"], timeout=timeout, env=env
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
-    ev = evidence_tail(res.stdout + " " + res.stderr)
-    if res.timed_out:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
+    # scar W104: judge the REPLY, never the raw exit-code/timeout signal alone — a
+    # seat that already answered PONG in partial stdout is LIVE even if the probe's
+    # own timeout fired before the process cleanly exited (see run_probe_cmd/
+    # DEFAULT_TIMEOUTS comment — this is exactly the agy pipe-leak shape, kept generic
+    # here in case another CLI ever exhibits the same grandchild-holds-the-pipe defect).
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
     combined = res.stdout + res.stderr
     # claude CLI's unauthenticated shape ("Not logged in · Please run
     # /login") carries no 401/oauth-token marker, only this short prose, and
@@ -437,34 +497,39 @@ def probe_glm(timeout: float) -> tuple[str, str, int]:
 
 def probe_agy(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp = resolve_bin("agy", ["~/.local/bin/agy"])
+    binp, via_path = resolve_bin("agy", ["~/.local/bin/agy"])
     if not binp:
-        return NOT_INSTALLED, "agy binary not found", 0
+        return NOT_INSTALLED, "agy binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd([binp, "-p", PONG_PROMPT], timeout=timeout)
     latency_ms = int((time.monotonic() - t0) * 1000)
-    ev = evidence_tail(res.stdout + " " + res.stderr)
-    if res.timed_out:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
+    # THE 2026-08-07 incident: agy's own process exits in ~1s but a detached
+    # grandchild keeps stdout's pipe fd open, so subprocess.run's communicate()
+    # never sees EOF — this probe ALWAYS hit its full timeout (verified live at
+    # 12s/15s/45s, PONG present in partial stdout every time) even though the
+    # seat is genuinely LIVE. Judge the reply, not the fact that the process
+    # never cleanly exited.
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
     status = classify_generic(res.stdout + res.stderr, live, "agy", is_ssh_context())
     return status, ev, latency_ms
 
 
 def probe_kimi(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp = resolve_bin("kimi", ["~/.kimi-code/bin/kimi"])
+    binp, via_path = resolve_bin("kimi", ["~/.kimi-code/bin/kimi"])
     if not binp:
-        return NOT_INSTALLED, "kimi binary not found", 0
+        return NOT_INSTALLED, "kimi binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(
         [binp, "-p", PONG_PROMPT, "-m", "kimi-code/k3"],
         timeout=timeout,
-        stdin_devnull=True,
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
-    ev = evidence_tail(res.stdout + " " + res.stderr)
-    if res.timed_out:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
     combined = res.stdout + res.stderr
     # kimi-code's unauthenticated state prints "No providers configured" /
     # "not logged in" with no 401 marker — that is a credential death (cure:
@@ -478,68 +543,77 @@ def probe_kimi(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
+    binp, via_path = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
     if not binp:
-        return NOT_INSTALLED, "codex binary not found", 0
+        return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(
         [binp, "exec", "--sandbox", "read-only", "--skip-git-repo-check", PONG_PROMPT],
         timeout=timeout,
-        stdin_devnull=True,  # codex blocks on an open stdin — must never inherit one
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
-    ev = evidence_tail(res.stdout + " " + res.stderr)
-    if res.timed_out:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
     status = classify_generic(res.stdout + res.stderr, live, "codex", is_ssh_context())
     return status, ev, latency_ms
 
 
 def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp = resolve_bin("ollama")
+    # ollama ships via Homebrew (/opt/homebrew/bin/ollama on Apple Silicon) but had NO
+    # fallback path at all before 2026-08-07 — COMMON_BIN_DIRS now covers it generically.
+    binp, via_path = resolve_bin("ollama", ["/opt/homebrew/bin/ollama"])
     if not binp:
-        return NOT_INSTALLED, "ollama binary not found", 0
+        return NOT_INSTALLED, "ollama binary not found (checked $PATH + common install dirs)", 0
+    path_note = _path_note(via_path)
     res = run_probe_cmd([binp, "list"], timeout=timeout)
     latency_ms = int((time.monotonic() - t0) * 1000)
-    if res.timed_out:
-        return TIMEOUT, evidence_tail(res.stdout + res.stderr) or "probe timed out", latency_ms
     model_listed = "qwen3.5" in res.stdout
+    if res.timed_out and not model_listed:
+        return TIMEOUT, path_note + (evidence_tail(res.stdout + res.stderr) or "probe timed out"), latency_ms
     if not model_listed:
-        ev = evidence_tail(res.stdout + " " + res.stderr)
+        ev = path_note + evidence_tail(res.stdout + " " + res.stderr)
         status = classify_generic(res.stdout + res.stderr, False, "ollama", is_ssh_context())
         return status, ev or "qwen3.5 not listed", latency_ms
     if not live_gen:
-        return LIVE, "qwen3.5 listed", latency_ms
+        return LIVE, path_note + "qwen3.5 listed", latency_ms
+    # A bare `ollama run <model>` with no prompt argument drops into an interactive
+    # REPL that reads stdin — under the mandatory stdin=DEVNULL contract (every
+    # subprocess, no exceptions) that would read immediate EOF and exit having
+    # generated nothing, silently turning every --live-gen probe into a false-dead
+    # reading. Passing the prompt as an argv token makes it one-shot and non-interactive,
+    # so DEVNULL stdin (now unconditional in run_probe_cmd) is safe here too.
     gen_res = run_probe_cmd(
-        [binp, "run", "qwen3.5:9b"], timeout=OLLAMA_LIVE_GEN_TIMEOUT * timeout / DEFAULT_TIMEOUTS["ollama"],
-        stdin_devnull=False,
+        [binp, "run", "qwen3.5:9b", PONG_PROMPT],
+        timeout=OLLAMA_LIVE_GEN_TIMEOUT * timeout / DEFAULT_TIMEOUTS["ollama"],
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
-    if gen_res.timed_out:
-        return TIMEOUT, "live-gen timed out", latency_ms
     live = bool(gen_res.stdout.strip())
-    ev = evidence_tail(gen_res.stdout + " " + gen_res.stderr)
+    if gen_res.timed_out and not live:
+        return TIMEOUT, path_note + "live-gen timed out", latency_ms
+    ev = path_note + evidence_tail(gen_res.stdout + " " + gen_res.stderr)
     status = classify_generic(gen_res.stdout + gen_res.stderr, live, "ollama", is_ssh_context())
     return status, ev or "live-gen produced no output", latency_ms
 
 
 def probe_nlm(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp = resolve_bin("nlm")
+    # nlm lives at ~/.local/bin/nlm — had NO fallback path at all before 2026-08-07.
+    binp, via_path = resolve_bin("nlm", ["~/.local/bin/nlm"])
     if not binp:
-        return NOT_INSTALLED, "nlm binary not found", 0
+        return NOT_INSTALLED, "nlm binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd([binp, "list", "notebooks"], timeout=timeout)
     latency_ms = int((time.monotonic() - t0) * 1000)
-    ev = evidence_tail(res.stdout + " " + res.stderr)
-    if res.timed_out:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = False
     try:
         parsed = json.loads(res.stdout)
         live = isinstance(parsed, (list, dict))
     except (json.JSONDecodeError, ValueError):
         live = False
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
     combined = res.stdout + res.stderr
     # nlm's expired-credential shape ("Run nlm login to re-authenticate")
     # carries no 401/oauth-token marker, only this prose, and fell through
@@ -657,14 +731,20 @@ def render_table(report: dict) -> str:
         f"summary: live={summ['live']} dead_strict={summ['dead_strict']} "
         f"context_limited={summ['context_limited']} transient={summ['transient']}"
     )
+    # scar family #2/#97 (Esiste!=Armato / display-cap-reads-as-complete): always
+    # declare N of M explicitly — never let a reader infer "0 seats" reads as clean.
+    total = len(report["seats"])
+    lines.append(f"{summ['live']} of {total} seats OK")
     return "\n".join(lines)
 
 
 def summary_line(report: dict) -> str:
     summ = report["summary"]
+    total = len(report.get("seats", []))
     return (
-        f"arsenal_probe {report['machine']}: {summ['live']} live, {summ['dead_strict']} dead_strict, "
-        f"{summ['context_limited']} context_limited, {summ['transient']} transient"
+        f"arsenal_probe {report['machine']}: {summ['live']} of {total} seats OK "
+        f"({summ['dead_strict']} dead_strict, {summ['context_limited']} context_limited, "
+        f"{summ['transient']} transient)"
     )
 
 
@@ -907,6 +987,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 2
 
     machine = machine_label()
+    # Fail-visible contract (2026-08-07 incident): print something, flushed, to stderr
+    # BEFORE any probe fires — never stdout, so --json's stdout stays parseable. Before
+    # this, the whole run printed nothing at all until every seat's future resolved
+    # (agy alone could eat its full per-seat timeout — see DEFAULT_TIMEOUTS comment),
+    # so a `timeout 60 ...` wrapper killing a hung/slow run looked exactly like "0
+    # bytes, nothing happened" with zero way to tell a hang from a not-yet-started run.
+    ts_start = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    print(
+        f"arsenal_probe {ts_start} — probing {len(seats)} seat(s) on {machine}: {', '.join(seats)}",
+        file=sys.stderr,
+        flush=True,
+    )
     report = run(seats, timeout_mult=args.timeout, live_gen=args.live_gen, machine=machine)
 
     try:

@@ -6,7 +6,7 @@ import json
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -123,6 +123,63 @@ def test_new_policy_registration_rejects_backdating_but_allows_change_window() -
             effective_from=datetime(2026, 8, 5, 23, 59, tzinfo=timezone.utc),
             database_now=database_now,
         )
+
+
+def test_parse_args_with_explicit_policy_file_never_touches_the_filesystem() -> None:
+    """An explicit ``--policy-file`` must short-circuit before
+    ``default_policy_path()`` is ever called. The eager
+    ``default=str(default_policy_path())`` this replaces used to run on
+    every invocation -- including one that always passes ``--policy-file``
+    explicitly -- and crashed with ``IndexError`` in any container without
+    the full repository checkout."""
+
+    with patch.object(
+        register_privacy_policy,
+        "default_policy_path",
+        side_effect=AssertionError("default_policy_path() must not be called"),
+    ):
+        args = register_privacy_policy._parse_args(
+            [
+                "--effective-from",
+                "2026-08-10T02:00:00+00:00",
+                "--policy-file",
+                "/tmp/does-not-need-to-exist.json",
+            ]
+        )
+
+    assert args.policy_file == "/tmp/does-not-need-to-exist.json"
+
+
+def test_parse_args_defaults_to_the_checked_in_canonical_policy_path() -> None:
+    args = register_privacy_policy._parse_args(
+        ["--effective-from", "2026-08-10T02:00:00+00:00"]
+    )
+
+    assert args.policy_file == str(default_policy_path())
+    assert Path(args.policy_file).is_file()
+
+
+def test_parse_args_exits_cleanly_when_canonical_path_cannot_be_derived() -> None:
+    """The regression this closes: a container without the full repository
+    checkout used to crash with a bare, unhandled ``IndexError`` before
+    argument parsing even finished -- reproducing even for ``--help``. It
+    must now exit cleanly via argparse's own error path instead."""
+
+    with patch.object(
+        register_privacy_policy,
+        "default_policy_path",
+        side_effect=IndexError("tuple index out of range"),
+    ), pytest.raises(SystemExit):
+        register_privacy_policy._parse_args(["--effective-from", "2026-08-10T02:00:00+00:00"])
+
+
+def test_parse_args_exits_cleanly_when_canonical_path_is_missing(tmp_path: Path) -> None:
+    missing = tmp_path / "does-not-exist.json"
+
+    with patch.object(
+        register_privacy_policy, "default_policy_path", return_value=missing
+    ), pytest.raises(SystemExit):
+        register_privacy_policy._parse_args(["--effective-from", "2026-08-10T02:00:00+00:00"])
 
 
 @pytest.mark.asyncio
