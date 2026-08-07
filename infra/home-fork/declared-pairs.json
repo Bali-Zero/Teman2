@@ -61,6 +61,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/wr2-external-bench-run.sh",
+      "repo": "infra/launchagents/wrappers/wr2-external-bench-run.sh",
+      "_note": "Promoted to repo canon 2026-08-08 — was an UNDECLARED live payload (family #1) driving plist com.balizero.wr2.external-bench.monthly. PRO is canon, chosen on CONTENT and not on convenience: the M5 copy diverged (110 vs 129 lines) and was the poorer one — Pro carries the WR2_BENCH_FORCE escape, the WR2_BENCH_TIMEOUT/DEBUG knobs, a newer model pin, and a CRITICAL EXECUTION RULE block written after the 2026-06-11 post-mortem (async launch exited success with zero output). mtimes are IDENTICAL on both machines (2026-07-16 11:14, the TCC relocation touched everything), so the timestamp could not decide direction and the content did. M5 is declared as well because its copy exists and is inert (0 cron/launchd references there) — declaring it is what makes a future drift on the dead copy visible instead of silent.",
+      "machines": ["pro", "m5"]
+    },
+    {
       "live": "~/scripts/mlx-server-run.sh",
       "repo": "infra/launchagents/wrappers/mlx-server-run.sh",
       "machines": ["pro", "mini"]
