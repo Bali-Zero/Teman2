@@ -5,7 +5,10 @@ Status: repository-ready, **not installed or armed**. Last verified 2026-08-07.
 This runbook closes the scheduler/observability side of retention without
 creating a second retention service. The database policy and bounded one-shot
 worker remain authoritative. The existing `scripts/cron-wrapper.sh` supplies
-non-overlap, timeout, retry, heartbeat and P0 failure notification.
+non-overlap, timeout, heartbeat and P0 failure notification. This job sets its
+retry count to zero: backlog/lag exit `2` must page immediately instead of
+being retried until it disappears; the next bounded attempt is the next
+15-minute tick.
 
 ## Current gate
 
@@ -23,6 +26,11 @@ The scheduler manifest remains dry-run because it has not been staged or
 approved. Analytics TTL is a separate product ENFORCE gate: it must never
 block a due decision/idempotency purge, because that would retain personal
 data beyond the approved policy.
+
+The dedicated retention login needs `SELECT` only on the non-PII
+`visa_decision_retention_policies` authority plus EXECUTE on the bounded
+purge/evidence functions. Any other governed-table privilege fails the
+read-only operational preflight, including PostgreSQL 17 `MAINTAIN`.
 
 ## Files and boundaries
 
@@ -60,7 +68,7 @@ Required proof:
 - the provider export is hashed and the observation is no older than 7 days.
 
 The evidence file must contain no event bodies or user fields. The preflight
-rejects duplicate JSON keys and common raw/PII field names recursively.
+rejects duplicate JSON keys and every field outside the exact closed schema.
 
 Verify locally without modifying any dataset:
 

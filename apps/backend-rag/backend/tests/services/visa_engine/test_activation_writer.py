@@ -638,6 +638,18 @@ async def test_replace_activation_set_concurrent_identical_calls_serialize_to_on
         )
 
 
+@pytest.mark.asyncio
+async def test_replace_activation_set_rejects_unbounded_segment_count(
+    repo: VisaEngineRepository,
+) -> None:
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="exceeds 64"):
+        await repo.replace_activation_set(
+            rule_pack_ids=tuple(uuid.uuid4() for _ in range(65)),
+            activated_by="ops.zero",
+            activation_reason="segment-limit",
+        )
+
+
 # --------------------------------------------------------------------------
 # 5. F6(a) + P2 (verify round-1) guilt+innocence: activated_by/
 #    activation_reason must be an OPAQUE TOKEN (^[A-Za-z0-9._:-]{1,120}$) —

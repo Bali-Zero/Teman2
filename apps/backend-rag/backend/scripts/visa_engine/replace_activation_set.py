@@ -2,8 +2,8 @@
 
 Every replacement segment is a separately signed RulePack. The CLI verifies
 all bundles and the operator-supplied crypto-chain head, inserts packs through
-the pack-writer identity, closes that pool, then requires a distinct
-EXECUTE-only activation identity before invoking migration 267's set writer.
+the pack-writer identity, and closes that pool before invoking migration 267's
+set writer through a separately preflighted EXECUTE-only activation identity.
 The database function atomically re-derives and validates the real activation
 head and exact legal coverage. Dry-run is the default; it proves signature,
 chain, scope and interval shape, but deliberately makes no DB-coverage claim.
@@ -42,11 +42,25 @@ logger = logging.getLogger("visa_engine.replace_activation_set")
 
 PACK_WRITER_DATABASE_URL_ENV = "VISA_ENGINE_PACK_WRITER_DATABASE_URL"
 ACTIVATION_DATABASE_URL_ENV = "VISA_ENGINE_ACTIVATION_DATABASE_URL"
+MAX_REPLACEMENT_PACKS = 64
+MAX_SIGNED_BUNDLE_BYTES = 2 * 1024 * 1024
+ACTIVATION_FUNCTION = "public.visa_activate_rule_pack(uuid,text,text)"
+ACTIVATION_SET_FUNCTION = "public.visa_replace_activation_set(uuid[],text,text)"
+TABLE_PRIVILEGES = (
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "TRUNCATE",
+    "REFERENCES",
+    "TRIGGER",
+)
+PG17_TABLE_PRIVILEGES = ("MAINTAIN",)
 
 Interval = tuple[datetime, datetime | None]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ReplacementBundle:
     raw: dict[str, Any]
     verified: VerifiedRulePack
@@ -84,8 +98,12 @@ def _reject_non_finite_json_number(_value: str) -> None:
 
 
 def _load_strict_json(path: Path) -> dict[str, Any]:
+    with path.open("rb") as handle:
+        raw_document = handle.read(MAX_SIGNED_BUNDLE_BYTES + 1)
+    if len(raw_document) > MAX_SIGNED_BUNDLE_BYTES:
+        raise ValueError("signed bundle exceeds the 2 MiB ceremony limit")
     value = json.loads(
-        path.read_text(encoding="utf-8"),
+        raw_document.decode("utf-8"),
         object_pairs_hook=_reject_duplicate_object_pairs,
         parse_constant=_reject_non_finite_json_number,
     )
@@ -123,6 +141,12 @@ def _load_and_verify_bundles(
     trust_store: StaticTrustStore,
     observed_at: datetime,
 ) -> list[ReplacementBundle]:
+    if not paths:
+        raise SystemExit("FAIL: at least one signed replacement bundle is required")
+    if len(paths) > MAX_REPLACEMENT_PACKS:
+        raise SystemExit(
+            f"FAIL: replacement set exceeds {MAX_REPLACEMENT_PACKS} signed segments"
+        )
     replacements: list[ReplacementBundle] = []
     for raw_path in paths:
         raw = _load_strict_json(Path(raw_path))
@@ -135,8 +159,6 @@ def _load_and_verify_bundles(
             )
         )
     replacements.sort(key=lambda bundle: bundle.sequence)
-    if not replacements:
-        raise SystemExit("FAIL: at least one signed replacement bundle is required")
     if len({bundle.pack_id for bundle in replacements}) != len(replacements):
         raise SystemExit("FAIL: replacement bundle IDs must be unique")
     scopes = {
@@ -191,22 +213,85 @@ async def _insert_verified_packs(
 
 
 async def _assert_pack_writer_capability(pool: asyncpg.Pool) -> str:
-    principal = await pool.fetchval("SELECT session_user")
+    principal = str(await pool.fetchval("SELECT session_user"))
     is_superuser = await pool.fetchval("SELECT rolsuper FROM pg_roles WHERE rolname = session_user")
     if is_superuser:
         raise SystemExit("FAIL: pack-writer identity must not be superuser")
+    can_select_pack = await pool.fetchval(
+        "SELECT has_table_privilege(current_user, $1, $2)",
+        "public.visa_rule_packs",
+        "SELECT",
+    )
     can_insert_pack = await pool.fetchval(
-        "SELECT has_table_privilege(current_user, 'public.visa_rule_packs', 'INSERT')"
+        "SELECT has_table_privilege(current_user, $1, $2)",
+        "public.visa_rule_packs",
+        "INSERT",
+    )
+    supported_table_privileges = await _supported_table_privileges(pool)
+    forbidden_pack_privilege = await _has_any_table_privilege(
+        pool,
+        table="public.visa_rule_packs",
+        privileges=tuple(
+            privilege
+            for privilege in supported_table_privileges
+            if privilege not in {"SELECT", "INSERT"}
+        ),
+    )
+    activation_table_privilege = await _has_any_table_privilege(
+        pool,
+        table="public.visa_ruleset_activations",
+        privileges=supported_table_privileges,
+    )
+    can_activate = await pool.fetchval(
+        "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+        ACTIVATION_FUNCTION,
     )
     can_replace = await pool.fetchval(
-        "SELECT has_function_privilege(current_user, "
-        "'public.visa_replace_activation_set(uuid[],text,text)', 'EXECUTE')"
+        "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+        ACTIVATION_SET_FUNCTION,
     )
-    if not can_insert_pack or can_replace:
+    if (
+        not can_select_pack
+        or not can_insert_pack
+        or forbidden_pack_privilege
+        or activation_table_privilege
+        or can_activate
+        or can_replace
+    ):
         raise SystemExit(
-            "FAIL: pack-writer identity must have pack INSERT but no activation-set EXECUTE"
+            "FAIL: pack-writer identity must have only pack SELECT/INSERT and no activation capability"
         )
     return principal
+
+
+async def _has_any_table_privilege(
+    pool: asyncpg.Pool,
+    *,
+    table: str,
+    privileges: tuple[str, ...],
+) -> bool:
+    """Return whether the current identity has any listed PG15 table privilege."""
+
+    for privilege in privileges:
+        allowed = await pool.fetchval(
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            table,
+            privilege,
+        )
+        if allowed:
+            return True
+    return False
+
+
+async def _supported_table_privileges(pool: asyncpg.Pool) -> tuple[str, ...]:
+    """Return table privileges understood by the connected PG15/PG17 server."""
+
+    server_version_num = int(
+        await pool.fetchval("SELECT current_setting('server_version_num')::integer")
+    )
+    if server_version_num >= 170000:
+        return (*TABLE_PRIVILEGES, *PG17_TABLE_PRIVILEGES)
+    return TABLE_PRIVILEGES
 
 
 async def _assert_activation_capability(
@@ -214,28 +299,24 @@ async def _assert_activation_capability(
     *,
     pack_writer_principal: str,
 ) -> str:
-    principal = await pool.fetchval("SELECT session_user")
+    principal = str(await pool.fetchval("SELECT session_user"))
     if principal == pack_writer_principal:
         raise SystemExit("FAIL: pack-writer and activation identities must be distinct")
     is_superuser = await pool.fetchval("SELECT rolsuper FROM pg_roles WHERE rolname = session_user")
     if is_superuser:
         raise SystemExit("FAIL: activation identity must not be superuser")
     can_execute = await pool.fetchval(
-        "SELECT has_function_privilege(current_user, "
-        "'public.visa_replace_activation_set(uuid[],text,text)', 'EXECUTE')"
+        "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+        ACTIVATION_SET_FUNCTION,
     )
     if not can_execute:
         raise SystemExit("FAIL: activation identity lacks replace-set EXECUTE capability")
+    supported_table_privileges = await _supported_table_privileges(pool)
     for table in ("public.visa_rule_packs", "public.visa_ruleset_activations"):
-        direct = await pool.fetchval(
-            """
-            SELECT bool_or(has_table_privilege(current_user, $1, privilege))
-            FROM unnest(ARRAY[
-                'SELECT', 'INSERT', 'UPDATE', 'DELETE',
-                'TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN'
-            ]) AS p(privilege)
-            """,
-            table,
+        direct = await _has_any_table_privilege(
+            pool,
+            table=table,
+            privileges=supported_table_privileges,
         )
         if direct:
             raise SystemExit(
@@ -284,22 +365,32 @@ async def run(args: argparse.Namespace) -> int:
     pack_database_url = os.environ.get(args.pack_database_url_env)
     if not pack_database_url:
         raise SystemExit(f"FAIL: ${args.pack_database_url_env} is not set")
-    pack_pool = await asyncpg.create_pool(pack_database_url, min_size=1, max_size=2)
-    try:
-        pack_principal = await _assert_pack_writer_capability(pack_pool)
-        await _insert_verified_packs(pack_pool, replacements)
-    finally:
-        await pack_pool.close()
-
     activation_database_url = os.environ.get(args.activation_database_url_env)
     if not activation_database_url:
         raise SystemExit(f"FAIL: ${args.activation_database_url_env} is not set")
-    activation_pool = await asyncpg.create_pool(activation_database_url, min_size=1, max_size=2)
+
+    pack_pool = await asyncpg.create_pool(pack_database_url, min_size=1, max_size=2)
+    activation_pool: asyncpg.Pool | None = None
+    pack_pool_open = True
     try:
+        pack_principal = await _assert_pack_writer_capability(pack_pool)
+        activation_pool = await asyncpg.create_pool(
+            activation_database_url,
+            min_size=1,
+            max_size=2,
+        )
         principal = await _assert_activation_capability(
             activation_pool,
             pack_writer_principal=pack_principal,
         )
+        await _insert_verified_packs(pack_pool, replacements)
+
+        # Make accidental cross-capability reuse impossible before the ledger
+        # mutation. The activation pool was opened only to preflight it before
+        # any pack insert could leave an avoidable inert row behind.
+        await pack_pool.close()
+        pack_pool_open = False
+
         activation_ids = await VisaEngineRepository(activation_pool).replace_activation_set(
             rule_pack_ids=[bundle.pack_id for bundle in replacements],
             activated_by=args.actor,
@@ -311,7 +402,10 @@ async def run(args: argparse.Namespace) -> int:
             [str(activation_id) for activation_id in activation_ids],
         )
     finally:
-        await activation_pool.close()
+        if pack_pool_open:
+            await pack_pool.close()
+        if activation_pool is not None:
+            await activation_pool.close()
     return 0
 
 

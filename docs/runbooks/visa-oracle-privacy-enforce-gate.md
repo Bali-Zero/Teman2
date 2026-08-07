@@ -45,19 +45,22 @@ Perform the steps in staging first. Production changes require an approved
 window and backup/restore confirmation. Do not combine the steps with an
 ENFORCE flip.
 
-### 1. Apply schema through migration 266
+### 1. Apply schema through migration 267
 
 Migrations 264–266 add the unseeded policy authority, retention binding,
 bounded purge, aggregate evidence, DSR erasure, legal hold and decision backlog
-evidence. Migration 264 deliberately seeds no production duration, so applying
-the schema remains fail-closed until the approved policy is registered.
+evidence. Migration 267 adds the atomic, bounded replacement of a complete
+activation set for signed legal-period corrections. Migration 264 deliberately
+seeds no production duration, so applying the schema remains fail-closed until
+the approved policy is registered.
 
 Run the normal migration mechanism. Do not paste only selected statements.
-Afterward, confirm all three functions exist:
+Afterward, confirm all four functions exist:
 
 ```sql
 SELECT to_regprocedure('public.purge_visa_decisions(integer,text)'),
        to_regprocedure('public.erase_visa_decision_for_dsr(uuid,text,text)'),
+       to_regprocedure('public.visa_replace_activation_set(uuid[],text,text)'),
        to_regprocedure(
          'public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,timestamp with time zone)'
        );
@@ -71,9 +74,9 @@ Provision these `NOLOGIN`, non-superuser capability roles:
 | -------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `visa_ledger_owner`        | Own Visa Oracle tables, triggers and SECURITY DEFINER functions                        | LOGIN; serving traffic                        |
 | `visa_pack_writer`         | `SELECT`/`INSERT` immutable signed packs                                               | activation execution; activation-table writes |
-| `visa_activation_executor` | `EXECUTE visa_activate_rule_pack` only                                                 | any direct pack/activation table DML          |
+| `visa_activation_executor` | `EXECUTE visa_activate_rule_pack` and `visa_replace_activation_set` only               | any direct pack/activation table privilege    |
 | `visa_policy_writer`       | read/insert approved policy; close a prior effective period during a reviewed rotation | delete policy; serving traffic                |
-| `visa_retention_executor`  | execute purge/evidence functions                                                       | direct table DELETE/UPDATE                    |
+| `visa_retention_executor`  | read the non-PII approved policy row; execute purge/evidence functions                 | every other direct table privilege            |
 | `visa_privacy_operator`    | execute legal-hold and DSR functions                                                   | direct decision/payload/idempotency DML       |
 
 The runtime role keeps only the reads and writes used by evaluation:
@@ -104,10 +107,20 @@ PYTHONPATH=. VISA_ENGINE_PREFLIGHT_DATABASE_URL="$READ_ONLY_DSN" \
 Exit `0` is required. Exit `2` means ENFORCE remains blocked. The preflight is
 safe against production because it performs no writes and never logs a DSN.
 It evaluates an explicit EXECUTE allowlist across every activation,
-idempotency, retention, evidence, DSR and legal-hold function; an explicit DML
-allowlist across all governed Visa Oracle tables; and runtime membership in
-every operational capability role. A missing required grant and an unexpected
-grant both fail the gate.
+idempotency, retention, evidence, DSR and legal-hold function; an exact table-
+privilege allowlist across all governed Visa Oracle tables; and runtime membership in
+every operational capability role. The table matrix includes PostgreSQL 17's
+`MAINTAIN` privilege without breaking the PostgreSQL 15 CI harness. A missing
+required grant and an unexpected grant both fail the gate.
+
+Signed legal-period corrections use the offline
+`backend.scripts.visa_engine.replace_activation_set` ceremony. It accepts at
+most 64 separately signed segments, rejects duplicate/ambiguous JSON and
+oversized bundles, verifies Ed25519 plus the supplied chain head, preflights
+both separated identities before inserting, closes the pack-writer pool, then
+lets the database re-check exact coverage, sequence/hash continuity and the
+single-clock replacement atomically. Its dry run deliberately makes no claim
+about live DB coverage.
 
 ### 3. Register Privacy Policy V1
 
@@ -145,6 +158,12 @@ answer, nationality, passport, request, response or decision identifier.
 The scheduler must alert on missed executions as well as command exit status.
 Use a 30-minute missed-run warning and a 60-minute critical threshold. Legal
 holds appear separately and do not count as a purgeable backlog.
+
+The repository-ready LaunchAgent example and Cell sensor are documented in
+`docs/runbooks/visa-oracle-retention-operations.md`. The manifest is dry-run
+and uninstalled. It intentionally performs zero immediate retries: backlog or
+lag exit `2` must page rather than being retried until the evidence disappears;
+the next bounded attempt is the next 15-minute tick.
 
 ### 5. Enforce the 90-day analytics deletion
 

@@ -166,6 +166,14 @@ async def _assert_operator_boundary(db_pool: asyncpg.Pool, *, apply: bool) -> No
             raise RuntimeError("refusing to run retention through the serving runtime role")
         if bool(identity["is_superuser"]):
             raise RuntimeError("refusing superuser retention; use the bounded executor")
+        can_read_policy = await conn.fetchval(
+            "SELECT has_table_privilege(current_user, "
+            "'public.visa_decision_retention_policies', 'SELECT')"
+        )
+        if not can_read_policy:
+            raise RuntimeError(
+                "retention executor lacks SELECT on the approved retention policy"
+            )
         required_signatures = [
             "public.visa_decision_retention_evidence()",
             "public.visa_idempotency_retention_evidence()",

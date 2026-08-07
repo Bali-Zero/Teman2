@@ -5,7 +5,7 @@
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>CRON_MAX_RETRIES</key>
-		<string>2</string>
+		<string>0</string>
 		<key>HOME</key>
 		<string>/Users/nuzantara</string>
 		<key>PATH</key>

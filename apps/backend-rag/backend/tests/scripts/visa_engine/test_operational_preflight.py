@@ -13,6 +13,7 @@ RUNTIME_ROLE = "backend_rag_v2"
 # update here and in the preflight allowlists.
 CANONICAL_SENSITIVE_FUNCTIONS = {
     "public.visa_activate_rule_pack(uuid,text,text)",
+    "public.visa_replace_activation_set(uuid[],text,text)",
     "public.prepare_visa_evaluate_idempotency_reservation(bytea,integer,text)",
     "public.purge_visa_evaluate_idempotency(integer,text)",
     "public.purge_visa_decisions(integer,text)",
@@ -64,21 +65,11 @@ class FakePreflightConnection:
         }
         self.table_privileges = {
             (role, table, privilege)
-            for role, allowed in operational_preflight._direct_dml_allowlist(RUNTIME_ROLE).items()
+            for role, allowed in operational_preflight._table_privilege_allowlist(
+                RUNTIME_ROLE
+            ).items()
             for table, privilege in allowed
         }
-        self.table_privileges.update(
-            {
-                (RUNTIME_ROLE, "visa_rule_packs", "SELECT"),
-                (RUNTIME_ROLE, "visa_ruleset_activations", "SELECT"),
-                (RUNTIME_ROLE, "visa_decisions", "SELECT"),
-                (RUNTIME_ROLE, "visa_decision_payloads", "SELECT"),
-                (RUNTIME_ROLE, "visa_evaluate_idempotency", "SELECT"),
-                (RUNTIME_ROLE, "visa_decision_retention_policies", "SELECT"),
-                ("visa_pack_writer", "visa_rule_packs", "SELECT"),
-                ("visa_policy_writer", "visa_decision_retention_policies", "SELECT"),
-            }
-        )
         self.memberships: set[tuple[str, str]] = set()
         self.dual_capability_login: str | None = None
 
@@ -89,6 +80,8 @@ class FakePreflightConnection:
         return [self.roles[role] for role in requested_roles if role in self.roles]
 
     async def fetchval(self, query: str, *args: Any) -> Any:
+        if "current_setting('server_version_num')" in query:
+            return 170000
         if "FROM pg_class AS class" in query:
             return self.table_owners.get(str(args[0]))
         if "FROM pg_proc" in query:
@@ -116,6 +109,16 @@ def _by_name(
 def test_preflight_inventory_matches_independently_frozen_schema_authority() -> None:
     assert set(operational_preflight.SENSITIVE_FUNCTIONS) == CANONICAL_SENSITIVE_FUNCTIONS
     assert set(operational_preflight.SENSITIVE_TABLES) == CANONICAL_SENSITIVE_TABLES
+    assert set(operational_preflight.ALL_TABLE_PRIVILEGES) == {
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "TRUNCATE",
+        "REFERENCES",
+        "TRIGGER",
+        "MAINTAIN",
+    }
 
 
 @pytest.mark.asyncio
@@ -170,11 +173,11 @@ async def test_missing_required_function_grant_fails_its_named_check() -> None:
 
 
 @pytest.mark.asyncio
-async def test_every_forbidden_runtime_retention_and_privacy_dml_grant_fails() -> None:
-    allowlist = operational_preflight._direct_dml_allowlist(RUNTIME_ROLE)
-    for role in (RUNTIME_ROLE, "visa_retention_executor", "visa_privacy_operator"):
+async def test_every_forbidden_sensitive_table_grant_fails_its_named_check() -> None:
+    allowlist = operational_preflight._table_privilege_allowlist(RUNTIME_ROLE)
+    for role in allowlist:
         for table in operational_preflight.SENSITIVE_TABLES:
-            for privilege in operational_preflight.DIRECT_DML_PRIVILEGES:
+            for privilege in operational_preflight.ALL_TABLE_PRIVILEGES:
                 if (table, privilege) in allowlist[role]:
                     continue
                 connection = FakePreflightConnection()
@@ -189,6 +192,25 @@ async def test_every_forbidden_runtime_retention_and_privacy_dml_grant_fails() -
 
                 name = f"table:{role}:public.{table}:{privilege}"
                 assert checks[name].ok is False, (role, table, privilege)
+
+
+@pytest.mark.asyncio
+async def test_every_required_sensitive_table_grant_is_enforced() -> None:
+    allowlist = operational_preflight._table_privilege_allowlist(RUNTIME_ROLE)
+    for role, required in allowlist.items():
+        for table, privilege in required:
+            connection = FakePreflightConnection()
+            connection.table_privileges.remove((role, table, privilege))
+
+            checks = _by_name(
+                await operational_preflight.collect_preflight_checks(
+                    connection,  # type: ignore[arg-type]
+                    runtime_role=RUNTIME_ROLE,
+                )
+            )
+
+            name = f"table:{role}:public.{table}:{privilege}"
+            assert checks[name].ok is False, (role, table, privilege)
 
 
 @pytest.mark.asyncio

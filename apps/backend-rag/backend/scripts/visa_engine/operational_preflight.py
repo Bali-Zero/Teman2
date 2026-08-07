@@ -16,6 +16,7 @@ logger = logging.getLogger("visa_engine.operational_preflight")
 PREFLIGHT_DSN_ENV = "VISA_ENGINE_PREFLIGHT_DATABASE_URL"
 
 ACTIVATION_FUNCTION = "public.visa_activate_rule_pack(uuid,text,text)"
+ACTIVATION_SET_FUNCTION = "public.visa_replace_activation_set(uuid[],text,text)"
 PREPARE_IDEMPOTENCY_FUNCTION = (
     "public.prepare_visa_evaluate_idempotency_reservation(bytea,integer,text)"
 )
@@ -33,6 +34,7 @@ PRIVACY_FUNCTIONS = (
 )
 SENSITIVE_FUNCTIONS = (
     ACTIVATION_FUNCTION,
+    ACTIVATION_SET_FUNCTION,
     PREPARE_IDEMPOTENCY_FUNCTION,
     *RETENTION_FUNCTIONS,
     *PRIVACY_FUNCTIONS,
@@ -51,7 +53,17 @@ SENSITIVE_TABLES = (
     "visa_idempotency_retention_batches",
     "visa_decision_dsr_erasure_batches",
 )
-DIRECT_DML_PRIVILEGES = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
+TABLE_PRIVILEGES = (
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "TRUNCATE",
+    "REFERENCES",
+    "TRIGGER",
+)
+PG17_TABLE_PRIVILEGES = ("MAINTAIN",)
+ALL_TABLE_PRIVILEGES = (*TABLE_PRIVILEGES, *PG17_TABLE_PRIVILEGES)
 CAPABILITY_ROLES = (
     "visa_pack_writer",
     "visa_activation_executor",
@@ -72,34 +84,52 @@ def _function_allowlist(runtime_role: str) -> dict[str, frozenset[str]]:
     return {
         runtime_role: frozenset({PREPARE_IDEMPOTENCY_FUNCTION}),
         "visa_pack_writer": frozenset(),
-        "visa_activation_executor": frozenset({ACTIVATION_FUNCTION}),
+        "visa_activation_executor": frozenset(
+            {ACTIVATION_FUNCTION, ACTIVATION_SET_FUNCTION}
+        ),
         "visa_policy_writer": frozenset(),
         "visa_retention_executor": frozenset(RETENTION_FUNCTIONS),
         "visa_privacy_operator": frozenset(PRIVACY_FUNCTIONS),
     }
 
 
-def _direct_dml_allowlist(
+def _table_privilege_allowlist(
     runtime_role: str,
 ) -> dict[str, frozenset[tuple[str, str]]]:
     return {
         runtime_role: frozenset(
             {
+                ("visa_rule_packs", "SELECT"),
+                ("visa_ruleset_activations", "SELECT"),
+                ("visa_decisions", "SELECT"),
+                ("visa_decision_payloads", "SELECT"),
+                ("visa_evaluate_idempotency", "SELECT"),
+                ("visa_decision_retention_policies", "SELECT"),
                 ("visa_decisions", "INSERT"),
                 ("visa_decision_payloads", "INSERT"),
                 ("visa_evaluate_idempotency", "INSERT"),
                 ("visa_evaluate_idempotency", "UPDATE"),
             }
         ),
-        "visa_pack_writer": frozenset({("visa_rule_packs", "INSERT")}),
+        "visa_pack_writer": frozenset(
+            {
+                ("visa_rule_packs", "SELECT"),
+                ("visa_rule_packs", "INSERT"),
+            }
+        ),
         "visa_activation_executor": frozenset(),
         "visa_policy_writer": frozenset(
             {
+                ("visa_decision_retention_policies", "SELECT"),
                 ("visa_decision_retention_policies", "INSERT"),
                 ("visa_decision_retention_policies", "UPDATE"),
             }
         ),
-        "visa_retention_executor": frozenset(),
+        # retention_worker._active_policy reads the approved, non-PII policy
+        # row directly before invoking the bounded SECURITY DEFINER workers.
+        "visa_retention_executor": frozenset(
+            {("visa_decision_retention_policies", "SELECT")}
+        ),
         "visa_privacy_operator": frozenset(),
     }
 
@@ -112,6 +142,12 @@ async def collect_preflight_checks(
     """Collect read-only structural and least-privilege assertions."""
 
     checks: list[PreflightCheck] = []
+    server_version_num = int(
+        await connection.fetchval("SELECT current_setting('server_version_num')::integer")
+    )
+    supported_table_privileges = TABLE_PRIVILEGES
+    if server_version_num >= 170000:
+        supported_table_privileges = ALL_TABLE_PRIVILEGES
     expected_roles = {
         "visa_ledger_owner": False,
         "visa_pack_writer": False,
@@ -203,10 +239,10 @@ async def collect_preflight_checks(
                 )
             )
 
-    direct_dml_allowlist = _direct_dml_allowlist(runtime_role)
-    for role, allowed_privileges in direct_dml_allowlist.items():
+    table_privilege_allowlist = _table_privilege_allowlist(runtime_role)
+    for role, allowed_privileges in table_privilege_allowlist.items():
         for table in SENSITIVE_TABLES:
-            for privilege in DIRECT_DML_PRIVILEGES:
+            for privilege in supported_table_privileges:
                 expected = (table, privilege) in allowed_privileges
                 actual = False
                 if role in roles and table_exists.get(table, False):
@@ -225,34 +261,6 @@ async def collect_preflight_checks(
                         detail=f"{privilege}={actual} expected={expected}",
                     )
                 )
-
-    required_select_privileges = (
-        (runtime_role, "visa_rule_packs"),
-        (runtime_role, "visa_ruleset_activations"),
-        (runtime_role, "visa_decisions"),
-        (runtime_role, "visa_decision_payloads"),
-        (runtime_role, "visa_evaluate_idempotency"),
-        (runtime_role, "visa_decision_retention_policies"),
-        ("visa_pack_writer", "visa_rule_packs"),
-        ("visa_policy_writer", "visa_decision_retention_policies"),
-    )
-    for role, table in required_select_privileges:
-        actual = False
-        if role in roles and table_exists.get(table, False):
-            actual = bool(
-                await connection.fetchval(
-                    "SELECT has_table_privilege($1, $2, 'SELECT')",
-                    role,
-                    f"public.{table}",
-                )
-            )
-        checks.append(
-            PreflightCheck(
-                name=f"table:{role}:public.{table}:SELECT",
-                ok=actual,
-                detail=f"SELECT={actual} expected=True",
-            )
-        )
 
     for capability_role in CAPABILITY_ROLES:
         runtime_is_member = False

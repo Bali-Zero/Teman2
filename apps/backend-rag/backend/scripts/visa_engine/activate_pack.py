@@ -57,6 +57,19 @@ _TOKEN_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
 
 PACK_WRITER_DATABASE_URL_ENV = "VISA_ENGINE_PACK_WRITER_DATABASE_URL"
 ACTIVATION_DATABASE_URL_ENV = "VISA_ENGINE_ACTIVATION_DATABASE_URL"
+MAX_SIGNED_BUNDLE_BYTES = 2 * 1024 * 1024
+ACTIVATION_FUNCTION = "public.visa_activate_rule_pack(uuid,text,text)"
+ACTIVATION_SET_FUNCTION = "public.visa_replace_activation_set(uuid[],text,text)"
+TABLE_PRIVILEGES = (
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "TRUNCATE",
+    "REFERENCES",
+    "TRIGGER",
+)
+PG17_TABLE_PRIVILEGES = ("MAINTAIN",)
 
 
 def _b64url_nopad_decode(value: str) -> bytes:
@@ -75,6 +88,34 @@ def _validate_token(label: str, value: str) -> str:
         raise SystemExit(
             f"FAIL: --{label} must match {_TOKEN_RE.pattern} (opaque token, no free text): {value!r}"
         )
+    return value
+
+
+def _reject_duplicate_object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise ValueError("duplicate JSON object key rejected")
+        parsed[key] = value
+    return parsed
+
+
+def _reject_non_finite_json_number(_value: str) -> None:
+    raise ValueError("non-finite JSON number rejected")
+
+
+def _load_strict_json(path: Path) -> dict[str, Any]:
+    with path.open("rb") as handle:
+        raw_document = handle.read(MAX_SIGNED_BUNDLE_BYTES + 1)
+    if len(raw_document) > MAX_SIGNED_BUNDLE_BYTES:
+        raise ValueError("signed bundle exceeds the 2 MiB ceremony limit")
+    value = json.loads(
+        raw_document.decode("utf-8"),
+        object_pairs_hook=_reject_duplicate_object_pairs,
+        parse_constant=_reject_non_finite_json_number,
+    )
+    if not isinstance(value, dict):
+        raise ValueError("signed bundle must be a JSON object")
     return value
 
 
@@ -146,30 +187,97 @@ async def _assert_production_separation(
     if writer_identity == activation_identity:
         raise RuntimeError("production pack write and activation require distinct database logins")
     async with writer_pool.acquire() as conn:
-        writer_can_activate = await conn.fetchval(
-            "SELECT has_function_privilege(current_user, "
-            "'public.visa_activate_rule_pack(uuid,text,text)', 'EXECUTE')"
+        writer_table_privileges = await _supported_table_privileges(conn)
+        writer_can_select = await conn.fetchval(
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            "public.visa_rule_packs",
+            "SELECT",
         )
         writer_can_insert = await conn.fetchval(
-            "SELECT has_table_privilege(current_user, 'public.visa_rule_packs', 'INSERT')"
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            "public.visa_rule_packs",
+            "INSERT",
+        )
+        writer_forbidden_pack_access = await _has_any_table_privilege(
+            conn,
+            table="public.visa_rule_packs",
+            privileges=tuple(
+                privilege
+                for privilege in writer_table_privileges
+                if privilege not in {"SELECT", "INSERT"}
+            ),
+        )
+        writer_activation_table_access = await _has_any_table_privilege(
+            conn,
+            table="public.visa_ruleset_activations",
+            privileges=writer_table_privileges,
+        )
+        writer_can_activate = await conn.fetchval(
+            "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+            ACTIVATION_FUNCTION,
+        )
+        writer_can_replace = await conn.fetchval(
+            "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+            ACTIVATION_SET_FUNCTION,
         )
     async with activation_pool.acquire() as conn:
+        activation_table_privileges = await _supported_table_privileges(conn)
         activator_can_activate = await conn.fetchval(
-            "SELECT has_function_privilege(current_user, "
-            "'public.visa_activate_rule_pack(uuid,text,text)', 'EXECUTE')"
+            "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+            ACTIVATION_FUNCTION,
         )
-        activator_can_insert = await conn.fetchval(
-            "SELECT has_table_privilege(current_user, 'public.visa_rule_packs', 'INSERT')"
+        activator_table_access = await _has_any_table_privilege(
+            conn,
+            table="public.visa_rule_packs",
+            privileges=activation_table_privileges,
+        ) or await _has_any_table_privilege(
+            conn,
+            table="public.visa_ruleset_activations",
+            privileges=activation_table_privileges,
         )
-    if not writer_can_insert or writer_can_activate:
-        raise RuntimeError("pack writer does not have the required write-only capability boundary")
-    if not activator_can_activate or activator_can_insert:
-        raise RuntimeError("activation identity must be EXECUTE-only and unable to insert packs")
+    if (
+        not writer_can_select
+        or not writer_can_insert
+        or writer_forbidden_pack_access
+        or writer_activation_table_access
+        or writer_can_activate
+        or writer_can_replace
+    ):
+        raise RuntimeError(
+            "pack writer must have only pack SELECT/INSERT and no activation capability"
+        )
+    if not activator_can_activate or activator_table_access:
+        raise RuntimeError("activation identity must be EXECUTE-only with no direct table access")
+
+
+async def _supported_table_privileges(connection: asyncpg.Connection) -> tuple[str, ...]:
+    server_version_num = int(
+        await connection.fetchval("SELECT current_setting('server_version_num')::integer")
+    )
+    if server_version_num >= 170000:
+        return (*TABLE_PRIVILEGES, *PG17_TABLE_PRIVILEGES)
+    return TABLE_PRIVILEGES
+
+
+async def _has_any_table_privilege(
+    connection: asyncpg.Connection,
+    *,
+    table: str,
+    privileges: tuple[str, ...],
+) -> bool:
+    for privilege in privileges:
+        if await connection.fetchval(
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            table,
+            privilege,
+        ):
+            return True
+    return False
 
 
 async def run(args: argparse.Namespace) -> int:
     bundle_path = Path(args.signed_bundle)
-    bundle = json.loads(bundle_path.read_text())
+    bundle = _load_strict_json(bundle_path)
 
     trust_store = StaticTrustStore.from_env()
     verified = verify_rule_pack(

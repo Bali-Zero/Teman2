@@ -53,7 +53,22 @@ DEFAULT_ADMIN_DSN = "postgresql://nuzantara@127.0.0.1:5432/postgres"
 DATABASE_PREFIX = "visa_oracle_smoke_"
 DATABASE_NAME_RE = re.compile(r"^visa_oracle_smoke_[a-z0-9_]{8,80}$")
 LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-MIGRATION_NUMBERS = (250, 251, 252, 253, 254, 255, 256, 257, 262, 263, 264, 265, 266)
+MIGRATION_NUMBERS = (
+    250,
+    251,
+    252,
+    253,
+    254,
+    255,
+    256,
+    257,
+    262,
+    263,
+    264,
+    265,
+    266,
+    267,
+)
 TEST_RULE_PACK_ID = "8a57d996-c7f2-5abc-9c31-4128a29ed848"
 
 # Public verification material for the checked-in TEST fixture.  This is an

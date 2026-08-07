@@ -42,6 +42,42 @@ def _approved_active_policy() -> retention_worker.ActiveRetentionPolicy:
     )
 
 
+class _RetentionBoundaryConnection:
+    def __init__(self, *, can_read_policy: bool) -> None:
+        self.can_read_policy = can_read_policy
+
+    async def fetchrow(self, query: str) -> dict[str, object]:
+        assert "current_user::text" in query
+        return {"current_user": "visa_retention_login", "is_superuser": False}
+
+    async def fetchval(self, query: str, *args: object) -> bool:
+        if "has_table_privilege" in query:
+            return self.can_read_policy
+        if "has_function_privilege" in query:
+            assert args
+            return True
+        raise AssertionError(f"unexpected boundary query: {query}")
+
+
+class _RetentionBoundaryAcquire:
+    def __init__(self, connection: _RetentionBoundaryConnection) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> _RetentionBoundaryConnection:
+        return self.connection
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+class _RetentionBoundaryPool:
+    def __init__(self, *, can_read_policy: bool) -> None:
+        self.connection = _RetentionBoundaryConnection(can_read_policy=can_read_policy)
+
+    def acquire(self) -> _RetentionBoundaryAcquire:
+        return _RetentionBoundaryAcquire(self.connection)
+
+
 def test_privacy_policy_loader_rejects_safety_drift(tmp_path: Path) -> None:
     raw = json.loads(default_policy_path().read_text(encoding="utf-8"))
     raw["telemetry"]["pii_free"] = False
@@ -50,6 +86,20 @@ def test_privacy_policy_loader_rejects_safety_drift(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="PII-free"):
         load_approved_privacy_policy(drifted)
+
+
+@pytest.mark.asyncio
+async def test_retention_operator_boundary_requires_policy_read_capability() -> None:
+    await retention_worker._assert_operator_boundary(
+        _RetentionBoundaryPool(can_read_policy=True),  # type: ignore[arg-type]
+        apply=False,
+    )
+
+    with pytest.raises(RuntimeError, match="lacks SELECT"):
+        await retention_worker._assert_operator_boundary(
+            _RetentionBoundaryPool(can_read_policy=False),  # type: ignore[arg-type]
+            apply=False,
+        )
 
 
 def test_new_policy_registration_rejects_backdating_but_allows_change_window() -> None:

@@ -191,6 +191,9 @@ def test_launchagent_is_one_shot_dry_run_and_uses_existing_cron_wrapper() -> Non
     assert manifest["KeepAlive"] is False
     assert manifest["RunAtLoad"] is False
     assert manifest["StartInterval"] == 900
+    # Backlog/lag exits with 2 and must page immediately. Retrying the same
+    # cycle could clear the backlog and hide the required alert.
+    assert manifest["EnvironmentVariables"]["CRON_MAX_RETRIES"] == "0"
     assert manifest["EnvironmentVariables"]["VISA_ORACLE_RETENTION_APPLY"] == "false"
     arguments = manifest["ProgramArguments"]
     assert "/Users/nuzantara/nuzantara/scripts/cron-wrapper.sh" in arguments

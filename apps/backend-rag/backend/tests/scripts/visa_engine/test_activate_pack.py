@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -90,6 +91,136 @@ def test_b64url_nopad_decode_roundtrip() -> None:
 
     encoded = base64.urlsafe_b64encode(raw).decode().rstrip("=")
     assert _b64url_nopad_decode(encoded) == raw
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"protected": {}, "protected": {}}',
+        '{"payload": {"sequence": 2, "sequence": 3}}',
+        '{"payload": {"sequence": NaN}}',
+    ],
+)
+def test_activate_pack_strict_json_rejects_ambiguous_documents(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text(content, encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate JSON object key|non-finite JSON number"):
+        activate_pack._load_strict_json(bundle)
+
+
+def test_activate_pack_strict_json_rejects_oversized_bundle(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle.json"
+    bundle.write_bytes(b" " * (activate_pack.MAX_SIGNED_BUNDLE_BYTES + 1))
+    with pytest.raises(ValueError, match="2 MiB"):
+        activate_pack._load_strict_json(bundle)
+
+
+class _CapabilityConnection:
+    def __init__(
+        self,
+        *,
+        identity: str,
+        table_privileges: set[tuple[str, str]],
+        function_privileges: set[str],
+        superuser: bool = False,
+        server_version_num: int = 150000,
+    ) -> None:
+        self.identity = identity
+        self.table_privileges = table_privileges
+        self.function_privileges = function_privileges
+        self.superuser = superuser
+        self.server_version_num = server_version_num
+
+    async def fetchrow(self, query: str) -> dict[str, Any]:
+        assert "current_user::text" in query
+        return {"current_user": self.identity, "is_superuser": self.superuser}
+
+    async def fetchval(self, query: str, *args: object) -> object:
+        if "server_version_num" in query:
+            return self.server_version_num
+        if "has_table_privilege" in query:
+            return (str(args[0]), str(args[1])) in self.table_privileges
+        if "has_function_privilege" in query:
+            return str(args[0]) in self.function_privileges
+        raise AssertionError(f"unexpected capability query: {query}")
+
+
+class _CapabilityAcquire:
+    def __init__(self, connection: _CapabilityConnection) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> _CapabilityConnection:
+        return self.connection
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+class _CapabilityPool:
+    def __init__(self, connection: _CapabilityConnection) -> None:
+        self.connection = connection
+
+    def acquire(self) -> _CapabilityAcquire:
+        return _CapabilityAcquire(self.connection)
+
+
+def _writer_connection(
+    *,
+    activation_capabilities: set[str] | None = None,
+) -> _CapabilityConnection:
+    return _CapabilityConnection(
+        identity="pack_writer_login",
+        table_privileges={
+            ("public.visa_rule_packs", "SELECT"),
+            ("public.visa_rule_packs", "INSERT"),
+        },
+        function_privileges=activation_capabilities or set(),
+    )
+
+
+def _activation_connection(
+    *,
+    table_privileges: set[tuple[str, str]] | None = None,
+) -> _CapabilityConnection:
+    return _CapabilityConnection(
+        identity="activation_login",
+        table_privileges=table_privileges or set(),
+        function_privileges={activate_pack.ACTIVATION_FUNCTION},
+    )
+
+
+@pytest.mark.asyncio
+async def test_production_separation_accepts_exact_capabilities() -> None:
+    await _assert_production_separation(
+        _CapabilityPool(_writer_connection()),  # type: ignore[arg-type]
+        _CapabilityPool(_activation_connection()),  # type: ignore[arg-type]
+    )
+
+
+@pytest.mark.asyncio
+async def test_production_separation_rejects_replace_capability_or_direct_ledger_access() -> None:
+    with pytest.raises(RuntimeError, match="pack writer"):
+        await _assert_production_separation(
+            _CapabilityPool(  # type: ignore[arg-type]
+                _writer_connection(
+                    activation_capabilities={activate_pack.ACTIVATION_SET_FUNCTION}
+                )
+            ),
+            _CapabilityPool(_activation_connection()),  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(RuntimeError, match="activation identity"):
+        await _assert_production_separation(
+            _CapabilityPool(_writer_connection()),  # type: ignore[arg-type]
+            _CapabilityPool(  # type: ignore[arg-type]
+                _activation_connection(
+                    table_privileges={("public.visa_ruleset_activations", "INSERT")}
+                )
+            ),
+        )
 
 
 @pytest.mark.asyncio

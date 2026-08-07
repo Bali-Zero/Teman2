@@ -69,6 +69,9 @@ BEGIN
     IF v_requested_count IS NULL OR v_requested_count = 0 THEN
         RAISE EXCEPTION 'visa_replace_activation_set: replacement pack set must be non-empty';
     END IF;
+    IF v_requested_count > 64 THEN
+        RAISE EXCEPTION 'visa_replace_activation_set: replacement pack set exceeds 64 segments';
+    END IF;
     IF array_position(p_rule_pack_ids, NULL) IS NOT NULL THEN
         RAISE EXCEPTION 'visa_replace_activation_set: replacement pack set cannot contain null';
     END IF;
