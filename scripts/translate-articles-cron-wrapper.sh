@@ -24,6 +24,33 @@ mkdir -p "$(dirname "$LOG")"
 
 log() { print -r -- "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >>"$LOG"; }
 
+# G2/G5 organ genes: publish every exit and allow an operator-visible stop.
+ORGAN_ID="pro.translate_hourly"
+HEARTBEAT_LIB="${0:A:h}/lib/heartbeat.sh"
+HB_STATUS=""
+HB_NOTE=""
+organism_heartbeat() {
+  [ -f "$HEARTBEAT_LIB" ] && bash "$HEARTBEAT_LIB" "$ORGAN_ID" "$1" "$2" || true
+}
+heartbeat_on_exit() {
+  local rc=$?
+  local hb_status="${HB_STATUS:-ok}"
+  local hb_note="${HB_NOTE:-run completed}"
+  if [ "$rc" -ne 0 ]; then
+    hb_status="error"
+    hb_note="exit=$rc"
+  fi
+  organism_heartbeat "$hb_status" "$hb_note"
+}
+trap heartbeat_on_exit EXIT
+
+if [ "${TRANSLATE_HOURLY_ENABLED:-true}" = "false" ]; then
+  HB_STATUS="disabled"
+  HB_NOTE="kill switch"
+  log "TRANSLATE_HOURLY_ENABLED=false — skipping run"
+  exit 0
+fi
+
 cd "$REPO_ROOT" || {
   log "FATAL: cannot cd to $REPO_ROOT"
   exit 1

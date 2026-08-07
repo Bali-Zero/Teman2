@@ -16,7 +16,6 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/zsh</string>
-		<string>-lc</string>
 		<string>/Users/nuzantara/nuzantara/scripts/translate-articles-cron-wrapper.sh</string>
 	</array>
 	<key>StandardErrorPath</key>
