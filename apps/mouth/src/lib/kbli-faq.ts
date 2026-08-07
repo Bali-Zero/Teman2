@@ -117,8 +117,30 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
     ? " Note: the source of these rows has not been verified against a KBLI-2025-native OSS scope; per-code crosswalk adjudication is pending — verify before relying on them (see Sources & Verification on this page)."
     : "";
 
-  const licenseAnswer =
-    code.licensing.length > 0
+  // The gold editorial prose and the OSS record's risk tier disagree on 33
+  // codes — either sharing nothing (`zero_overlap`), or a universal "X at
+  // every scale" claim a multi-tier record falsifies even when X is also
+  // among the record's tiers (`universal_claim`). The two kinds are FALSE IN
+  // DIFFERENT WAYS (gold_risk_dispute_relation.py) — a qualifier that always
+  // says "describes a different risk tier" would itself be a lie on the 3
+  // universal_claim codes, whose editorial tier IS in the record; only its
+  // claimed universality is false. Round-3 finding. Never enumerate the
+  // editorial side's tier here — see the RENDER CONTRACT in
+  // kbli-risk-dispute.ts.
+  const riskDisputeQualifier = code.riskDispute
+    ? code.riskDispute.kind === "universal_claim"
+      ? ` The editorial guide describes one tier as applying at every scale, while the record's licensing rows carry ${code.riskDispute.recordTiers.join(" / ")}; the two sources have not been reconciled — verify the current tier on oss.go.id before filing.`
+      : " Note: the editorial guide on this page describes a different risk tier for this activity; the two sources have not been reconciled — verify the current tier on oss.go.id."
+    : "";
+
+  // A code WITH a riskDispute must not open on `licensing[0].riskCategory`
+  // stated as flat fact — that IS the very fact under dispute (round-3 FIX
+  // 5). `licensing[0]` is also still just one scope/scale row among several
+  // when a record is multi-tier; the reader is directed at the structured
+  // record tiers instead, then the kind-specific qualifier above.
+  const licenseAnswer = code.riskDispute
+    ? `The licensing rows on this record list ${code.riskDispute.recordTiers.join(" / ")} across its scopes and business scales.${licenseQualifier}${riskDisputeQualifier}`
+    : code.licensing.length > 0
       ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}${licenseQualifier}`
       : // No OSS-RBA scale rows. Discriminated by the structured provenance
         // state (TRACK-P), never by prose:

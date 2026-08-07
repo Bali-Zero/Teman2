@@ -18,6 +18,8 @@ on:
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/kbli-filiera/coverage-baseline.json"
       - "apps/mouth/data/perpres-locators.json"
+      - "apps/mouth/data/kbli-gold-all.json"
+      - "apps/mouth/data/kbli-risk-disputes.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
   push:
     branches:
@@ -27,6 +29,8 @@ on:
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/kbli-filiera/coverage-baseline.json"
       - "apps/mouth/data/perpres-locators.json"
+      - "apps/mouth/data/kbli-gold-all.json"
+      - "apps/mouth/data/kbli-risk-disputes.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
 
 permissions:
