@@ -309,7 +309,10 @@ jobs:
         env:
           HOME: ${{ runner.temp }}/runtime-truth-home
           TMPDIR: ${{ runner.temp }}/runtime-truth-tmp
-        run: python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
+        run: |
+          mkdir -p "$HOME" "$TMPDIR"
+          python -m pip install --quiet pytest PyYAML==6.0.3
+          python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
 
       - name: Runtime Truth CI gauntlet (four incident contracts)
         if: steps.paths.outputs.relevant == 'true'

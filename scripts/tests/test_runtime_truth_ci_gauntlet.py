@@ -57,7 +57,11 @@ EXPECTED_META_STEP: Final[dict[str, object]] = {
         "HOME": "${{ runner.temp }}/runtime-truth-home",
         "TMPDIR": "${{ runner.temp }}/runtime-truth-tmp",
     },
-    "run": f"python -m pytest {META_TEST} -q",
+    "run": (
+        'mkdir -p "$HOME" "$TMPDIR"\n'
+        "python -m pip install --quiet pytest PyYAML==6.0.3\n"
+        f"python -m pytest {META_TEST} -q\n"
+    ),
 }
 EXPECTED_RUNNER_STEP: Final[dict[str, object]] = {
     "name": RUNNER_STEP_NAME,
@@ -416,6 +420,77 @@ def _detector_result(script: str, tmp_path: pathlib.Path) -> str:
     return values[0]
 
 
+def _run_exact_meta_step(
+    *,
+    step: Mapping[str, object],
+    relevant: str,
+    tmp_path: pathlib.Path,
+) -> list[str]:
+    """Execute the parsed workflow shell from an absent-dir state.
+
+    The setup-python action guarantees the interpreter, so this probe provides a
+    tiny interpreter shim.  It refuses to launch the meta suite until the exact
+    dependency-install command ran and until the workflow shell itself created
+    HOME/TMPDIR.  Nothing in the test pre-creates those directories.
+    """
+    assert relevant in {"true", "false"}
+    assert "if" not in step
+    run = step.get("run")
+    assert isinstance(run, str)
+
+    runner_temp = tmp_path / f"runner-{relevant}"
+    home = runner_temp / "runtime-truth-home"
+    temp = runner_temp / "runtime-truth-tmp"
+    fake_bin = tmp_path / f"bin-{relevant}"
+    fake_bin.mkdir()
+    command_log = tmp_path / f"python-{relevant}.log"
+    dependency_marker = tmp_path / f"deps-{relevant}.ready"
+    python = fake_bin / "python"
+    python.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        ": \"${RUNTIME_TRUTH_COMMAND_LOG:?}\"\n"
+        ": \"${RUNTIME_TRUTH_DEP_MARKER:?}\"\n"
+        "test -d \"$HOME\"\n"
+        "test -d \"$TMPDIR\"\n"
+        "printf '%s\\n' \"$*\" >> \"$RUNTIME_TRUTH_COMMAND_LOG\"\n"
+        "if [ \"$*\" = '-m pip install --quiet pytest PyYAML==6.0.3' ]; then\n"
+        "  : > \"$RUNTIME_TRUTH_DEP_MARKER\"\n"
+        "elif [ \"$*\" = '-m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q' ]; then\n"
+        "  test -f \"$RUNTIME_TRUTH_DEP_MARKER\"\n"
+        "else\n"
+        "  exit 97\n"
+        "fi\n",
+        encoding="utf-8",
+    )
+    python.chmod(0o755)
+    assert not home.exists()
+    assert not temp.exists()
+
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "HOME": str(home),
+            "TMPDIR": str(temp),
+            "PATH": os.pathsep.join((str(fake_bin), environment.get("PATH", ""))),
+            "RUNTIME_TRUTH_COMMAND_LOG": str(command_log),
+            "RUNTIME_TRUTH_DEP_MARKER": str(dependency_marker),
+            "RUNTIME_TRUTH_RELEVANT": relevant,
+        }
+    )
+    subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", run],
+        cwd=REPO_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert home.is_dir()
+    assert temp.is_dir()
+    return command_log.read_text(encoding="utf-8").splitlines()
+
+
 def test_runner_manifest_is_exact_and_contains_four_incident_corpora() -> None:
     assert gauntlet.PYTEST_TARGETS == EXPECTED_PYTEST_TARGETS
     assert gauntlet.SHELL_TARGETS == EXPECTED_SHELL_TARGETS
@@ -432,6 +507,49 @@ def test_workflow_steps_match_exact_structural_contract_and_order() -> None:
     validate_exact_step(meta_step, EXPECTED_META_STEP)
     validate_exact_step(runner_step, EXPECTED_RUNNER_STEP)
     assert meta_index < runner_index
+
+
+@pytest.mark.parametrize("relevant", ("true", "false"))
+def test_exact_meta_workflow_shell_bootstraps_absent_environment_and_dependencies(
+    tmp_path: pathlib.Path,
+    relevant: str,
+) -> None:
+    _, meta_step = named_step(_workflow_text(), META_STEP_NAME)
+    commands = _run_exact_meta_step(
+        step=meta_step,
+        relevant=relevant,
+        tmp_path=tmp_path,
+    )
+    assert commands == [
+        "-m pip install --quiet pytest PyYAML==6.0.3",
+        f"-m pytest {META_TEST} -q",
+    ]
+
+
+@pytest.mark.parametrize(
+    "removed_line",
+    (
+        'mkdir -p "$HOME" "$TMPDIR"\n',
+        "python -m pip install --quiet pytest PyYAML==6.0.3\n",
+    ),
+)
+def test_guilt_meta_bootstrap_or_dependency_removal_fails_closed(
+    tmp_path: pathlib.Path,
+    removed_line: str,
+) -> None:
+    _, meta_step = named_step(_workflow_text(), META_STEP_NAME)
+    run = meta_step.get("run")
+    assert isinstance(run, str)
+    mutated_run = run.replace(removed_line, "", 1)
+    assert mutated_run != run
+    mutated_step = dict(meta_step)
+    mutated_step["run"] = mutated_run
+    with pytest.raises(subprocess.CalledProcessError):
+        _run_exact_meta_step(
+            step=mutated_step,
+            relevant="false",
+            tmp_path=tmp_path,
+        )
 
 
 def test_unconditional_meta_dynamically_proves_detector_relevant_path(
@@ -600,13 +718,19 @@ def test_runner_rejects_real_xpass(tmp_path: pathlib.Path) -> None:
         gauntlet.run_pytest_contract(repo_root=tmp_path, targets=(target.name,))
 
 
-def test_shell_contract_rejects_exit_zero_with_zero_structured_cases(
+def test_shell_contract_rejects_real_wrapper_exit_zero_with_zero_observations(
     tmp_path: pathlib.Path,
 ) -> None:
     target = _write_shell_mutant_repo(
         tmp_path,
-        "#!/usr/bin/env bash\necho '0 passed, 0 failed'\nexit 0\n",
+        (REPO_ROOT / EXPECTED_SHELL_TARGETS[0]).read_text(encoding="utf-8"),
     )
+    wrapper = tmp_path / gauntlet.WR2_WRAPPER_RELATIVE
+    wrapper.write_text(
+        "#!/usr/bin/env bash\necho '0 passed, 0 failed'\nexit 0\n",
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o755)
     with pytest.raises(gauntlet.GauntletContractError):
         gauntlet.run_shell_contract(
             repo_root=tmp_path,
@@ -636,9 +760,10 @@ def test_parent_observer_binds_exact_cases_to_real_wrapper_outcomes() -> None:
     assert evidence.failed == evidence.skipped == 0
 
 
-def test_shell_contract_rejects_four_hardcoded_pass_receipts(
+def test_shell_child_forged_receipts_are_outside_parent_evidence_path(
     tmp_path: pathlib.Path,
 ) -> None:
+    marker = tmp_path / "forged-child-ran"
     receipts = "".join(
         f"printf 'runtime-truth-shell-v1\\t{case_id}\\tpassed\\n' >&\"$fd\"\n"
         for case_id in EXPECTED_SHELL_CASES[EXPECTED_SHELL_TARGETS[0]]
@@ -646,35 +771,41 @@ def test_shell_contract_rejects_four_hardcoded_pass_receipts(
     target = _write_shell_mutant_repo(
         tmp_path,
         "#!/usr/bin/env bash\n"
+        f"touch {marker}\n"
         "fd=\"${RUNTIME_TRUTH_EVIDENCE_FD:?}\"\n"
         f"{receipts}"
         "exit 0\n",
     )
-    with pytest.raises(gauntlet.GauntletContractError):
-        gauntlet.run_shell_contract(
-            repo_root=tmp_path,
-            relative_path=target.relative_to(tmp_path).as_posix(),
-            expected_cases=EXPECTED_SHELL_CASES[EXPECTED_SHELL_TARGETS[0]],
-        )
+    evidence = gauntlet.run_shell_contract(
+        repo_root=tmp_path,
+        relative_path=target.relative_to(tmp_path).as_posix(),
+        expected_cases=EXPECTED_SHELL_CASES[EXPECTED_SHELL_TARGETS[0]],
+    )
+    assert evidence.collected == evidence.executed == evidence.passed == 4
+    assert evidence.failed == evidence.skipped == 0
+    assert not marker.exists()
 
 
-def test_shell_contract_rejects_four_hardcoded_stdout_passes(
+def test_shell_child_noop_stdout_is_outside_parent_evidence_path(
     tmp_path: pathlib.Path,
 ) -> None:
+    marker = tmp_path / "noop-child-ran"
     receipts = "".join(
         f"printf 'runtime-truth-shell-v1\\t{case_id}\\tpassed\\n'\n"
         for case_id in EXPECTED_SHELL_CASES[EXPECTED_SHELL_TARGETS[0]]
     )
     target = _write_shell_mutant_repo(
         tmp_path,
-        f"#!/usr/bin/env bash\n{receipts}exit 0\n",
+        f"#!/usr/bin/env bash\ntouch {marker}\n{receipts}exit 0\n",
     )
-    with pytest.raises(gauntlet.GauntletContractError, match="sidecar"):
-        gauntlet.run_shell_contract(
-            repo_root=tmp_path,
-            relative_path=target.relative_to(tmp_path).as_posix(),
-            expected_cases=EXPECTED_SHELL_CASES[EXPECTED_SHELL_TARGETS[0]],
-        )
+    evidence = gauntlet.run_shell_contract(
+        repo_root=tmp_path,
+        relative_path=target.relative_to(tmp_path).as_posix(),
+        expected_cases=EXPECTED_SHELL_CASES[EXPECTED_SHELL_TARGETS[0]],
+    )
+    assert evidence.collected == evidence.executed == evidence.passed == 4
+    assert evidence.failed == evidence.skipped == 0
+    assert not marker.exists()
 
 
 def test_every_corpus_subject_harness_and_workflow_are_exact_triggers() -> None:

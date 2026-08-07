@@ -376,23 +376,21 @@ def _prepare_wr2_world(
         encoding="utf-8",
     )
     sidecar = world / f"organism/{WR2_GUARD_ORGAN_ID}.json"
-    child_env = os.environ.copy()
-    child_env.pop("RUNTIME_TRUTH_EVIDENCE_FD", None)
-    child_env.update(
+    wrapper_env = os.environ.copy()
+    wrapper_env.pop("RUNTIME_TRUTH_EVIDENCE_FD", None)
+    wrapper_env.update(
         {
             "NUZANTARA_REPO_ROOT": str(world / "repo"),
             "NUZANTARA_SECRETS": str(secrets),
             "ORGANISM_LAST_SEEN_DIR": str(world / "organism"),
             "WR2_LOG_DIR": str(world / "logs"),
             "WR2_CRON_ALERT": "false",
-            "PATH": os.pathsep.join((str(world / "bin"), child_env.get("PATH", ""))),
+            "PATH": os.pathsep.join((str(world / "bin"), wrapper_env.get("PATH", ""))),
             "HOME": str(world),
             "TMPDIR": str(world / "tmp"),
-            "RUNTIME_TRUTH_WRAPPER": str(wrapper),
-            "RUNTIME_TRUTH_MODULE": WR2_TEST_MODULE,
         }
     )
-    return wrapper, sidecar, child_env
+    return wrapper, sidecar, wrapper_env
 
 
 def _run_process(
@@ -419,7 +417,6 @@ def _run_process(
 def _observe_wr2_case(
     *,
     repo_root: pathlib.Path,
-    target: pathlib.Path,
     case_id: str,
 ) -> ShellCaseEvidence:
     configurations: dict[str, tuple[int, bool, int, str]] = {
@@ -440,7 +437,7 @@ def _observe_wr2_case(
         dir=temp_parent,
     ) as raw_world:
         world = pathlib.Path(raw_world)
-        wrapper, sidecar, child_env = _prepare_wr2_world(
+        wrapper, sidecar, wrapper_env = _prepare_wr2_world(
             repo_root=repo_root,
             world=world,
             nc_exit=nc_exit,
@@ -454,7 +451,7 @@ def _observe_wr2_case(
             precondition = _run_process(
                 ("bash", str(wrapper), WR2_TEST_MODULE),
                 cwd=repo_root,
-                env=child_env,
+                env=wrapper_env,
             )
             precondition_exit = precondition.returncode
             expected_precondition_exit = 74
@@ -463,9 +460,9 @@ def _observe_wr2_case(
             _set_nc_exit(world, 0)
 
         completed = _run_process(
-            ("bash", str(target), case_id),
+            ("bash", str(wrapper), WR2_TEST_MODULE),
             cwd=repo_root,
-            env=child_env,
+            env=wrapper_env,
         )
         return ShellCaseEvidence(
             case_id=case_id,
@@ -486,9 +483,15 @@ def run_shell_contract(
     relative_path: str,
     expected_cases: Sequence[str],
 ) -> ShellEvidence:
-    """Run four isolated cases; the parent derives evidence from real side effects."""
-    target = repo_root / relative_path
-    if not target.is_file():
+    """Observe four direct real-wrapper invocations in parent-owned fake worlds.
+
+    ``relative_path`` remains the incident-corpus label and developer entrypoint,
+    but its process is never invoked and cannot provide evidence.  The parent owns
+    case configuration, directly launches the copied production wrapper, and reads
+    only that wrapper's exit code and heartbeat sidecar.
+    """
+    contract_path = repo_root / relative_path
+    if not contract_path.is_file():
         raise GauntletContractError(f"mandatory shell target missing: {relative_path}")
     if not expected_cases:
         raise GauntletContractError("shell case manifest is empty")
@@ -498,7 +501,6 @@ def run_shell_contract(
     cases = tuple(
         _observe_wr2_case(
             repo_root=repo_root,
-            target=target,
             case_id=case_id,
         )
         for case_id in expected_cases

@@ -1,31 +1,20 @@
 #!/usr/bin/env bash
-# Runtime Truth case transport for scripts/wr2-cron-wrapper.sh.
+# Developer entrypoint for the Runtime Truth WR2 wrapper contract.
 #
-# This child deliberately emits NO pass/fail evidence. The Python gauntlet is
-# the independent observer: it builds one fake world per exact case, invokes
-# this transport once, then derives the verdict from the real wrapper's exit
-# code and heartbeat sidecar. A child that prints hardcoded PASS receipts or
-# exits zero without invoking the wrapper therefore cannot certify itself.
-#
-# Usage is internal to scripts/runtime_truth_ci_gauntlet.py:
-#   bash scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh <exact-case-id>
+# CI does not execute this shell process and accepts no evidence from it. The
+# Python parent owns all four fake worlds, invokes the real production wrapper
+# directly, and observes only wrapper exit codes plus heartbeat sidecars. This
+# file is intentionally only a convenient local delegator to that parent suite.
 
 set -euo pipefail
 
-case_id="${1:-}"
-case "$case_id" in
-    pg_proxy_unreachable|\
-    database_url_local_missing|\
-    pg_proxy_reachable|\
-    heartbeat_self_heal)
-        ;;
-    *)
-        printf 'unknown Runtime Truth shell case: %s\n' "$case_id" >&2
-        exit 64
-        ;;
-esac
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PYTHON_BIN="${RUNTIME_TRUTH_PYTHON:-$REPO_ROOT/apps/backend-rag/.venv/bin/python}"
 
-: "${RUNTIME_TRUTH_WRAPPER:?RUNTIME_TRUTH_WRAPPER is required}"
-: "${RUNTIME_TRUTH_MODULE:?RUNTIME_TRUTH_MODULE is required}"
+if [[ ! -x "$PYTHON_BIN" ]]; then
+    printf 'Runtime Truth Python missing or not executable: %s\n' "$PYTHON_BIN" >&2
+    exit 69
+fi
 
-exec bash "$RUNTIME_TRUTH_WRAPPER" "$RUNTIME_TRUTH_MODULE"
+exec "$PYTHON_BIN" "$REPO_ROOT/scripts/runtime_truth_ci_gauntlet.py" "$@"
