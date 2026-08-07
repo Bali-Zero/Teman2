@@ -55,11 +55,25 @@ FOUR REFUSALS BEFORE IT WRITES
 WHAT IT DOES NOT WRITE
 ----------------------
 Canonical only. `apps/mouth/data/kbli-gold-all.json` takes precedence on the
-website for the fields it carries, and it is already clean — measured, zero
-openness assertions across all 428 gold codes. Gold carries no `editorial.*`
-keys at all, so the headline, standfirst, body and pull quote come from
-canonical on every code, and Qdrant is built from canonical on every field.
-Writing gold here would overwrite correct, independently authored text.
+website for the fields it carries. Gold carries no `editorial.*` keys at all,
+so the headline, standfirst, body and pull quote come from canonical on every
+code, and Qdrant is built from canonical on every field. Writing gold from
+THIS compiler would overwrite independently authored text; gold's own cure is
+`cure_gold_pma_line.py`.
+
+RETRACTED, 2026-08-07 — this docstring used to add that gold "is already clean
+— measured, zero openness assertions across all 428 gold codes". The
+measurement was real and the conclusion was not. It was taken with
+`editorial_record_conformance.classify`, whose predicate needs an openness
+claim AND a national-scope word in the SAME sentence; gold's `**PMA:** Fully
+open — 100% foreign ownership allowed.` has the claim and no scope word, so the
+detector acquits it every time. A result true OF THAT PREDICATE was written
+down as a property OF THE FILE. Measured on 2026-08-07: gold's PMA sentence
+contradicted the canonical cap on 20 comparable codes, sixteen of them
+promising MORE foreign ownership than the law allows — and they were LIVE,
+including `51101` (scheduled airlines, cap 49) and `79122` (Umrah/Hajj, cap 0),
+on the very pages this lane had declared cured. The sentence stayed because it
+told each later session there was nothing here to look at.
 
 USAGE (dry-run is the default; nothing is written without --apply):
 
