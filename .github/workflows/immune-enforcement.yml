@@ -302,7 +302,10 @@ jobs:
           exit $fail
 
       - name: Runtime Truth meta-contract (external to runner)
-        if: steps.paths.outputs.relevant == 'true'
+        # Deliberately unconditional inside the required job. This is the
+        # fail-closed observer for the path detector and the conditional heavy
+        # runner below; gating it on that detector would let a false-negative
+        # detector self-disarm both layers while `antidotes` stayed green.
         env:
           HOME: ${{ runner.temp }}/runtime-truth-home
           TMPDIR: ${{ runner.temp }}/runtime-truth-tmp

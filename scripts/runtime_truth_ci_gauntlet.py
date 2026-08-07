@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import collections
 import dataclasses
+import json
 import logging
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Sequence
 from typing import Final
 
@@ -39,9 +42,11 @@ SHELL_CASES: Final[dict[str, tuple[str, ...]]] = {
         "heartbeat_self_heal",
     ),
 }
-SHELL_EVIDENCE_PROTOCOL: Final = "runtime-truth-shell-v1"
-SHELL_EVIDENCE_FD_ENV: Final = "RUNTIME_TRUTH_EVIDENCE_FD"
 PYTEST_OPTIONS: Final[tuple[str, ...]] = ("-q", "--strict-markers")
+WR2_WRAPPER_RELATIVE: Final = "scripts/wr2-cron-wrapper.sh"
+WR2_HEARTBEAT_RELATIVE: Final = "scripts/lib/heartbeat.sh"
+WR2_TEST_MODULE: Final = "some.module"
+WR2_GUARD_ORGAN_ID: Final = f"pro.wr2_wrapper_guard.{WR2_TEST_MODULE}"
 
 LOGGER = logging.getLogger("runtime-truth-ci-gauntlet")
 
@@ -123,15 +128,57 @@ class PytestEvidence:
 
 
 @dataclasses.dataclass(frozen=True)
+class ShellCaseEvidence:
+    """Outcome observed by the parent from wrapper exit state and sidecar state."""
+
+    case_id: str
+    exit_code: int
+    expected_exit_code: int
+    sidecar_status: str
+    expected_sidecar_status: str
+    precondition_exit_code: int | None = None
+    expected_precondition_exit_code: int | None = None
+    precondition_sidecar_status: str | None = None
+    expected_precondition_sidecar_status: str | None = None
+
+    @property
+    def passed(self) -> bool:
+        return (
+            self.exit_code == self.expected_exit_code
+            and self.sidecar_status == self.expected_sidecar_status
+            and self.precondition_exit_code == self.expected_precondition_exit_code
+            and self.precondition_sidecar_status
+            == self.expected_precondition_sidecar_status
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class ShellEvidence:
-    """Case-level evidence read from a dedicated file descriptor."""
+    """Independent parent observations for every expected shell case."""
 
     target: str
-    collected: int
-    executed: int
-    passed: int
-    failed: int
-    skipped: int
+    expected_cases: tuple[str, ...]
+    cases: tuple[ShellCaseEvidence, ...]
+
+    @property
+    def collected(self) -> int:
+        return len(self.expected_cases)
+
+    @property
+    def executed(self) -> int:
+        return len(self.cases)
+
+    @property
+    def passed(self) -> int:
+        return sum(case.passed for case in self.cases)
+
+    @property
+    def failed(self) -> int:
+        return sum(not case.passed for case in self.cases)
+
+    @property
+    def skipped(self) -> int:
+        return self.collected - self.executed
 
 
 def _validate_targets(repo_root: pathlib.Path, targets: Sequence[str]) -> None:
@@ -262,53 +309,219 @@ def _prepare_hermetic_directories() -> None:
         pathlib.Path(os.environ[name]).mkdir(parents=True, exist_ok=True)
 
 
-def _parse_shell_evidence(
+def _write_executable(path: pathlib.Path, content: str) -> None:
+    path.write_text(content, encoding="utf-8")
+    path.chmod(0o755)
+
+
+def _sidecar_status(path: pathlib.Path) -> str:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "<missing-or-invalid>"
+    status = payload.get("status") if isinstance(payload, dict) else None
+    return status if isinstance(status, str) else "<missing-or-invalid>"
+
+
+def _set_nc_exit(world: pathlib.Path, exit_code: int) -> None:
+    _write_executable(
+        world / "bin/nc",
+        f"#!/usr/bin/env sh\nexit {exit_code}\n",
+    )
+
+
+def _prepare_wr2_world(
     *,
+    repo_root: pathlib.Path,
+    world: pathlib.Path,
+    nc_exit: int,
+    database_url_present: bool,
+) -> tuple[pathlib.Path, pathlib.Path, dict[str, str]]:
+    """Create a hermetic wrapper world owned by the Python observer."""
+    wrapper_source = repo_root / WR2_WRAPPER_RELATIVE
+    heartbeat_source = repo_root / WR2_HEARTBEAT_RELATIVE
+    missing = [
+        path.relative_to(repo_root).as_posix()
+        for path in (wrapper_source, heartbeat_source)
+        if not path.is_file()
+    ]
+    if missing:
+        raise GauntletContractError(f"mandatory WR2 subjects missing: {missing}")
+
+    wrapper = world / "scripts/wr2-cron-wrapper.sh"
+    heartbeat = world / "repo/scripts/lib/heartbeat.sh"
+    fake_python = world / "repo/apps/backend-rag/.venv/bin/python"
+    for directory in (
+        wrapper.parent,
+        heartbeat.parent,
+        fake_python.parent,
+        world / "bin",
+        world / "logs",
+        world / "organism",
+        world / "tmp",
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(wrapper_source, wrapper)
+    shutil.copy2(heartbeat_source, heartbeat)
+    _write_executable(fake_python, "#!/usr/bin/env sh\nexit 0\n")
+    _set_nc_exit(world, nc_exit)
+
+    secrets = world / "secrets.env"
+    secrets.write_text(
+        (
+            "DATABASE_URL_LOCAL=postgres://x@127.0.0.1:15432/y\n"
+            if database_url_present
+            else ""
+        ),
+        encoding="utf-8",
+    )
+    sidecar = world / f"organism/{WR2_GUARD_ORGAN_ID}.json"
+    child_env = os.environ.copy()
+    child_env.pop("RUNTIME_TRUTH_EVIDENCE_FD", None)
+    child_env.update(
+        {
+            "NUZANTARA_REPO_ROOT": str(world / "repo"),
+            "NUZANTARA_SECRETS": str(secrets),
+            "ORGANISM_LAST_SEEN_DIR": str(world / "organism"),
+            "WR2_LOG_DIR": str(world / "logs"),
+            "WR2_CRON_ALERT": "false",
+            "PATH": os.pathsep.join((str(world / "bin"), child_env.get("PATH", ""))),
+            "HOME": str(world),
+            "TMPDIR": str(world / "tmp"),
+            "RUNTIME_TRUTH_WRAPPER": str(wrapper),
+            "RUNTIME_TRUTH_MODULE": WR2_TEST_MODULE,
+        }
+    )
+    return wrapper, sidecar, child_env
+
+
+def _run_process(
+    argv: Sequence[str],
+    *,
+    cwd: pathlib.Path,
+    env: dict[str, str],
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            list(argv),
+            cwd=cwd,
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise GauntletContractError(
+            f"shell contract process could not start: {argv}: {exc}"
+        ) from exc
+
+
+def _observe_wr2_case(
+    *,
+    repo_root: pathlib.Path,
+    target: pathlib.Path,
+    case_id: str,
+) -> ShellCaseEvidence:
+    configurations: dict[str, tuple[int, bool, int, str]] = {
+        "pg_proxy_unreachable": (1, True, 74, "error"),
+        "database_url_local_missing": (0, False, 74, "error"),
+        "pg_proxy_reachable": (0, True, 0, "ok"),
+        "heartbeat_self_heal": (1, True, 0, "ok"),
+    }
+    if case_id not in configurations:
+        raise GauntletContractError(f"unknown WR2 shell case: {case_id}")
+    nc_exit, database_url_present, expected_exit, expected_status = configurations[
+        case_id
+    ]
+
+    temp_parent = os.environ.get("TMPDIR")
+    with tempfile.TemporaryDirectory(
+        prefix=f"runtime-truth-{case_id}-",
+        dir=temp_parent,
+    ) as raw_world:
+        world = pathlib.Path(raw_world)
+        wrapper, sidecar, child_env = _prepare_wr2_world(
+            repo_root=repo_root,
+            world=world,
+            nc_exit=nc_exit,
+            database_url_present=database_url_present,
+        )
+        precondition_exit: int | None = None
+        expected_precondition_exit: int | None = None
+        precondition_status: str | None = None
+        expected_precondition_status: str | None = None
+        if case_id == "heartbeat_self_heal":
+            precondition = _run_process(
+                ("bash", str(wrapper), WR2_TEST_MODULE),
+                cwd=repo_root,
+                env=child_env,
+            )
+            precondition_exit = precondition.returncode
+            expected_precondition_exit = 74
+            precondition_status = _sidecar_status(sidecar)
+            expected_precondition_status = "error"
+            _set_nc_exit(world, 0)
+
+        completed = _run_process(
+            ("bash", str(target), case_id),
+            cwd=repo_root,
+            env=child_env,
+        )
+        return ShellCaseEvidence(
+            case_id=case_id,
+            exit_code=completed.returncode,
+            expected_exit_code=expected_exit,
+            sidecar_status=_sidecar_status(sidecar),
+            expected_sidecar_status=expected_status,
+            precondition_exit_code=precondition_exit,
+            expected_precondition_exit_code=expected_precondition_exit,
+            precondition_sidecar_status=precondition_status,
+            expected_precondition_sidecar_status=expected_precondition_status,
+        )
+
+
+def run_shell_contract(
+    *,
+    repo_root: pathlib.Path,
     relative_path: str,
     expected_cases: Sequence[str],
-    raw_evidence: str,
-    exit_code: int,
 ) -> ShellEvidence:
-    errors: list[str] = []
+    """Run four isolated cases; the parent derives evidence from real side effects."""
+    target = repo_root / relative_path
+    if not target.is_file():
+        raise GauntletContractError(f"mandatory shell target missing: {relative_path}")
     if not expected_cases:
-        errors.append("case manifest is empty")
+        raise GauntletContractError("shell case manifest is empty")
     if len(expected_cases) != len(set(expected_cases)):
-        errors.append("case manifest contains duplicates")
+        raise GauntletContractError("shell case manifest contains duplicates")
 
-    outcomes: dict[str, str] = {}
-    for line_number, line in enumerate(raw_evidence.splitlines(), start=1):
-        parts = line.split("\t")
-        if len(parts) != 3 or parts[0] != SHELL_EVIDENCE_PROTOCOL:
-            errors.append(f"invalid evidence line {line_number}: {line!r}")
-            continue
-        _, case_id, outcome = parts
-        if not case_id or outcome not in {"passed", "failed", "skipped"}:
-            errors.append(f"invalid evidence line {line_number}: {line!r}")
-            continue
-        if case_id in outcomes:
-            errors.append(f"duplicate shell case evidence: {case_id}")
-            continue
-        outcomes[case_id] = outcome
-
-    expected = set(expected_cases)
-    actual = set(outcomes)
-    missing = sorted(expected - actual)
-    unexpected = sorted(actual - expected)
-    if missing:
-        errors.append(f"missing shell cases={missing}")
-    if unexpected:
-        errors.append(f"unexpected shell cases={unexpected}")
-
+    cases = tuple(
+        _observe_wr2_case(
+            repo_root=repo_root,
+            target=target,
+            case_id=case_id,
+        )
+        for case_id in expected_cases
+    )
     evidence = ShellEvidence(
         target=relative_path,
-        collected=len(expected_cases),
-        executed=len(outcomes),
-        passed=sum(outcome == "passed" for outcome in outcomes.values()),
-        failed=sum(outcome == "failed" for outcome in outcomes.values()),
-        skipped=sum(outcome == "skipped" for outcome in outcomes.values()),
+        expected_cases=tuple(expected_cases),
+        cases=cases,
     )
-    if exit_code != 0:
-        errors.append(f"exit_code={exit_code}")
+    errors = [
+        (
+            f"{case.case_id}: rc={case.exit_code}/{case.expected_exit_code} "
+            f"sidecar={case.sidecar_status}/{case.expected_sidecar_status} "
+            f"pre_rc={case.precondition_exit_code}/"
+            f"{case.expected_precondition_exit_code} "
+            f"pre_sidecar={case.precondition_sidecar_status}/"
+            f"{case.expected_precondition_sidecar_status}"
+        )
+        for case in evidence.cases
+        if not case.passed
+    ]
+    if tuple(case.case_id for case in evidence.cases) != tuple(expected_cases):
+        errors.append("observed shell case order differs from exact manifest")
     if not (
         evidence.collected == evidence.executed == evidence.passed
         and evidence.failed == 0
@@ -324,47 +537,6 @@ def _parse_shell_evidence(
             f"shell contract failed: {relative_path}; " + "; ".join(errors)
         )
     return evidence
-
-
-def run_shell_contract(
-    *,
-    repo_root: pathlib.Path,
-    relative_path: str,
-    expected_cases: Sequence[str],
-) -> ShellEvidence:
-    """Run one shell corpus and verify case evidence without parsing stdout."""
-    target = repo_root / relative_path
-    if not target.is_file():
-        raise GauntletContractError(f"mandatory shell target missing: {relative_path}")
-
-    read_fd, write_fd = os.pipe()
-    child_env = os.environ.copy()
-    child_env[SHELL_EVIDENCE_FD_ENV] = str(write_fd)
-    try:
-        try:
-            completed = subprocess.run(
-                ["bash", str(target)],
-                cwd=repo_root,
-                env=child_env,
-                check=False,
-                pass_fds=(write_fd,),
-            )
-        except OSError as exc:
-            os.close(read_fd)
-            raise GauntletContractError(
-                f"shell contract could not start: {relative_path}: {exc}"
-            ) from exc
-    finally:
-        os.close(write_fd)
-
-    with os.fdopen(read_fd, encoding="utf-8") as evidence_stream:
-        raw_evidence = evidence_stream.read()
-    return _parse_shell_evidence(
-        relative_path=relative_path,
-        expected_cases=expected_cases,
-        raw_evidence=raw_evidence,
-        exit_code=completed.returncode,
-    )
 
 
 def run_shell_contracts(repo_root: pathlib.Path) -> tuple[ShellEvidence, ...]:
@@ -434,6 +606,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             result.failed,
             result.skipped,
         )
+        for case in result.cases:
+            LOGGER.info(
+                "RUNTIME_TRUTH_SHELL_CASE id=%s rc=%d expected_rc=%d "
+                "sidecar=%s expected_sidecar=%s pre_rc=%s "
+                "expected_pre_rc=%s pre_sidecar=%s expected_pre_sidecar=%s",
+                case.case_id,
+                case.exit_code,
+                case.expected_exit_code,
+                case.sidecar_status,
+                case.expected_sidecar_status,
+                case.precondition_exit_code,
+                case.expected_precondition_exit_code,
+                case.precondition_sidecar_status,
+                case.expected_precondition_sidecar_status,
+            )
     return 0
 
 
