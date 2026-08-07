@@ -101,6 +101,27 @@ async def save_state(worker_name: str, pool: asyncpg.Pool, updates: dict) -> Non
     )
 
 
+async def tombstone_is_ours(change, pg_writer) -> bool:
+    """Can this deletion be attributed to the GARUDA index?
+
+    A *trashed* file keeps its Drive resource, so it keeps its parents, and the
+    caller's `is_under_garuda` filter has already judged it — those are ours to
+    archive, and this returns True on sight.
+
+    A *removed* change carries no resource at all: no parents, nothing to
+    filter on. Every deletion anywhere in the account looks exactly like a
+    GARUDA deletion. The only remaining witness is the index itself — if it
+    holds no version for that id, we never had the file and archiving it is a
+    write with no subject.
+
+    Split out of the loop so the rule can be tested against a stub instead of
+    a whole fake Drive-plus-Qdrant-plus-Postgres universe.
+    """
+    if change.file is not None:
+        return True
+    return await pg_writer.get_drive_version(change.file_id) is not None
+
+
 async def run_indexer(worker_name: str = "default") -> dict:
     """Main entry point for the GARUDA indexer.
 
@@ -139,11 +160,15 @@ async def run_indexer(worker_name: str = "default") -> dict:
     pg_writer._pool = pg_pool  # reuse pool
     pipeline = Pipeline(embedder, qdrant, pg_writer, drive)
 
-    stats = {
+    stats: dict = {
         "files_processed": 0,
         "files_indexed": 0,
         "files_skipped": 0,
         "errors": 0,
+        # Deletions the feed carried that this index never held. Counted, not
+        # silent: a run whose whole output is this number did nothing, and the
+        # old code could not tell you that. See the tombstone branch below.
+        "tombstones_not_ours": 0,
     }
 
     try:
@@ -185,6 +210,28 @@ async def run_indexer(worker_name: str = "default") -> dict:
 
                     # Handle tombstones
                     if change.is_tombstone:
+                        # A REMOVED change carries no file resource, therefore
+                        # no parents, therefore the GARUDA filter above could
+                        # not judge it — and the `change.file and ...` guard
+                        # lets it fall straight through. So every deletion
+                        # anywhere in this Drive account arrived here as a
+                        # GARUDA tombstone.
+                        #
+                        # Measured on Pro, 2026-08-06, the first run after the
+                        # credential was repaired: 24,687 changes, ALL of them
+                        # tombstones, 24,686 Qdrant writes answered 404 — the
+                        # collection holds 0 points and never held those files.
+                        # Six hours of wall clock, one successful write, and
+                        # the run reported success. A trashed file is fine (it
+                        # keeps its resource and its parents, so it is filtered
+                        # upstream); this is only about removals.
+                        #
+                        # The index itself is the membership test: if we never
+                        # stored a version for this id, the file was never ours
+                        # and archiving it is a write we should not be making.
+                        if not await tombstone_is_ours(change, pg_writer):
+                            stats["tombstones_not_ours"] += 1
+                            continue
                         logger.info("Tombstone: %s", change.file_id)
                         await qdrant.mark_archived(change.file_id)
                         await pg_writer.mark_archived(change.file_id)

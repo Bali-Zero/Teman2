@@ -35,6 +35,12 @@ class LeadSource(str, Enum):
     # and fell back to the bare wa.me link — clicks tracked, leads unlogged.
     # No result page: the visitor has not run a tool, they came off the hero.
     HOMEPAGE_HERO = "homepage_hero"
+    # Property funnel sources (2026-08-07): Ask Zantara chat on
+    # /property/eligibility and article-page CTAs on property articles.
+    # Enum lands first; call-sites follow in a separate frontend PR once
+    # CI parity is confirmed (WIRE/RETIRE audit pending).
+    PROPERTY_CHAT_QUESTION = "property_chat_question"
+    PROPERTY_ARTICLE_CTA = "property_article_cta"
 
     @property
     def human_name(self) -> str:
@@ -53,6 +59,8 @@ class LeadSource(str, Enum):
             LeadSource.CTA_HANDOFF: "Bali Zero",
             LeadSource.PRICING_MODAL: "the pricing page",
             LeadSource.HOMEPAGE_HERO: "the homepage",
+            LeadSource.PROPERTY_CHAT_QUESTION: "the Property Eligibility chat",
+            LeadSource.PROPERTY_ARTICLE_CTA: "the Property article",
         }[self]
 
     @property
@@ -64,7 +72,7 @@ class LeadSource(str, Enum):
             LeadSource.GARUDA_VOA: "/visa/voa",
             LeadSource.KBLI_DECODER: "/kbli/decoder",
             LeadSource.KBLI_BUILDER: "/kbli/builder",
-            LeadSource.TAX_GAP: "/tax/gap",
+            LeadSource.TAX_GAP: "/taxes/gap",  # live page moved PR #3629 Aug 2026
             LeadSource.ZONING_CHECK: "/zoning",
             # Articles carry their own URL in context; no hash-based result page.
             LeadSource.ARTICLE: "/",
@@ -79,4 +87,6 @@ class LeadSource(str, Enum):
             LeadSource.PRICING_MODAL: "/",
             # The hero IS the homepage; no tool result to link back to.
             LeadSource.HOMEPAGE_HERO: "/",
+            LeadSource.PROPERTY_CHAT_QUESTION: "/property/eligibility",
+            LeadSource.PROPERTY_ARTICLE_CTA: "/property/eligibility",
         }[self]
