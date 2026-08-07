@@ -68,7 +68,7 @@
 
 ### Postgres (Fly `nuzantara-postgres`)
 
-Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`garuda_indexer_state`, `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
+Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
 
 ### Filesystem state
 

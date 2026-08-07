@@ -141,11 +141,18 @@ def classify_oauth_health(
     DECLARED LIMITS on that rule, both deliberate:
       - It cannot distinguish "the credential is dead" from "nobody used
         Drive". That is why it is a DIGEST note, not a P0 — the ground truth
-        is a consumer's own failure (`zantara_media.alerts`), and this is the
-        cheap early hint, not a replacement for it.
+        is a consumer's own failure, and this is the cheap early hint, not a
+        replacement for it.
+      - CHANGED 2026-08-07 by the GARUDA decommission: the daily consumer of
+        the one non-SYSTEM row WAS the GARUDA indexer, and it is gone (its
+        Drive corpus was never filled — 0 files, 0 trashed). Nothing refreshes
+        that row now, so within STALE_REFRESH_DAYS it will read `stale-refresh`
+        — correctly. Read that verdict as "this grant has no consumer left,
+        consider revoking it", not as "the credential is dying". The row is
+        left in place deliberately: revoking a Google grant is Zero's call.
       - It assumes a consumer that runs at least every STALE_REFRESH_DAYS. One
-        that ran weekly would read stale while perfectly healthy. Today the one
-        non-SYSTEM row has a daily consumer; a weekly one would need its own
+        that ran weekly would read stale while perfectly healthy. A weekly
+        consumer would need its own
         threshold rather than a blanket raise.
       - `SYSTEM` is excluded: unrefreshed on purpose since 2026-05-10.
     """

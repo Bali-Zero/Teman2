@@ -62,7 +62,7 @@ jobs:
       - name: Install focused test dependencies
         run: >-
           python -m pip install --quiet
-          pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785
+          pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785 asyncpg
       - name: Require zsh for real wrapper lifecycle tests
         run: |
           if ! command -v zsh >/dev/null 2>&1; then
@@ -71,10 +71,16 @@ jobs:
           fi
           command -v zsh
       - name: Verify magazine asset lifecycle contracts
+        # Whole DIRECTORY, not a named subset (widened 2026-08-07 with the GARUDA
+        # decommission). This is the only job that installs apps/zantara-media's
+        # dependencies, so it is the only one that CAN run its tests: the lean
+        # immune-enforcement job runs on a bare interpreter and dies on `pydantic`.
+        # Naming three files left tests/test_dlp.py and tests/test_image_handler.py
+        # with no runner anywhere. A directory cannot go stale as files come and go;
+        # test_zantara_media_suite_has_a_runner.py (required, dependency-free) fails
+        # if this ever narrows back to a file list.
         run: >-
           python -m pytest -q
-          apps/zantara-media/tests/magazine/test_cli.py
-          apps/zantara-media/tests/magazine/test_media_resolver.py
-          apps/zantara-media/tests/magazine/test_source_projections.py
+          apps/zantara-media/tests
           scripts/tests/test_flowkit_cli.py
           scripts/tests/test_magazine_wrapper_lock.py

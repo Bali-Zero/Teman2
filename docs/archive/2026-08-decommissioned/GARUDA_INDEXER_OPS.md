@@ -1,5 +1,23 @@
 # GARUDA Indexer — Operations Runbook
 
+> **DECOMMISSIONED 2026-08-07 (Zero).** This pipeline no longer exists. Its Drive
+> corpus was never filled — the `GARUDA/` tree held **0 files and 0 in the trash**,
+> and the account's whole trash held one unrelated file — so there was nothing to
+> index and never had been (two successful runs out of 78). The code
+> (`zantara_media/indexer/`, the three `garuda_*` CLIs, `maintenance/`, `alerts.py`)
+> is removed, the two Pro crontab lines are disarmed, and the empty Qdrant
+> collection `garuda_assets` is dropped. Orphaned and deliberately left in place:
+> the Postgres tables `garuda_index` (0 rows) and `garuda_indexer_state` (1 row),
+> which want a migration, and the legacy `google_drive_tokens` grant this was the
+> only consumer of — revoking a Google grant is Zero's call.
+>
+> **Do not confuse this with the other three GARUDAs, all alive:** MATA GARUDA
+> (intelligence, `com.matagaruda.*`), the OSINT-Nexus Neo4j bridges
+> (`garuda-consumer.sh`, `garuda-gap-detector.sh`) and GARUDA B1/VOA (whose
+> `garuda_voa_checks` table carries real rows).
+>
+> Kept below as the record of what it did.
+
 **System:** Mata Garuda Layer 4.5 — Curator Agent (Sprint 5.1)
 **Last updated:** 2026-04-14
 **Owner:** Zero / Bali Zero AI Team
