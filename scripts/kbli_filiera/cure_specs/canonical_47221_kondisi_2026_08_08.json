@@ -1,0 +1,13 @@
+{
+  "adjudicated": "2026-08-08 — item 4 of the sector-law brief: audit 47221's pma_kondisi against its own Lampiran II row",
+  "verdict": "CONTRADICTED. 47221 has ZERO rows in data/kbli-filiera/perpres-umkm-reservation.json (grepped across every row for '47221' — none found, unlike its neighbour 47222 which has one on Lampiran II p.13, dialokasikan column, 'Minuman tidak beralkohol'). 47221's own pma_official_basis names a DIFFERENT instrument entirely: Perpres 10/2021 Lampiran III (Bidang Usaha dengan Persyaratan Tertentu), line 4202 entry #44, persyaratan = 'Jaringan distribusi dan tempatnya khusus' (special distribution-network/location requirement) — Open-with-conditions per Pasal 3 huruf c, NOT a UMKM/Koperasi partnership duty. 'Kemitraan dengan UMKM/Koperasi' is copy-paste residue from neighbouring 47222 (Perdagangan eceran minuman TIDAK beralkohol, which genuinely IS Lampiran-II-allocated) bleeding onto 47221 (Perdagangan eceran minuman BERALKOHOL, which is not).",
+  "code": "47221",
+  "old_sha256": "ee0267834d7509e11d56295d2eda21b68f8cc920f4a2f3596ca4fc8b1783230a",
+  "expect": {
+    "pma_status": "TERBATAS",
+    "pma_cap_verified": true
+  },
+  "patch": {
+    "pma_kondisi": "Jaringan distribusi dan tempatnya khusus — a special distribution-network/location requirement (Perpres 10/2021 Lampiran III, line 4202 entry #44), not a UMKM/Koperasi partnership duty."
+  }
+}

@@ -1154,15 +1154,15 @@
 64996 | Aktivitas Perbankan Bulion Konvensional | TERBUKA | 100% | Not classified
 64997 | Aktivitas Perbankan Bulion Syariah | TERBUKA | 100% | Not classified
 64999 | Aktivitas Jasa Keuangan Lainnya YTDL, Bukan Asuransi dan Dana Pensiun | TERBUKA | 100% | Tinggi
-65111 | Asuransi Jiwa Konvensional | TERBUKA | 100% | Tinggi
-65112 | Asuransi Jiwa Syariah | TERBUKA | 100% | Tinggi
-65121 | Asuransi Umum Konvensional | TERBUKA | 100% | Tinggi
-65122 | Asuransi Umum Syariah | TERBUKA | 100% | Tinggi
+65111 | Asuransi Jiwa Konvensional | TERBATAS | 80% | Tinggi
+65112 | Asuransi Jiwa Syariah | TERBATAS | 80% | Tinggi
+65121 | Asuransi Umum Konvensional | TERBATAS | 80% | Tinggi
+65122 | Asuransi Umum Syariah | TERBATAS | 80% | Tinggi
 65123 | Aktivitas Penjaminan Simpanan dan Asuransi | TERBUKA | 100% | Not classified
 65131 | Penjaminan Konvensional | TERBUKA | 100% | Tinggi
 65132 | Penjaminan Syariah | TERBUKA | 100% | Tinggi
-65201 | Reasuransi Konvensional | TERBUKA | 100% | Tinggi
-65202 | Reasuransi Syariah | TERBUKA | 100% | Tinggi
+65201 | Reasuransi Konvensional | TERBATAS | 80% | Tinggi
+65202 | Reasuransi Syariah | TERBATAS | 80% | Tinggi
 65203 | Penjaminan Ulang Konvensional | TERBUKA | 100% | Tinggi
 65204 | Penjaminan Ulang Syariah | TERBUKA | 100% | Tinggi
 65301 | Aktivitas Dana Pensiun Pemberi Kerja Konvensional | TERBUKA | 100% | Tinggi

@@ -1,0 +1,99 @@
+{
+  "adjudicated": "2026-08-08, primary-fetched this session (peraturan.go.id LN 2018/66 body text + LN 2020/7 amendment body text, both extracted from the served PDF text layer; UU 40/2014 Pasal 1 from ojk.go.id's own hosted copy)",
+  "instrument": "PP 14/2018 Pasal 5(1) jo. PP 3/2020, under the Perpres 10/2021 Pasal 11(2) sector-law carve-out",
+  "primary_sources": {
+    "perpres_10_2021_pasal_11_ayat_2": "Perizinan berusaha dan pelaksanaan kegiatan dalam rangka Penanaman Modal untuk Bidang Usaha keuangan dan Bidang Usaha perbankan dilaksanakan sesuai dengan ketentuan peraturan perundang-undangan di bidangnya masing-masing. (vault 154474, body text, OCR-corrupted heading 'Pasal 1 I' = Pasal 11)",
+    "pp_14_2018_pasal_5": "(1) Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% (delapan puluh persen) dari modal disetor Perusahaan Perasuransian. (2) Batasan Kepemilikan Asing ... tidak berlaku bagi Perusahaan Perasuransian yang merupakan perseroan terbuka. (peraturan.go.id/files/pp14-2018bt.pdf, LN 2018 No. 66)",
+    "pp_14_2018_pasal_6_as_amended_by_pp_3_2020": "(1) Dalam hal Kepemilikan Asing pada Perusahaan Perasuransian yang bukan merupakan perseroan terbuka telah melampaui 80% pada saat Peraturan Pemerintah ini [14/2018] mulai berlaku: a. dikecualikan dari batasan Pasal 5 ayat (1); b. dilarang menambah persentase. (2) Penambahan modal disetor tidak boleh melebihi persentase pada ayat (1). (2a) Jika porsi Indonesia tidak terpenuhi, penambahan modal disetor harus melalui penawaran umum perdana saham di Indonesia. (peraturan.go.id/files/pp3-2020bt.pdf, LN 2020 No. 7)",
+    "uu_40_2014_pasal_1_angka_14": "Perusahaan Perasuransian adalah perusahaan asuransi, perusahaan asuransi syariah, perusahaan reasuransi, perusahaan reasuransi syariah, perusahaan pialang asuransi, perusahaan pialang reasuransi, dan perusahaan penilai kerugian asuransi. (ojk.go.id/Files/201506/1UU402014Perasuransian_1433758676.pdf) — 'perusahaan reasuransi' and 'perusahaan reasuransi syariah' are named explicitly, which is what admits 65201/65202 as CERTAIN rather than conditional."
+  },
+  "codes": {
+    "65111": {
+      "old_sha256": "a2c4657ba4337bd7065d97326788eacdea3d963462da58031213aad08b544561",
+      "expect": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "patch": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 80,
+        "pma_cap_verified": true,
+        "pma_official_basis": "PP 14/2018 Pasal 5(1) jo. PP 3/2020 Pasal I angka 1 (Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% dari modal disetor). 'Perusahaan Perasuransian' includes 'perusahaan asuransi' per UU 40/2014 Pasal 1 angka 14. Perpres 10/2021 Pasal 11(2) carves the financial/banking bidang usaha out to sector law — the Perpres 10/2021/49/2021 annexes and residual-open default never applied here.",
+        "pma_kondisi": "Foreign ownership max 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020); listed companies (perseroan terbuka) exempt; pre-2018 holdings above 80% grandfathered without increase.",
+        "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
+        "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
+      }
+    },
+    "65112": {
+      "old_sha256": "b63f3d614ea74aa602bb98bb4f3981868613df2c8324ee70e352fcf8b4f6a8b8",
+      "expect": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "patch": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 80,
+        "pma_cap_verified": true,
+        "pma_official_basis": "PP 14/2018 Pasal 5(1) jo. PP 3/2020 Pasal I angka 1 (Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% dari modal disetor). 'Perusahaan Perasuransian' includes 'perusahaan asuransi syariah' per UU 40/2014 Pasal 1 angka 14. Perpres 10/2021 Pasal 11(2) carves the financial/banking bidang usaha out to sector law — the Perpres 10/2021/49/2021 annexes and residual-open default never applied here.",
+        "pma_kondisi": "Foreign ownership max 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020); listed companies (perseroan terbuka) exempt; pre-2018 holdings above 80% grandfathered without increase.",
+        "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
+        "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
+      }
+    },
+    "65121": {
+      "old_sha256": "4ae72a346ce4ac753db173888d73fb7785bdcc00ad72c26d6efcfd6f50b7d722",
+      "expect": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "patch": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 80,
+        "pma_cap_verified": true,
+        "pma_official_basis": "PP 14/2018 Pasal 5(1) jo. PP 3/2020 Pasal I angka 1 (Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% dari modal disetor). 'Perusahaan Perasuransian' includes 'perusahaan asuransi' per UU 40/2014 Pasal 1 angka 14. Perpres 10/2021 Pasal 11(2) carves the financial/banking bidang usaha out to sector law — the Perpres 10/2021/49/2021 annexes and residual-open default never applied here.",
+        "pma_kondisi": "Foreign ownership max 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020); listed companies (perseroan terbuka) exempt; pre-2018 holdings above 80% grandfathered without increase.",
+        "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
+        "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
+      }
+    },
+    "65122": {
+      "old_sha256": "78f7bb5605387f110b5896cb61a146d7e8e4543437982b44b77cdd03e5bb90c6",
+      "expect": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "patch": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 80,
+        "pma_cap_verified": true,
+        "pma_official_basis": "PP 14/2018 Pasal 5(1) jo. PP 3/2020 Pasal I angka 1 (Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% dari modal disetor). 'Perusahaan Perasuransian' includes 'perusahaan asuransi syariah' per UU 40/2014 Pasal 1 angka 14. Perpres 10/2021 Pasal 11(2) carves the financial/banking bidang usaha out to sector law — the Perpres 10/2021/49/2021 annexes and residual-open default never applied here.",
+        "pma_kondisi": "Foreign ownership max 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020); listed companies (perseroan terbuka) exempt; pre-2018 holdings above 80% grandfathered without increase.",
+        "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
+        "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
+      }
+    },
+    "65201": {
+      "old_sha256": "5763006100596f97f06efe90fe2224dda485d4dc09bde2627bce5065c142768e",
+      "expect": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "patch": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 80,
+        "pma_cap_verified": true,
+        "pma_official_basis": "PP 14/2018 Pasal 5(1) jo. PP 3/2020 Pasal I angka 1 (Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% dari modal disetor). 'Perusahaan Perasuransian' includes 'perusahaan reasuransi' BY NAME per UU 40/2014 Pasal 1 angka 14. Perpres 10/2021 Pasal 11(2) carves the financial/banking bidang usaha out to sector law — the Perpres 10/2021/49/2021 annexes and residual-open default never applied here.",
+        "pma_kondisi": "Foreign ownership max 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020); listed companies (perseroan terbuka) exempt; pre-2018 holdings above 80% grandfathered without increase.",
+        "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
+        "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
+      }
+    },
+    "65202": {
+      "old_sha256": "f9adee742956beea6cced6244e82e2d887b0dadd353f64ef7057716ccdb2f859",
+      "expect": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "patch": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 80,
+        "pma_cap_verified": true,
+        "pma_official_basis": "PP 14/2018 Pasal 5(1) jo. PP 3/2020 Pasal I angka 1 (Kepemilikan Asing pada Perusahaan Perasuransian dilarang melebihi 80% dari modal disetor). 'Perusahaan Perasuransian' includes 'perusahaan reasuransi syariah' BY NAME per UU 40/2014 Pasal 1 angka 14. Perpres 10/2021 Pasal 11(2) carves the financial/banking bidang usaha out to sector law — the Perpres 10/2021/49/2021 annexes and residual-open default never applied here.",
+        "pma_kondisi": "Foreign ownership max 80% of paid-up capital (PP 14/2018 Pasal 5(1) jo. PP 3/2020); listed companies (perseroan terbuka) exempt; pre-2018 holdings above 80% grandfathered without increase.",
+        "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
+        "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
+      }
+    }
+  },
+  "excluded": {
+    "65123": "Aktivitas Penjaminan Simpanan dan Asuransi — LPS statutory deposit-insurance function, a state institution under UU 24/2004, not a 'Perusahaan Perasuransian' under UU 40/2014 Pasal 1 angka 14 (that list has no 'perusahaan penjaminan simpanan' entry). PP 14/2018 does not reach it.",
+    "65131": "Penjaminan Konvensional — 'penjaminan' (suretyship/guarantee) companies are regulated under UU 1/2016 tentang Penjaminan, a DIFFERENT sector law; UU 40/2014 Pasal 1 angka 14's 'Perusahaan Perasuransian' list has no 'perusahaan penjaminan' entry, so PP 14/2018 does not reach it. Cap not primary-verified here.",
+    "65132": "Penjaminan Syariah — same UU 1/2016 exclusion as 65131.",
+    "65203": "Penjaminan Ulang Konvensional — same UU 1/2016 exclusion as 65131 (reinsurance of a GUARANTEE company's risk, not 'perusahaan reasuransi' under UU 40/2014).",
+    "65204": "Penjaminan Ulang Syariah — same UU 1/2016 exclusion as 65131.",
+    "66xxx": "Insurance/reinsurance broker and agent codes (66221, 66222, ...) — KBLI mapping to a specific PP 14/2018 provision never done; brokers/agents are not 'Perusahaan Perasuransian' capital-ownership subjects under Pasal 5, they are intermediaries under a separate licensing chapter (Usaha Pialang Asuransi / Usaha Pialang Reasuransi, UU 40/2014 Pasal 1 angka 11-12). Left for the Task-#10 financial-family lane."
+  },
+  "untouched_fields_note": "Enforced in code via _hardened_cure_io.verify_untouched — every field on each of the 6 codes OTHER than pma_status/pma_max_asing/pma_cap_verified/pma_official_basis/pma_kondisi/pma_nota/pma_source is asserted byte-identical before/after, and every OTHER record in the dataset (all 1,553 others) is asserted byte-identical whole."
+}

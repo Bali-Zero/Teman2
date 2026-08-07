@@ -1,0 +1,52 @@
+{
+  "adjudicated": "2026-08-08 — item 2 (sweep) of the sector-law brief: 65121's WHOLE gold entry named unverified capital figures (IDR 100 billion OJK paid-up, IDR 10 billion PT PMA stated capital) across zantaraOpener/whatYouNeed/baliContext. POJK 23/2023 (OJK's minimum-capital schedule for insurers) was never primary-fetched this session — the hard rule is NO capital figures anywhere in cards without a verified source. Also aligns the acquisition-only PMA framing in baliContext with the corrected PP 14/2018 Pasal 5(1) general 80% cap (cure_gold_pma_line.py::AUTHORED_SENTENCES['65121'] already fixed the closing PMA sentence in whatYouNeed; this sweep does not touch that sentence — it is a disjoint substring).",
+  "code": "65121",
+  "old_sha256": "d9d6c28ff5f46f69be35bfbd0ebdef89447fcd5ec74b4d9925e6f7a4806f1418",
+  "edits": [
+    {
+      "field": "zantaraOpener",
+      "old": "Establishing a general insurance company in Bali? 65121 is the code, but the reality is tough: IDR 100 billion capital, 12–24 month OJK approval, intense competition. Most foreign investors find 66221 (insurance agent) a more practical entry point. Let me explain both paths.",
+      "new": "Establishing a general insurance company in Bali? 65121 is the code, but the reality is tough: a high OJK paid-up capital bar, a 12–24 month OJK approval process, intense competition. Most foreign investors find 66221 (insurance agent) a more practical entry point. Let me explain both paths."
+    },
+    {
+      "field": "whatYouNeed",
+      "old": "1. **PT PMA incorporation** — notary deed, AHU registration; minimum IDR 10B stated capital (~3–5 weeks)",
+      "new": "1. **PT PMA incorporation** — notary deed, AHU registration; minimum stated capital per current PT PMA capital-investment rules (~3–5 weeks)"
+    },
+    {
+      "field": "whatYouNeed",
+      "old": "5. **Modal disetor minimum** — **IDR 100 billion** paid-up capital for new general insurance company (POJK requirement, far higher than PT PMA minimum)",
+      "new": "5. **Modal disetor minimum** — a substantial paid-up capital requirement set by OJK's minimum-capital schedule for new general insurance companies (POJK 23/2023 — figure not independently verified here; confirm directly with OJK), far higher than the PT PMA minimum"
+    },
+    {
+      "field": "whatYouNeed",
+      "old": "**Minimum capital:** IDR 100 billion paid-up (OJK requirement) + IDR 10B PT PMA stated capital.",
+      "new": "**Minimum capital:** set by OJK's paid-up capital schedule for new general insurers (POJK 23/2023) plus the PT PMA stated-capital minimum — confirm exact figures directly with OJK before budgeting."
+    },
+    {
+      "field": "baliContext",
+      "old": "**Establishing a new general insurer is extremely difficult:** IDR 100B capital requirement, 12–24 month OJK approval process, intense competition from established players",
+      "new": "**Establishing a new general insurer is extremely difficult:** a high OJK paid-up capital requirement, a 12–24 month OJK approval process, intense competition from established players"
+    },
+    {
+      "field": "baliContext",
+      "old": "**More practical path: Insurance agency (66221)** — act as intermediary selling insurance products on behalf of existing insurers; much lower capital requirement (IDR 10B PT PMA only), faster licensing, immediate revenue",
+      "new": "**More practical path: Insurance agency (66221)** — act as intermediary selling insurance products on behalf of existing insurers; a materially lower capital bar (PT PMA incorporation minimum only, not OJK's insurer-grade paid-up requirement), faster licensing, immediate revenue"
+    },
+    {
+      "field": "baliContext",
+      "old": "**Acquisition route:** Buying an existing small general insurer may be faster than new establishment, but PMA cap (historically 80% for acquisitions) applies — verify current regulations",
+      "new": "**Acquisition route:** Buying an existing small general insurer may be faster than new establishment, but the same 80% foreign-ownership cap applies (PP 14/2018 Pasal 5(1) jo. PP 3/2020) — it is not acquisition-specific."
+    },
+    {
+      "field": "baliContext",
+      "old": "**IDR 100B capital is real:** This is paid-up capital, not stated capital; you must actually deposit IDR 100 billion into the company bank account",
+      "new": "**The paid-up capital bar is real:** OJK's insurer-grade paid-up capital is a genuine deposit requirement, not stated/authorized capital on paper — confirm the current figure directly with OJK before budgeting (POJK 23/2023 sets OJK's minimum-capital schedule; the exact figure is not independently verified here)"
+    },
+    {
+      "field": "baliContext",
+      "old": "**Consider agency model first:** 66221 (insurance agent) is a much more accessible entry point into Bali's insurance market — test the market before committing IDR 100B to a new insurer",
+      "new": "**Consider agency model first:** 66221 (insurance agent) is a much more accessible entry point into Bali's insurance market — test the market before committing to OJK's full insurer-grade capital bar for a new insurer"
+    }
+  ]
+}
