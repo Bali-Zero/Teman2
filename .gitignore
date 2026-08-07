@@ -535,6 +535,13 @@ openclaw
 !.claude/agents/wr2-brief-interpreter.md
 !.claude/agents/wr2-critic.md
 !.claude/agents/wr2-design-architect.md
+# 2026-08-08: the last two wr2-* specs that still lived ONLY in ~/.claude/agents/
+# (family #1). Vendored here so the repo copy is canon on every machine; each
+# carries a `CANON:` marker naming this directory. Adding them to this allowlist
+# is the deliberate act the comment above asks for — without these two lines
+# `git add -A` skips the files in silence and the vendoring is a no-op.
+!.claude/agents/wr2-external-bench.md
+!.claude/agents/wr2-ig-metrics-analyst.md
 !.claude/agents/wr2-image-prompt-author.md
 !.claude/agents/wr2-layout-composer.md
 !.claude/agents/wr2-storyboarder.md
