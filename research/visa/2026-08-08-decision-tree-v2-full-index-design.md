@@ -11,8 +11,8 @@ sources:
   - research/visa/2026-07-24-w2-factbase-*.md (8 family fact-bases)
   - research/visa/2026-07-23-d1-decision-pack.md (real traffic ~0.8 sess/day)
   - Round-1 2026-08-08 lanes: Codex gpt-5.6-sol xhigh architecture+red-team (repo-grounded), Gemini 3.1 Pro High regulatory width (via Pro), house Sonnet web-grounded VOA-list lane
-adversarial_review: round-1 dispositions applied 2026-08-08 (roster: Gemini 3.1 Pro High ✅ full verdict, Codex gpt-5.6-sol xhigh ✅ died pre-consolidation — findings recovered from intermediate messages + empirical evaluator run, house refuter Sonnet ✅ verdict delivered 05:49 — 4/4 findings accepted; GLM/Kimi/NLM unavailable, declared). Operator (Zero) supplied the 2026-08-08 official portal lists (VOA/BVK/CallingVisa/TPI) as primary evidence.
-status: DRAFT — panel round-1 dispositions applied (Gemini + Codex + house refuter, 19/19 accepted); ship pending orchestrator push/PR
+adversarial_review: round-1 dispositions applied 2026-08-08 (roster: Gemini 3.1 Pro High ✅ full verdict, Codex gpt-5.6-sol xhigh ✅ died pre-consolidation — findings recovered from intermediate messages + empirical evaluator run, house refuter Sonnet ✅ verdetto consegnato 2026-08-08 05:49 (2 P1 + 1 P2, tutti ACCEPTED; lanes 1+4 UNREFUTED con traccia empirica delle 110 regole); GLM/Kimi/NLM unavailable, declared). Operator (Zero) supplied the 2026-08-08 official portal lists (VOA/BVK/CallingVisa/TPI) as primary evidence.
+status: DRAFT — panel dispositions applied (rounds closed), ready for ship
 ---
 
 # Decision Tree V2 — full-index design (Round-1 synthesis)
@@ -163,7 +163,7 @@ Authoring feedstock: 87 KB scrape files + 8 W2 fact-bases; every axis of the pro
 ## 6. Decisions for Zero (open)
 
 1. RATIFIED (Zero, 2026-08-08): Azerbaijan and Mauritius are IN the VOA allowlist, on the operator-supplied 2026-08-08 portal list corroborated by depok.imigrasi.go.id + detik. Only remaining open item: NAME the amending Kepmen/Permenkumham instrument that produced the current 97-country list — downgraded from a Zero-decision to an authoring task at Wave 1.
-2. D1 G-a-vol threshold — unchanged (standing: proposal ≥100 real/14d in the D1 pack).
+2. D1 G-a-vol threshold — OPEN (house refuter P1 ACCEPTED, item 16, §4): the standing 1000/7d gate is unreachable at real traffic (~0.8 sessions/day → ~3.4 years, `research/visa/2026-07-23-d1-decision-pack.md`) — proposal ≥100 real/14d carried forward here as the decision Zero must rule on, not silently dropped.
 3. Retirement age — NO conflict found (Gemini P2 ACCEPTED): E33F (Retirement) 55+, E33E (Silver Hair) 60+ are two distinct indexes, not a 55-vs-60 disagreement. Authorize primary-source re-verification of both thresholds at Wave 5 authoring.
 4. DPIA + analytics TTL remain the ENFORCE blockers (unchanged, not part of this program).
 
@@ -173,7 +173,7 @@ Round-1 lanes: Codex sol xhigh (repo-grounded architecture+red-team) · Gemini 3
 
 ## Adversarial review
 
-**Roster (round 1, 2026-08-08)**: Gemini 3.1 Pro High ✅ full verdict · Codex gpt-5.6-sol xhigh ✅ (died pre-consolidation — findings recovered from intermediate messages + the empirical evaluator run in the §3 Acceptance proof subsection) · house refuter Sonnet ✅ verdetto 05:49 (delivered 2026-08-08 05:49, all 4 findings accepted) · GLM (Keychain-dead) / Kimi (quota-dead) / NLM (auth-dead on Mini) unavailable, declared. Operator (Zero) supplied the 2026-08-08 official portal lists (VOA/BVK/Calling-Visa/TPI) as primary evidence.
+**Roster (round 1, 2026-08-08)**: Gemini 3.1 Pro High ✅ full verdict · Codex gpt-5.6-sol xhigh ✅ (died pre-consolidation — findings recovered from intermediate messages + the empirical evaluator run in the §3 Acceptance proof subsection) · house refuter Sonnet ✅ verdetto consegnato 2026-08-08 05:49 (2 P1 + 1 P2, tutti ACCEPTED; lanes 1+4 UNREFUTED con traccia empirica delle 110 regole) · GLM (Keychain-dead) / Kimi (quota-dead) / NLM (auth-dead on Mini) unavailable, declared. Operator (Zero) supplied the 2026-08-08 official portal lists (VOA/BVK/Calling-Visa/TPI) as primary evidence.
 
 **Dispositions table** (claim → seat → verdict → fix applied):
 
