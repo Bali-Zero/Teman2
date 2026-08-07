@@ -166,12 +166,17 @@ async def _pack_row_payload_hash(db: asyncpg.Pool, pack_id: UUID) -> bytes | Non
 async def _database_identity(db: asyncpg.Pool) -> tuple[str, bool]:
     async with db.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT current_user::text AS current_user, "
-            "(SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS is_superuser"
+            "SELECT session_user::text AS session_user, "
+            "COALESCE(bool_or(r.rolsuper), true) AS is_superuser "
+            "FROM pg_roles r "
+            "WHERE r.rolname IN (session_user::text, current_user::text)"
         )
     if row is None:
         raise RuntimeError("database identity unavailable")
-    return str(row["current_user"]), bool(row["is_superuser"])
+    # Distinct DSNs must resolve to distinct LOGIN principals. Comparing
+    # current_user would let one login masquerade as two identities through
+    # SET ROLE. Capabilities below intentionally remain checked as current_user.
+    return str(row["session_user"]), bool(row["is_superuser"])
 
 
 async def _assert_production_separation(

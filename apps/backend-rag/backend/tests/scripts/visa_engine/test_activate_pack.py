@@ -126,17 +126,20 @@ class _CapabilityConnection:
         table_privileges: set[tuple[str, str]],
         function_privileges: set[str],
         superuser: bool = False,
+        session_identity: str | None = None,
         server_version_num: int = 150000,
     ) -> None:
         self.identity = identity
+        self.session_identity = session_identity or identity
         self.table_privileges = table_privileges
         self.function_privileges = function_privileges
         self.superuser = superuser
         self.server_version_num = server_version_num
 
     async def fetchrow(self, query: str) -> dict[str, Any]:
+        assert "session_user::text AS session_user" in query
         assert "current_user::text" in query
-        return {"current_user": self.identity, "is_superuser": self.superuser}
+        return {"session_user": self.session_identity, "is_superuser": self.superuser}
 
     async def fetchval(self, query: str, *args: object) -> object:
         if "server_version_num" in query:
@@ -205,9 +208,7 @@ async def test_production_separation_rejects_replace_capability_or_direct_ledger
     with pytest.raises(RuntimeError, match="pack writer"):
         await _assert_production_separation(
             _CapabilityPool(  # type: ignore[arg-type]
-                _writer_connection(
-                    activation_capabilities={activate_pack.ACTIVATION_SET_FUNCTION}
-                )
+                _writer_connection(activation_capabilities={activate_pack.ACTIVATION_SET_FUNCTION})
             ),
             _CapabilityPool(_activation_connection()),  # type: ignore[arg-type]
         )
@@ -233,6 +234,20 @@ async def test_production_activation_rejects_one_combined_database_login(
     monkeypatch.setattr(activate_pack, "_database_identity", same_identity)
     with pytest.raises(RuntimeError, match="distinct database logins"):
         await _assert_production_separation(object(), object())  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_production_activation_rejects_one_login_using_two_set_roles() -> None:
+    writer = _writer_connection()
+    writer.session_identity = "shared_login"
+    activator = _activation_connection()
+    activator.session_identity = "shared_login"
+
+    with pytest.raises(RuntimeError, match="distinct database logins"):
+        await _assert_production_separation(
+            _CapabilityPool(writer),  # type: ignore[arg-type]
+            _CapabilityPool(activator),  # type: ignore[arg-type]
+        )
 
 
 @pytest.mark.asyncio
