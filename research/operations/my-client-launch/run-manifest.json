@@ -2,13 +2,13 @@
   "schema_version": "1.0.0",
   "run_id": "my-client-launch-2026-08-04-wave0",
   "state": "CLEAN_CURRENT_ORIGIN_MAIN_DELIVERY_LOCAL_PRODLIKE_PASS_INDEPENDENT_VERIFIED_PUBLIC_LIVE_NO_GO_AUTHENTICATED_LIVE_BLOCKED",
-  "generated_at_utc": "2026-08-07T07:12:51Z",
+  "generated_at_utc": "2026-08-07T07:17:02Z",
   "coordinator": "Sol",
   "repository": {
     "path": "/Users/nuzantara/nuzantara",
     "app": "apps/mouth",
     "backend": "apps/backend-rag",
-    "commit_sha": "3df8528a0a1b6a634de0bba45c7c5e84c94a9de4",
+    "commit_sha": "f33ab281b7d845bb83c7a3a0924e992b0f608a63",
     "branch": "agent/nuzantara/infra/my-portal-launch-delivery-v2",
     "peer_head_agreement": true,
     "local_main_sha": "5e032c2fe33102e97b82df787ed0d3598de99ee1",
@@ -17,8 +17,8 @@
     "origin_main_is_ancestor": true,
     "origin_main_patch_integrated_via_cherry_pick": false,
     "origin_main_source_sha": "5e032c2fe33102e97b82df787ed0d3598de99ee1",
-    "app_diff_base_to_current_origin": "CLEAN_DELIVERY_SOURCE_HEAD_IS_1_AHEAD_AND_0_BEHIND_ORIGIN_MAIN; APPS_AND_PACKAGE_LOCK_ARE BYTE_IDENTICAL TO INDEPENDENTLY VERIFIED CANDIDATE 8d91e2dc1",
-    "note": "Clean delivery source commit 3df8528a0 is based directly on current origin/main 5e032c2fe. Its apps and package-lock.json snapshot is byte-identical to independently verified candidate 8d91e2dc1; the one newer main commit is documentation-only and has no portal runtime overlap. The retained final matrix passed 88/88 with zero raw email marker, zero raw magic-link path and zero raw loopback authentication marker. A fresh independent Claude verifier passed the five-file Ruff gate and 169/169 focused middleware tests, confirmed the privacy finding closed and returned PASS for candidate/local-prodlike only. Live production remains NO_GO and authenticated live validation remains blocked by named access and synthetic-fixture inputs. No push, merge to main, deploy, production mutation, outbound send, real PII use or external write occurred."
+    "app_diff_base_to_current_origin": "CLEAN_DELIVERY_RUNTIME_AND_PACKAGE_LOCK_MATCH INDEPENDENTLY VERIFIED CANDIDATE 8d91e2dc1; ONE TEST-ONLY ASYNC WAIT CORRECTION IS RECORDED IN f33ab281b",
+    "note": "Clean delivery source commit 3df8528a0 is based directly on current origin/main 5e032c2fe. Its runtime apps snapshot and package-lock.json match independently verified candidate 8d91e2dc1; f33ab281b changes one test assertion to await the lazy Partner bottom navigation. The one newer main commit is documentation-only and has no portal runtime overlap. The retained final prod-like matrix passed 88/88 with zero raw email marker, zero raw magic-link path and zero raw loopback authentication marker. Fresh clean-lane regressions passed 169/169 middleware tests, 458/458 changed frontend tests, 22/22 prod-like preflight tests, 3/3 public-live unit tests and TypeScript typecheck. Live production remains NO_GO and authenticated live validation remains blocked by named access and synthetic-fixture inputs. No push, merge to main, deploy, production mutation, outbound send, real PII use or external write occurred."
   },
   "current_main_drift": {
     "status": "CLEAN_DELIVERY_BASED_DIRECTLY_ON_CURRENT_ORIGIN_MAIN",
@@ -33,7 +33,7 @@
     "portal_overlap": "none in the latest post-candidate origin/main delta; commit 5e032c2fe adds only docs/operations/2026-08-07-fr-ru-translation-freshness-decision.md",
     "merge_attempt": "NOT_APPLICABLE_CLEAN_BRANCH_FROM_CURRENT_ORIGIN_MAIN",
     "conflicts": [],
-    "safety": "clean delivery source is based directly on current origin/main 5e032c2fe; local and Mini main agree at that SHA; apps and package-lock.json match independently verified candidate 8d91e2dc1 byte-for-byte"
+    "safety": "clean delivery source is based directly on current origin/main 5e032c2fe; local and Mini main agree at that SHA; runtime apps and package-lock.json match independently verified candidate 8d91e2dc1, with one test-only async wait correction in f33ab281b"
   },
   "live": {
     "origin": "https://my.balizero.com",
@@ -1031,16 +1031,31 @@
     "safety": "synthetic isolated QA only; no client rows or real PII; no external write, outbound send, push, merge to main, deploy or publication"
   },
   "clean_delivery_receipt": {
-    "result": "PASS_SOURCE_SNAPSHOT_ONLY_NOT_PRODUCTION_GO",
+    "result": "PASS_CLEAN_DELIVERY_LOCAL_TESTS_ONLY_NOT_PRODUCTION_GO",
     "base_origin_main_sha": "5e032c2fe33102e97b82df787ed0d3598de99ee1",
     "source_commit_sha": "3df8528a0a1b6a634de0bba45c7c5e84c94a9de4",
     "branch": "agent/nuzantara/infra/my-portal-launch-delivery-v2",
     "verified_candidate_sha": "8d91e2dc1",
-    "source_identity_scope": ["apps", "package-lock.json"],
-    "source_identity": "PASS_BYTE_IDENTICAL",
-    "origin_main_relation_after_source_commit": "1 ahead, 0 behind; origin/main is an ancestor",
+    "test_fix_commit_sha": "f33ab281b7d845bb83c7a3a0924e992b0f608a63",
+    "source_identity_scope": ["runtime files under apps", "package-lock.json"],
+    "source_identity": "PASS_RUNTIME_BYTE_IDENTICAL; one test-only async wait correction",
+    "origin_main_relation": "origin/main is an ancestor",
     "latest_origin_main_delta": "commit 5e032c2fe is documentation-only and has no portal runtime overlap",
     "pre_commit_hooks": "PASS; TypeScript typecheck, Python Ruff, off-limits guard and FastAPI import chain passed; four repository-classified RH005 async assertion warnings remained non-blocking",
+    "fresh_clean_lane_verification": {
+      "middleware_privacy_junit": "/tmp/portal-delivery-v2-middleware.xml",
+      "middleware_privacy": "169/169 PASS; 0 failures, 0 errors, 0 skipped",
+      "changed_frontend_junit": "/tmp/portal-delivery-v2-vitest.xml",
+      "changed_frontend": "48/48 files and 458/458 tests PASS",
+      "prodlike_preflight": "22/22 PASS",
+      "public_live_unit": "3/3 PASS",
+      "typescript_typecheck": "PASS",
+      "non_blocking_warnings": [
+        "Vitest reports deprecated test.poolOptions configuration",
+        "one existing PortalLayout test reports an unwrapped React state update",
+        "the workspace layout mock reports non-boolean jsx and global DOM attributes"
+      ]
+    },
     "production_live": "NO_GO_UNCHANGED",
     "authenticated_live": "BLOCKED_UNVERIFIED_NO_GO_UNCHANGED",
     "safety": "no push, PR mutation, merge, deploy, production mutation, external write, outbound send, real PII or client-row access"
