@@ -302,9 +302,49 @@ def check_pairs(
                 skipped.append(f"{pair['live']} (declared for {label}, not on disk)")
             continue
         if not repo.exists():
+            # ABSENCE is a proxy too. W106b cured the DIVERGENCE path — ask
+            # origin/main which side is stale — but left this branch asserting
+            # the harsher claim ("no source of truth") from the checkout alone.
+            # A checkout that simply trails a merge is then accused of a breach
+            # it does not have, in a message that is factually false, and the
+            # remedy it prints ("declare the pair") is a no-op because the pair
+            # IS declared. Measured live on M5 2026-08-08, minutes after #3777
+            # merged: a correctly declared, correctly synced pair read as
+            # NO-REPO-TWIN because that checkout is 170 commits behind by
+            # design (pulling it races ~45 live worktrees).
+            upstream = origin_main_sha(repo_root, pair["repo"])
+            if upstream is None:
+                # Genuinely unsourced — or unattributable (no remote, shallow
+                # CI clone). Either way keep the loud verdict: "could not
+                # attribute" is never "clean" (W84).
+                breaches.append(
+                    f"NO-REPO-TWIN: {pair['live']} executes live but {pair['repo']} "
+                    f"is not in the repo — the live copy has no source of truth"
+                )
+                continue
+            if sha256_file(live) == upstream:
+                behind = commits_behind_origin(repo_root)
+                trail = f" ({behind} commits behind)" if behind else ""
+                if notices is not None:
+                    notices.append(
+                        f"CHECKOUT-STALE: {pair['repo']} is absent from this "
+                        f"checkout{trail} but present on origin/main, and the "
+                        f"LIVE copy {pair['live']} already matches it. The live "
+                        f"copy HAS a source of truth — update the checkout, "
+                        f"change nothing live."
+                    )
+                    continue
+                # No notices sink: keep it visible rather than dropping a real
+                # finding, but say which side actually moved.
+                breaches.append(
+                    f"DIVERGED: {pair['repo']} is absent from this checkout — "
+                    f"the CHECKOUT is the stale side, update it, do not touch live"
+                )
+                continue
             breaches.append(
-                f"NO-REPO-TWIN: {pair['live']} executes live but {pair['repo']} "
-                f"is not in the repo — the live copy has no source of truth"
+                f"DIVERGED: {pair['live']} != origin/main:{pair['repo']} (absent "
+                f"from this checkout) — the LIVE copy is the stale side; realign "
+                f"it from origin/main, never from this checkout"
             )
             continue
         live_sha, repo_sha = sha256_file(live), sha256_file(repo)

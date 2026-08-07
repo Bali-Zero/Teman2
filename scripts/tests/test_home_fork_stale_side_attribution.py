@@ -410,3 +410,133 @@ def test_known_gap_both_sides_equally_behind_reads_clean(world) -> None:
     # And the evidence that this IS a gap, not a non-issue: the fleet's copy
     # differs from what is actually executing.
     assert lhf.origin_main_sha(repo, REL) != lhf.sha256_file(home / REL)
+
+
+# --------------------------------------------- ABSENCE is a proxy too (08-08)
+#
+# W106b cured the DIVERGENCE path (ask origin/main which side is stale) and left
+# the ABSENCE path asserting "the live copy has no source of truth" from the
+# checkout alone. Measured on M5 minutes after #3777 merged: a correctly
+# declared, correctly synced pair read as NO-REPO-TWIN — exit 1, a factually
+# false sentence, and a printed remedy ("declare the pair") that is a no-op
+# because the pair IS declared. Same trauma as the docstring above, one branch
+# over: the reference was still the checkout.
+
+
+@pytest.fixture()
+def absent_world(tmp_path: Path):
+    """origin/main HOLDS the repo half; this checkout does NOT (post-merge M5)."""
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+
+    def build(upstream: str, live: str):
+        (repo / REL).write_text(upstream)
+        _git(repo, "add", REL)
+        _git(repo, "commit", "-qm", "upstream")
+        head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True, timeout=30,
+        ).stdout.strip()
+        _git(repo, "update-ref", "refs/remotes/origin/main", head)
+        # The checkout trails the merge: the file is simply not here yet.
+        (repo / REL).unlink()
+        (home / REL).write_text(live)
+        return repo, home
+
+    return build
+
+
+def test_innocence_repo_half_absent_from_a_trailing_checkout_is_not_a_breach(
+    absent_world,
+) -> None:
+    """The M5-after-merge shape: live == origin/main, checkout has not pulled.
+
+    The live copy demonstrably HAS a source of truth, so calling it unsourced
+    is false. It belongs in notices, exactly like the DIVERGENCE twin.
+    """
+    repo, home = absent_world(upstream="canon\n", live="canon\n")
+    breaches, notices = _lint(repo, home)
+
+    assert breaches == []
+    assert len(notices) == 1
+    assert "CHECKOUT-STALE" in notices[0]
+    assert "has a source of truth" in notices[0].lower()
+    # It must not tell the reader to touch the live copy — that is the W106b
+    # damage: the prescribed cure regressing a current file.
+    assert "change nothing live" in notices[0]
+
+
+def test_guilt_a_live_copy_that_differs_from_origin_main_still_bites(
+    absent_world,
+) -> None:
+    """Absence must not become a blanket amnesty: if the live copy does NOT
+    match origin/main it is a real HOME-fork, and the verdict has to name
+    origin/main as the reference rather than the checkout that lacks the file."""
+    repo, home = absent_world(upstream="canon\n", live="drifted\n")
+    breaches, notices = _lint(repo, home)
+
+    assert len(breaches) == 1, breaches
+    assert "DIVERGED" in breaches[0]
+    assert "origin/main" in breaches[0]
+    assert "LIVE copy is the stale side" in breaches[0]
+    assert notices == []
+
+
+def test_guilt_no_notices_sink_keeps_the_absent_finding(absent_world) -> None:
+    """With no notices sink the caller only reads breaches, so the finding must
+    stay visible rather than be dropped on the floor — while still naming the
+    checkout, not the live copy, as the side that moved."""
+    repo, home = absent_world(upstream="canon\n", live="canon\n")
+    breaches = lhf.check_pairs(PAIRS, repo, home, "mini")  # no notices=
+
+    assert len(breaches) == 1, breaches
+    assert "CHECKOUT is the stale side" in breaches[0]
+
+
+def test_guilt_unreachable_origin_keeps_the_loud_no_repo_twin(tmp_path: Path) -> None:
+    """No origin/main to ask (no remote, shallow CI clone) → the old loud
+    verdict stands. "Could not attribute" is never "clean" (W84), and this is
+    also what keeps a genuinely unsourced live payload named."""
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / REL).write_text("live only\n")
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+
+    notices: list[str] = []
+    breaches = lhf.check_pairs(PAIRS, repo, home, "mini", notices=notices)
+
+    assert len(breaches) == 1 and "NO-REPO-TWIN" in breaches[0]
+    assert notices == []
+
+
+def test_innocence_the_twin_also_stops_calling_a_trailing_checkout_unsourced(
+    absent_world, monkeypatch
+) -> None:
+    """The twin carried the IDENTICAL absence branch. Curing only one is the
+    W106b fourth layer verbatim — calling two tools twins and fixing one."""
+    repo, home = absent_world(upstream="canon\n", live="canon\n")
+    status, findings, ev = _prop(repo, home, monkeypatch)
+
+    assert findings == 0, ev
+    assert status == prop.RECONCILED
+    assert any("CHECKOUT-STALE" in line for line in ev), ev
+    assert not any("no source of truth" in line for line in ev), ev
+
+
+def test_guilt_the_twin_still_bites_when_live_differs_from_origin_main(
+    absent_world, monkeypatch
+) -> None:
+    """Absence is not amnesty in the twin either."""
+    repo, home = absent_world(upstream="canon\n", live="drifted\n")
+    status, findings, ev = _prop(repo, home, monkeypatch)
+
+    assert findings == 1, ev
+    assert status == prop.DIVERGED
+    assert any("origin/main" in line and "LIVE copy is stale" in line for line in ev), ev
