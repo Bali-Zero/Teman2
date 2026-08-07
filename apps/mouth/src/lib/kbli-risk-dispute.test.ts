@@ -96,18 +96,86 @@ describe("fail-closed loading", () => {
     expect(() => rd("82990")).not.toThrow();
   });
 
-  it("innocence: an entry with no record side is filtered silently, not treated as corruption", async () => {
+  // -- per-entry fail-closed (round 4): the compiler never emits an entry
+  // shaped otherwise, so each of these three shapes IS corruption, not a
+  // normal empty state — the old behavior silently dropped/defaulted them,
+  // exactly the class of lie the file-level fail-closed above exists to
+  // prevent, just one level deeper. --------------------------------------
+
+  it("throws on an entry with a missing record", async () => {
     const fsMock = await import("fs");
     const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
       JSON.stringify({
-        disputes: { "00000": { kind: "zero_overlap", editorial_mentions: {} } },
+        disputes: {
+          "00000": { kind: "zero_overlap", baliDependsOnTier: false },
+        },
       }),
     );
     const { riskDispute: rd, _resetRiskDisputeCache } =
       await import("./kbli-risk-dispute");
     _resetRiskDisputeCache();
-    expect(() => rd("00000")).not.toThrow();
-    expect(rd("00000")).toBeNull();
+    expect(() => rd("00000")).toThrow(
+      /entry "00000" has a missing or empty "record"/,
+    );
+    spy.mockRestore();
+    _resetRiskDisputeCache();
+  });
+
+  it("throws on an entry with an empty record array", async () => {
+    const fsMock = await import("fs");
+    const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
+      JSON.stringify({
+        disputes: {
+          "00000": {
+            record: [],
+            kind: "zero_overlap",
+            baliDependsOnTier: false,
+          },
+        },
+      }),
+    );
+    const { riskDispute: rd, _resetRiskDisputeCache } =
+      await import("./kbli-risk-dispute");
+    _resetRiskDisputeCache();
+    expect(() => rd("00000")).toThrow(
+      /entry "00000" has a missing or empty "record"/,
+    );
+    spy.mockRestore();
+    _resetRiskDisputeCache();
+  });
+
+  it("throws on an entry with a missing/unknown kind", async () => {
+    const fsMock = await import("fs");
+    const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
+      JSON.stringify({
+        disputes: {
+          "00000": { record: ["Tinggi"], baliDependsOnTier: false },
+        },
+      }),
+    );
+    const { riskDispute: rd, _resetRiskDisputeCache } =
+      await import("./kbli-risk-dispute");
+    _resetRiskDisputeCache();
+    expect(() => rd("00000")).toThrow(
+      /entry "00000" has a missing or unknown "kind"/,
+    );
+    spy.mockRestore();
+    _resetRiskDisputeCache();
+  });
+
+  it("throws on an entry with a missing/non-boolean baliDependsOnTier", async () => {
+    const fsMock = await import("fs");
+    const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
+      JSON.stringify({
+        disputes: { "00000": { record: ["Tinggi"], kind: "zero_overlap" } },
+      }),
+    );
+    const { riskDispute: rd, _resetRiskDisputeCache } =
+      await import("./kbli-risk-dispute");
+    _resetRiskDisputeCache();
+    expect(() => rd("00000")).toThrow(
+      /entry "00000" has a missing or non-boolean "baliDependsOnTier"/,
+    );
     spy.mockRestore();
     _resetRiskDisputeCache();
   });

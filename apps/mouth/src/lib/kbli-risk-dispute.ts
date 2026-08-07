@@ -30,12 +30,21 @@ import path from "path";
  * disputed, exactly the class of lie this module exists to prevent). A
  * missing file, unparseable JSON, or a payload without a `disputes` key now
  * THROWS at first read, naming the `--emit` command that fixes it — the
- * freshness gate (fix #1 of this same round) guarantees the artifact is
- * always present and current on any branch that can reach this code, so a
- * throw here means the checkout itself is broken, not a normal empty state.
- * The per-entry filter for a dispute with no record side is UNCHANGED and
- * stays silent — that one is a documented semantic filter (an empty
- * disclosure would render nothing anyway), not a sign of corruption.
+ * freshness gate (fix #1 of round 3) guarantees the artifact is always
+ * present and current on any branch that can reach this code, so a throw
+ * here means the checkout itself is broken, not a normal empty state.
+ *
+ * PER-ENTRY FAIL-CLOSED (round 4, MAJOR): the file-level checks above leave
+ * a gap — a well-formed JSON payload can still carry one malformed ENTRY
+ * (missing/empty `record`, missing/unknown `kind`, missing/non-boolean
+ * `baliDependsOnTier`). `gold_risk_dispute_relation.py` never emits such an
+ * entry — every entry it writes has a non-empty `record`, a `kind` from its
+ * closed two-value set, and a boolean `baliDependsOnTier` — so an entry
+ * shaped otherwise IS corruption (a hand-edit, a partial write, a future
+ * compiler bug), not a normal empty state, and the old behavior of silently
+ * dropping/defaulting it was the exact same class of lie the file-level
+ * fail-closed above exists to prevent, just one level deeper. Each of the
+ * three shapes now throws, naming the offending code and the `--emit` fix.
  */
 export interface KBLIRiskDispute {
   /** Distinct kategori_risiko values the record's per_skala rows hold. */
@@ -76,6 +85,13 @@ type RawDispute = {
   kind?: string;
   baliDependsOnTier?: boolean;
 };
+
+// Plain `!==` narrowing can't reduce `string | undefined` down to this
+// literal union — a named type guard is what lets the throw below leave
+// `d.kind` typed as `KBLIRiskDispute["kind"]` for the assignment after it.
+function isKnownDisputeKind(v: unknown): v is KBLIRiskDispute["kind"] {
+  return v === "zero_overlap" || v === "universal_claim";
+}
 
 let _cache: Record<string, KBLIRiskDispute> | null = null;
 
@@ -119,21 +135,42 @@ function load(): Record<string, KBLIRiskDispute> {
 
   const disputes = disputesRaw as Record<string, RawDispute>;
   _cache = Object.fromEntries(
-    Object.entries(disputes)
-      // A dispute with no record side would render an empty disclosure —
-      // treat it as absent rather than inventing a sentence around nothing.
-      // This is a documented semantic filter, distinct from the corruption
-      // cases above: it fires only per-entry, on a well-formed artifact.
-      .filter(([, d]) => Array.isArray(d.record) && d.record.length > 0)
-      .map(([code, d]) => [
+    Object.entries(disputes).map(([code, d]) => {
+      // Per-entry fail-closed (round 4): the compiler never emits an entry
+      // shaped otherwise, so each of these three shapes IS corruption, not
+      // a normal empty state — throw rather than default/drop.
+      if (!Array.isArray(d.record) || d.record.length === 0) {
+        throw new Error(
+          `[kbli] risk-dispute artifact entry "${code}" has a missing or ` +
+            `empty "record" — the compiler never emits such an entry, so ` +
+            `this is a corrupt artifact, not a normal empty state; run ` +
+            `\`python3 scripts/kbli_filiera/gold_risk_dispute_relation.py --emit\``,
+        );
+      }
+      if (!isKnownDisputeKind(d.kind)) {
+        throw new Error(
+          `[kbli] risk-dispute artifact entry "${code}" has a missing or ` +
+            `unknown "kind" (${JSON.stringify(d.kind)}) — run ` +
+            `\`python3 scripts/kbli_filiera/gold_risk_dispute_relation.py --emit\``,
+        );
+      }
+      if (typeof d.baliDependsOnTier !== "boolean") {
+        throw new Error(
+          `[kbli] risk-dispute artifact entry "${code}" has a missing or ` +
+            `non-boolean "baliDependsOnTier" ` +
+            `(${JSON.stringify(d.baliDependsOnTier)}) — run ` +
+            `\`python3 scripts/kbli_filiera/gold_risk_dispute_relation.py --emit\``,
+        );
+      }
+      return [
         code,
         {
-          recordTiers: d.record as string[],
-          kind:
-            d.kind === "universal_claim" ? "universal_claim" : "zero_overlap",
-          baliDependsOnTier: d.baliDependsOnTier === true,
+          recordTiers: d.record,
+          kind: d.kind,
+          baliDependsOnTier: d.baliDependsOnTier,
         } satisfies KBLIRiskDispute,
-      ]),
+      ];
+    }),
   );
   return _cache;
 }

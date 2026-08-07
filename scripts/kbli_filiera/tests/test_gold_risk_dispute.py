@@ -21,6 +21,7 @@ from gold_risk_dispute_relation import (  # noqa: E402
     ARTIFACT,
     CANONICAL,
     GOLD,
+    NON_RISK_DERIVED_STATUSES,
     RISK_DERIVED_STATUSES,
     bali_depends_on_tier,
     build_artifact,
@@ -116,6 +117,29 @@ class TestSentenceClaims:
         # behavior gets noticed here, not just in the artifact diff.
         s = "Even if the scope is later expanded, this activity is Low Risk."
         assert sentence_claims(s, "12345") == set()
+
+    # -- NEGATION position (round 4, declared limit) ------------------------
+
+    def test_declared_limit_negation_after_the_quantifier_still_convicts(self):
+        # DECLARED LIMIT (round 4, zero corpus occurrences today, do not
+        # attempt general negation semantics): `_NEGATION` matches "not all
+        # scales"/"not every scale" (negation BEFORE the quantifier) and
+        # "does not apply". "All scales ARE NOT Low Risk" puts the negation
+        # AFTER the quantifier and doesn't say "apply" — a different
+        # position the guard doesn't reach. Still parses as a POSITIVE claim
+        # today. Pinned so a "smarter" negation regex is forced to explain
+        # itself here, same treatment as the `:` splitter and "Even if"
+        # pins above.
+        s = "All scales are not Low Risk."
+        assert sentence_claims(s, "12345") == {"Rendah"}
+
+    def test_declared_limit_not_applicable_phrasing_still_convicts(self):
+        # Same class, different surface: "not applicable at every scale"
+        # never says "apply" and never puts "not" immediately before the
+        # quantifier — outside what `_NEGATION` matches. Still parses as a
+        # POSITIVE claim today.
+        s = "Low Risk is not applicable at every scale."
+        assert sentence_claims(s, "12345") == {"Rendah"}
 
 
 # ---------------------------------------------------------------------------
@@ -283,17 +307,58 @@ class TestUniversalClaimDispute:
         }
         assert compute_disputes(canonical, gold) == {}
 
-    def test_guilt_multi_tier_universal_claim_missing_a_record_tier(self):
+    def test_guilt_multi_tier_universal_claim_missing_a_record_tier_now_raises(
+        self,
+    ):
         # Same shape, but the record ALSO holds Rendah — the clause's
-        # two-tier set does not cover it.
+        # two-tier set does not cover it. Round 3 emitted this as a plain
+        # kind="universal_claim" dispute; round 4's item-4 guard now raises
+        # instead — the mismatch is real (still guilty), but the renderer's
+        # wording states ONE tier, and this claimed set has two, so
+        # emitting it would misrepresent the claim itself (declared limit).
         canonical = [_record("99999", ["Menengah Tinggi", "Tinggi", "Rendah"])]
         gold = {
             "99999": {
                 "whatYouNeed": "All scales: Menengah Tinggi and Tinggi risk."
             }
         }
-        disputes = compute_disputes(canonical, gold)
-        assert disputes["99999"]["kind"] == "universal_claim"
+        with pytest.raises(ValueError, match="99999.*>1 tier"):
+            compute_disputes(canonical, gold)
+
+    # -- symmetric comparison (round 4, item 3) ------------------------------
+
+    def test_guilt_claimed_set_naming_a_tier_the_record_lacks_now_caught(self):
+        # DIRECTION THE OLD CHECK MISSED: `tier_set - claimed_set` is EMPTY
+        # (claimed_set covers every record tier), so round 3's
+        # one-directional check would NOT have fired — but claimed_set ALSO
+        # names Rendah, a tier the record does not have, which is just as
+        # false a claim. Round 4's symmetric `!=` catches it. Because the
+        # claimed set has >1 tier, item 4's guard fires too — raises rather
+        # than silently emitting (or, pre-round-4, silently missing this
+        # entirely).
+        canonical = [_record("99999", ["Menengah Tinggi", "Tinggi"])]
+        gold = {
+            "99999": {
+                "whatYouNeed": (
+                    "All scales: Menengah Tinggi, Tinggi, and Rendah risk."
+                )
+            }
+        }
+        with pytest.raises(ValueError, match="99999.*>1 tier"):
+            compute_disputes(canonical, gold)
+
+    def test_innocence_exact_set_match_still_not_a_dispute_and_does_not_raise(
+        self,
+    ):
+        # Companion to the two guilt tests above: an EXACT match (claimed ==
+        # record, both directions empty) must still be silently innocent —
+        # the symmetric comparison must not turn every multi-tier universal
+        # clause into an error, only a MISMATCHED one.
+        canonical = [_record("99999", ["Menengah Tinggi", "Tinggi"])]
+        gold = {
+            "99999": {"whatYouNeed": "All scales: Menengah Tinggi and Tinggi risk."}
+        }
+        assert compute_disputes(canonical, gold) == {}
 
     def test_71109_single_tier_claim_still_uses_set_semantics_correctly(
         self, real_disputes
@@ -357,6 +422,42 @@ class TestBaliDependsOnTier:
 
     def test_innocence_missing_l4_bali(self):
         assert bali_depends_on_tier({}) is False
+
+    def test_innocence_explicit_none_status_does_not_raise(self):
+        # A MISSING verdict ("no l4_bali block at all" or a `status` of
+        # `None`) is "no verdict yet", not "an unclassified one" — it must
+        # return False without raising, distinct from the guilt test below.
+        assert bali_depends_on_tier({"l4_bali": {"status": None}}) is False
+
+    # -- loud unknown-status (round 4, MAJOR) --------------------------------
+
+    def test_guilt_unclassified_status_raises(self):
+        # A status present but in NEITHER frozenset is corruption/drift, not
+        # a "no verdict" state — must raise loudly, naming the status,
+        # rather than silently falling through to False (which would defeat
+        # `_l4bali_basis`'s own completeness property one layer up).
+        with pytest.raises(ValueError, match="NEW_UNCLASSIFIED_STATUS"):
+            bali_depends_on_tier({"l4_bali": {"status": "NEW_UNCLASSIFIED_STATUS"}})
+
+    def test_observed_statuses_are_a_subset_of_the_ssot_union(self):
+        # The completeness property lives in `_l4bali_basis` (its own
+        # docstring: "a new status added upstream fails the completeness
+        # check instead of being silently ignored") — this proves every
+        # status this compiler will ever actually see today is already
+        # classified, so the round-4 raise cannot fire on the live corpus.
+        observed = {
+            (r.get("l4_bali") or {}).get("status")
+            for r in load_canonical()
+        } - {None}
+        assert observed <= (RISK_DERIVED_STATUSES | NON_RISK_DERIVED_STATUSES)
+
+    def test_bali_depends_on_tier_never_raises_on_the_real_catalogue(self):
+        # Direct behavioral proof, not just the set-membership proxy above:
+        # calling the function itself on every real record must not raise,
+        # and must always return a bool (a raise would surface as pytest
+        # failure here; this also pins the return type).
+        for record in load_canonical():
+            assert isinstance(bali_depends_on_tier(record), bool)
 
     def test_82990_is_tier_derived_in_the_real_catalogue(self):
         records = {r["kode_kbli_2025"]: r for r in load_canonical()}

@@ -36,7 +36,14 @@ Tinggi, because the negation in clause 1 cannot reach clause 2 (2026-08-07 gate
 finding #4; the earlier whole-sentence split was itself an over-match):
 
 * NEGATION — `46206`: "Rendah/Otomatis does NOT apply here" DENIES the tier,
-  and agrees with the record.
+  and agrees with the record. Also catches "not all scales"/"not every
+  scale" ahead of the universal quantifier (round 3).
+  DECLARED LIMIT (round 4, zero corpus occurrences today, do not attempt
+  general negation semantics): "All scales are not Low Risk." and "Low Risk
+  is not applicable at every scale." both parse as POSITIVE claims — the
+  negation sits in a different position than "not all scales"/"not every
+  scale"/"does not apply", which is what `_NEGATION` actually matches.
+  Pinned as a known gap, not fixed.
 * HEDGED FORECAST — `60390`: "Likely will be classified as High Risk when PP28
   integration occurs" predicts, on a code whose same text says no assignment
   exists yet.
@@ -78,20 +85,28 @@ declared, not closed.
 `universal_claim` (2026-08-07): a CLAUSE quantifying over ALL scales ("all
 scales", "every scale", optionally followed by a parenthesized scale list)
 claims a SET of tiers — usually one, occasionally more ("All scales:
-Menengah Tinggi and Tinggi") — and is false as soon as the record holds ANY
-tier that set does not cover. Evaluated independently of overlap, because a
-universal claim is falsified by a single dissenting tier even when part of
-its claimed set is also present. The set stays grouped PER CLAUSE, never
-flattened across clauses (round 3): a clause naming two tiers together must
-be judged as one unit, or a claim that correctly covers a two-tier record
-would be misread as false on each tier taken alone. `46100` is the motivating
-case: gold says "All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)"
-while the record holds {Menengah Rendah, Menengah Tinggi, Rendah, Tinggi} —
-the Rendah overlap hid the false universal claim from `zero_overlap`. A
-universal claim whose set equals (or is a superset of) the record's tiers is
-innocent — including a plain negation ("Not all scales are Low Risk" makes
-no claim at all; see `_NEGATION`). `zero_overlap` is checked first; a code
-cannot be both.
+Menengah Tinggi and Tinggi") — and is false as soon as that set MISMATCHES
+the record's tier set in EITHER direction (round 4, item 3: symmetric `!=`,
+not the round-3 one-directional `tier_set - claimed_set` — a claim missing a
+record tier is false, and so is a claim naming a tier the record doesn't
+have). Evaluated independently of overlap, because a universal claim is
+falsified by a single dissenting tier even when part of its claimed set is
+also present. The set stays grouped PER CLAUSE, never flattened across
+clauses (round 3): a clause naming two tiers together must be judged as one
+unit, or a claim that correctly covers a two-tier record would be misread as
+false on each tier taken alone. `46100` is the motivating case: gold says
+"All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)" while the
+record holds {Menengah Rendah, Menengah Tinggi, Rendah, Tinggi} — the Rendah
+overlap hid the false universal claim from `zero_overlap`. A universal claim
+whose set EXACTLY EQUALS the record's tiers is innocent — including a plain
+negation ("Not all scales are Low Risk" makes no claim at all; see
+`_NEGATION`). `zero_overlap` is checked first; a code cannot be both.
+
+A mismatching clause whose claimed set has MORE THAN ONE tier raises instead
+of emitting (round 4, item 4, declared limit): the renderer's wording states
+ONE tier as applying at every scale, true for all 3 real members today
+(each claims exactly one tier) — admitting a multi-tier-claim entry under
+that wording would misrepresent the claim. Teach the renderer first.
 
 A record with NO tier rows is a declared gap, not a contradiction — excluded
 from both checks.
@@ -148,7 +163,10 @@ _FILIERA_DIR = Path(__file__).resolve().parent
 if str(_FILIERA_DIR) not in sys.path:
     sys.path.insert(0, str(_FILIERA_DIR))
 
-from _l4bali_basis import RISK_DERIVED_STATUSES  # noqa: E402
+from _l4bali_basis import (  # noqa: E402
+    NON_RISK_DERIVED_STATUSES,
+    RISK_DERIVED_STATUSES,
+)
 
 # Prose fields read for a tier claim about THIS code. `youllAlsoNeed` is
 # excluded by design — it is a list of OTHER codes. `whatChanged` is crosswalk
@@ -174,6 +192,14 @@ _TIER_SIMPLE = [
 # `universal_claim_sets` — which both route through `sentence_claims` —
 # inherit the fix identically; a plain claim from this clause would be just
 # as wrong as a universal one.
+#
+# DECLARED LIMIT (round 4, zero corpus occurrences today, do not fix): "All
+# scales are not Low Risk." and "Low Risk is not applicable at every scale."
+# both put the negation somewhere this regex doesn't reach — neither matches
+# "not all scales"/"not every scale" (quantifier immediately after "not") nor
+# "does not apply" (verb immediately after "not"). Both still parse as
+# POSITIVE claims today. General negation-position semantics is out of
+# bounds for a regex guard — pinned as a known gap, not attempted.
 _NEGATION = re.compile(
     r"\b(does\s+not\s+apply|do(es)?n'?t\s+apply|not\s+apply"
     r"|not\s+all\s+scales|not\s+every\s+scale)\b",
@@ -330,13 +356,33 @@ def bali_depends_on_tier(record: dict[str, Any]) -> bool:
     ARE tier-derived per that module — a fact its own `reason` text states
     outright for BLOCCATO_DIPENDE_SCOPE — and a second list answering one
     fact is exactly the drift this dataset has scarred on before, W105).
-    `_l4bali_basis` enumerates every observed status into
-    RISK_DERIVED_STATUSES or NON_RISK_DERIVED_STATUSES explicitly and its own
-    consumers fail loudly on an unclassified status — that completeness
-    property is inherited here for free, not re-implemented.
+
+    A `status` present but in NEITHER `RISK_DERIVED_STATUSES` NOR
+    `NON_RISK_DERIVED_STATUSES` raises (round 4, MAJOR): `_l4bali_basis`
+    enumerates every status it knows about EXPLICITLY (its own docstring:
+    "so a new status added upstream fails the completeness check instead of
+    being silently ignored") — silently falling through to `False` here
+    would defeat that completeness property one layer up, exactly the class
+    of bug the SSOT exists to prevent. A MISSING verdict (no `l4_bali` key,
+    or a `status` of `None`) is a different fact — "no verdict yet", not "an
+    unclassified one" — and returns `False` without raising; every record in
+    the live canonical carries a non-None status today (measured), but a
+    record legitimately awaiting L4 resolution should not crash this
+    compiler.
     """
     status = (record.get("l4_bali") or {}).get("status")
-    return status in RISK_DERIVED_STATUSES
+    if status is None:
+        return False
+    if status in RISK_DERIVED_STATUSES:
+        return True
+    if status in NON_RISK_DERIVED_STATUSES:
+        return False
+    raise ValueError(
+        f"bali_depends_on_tier: unclassified l4_bali.status {status!r} — not "
+        "in _l4bali_basis.RISK_DERIVED_STATUSES or NON_RISK_DERIVED_STATUSES; "
+        "classify it there before this compiler can judge whether the Bali "
+        "verdict depends on the disputed risk tier"
+    )
 
 
 def compute_disputes(
@@ -364,19 +410,39 @@ def compute_disputes(
         # Zero-overlap didn't fire (a partial overlap can be two truths about
         # two scopes — the no-arbiter zone). Check the universal-quantifier
         # rule independently: it convicts a CLAUSE's whole claimed-tier set
-        # on any record tier that set doesn't cover, not on the absence of
-        # overlap (a clause naming ALL of a multi-tier record's tiers
-        # together must NOT convict — round-3 finding #3).
+        # on any MISMATCH with the record's tier set — either direction
+        # (round 4, item 3: a claim missing a record tier is false, and so
+        # is a claim naming a tier the record doesn't have — `!=`, not the
+        # one-directional `tier_set - claimed_set` round 3 shipped) — not on
+        # the absence of overlap (a clause naming ALL of a multi-tier
+        # record's tiers together must NOT convict — round-3 finding #3).
         tier_set = set(tiers)
         for claimed_set in universal_claim_sets(entry, code):
-            if tier_set - claimed_set:
-                disputes[code] = {
-                    "record": tiers,
-                    "kind": "universal_claim",
-                    "editorial_mentions": claims,
-                    "baliDependsOnTier": bali_depends_on_tier(record),
-                }
-                break
+            if tier_set == claimed_set:
+                continue  # exact match — a TRUE universal claim
+            if len(claimed_set) > 1:
+                # DECLARED LIMIT (round 4, do not fix here): the renderer's
+                # universal_claim sentence states ONE risk tier as applying
+                # at every scale — true for every real member today
+                # (46100/47901/71109 each claim exactly one tier). Emitting
+                # an entry whose claimed set has more than one tier would
+                # misrepresent the claim itself under that wording. Fail
+                # loudly here rather than silently emit a mismatched
+                # sentence; teach the renderer multi-tier phrasing first.
+                raise ValueError(
+                    f"{code}: universal_claim clause claims "
+                    f"{sorted(claimed_set)} (>1 tier) against a record "
+                    "mismatch — the renderer's wording assumes a single "
+                    "claimed tier; teach the renderer before admitting this "
+                    "entry (declared limit, round 4)"
+                )
+            disputes[code] = {
+                "record": tiers,
+                "kind": "universal_claim",
+                "editorial_mentions": claims,
+                "baliDependsOnTier": bali_depends_on_tier(record),
+            }
+            break
     return disputes
 
 
