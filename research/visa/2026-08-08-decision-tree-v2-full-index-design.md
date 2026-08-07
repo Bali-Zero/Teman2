@@ -11,7 +11,7 @@ sources:
   - research/visa/2026-07-24-w2-factbase-*.md (8 family fact-bases)
   - research/visa/2026-07-23-d1-decision-pack.md (real traffic ~0.8 sess/day)
   - Round-1 2026-08-08 lanes: Codex gpt-5.6-sol xhigh architecture+red-team (repo-grounded), Gemini 3.1 Pro High regulatory width (via Pro), house Sonnet web-grounded VOA-list lane
-adversarial_review: round-1 dispositions applied 2026-08-08 (roster: Gemini 3.1 Pro High ✅ full verdict, Codex gpt-5.6-sol xhigh ✅ died pre-consolidation — findings recovered from intermediate messages + empirical evaluator run, house refuter Sonnet ✅ verdetto consegnato 2026-08-08 05:49 (2 P1 + 1 P2, tutti ACCEPTED; lanes 1+4 UNREFUTED con traccia empirica delle 110 regole); GLM/Kimi/NLM unavailable, declared). Operator (Zero) supplied the 2026-08-08 official portal lists (VOA/BVK/CallingVisa/TPI) as primary evidence.
+adversarial_review: codex
 status: DRAFT — panel dispositions applied (rounds closed), ready for ship
 ---
 
