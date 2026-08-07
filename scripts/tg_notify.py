@@ -135,6 +135,11 @@ DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 REPEAT_LADDER_H = [
     float(x) for x in os.environ.get("TG_REPEAT_LADDER_H", "").split(",") if x.strip()
 ] or [DEDUP_HOURS, 24.0, 72.0, 168.0]
+# A condition is only DEAD after this much silence, even when the ladder's own
+# window is shorter. 36h clears a daily cadence (24h) with margin for cron
+# jitter, and stays well under 48h so a genuinely two-day-silent condition is
+# still news. See _death_silence_h() for the measurement that set it.
+DEATH_FLOOR_H = float(os.environ.get("TG_DEATH_FLOOR_H", "36"))
 DRY_RUN = os.environ.get("TG_DRY_RUN", "") == "1"
 RELAY_SSH = os.environ.get("TG_RELAY_SSH", "")  # e.g. "pro" on M5
 RELAY_GATEWAY = os.environ.get(
@@ -191,6 +196,38 @@ def _mute_window_h(streak: int) -> float:
     if streak <= 0:
         return 0.0
     return REPEAT_LADDER_H[min(streak - 1, len(REPEAT_LADDER_H) - 1)]
+
+
+def _death_silence_h(streak: int) -> float:
+    """Silence after which a condition counts as DEAD (its next hit is a new birth).
+
+    Why this is not simply `2 * mute_window` (2026-08-07). It used to be, and the
+    consequence was measured live: the ladder could never quieten a ONCE-A-DAY
+    condition, which is most of this fleet's traffic. At rung 1 the window is
+    DEDUP_HOURS (6h), so "dead" meant 12h of silence — SHORTER than the 24h period
+    of a daily cron. Every nightly recurrence therefore looked like a brand-new
+    condition, reset the streak to 1, and sent at full volume forever.
+
+    Measured on Pro over 7 days, from the gateway's own dedup state:
+
+        wa-bridge:* (fires several times a day)   8 days running -> streak 3
+        cron-fail:garuda_indexer                  7 days running -> streak 1
+        cron-fail:nightly_autofix_ci              7 days running -> streak 1
+        cron-agent:conversation-cleanup           7 days running -> streak 1
+        cron-fail:nb_agents_daily_dr              7 days running -> streak 1
+        cron-fail:run_gap_scanner_layer_a         7 days running -> streak 1
+
+    Chatty conditions climb; daily ones are pinned at rung 1. Those five alone
+    are five P0 every single day. The comment two functions below —
+    "else a chronic condition loses its streak and the ladder silently restarts
+    at 6h forever" — names this exact failure and guards the PRUNE path; this is
+    the other door into the same room.
+
+    The floor only bites at rung 1 (2*6=12 -> 36). From rung 2 on, `2 * win`
+    already dominates (48, 144, 336) and this changes nothing — so a condition
+    that has genuinely climbed keeps exactly the death semantics it has today.
+    """
+    return max(2.0 * _mute_window_h(streak), DEATH_FLOOR_H)
 
 
 # ---------------------------------------------------------------- token chain
@@ -424,9 +461,12 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
                 entry["last_text"] = text[:200]
                 _save_state(spool, state)
                 return "deduped"
-            # Silent for more than two windows => the condition DIED. The next
-            # occurrence is a new birth, so the ladder restarts from the top.
-            if since > 2 * win:
+            # Silent for longer than the death threshold => the condition DIED.
+            # The next occurrence is a new birth, so the ladder restarts at the
+            # top. NOT `2 * win`: at rung 1 that is 12h, shorter than a daily
+            # cron's own period, so every nightly recurrence read as a rebirth
+            # and the ladder could never climb. See _death_silence_h().
+            if since > _death_silence_h(streak) * 3600:
                 streak = 1
                 suppressed = 0
             else:
@@ -715,6 +755,87 @@ def selftest() -> int:
         )
         state = json.loads((spool / "state.json").read_text())
         check("reserve counted exactly twice", state["p0_budget"].get("cron_reserve") == 2)
+
+        # ---- the repeat ladder must climb for a DAILY condition (2026-08-07) --
+        # The clock is a HOLDER the test advances, never an iterator of ticks:
+        # `logging` calls time.time() once per LogRecord and would drain a list
+        # sized to the number of notifies (P3 FLAKY, cured 2026-08-02).
+        real_time = time.time
+        clock = [real_time()]
+        time.time = lambda: clock[0]
+        try:
+            ladder = spool / "ladder"
+            ladder.mkdir()
+            os.environ["TG_SPOOL_DIR"] = str(ladder)
+            DAY_START_H, DAY_END_H = 0, 24
+            P0_BUDGET = 99  # the ladder is what is under test here, not the budget
+
+            # GUILT: seven consecutive days of ONE standing condition. Before the
+            # floor this sent 7/7 — every 24h gap exceeded 2*6h and reset the
+            # streak to 1 forever, which is exactly what the five live cron-fail
+            # keys were doing. Days 1-3 climb the ladder and are heard; from day
+            # 4 the 72h rung swallows them.
+            outcomes = []
+            for _ in range(7):
+                outcomes.append(notify("p0", "cron:x", "the indexer died", "cron-fail:daily"))
+                clock[0] += 24 * 3600
+            # The exact sequence, asserted rather than summarised — day 6 is the
+            # 72h rung expiring, not a defect, and a looser assertion hid it.
+            #   d1 rung1(6h)  send -> streak 2
+            #   d2 24h>6h     send -> streak 3
+            #   d3 24h>24h    send -> streak 4 window 72h
+            #   d4 24h<72h    mute
+            #   d5 48h<72h    mute
+            #   d6 72h        send (carries "ripetuta 2x") -> rung 168h
+            #   d7 24h<168h   mute      => 4 sends where there were 7, then 1/week
+            check(
+                "daily condition: 4 sends in 7 days, not 7",
+                outcomes == ["sent", "sent", "sent", "deduped", "deduped", "sent", "deduped"],
+            )
+            lstate = json.loads((ladder / "state.json").read_text())
+            check(
+                "…and the ladder actually CLIMBED (streak > 1)",
+                int(lstate["dedup"]["cron-fail:daily"]["streak"]) > 1,
+            )
+            sent_text = (ladder / "sent-dry.jsonl").read_text()
+            check(
+                "…and the escape carries how much it repeated while muted",
+                "ripetuta" in sent_text,
+            )
+
+            # INNOCENCE 1: a condition that genuinely DIES must come back at full
+            # volume — 48h of silence is past the 36h floor, so the next hit is a
+            # NEW BIRTH. Assert the streak, not the outcome: a first draft checked
+            # `== "sent"`, which is true whether the ladder resets or climbs, so a
+            # mutation that raised the floor to 500h sailed straight through it.
+            # The observable that actually distinguishes the two worlds is the rung.
+            clock[0] += 48 * 3600
+            notify("p0", "cron:y", "the mirror died", "cron-fail:intermittent")
+            clock[0] += 48 * 3600
+            check(
+                "a condition silent past the floor is REBORN (streak back to 1)",
+                notify("p0", "cron:y", "the mirror died", "cron-fail:intermittent") == "sent"
+                and int(
+                    json.loads((ladder / "state.json").read_text())["dedup"][
+                        "cron-fail:intermittent"
+                    ]["streak"]
+                )
+                == 1,
+            )
+
+            # INNOCENCE 2: the floor must be inert wherever 2*win already exceeds
+            # it. Touching the high rungs would change death semantics for the
+            # chatty conditions that ALREADY climb correctly today.
+            check(
+                "floor is inert from rung 2 up",
+                _death_silence_h(2) == 2 * _mute_window_h(2)
+                and _death_silence_h(3) == 2 * _mute_window_h(3)
+                and _death_silence_h(4) == 2 * _mute_window_h(4),
+            )
+            check("floor bites only at rung 1", _death_silence_h(1) == DEATH_FLOOR_H)
+        finally:
+            time.time = real_time
+            os.environ["TG_SPOOL_DIR"] = str(spool)
 
     print("SELFTEST", "PASS" if not failures else f"FAIL ({failures})")
     return 0 if not failures else 1
