@@ -11,6 +11,7 @@ import importlib.util
 import json
 import plistlib
 import subprocess
+import xml.parsers.expat
 from pathlib import Path
 
 import pytest
@@ -253,6 +254,37 @@ def test_discover_unparseable_plist_is_error_not_finding(tmp_path: Path) -> None
     findings = lhf.discover_undeclared([agents], "", home, repo, set(), [], errors)
     assert findings == []
     assert len(errors) == 1 and "broken.plist" in errors[0]
+
+
+def test_discover_innocence_double_dash_comment_plist_recovered(tmp_path: Path) -> None:
+    """Guard against the 2026-08-07 Pro blind spot: strict Expat rejects a
+    `<!-- ... -->` comment body containing a literal `--` (e.g. `--apply`),
+    but macOS's own `plutil` accepts the exact same file (it's what launchd
+    itself loads). The census must recover the payload via plutil, not lose
+    the whole plist's coverage to `errors`."""
+    if subprocess.run(["which", "plutil"], capture_output=True).returncode != 0:
+        pytest.skip("plutil not available on this platform")
+    home, repo = make_env(tmp_path)
+    agents = home / "Library/LaunchAgents"
+    agents.mkdir(parents=True)
+    (agents / "commented.plist").write_text(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!-- ENFORCING since 2026-05-30: --apply added after review -->\n"
+        "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+        "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+        "<plist version=\"1.0\"><dict>\n"
+        "  <key>Label</key><string>com.example.commented</string>\n"
+        "  <key>ProgramArguments</key><array>\n"
+        f"    <string>{home}/scripts/undeclared.sh</string>\n"
+        "  </array>\n"
+        "</dict></plist>\n"
+    )
+    with pytest.raises(xml.parsers.expat.ExpatError):  # sanity: really Expat-invalid
+        plistlib.loads((agents / "commented.plist").read_bytes())
+    errors: list[str] = []
+    findings = lhf.discover_undeclared([agents], "", home, repo, set(), [], errors)
+    assert errors == []
+    assert any("undeclared.sh" in f for f in findings)
 
 
 # ---------------------------------------------------------------- exit contract
