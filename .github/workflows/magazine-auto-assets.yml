@@ -62,7 +62,7 @@ jobs:
       - name: Install focused test dependencies
         run: >-
           python -m pip install --quiet
-          pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785
+          pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785 asyncpg
       - name: Require zsh for real wrapper lifecycle tests
         run: |
           if ! command -v zsh >/dev/null 2>&1; then

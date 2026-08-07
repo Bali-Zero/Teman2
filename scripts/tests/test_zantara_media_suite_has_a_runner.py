@@ -80,6 +80,53 @@ def test_every_test_file_in_the_app_is_under_that_directory():
     assert found, "no test files under %s — a green directory run would be vacuous" % TESTS_DIR
 
 
+def _third_party_imports(root: Path) -> set[str]:
+    """Top-level non-stdlib, non-local modules imported anywhere under `root`."""
+    import ast
+    import sys
+
+    std = set(sys.stdlib_module_names)
+    local = {"zantara_media", "tests", "conftest"}
+    mods: set[str] = set()
+    for f in root.rglob("*.py"):
+        if "__pycache__" in str(f):
+            continue
+        try:
+            tree = ast.parse(f.read_text())
+        except SyntaxError:
+            continue
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                mods |= {a.name.split(".")[0] for a in n.names}
+            elif isinstance(n, ast.ImportFrom) and n.level == 0 and n.module:
+                mods.add(n.module.split(".")[0])
+    return {m for m in mods if m not in std and m not in local}
+
+
+# import name -> pip distribution name, where they differ
+_DIST = {"PIL": "Pillow", "pytest_asyncio": "pytest-asyncio"}
+
+
+def test_the_workflow_installs_every_third_party_module_the_app_imports():
+    """A directory run only helps if collection can reach every file.
+
+    Widening the runner to the directory immediately failed on `asyncpg`: the
+    test that needed it had never run, so nothing had ever asked for it. This
+    enumerates instead of guessing, so the next added dependency is a red test
+    here rather than a red collection error there.
+    """
+    installed = WORKFLOW.read_text()
+    missing = sorted(
+        m for m in _third_party_imports(REPO / "apps/zantara-media")
+        if _DIST.get(m, m) not in installed.split()
+    )
+    assert not missing, (
+        "apps/zantara-media imports %s, which magazine-auto-assets.yml does not "
+        "install — collection will die there while passing locally, where the "
+        "developer's environment already has them." % missing
+    )
+
+
 # --- guilt: the shape this guard exists to reject -------------------------
 
 def test_it_rejects_a_named_file_list():
