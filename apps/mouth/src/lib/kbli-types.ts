@@ -322,6 +322,17 @@ export interface KBLITransition {
   };
 }
 
+/**
+ * Risk-tier divergence between the gold editorial prose and the OSS record —
+ * computed by `scripts/kbli_filiera/gold_risk_dispute_relation.py` (zero
+ * overlap between the tiers the prose claims and the tiers the record holds),
+ * shipped as `data/kbli-risk-disputes.json`. The page states the record tiers
+ * and the fact of divergence; it never enumerates the editorial side.
+ */
+export interface KBLIRiskDispute {
+  recordTiers: string[];
+}
+
 /** Processed KBLI code — frontend-friendly version */
 export interface KBLICode {
   code: string;
@@ -359,6 +370,8 @@ export interface KBLICode {
     coverImage?: string | null;
     editorial?: KBLIEditorialContent;
   };
+  /** Set only when the gold editorial prose and the record's risk tier share nothing (gold_risk_dispute_relation.py). */
+  riskDispute?: KBLIRiskDispute;
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
   baliL4?: KBLIBaliL4;
   /** Per-fact provenance + verification state (TRACK-P). Derived from structured markers only. */

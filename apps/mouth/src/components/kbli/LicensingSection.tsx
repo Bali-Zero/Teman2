@@ -1024,6 +1024,39 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         </div>
       )}
 
+      {/* ── RISK-TIER DISPUTE FRAME (gold editorial vs OSS record disagree) ──
+          Independent axis from the Bali frames above — a code can be both
+          Bali-blocked/non-classifiable AND risk-disputed, so this is its own
+          condition, never chained with `!baliBlocked`. Never renders the
+          editorial side's tier (RENDER CONTRACT, kbli-risk-dispute.ts). */}
+      {kbli.riskDispute && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">⚖️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              Sources disagree on the risk tier
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The OSS record for this code lists{" "}
+            {kbli.riskDispute.recordTiers.join(" / ")} as its risk tier, while
+            the editorial guide on this page describes a different tier. The two
+            sources have not been reconciled — treat the OSS-derived table below
+            as the record we hold, and verify the current tier on oss.go.id
+            before filing.
+          </p>
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
       <KeyFacts
         licensing={kbli.licensing}

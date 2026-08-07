@@ -1,0 +1,324 @@
+{
+  "_meta": {
+    "count": 30,
+    "generated_by": "scripts/kbli_filiera/gold_risk_dispute_relation.py --emit",
+    "note": "Codes whose gold editorial prose claims a risk tier sharing NOTHING with the record's per_skala tier set. No winner is picked; the page renders a divergence disclosure. editorial_mentions is audit evidence — never render it."
+  },
+  "disputes": {
+    "10504": {
+      "editorial_mentions": {
+        "Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Tinggi",
+        "Rendah"
+      ]
+    },
+    "16103": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "46496": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "47246": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "49211": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "49231": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "record": [
+        "Menengah Tinggi"
+      ]
+    },
+    "50133": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ],
+        "Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Tinggi"
+      ]
+    },
+    "53200": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "55909": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "56102": {
+      "editorial_mentions": {
+        "Rendah": [
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "62204": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "64992": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "66125": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "66199": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "66301": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "68124": {
+      "editorial_mentions": {
+        "Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "68291": {
+      "editorial_mentions": {
+        "Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Tinggi"
+      ]
+    },
+    "70201": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "70202": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "baliContext",
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "74910": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "79110": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "82300": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "82990": {
+      "editorial_mentions": {
+        "Rendah": [
+          "baliContext",
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "85592": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "85593": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "85595": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed",
+          "zantaraOpener"
+        ]
+      },
+      "record": [
+        "Tinggi"
+      ]
+    },
+    "90130": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    },
+    "93295": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "93296": {
+      "editorial_mentions": {
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Menengah Rendah"
+      ]
+    },
+    "93299": {
+      "editorial_mentions": {
+        "Menengah Rendah": [
+          "whatYouNeed"
+        ],
+        "Menengah Tinggi": [
+          "whatYouNeed"
+        ]
+      },
+      "record": [
+        "Rendah"
+      ]
+    }
+  }
+}

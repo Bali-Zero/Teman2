@@ -117,9 +117,16 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
     ? " Note: the source of these rows has not been verified against a KBLI-2025-native OSS scope; per-code crosswalk adjudication is pending — verify before relying on them (see Sources & Verification on this page)."
     : "";
 
+  // The gold editorial prose and the OSS record's risk tier share nothing on
+  // 30 codes (gold_risk_dispute_relation.py). Never enumerate the editorial
+  // side's tier here — see the RENDER CONTRACT in kbli-risk-dispute.ts.
+  const riskDisputeQualifier = code.riskDispute
+    ? " Note: the editorial guide on this page describes a different risk tier for this activity; the divergence is under review — verify the current tier on oss.go.id."
+    : "";
+
   const licenseAnswer =
     code.licensing.length > 0
-      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}${licenseQualifier}`
+      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}${licenseQualifier}${riskDisputeQualifier}`
       : // No OSS-RBA scale rows. Discriminated by the structured provenance
         // state (TRACK-P), never by prose:
         code.provenance?.state === "not_classifiable"
