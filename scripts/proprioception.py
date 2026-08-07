@@ -368,8 +368,31 @@ def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, 
             continue  # this machine doesn't run that copy — not a finding
         probeable += 1
         if not repo.exists():
+            # Absence is a proxy too — the twin `lint_home_fork.check_pairs`
+            # carries the identical branch and both were cured together on
+            # 2026-08-08. Curing only one is the W106b fourth layer verbatim:
+            # calling two tools "twins with the same logic" and fixing one.
+            # A file merged to origin/main but not yet pulled into THIS
+            # checkout is a trailing checkout, not a live copy without a
+            # source of truth.
+            upstream = origin_main_sha(root, pair["repo"])
+            if upstream is not None and sha256_file(live) == upstream:
+                ev.append(
+                    f"CHECKOUT-STALE: {pair['repo']} is absent from this checkout "
+                    f"but present on origin/main, and the LIVE copy {live} already "
+                    f"matches it. Update the checkout; do NOT realign live from it."
+                )
+                continue
             findings += 1
-            ev.append(f"NO REPO COUNTERPART: {live} executes live with no source of truth in repo")
+            if upstream is None:
+                ev.append(
+                    f"NO REPO COUNTERPART: {live} executes live with no source of truth in repo"
+                )
+            else:
+                ev.append(
+                    f"DIVERGED: {live} != origin/main:{pair['repo']} (absent from this "
+                    f"checkout) — the LIVE copy is stale; realign it from origin/main"
+                )
             continue
         live_sha, repo_sha = sha256_file(live), sha256_file(repo)
         if live_sha == repo_sha:
