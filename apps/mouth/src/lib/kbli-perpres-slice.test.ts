@@ -122,11 +122,87 @@ describe("fail-closed loading", () => {
     expect(() => ps("13133")).not.toThrow();
   });
 
+  it('throws when "disclosures" is an empty object', async () => {
+    // The compiler never emits zero entries — an empty map here is silent
+    // total data loss: every page that should carry a slice notice would
+    // render "100% open" unqualified with zero signal anything is missing.
+    const fsMock = await import("fs");
+    const spy = vi
+      .spyOn(fsMock.default, "readFileSync")
+      .mockReturnValue(
+        JSON.stringify({ _meta: { count: 0 }, disclosures: {} }),
+      );
+    const { perpresSlice: ps, _resetPerpresSliceCache } =
+      await import("./kbli-perpres-slice");
+    _resetPerpresSliceCache();
+    expect(() => ps("13133")).toThrow(/empty "disclosures" object/);
+    spy.mockRestore();
+    _resetPerpresSliceCache();
+  });
+
+  it("throws when _meta.count disagrees with the actual entry count", async () => {
+    // A hand-edit or a stale compiler run can drift the two apart — the
+    // artifact's own freshness signal (_meta.count) must be checked, not
+    // trusted blindly, or a partial edit could silently ship fewer/more
+    // entries than the compiler believes it emitted.
+    const fsMock = await import("fs");
+    const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
+      JSON.stringify({
+        _meta: { count: 5 },
+        disclosures: {
+          "00000": [
+            {
+              bidangUsaha: "x",
+              foreignCapPct: 0,
+              condition: null,
+              locator: "x",
+            },
+          ],
+        },
+      }),
+    );
+    const { perpresSlice: ps, _resetPerpresSliceCache } =
+      await import("./kbli-perpres-slice");
+    _resetPerpresSliceCache();
+    expect(() => ps("00000")).toThrow(
+      /_meta\.count=5 but "disclosures" carries 1 entries/,
+    );
+    spy.mockRestore();
+    _resetPerpresSliceCache();
+  });
+
+  it("innocence: _meta.count matching the real entry count does not throw", async () => {
+    const fsMock = await import("fs");
+    const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
+      JSON.stringify({
+        _meta: { count: 1 },
+        disclosures: {
+          "00000": [
+            {
+              bidangUsaha: "x",
+              foreignCapPct: 0,
+              condition: null,
+              locator: "x",
+            },
+          ],
+        },
+      }),
+    );
+    const { perpresSlice: ps, _resetPerpresSliceCache } =
+      await import("./kbli-perpres-slice");
+    _resetPerpresSliceCache();
+    expect(() => ps("00000")).not.toThrow();
+    spy.mockRestore();
+    _resetPerpresSliceCache();
+  });
+
   it("throws on an entry with a missing/empty row list", async () => {
     const fsMock = await import("fs");
     const spy = vi
       .spyOn(fsMock.default, "readFileSync")
-      .mockReturnValue(JSON.stringify({ disclosures: { "00000": [] } }));
+      .mockReturnValue(
+        JSON.stringify({ _meta: { count: 1 }, disclosures: { "00000": [] } }),
+      );
     const { perpresSlice: ps, _resetPerpresSliceCache } =
       await import("./kbli-perpres-slice");
     _resetPerpresSliceCache();
@@ -141,6 +217,7 @@ describe("fail-closed loading", () => {
     const fsMock = await import("fs");
     const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
       JSON.stringify({
+        _meta: { count: 1 },
         disclosures: {
           "00000": [{ foreignCapPct: 0, condition: null, locator: "x" }],
         },
@@ -160,6 +237,7 @@ describe("fail-closed loading", () => {
     const fsMock = await import("fs");
     const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
       JSON.stringify({
+        _meta: { count: 1 },
         disclosures: {
           "00000": [
             {
@@ -184,6 +262,7 @@ describe("fail-closed loading", () => {
     const fsMock = await import("fs");
     const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
       JSON.stringify({
+        _meta: { count: 1 },
         disclosures: {
           "00000": [
             { bidangUsaha: "x", foreignCapPct: 0, condition: 5, locator: "x" },
@@ -205,6 +284,7 @@ describe("fail-closed loading", () => {
     const fsMock = await import("fs");
     const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
       JSON.stringify({
+        _meta: { count: 1 },
         disclosures: {
           "00000": [{ bidangUsaha: "x", foreignCapPct: 0, condition: null }],
         },
@@ -222,6 +302,7 @@ describe("fail-closed loading", () => {
     const fsMock = await import("fs");
     const spy = vi.spyOn(fsMock.default, "readFileSync").mockReturnValue(
       JSON.stringify({
+        _meta: { count: 1 },
         disclosures: {
           "00000": [
             {
@@ -260,8 +341,13 @@ describe("the artifact on disk", () => {
     }
   });
 
-  it("population count matches the compiler's pinned population (14 codes)", () => {
-    expect(Object.keys(parsed.disclosures)).toHaveLength(14);
+  it("population count matches the compiler's pinned population (12 codes)", () => {
+    expect(Object.keys(parsed.disclosures)).toHaveLength(12);
+  });
+
+  it("20235 and 30303 are excluded — adjacent-not-contained, not a slice inside the code", () => {
+    expect(parsed.disclosures["20235"]).toBeUndefined();
+    expect(parsed.disclosures["30303"]).toBeUndefined();
   });
 });
 
@@ -294,10 +380,17 @@ describe("RENDER CONTRACT: LicensingSection.tsx and kbli-faq.ts", () => {
     expect(LICENSING_SECTION_SOURCE).toContain("row.foreignCapPct === 0");
   });
 
-  it("LicensingSection.tsx pins the cap-0 wording exactly", () => {
+  it("LicensingSection.tsx pins the cap-0-no-condition wording exactly", () => {
     const normalized = LICENSING_SECTION_SOURCE.replace(/\s+/g, " ");
     expect(normalized).toContain(
       "is reserved for domestic capital under Perpres 10/2021 (as amended): no foreign equity in that slice.",
+    );
+  });
+
+  it("LicensingSection.tsx pins the cap-0-WITH-condition wording exactly (phased caps are not an absolute closure)", () => {
+    const normalized = LICENSING_SECTION_SOURCE.replace(/\s+/g, " ");
+    expect(normalized).toContain(
+      "is reserved for domestic capital at establishment under Perpres 10/2021 (as amended) — {row.condition}.",
     );
   });
 
@@ -308,11 +401,27 @@ describe("RENDER CONTRACT: LicensingSection.tsx and kbli-faq.ts", () => {
     );
   });
 
-  it("LicensingSection.tsx pins the shared tail sentence", () => {
+  it("LicensingSection.tsx pins the shared tail sentence, rendered once after every row", () => {
     const normalized = LICENSING_SECTION_SOURCE.replace(/\s+/g, " ");
     expect(normalized).toContain(
-      "The rest of the code is open as shown. Check which side your exact activity falls on before filing.",
+      "Everything else in this code is open as shown. Check which side your exact activity falls on before filing.",
     );
+  });
+
+  it("LicensingSection.tsx renders the tail sentence OUTSIDE the per-row .map callback", () => {
+    // Structural pin against the exact regression this fixes: the tail
+    // sentence's JSX must appear AFTER the .map(...) call closes, not
+    // inside the mapped <p> — otherwise it repeats once per row.
+    const mapStart = LICENSING_SECTION_SOURCE.indexOf(
+      "kbli.perpresSlice.map((row, i) => (",
+    );
+    const mapEnd = LICENSING_SECTION_SOURCE.indexOf("))}", mapStart);
+    const tailIdx = LICENSING_SECTION_SOURCE.indexOf(
+      "Everything else in this code is open as shown",
+    );
+    expect(mapStart).toBeGreaterThan(-1);
+    expect(mapEnd).toBeGreaterThan(mapStart);
+    expect(tailIdx).toBeGreaterThan(mapEnd);
   });
 
   it("LicensingSection.tsx never chains the frame condition to baliBlocked", () => {
@@ -337,7 +446,12 @@ describe("RENDER CONTRACT: LicensingSection.tsx and kbli-faq.ts", () => {
 // =============================================================================
 
 describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
-  it("appends the cap-0 qualifier when perpresSlice is set", async () => {
+  it("qualifies the OPENING sentence when perpresSlice is set — never the flat unqualified promise", async () => {
+    // The defect this closes: the answer used to open "Yes. KBLI ... open
+    // to 100% foreign ownership via PT PMA. No local Indonesian partner
+    // required." and appended the carve-out only afterward — a snippet
+    // truncated to the first sentence serves the unqualified promise with
+    // zero signal a carve-out exists.
     const { buildKbliFaq } = await import("./kbli-faq");
     const { getCode } = await import("./kbli-data");
     const base = getCode("56101");
@@ -355,9 +469,50 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     } as NonNullable<typeof base>;
 
     const pmaAnswer = buildKbliFaq(affected)[0].answer;
+    expect(
+      pmaAnswer.startsWith("Yes for most of this code, with one carve-out:"),
+    ).toBe(true);
+    expect(pmaAnswer).not.toMatch(
+      /^Yes\. KBLI .* No local Indonesian partner required\./,
+    );
     expect(pmaAnswer).toContain(
       'One specific activity inside this code — "Industri batik cap" — is reserved for domestic capital under Perpres 10/2021 (as amended): no foreign equity in that slice.',
     );
+    // The open-remainder statement comes AFTER the carve-out detail, not
+    // stapled onto the opener.
+    expect(pmaAnswer).toContain(
+      "The rest of the code remains open to 100% foreign ownership with no local partner required.",
+    );
+    expect(
+      pmaAnswer.indexOf("Industri batik cap") <
+        pmaAnswer.indexOf("The rest of the code remains open"),
+    ).toBe(true);
+  });
+
+  it("guilt: a condition-bearing cap-0 row gets the condition, never the absolute closure claim", async () => {
+    // Same phased-cap defect as the LicensingSection page frame (58130
+    // press: 0% at establishment, 49% via capital market for expansion).
+    const { buildKbliFaq } = await import("./kbli-faq");
+    const { getCode } = await import("./kbli-data");
+    const base = getCode("56101");
+    const affected = {
+      ...base,
+      perpresSlice: [
+        {
+          bidangUsaha: "Penerbitan surat kabar, majalah, dan buletin (pers)",
+          foreignCapPct: 0 as const,
+          condition:
+            "0% at establishment; 49% via capital market for expansion",
+          locator: "test",
+        },
+      ],
+    } as NonNullable<typeof base>;
+
+    const pmaAnswer = buildKbliFaq(affected)[0].answer;
+    expect(pmaAnswer).toContain(
+      'One specific activity inside this code — "Penerbitan surat kabar, majalah, dan buletin (pers)" — is reserved for domestic capital at establishment under Perpres 10/2021 (as amended) — 0% at establishment; 49% via capital market for expansion.',
+    );
+    expect(pmaAnswer).not.toContain("no foreign equity in that slice");
   });
 
   it("appends the cap-49 qualifier with the condition when set", async () => {
@@ -383,15 +538,43 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     );
   });
 
-  it("appends one sentence per row for a multi-row code", async () => {
+  it("appends one sentence per row for a multi-row code, and pluralizes 'carve-outs' in the opener", async () => {
     const { buildKbliFaq } = await import("./kbli-faq");
     const { getCode } = await import("./kbli-data");
     const base = getCode("30111");
     expect(base?.perpresSlice).toHaveLength(2);
 
     const pmaAnswer = buildKbliFaq(base!)[0].answer;
+    expect(
+      pmaAnswer.startsWith("Yes for most of this code, with 2 carve-outs:"),
+    ).toBe(true);
     expect(pmaAnswer).toContain("Industri kapal perang");
     expect(pmaAnswer).toContain("Pinisi");
+    // The shared closer must appear exactly once, after both rows.
+    const closerCount =
+      pmaAnswer.split(
+        "The rest of the code remains open to 100% foreign ownership",
+      ).length - 1;
+    expect(closerCount).toBe(1);
+  });
+
+  it("real case: 90200 (Sanggar seni) is BOTH BROADER-adjudicated AND Bali-blocked — the opener and closer both carry the Bali caveat", async () => {
+    const { buildKbliFaq } = await import("./kbli-faq");
+    const { getCode } = await import("./kbli-data");
+    const base = getCode("90200");
+    expect(base?.perpresSlice).toHaveLength(1);
+    expect(base?.baliL4?.blocked).toBe(true);
+
+    const pmaAnswer = buildKbliFaq(base!)[0].answer;
+    expect(
+      pmaAnswer.startsWith(
+        "Nationally yes for most of this code, with one carve-out — but NOT in Bali either way.",
+      ),
+    ).toBe(true);
+    expect(pmaAnswer).toContain("Sanggar seni");
+    expect(pmaAnswer).toContain(
+      "Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above.",
+    );
   });
 
   it("innocence: omits the qualifier when perpresSlice is absent", async () => {

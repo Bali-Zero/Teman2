@@ -12,9 +12,13 @@ import path from "path";
  * about the one activity they are actually doing.
  *
  * This module does NOT detect or adjudicate anything. The join (ancestor
- * lineage -> annex row), the two hand-authored 30111/30113 rows and the three
- * refusal conditions (a BROADER code missing from the join; a cap outside
- * {0, 49}; a code whose own `pma_status` is not TERBUKA) live in
+ * lineage -> annex row), the two hand-authored 30111/30113 rows, the two
+ * codes excluded as adjacent-not-contained (20235, 30303 — their own
+ * ADJUDICATION reason says the annex activity is a neighbour, not something
+ * inside the code) and the refusal conditions that guard all of it (a
+ * BROADER code missing from the join; a cap outside {0, 49}; a code whose
+ * own `pma_status` is not TERBUKA; an adjacent-not-contained exclusion whose
+ * ADJUDICATION verdict or reason has drifted) live in
  * `scripts/kbli_filiera/perpres_slice_disclosure_relation.py` with its own
  * guilt/innocence corpus — re-implementing any of that here would make two
  * writers of one verdict (W105). That script emits
@@ -25,11 +29,14 @@ import path from "path";
  *
  * FAIL-CLOSED, same contract as `kbli-risk-dispute.ts` (the pattern this
  * module is copied from): a missing file, unparseable JSON, a payload without
- * a `disclosures` key, or a malformed per-entry/per-row shape all THROW at
- * first read rather than degrading to "no slice" — silently reading a
- * restricted code as unqualified-open is exactly the class of client-facing
- * lie this module exists to prevent. Every throw names the `--emit` command
- * that fixes it.
+ * a `disclosures` key, an EMPTY `disclosures` object (the compiler never
+ * emits zero entries — an empty map here is silent total data loss across
+ * every page that should carry a notice), a `_meta.count` that disagrees
+ * with the actual entry count, or a malformed per-entry/per-row shape all
+ * THROW at first read rather than degrading to "no slice" — silently reading
+ * a restricted code as unqualified-open is exactly the class of
+ * client-facing lie this module exists to prevent. Every throw names the
+ * `--emit` command that fixes it.
  */
 export interface KBLIPerpresSliceRow {
   bidangUsaha: string;
@@ -98,6 +105,35 @@ function load(): Record<string, KBLIPerpresSliceRow[]> {
   }
 
   const disclosures = disclosuresRaw as Record<string, unknown>;
+
+  // The compiler never emits an empty population — 12 real codes as of
+  // 2026-08-07 (10 general BROADER + 2 hand-authored) — so `{}` here is not
+  // a legitimate "nothing to disclose" state, it is silent data loss: EVERY
+  // page that should carry a slice notice would render "100% open"
+  // unqualified with zero signal that anything is missing.
+  const codes = Object.keys(disclosures);
+  if (codes.length === 0) {
+    throw new Error(
+      `[kbli] perpres slice-disclosure artifact at ${SLICE_PATH} has an ` +
+        `empty "disclosures" object — the compiler never emits zero ` +
+        `entries, so this is corrupt or hand-edited, not a normal empty ` +
+        `state; run ` +
+        `\`python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --emit\``,
+    );
+  }
+
+  const metaCount = (parsed as { _meta?: { count?: unknown } } | null)?._meta
+    ?.count;
+  if (typeof metaCount !== "number" || metaCount !== codes.length) {
+    throw new Error(
+      `[kbli] perpres slice-disclosure artifact at ${SLICE_PATH} has ` +
+        `_meta.count=${JSON.stringify(metaCount)} but "disclosures" carries ` +
+        `${codes.length} entries — the two disagree on the population, ` +
+        `which means the artifact was hand-edited or written by a stale ` +
+        `compiler; run ` +
+        `\`python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --emit\``,
+    );
+  }
   _cache = Object.fromEntries(
     Object.entries(disclosures).map(([code, rowsRaw]) => {
       if (!Array.isArray(rowsRaw) || rowsRaw.length === 0) {

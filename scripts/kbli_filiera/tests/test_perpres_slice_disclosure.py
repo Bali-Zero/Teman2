@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import perpres_slice_disclosure_relation as pm  # noqa: E402
 from apply_perpres_foreign_caps import BROADER, PLAIN  # noqa: E402
 from perpres_slice_disclosure_relation import (  # noqa: E402
+    ADJACENT_NOT_CONTAINED,
     ARTIFACT,
     CANONICAL,
     MANUAL_SLICE_ROWS,
@@ -42,14 +43,20 @@ def _with_real_manual_codes(
     canonical: list[dict], adjudication: dict[str, tuple[str, str]]
 ) -> tuple[list[dict], dict[str, tuple[str, str]]]:
     """`compute_disclosures` always walks the REAL (unpatched) module-global
-    `MANUAL_SLICE_ROWS` for its ADJUDICATION-membership check — every
-    synthetic scenario that does not itself replace `MANUAL_SLICE_ROWS`
-    (via `monkeypatch.setattr(pm, ...)`, see `TestInvalidCap` /
-    `TestNonTerbukaCode`) must therefore also supply valid TERBUKA/BROADER
-    entries for the two real hand-authored codes, or that unrelated check
-    fires before the scenario under test is ever reached."""
-    base_canonical = [_record("30111"), _record("30113")]
-    base_adjudication = {"30111": (BROADER, "real"), "30113": (BROADER, "real")}
+    `MANUAL_SLICE_ROWS` for its ADJUDICATION-membership check, and the REAL
+    `ADJACENT_NOT_CONTAINED` for its own drift check — every synthetic
+    scenario that does not itself replace one of those two dicts (via
+    `monkeypatch.setattr(pm, ...)`, see `TestInvalidCap` / `TestNonTerbukaCode`)
+    must therefore also supply valid entries for the hand-authored codes and
+    the two adjacent-not-contained codes, or an unrelated check fires before
+    the scenario under test is ever reached."""
+    base_canonical = [_record("30111"), _record("30113"), _record("20235"), _record("30303")]
+    base_adjudication = {
+        "30111": (BROADER, "real"),
+        "30113": (BROADER, "real"),
+        "20235": (BROADER, ADJACENT_NOT_CONTAINED["20235"]),
+        "30303": (BROADER, ADJACENT_NOT_CONTAINED["30303"]),
+    }
     return base_canonical + canonical, {**base_adjudication, **adjudication}
 
 
@@ -99,10 +106,12 @@ class TestInvalidCap:
         # Full replacement, not an additive setitem — the real 30111/30113
         # entries must NOT be present here, or the ADJUDICATION-membership
         # check (tested separately below) fires first on THEM instead of
-        # reaching the cap check this test targets.
+        # reaching the cap check this test targets. ADJACENT_NOT_CONTAINED
+        # is neutralised the same way — unrelated to what this test targets.
         monkeypatch.setattr(
             pm, "MANUAL_SLICE_ROWS", {"99997": [(1, "Industri uji coba", 30, None)]}
         )
+        monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
         canonical = [_record("99997")]
         adjudication = {"99997": (BROADER, "test-only")}
         with pytest.raises(SliceDisclosureError, match="not one of"):
@@ -112,6 +121,7 @@ class TestInvalidCap:
         monkeypatch.setattr(
             pm, "MANUAL_SLICE_ROWS", {"99996": [(1, "Industri uji coba", 49, None)]}
         )
+        monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
         canonical = [_record("99996")]
         adjudication = {"99996": (BROADER, "test-only")}
         disclosures = compute_disclosures(canonical, adjudication)
@@ -131,6 +141,7 @@ class TestNonTerbukaCode:
         monkeypatch.setattr(
             pm, "MANUAL_SLICE_ROWS", {"99995": [(1, "Industri uji coba", 49, None)]}
         )
+        monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
         canonical = [_record("99995", pma_status="TERBATAS")]
         adjudication = {"99995": (BROADER, "test-only")}
         with pytest.raises(SliceDisclosureError, match="double-speak"):
@@ -140,6 +151,7 @@ class TestNonTerbukaCode:
         monkeypatch.setattr(
             pm, "MANUAL_SLICE_ROWS", {"99994": [(1, "Industri uji coba", 49, None)]}
         )
+        monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
         canonical = [_record("99994", pma_status="TERBUKA")]
         adjudication = {"99994": (BROADER, "test-only")}
         disclosures = compute_disclosures(canonical, adjudication)
@@ -167,6 +179,64 @@ class TestManualRowsTrackAdjudication:
         for code in MANUAL_SLICE_ROWS:
             verdict, _ = ADJUDICATION[code]
             assert verdict == BROADER, code
+
+
+# ---------------------------------------------------------------------------
+# ADJACENT_NOT_CONTAINED — 20235/30303 are excluded because their OWN
+# ADJUDICATION reason says the annex activity is a neighbour, not a slice
+# actually inside the code. Guilt/innocence on both the exclusion itself and
+# its drift-protection (same shape as TestManualRowsTrackAdjudication above).
+# ---------------------------------------------------------------------------
+
+
+class TestAdjacentNotContained:
+    def test_pin_the_exclusion_set_is_exactly_these_two_codes(self):
+        assert set(ADJACENT_NOT_CONTAINED) == {"20235", "30303"}
+
+    def test_guilt_excluded_codes_are_absent_from_general_rows(self):
+        from apply_perpres_foreign_caps import ADJUDICATION
+
+        rows = general_rows(load_canonical(), ADJUDICATION)
+        assert "20235" not in rows
+        assert "30303" not in rows
+
+    def test_innocence_sibling_codes_under_the_same_ancestor_still_appear(self):
+        # 20235 shares ancestor "20232" with 20232 itself; 30303 shares
+        # ancestor "30300" with 30301/30302 — the exclusion must remove ONLY
+        # the named code, not the whole ancestor family.
+        from apply_perpres_foreign_caps import ADJUDICATION
+
+        rows = general_rows(load_canonical(), ADJUDICATION)
+        assert "20232" in rows
+        assert "30301" in rows
+        assert "30302" in rows
+
+    def test_guilt_verdict_drift_raises(self):
+        canonical, adjudication = _with_real_manual_codes(
+            [_record("20235"), _record("30303")],
+            {"20235": (PLAIN, "drifted"), "30303": (BROADER, ADJACENT_NOT_CONTAINED["30303"])},
+        )
+        with pytest.raises(SliceDisclosureError, match="no longer marks it BROADER"):
+            compute_disclosures(canonical, adjudication)
+
+    def test_guilt_reason_drift_raises(self):
+        canonical, adjudication = _with_real_manual_codes(
+            [_record("20235"), _record("30303")],
+            {
+                "20235": (BROADER, "a different reason nobody re-checked"),
+                "30303": (BROADER, ADJACENT_NOT_CONTAINED["30303"]),
+            },
+        )
+        with pytest.raises(SliceDisclosureError, match="reason changed"):
+            compute_disclosures(canonical, adjudication)
+
+    def test_innocence_real_adjudication_keeps_the_exclusion_valid(self):
+        from apply_perpres_foreign_caps import ADJUDICATION
+
+        for code, reason in ADJACENT_NOT_CONTAINED.items():
+            verdict, live_reason = ADJUDICATION[code]
+            assert verdict == BROADER, code
+            assert live_reason == reason, code
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +280,23 @@ def real_disclosures():
 
 class TestRealCatalogue:
     def test_population_count(self, real_disclosures):
-        # 12 general BROADER codes + 30111 (2 rows) + 30113 (1 row).
-        assert len(real_disclosures) == 14
-        assert sum(len(rows) for rows in real_disclosures.values()) == 15
+        # 10 general BROADER codes (12 BROADER-adjudicated minus 20235/30303,
+        # excluded as adjacent-not-contained) + 30111 (2 rows) + 30113 (1 row).
+        assert len(real_disclosures) == 12
+        assert sum(len(rows) for rows in real_disclosures.values()) == 13
+
+    def test_20235_and_30303_never_appear(self, real_disclosures):
+        # Their own ADJUDICATION reason says the annex activity is a
+        # neighbour, not something inside the code — disclosing a slice
+        # there would assert a containment the adjudication itself denies.
+        assert "20235" not in real_disclosures
+        assert "30303" not in real_disclosures
+
+    def test_30301_and_30302_still_appear(self, real_disclosures):
+        # The other two military-aircraft-ancestor siblings are real
+        # intersections and must NOT be caught by the 30303 exclusion.
+        assert "30301" in real_disclosures
+        assert "30302" in real_disclosures
 
     def test_13133_batik_cap_slice(self, real_disclosures):
         rows = real_disclosures["13133"]

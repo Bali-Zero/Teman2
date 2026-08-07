@@ -21,6 +21,7 @@ on:
       - "apps/mouth/data/kbli-gold-all.json"
       - "apps/mouth/data/kbli-risk-disputes.json"
       - "apps/mouth/data/kbli-perpres-slice-disclosures.json"
+      - "data/kbli-filiera/perpres-foreign-caps.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
   push:
     branches:
@@ -33,6 +34,7 @@ on:
       - "apps/mouth/data/kbli-gold-all.json"
       - "apps/mouth/data/kbli-risk-disputes.json"
       - "apps/mouth/data/kbli-perpres-slice-disclosures.json"
+      - "data/kbli-filiera/perpres-foreign-caps.json"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
 
 permissions:
@@ -106,7 +108,7 @@ jobs:
 
       # Same reasoning as the locators step above, for the newer artifact:
       # `--emit` writes apps/mouth/data/kbli-perpres-slice-disclosures.json,
-      # which puts a restricted-slice disclosure on 14 public pages. Belt and
+      # which puts a restricted-slice disclosure on 12 public pages. Belt and
       # suspenders with the pytest freshness test in
       # test_perpres_slice_disclosure.py (same captured-exit shape, W101/W108).
       - name: Perpres slice disclosures still match the join + ADJUDICATION

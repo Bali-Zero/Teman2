@@ -14,6 +14,14 @@ doing. This module discloses the slice — never re-derives the BROADER verdict
 itself, which is `apply_perpres_foreign_caps.ADJUDICATION`'s call and stays
 there (one SSOT, W105).
 
+Two of those 12 — `20235` and `30303` — are excluded (see
+`ADJACENT_NOT_CONTAINED`): their OWN `ADJUDICATION` reason says the annex
+activity is a NEIGHBOUR in the same ancestor family, not something actually
+inside the code (bespoke perfume is not traditional cosmetics; a spacecraft is
+not a military aircraft). Publishing a slice notice on those two pages would
+assert a containment the adjudication itself denies. That leaves 10 codes
+reached by the general derivation.
+
 Plus the two hand-adjudicated `30111`/`30113` rows (see `MANUAL_SLICE_ROWS`):
 these two are `AMBIGUOUS`, not `DISAGREE`, in `perpres_foreign_cap_relation`'s
 own join — the law gives KBLI-2020 code `30111` TWO different caps depending
@@ -39,10 +47,15 @@ codes rather than silently producing the wrong cross-product.
 
 REFUSES, LOUDLY (never guesses, never silently drops a row)
 -------------------------------------------------------------
-* a BROADER-adjudicated code (excluding the two hand-authored ones) has no
-  matching row in the join — the derivation that is supposed to explain WHY
-  it is BROADER found nothing to disclose, which means either the ADJUDICATION
-  entry or the join itself has drifted;
+* a BROADER-adjudicated code (excluding the two hand-authored ones and the two
+  adjacent-not-contained exclusions) has no matching row in the join — the
+  derivation that is supposed to explain WHY it is BROADER found nothing to
+  disclose, which means either the ADJUDICATION entry or the join itself has
+  drifted;
+* an `ADJACENT_NOT_CONTAINED` code's `ADJUDICATION` verdict or reason text has
+  moved since the exclusion was written — a stale exclusion is exactly the
+  double-speak this module exists to prevent, just inverted (a slice that
+  SHOULD be disclosed silently isn't);
 * any row's `foreignCapPct` is not 0 or 49 — the only two values Lampiran III
   actually uses; a third value would be a transcription or a join defect;
 * the code's OWN catalogue `pma_status` is not `TERBUKA` — a slice disclosure
@@ -107,6 +120,26 @@ MANUAL_SLICE_ROWS: dict[str, list[tuple[int, str, int, str | None]]] = {
     ],
 }
 
+# Two BROADER-adjudicated codes whose OWN adjudication reason (see ADJUDICATION
+# in apply_perpres_foreign_caps.py) says the annex activity is not actually
+# INSIDE the 2025 code — it is a neighbour in the same ancestor family, not a
+# narrower slice of it. `20235` (bespoke perfume) shares ancestor "20232" with
+# `20232` (traditional cosmetics) but the annex restricts traditional
+# cosmetics, not bespoke perfume; `30303` (spacecraft) shares ancestor "30300"
+# with `30301`/`30302` (manned/unmanned military aircraft) but the annex
+# restricts military AIRCRAFT, not spacecraft. Publishing "one specific
+# activity inside this code carries a condition" on these two pages would
+# assert a containment `ADJUDICATION` itself denies — the general
+# ancestor-join below would otherwise include them (same ancestor, same annex
+# row) exactly like their siblings that DO stay. Reasons pulled verbatim from
+# `ADJUDICATION` at import time (never re-typed) so the two texts can never
+# drift from each other; `compute_disclosures()` re-checks both codes are
+# still BROADER with the SAME reason before every run.
+ADJACENT_NOT_CONTAINED: dict[str, str] = {
+    "20235": ADJUDICATION["20235"][1],
+    "30303": ADJUDICATION["30303"][1],
+}
+
 
 class SliceDisclosureError(RuntimeError):
     """A refusal. Never downgraded to a warning, never silently dropped."""
@@ -133,14 +166,16 @@ def general_rows(
     canonical: list[dict[str, Any]],
     adjudication: dict[str, tuple[str, str]],
 ) -> dict[str, list[dict[str, Any]]]:
-    """The 12-code population reached by a single ancestor -> annex-row join.
+    """The 10-code population reached by a single ancestor -> annex-row join.
 
     Excludes `MANUAL_SLICE_ROWS`' codes explicitly (see module docstring for
-    why an unscoped cross-product would be wrong for them). Refuses loudly if
-    a BROADER-adjudicated code (outside the manual set) has no row here —
+    why an unscoped cross-product would be wrong for them) and
+    `ADJACENT_NOT_CONTAINED`'s codes (the annex activity is a neighbour, not a
+    slice inside them — see that dict's own comment). Refuses loudly if a
+    BROADER-adjudicated code (outside both exclusion sets) has no row here —
     the derivation that explains WHY it is BROADER found nothing.
     """
-    targets = broader_codes(adjudication) - set(MANUAL_SLICE_ROWS)
+    targets = broader_codes(adjudication) - set(MANUAL_SLICE_ROWS) - set(ADJACENT_NOT_CONTAINED)
     by_code = caps_by_code(RELATION)
     reverse: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for rec in canonical:
@@ -200,6 +235,26 @@ def compute_disclosures(
                 f"adjudication moved out from under the disclosure"
             )
 
+    # ADJACENT_NOT_CONTAINED's exclusion is only valid for as long as its own
+    # premise holds: same verdict (BROADER), same reason text. If either
+    # drifts, the exclusion needs a human to re-derive it — silently keeping
+    # a stale exclusion (or a stale reason) is exactly the double-speak this
+    # module exists to prevent, just inverted.
+    for code, reason in ADJACENT_NOT_CONTAINED.items():
+        verdict, live_reason = adjudication.get(code, (None, ""))
+        if verdict != BROADER:
+            raise SliceDisclosureError(
+                f"{code}: excluded as adjacent-not-contained but ADJUDICATION "
+                f"no longer marks it BROADER (found {verdict!r}) — re-derive "
+                f"whether the exclusion still applies"
+            )
+        if live_reason != reason:
+            raise SliceDisclosureError(
+                f"{code}: ADJUDICATION's reason changed since the exclusion "
+                f"was written ({live_reason!r} != {reason!r}) — re-read it "
+                f"before trusting the exclusion still holds"
+            )
+
     for code, rows in sorted(disclosures.items()):
         record = records_by_code.get(code)
         if record is None:
@@ -235,9 +290,15 @@ def build_artifact(disclosures: dict[str, list[dict[str, Any]]]) -> dict[str, An
                 "NARROWER bidang usaha inside them carries a Perpres foreign-cap "
                 "condition (see apply_perpres_foreign_caps.ADJUDICATION for the "
                 "BROADER verdict, and MANUAL_SLICE_ROWS for the two "
-                "hand-adjudicated 30111/30113 rows). Multi-row per code is allowed."
+                "hand-adjudicated 30111/30113 rows). Multi-row per code is allowed. "
+                "excluded_adjacent_not_contained lists BROADER codes deliberately "
+                "left OUT of `disclosures` because their own ADJUDICATION reason "
+                "says the annex activity is a neighbour, not something inside the "
+                "code — publishing a slice notice there would assert a containment "
+                "the adjudication itself denies."
             ),
             "count": len(disclosures),
+            "excluded_adjacent_not_contained": dict(sorted(ADJACENT_NOT_CONTAINED.items())),
         },
         "disclosures": disclosures,
     }

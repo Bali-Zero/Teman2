@@ -298,7 +298,14 @@ def classify_join(
             }
             if len(caps) > 1:
                 ambiguous.append(item)
-            elif rec.get("pma_max_asing") == next(iter(caps)):
+            elif rec.get("pma_max_asing") == next(iter(caps)) and rec.get("pma_status") == "TERBATAS":
+                # Cap alone is not the fact: every genuine agreement in this
+                # catalogue is TERBATAS (see the module docstring — 0%
+                # foreign becomes TERBATAS, never TERTUTUP; 49% is TERBATAS
+                # too). A record whose max_asing coincidentally matches the
+                # law's number while pma_status says something else (TERBUKA,
+                # TERTUTUP, ...) is NOT an agreement — it is a status
+                # divergence a cap-only comparison would hide.
                 agree.append(item)
             else:
                 disagree.append(item)

@@ -74,6 +74,22 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // it leans on is the absence-from-the-annex default fill, not a permission.
   const nationallyClosed = isNationalClosure(code.baliL4?.status, code.code);
 
+  // A slice-carrying code (perpres_slice_disclosure_relation.py — see the
+  // qualifier built below) is TERBUKA on the WHOLE code while one narrower
+  // activity inside it is not. The opening sentence of the TERBUKA answer
+  // must say so UP FRONT: the old text opened on the flat promise ("Yes...
+  // No local Indonesian partner required.") and appended the carve-out only
+  // afterward — snippet truncation (search results, voice assistants,
+  // anything that shows only the first sentence) serves the promise without
+  // ever showing the carve-out. `carveOutPhrase` stays count-agnostic
+  // because 30111 carries two rows (warship 49% + Pinisi/Cadik 0%), not one.
+  const hasPerpresSlice = !!(code.perpresSlice && code.perpresSlice.length > 0);
+  const carveOutPhrase = !code.perpresSlice
+    ? ""
+    : code.perpresSlice.length > 1
+      ? `${code.perpresSlice.length} carve-outs`
+      : "one carve-out";
+
   const pmaAnswer =
     code.pma.status === "open"
       ? nationallyClosed
@@ -92,14 +108,34 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
             // hardcoded clause misnames, and `69104` served Italian ("Notaio/PPAT è
             // ufficio personale e statale, solo WNI…") — in the visible answer AND in
             // the FAQPage JSON-LD, which is the copy Google ingests.
-            `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
-              shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
-                ? ` ${code.baliL4?.reason}`
-                : ""
-            } Outside Bali it is open to a PT PMA with no local partner required.`
+            hasPerpresSlice
+            ? // A REAL, live case (90200 — Sanggar seni): BROADER-adjudicated
+              // AND Bali-blocked at once, independent axes. The "outside Bali
+              // it is open, no partner required" tail moves to the qualifier
+              // below (after the carve-out is named), same fix as the plain
+              // branch — Bali blocking the whole code does not excuse
+              // asserting the carve-out-free national picture up front.
+              `Nationally yes for most of this code, with ${carveOutPhrase} — but NOT in Bali either way. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level for most of the activity, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+                shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
+                  ? ` ${code.baliL4?.reason}`
+                  : ""
+              }`
+            : `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+                shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
+                  ? ` ${code.baliL4?.reason}`
+                  : ""
+              } Outside Bali it is open to a PT PMA with no local partner required.`
           : baliNonClassifiable
-            ? `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
-            : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
+            ? // No BROADER-adjudicated code currently reaches this branch
+              // (checked live, 2026-08-07) — declared, not silently assumed
+              // safe: a future one would still open on the unqualified "100%
+              // foreign ownership at the national level" claim below. Left
+              // unfixed rather than guessing untested wording; flag if one
+              // ever lands here.
+              `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
+            : hasPerpresSlice
+              ? `Yes for most of this code, with ${carveOutPhrase}: KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA for most of the activity.`
+              : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
       : code.pma.status === "restricted"
         ? restrictedPmaAnswer(code)
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
@@ -114,16 +150,30 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // code while a narrower bidang usaha inside them carries a Perpres
   // Lampiran III foreign-cap condition (perpres_slice_disclosure_relation.py
   // — see the licensing-page frame in LicensingSection.tsx for the same
-  // content in full). One compact qualifier sentence per row.
-  const perpresSliceQualifier = code.perpresSlice
+  // content in full). One compact qualifier sentence per row, followed by
+  // ONE shared "rest of the code" closer (never per-row — a multi-row code
+  // like 30111 would otherwise repeat a false "rest is open" claim right
+  // after the very row that isn't). The closer's wording depends on whether
+  // Bali also blocks the whole code (`baliBlocked`, independent axis).
+  const perpresSliceQualifier = hasPerpresSlice
     ? " " +
-      code.perpresSlice
-        .map((row) =>
+      code
+        .perpresSlice!.map((row) =>
           row.foreignCapPct === 0
-            ? `One specific activity inside this code — "${row.bidangUsaha}" — is reserved for domestic capital under Perpres 10/2021 (as amended): no foreign equity in that slice.`
+            ? row.condition
+              ? // A phased cap (0% at establishment, opening later — e.g.
+                // 58130 press: 49% via capital market for expansion) is NOT
+                // an absolute closure; render the condition instead of the
+                // absolute "no foreign equity" claim, which would be false
+                // for the expansion phase.
+                `One specific activity inside this code — "${row.bidangUsaha}" — is reserved for domestic capital at establishment under Perpres 10/2021 (as amended) — ${row.condition}.`
+              : `One specific activity inside this code — "${row.bidangUsaha}" — is reserved for domestic capital under Perpres 10/2021 (as amended): no foreign equity in that slice.`
             : `One specific activity inside this code — "${row.bidangUsaha}" — is capped at 49% foreign ownership under Perpres 10/2021 (as amended)${row.condition ? `, ${row.condition}` : ""}.`,
         )
-        .join(" ")
+        .join(" ") +
+      (baliBlocked
+        ? " Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above."
+        : " The rest of the code remains open to 100% foreign ownership with no local partner required.")
     : "";
 
   // Rows whose provenance is not KBLI-2025-native (crosswalk pending /

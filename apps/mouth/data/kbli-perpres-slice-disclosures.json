@@ -1,9 +1,13 @@
 {
   "_meta": {
-    "count": 14,
+    "count": 12,
+    "excluded_adjacent_not_contained": {
+      "20235": "bespoke perfume is not traditional cosmetics; likely not restricted at all",
+      "30303": "spacecraft; the annex restricts military aircraft"
+    },
     "generated_by": "scripts/kbli_filiera/perpres_slice_disclosure_relation.py --emit",
     "instrument": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu)",
-    "note": "Codes whose WHOLE-CODE pma_status is TERBUKA (100% open) while a NARROWER bidang usaha inside them carries a Perpres foreign-cap condition (see apply_perpres_foreign_caps.ADJUDICATION for the BROADER verdict, and MANUAL_SLICE_ROWS for the two hand-adjudicated 30111/30113 rows). Multi-row per code is allowed.",
+    "note": "Codes whose WHOLE-CODE pma_status is TERBUKA (100% open) while a NARROWER bidang usaha inside them carries a Perpres foreign-cap condition (see apply_perpres_foreign_caps.ADJUDICATION for the BROADER verdict, and MANUAL_SLICE_ROWS for the two hand-adjudicated 30111/30113 rows). Multi-row per code is allowed. excluded_adjacent_not_contained lists BROADER codes deliberately left OUT of `disclosures` because their own ADJUDICATION reason says the annex activity is a neighbour, not something inside the code — publishing a slice notice there would assert a containment the adjudication itself denies.",
     "vintage": "2021-05-25"
   },
   "disclosures": {
@@ -24,14 +28,6 @@
       }
     ],
     "20232": [
-      {
-        "bidangUsaha": "Industri kosmetik tradisional",
-        "condition": null,
-        "foreignCapPct": 0,
-        "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #4"
-      }
-    ],
-    "20235": [
       {
         "bidangUsaha": "Industri kosmetik tradisional",
         "condition": null,
@@ -78,14 +74,6 @@
       }
     ],
     "30302": [
-      {
-        "bidangUsaha": "Industri pesawat terbang militer",
-        "condition": "may exceed 49% with Menteri Pertahanan approval",
-        "foreignCapPct": 49,
-        "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7"
-      }
-    ],
-    "30303": [
       {
         "bidangUsaha": "Industri pesawat terbang militer",
         "condition": "may exceed 49% with Menteri Pertahanan approval",
