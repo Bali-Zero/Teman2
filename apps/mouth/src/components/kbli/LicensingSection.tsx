@@ -1047,11 +1047,23 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             </span>
           </div>
           <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-            The licensing rows on this record list{" "}
-            {kbli.riskDispute.recordTiers.join(" / ")} across its scopes and
-            business scales, while the editorial guide on this page describes a
-            different tier. The two sources have not been reconciled — verify
-            the current tier on oss.go.id before filing.
+            {kbli.riskDispute.kind === "universal_claim" ? (
+              <>
+                The editorial guide on this page states one risk tier as
+                applying at every business scale, while the licensing rows on
+                this record carry {kbli.riskDispute.recordTiers.join(" / ")}{" "}
+                across its scopes and scales. The two sources have not been
+                reconciled — verify the current tier on oss.go.id before filing.
+              </>
+            ) : (
+              <>
+                The licensing rows on this record list{" "}
+                {kbli.riskDispute.recordTiers.join(" / ")} across its scopes and
+                business scales, while the editorial guide on this page
+                describes a different tier. The two sources have not been
+                reconciled — verify the current tier on oss.go.id before filing.
+              </>
+            )}
             {kbli.riskDispute.baliDependsOnTier && (
               <>
                 {" "}

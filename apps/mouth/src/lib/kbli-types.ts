@@ -324,13 +324,19 @@ export interface KBLITransition {
 
 /**
  * Risk-tier divergence between the gold editorial prose and the OSS record —
- * computed by `scripts/kbli_filiera/gold_risk_dispute_relation.py` (zero
- * overlap between the tiers the prose claims and the tiers the record holds),
- * shipped as `data/kbli-risk-disputes.json`. The page states the record tiers
- * and the fact of divergence; it never enumerates the editorial side.
+ * computed by `scripts/kbli_filiera/gold_risk_dispute_relation.py`, two
+ * kinds: `zero_overlap` (the prose's claimed tier(s) share NOTHING with the
+ * record) and `universal_claim` (the prose claims one tier applies at EVERY
+ * scale, false on any other tier in the record even when the claimed tier
+ * is also present). Shipped as `data/kbli-risk-disputes.json`. The page
+ * states the record tiers, the kind (each kind renders a DIFFERENT
+ * sentence — round-3: they are false in different ways), and the fact of
+ * divergence; it never enumerates the editorial side's claimed tiers.
  */
 export interface KBLIRiskDispute {
   recordTiers: string[];
+  /** See kbli-risk-dispute.ts's `KBLIRiskDispute.kind` for the full contract. */
+  kind: "zero_overlap" | "universal_claim";
   /**
    * true when the record's `l4_bali.status` is derived from the risk tier
    * itself (compiler-computed — see `bali_depends_on_tier()` in

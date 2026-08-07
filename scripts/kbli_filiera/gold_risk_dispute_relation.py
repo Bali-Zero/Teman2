@@ -43,6 +43,10 @@ finding #4; the earlier whole-sentence split was itself an over-match):
 * CONDITIONAL — "If OSS treats your scope as High Risk, you will need a
   Standard Certificate" states a hypothetical branch, not this code's actual
   tier. Same for "unless ..." and "... where applicable".
+  DECLARED LIMIT: this guard is whole-clause and matches bare "if ", so
+  "Even if the scope is later expanded, this activity is Low Risk." also
+  loses ITS OWN unconditional claim — a known under-match, left as is (round
+  3; real conditional-scope parsing is out of bounds for a regex guard).
 * ANOTHER CODE'S TIER — `70202`'s baliContext: "you're better off with 70203
   (Low risk...)" asserts a tier about 70203, not 70202. A sentence naming a
   different 5-digit code contributes nothing to THIS code's claim set.
@@ -50,6 +54,12 @@ finding #4; the earlier whole-sentence split was itself an over-match):
   High Risk." also loses ITS OWN claim — a known under-match, left as is.
 * POPULATION TALK — "most consulting codes are Low risk" quantifies over a
   family, not this code.
+
+Clause boundaries also do NOT include `:` — measured and rejected in round 3:
+every real universal claim in this corpus is phrased "All scales: <tier>" or
+"All scales (<list>): <tier>", so the colon sits BETWEEN the quantifier and
+the tier it modifies; splitting there would sever the claim from its own
+subject and drop `46100`/`47901`/`71109` from the population.
 
 These guard lists are grown from observed instances (W113: a pattern written
 from the instance you found catches the instance you found). The safety net is
@@ -67,29 +77,40 @@ declared, not closed.
 
 `universal_claim` (2026-08-07): a CLAUSE quantifying over ALL scales ("all
 scales", "every scale", optionally followed by a parenthesized scale list)
-that claims tier X is false as soon as the record holds ANY tier other than
-X — evaluated independently of overlap, because a universal claim is falsified
-by a single dissenting tier even when X is also present. `46100` is the
-motivating case: gold says "All scales (Mikro/Kecil/Menengah/Besar): Low Risk
-(Rendah)" while the record holds {Menengah Rendah, Menengah Tinggi, Rendah,
-Tinggi} — the Rendah overlap hid the false universal claim from `zero_overlap`.
-A universal claim whose X equals the record's ONLY tier is innocent (nothing
-else to contradict it). `zero_overlap` is checked first; a code cannot be both.
+claims a SET of tiers — usually one, occasionally more ("All scales:
+Menengah Tinggi and Tinggi") — and is false as soon as the record holds ANY
+tier that set does not cover. Evaluated independently of overlap, because a
+universal claim is falsified by a single dissenting tier even when part of
+its claimed set is also present. The set stays grouped PER CLAUSE, never
+flattened across clauses (round 3): a clause naming two tiers together must
+be judged as one unit, or a claim that correctly covers a two-tier record
+would be misread as false on each tier taken alone. `46100` is the motivating
+case: gold says "All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)"
+while the record holds {Menengah Rendah, Menengah Tinggi, Rendah, Tinggi} —
+the Rendah overlap hid the false universal claim from `zero_overlap`. A
+universal claim whose set equals (or is a superset of) the record's tiers is
+innocent — including a plain negation ("Not all scales are Low Risk" makes
+no claim at all; see `_NEGATION`). `zero_overlap` is checked first; a code
+cannot be both.
 
 A record with NO tier rows is a declared gap, not a contradiction — excluded
 from both checks.
 
 WHAT THE FRONTEND MAY RENDER FROM THIS
 --------------------------------------
-The RECORD tiers (structured data), the FACT of divergence, and
-`baliDependsOnTier` — also structured, computed here from `l4_bali.status`
-(never from prose) — true when the record's Bali (L4) verdict is one of the
-statuses DERIVED from the risk tier itself (`OK_or_HIGHER_RISK`,
-`APERTO_BALI_RISCHIO_ALTO`, `BLOCCATO_CLASSE_RISCHIO`,
-`CHIUSO_MORATORIA_BALI`), as opposed to a PMA/sector-derived status that holds
-regardless of which tier wins. 29 of the 30 `zero_overlap` disputes and all 3
-`universal_claim` disputes carry it — a page cannot show a Bali verdict as
-settled while calling its basis disputed. Never the editorial tier list: prose
+The RECORD tiers (structured data), the FACT of divergence, the dispute
+`kind` (`zero_overlap` vs `universal_claim` — round 3: the two kinds are
+FALSE IN DIFFERENT WAYS and a page that always says "describes a different
+tier" lies about the 3 `universal_claim` codes, whose editorial tier IS in
+the record; only its claimed UNIVERSALITY is false), and `baliDependsOnTier`
+— also structured, computed here from `l4_bali.status` via the shared
+`_l4bali_basis.RISK_DERIVED_STATUSES` SSOT (never from prose, never a second
+hand-typed list — round 3 caught exactly that drift) — true when the
+record's Bali (L4) verdict is derived from the risk tier itself, as opposed
+to a status whose basis is a different, intact layer (PMA/sector). 32 of the
+33 disputes carry it (all but `79110`, CHIUSO_BALI_PROPOSTO — a proposed,
+not tier-derived, closure) — a page cannot show a Bali verdict as settled
+while calling its basis disputed. Never the editorial tier list: prose
 evidence can carry junk (another code's tier that slipped a guard), and a
 disclosure that enumerates wrong tiers would be a new client-facing lie
 manufactured by the cure. `editorial_mentions` is audit evidence, kept in the
@@ -115,6 +136,20 @@ CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.jso
 GOLD = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-gold-all.json"
 ARTIFACT = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-risk-disputes.json"
 
+# Sibling-module import: works both when this file is executed directly (Python
+# auto-adds its own directory to sys.path[0]) and when a test has already
+# inserted this directory (same pattern as emit_l4bali_gap_disclosure_spec.py).
+# The tier-derived/non-tier-derived classification of every l4_bali.status
+# lives in ONE module shared with the census/emitter and the sanctioned L4
+# writer, so this compiler can never disagree with them about which statuses
+# rest on the risk-tier layer (2026-08-07 round-3 BLOCKER 2 — a second,
+# hand-typed list here had already drifted from that SSOT).
+_FILIERA_DIR = Path(__file__).resolve().parent
+if str(_FILIERA_DIR) not in sys.path:
+    sys.path.insert(0, str(_FILIERA_DIR))
+
+from _l4bali_basis import RISK_DERIVED_STATUSES  # noqa: E402
+
 # Prose fields read for a tier claim about THIS code. `youllAlsoNeed` is
 # excluded by design — it is a list of OTHER codes. `whatChanged` is crosswalk
 # narrative about the 2020->2025 transition, not a licensing claim.
@@ -132,7 +167,18 @@ _TIER_SIMPLE = [
 ]
 
 # A sentence containing any of these does not CLAIM the tier it mentions.
-_NEGATION = re.compile(r"\b(does\s+not\s+apply|do(es)?n'?t\s+apply|not\s+apply)\b", re.I)
+# "not all scales"/"not every scale" (2026-08-07 round-3 finding #3) is a
+# SEPARATE phrasing from "X does not apply" — "Not all scales are Low Risk"
+# denies the UNIVERSAL claim without ever saying "apply". Folded into the
+# same guard (not a parallel one) so both `gold_claims` and
+# `universal_claim_sets` — which both route through `sentence_claims` —
+# inherit the fix identically; a plain claim from this clause would be just
+# as wrong as a universal one.
+_NEGATION = re.compile(
+    r"\b(does\s+not\s+apply|do(es)?n'?t\s+apply|not\s+apply"
+    r"|not\s+all\s+scales|not\s+every\s+scale)\b",
+    re.I,
+)
 _HEDGE = re.compile(
     r"\b(likely|will\s+be\s+classified|would\s+be|expected\s+to|once\s+pp\s*28|when\s+pp\s*28)\b",
     re.I,
@@ -142,6 +188,14 @@ _POPULATION = re.compile(r"\b(most|other|all)\s+[a-z]*\s*codes\b", re.I)
 # CONDITIONAL — "If OSS treats your scope as High Risk, you will need a
 # Standard Certificate" is a hypothetical branch, not an assertion about this
 # code's actual tier. Same for "unless ..." and "... where applicable".
+# DECLARED LIMIT (round-3, do not fix): this guard is whole-clause and
+# matches bare "if ", so "Even if the scope is later expanded, this activity
+# is Low Risk." also loses its OWN unconditional assertion — "Even if X, Y"
+# states Y unconditionally; the guard cannot tell that apart from a true
+# conditional. Known under-match, same treatment as the cross-code guard's
+# declared limit in `sentence_claims` below. Real conditional semantics
+# (parsing which clause the "if" actually scopes over) is out of bounds for
+# a regex guard — left as is.
 _CONDITIONAL = re.compile(r"\b(?:if|unless)\s|where\s+applicable", re.I)
 
 # Candidate boundaries for a CLAIM, not just a sentence: "The automatic
@@ -150,6 +204,17 @@ _CONDITIONAL = re.compile(r"\b(?:if|unless)\s|where\s+applicable", re.I)
 # second (W105-class over-match — the guard would otherwise convict the
 # WHOLE sentence innocent because ONE clause is negated). Split on sentence
 # punctuation, `;`, and a spaced em-dash in addition.
+#
+# DECLARED LIMIT (round-3, measured and rejected, do not add): `:` looks like
+# a cheap fourth splitter but MEASURABLY BREAKS the universal-quantifier rule
+# — "All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)" would split
+# into "All scales (...)" (quantifier, no tier) and " Low Risk (Rendah)"
+# (tier, no quantifier), severing the phrase from the tier it modifies.
+# Measured: adding `:` here drops `46100`/`47901`/`71109` out of the
+# population entirely (33 -> 30). Every real universal claim in this corpus
+# is written "All scales: <tier>" or "All scales (<list>): <tier>" — i.e.
+# the colon is structurally load-bearing for THIS guard, not incidental
+# punctuation to split on. Left out.
 _SENTENCE_SPLIT = re.compile(r"[.!?\n;]+|\s+—\s+")
 _FIVE_DIGIT = re.compile(r"\b(\d{5})\b")
 
@@ -229,43 +294,49 @@ def gold_claims(entry: dict[str, Any], own_code: str) -> dict[str, list[str]]:
     return {tier: sorted(fields) for tier, fields in sorted(found.items())}
 
 
-def universal_claims(entry: dict[str, Any], own_code: str) -> set[str]:
-    """Tiers claimed by a clause that quantifies over ALL scales.
+def universal_claim_sets(entry: dict[str, Any], own_code: str) -> list[set[str]]:
+    """Per-CLAUSE tier-sets from clauses that quantify over ALL scales.
 
     Distinct from `gold_claims`: only clauses matching `_UNIVERSAL_QUANTIFIER`
-    count. A universal "this code is X at every scale" claim is falsified by
-    ANY other tier in the record — even when X itself is also in the record
-    (that partial overlap is what let 46100 slip past the zero-overlap rule).
+    count, and each clause's claimed tiers stay grouped as ONE set rather than
+    flattening into a single set across the whole entry (2026-08-07 round-3
+    finding #3). The grouping matters: "All scales: Menengah Tinggi and
+    Tinggi" on a record holding exactly {Menengah Tinggi, Tinggi} is a TRUE
+    universal claim — the clause names both tiers together. Flattened, the
+    caller would wrongly test each tier alone ("is there a tier other than
+    Menengah Tinggi?" — yes, Tinggi — false positive) instead of testing
+    whether the CLAUSE's whole claim set covers the record.
     """
-    found: set[str] = set()
+    sets: list[set[str]] = []
     for field in PROSE_FIELDS:
         text = entry.get(field) or ""
         for clause in _SENTENCE_SPLIT.split(text):
             if not _UNIVERSAL_QUANTIFIER.search(clause):
                 continue
-            found |= sentence_claims(clause, own_code)
-    return found
-
-
-# l4_bali.status values DERIVED from the record's risk tier (the OSS-risk /
-# moratorium-vs-tier logic) — as opposed to PMA/sector-derived statuses
-# (CHIUSO_PMA_NO_BESAR, TERTUTUP, CHIUSO_REGOLATORE_SETTORIALE, ...) that
-# would hold regardless of which tier wins. A page showing a Bali verdict
-# built on a DISPUTED tier is asserting settled fact on a disputed basis.
-_BALI_TIER_DERIVED_STATUSES = frozenset(
-    {
-        "OK_or_HIGHER_RISK",
-        "APERTO_BALI_RISCHIO_ALTO",
-        "BLOCCATO_CLASSE_RISCHIO",
-        "CHIUSO_MORATORIA_BALI",
-    }
-)
+            claimed = sentence_claims(clause, own_code)
+            if claimed:
+                sets.append(claimed)
+    return sets
 
 
 def bali_depends_on_tier(record: dict[str, Any]) -> bool:
-    """True when this record's Bali (L4) verdict is derived from its risk tier."""
+    """True when this record's Bali (L4) verdict is derived from its risk tier.
+
+    DERIVES from `_l4bali_basis.RISK_DERIVED_STATUSES` — the shared SSOT the
+    census/emitter and the sanctioned L4 writer already use to answer this
+    exact question — rather than hand-maintaining a second classification
+    here (2026-08-07 round-3 finding, BLOCKER 2: a hand-typed 4-status list
+    both omitted `BLOCCATO_DIPENDE_SCOPE` and `CHIUSO_PMA_NO_BESAR`, which
+    ARE tier-derived per that module — a fact its own `reason` text states
+    outright for BLOCCATO_DIPENDE_SCOPE — and a second list answering one
+    fact is exactly the drift this dataset has scarred on before, W105).
+    `_l4bali_basis` enumerates every observed status into
+    RISK_DERIVED_STATUSES or NON_RISK_DERIVED_STATUSES explicitly and its own
+    consumers fail loudly on an unclassified status — that completeness
+    property is inherited here for free, not re-implemented.
+    """
     status = (record.get("l4_bali") or {}).get("status")
-    return status in _BALI_TIER_DERIVED_STATUSES
+    return status in RISK_DERIVED_STATUSES
 
 
 def compute_disputes(
@@ -292,11 +363,13 @@ def compute_disputes(
             continue
         # Zero-overlap didn't fire (a partial overlap can be two truths about
         # two scopes — the no-arbiter zone). Check the universal-quantifier
-        # rule independently: it convicts on ANY other tier being present,
-        # not on the absence of overlap.
+        # rule independently: it convicts a CLAUSE's whole claimed-tier set
+        # on any record tier that set doesn't cover, not on the absence of
+        # overlap (a clause naming ALL of a multi-tier record's tiers
+        # together must NOT convict — round-3 finding #3).
         tier_set = set(tiers)
-        for claimed_tier in sorted(universal_claims(entry, code)):
-            if tier_set - {claimed_tier}:
+        for claimed_set in universal_claim_sets(entry, code):
+            if tier_set - claimed_set:
                 disputes[code] = {
                     "record": tiers,
                     "kind": "universal_claim",
@@ -312,9 +385,14 @@ def build_artifact(disputes: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "_meta": {
             "generated_by": "scripts/kbli_filiera/gold_risk_dispute_relation.py --emit",
             "note": (
-                "Codes whose gold editorial prose claims a risk tier sharing "
-                "NOTHING with the record's per_skala tier set. No winner is "
-                "picked; the page renders a divergence disclosure. "
+                "Codes whose gold editorial prose contradicts the record's "
+                "per_skala tier set — kind='zero_overlap' (prose tier shares "
+                "NOTHING with the record) or kind='universal_claim' (prose "
+                "claims one tier applies at EVERY scale, false as soon as the "
+                "record holds any other tier — the editorial tier CAN still "
+                "be among the record's tiers for this kind; only its claimed "
+                "universality is false). No winner is picked; the page "
+                "renders a kind-specific divergence disclosure. "
                 "editorial_mentions is audit evidence — never render it."
             ),
             "count": len(disputes),

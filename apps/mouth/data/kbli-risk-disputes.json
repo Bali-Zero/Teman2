@@ -2,7 +2,7 @@
   "_meta": {
     "count": 33,
     "generated_by": "scripts/kbli_filiera/gold_risk_dispute_relation.py --emit",
-    "note": "Codes whose gold editorial prose claims a risk tier sharing NOTHING with the record's per_skala tier set. No winner is picked; the page renders a divergence disclosure. editorial_mentions is audit evidence — never render it."
+    "note": "Codes whose gold editorial prose contradicts the record's per_skala tier set — kind='zero_overlap' (prose tier shares NOTHING with the record) or kind='universal_claim' (prose claims one tier applies at EVERY scale, false as soon as the record holds any other tier — the editorial tier CAN still be among the record's tiers for this kind; only its claimed universality is false). No winner is picked; the page renders a kind-specific divergence disclosure. editorial_mentions is audit evidence — never render it."
   },
   "disputes": {
     "10504": {
@@ -31,7 +31,7 @@
       ]
     },
     "46100": {
-      "baliDependsOnTier": false,
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Rendah": [
           "whatYouNeed",
@@ -71,7 +71,7 @@
       ]
     },
     "47901": {
-      "baliDependsOnTier": false,
+      "baliDependsOnTier": true,
       "editorial_mentions": {
         "Rendah": [
           "whatYouNeed"
