@@ -18,6 +18,7 @@ export const REQUIRED_SYNTHETIC_CONTRACTS = [
 const REQUIRED_ENDPOINT_CONTRACTS = [
   "NUZANTARA_API_URL",
   "MY_PORTAL_BACKEND_HEALTH_URL",
+  "PORTAL_BASE_URL",
   "MY_PORTAL_MAGIC_LINK_MAIL_SINK_URL",
   "MY_PORTAL_MAGIC_LINK_INBOX_URL",
   "MY_PORTAL_QA_DOCUMENT_SINK_URL",
@@ -89,6 +90,7 @@ export interface ProdlikeEnvironment {
   readonly magicLinkSinkKey: string;
   readonly partnerEmail: string;
   readonly partnerPin: string;
+  readonly portalBaseUrl: string;
   readonly supportMailReceiptUrl: string;
 }
 
@@ -425,6 +427,11 @@ export function loadProdlikeEnvironment(
     "MY_PORTAL_BACKEND_HEALTH_URL",
     allowedHosts,
   );
+  const portalBase = parseSafeUrl(
+    environment.PORTAL_BASE_URL!,
+    "PORTAL_BASE_URL",
+    allowedHosts,
+  );
   const magicLinkMailSink = parseSafeUrl(
     environment.MY_PORTAL_MAGIC_LINK_MAIL_SINK_URL!,
     "MY_PORTAL_MAGIC_LINK_MAIL_SINK_URL",
@@ -447,6 +454,7 @@ export function loadProdlikeEnvironment(
   );
   const backendApiUrl = normalizeBackendApiUrl(backendApi);
   const frontendPort = parseFrontendPort(environment);
+  const frontendOrigin = `http://127.0.0.1:${frontendPort}`;
   const magicLinkSinkKey = validateMagicLinkSinkKey(environment);
   const documentSinkKey = validateDocumentSinkKey(environment);
 
@@ -458,6 +466,11 @@ export function loadProdlikeEnvironment(
   if (backendHealth.origin !== backendApiUrl) {
     throw new ProdlikePreflightError(
       "QA-E2E-001 preflight rejected MY_PORTAL_BACKEND_HEALTH_URL: it must use the same origin as NUZANTARA_API_URL.",
+    );
+  }
+  if (portalBase.origin !== frontendOrigin || portalBase.pathname !== "/") {
+    throw new ProdlikePreflightError(
+      "QA-E2E-001 preflight rejected PORTAL_BASE_URL: it must match the loopback frontend origin.",
     );
   }
   if (
@@ -533,6 +546,7 @@ export function loadProdlikeEnvironment(
     magicLinkSinkKey,
     partnerEmail: environment.MY_PORTAL_SYNTHETIC_PARTNER_EMAIL!.trim(),
     partnerPin: environment.MY_PORTAL_SYNTHETIC_PARTNER_PIN!.trim(),
+    portalBaseUrl: portalBase.origin,
     supportMailReceiptUrl: `${magicLinkMailSink.origin}/qa/support-mail-receipt`,
   });
 }

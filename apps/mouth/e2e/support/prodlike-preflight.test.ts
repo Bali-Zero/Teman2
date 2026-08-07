@@ -51,6 +51,7 @@ function safeEnvironment(): Record<string, string> {
   });
   environment.NUZANTARA_API_URL = "http://127.0.0.1:8000";
   environment.MY_PORTAL_BACKEND_HEALTH_URL = "http://127.0.0.1:8000/health";
+  environment.PORTAL_BASE_URL = "http://127.0.0.1:3101";
   environment.MY_PORTAL_MAGIC_LINK_MAIL_SINK_URL =
     "http://127.0.0.1:18181/api/notifications/send-email";
   environment.MY_PORTAL_MAGIC_LINK_INBOX_URL =
@@ -248,6 +249,7 @@ test("a safe loopback backend configuration passes without network activity", ()
     assert.equal(environment.disabledClientPin, "9634");
     assert.equal(environment.partnerEmail, "portal-partner@example.com");
     assert.equal(environment.partnerPin, "1742");
+    assert.equal(environment.portalBaseUrl, "http://127.0.0.1:3101");
     assert.match(environment.expiredSessionToken, /^[^.]+\.[^.]+\.[^.]+$/);
     assert.equal(
       environment.documentFixtureName,
@@ -291,6 +293,22 @@ test("an invalid frontend port fails before any health request", () => {
   assert.match(
     capturePreflightError(environment),
     /MY_PORTAL_PRODLIKE_PORT.*unprivileged numeric port/,
+  );
+});
+
+test("the backend magic-link base must match the loopback frontend origin", () => {
+  const wrongPort = safeEnvironment();
+  wrongPort.PORTAL_BASE_URL = "http://127.0.0.1:3102";
+  assert.match(
+    capturePreflightError(wrongPort),
+    /PORTAL_BASE_URL.*match the loopback frontend origin/,
+  );
+
+  const wrongPath = safeEnvironment();
+  wrongPath.PORTAL_BASE_URL = "http://127.0.0.1:3101/portal";
+  assert.match(
+    capturePreflightError(wrongPath),
+    /PORTAL_BASE_URL.*match the loopback frontend origin/,
   );
 });
 
