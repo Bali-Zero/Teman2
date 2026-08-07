@@ -38,7 +38,7 @@ import re
 from base64 import urlsafe_b64decode
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.services.visa_engine.enums import Environment
 from backend.services.visa_engine.errors import (
@@ -46,6 +46,8 @@ from backend.services.visa_engine.errors import (
     FactsFingerprintKeyUnavailableError,
 )
 from backend.services.visa_engine.evaluator import (
+    TEST_FACTS_FINGERPRINT_KEY_ID,
+    TEST_FACTS_FINGERPRINT_PLACEHOLDER_KEY,
     DecisionIdentity,
     IdentityProvider,
     _placeholder_identity_provider,
@@ -286,6 +288,73 @@ class FactsFingerprintKeyStore:
         return candidates[0]
 
 
+@dataclass(frozen=True, slots=True)
+class EngineHmacKeyRing:
+    """Active minting key plus configured non-revoked historical verifiers."""
+
+    minting_key: FactsFingerprintKey
+    verification_keys: tuple[FactsFingerprintKey, ...]
+
+
+def resolve_engine_hmac_keyring(
+    environment: Environment,
+    moment: datetime,
+    env_var: str = FACTS_FINGERPRINT_KEYS_ENV_VAR,
+) -> EngineHmacKeyRing:
+    """Resolve HMAC material for decision sealing and request replay.
+
+    Production and staging always require operator-provisioned material.
+    TEST mirrors the evaluator's existing non-secret placeholder behavior so
+    deterministic fixtures remain runnable without weakening other
+    environments. Retained same-environment keys are verification-only: a
+    retry created before a rotation can still be authenticated for its
+    policy-bound database lifetime, but only the currently active key can mint.
+    Historical-key removal is therefore an operator action coupled to retention
+    evidence; application code invents no replay-duration constant.
+    """
+
+    if moment.tzinfo is None:
+        raise FactsFingerprintKeyUnavailableError(
+            "moment must be timezone-aware for HMAC key selection"
+        )
+    raw = os.environ.get(env_var)
+    if raw is None or not raw.strip():
+        if environment is not Environment.TEST:
+            raise FactsFingerprintKeyUnavailableError(
+                f"no HMAC key material available for environment {environment.value!r}"
+            )
+        placeholder = FactsFingerprintKey(
+            kid=TEST_FACTS_FINGERPRINT_KEY_ID,
+            secret=TEST_FACTS_FINGERPRINT_PLACEHOLDER_KEY,
+            environment=Environment.TEST,
+            valid_from=datetime.min.replace(tzinfo=timezone.utc),
+            valid_to=None,
+            revoked_at=None,
+        )
+        return EngineHmacKeyRing(
+            minting_key=placeholder,
+            verification_keys=(placeholder,),
+        )
+
+    store = FactsFingerprintKeyStore.from_env(env_var)
+    minting_key = store.select(environment, moment)
+    verification_keys = tuple(
+        key
+        for key in store.keys
+        if key.environment is environment
+        and key.valid_from <= moment
+        and (key.revoked_at is None or key.revoked_at > moment)
+    )
+    if minting_key not in verification_keys:  # pragma: no cover - selection invariant
+        raise FactsFingerprintKeyUnavailableError(
+            "active HMAC minting key is not eligible for verification"
+        )
+    return EngineHmacKeyRing(
+        minting_key=minting_key,
+        verification_keys=verification_keys,
+    )
+
+
 def build_identity_provider(store: FactsFingerprintKeyStore) -> IdentityProvider:
     """Wrap a key store as an ``evaluator.IdentityProvider``. The returned
     callable is PURE given the store (no env/wall-clock reads): it selects the
@@ -337,8 +406,10 @@ def resolve_identity_provider(
 
 __all__ = [
     "FACTS_FINGERPRINT_KEYS_ENV_VAR",
+    "EngineHmacKeyRing",
     "FactsFingerprintKey",
     "FactsFingerprintKeyStore",
     "build_identity_provider",
+    "resolve_engine_hmac_keyring",
     "resolve_identity_provider",
 ]

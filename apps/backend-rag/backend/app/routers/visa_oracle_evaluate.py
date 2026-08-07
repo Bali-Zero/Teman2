@@ -1,9 +1,10 @@
 """POST /api/visa-oracle/evaluate — the Visa Oracle v2 evaluate read-path (W1).
 
-Public, exact-path, rate-limited endpoint: canonical ``ApplicantFacts`` JSON
-in, the Kimi-spec B.2 envelope out (``{mode, decision, sources, display}`` —
-``research/visa/2026-07-19-kimi-uiux-adaptation-spec.md`` §A.4.1/B.2), one
-full-fact SHADOW ``visa_decisions`` audit row persisted per evaluation. The
+Public, exact-path, rate-limited endpoint: canonical
+``VisaOracleEvaluateRequest`` JSON in, the typed v2 envelope out
+(``{mode, decision, sources, display}`` —
+``research/visa/2026-07-19-kimi-uiux-adaptation-spec.md`` §A.4.1/B.2), with
+durable, privacy-preserving audit persistence for completed evaluations. The
 engine orchestration lives in ``services/visa_engine/evaluate_path.py`` —
 this module is the thin HTTP shell: request validation, abuse controls, and
 the synthetic-``traffic_source`` trust gate.
@@ -19,14 +20,12 @@ Abuse controls (Codex red-team, binding per the W1 brief):
   ``len(await request.body())`` check buffers the whole body FIRST).
 - Content-Type enforcement: ``application/json`` only (parameters such as
   ``; charset=utf-8`` accepted) — anything else is a 415.
-- Schema validation: the body IS the canonical ApplicantFacts contract
-  (``services/visa_engine/contracts/applicant-facts.schema.json`` —
-  validated via ``models.ApplicantFacts``, the contract's executable form;
-  ``test_schema_contracts.py`` pins the two to parity). Thin facts are NEVER
-  rejected: an all-UNKNOWN payload is valid (unknowns carry explicit
-  reasons; the engine abstains — ``NEEDS_INPUT`` is an answer, not an
-  error). Validation errors are 422 with loc/type only — pydantic's
-  ``include_input=False``, so no fact value is ever echoed back.
+- Strict JSON ingestion: duplicate property names at any nesting depth and
+  non-finite number tokens are rejected before Pydantic. The body model is
+  ``VisaOracleEvaluateRequest``: canonical ApplicantFacts plus a closed,
+  monotone ``disclosed_review_flags`` vocabulary. Thin facts remain valid.
+  Validation errors are sanitized to loc/type/msg only; applicant values are
+  never echoed.
 - Rate limit: dedicated 30/min bucket in ``RateLimitMiddleware.RATE_LIMITS``
   (exact-path entry, beats the generic ``/api/`` 120/min prefix).
 - ``traffic_source`` (query param, default ``real``): synthetic classes
@@ -49,9 +48,9 @@ Abuse controls (Codex red-team, binding per the W1 brief):
   never echoing the received value): FastAPI's default enum-param 422
   would reflect the attacker's input back in the error body (Gemini
   adversarial pass, adjudicated MEDIUM).
-- No raw PII in any log line: facts stay out; the request trace is a
-  truncated SHA-256 of the raw body and the persisted correlator is the
-  HMAC facts-fingerprint (migration 255 pattern).
+- No raw PII in any log line: facts stay out; the request trace is a random,
+  PII-independent attempt identifier and the persisted correlator is the HMAC
+  facts-fingerprint (migration 255 pattern).
 
 CORS note (web seat, W1 brief): same-origin today. This router adds NO
 preflight handling of its own and does not widen the app-level CORS config;
@@ -61,29 +60,182 @@ path only, in a separate reviewed change.
 
 from __future__ import annotations
 
-import hashlib
 import json
+import re
+import uuid
+from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any, cast
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import ValidationError
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.routing import APIRoute
+from starlette.responses import Response
 
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.services.visa_engine import evaluate_path
-from backend.services.visa_engine.models import ApplicantFacts
+from backend.services.visa_engine.api_models import (
+    VisaOracleErrorResponse,
+    VisaOracleEvaluateRequest,
+    VisaOracleEvaluateResponse,
+    VisaOracleValidationErrorResponse,
+)
+from backend.services.visa_engine.bundle import JsonValue, canonicalize_json
+from backend.services.visa_engine.idempotency import IdempotencyConflictError
 
 logger = get_logger(__name__)
-
-router = APIRouter(prefix="/api/visa-oracle", tags=["visa-oracle-evaluate"])
 
 #: Hard cap on the request body (bytes) — see module docstring.
 MAX_EVALUATE_BODY_BYTES = 32 * 1024
 
+# Bound decimal parsing before ``int()``. Python deliberately rejects integer
+# strings above its global digit limit; an HTTP header must never turn that
+# interpreter guard into a 500.
+MAX_CONTENT_LENGTH_DIGITS = 20
+
 #: The W4 gold-corpus replay driver credential header (see module docstring).
 DRIVER_TOKEN_HEADER = "x-visa-driver-token"
+
+#: Opaque caller token accepted for durable replay. A closed ASCII alphabet
+#: avoids normalization ambiguity between proxies and PostgreSQL.
+IDEMPOTENCY_KEY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+_STATIC_VALIDATION_MESSAGES = {
+    "missing": "Required field is missing",
+    "extra_forbidden": "Unexpected field",
+    "literal_error": "Value is outside the allowed vocabulary",
+    "enum": "Value is outside the allowed vocabulary",
+}
+
+
+class _DuplicateJsonKeyError(ValueError):
+    """Raised without carrying the key so PII never reaches an error body."""
+
+
+def _reject_duplicate_object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise _DuplicateJsonKeyError("duplicate JSON property")
+        parsed[key] = value
+    return parsed
+
+
+def _reject_non_finite_number(_token: str) -> None:
+    raise ValueError("non-finite JSON number")
+
+
+def _parse_strict_json(body: bytes) -> Any:
+    """Parse I-JSON's security-critical subset before model validation."""
+
+    text = body.decode("utf-8", errors="strict")
+    return json.loads(
+        text,
+        object_pairs_hook=_reject_duplicate_object_pairs,
+        parse_constant=_reject_non_finite_number,
+    )
+
+
+def _sanitized_validation_detail(exc: RequestValidationError) -> list[dict[str, Any]]:
+    """Return structural diagnostics only, excluding attacker/applicant input."""
+
+    sanitized: list[dict[str, Any]] = []
+    for error in exc.errors():
+        error_type = str(error["type"])
+        raw_location = tuple(error.get("loc", ()))
+        scope = (
+            str(raw_location[0])
+            if raw_location and raw_location[0] in {"body", "query", "path", "header", "cookie"}
+            else "request"
+        )
+        sanitized.append(
+            {
+                # Pydantic includes unknown JSON property names in ``loc``
+                # for extra_forbidden. Those names are attacker-controlled
+                # and may themselves contain applicant PII, so expose only a
+                # static structural scope and the fact that a field failed.
+                "loc": [scope, "field"] if len(raw_location) > 1 else [scope],
+                "type": error_type,
+                "msg": _STATIC_VALIDATION_MESSAGES.get(error_type, "Invalid request field"),
+            }
+        )
+    return sanitized
+
+
+class StrictEvaluateJsonRoute(APIRoute):
+    """Validate raw request bytes before FastAPI's typed body parser.
+
+    The endpoint can therefore expose a normal Pydantic request component in
+    OpenAPI while retaining incremental size enforcement and duplicate-key
+    rejection at the actual wire boundary.
+    """
+
+    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
+        downstream = super().get_route_handler()
+
+        async def strict_route_handler(request: Request) -> Response:
+            content_types = request.headers.getlist("content-type")
+            if len(content_types) > 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Multiple Content-Type headers are not allowed",
+                )
+            content_type = content_types[0] if content_types else ""
+            mime_essence = content_type.split(";", 1)[0].strip().lower()
+            if mime_essence != "application/json":
+                raise HTTPException(
+                    status_code=415,
+                    detail="Content-Type must be application/json",
+                )
+
+            declared_lengths = request.headers.getlist("content-length")
+            if len(declared_lengths) > 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid Content-Length header",
+                )
+            if declared_lengths:
+                declared_length = declared_lengths[0]
+                if (
+                    len(declared_length) > MAX_CONTENT_LENGTH_DIGITS
+                    or not declared_length.isascii()
+                    or not declared_length.isdecimal()
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid Content-Length header",
+                    )
+                if int(declared_length) > MAX_EVALUATE_BODY_BYTES:
+                    raise HTTPException(status_code=413, detail="Request body too large")
+
+            body = await _read_capped_body(request)
+            try:
+                _parse_strict_json(body)
+            except (UnicodeDecodeError, ValueError, RecursionError):
+                raise HTTPException(status_code=400, detail="Body must be valid JSON") from None
+
+            # FastAPI's typed parser reads Request.body(). The capped bytes are
+            # cached only after strict parsing, so it never consumes the raw
+            # transport stream independently or past the route limit.
+            request._body = body
+            try:
+                return await downstream(request)
+            except RequestValidationError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail=_sanitized_validation_detail(exc),
+                ) from exc
+
+        return strict_route_handler
+
+
+router = APIRouter(
+    prefix="/api/visa-oracle",
+    tags=["visa-oracle-evaluate"],
+    route_class=StrictEvaluateJsonRoute,
+)
 
 
 class TrafficSourceParam(str, Enum):
@@ -136,60 +288,47 @@ async def _read_capped_body(request: Request) -> bytes:
     return b"".join(chunks)
 
 
-@router.post("/evaluate")
+@router.post(
+    "/evaluate",
+    operation_id="evaluateVisaOracleV2",
+    response_model=VisaOracleEvaluateResponse,
+    responses={
+        400: {"model": VisaOracleErrorResponse, "description": "Malformed or conflicting input"},
+        409: {"model": VisaOracleErrorResponse, "description": "Idempotency key conflict"},
+        413: {"model": VisaOracleErrorResponse, "description": "Request body too large"},
+        415: {"model": VisaOracleErrorResponse, "description": "Unsupported media type"},
+        422: {
+            "model": VisaOracleValidationErrorResponse,
+            "description": "Schema validation failed without echoing input values",
+        },
+    },
+)
 async def evaluate_applicant(
+    request_body: VisaOracleEvaluateRequest,
     request: Request,
-    traffic_source: str = "real",
-    request_category: str | None = None,
+    traffic_source: Annotated[
+        str,
+        Query(json_schema_extra={"enum": sorted(_TRAFFIC_SOURCE_VALUES)}),
+    ] = "real",
+    request_category: Annotated[
+        str | None,
+        Query(json_schema_extra={"enum": sorted(_REQUEST_CATEGORY_VALUES)}),
+    ] = None,
+    idempotency_key: Annotated[
+        str | None,
+        Header(alias="Idempotency-Key", description="Opaque durable replay key (max 128 ASCII)"),
+    ] = None,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-) -> dict[str, Any]:
+) -> VisaOracleEvaluateResponse:
     """Evaluate canonical applicant facts through the active rule pack.
 
     Always HTTP 200 for well-formed requests — including the fail-closed
     TEMPORARILY_UNAVAILABLE shape (surface disabled, no active pack,
-    crypto/evaluation fail-close), so the v2 UI can degrade to its curated
-    experience without special-casing errors (Kimi spec §B.3/B.4). Only
-    request-shape defects are 4xx.
+    crypto/evaluation fail-close). The response ``mode`` tells the v2 UI
+    whether the result is comparison-only CURATED or authoritative ENGINE;
+    it must never fabricate a result from an outage. Only request-shape
+    defects are 4xx.
     """
-    content_type = request.headers.get("content-type", "")
-    if not content_type.lower().startswith("application/json"):
-        raise HTTPException(
-            status_code=415,
-            detail="Content-Type must be application/json",
-        )
-
-    declared_length = request.headers.get("content-length")
-    if declared_length is not None:
-        try:
-            declared = int(declared_length)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid Content-Length header") from None
-        if declared > MAX_EVALUATE_BODY_BYTES:
-            raise HTTPException(status_code=413, detail="Request body too large")
-
-    body = await _read_capped_body(request)
-
-    try:
-        raw = json.loads(body)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Body must be valid JSON") from None
-
-    try:
-        facts = ApplicantFacts.model_validate(raw)
-    except ValidationError as exc:
-        # loc/type/msg only — never the offending input value (PII boundary).
-        raise HTTPException(
-            status_code=422,
-            detail=[
-                {
-                    "loc": [str(part) for part in error["loc"]],
-                    "type": error["type"],
-                    "msg": error["msg"],
-                }
-                for error in exc.errors(include_url=False, include_input=False)
-            ],
-        ) from exc
-
     # In-route query-param validation: 400 with a static message, NEVER
     # echoing the received value back (see module docstring).
     if traffic_source not in _TRAFFIC_SOURCE_VALUES:
@@ -215,13 +354,35 @@ async def evaluate_applicant(
             detail="Synthetic traffic_source classes are not accepted from anonymous callers",
         )
 
-    # Non-reversible log correlator; the raw body (facts) itself is never logged.
-    request_trace = hashlib.sha256(body).hexdigest()[:12]
+    idempotency_values = request.headers.getlist("idempotency-key")
+    if len(idempotency_values) > 1 or (
+        idempotency_key is not None and IDEMPOTENCY_KEY_PATTERN.fullmatch(idempotency_key) is None
+    ):
+        raise HTTPException(status_code=400, detail="Idempotency-Key is not an accepted value")
 
-    return await evaluate_path.run_evaluation(
-        db_pool,
-        facts=facts,
-        traffic_source=traffic_source,
-        request_category_hint=request_category,
-        request_trace=request_trace,
-    )
+    # Random, PII-independent per-attempt correlator. Never derive log IDs
+    # from applicant facts, even through an unkeyed hash.
+    request_trace = uuid.uuid4().hex
+
+    canonical_request = {
+        "body": request_body.model_dump(mode="json", by_alias=True),
+        "request_category": request_category,
+        "traffic_source": traffic_source,
+    }
+    canonical_request_bytes = canonicalize_json(cast(dict[str, JsonValue], canonical_request))
+
+    try:
+        return await evaluate_path.run_public_evaluation(
+            db_pool,
+            request=request_body,
+            traffic_source=traffic_source,
+            request_category_hint=request_category,
+            request_trace=request_trace,
+            canonical_request=canonical_request_bytes,
+            idempotency_key=idempotency_key,
+        )
+    except IdempotencyConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail="Idempotency-Key is already bound to a different request",
+        ) from None

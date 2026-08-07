@@ -6,6 +6,7 @@ No user OAuth required - perfect for automated uploads.
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 from io import BytesIO
@@ -20,16 +21,25 @@ from backend.app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+class DriveArchiveIntegrityError(RuntimeError):
+    """Raised when a legal archive cannot prove content-bound idempotency."""
+
+
 class ServiceAccountDriveService:
     """Google Drive operations using Service Account credentials."""
 
     SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        root_folder_id: str | None = None,
+        delegated_user: str | None = None,
+    ) -> None:
         """Initialize Service Account Drive Service."""
         import base64
 
-        self.root_folder_id = settings.google_drive_root_folder_id
+        self.root_folder_id = root_folder_id or settings.google_drive_root_folder_id
 
         # Load Service Account credentials (supports raw JSON or base64-encoded JSON)
         creds_str = getattr(settings, "google_credentials_json", None)
@@ -73,9 +83,9 @@ class ServiceAccountDriveService:
 
         # Impersonate a Workspace user with Shared Drive access
         # Domain-wide delegation configured in Google Admin Console for this SA
-        delegated_user = "zero@balizero.com"
-        self.credentials = base_credentials.with_subject(delegated_user)
-        logger.info("✅ Using Domain-wide delegation, impersonating: %s", delegated_user)
+        self.delegated_user = delegated_user or "zero@balizero.com"
+        self.credentials = base_credentials.with_subject(self.delegated_user)
+        logger.info("✅ Using Domain-wide delegation, impersonating: %s", self.delegated_user)
 
         # Build API client
         self.service = build("drive", "v3", credentials=self.credentials)
@@ -95,6 +105,7 @@ class ServiceAccountDriveService:
         other endpoints work, but operators know which folder is broken.
         """
         configured = [
+            ("DRIVE_ROOT_FOLDER_ID (active)", self.root_folder_id),
             ("GOOGLE_DRIVE_ROOT_FOLDER_ID", getattr(settings, "google_drive_root_folder_id", None)),
             ("GDRIVE_INDIVIDUALS_FOLDER_ID", getattr(settings, "gdrive_individuals_folder_id", None)),
             ("GDRIVE_COMPANIES_FOLDER_ID", getattr(settings, "gdrive_companies_folder_id", None)),
@@ -264,7 +275,7 @@ class ServiceAccountDriveService:
         request = self.service.files().create(
             body=file_metadata,
             media_body=media,
-            fields="id, name, webViewLink, size",
+            fields="id, name, webViewLink, size, md5Checksum",
             supportsAllDrives=True,
         )
 
@@ -280,6 +291,8 @@ class ServiceAccountDriveService:
     # race where POST /api/clients' background task and the passport upload
     # endpoint both saw google_drive_folder_id IS NULL and each created a root.
     DRIVE_FOLDER_LOCK_CLASS = 742001
+    DRIVE_ARCHIVE_LOCK_CLASS = 742002
+    _archive_locks: dict[str, asyncio.Lock] = {}
 
     STANDARD_SUBFOLDERS = [
         "00_Profile",
@@ -328,6 +341,110 @@ class ServiceAccountDriveService:
         result = await asyncio.to_thread(request.execute)
         files = result.get("files", [])
         return files[0] if files else None
+
+    async def find_file(self, name: str, parent_id: str) -> dict[str, Any] | None:
+        """Find one non-trashed file by exact name under a known parent."""
+        escaped = name.replace("\\", "\\\\").replace("'", "\\'")
+        query = (
+            f"name = '{escaped}' "
+            "and mimeType != 'application/vnd.google-apps.folder' "
+            f"and '{parent_id}' in parents and trashed = false"
+        )
+        request = self.service.files().list(
+            q=query,
+            fields="files(id, name, webViewLink, size, md5Checksum)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            pageSize=2,
+        )
+        result = await asyncio.to_thread(request.execute)
+        files = result.get("files", [])
+        if len(files) > 1:
+            raise DriveArchiveIntegrityError(
+                f"Multiple Drive archive files share the name {name!r}"
+            )
+        return files[0] if files else None
+
+    @staticmethod
+    def _archive_lock_key(folder_id: str, file_name: str) -> int:
+        """Return a stable signed int32 key for a Postgres advisory lock."""
+        digest = hashlib.sha256(f"{folder_id}\0{file_name}".encode()).digest()
+        return int.from_bytes(digest[:4], byteorder="big", signed=True)
+
+    async def _archive_file_unlocked(
+        self,
+        *,
+        folder_id: str,
+        file_content: bytes,
+        file_name: str,
+        mime_type: str,
+    ) -> tuple[dict[str, Any], str]:
+        """Find or upload one archive file while the caller holds the name lock."""
+        source_md5 = hashlib.md5(file_content).hexdigest()
+        existing = await self.find_file(name=file_name, parent_id=folder_id)
+        if existing:
+            if existing.get("md5Checksum") != source_md5:
+                raise DriveArchiveIntegrityError(
+                    "Drive archive name collision or unverifiable checksum"
+                )
+            return existing, "reused"
+
+        uploaded = await self.upload_file_to_folder(
+            folder_id=folder_id,
+            file_content=file_content,
+            file_name=file_name,
+            mime_type=mime_type,
+        )
+        if uploaded.get("md5Checksum") != source_md5:
+            raise DriveArchiveIntegrityError("Drive archive upload checksum was not verified")
+        return uploaded, "uploaded"
+
+    async def archive_file_idempotent(
+        self,
+        *,
+        folder_id: str,
+        file_content: bytes,
+        file_name: str,
+        mime_type: str,
+        db_pool: Any | None,
+        require_distributed_lock: bool = False,
+    ) -> tuple[dict[str, Any], str]:
+        """Archive a file once, serialized by name across workers when DB is available."""
+        if db_pool is None:
+            if require_distributed_lock:
+                raise DriveArchiveIntegrityError(
+                    "Distributed archive lock unavailable for historical legal source"
+                )
+            lock_name = f"{folder_id}\0{file_name}"
+            lock = self._archive_locks.setdefault(lock_name, asyncio.Lock())
+            async with lock:
+                return await self._archive_file_unlocked(
+                    folder_id=folder_id,
+                    file_content=file_content,
+                    file_name=file_name,
+                    mime_type=mime_type,
+                )
+
+        lock_key = self._archive_lock_key(folder_id, file_name)
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                "SELECT pg_advisory_lock($1, $2)",
+                self.DRIVE_ARCHIVE_LOCK_CLASS,
+                lock_key,
+            )
+            try:
+                return await self._archive_file_unlocked(
+                    folder_id=folder_id,
+                    file_content=file_content,
+                    file_name=file_name,
+                    mime_type=mime_type,
+                )
+            finally:
+                await conn.execute(
+                    "SELECT pg_advisory_unlock($1, $2)",
+                    self.DRIVE_ARCHIVE_LOCK_CLASS,
+                    lock_key,
+                )
 
     async def ensure_client_folder(
         self,

@@ -12,7 +12,7 @@ PR1 delivers: typed contracts (``models.py``), the condition AST
 (``ast.py``), the fact catalog (``fact_registry.py``), static RulePack
 validation (``compiler.py``), JSON Schema export (``schema_export.py``), and
 the error taxonomy (``errors.py``). Signing/verification (``bundle.py``),
-the evaluator (``evaluator.py``, ``trace.py``), pricing/catalog/clock,
+the evaluator (``evaluator.py``), deterministic trace (``trace.py``), pricing/catalog/clock,
 persistence (``repository.py``), and the v1 strangler adapters
 (``compat.py``, ``service.py``) are later PRs — see each module's docstring
 for exactly what it defers and why.
@@ -132,10 +132,10 @@ one place.
   NO_SUPPORTED_PATH fallback reason). **Still NOT included**:
   ``TEMPORARILY_UNAVAILABLE`` production (out of this pure function's
   scope by construction — see divergence #4), real pricing (``quotes`` is
-  always ``()``), and **trace.py** (``TraceNode``, ``EvaluationTrace``,
-  ``TraceBuilder``, ``trace_sha256()`` — deterministic trace-building is
-  still greenfield; ``Decision.trace_sha256``/``decision_integrity`` are
-  left ``None`` by this PR).
+  always ``()``). **trace.py is now done** for privacy-minimized
+  ``TraceNode``/``EvaluationTrace`` and canonical ``trace_sha256``;
+  ``evaluate_with_trace()`` returns the full internal trace while
+  ``evaluate()`` preserves the public Decision-only facade.
 - **pricing.py**, **catalog.py**, **clock.py**, **repository.py**,
   **retention.py**, **flags.py** — not started. **Deferred to
   PR4+** (persistence/pricing/clock/consent-adjacent infrastructure; exact PR

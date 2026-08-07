@@ -218,14 +218,15 @@ class TestPrepareSearchContext:
             patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
             patch(
                 "backend.services.search.search_service.build_search_filter",
-                return_value={"tier": "S"},
-            ),
+                side_effect=[{"tier": "S"}, {"retrieval_scope": {"$ne": "historical_only"}}],
+            ) as build_filter,
         ):
             mock_kt.return_value.translate.return_value = "test"
             _, _, _, filt, _ = await search_service._prepare_search_context(
                 "test", 1, None, None, False
             )
-            assert filt is None
+            assert filt == {"retrieval_scope": {"$ne": "historical_only"}}
+            assert build_filter.call_count == 2
 
 
 # ============================================================================
