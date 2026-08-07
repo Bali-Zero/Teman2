@@ -27,7 +27,24 @@ OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 # silently produced no output until OLLAMA_MODEL was overridden in the plist.
 # Keep the code default in sync with the host so a manual run works out of the box.
 MODEL = os.environ.get("OLLAMA_MODEL", "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m")
-REPO_ROOT = Path(__file__).resolve().parent.parent
+def _repo_root() -> Path:
+    """Resolve the repo root the script writes into.
+
+    mouth main-dirt fix (2026-08-07): this script had zero git awareness and wrote
+    hourly straight into the main checkout's tracked working tree (com.balizero.
+    translate.hourly ran it directly against ~/nuzantara) — 48 files sat dirty for
+    2+ days, tripping the git_alignment proprioception gate. NUZANTARA_REPO_ROOT
+    (same env var / same convention as apps/backend-rag/backend/services/sota_loop/
+    m13_weekly.py) lets scripts/translate-articles-cron-wrapper.sh point this at an
+    isolated worktree instead, so the main checkout stays untouched. Falls back to
+    the historical Path(__file__)-derived root for manual/ad-hoc runs — unchanged
+    behavior when the env var is unset.
+    """
+    env = os.environ.get("NUZANTARA_REPO_ROOT")
+    return Path(env) if env else Path(__file__).resolve().parent.parent
+
+
+REPO_ROOT = _repo_root()
 ARTICLES_DIR = REPO_ROOT / "apps" / "mouth" / "src" / "content" / "articles"
 
 LANG_NAMES = {

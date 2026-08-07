@@ -150,6 +150,113 @@ check "0|used: tier2-claude-token_3|3" "$(run_cascade dead-a dead-b live-c)" \
 check "0|used: tier2-claude-token_1|1" "$(run_cascade live-a live-b live-c)" \
     "innocence: a live first seat is used immediately, no needless rotation"
 
+# ── Part 3: the time budget — a WORKING seat must not be starved ─────────────
+# Equal division (remaining / attempts_left) starves the only attempt that was
+# ever going to succeed, because dead seats cost seconds and the live one costs
+# real time. Measured on Pro 2026-08-07 with all four seats re-issued: 120s per
+# entry, indexing-daily (118s) passed by two seconds, weekly-dep-audit was
+# killed on all five in turn.
+#
+# These two need a timeout that REALLY bounds its child — the fake above
+# ignores its duration on purpose, so it cannot judge an allocation. Neither
+# Mac in this fleet ships coreutils `timeout`, and a check that only ever runs
+# on CI is a check that hides defects (W108), so the stand-in below is built
+# here rather than depended upon. It honours the only two things the wrapper
+# reads: the child is really bounded, and a kill reports 124.
+
+cat > "$TMP/portable-timeout" <<'FAKE'
+#!/usr/bin/env bash
+dur="$1"; shift
+mark="$(mktemp "${TMPDIR:-/tmp}/pt-mark.XXXXXX")"
+"$@" &
+child=$!
+( sleep "$dur"; printf killed > "$mark"; kill -TERM "$child" 2>/dev/null ) &
+watcher=$!
+wait "$child" 2>/dev/null; rc=$?
+kill -TERM "$watcher" 2>/dev/null; wait "$watcher" 2>/dev/null
+# The mark is written BEFORE the kill, so this is a fact, not a race.
+[ -s "$mark" ] && rc=124
+rm -f "$mark"
+exit "$rc"
+FAKE
+chmod +x "$TMP/portable-timeout"
+REAL_TIMEOUT="$TMP/portable-timeout"
+
+run_slow() { # <budget> <floor> <sleep-seconds> -> "<rc>|<used>|<attempts>|<wall>"
+    local home="$TMP/home-slow-$RANDOM"
+    mkdir -p "$home"
+    : > "$TMP/attempts"
+    local t0 rc t1
+    t0=$(date +%s)
+    env -i \
+        HOME="$home" CRON_AGENT_HOME="$home" \
+        FAKE_CLAUDE_ATTEMPTS="$TMP/attempts" FAKE_TG_LOG="$TMP/tg" \
+        FAKE_CLAUDE_SLEEP="$3" \
+        CRON_AGENT_CLAUDE_BIN="$TMP/fake-slow-claude" \
+        CRON_AGENT_TIMEOUT_BIN="$REAL_TIMEOUT" \
+        CRON_AGENT_TIMEOUT="$1" \
+        CRON_AGENT_MIN_ATTEMPT_SECONDS="$2" \
+        CLAUDE_CODE_OAUTH_TOKEN_1=live-a \
+        CLAUDE_CODE_OAUTH_TOKEN_2=live-b \
+        /usr/bin/env bash "$TMP/bin/cron-agent.sh" agent slow-job "$TMP/prompt.txt" \
+        >/dev/null 2>&1
+    rc=$?
+    t1=$(date +%s)
+    local used
+    used="$(grep -o 'used: tier2-claude-[a-z0-9_]*' "$home/logs/cron-agent/slow-job.log" 2>/dev/null | tail -1)"
+    printf '%s|%s|%s|%s' "$rc" "${used:-none}" "$(wc -l < "$TMP/attempts" | tr -d ' ')" "$((t1-t0))"
+}
+
+echo "time budget:"
+
+if [[ -z "$REAL_TIMEOUT" ]]; then
+    echo "  SKIP no real timeout(1) on PATH — the allocation checks cannot run here"
+else
+    cat > "$TMP/fake-slow-claude" <<'FAKE'
+#!/usr/bin/env bash
+echo "$CLAUDE_CODE_OAUTH_TOKEN" >> "$FAKE_CLAUDE_ATTEMPTS"
+sleep "${FAKE_CLAUDE_SLEEP:-0}"
+echo 'PONG after honest work'
+FAKE
+    chmod +x "$TMP/fake-slow-claude"
+
+    # 3 entries (token_1, token_2, keychain), budget 21s.
+    #   equal division  -> 21/3 = 7s per attempt: an 8s job dies on all three
+    #   with the floor  -> max(10, 7) = 10s: the first seat finishes its work
+    # Asserted on the OUTCOME (succeeded, on the first seat, one attempt), not
+    # on a wall-clock value — pinning the exact second tests the test machine.
+    out="$(run_slow 21 10 8)"
+    check "0|used: tier2-claude-token_1|1" "${out%|*}" \
+        "guilt: a seat doing 8s of work is not killed by a 7s equal slice"
+
+    # The floor must never overrun the global deadline: a seat that never
+    # returns still has to be abandoned within the budget. Sized so the breach
+    # is VISIBLE — at 21s the last attempt never starts (the budget is already
+    # spent) and capped/uncapped measure 21s vs 22s, indistinguishable. At 25s
+    # the third attempt does start with 5s left, so dropping the cap hands it
+    # the full 10s floor: measured 26s capped vs 31s uncapped.
+    out="$(run_slow 25 10 999)"
+    rc="${out%%|*}"; wall="${out##*|}"
+    tries="$(printf '%s' "$out" | cut -d'|' -f3)"
+    if [[ "$rc" == "124" && "$wall" -le 28 ]]; then
+        ok "innocence: the floor never overruns the global deadline (rc=124, ${wall}s)"
+    else
+        bad "innocence: global deadline (want rc=124 and wall<=28, got rc=$rc wall=${wall}s)"
+    fi
+    # The other edge of the same knob, and the reason the floor is 300 and not
+    # the whole 600: a floor large enough to swallow the budget lets ONE hung
+    # seat consume everything, and the cascade never reaches a fallback — the
+    # cure would have re-created the disease it was written for, at the other
+    # sign. `attempt_timeout` is an upper bound, so a seat that FAILS fast still
+    # rotates freely; only a HUNG one exposes this, which is why it is asserted
+    # here rather than in the fast-failure checks above.
+    if [[ "$tries" -ge 2 ]]; then
+        ok "innocence: a hung seat does not eat the whole budget ($tries attempts, fallback still reached)"
+    else
+        bad "innocence: one hung seat consumed the entire cascade (only $tries attempt)"
+    fi
+fi
+
 echo
 if [[ $FAIL -eq 0 ]]; then
     echo "PASS ($PASS checks)"

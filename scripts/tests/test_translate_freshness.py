@@ -400,3 +400,33 @@ def test_dry_run_exits_zero_with_a_real_orphan_present():
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "ORPHAN" in proc.stdout
     assert "driving-license-bali-foreigners-2026.id.mdx" in proc.stdout
+
+
+# ── mouth main-dirt fix (2026-08-07): NUZANTARA_REPO_ROOT override ──────────
+#
+# scripts/translate-articles-cron-wrapper.sh points this env var at an
+# isolated worktree so the hourly cron never writes into the tracked main
+# checkout. Guilt+innocence per cicatrix-superscar.md Family #3 (a guard/
+# config-resolution function with no innocence case is half a fix).
+
+def test_repo_root_honors_the_env_var_when_set(tmp_path, monkeypatch):
+    """[guilt] NUZANTARA_REPO_ROOT, when present, wins over the file-derived
+    default — this is the entire mechanism the wrapper relies on."""
+    monkeypatch.setenv("NUZANTARA_REPO_ROOT", str(tmp_path))
+    assert ta._repo_root() == tmp_path
+
+
+def test_repo_root_falls_back_to_file_derived_root_when_unset(monkeypatch):
+    """[innocence] a manual/ad-hoc run with the env var unset must resolve
+    exactly as it always has — the fallback is not a new behavior."""
+    monkeypatch.delenv("NUZANTARA_REPO_ROOT", raising=False)
+    assert ta._repo_root() == SCRIPTS_DIR.parent
+
+
+def test_repo_root_ignores_an_empty_string_env_var(monkeypatch):
+    """[innocence] an exported-but-empty NUZANTARA_REPO_ROOT (e.g. a wrapper
+    bug that sets `NUZANTARA_REPO_ROOT=`) must not resolve to Path(""),
+    which would silently point ARTICLES_DIR at the cwd instead of failing
+    loud or falling back."""
+    monkeypatch.setenv("NUZANTARA_REPO_ROOT", "")
+    assert ta._repo_root() == SCRIPTS_DIR.parent
