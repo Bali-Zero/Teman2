@@ -1315,8 +1315,14 @@ def test_p3prime_1a_guilt_refs_in_nonzero_forged_archive_rejected_refinement2(
     (repo / "docs" / "OLD_DOC.md").write_text(
         "# Old doc\n\nReferenced by REFERRER.md.\n", encoding="utf-8"
     )
+    # A REAL markdown link, not a bare prose mention: refs_in is now
+    # reference-anchored (compute_refs_in / _has_bare_delimited_mention,
+    # docs_audit.py) rather than a `basename in text` substring scan, so a
+    # bare "See OLD_DOC.md for details." no longer counts as an inbound
+    # reference — the guilt this test exists to prove requires a doc that
+    # genuinely IS referenced.
     (repo / "docs" / "REFERRER.md").write_text(
-        "# Referrer\n\nSee OLD_DOC.md for details.\n", encoding="utf-8"
+        "# Referrer\n\nSee [OLD_DOC.md](OLD_DOC.md) for details.\n", encoding="utf-8"
     )
     _init_git_repo(repo, backdate_days=200)
 
@@ -2339,3 +2345,259 @@ def test_redteam_blocker3_systemexit_reraised_unchanged():
 
     with pytest.raises(SystemExit, match="bad args, deliberately"):
         docs_audit._run_and_map_exit_code(_usage_error)
+
+
+# --- compute_refs_in: reference-anchored matching, not `basename in text` ---
+#
+# guard-over-match family #3 (cicatrix-superscar.md §3): compute_refs_in()
+# used to be a bare `basename in text` substring scan, which credited a doc
+# with an inbound reference whenever ANOTHER doc's text merely happened to
+# END with its basename — including as a suffix of a longer basename
+# (ANTHROPIC_API_REFERENCE.md crediting API_REFERENCE.md) or of an ordinary
+# prose word. Every guard in that family needs both a GUILT corpus (the
+# substring trap must not fire) and an INNOCENCE corpus (a real citation
+# must still count) — see docs_audit.py's compute_refs_in /
+# _has_bare_delimited_mention docstrings for the exact anchoring rule.
+#
+# 0 hits for `compute_refs_in(` existed in this file before this section —
+# every prior refs_in test exercised it only indirectly through the full
+# classify()/--regen-only pipeline. These call the function directly.
+
+
+def test_refs_in_markdown_link_counts_as_reference(tmp_path):
+    """GUILT-complement / basic case: a real `[text](target)` markdown link
+    that resolves to the target IS a reference."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    target = repo / "docs" / "API_REFERENCE.md"
+    target.write_text("# API Reference\n", encoding="utf-8")
+    citer = repo / "docs" / "citer.md"
+    citer.write_text("See [the API reference](docs/API_REFERENCE.md).\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_backticked_full_relative_path_counts(tmp_path):
+    """INNOCENCE (documented broadening, decision pinned here): a backticked
+    FULL relative path — not inside `[text](...)` link syntax — still
+    counts as a citation."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    target = repo / "docs" / "API_REFERENCE.md"
+    target.write_text("# API Reference\n", encoding="utf-8")
+    citer = repo / "docs" / "citer.md"
+    citer.write_text("Full path: `docs/API_REFERENCE.md` explained.\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_unlinked_backticked_bare_basename_counts(tmp_path):
+    """INNOCENCE (documented broadening, decision pinned here): an unlinked
+    backticked BARE filename (no path, no markdown-link syntax) still
+    counts — the deliberate broadening beyond strict link-only anchoring
+    (see compute_refs_in's docstring for the measured impact of NOT making
+    this choice: 28 real citations lost vs. 0 under this rule)."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    target = repo / "docs" / "API_REFERENCE.md"
+    target.write_text("# API Reference\n", encoding="utf-8")
+    citer = repo / "docs" / "citer.md"
+    citer.write_text("`API_REFERENCE.md` documents this.\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_basename_inside_longer_basename_rejected(tmp_path):
+    """GUILT (the bug this fix exists for): docs/API_REFERENCE.md must NOT
+    be credited by a doc that only ever writes
+    docs/ANTHROPIC_API_REFERENCE.md — a longer basename that happens to END
+    in the target's basename is not a citation of the target. Regression
+    for the live false-attribution measured 2026-08-07:
+    docs/CLAUDE-archive-2026-04-06.md only ever writes
+    `docs/ANTHROPIC_API_REFERENCE.md` and was crediting API_REFERENCE.md
+    under the old substring scan."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    target = repo / "docs" / "API_REFERENCE.md"
+    target.write_text("# API Reference\n", encoding="utf-8")
+    (repo / "docs" / "ANTHROPIC_API_REFERENCE.md").write_text(
+        "# Anthropic API reference\n", encoding="utf-8"
+    )
+    citer = repo / "docs" / "citer.md"
+    citer.write_text(
+        "See `docs/ANTHROPIC_API_REFERENCE.md` for the Anthropic-specific patterns.\n",
+        encoding="utf-8",
+    )
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_plan_md_basename_collisions_rejected(tmp_path):
+    """GUILT: regression for the live false attribution measured
+    2026-08-07 — docs/X_PREMIUM_BLITZ_BATTLE_PLAN.md mentions
+    BLOG_100_ARTICLES_PLAN.md and ACTIVATION_PLAN.md, neither of which is a
+    citation of any docs/**/PLAN.md target; both basenames merely END in
+    "PLAN.md"."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "design").mkdir(parents=True)
+    target = repo / "docs" / "design" / "PLAN.md"
+    target.write_text("# Plan\n", encoding="utf-8")
+    citer = repo / "docs" / "citer.md"
+    citer.write_text(
+        "- 100+ articoli pianificati (BLOG_100_ARTICLES_PLAN.md)\n"
+        "- see also ACTIVATION_PLAN.md for rollout\n",
+        encoding="utf-8",
+    )
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_bare_undelimited_prose_mention_rejected(tmp_path):
+    """GUILT: the one shape this fix exists to kill — a bare, undelimited
+    prose mention of a basename ("the file X.md is...") is not a
+    citation."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    target = repo / "docs" / "README.md"
+    target.write_text("# Readme\n", encoding="utf-8")
+    citer = repo / "docs" / "citer.md"
+    citer.write_text("the file README.md is a common convention\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_cross_directory_readme_basename_collision_rejected(tmp_path):
+    """GUILT: two different docs/**/README.md files must not credit each
+    other purely because both end in "README.md" preceded by a slash — the
+    "/" fallback branch requires the captured path to actually RESOLVE to
+    the target (repo-root-relative or citing-file-relative), never a raw
+    trailing-segment guess."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "sub").mkdir(parents=True)
+    (repo / "docs" / "other").mkdir(parents=True)
+    target = repo / "docs" / "sub" / "README.md"
+    target.write_text("# Sub readme\n", encoding="utf-8")
+    (repo / "docs" / "other" / "README.md").write_text(
+        "# Other readme\n", encoding="utf-8"
+    )
+    citer = repo / "docs" / "citer.md"
+    citer.write_text("See other/README.md for the unrelated area.\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_sibling_relative_markdown_link_counts(tmp_path):
+    """INNOCENCE: a genuine sibling-relative markdown link
+    `[x](../other/README.md)` still counts — real link resolution must
+    survive the reference-anchoring rewrite unchanged."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "sub").mkdir(parents=True)
+    (repo / "docs" / "other").mkdir(parents=True)
+    target = repo / "docs" / "other" / "README.md"
+    target.write_text("# Other readme\n", encoding="utf-8")
+    citer = repo / "docs" / "sub" / "citer.md"
+    citer.write_text("See [x](../other/README.md) for details.\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_backticked_relative_parent_path_counts(tmp_path):
+    """INNOCENCE — regression pin for a real bug caught by re-measuring this
+    fix against the live tree (2026-08-07): docs/crm/reports-2026-04-20/
+    README.md cites its sibling via a BACKTICKED (non-link) relative path,
+    `` `../assignment-mismatches-2026-04-20.md` ``. A naive trailing-
+    segment string match (the first cut of this fix) does not understand
+    ".." and silently dropped this exact live citation, which would have
+    made a genuinely-referenced doc newly orphan-eligible as a side effect
+    of the bugfix. The fallback must resolve the captured token against the
+    CITING file's own directory (exactly like a real markdown link), not
+    just compare trailing path segments."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs" / "crm").mkdir(parents=True)
+    (repo / "docs" / "crm" / "reports-2026-04-20").mkdir(parents=True)
+    target = repo / "docs" / "crm" / "assignment-mismatches-2026-04-20.md"
+    target.write_text("# Assignment mismatches\n", encoding="utf-8")
+    citer = repo / "docs" / "crm" / "reports-2026-04-20" / "README.md"
+    citer.write_text(
+        "`assigned_to` != `client.assigned_to`.\n"
+        "See `../assignment-mismatches-2026-04-20.md` for the full list.\n",
+        encoding="utf-8",
+    )
+
+    assert docs_audit.compute_refs_in(repo, target) == 1
+
+
+def test_refs_in_trailing_word_boundary_rejects_longer_extension(tmp_path):
+    """GUILT: a target basename must not be credited by a longer filename
+    that merely starts with it (README.mdx, README.md.bak) — the trailing-
+    boundary check, the other half of the anchoring rule alongside the
+    leading-delimiter check."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    target = repo / "docs" / "README.md"
+    target.write_text("# Readme\n", encoding="utf-8")
+    citer = repo / "docs" / "citer.md"
+    citer.write_text("`README.mdx` and `README.md.bak` are unrelated files.\n", encoding="utf-8")
+
+    assert docs_audit.compute_refs_in(repo, target) == 0
+
+
+def test_refs_in_real_inbound_link_keeps_doc_off_the_orphan_path(tmp_path):
+    """INNOCENCE, end-to-end: a doc with a REAL inbound markdown link, aged
+    well past orphan_days, must NOT be classified as a structurally-
+    eligible orphan — refs_in>0 must still gate archival through the full
+    classify()/--regen-only pipeline, not just the unit function. Without
+    this assertion, a compute_refs_in() that returns 0 for everything would
+    still pass every GUILT-only test above."""
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    (repo / "docs" / "TARGET.md").write_text("# Target doc\n", encoding="utf-8")
+    (repo / "docs" / "CITER.md").write_text(
+        "See [the target](TARGET.md) for details.\n", encoding="utf-8"
+    )
+    _init_git_repo(repo, backdate_days=200)
+
+    result = _run_audit(repo, "--orphan-days", "90", "--regen-only")
+    assert result.returncode in (0, 1), result.stderr
+    inventory = (repo / "docs" / "DOCS_INVENTORY.md").read_text()
+    cells = _row_cells(inventory, "docs/TARGET.md")
+    refs_in_col = _col(inventory, "refs_in")
+    action_col = _col(inventory, "action")
+    assert cells[refs_in_col].strip() != "0", (
+        "test setup sanity failed: TARGET.md must have a real inbound "
+        f"reference from CITER.md — cells: {cells}"
+    )
+    assert not cells[action_col].strip().startswith("archive: orphan"), (
+        "a doc with a real inbound link must never be orphan-eligible — "
+        f"cells: {cells}"
+    )
