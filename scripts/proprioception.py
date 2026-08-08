@@ -175,6 +175,38 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
 # static fix_hint for anything else.
 
 _BEHIND_RE = re.compile(r"main checkout: (-?\d+) behind origin/main")
+_SELF_STALE_RE = re.compile(r"^SELF STALE: ")
+
+
+def _blob_sha(data: bytes) -> str:
+    """`git hash-object` in pure Python — sha1 of `blob <len>\\0` + content."""
+    h = hashlib.sha1()
+    h.update(b"blob %d\0" % len(data))
+    h.update(data)
+    return h.hexdigest()
+
+
+def _read_runner_source() -> tuple[str, str]:
+    """Hash the bytes of THIS file at import, returning (sha, reason-if-none).
+
+    Deliberately at import rather than inside the probe. An adversarial review of the
+    first draft caught the window: hashing the PATH later answers "what is on disk now",
+    while the claim being made is "what wrote this report". A file replaced between
+    interpreter start and probe time makes that a lie in both directions — a genuinely
+    stale runner reported clean, or a current one accused. Reading at import narrows the
+    window to the microseconds between the interpreter reading the file and this line,
+    which is as close as Python gets: the compiled bytes are not recoverable afterwards.
+    """
+    try:
+        if "__file__" not in globals():
+            return "", "stdin"                      # `... | python3 -`, nothing on disk
+        p = Path(__file__)
+        return _blob_sha(p.read_bytes()), ""
+    except OSError:
+        return "", "unreadable"
+
+
+_RUNNER_SHA, _RUNNER_NO_SHA_REASON = _read_runner_source()
 _LEDGER_STALE_RE = re.compile(r"^LEDGER STALE: (\S+) differs from origin/main")
 
 
@@ -239,6 +271,24 @@ def _arsenal_seats_vcr_m5_remedy(entry: dict) -> str:
     return ("Mini is the documented primary for arsenal-seat freshness "
             '(docs/runbooks/arsenal-probe.md "Mini (primary)"); FRESHNESS_EXPIRED on m5 '
             "between interactive runs is expected, not a seat outage. " + entry["fix_hint"])
+
+
+def _guardian_freshness_remedy(entry: dict, ev: list[str]) -> str:
+    """guardian_freshness now reports two different diseases and they have OPPOSITE cures.
+
+    The registry's static hint answers a stale OUTPUT: "run it by hand, read ITS log,
+    then fix its scheduler". A stale RUNNER is the reverse — the scheduler is fine, it
+    ran on time, and what it wrote is old because the CODE is old. Printing the
+    scheduler advice under a SELF STALE line would be the handoff-§6 defect verbatim: a
+    remedy that does not match the finding it sits under, which trains the reader to
+    skip the fix line — and then to skip the one that mattered.
+    """
+    if ev and _SELF_STALE_RE.match(ev[0]):
+        return ("the guardian's SCHEDULE is not the problem, its CODE is: it ran on time "
+                "and wrote old text. Do NOT repair the checkout to fix this (W106b) — run "
+                "main's copy out of tree exactly as the evidence line spells out, and read "
+                "the report THAT writes.")
+    return entry["fix_hint"]
 
 
 # ---------------------------------------------------------------- builtins
@@ -427,8 +477,113 @@ def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, 
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
+def _self_code_staleness(root: Path | None) -> tuple[int, list[str]]:
+    """Is the code WRITING this report the code origin/main says it should be?
+
+    The loop below answers "did each guardian speak RECENTLY". Nothing answered "is
+    what it said CURRENT" — and on 2026-08-08 the difference bit: the live report was
+    6.7h old, comfortably inside the 48h gate, so this probe stayed silent, and it
+    prescribed `interactive pull on this machine's main` — an action #3723 and #3826
+    had already replaced with an explicit "do NOT pull it". It had been written by the
+    main checkout, 219 commits behind. mtime is a proxy for "current" and it lies when
+    the writer is old (W88); on m5 it lies BY DESIGN, because that checkout is
+    deliberately never pulled (W106b) — so the one machine where a cure takes longest
+    to reach the executed copy is also the one where nothing was watching.
+
+    Same two commands probe_git_alignment already runs against the ledger — hash-object
+    the working copy, rev-parse main's — pointed at __file__ instead. It reads the
+    origin/main ref that probe_git_alignment refreshed earlier in this same run
+    (registry order: git_alignment precedes guardian_freshness); under --no-fetch it
+    compares against the last-known ref, exactly like every other probe here.
+
+    Cannot-verify is EVIDENCE, never a finding. This is a signaler a human reads and
+    offline is a natural state (Law 6); the lint twin is the one that owes an exit code
+    for the same fact (W106b, "where the twins must diverge").
+
+    DECLARED LIMIT — a copy without this check cannot warn about itself. The m5 main
+    checkout that wrote the 2026-08-08 report does not contain this function and will
+    not until that checkout advances past this merge, which is not something a session
+    may make happen (pulling it races live worktrees). So this closes the class from
+    here forward and on the auto-pulled machines; it does not retroactively make today's
+    frozen copy honest. Until then the way to a truthful report on m5 is the out-of-tree
+    invocation this probe's own remedy prints — run main's code, point NUZ_REPO_ROOT at
+    the checkout. Stated rather than implied, because a cure whose reach is assumed
+    wider than it is becomes the next false clean.
+    """
+    if root is None:
+        return 0, ["self-version: no repo root — this copy cannot be attributed"]
+    if not _RUNNER_SHA:
+        # Neither shape is a finding, and they are NOT the same shape: stdin is the
+        # deliberate run-main's-copy escape prescribed below, "unreadable" is a real
+        # blind spot. Naming one for the other would be a false statement written while
+        # fixing a false statement (W113).
+        return 0, [f"self-version: no source bytes to compare ({_RUNNER_NO_SHA_REASON}) "
+                   f"— nothing on disk that could be stale"]
+    # The PATH is only used to name the file to git; the VERSION comes from _RUNNER_SHA,
+    # read at import. So a file deleted mid-run is still attributable.
+    self_file = Path(__file__).resolve()
+    try:
+        rel = self_file.relative_to(root.resolve())
+    except ValueError:
+        return 0, [f"self-version: the executing copy is outside the checkout "
+                   f"({self_file}) — version not attributable"]
+    rc2, main_blob, _ = sh(["git", "rev-parse", f"origin/main:{rel.as_posix()}"], timeout=10, cwd=root)
+    if rc2 != 0 or not main_blob.strip():
+        return 0, [f"self-version: cannot compare {rel.as_posix()} against origin/main "
+                   f"(offline, or this path is new on this branch)"]
+    if _RUNNER_SHA == main_blob.strip():
+        return 0, []
+    # DIFFERING IS NOT BEHIND. The whole lesson of W106b is that a comparison knows THAT
+    # two copies differ and never WHICH is stale; calling an AHEAD copy "OLD text" would
+    # be this organ re-committing, one floor down, the scar it carries. Found by running
+    # this cure in the worktree that authored it — it accused its own newer code. So
+    # attribute the side, and accuse only when the evidence is positive: the running
+    # bytes are what HEAD holds AND this HEAD is an ancestor of origin/main.
+    rc3, head_blob, _ = sh(["git", "rev-parse", f"HEAD:{rel.as_posix()}"], timeout=10, cwd=root)
+    if rc3 != 0:
+        return 0, [f"self-version: {rel.as_posix()} is not readable at this HEAD (new, "
+                   f"untracked, or unborn HEAD) — direction cannot be attributed"]
+    if head_blob.strip() != _RUNNER_SHA:
+        return 0, [f"self-version: {rel.as_posix()} differs from origin/main because it has "
+                   f"UNCOMMITTED edits — it is being worked on, not left behind"]
+    rc4, _, _ = sh(["git", "merge-base", "--is-ancestor", "HEAD", "origin/main"], timeout=10, cwd=root)
+    if rc4 == 1:
+        # A valid "no". Ancestry is still a proxy that lies after a squash-merge (W88),
+        # and on a SHALLOW clone a true ancestor answers 1 because the path is truncated
+        # — so do not call that "not stale", call it unverifiable.
+        rcs, shallow, _ = sh(["git", "rev-parse", "--is-shallow-repository"], timeout=10, cwd=root)
+        if rcs == 0 and shallow.strip() == "true":
+            return 0, [f"self-version: {rel.as_posix()} differs from origin/main and this "
+                       f"clone is SHALLOW, so ancestry cannot be decided — direction unknown"]
+        return 0, [f"self-version: {rel.as_posix()} differs from origin/main and this HEAD is "
+                   f"not an ancestor of it (branch ahead, or diverged) — not stale"]
+    if rc4 != 0:
+        # rc>1 is git failing, not git answering "no" — reporting a determination we did
+        # not make is the calm liar one floor down (W84).
+        return 0, [f"self-version: {rel.as_posix()} differs from origin/main but git could "
+                   f"not decide ancestry (exit {rc4}) — direction unknown, not a verdict"]
+    return 1, [f"SELF STALE: the copy that wrote this report ({rel.as_posix()} "
+               f"{_RUNNER_SHA[:8]}) is not origin/main's ({main_blob.strip()[:8]}) "
+               f"— every finding and every remedy on this report is that copy's OLD text, "
+               f"however fresh the timestamp. Run main's copy without touching the "
+               f"checkout: `git -C {root} show origin/main:{rel.as_posix()} > /tmp/prop_main.py "
+               f"&& NUZ_REPO_ROOT={root} python3 /tmp/prop_main.py`"]
+
+
+def _self_blob() -> str:
+    """Provenance for the report header: WHICH copy produced it. `repo_head` is the
+    checkout's HEAD, which does not pin this file — a worktree, an out-of-tree copy and
+    stdin can all report the same head. Diagnosing the 2026-08-08 incident took three
+    steps (read repo_head, resolve it, diff the file); this field makes it one.
+
+    Takes no repo: it reports the bytes this process loaded, which is true even outside
+    a checkout, and it must never disagree with the comparison above by construction."""
+    return _RUNNER_SHA[:12] if _RUNNER_SHA else (_RUNNER_NO_SHA_REASON or "unknown")
+
+
 def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
-    ev, findings, seen = [], 0, 0
+    findings, ev = _self_code_staleness(root)
+    seen = 0
     now = time.time()
     for item in args.get("items", []):
         # Per-item machine scoping (v1.1): a Pro-only guardian probed on M5 is a
@@ -454,7 +609,9 @@ def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str,
             findings += 1
             ev.append(f"{label}: guardian last spoke {age_h:.1f}h ago (max {max_age_h:.0f}h) — a stale guardian is a lying guardian")
     if seen == 0 and findings == 0:
-        return UNPROBEABLE, 0, ["no guardian outputs found on this machine"]
+        # APPEND, never replace: "no outputs found" must not overwrite a self-version
+        # cannot-verify line, or the blind case reads as the clean one (W84).
+        return UNPROBEABLE, 0, ev + ["no guardian outputs found on this machine"]
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
@@ -940,6 +1097,8 @@ def main() -> int:
             fix_hint = _git_alignment_remedy(entry, me, ev)
         elif entry["id"] == "arsenal_seats_vcr_m5":
             fix_hint = _arsenal_seats_vcr_m5_remedy(entry)
+        elif entry["id"] == "guardian_freshness":
+            fix_hint = _guardian_freshness_remedy(entry, ev)
         results.append(verdict(entry["id"], entry["boundary"], entry["class"], status,
                                entry["severity"], n, ev, fix_hint, t0))
 
@@ -968,6 +1127,7 @@ def main() -> int:
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "machine": me,
         "repo_head": git_head(root) if root else "no-repo",
+        "runner_blob": _self_blob(),
         "config_source": config_source,
         "config_sha": config_sha,
         "probes_expected": len(selected) + (2 if args.fleet else 0),

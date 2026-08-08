@@ -28,6 +28,24 @@ python3 scripts/proprioception.py --strict     # exit 1 on P1 DIVERGED (CI/cron 
 python3 scripts/proprioception.py --selftest   # registry + parser-guard checks
 ```
 
+**On m5, prefer the out-of-tree form.** The line above runs whatever copy the cwd's
+checkout holds, and m5's main checkout is deliberately left behind `origin/main` (W106b:
+pulling it races live worktrees). On 2026-08-08 that produced a report 6.7h old — fresh by
+every check that existed — carrying a remedy two merged PRs had already replaced, because
+the writer was 219 commits behind. The organ now says so itself (`SELF STALE`, first line
+of the `guardian_freshness` evidence), but only from copies that contain that check. To get
+a truthful report today, run main's code and point it at the checkout — read-only, no pull,
+no write to the repo:
+
+```bash
+git -C ~/nuzantara show origin/main:scripts/proprioception.py > /tmp/prop_main.py \
+  && NUZ_REPO_ROOT=~/nuzantara python3 /tmp/prop_main.py
+```
+
+`NUZ_REPO_ROOT` decides which checkout is MEASURED; the file you execute decides which code
+does the measuring. Keeping them separate is the whole point — run it from inside a worktree
+without it and you will measure the worktree, not the machine.
+
 Exit codes: `0` organ worked (even with divergences — the report is the product) · `1` only
 with `--strict` and a P1 divergence · `2` infrastructure failure (registry invalid, zero
 probes ran, report unwritable) — never trust a run that exited 2.
