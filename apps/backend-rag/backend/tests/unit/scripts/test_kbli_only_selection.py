@@ -15,7 +15,11 @@ import pytest
 
 from backend.scripts._kbli_repo_root import resolve_repo_root
 from backend.scripts.index_kbli_gold_content import (
+    build_point,
+    field_coverage,
     filter_to_codes,
+    sample_lines,
+    tka_total,
 )
 from backend.scripts.index_kbli_gold_content import (
     parse_only_codes as parse_gold_only,
@@ -157,6 +161,128 @@ class TestFilterEntriesToCodes:
             filter_entries_to_codes(self._entries(), ["99999", "88888"])
         msgs = [r.getMessage() for r in caplog.records]
         assert any("99999" in m and "88888" in m for m in msgs)
+
+
+# ─── build_point (gold indexer — flat payload, KBLI flat-payload golden rule) ──
+
+
+class TestBuildPoint:
+    """build_point() is the exact function main() calls per code — never a
+    recreated copy of the production logic (Codex review on #3817). It crashed
+    on every code since birth (`payload["metadata"]["indexed_at"]` against a
+    payload that has no "metadata" key at all — build_payload() is flat)."""
+
+    def _gold(self) -> dict:
+        return {"whatItMeans": "Restoran dan penyediaan makanan."}
+
+    def _base(self) -> dict:
+        return {"judul": "Restoran", "sektor_id": "I", "pma_status": "TERBUKA"}
+
+    def test_indexed_at_is_flat_not_nested(self):
+        """Guilt: the point actually produced sets payload['indexed_at'] and
+        carries NO 'metadata' key — this is what crashed unconditionally
+        before the fix."""
+        point = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        assert point["payload"]["indexed_at"] == "2026-08-08T00:00:00+00:00"
+        assert "metadata" not in point["payload"]
+
+    def test_point_shape(self):
+        """Innocence: the rest of the point shape (id + text-to-embed +
+        existing flat fields) is unchanged by the extraction."""
+        point = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        assert set(point.keys()) == {"id", "payload", "_text_to_embed"}
+        assert point["payload"]["kode_kbli"] == "56101"
+        assert point["payload"]["doc_type"] == "kbli_gold"
+        assert point["_text_to_embed"]
+
+    def test_deterministic_id_across_calls(self):
+        """Innocence: id stays deterministic (idempotent upserts) — the
+        extraction must not perturb deterministic_uuid's inputs."""
+        p1 = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        p2 = build_point("56101", self._gold(), self._base(), "2026-08-08T01:00:00+00:00")
+        assert p1["id"] == p2["id"]
+        assert p1["payload"]["indexed_at"] != p2["payload"]["indexed_at"]
+
+
+# ─── field_coverage / tka_total / sample_lines (gold indexer stats blocks) ──
+#
+# These are the 4 REMAINING nested-metadata crash sites that #3832 did not
+# touch (it only fixed build_point()) — never reached by any prior run since
+# build_point() crashed first. Every test here builds its points with the
+# REAL build_point() and feeds them to the REAL helper — build→stats→sample,
+# end to end on the actual production call path, per the W101-recidiva
+# symmetry lesson (a fix that only covers the site that bit you is half a
+# fix).
+
+
+class TestFieldCoverage:
+    def test_counts_fields_across_points_synthetic(self):
+        """Direct unit check on the counting logic with hand-built points."""
+        points = [
+            {"payload": {"gold_fields": ["whatItMeans", "whatYouNeed"]}},
+            {"payload": {"gold_fields": ["whatItMeans"]}},
+        ]
+        assert field_coverage(points) == {"whatItMeans": 2, "whatYouNeed": 1}
+
+    def test_end_to_end_via_real_build_point(self):
+        """Guilt: real build_point() output flows into field_coverage() —
+        this is exactly the shape that KeyError'd on `["metadata"]` at the
+        original line 428."""
+        gold = {"whatItMeans": "Restoran", "whatYouNeed": "Izin usaha mikro"}
+        base = {"judul": "Restoran", "sektor_id": "I"}
+        point = build_point("56101", gold, base, "2026-08-08T00:00:00+00:00")
+        coverage = field_coverage([point])
+        assert coverage["whatItMeans"] == 1
+        assert coverage["whatYouNeed"] == 1
+
+
+class TestTkaTotal:
+    def test_counts_flagged_points_synthetic(self):
+        points = [
+            {"payload": {"has_tka_info": True}},
+            {"payload": {"has_tka_info": False}},
+            {"payload": {"has_tka_info": True}},
+        ]
+        assert tka_total(points) == 2
+
+    def test_end_to_end_via_real_build_point(self):
+        """Guilt: real build_point() output flows into tka_total() — this is
+        exactly the shape that KeyError'd on `["metadata"]` at the original
+        line 434."""
+        gold_with_tka = {
+            "whatItMeans": "x",
+            "tka_positions": [{"en": "Engineer", "id": "Insinyur"}],
+        }
+        gold_without_tka = {"whatItMeans": "y"}
+        base = {"judul": "x", "sektor_id": "I"}
+        points = [
+            build_point("11111", gold_with_tka, base, "2026-08-08T00:00:00+00:00"),
+            build_point("22222", gold_without_tka, base, "2026-08-08T00:00:00+00:00"),
+        ]
+        assert tka_total(points) == 1
+
+
+class TestSampleLines:
+    def test_lines_shape_synthetic(self):
+        point = {
+            "payload": {"kode": "56101", "judul": "Restoran dan Penyediaan Makanan"},
+            "_text_to_embed": "preview text " * 40,
+        }
+        lines = sample_lines(point)
+        assert len(lines) == 3
+        assert any("56101" in line for line in lines)
+        assert any("Restoran dan Penyediaan Makanan" in line for line in lines)
+
+    def test_end_to_end_via_real_build_point(self):
+        """Guilt: real build_point() output flows into sample_lines() — this
+        is exactly the shape that KeyError'd on `["metadata"]` at the
+        original lines 440/441 (Code + Judul)."""
+        gold = {"whatItMeans": "Restoran"}
+        base = {"judul": "Restoran Padang Asli", "sektor_id": "I"}
+        point = build_point("56101", gold, base, "2026-08-08T00:00:00+00:00")
+        lines = sample_lines(point)
+        assert any("56101" in line for line in lines)
+        assert any("Restoran Padang Asli" in line for line in lines)
 
 
 # ─── resolve_repo_root (shared marker-walk, replaces parents[N]) ────────────

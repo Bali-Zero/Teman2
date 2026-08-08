@@ -547,6 +547,33 @@ jobs:
           cd packages/core
           npx vitest --run
 
+      # wa-mirror's vitest suite had NEVER run in CI — 8 test files, 0 gates.
+      # The bridge is the organ that mirrors client WhatsApp lines, and the alert
+      # policy it now carries (announce the failure to recover, never the
+      # disconnection — apps/wa-mirror/bridge/down-alarm.ts) is exactly the kind
+      # of rule that decays silently: a mute watchdog looks identical to a healthy
+      # one. Built, never armed (cicatrix-superscar #2), and W108's lesson is that
+      # the defect only surfaces once the test runs on EVERY PR.
+      #
+      # Same reasoning as the packages/core step above for WHERE this lives: a
+      # step of the already-required `(mouth, true)` leg, because branch
+      # protection pins required contexts by NAME (W69).
+      #
+      # DECLARED LIMIT — this runs 2 of the 8 files, by name, not the suite.
+      # `apps/wa-mirror` is not an npm workspace and has NO lockfile, so the root
+      # `npm install` above does not install baileys / pino / libphonenumber-js
+      # and the other 6 files fail on the missing packages (measured locally:
+      # 2 passed, 6 failed to import, 26 tests green). These two import nothing
+      # outside node's stdlib, so they resolve vitest upward from the ROOT
+      # node_modules exactly as packages/core does. Arming the remaining 6 needs a
+      # lockfile for that package — its own PR, on the W81 ledger, NOT a silent
+      # `npm install` of floating versions inside a required check.
+      - name: Run wa-mirror bridge alert-policy tests (dependency-free files)
+        if: matrix.app == 'mouth'
+        run: |
+          cd apps/wa-mirror
+          npx vitest run tests/down-alarm.test.ts tests/telegram.test.ts
+
       - name: Upload coverage
         if: ${{ matrix.coverage && env.HAS_CODECOV_TOKEN == 'true' }}
         uses: codecov/codecov-action@v7

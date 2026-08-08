@@ -57,7 +57,7 @@
     {
       "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",
       "repo": "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
-      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. Live HOME copy on Pro still needs manual sync (healer is read-only on Pro).",
+      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. The old tail of this note — 'Live HOME copy on Pro still needs manual sync' — was measurably FALSE on 2026-08-08: canon, origin/main and Pro's live copy were all sha256 308915627885cf8c, byte-identical. A note that names a pending action which has since happened sends the next reader to realign a copy that is already aligned (W106: a frozen measurement inside the very registry that arbitrates the pair). Corrected, and the reason to keep the pair declared is unchanged: today's errexit cure (the agy health-check subshell inherited errexit and aborted the script on BOTH its exits — three silent dead runs 2026-07-19/26 and 08-02) lands in the canon, so the live copy MUST be re-copied after merge or the two diverge for real. Merging alone leaves the organ dead (W107 delivery gotcha: this live path is a real file, not a symlink).",
       "machines": ["pro"]
     },
     {

@@ -319,3 +319,104 @@ async def test_active_status_client_maps_cleanly_with_honest_default_language() 
     assert len(clients) == 1
     assert clients[0].id == 99
     assert clients[0].preferred_language == "en"
+
+
+@pytest.mark.asyncio
+async def test_active_client_with_null_email_does_not_crash() -> None:
+    """GUILT (fix-3 of the notifications lane, third layer of the same
+    disease): on the live DB, 369 of 741 active clients have `email IS NULL`
+    (measured 2026-08-08, post-#3798+#3822 prove-live). `get_clients_from_db`
+    now executes the corrected query cleanly — but `ClientInfo(**client_data)`
+    (models.py) declared `email: str` (non-nullable), so pydantic raised
+    `ValidationError` on the FIRST active client without an email, taking down
+    the whole sweep for the other 372 clients that DO have one behind it in
+    the same result set.
+
+    The downstream already tolerates a missing email: `expiry_checker.py`
+    never references `.email` at all, and the send path resolves the address
+    via `get_client_email_func(alert.client_id)` and explicitly skips sending
+    when `if not client_email:` — plus alerts also reach the team leader via
+    `assigned_to`. So the correct fix is the model (`email: str | None =
+    None`), not an SQL filter that would silently amputate half the active
+    book from every notification sweep.
+
+    INNOCENCE (email present) is already covered by
+    ``test_active_status_client_maps_cleanly_with_honest_default_language``
+    above (asserts a normal active client with a real email maps through
+    intact) and by ``test_single_client_query_returns_expected_shape``
+    (asserts ``clients[0].id == 42`` off a row with a real email) — not
+    duplicated here.
+    """
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "id": 123,
+            "email": None,
+            "full_name": "No Email Client",
+            "preferred_language": "en",
+            "team_leader_email": "ari@balizero.com",
+            "date_of_birth": None,
+            "passport_expiry": None,
+            "passport_number": None,
+            "visa_expiry": None,
+            "visa_type": None,
+        }
+    ]
+
+    clients = await get_clients_from_db(_Pool(mock_conn), client_id=123)
+
+    assert len(clients) == 1
+    assert clients[0].id == 123
+    assert clients[0].email is None
+
+
+def test_query_excludes_soft_deleted_clients() -> None:
+    """GUILT (fix-4 of the notifications lane, found by the prove-live pass
+    after the sweep started running clean post-#3822/#3827): a `status =
+    'active'` scan alone returned 1238 rows against 741 actually-active
+    (non-deleted) clients, measured live 2026-08-08. The 497-row gap is
+    soft-deleted clients whose `status` was never flipped off 'active' —
+    `deleted_at IS NOT NULL` for all of them. Sending a birthday/passport/
+    visa-expiry alert to an ex-client is noise for the team at best, and an
+    unwanted contact with a former client at worst.
+
+    The query text must filter on `c.deleted_at IS NULL` in BOTH branches
+    (single-client and all-active-clients), not just one — a partial fix
+    would still amputate the wrong half of the book depending on call site.
+    """
+    source = _source_without_docstring(get_clients_from_db)
+    assert source.count("c.deleted_at IS NULL") == 2, (
+        "get_clients_from_db must exclude soft-deleted clients "
+        "(c.deleted_at IS NULL) in BOTH the single-client and "
+        "all-active-clients query branches — found "
+        f"{source.count('c.deleted_at IS NULL')} occurrence(s)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_single_client_sql_excludes_soft_deleted() -> None:
+    """GUILT (behavioral, single-client branch): the actual SQL text sent to
+    the connection for a specific client_id must carry the soft-delete
+    filter alongside the existing status filter."""
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = []
+
+    await get_clients_from_db(_Pool(mock_conn), client_id=42)
+
+    sql_sent = mock_conn.fetch.call_args[0][0]
+    assert "c.deleted_at IS NULL" in sql_sent
+    assert "c.status = 'active'" in sql_sent
+
+
+@pytest.mark.asyncio
+async def test_all_clients_sql_excludes_soft_deleted() -> None:
+    """GUILT (behavioral, all-active-clients branch): same filter must be
+    present in the no-client_id branch's SQL text."""
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = []
+
+    await get_clients_from_db(_Pool(mock_conn), client_id=None)
+
+    sql_sent = mock_conn.fetch.call_args[0][0]
+    assert "c.deleted_at IS NULL" in sql_sent
+    assert "c.status = 'active'" in sql_sent

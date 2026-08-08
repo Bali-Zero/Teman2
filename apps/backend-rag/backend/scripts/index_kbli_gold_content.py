@@ -320,6 +320,22 @@ def deterministic_uuid(code: str) -> str:
     return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
 
 
+def build_point(code: str, gold: dict, base: dict, indexed_at: str) -> dict:
+    """Build one Qdrant point (id + flat payload + text-to-embed) for a gold code.
+
+    Extracted from the main() loop so it can be exercised directly by tests —
+    never a recreated copy of the production logic (Codex review on #3817).
+    """
+    embedding_text = build_embedding_text(code, gold, base)
+    payload = build_payload(code, gold, base, embedding_text)
+    payload["indexed_at"] = indexed_at  # flat payload (KBLI flat-payload golden rule)
+    return {
+        "id": deterministic_uuid(code),
+        "payload": payload,
+        "_text_to_embed": embedding_text,
+    }
+
+
 async def embed_texts(texts: list[str], client) -> list[list[float]]:
     """Embed texts using OpenAI."""
     all_embeddings = []
@@ -350,6 +366,35 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
                 logger.error(f"Qdrant upsert failed: {resp.status_code} {resp.text[:300]}")
             else:
                 logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
+
+
+def field_coverage(all_points: list[dict]) -> dict[str, int]:
+    """Count how many points carry each gold field (flat payload — the
+    KBLI flat-payload golden rule; ``gold_fields`` lives directly on
+    ``point["payload"]``, never under a nested sub-dict)."""
+    fields_count: dict[str, int] = {}
+    for p in all_points:
+        for f in p["payload"].get("gold_fields", []):
+            fields_count[f] = fields_count.get(f, 0) + 1
+    return fields_count
+
+
+def tka_total(all_points: list[dict]) -> int:
+    """Count points flagged ``has_tka_info`` (flat payload)."""
+    return sum(1 for p in all_points if p["payload"]["has_tka_info"])
+
+
+def sample_lines(point: dict) -> list[str]:
+    """Human-readable preview lines for one point (dry-run sample display).
+
+    Returns plain strings — the caller is responsible for logging them.
+    """
+    payload = point["payload"]
+    return [
+        f"  Code: {payload['kode']}",
+        f"  Judul: {payload['judul'][:80]}",
+        f"  Text preview: {point['_text_to_embed'][:300]}...",
+    ]
 
 
 async def main():
@@ -402,38 +447,24 @@ async def main():
 
     for code, gold in sorted(gold_entries.items()):
         base = base_data.get(code, {"judul": "", "sektor_id": ""})
-        embedding_text = build_embedding_text(code, gold, base)
-        payload = build_payload(code, gold, base, embedding_text)
-        payload["metadata"]["indexed_at"] = indexed_at
-
-        all_points.append(
-            {
-                "id": deterministic_uuid(code),
-                "payload": payload,
-                "_text_to_embed": embedding_text,
-            },
-        )
+        all_points.append(build_point(code, gold, base, indexed_at))
 
     logger.info(f"Built {len(all_points)} points to index")
 
     # Stats
-    fields_count = {}
-    for p in all_points:
-        for f in p["payload"]["metadata"].get("gold_fields", []):
-            fields_count[f] = fields_count.get(f, 0) + 1
+    fields_count = field_coverage(all_points)
     logger.info("Gold field coverage:")
     for f, n in sorted(fields_count.items(), key=lambda x: -x[1]):
         logger.info(f"  {f}: {n}/{len(all_points)} ({100 * n // len(all_points)}%)")
 
-    tka_count = sum(1 for p in all_points if p["payload"]["metadata"]["has_tka_info"])
+    tka_count = tka_total(all_points)
     logger.info(f"Codes with TKA info: {tka_count}/{len(all_points)}")
 
     if args.dry_run:
         logger.info("DRY RUN — sample points:")
         for p in all_points[:2]:
-            logger.info(f"  Code: {p['payload']['metadata']['kode']}")
-            logger.info(f"  Judul: {p['payload']['metadata']['judul'][:80]}")
-            logger.info(f"  Text preview: {p['_text_to_embed'][:300]}...")
+            for line in sample_lines(p):
+                logger.info(line)
             logger.info("")
         logger.info(f"Would upsert {len(all_points)} gold points to {COLLECTION_NAME}")
         return

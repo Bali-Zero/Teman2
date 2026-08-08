@@ -133,6 +133,8 @@ jobs:
               scripts/tests/test_wa_session_liveness.py|\
               infra/launchagents/wrappers/wa-session-liveness.sh|\
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
+              infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh|\
+              scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh|\
               infra/launchagents/wrappers/cron-agent.sh|\
               scripts/tests/test_cron_agent_oauth_cascade.sh|\
               scripts/lib/claude_seat.sh|\
@@ -492,6 +494,27 @@ jobs:
           # together, disarming the first guard still exited 2 via the second, and
           # the mutant survived — to judge a guard it has to be the only thing broken.
           bash scripts/tests/test_wa_session_liveness_wrapper.sh
+
+      - name: wr2-ig-metrics-analyst wrapper corpus (errexit-fatal probe + no voice)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The weekly analyst died three consecutive runs (2026-07-19, 07-26,
+          # 08-02) and no surface anywhere could notice. Two independent causes:
+          #   - its agy health-check lives in a SUBSHELL, which inherits errexit,
+          #     and both of that subshell's exits are non-zero by construction
+          #     (agy down -> agy's code; agy UP -> 143, the watchdog it killed
+          #     itself), so the block aborted the whole script ALWAYS and the DOWN
+          #     branch — the local-fallback hint, its only reason to exist — was
+          #     unreachable on the exact path it was written for (W101, 4th gen);
+          #   - launchd invokes it DIRECTLY (no cron-runner, no wr2-cron-wrapper),
+          #     so no receipt, no reader of its exit code, and missed_runs_alerter
+          #     watches WarRoom rows and not launchd labels (W81/W108).
+          # Armed HERE and not left to the scripts/tests sweep, which is
+          # continue-on-error and gates nothing — the superscar #2 shape. The
+          # probe binary is env-overridable ONLY so this corpus can drive it: the
+          # default path does not exist on a runner (or on M5), so without the
+          # override every machine is structurally unable to reproduce the red.
+          bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh
 
       - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
         if: steps.paths.outputs.relevant == 'true'
