@@ -176,6 +176,37 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
 
 _BEHIND_RE = re.compile(r"main checkout: (-?\d+) behind origin/main")
 _SELF_STALE_RE = re.compile(r"^SELF STALE: ")
+
+
+def _blob_sha(data: bytes) -> str:
+    """`git hash-object` in pure Python — sha1 of `blob <len>\\0` + content."""
+    h = hashlib.sha1()
+    h.update(b"blob %d\0" % len(data))
+    h.update(data)
+    return h.hexdigest()
+
+
+def _read_runner_source() -> tuple[str, str]:
+    """Hash the bytes of THIS file at import, returning (sha, reason-if-none).
+
+    Deliberately at import rather than inside the probe. An adversarial review of the
+    first draft caught the window: hashing the PATH later answers "what is on disk now",
+    while the claim being made is "what wrote this report". A file replaced between
+    interpreter start and probe time makes that a lie in both directions — a genuinely
+    stale runner reported clean, or a current one accused. Reading at import narrows the
+    window to the microseconds between the interpreter reading the file and this line,
+    which is as close as Python gets: the compiled bytes are not recoverable afterwards.
+    """
+    try:
+        if "__file__" not in globals():
+            return "", "stdin"                      # `... | python3 -`, nothing on disk
+        p = Path(__file__)
+        return _blob_sha(p.read_bytes()), ""
+    except OSError:
+        return "", "unreadable"
+
+
+_RUNNER_SHA, _RUNNER_NO_SHA_REASON = _read_runner_source()
 _LEDGER_STALE_RE = re.compile(r"^LEDGER STALE: (\S+) differs from origin/main")
 
 
@@ -481,63 +512,73 @@ def _self_code_staleness(root: Path | None) -> tuple[int, list[str]]:
     """
     if root is None:
         return 0, ["self-version: no repo root — this copy cannot be attributed"]
-    self_file = Path(__file__) if "__file__" in globals() else None
-    if self_file is None or not self_file.exists():
-        # Two shapes reach here and neither is a finding: stdin (`... | python3 -`),
-        # which is the deliberate run-main's-copy escape prescribed below, and a file
-        # removed under a running process. Name both — claiming "stdin" for the second
-        # would be a false statement written while fixing a false statement (W113).
-        return 0, ["self-version: no on-disk copy to compare (stdin, or the file was "
-                   "removed mid-run) — nothing that could be stale"]
-    self_file = self_file.resolve()
+    if not _RUNNER_SHA:
+        # Neither shape is a finding, and they are NOT the same shape: stdin is the
+        # deliberate run-main's-copy escape prescribed below, "unreadable" is a real
+        # blind spot. Naming one for the other would be a false statement written while
+        # fixing a false statement (W113).
+        return 0, [f"self-version: no source bytes to compare ({_RUNNER_NO_SHA_REASON}) "
+                   f"— nothing on disk that could be stale"]
+    # The PATH is only used to name the file to git; the VERSION comes from _RUNNER_SHA,
+    # read at import. So a file deleted mid-run is still attributable.
+    self_file = Path(__file__).resolve()
     try:
         rel = self_file.relative_to(root.resolve())
     except ValueError:
         return 0, [f"self-version: the executing copy is outside the checkout "
                    f"({self_file}) — version not attributable"]
-    rc1, local_blob, _ = sh(["git", "hash-object", str(self_file)], timeout=10, cwd=root)
     rc2, main_blob, _ = sh(["git", "rev-parse", f"origin/main:{rel.as_posix()}"], timeout=10, cwd=root)
-    if rc1 != 0 or rc2 != 0 or not local_blob.strip() or not main_blob.strip():
+    if rc2 != 0 or not main_blob.strip():
         return 0, [f"self-version: cannot compare {rel.as_posix()} against origin/main "
                    f"(offline, or this path is new on this branch)"]
-    if local_blob.strip() == main_blob.strip():
+    if _RUNNER_SHA == main_blob.strip():
         return 0, []
     # DIFFERING IS NOT BEHIND. The whole lesson of W106b is that a comparison knows THAT
     # two copies differ and never WHICH is stale; calling an AHEAD copy "OLD text" would
     # be this organ re-committing, one floor down, the scar it carries. Found by running
     # this cure in the worktree that authored it — it accused its own newer code. So
-    # attribute the side, and accuse only when the evidence is positive: the file is
-    # committed as-is AND this HEAD is an ancestor of origin/main.
+    # attribute the side, and accuse only when the evidence is positive: the running
+    # bytes are what HEAD holds AND this HEAD is an ancestor of origin/main.
     rc3, head_blob, _ = sh(["git", "rev-parse", f"HEAD:{rel.as_posix()}"], timeout=10, cwd=root)
-    rc4, _, _ = sh(["git", "merge-base", "--is-ancestor", "HEAD", "origin/main"], timeout=10, cwd=root)
-    if rc3 != 0 or head_blob.strip() != local_blob.strip():
+    if rc3 != 0:
+        return 0, [f"self-version: {rel.as_posix()} is not readable at this HEAD (new, "
+                   f"untracked, or unborn HEAD) — direction cannot be attributed"]
+    if head_blob.strip() != _RUNNER_SHA:
         return 0, [f"self-version: {rel.as_posix()} differs from origin/main because it has "
                    f"UNCOMMITTED edits — it is being worked on, not left behind"]
-    if rc4 != 0:
-        # ancestor is a proxy and lies after a squash-merge (W88) — but here its failure
-        # mode is silence, never a false accusation, which is the side to err on.
+    rc4, _, _ = sh(["git", "merge-base", "--is-ancestor", "HEAD", "origin/main"], timeout=10, cwd=root)
+    if rc4 == 1:
+        # A valid "no". Ancestry is still a proxy that lies after a squash-merge (W88),
+        # and on a SHALLOW clone a true ancestor answers 1 because the path is truncated
+        # — so do not call that "not stale", call it unverifiable.
+        rcs, shallow, _ = sh(["git", "rev-parse", "--is-shallow-repository"], timeout=10, cwd=root)
+        if rcs == 0 and shallow.strip() == "true":
+            return 0, [f"self-version: {rel.as_posix()} differs from origin/main and this "
+                       f"clone is SHALLOW, so ancestry cannot be decided — direction unknown"]
         return 0, [f"self-version: {rel.as_posix()} differs from origin/main and this HEAD is "
                    f"not an ancestor of it (branch ahead, or diverged) — not stale"]
+    if rc4 != 0:
+        # rc>1 is git failing, not git answering "no" — reporting a determination we did
+        # not make is the calm liar one floor down (W84).
+        return 0, [f"self-version: {rel.as_posix()} differs from origin/main but git could "
+                   f"not decide ancestry (exit {rc4}) — direction unknown, not a verdict"]
     return 1, [f"SELF STALE: the copy that wrote this report ({rel.as_posix()} "
-               f"{local_blob.strip()[:8]}) is not origin/main's ({main_blob.strip()[:8]}) "
+               f"{_RUNNER_SHA[:8]}) is not origin/main's ({main_blob.strip()[:8]}) "
                f"— every finding and every remedy on this report is that copy's OLD text, "
                f"however fresh the timestamp. Run main's copy without touching the "
                f"checkout: `git -C {root} show origin/main:{rel.as_posix()} > /tmp/prop_main.py "
                f"&& NUZ_REPO_ROOT={root} python3 /tmp/prop_main.py`"]
 
 
-def _self_blob(root: Path | None) -> str:
+def _self_blob() -> str:
     """Provenance for the report header: WHICH copy produced it. `repo_head` is the
     checkout's HEAD, which does not pin this file — a worktree, an out-of-tree copy and
     stdin can all report the same head. Diagnosing the 2026-08-08 incident took three
-    steps (read repo_head, resolve it, diff the file); this field makes it one."""
-    if root is None or "__file__" not in globals():
-        return "unknown"
-    p = Path(__file__)
-    if not p.exists():
-        return "stdin"
-    rc, out, _ = sh(["git", "hash-object", str(p)], timeout=10, cwd=root)
-    return out.strip()[:12] if rc == 0 and out.strip() else "unknown"
+    steps (read repo_head, resolve it, diff the file); this field makes it one.
+
+    Takes no repo: it reports the bytes this process loaded, which is true even outside
+    a checkout, and it must never disagree with the comparison above by construction."""
+    return _RUNNER_SHA[:12] if _RUNNER_SHA else (_RUNNER_NO_SHA_REASON or "unknown")
 
 
 def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
@@ -1086,7 +1127,7 @@ def main() -> int:
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "machine": me,
         "repo_head": git_head(root) if root else "no-repo",
-        "runner_blob": _self_blob(root),
+        "runner_blob": _self_blob(),
         "config_source": config_source,
         "config_sha": config_sha,
         "probes_expected": len(selected) + (2 if args.fleet else 0),

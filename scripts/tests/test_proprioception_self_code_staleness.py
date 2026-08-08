@@ -16,22 +16,29 @@ OUTPUT says nothing about the version of the WRITER — mtime is a proxy for "cu
 and it lies when the writer is old (W88, superscar #9). The machine where that lie
 is permanent is exactly the machine nobody was checking.
 
-SECOND DEFECT, found by RUNNING the first cure rather than reading it: its first
-draft accused any copy that DIFFERED from origin/main, so the worktree that authored
-it was told its own newer code was "OLD text". That is W106b itself — a comparison
-knows THAT two copies differ and never WHICH is stale — re-committed one floor down
-by the cure for it. Hence the direction tests below: stale is only claimed on
-positive evidence (committed as-is AND this HEAD is an ancestor of origin/main), and
-"ahead" and "being edited" each get an innocence case of their own.
+SECOND DEFECT, found by RUNNING the first cure rather than reading it: it accused any
+copy that DIFFERED from origin/main, so the worktree that authored it was told its own
+newer code was "OLD text". That is W106b — a comparison knows THAT two copies differ
+and never WHICH is stale — re-committed one floor down by the cure for it. Stale is
+now claimed only on positive evidence, and "ahead" and "being edited" each get an
+innocence case.
 
-Guilt + innocence on every branch per superscar #3 discipline, plus the four
-cannot-verify shapes — a guard that reads "cannot verify" as "clean" is the same
-disease one floor down (W84).
+THIRD, from an independent adversarial pass (generator != grader): the draft hashed
+the FILE PATH at probe time while the claim is about the code that is RUNNING. The
+version now comes from `_RUNNER_SHA`, the bytes read at import — pinned by
+`test_verdict_follows_the_loaded_bytes_not_the_file_on_disk`, which is red against the
+path-hashing draft. The same pass found three determinations being reported where none
+had been made (git error read as "not ancestor", shallow clone read as "not ancestor",
+a deleted file labelled "stdin"); each has a case below.
+
+Guilt + innocence on every branch per superscar #3 discipline — a guard that reads
+"cannot verify" as "clean" is the same disease one floor down (W84).
 
 Run:  python3 -m pytest scripts/tests/test_proprioception_self_code_staleness.py -q
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -52,10 +59,26 @@ _OLD = "# the version a checkout left behind still runs\n"
 _MAIN = "# the version main says this file should be\n"
 
 
+def _blob(data: bytes) -> str:
+    h = hashlib.sha1()
+    h.update(b"blob %d\0" % len(data))
+    h.update(data)
+    return h.hexdigest()
+
+
 def _git(args: list[str], cwd: Path) -> str:
     out = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, f"git {args} failed: {out.stderr}"
     return out.stdout.strip()
+
+
+def test_blob_sha_agrees_with_git_hash_object(tmp_path):
+    """The pure-Python hash replaced a `git hash-object` call. If the two ever disagree
+    every verdict in this file is meaningless, so prove it against git itself."""
+    f = tmp_path / "sample.txt"
+    f.write_bytes(b"one line\nand another\n")
+    _git(["init", "-q"], tmp_path)
+    assert prop._blob_sha(f.read_bytes()) == _git(["hash-object", str(f)], tmp_path)
 
 
 class Checkout:
@@ -63,23 +86,32 @@ class Checkout:
 
     The ref is set directly — no network, no remote — but it is the SAME ref
     `git rev-parse origin/main:<path>` reads in production, and the history is real, so
-    the ancestor test runs against git rather than against a stand-in for it (W114: a
-    fake at the wrong boundary confirms the reader's imagination, not the world).
+    the ancestor test runs against git rather than a stand-in (W114: a fake at the wrong
+    boundary confirms the reader's imagination, not the world).
     """
 
-    def __init__(self, root: Path, old_sha: str, main_sha: str) -> None:
+    def __init__(self, root: Path, old_sha: str, main_sha: str, monkeypatch) -> None:
         self.root, self.old_sha, self.main_sha = root, old_sha, main_sha
         self.script = root / "scripts" / "proprioception.py"
+        self._mp = monkeypatch
+
+    def load(self, text: str | None = None) -> None:
+        """Set the bytes this 'process' is running — by default whatever is on disk."""
+        data = (text.encode() if text is not None else self.script.read_bytes())
+        self._mp.setattr(prop, "_RUNNER_SHA", _blob(data))
+        self._mp.setattr(prop, "_RUNNER_NO_SHA_REASON", "")
 
     def go_behind(self) -> None:
-        """What m5 looks like: HEAD parked on an older commit of main, working tree clean."""
+        """What m5 looks like: HEAD parked on an older commit of main, tree clean."""
         _git(["checkout", "-q", self.old_sha], self.root)
+        self.load()
 
     def go_ahead(self, text: str = "# a cure being authored in a worktree\n") -> None:
         """What a lane's worktree looks like once it has committed work on top of main."""
         self.script.write_text(text)
         _git(["add", "-A"], self.root)
         _git(["commit", "-qm", "work on top of main"], self.root)
+        self.load()
 
 
 @pytest.fixture()
@@ -99,9 +131,10 @@ def repo(tmp_path: Path, monkeypatch) -> Checkout:
     _git(["commit", "-qm", "current version"], root)
     main_sha = _git(["rev-parse", "HEAD"], root)
     _git(["update-ref", "refs/remotes/origin/main", main_sha], root)
-    # every test asks about THIS file; the checkout starts healthy (HEAD == origin/main)
     monkeypatch.setattr(prop, "__file__", str(script))
-    return Checkout(root, old_sha, main_sha)
+    c = Checkout(root, old_sha, main_sha, monkeypatch)
+    c.load()  # healthy default: running exactly what origin/main holds
+    return c
 
 
 # --------------------------------------------------------------- guilt
@@ -119,7 +152,7 @@ def test_guilt_evidence_names_both_sides_and_blames_the_timestamp(repo):
     """The 2026-08-08 report was FRESH and WRONG. The evidence has to say exactly that,
     or the reader trusts the timestamp again — which is the entire defect."""
     repo.go_behind()
-    old_blob = _git(["hash-object", str(repo.script)], repo.root)
+    old_blob = _blob(_OLD.encode())
     main_blob = _git(["rev-parse", f"origin/main:{_REL}"], repo.root)
 
     _, ev = prop._self_code_staleness(repo.root)
@@ -141,6 +174,20 @@ def test_guilt_remedy_never_prescribes_touching_the_checkout(repo):
     for forbidden in ("git pull", "git checkout", "git reset", "git restore", "git merge"):
         assert forbidden not in msg, f"remedy prescribes {forbidden!r}: {ev[0]}"
     assert "show origin/main:" in msg, "name the read-only way to main's copy"
+
+
+def test_verdict_follows_the_loaded_bytes_not_the_file_on_disk(repo):
+    """THE TOCTOU PIN (independent review). The claim is about the code that WROTE the
+    report, so the version must be the bytes this process loaded. Here a stale runner is
+    still executing while the file on disk has already been replaced with main's — the
+    path-hashing draft reported a clean bill for a genuinely stale writer."""
+    repo.go_behind()                       # HEAD old, running old
+    repo.script.write_text(_MAIN)          # disk now holds main's bytes; the process does not
+
+    findings, ev = prop._self_code_staleness(repo.root)
+
+    assert findings == 1, "hashing the path instead of the loaded bytes hides a stale runner"
+    assert _blob(_OLD.encode())[:8] in ev[0], "the running version is what must be named"
 
 
 # ------------------------------------------------------------ innocence
@@ -169,6 +216,7 @@ def test_innocence_a_branch_ahead_of_main_is_never_called_stale(repo):
 def test_innocence_uncommitted_edits_are_work_not_staleness(repo):
     """Mid-edit is the normal state of the file a session is changing."""
     repo.script.write_text("# half-written change\n")
+    repo.load()
 
     findings, ev = prop._self_code_staleness(repo.root)
 
@@ -181,6 +229,7 @@ def test_innocence_edited_back_to_mains_content_is_current(repo):
     back is current, whatever git status says."""
     repo.script.write_text("# scratch\n")
     repo.script.write_text(_MAIN)
+    repo.load()
 
     assert prop._self_code_staleness(repo.root) == (0, [])
 
@@ -194,6 +243,7 @@ def test_cannot_verify_copy_outside_the_checkout(repo, tmp_path, monkeypatch):
     outside = tmp_path / "prop_main.py"
     outside.write_text("# main's copy, run from /tmp on purpose\n")
     monkeypatch.setattr(prop, "__file__", str(outside))
+    repo.load("# main's copy, run from /tmp on purpose\n")
 
     findings, ev = prop._self_code_staleness(repo.root)
 
@@ -214,18 +264,89 @@ def test_cannot_verify_no_origin_main_ref_is_not_silence(repo):
 
 def test_cannot_verify_running_from_stdin(repo, monkeypatch):
     """`git show origin/main:... | python3 -` leaves no `__file__` at all."""
-    monkeypatch.delattr(prop, "__file__")
+    monkeypatch.setattr(prop, "_RUNNER_SHA", "")
+    monkeypatch.setattr(prop, "_RUNNER_NO_SHA_REASON", "stdin")
 
     findings, ev = prop._self_code_staleness(repo.root)
 
     assert findings == 0
-    assert "no on-disk copy" in ev[0] and "stdin" in ev[0], ev
+    assert "stdin" in ev[0] and "no source bytes" in ev[0], ev
+
+
+def test_cannot_verify_unreadable_is_not_reported_as_stdin(repo, monkeypatch):
+    """A source file that could not be read is a blind spot, not the deliberate
+    run-main's-copy escape. Naming one for the other invents a state (W113)."""
+    monkeypatch.setattr(prop, "_RUNNER_SHA", "")
+    monkeypatch.setattr(prop, "_RUNNER_NO_SHA_REASON", "unreadable")
+
+    findings, ev = prop._self_code_staleness(repo.root)
+
+    assert findings == 0
+    assert "unreadable" in ev[0] and "stdin" not in ev[0], ev
 
 
 def test_cannot_verify_no_repo_root():
     findings, ev = prop._self_code_staleness(None)
     assert findings == 0
     assert "cannot be attributed" in ev[0], ev
+
+
+def test_cannot_verify_file_not_readable_at_head(repo):
+    """Present on disk but absent from HEAD: the direction is unknowable, and the draft
+    asserted "UNCOMMITTED edits", a cause it had not established.
+
+    The first version of this test used `git rm --cached` alone and did NOT reproduce it:
+    that touches the index, while `rev-parse HEAD:<path>` reads the commit — so HEAD
+    still had the file and "UNCOMMITTED edits" was the correct answer. The removal has to
+    be committed."""
+    repo.script.write_text(_OLD)
+    repo.load()
+    _git(["rm", "-q", "--cached", _REL], repo.root)
+    _git(["commit", "-qm", "untrack the runner"], repo.root)
+
+    findings, ev = prop._self_code_staleness(repo.root)
+
+    assert findings == 0
+    assert "not readable at this HEAD" in ev[0], ev
+
+
+def test_cannot_verify_shallow_clone_does_not_read_as_not_stale(repo, monkeypatch):
+    """On a shallow clone a TRUE ancestor answers `1`, so "not an ancestor" would be a
+    false clean for a genuinely behind copy — the dangerous direction."""
+    repo.go_behind()
+    real_sh = prop.sh
+
+    def fake_sh(argv, **kw):
+        if argv[:2] == ["git", "merge-base"]:
+            return 1, "", ""                       # what a truncated history answers
+        if argv[:2] == ["git", "rev-parse"] and "--is-shallow-repository" in argv:
+            return 0, "true\n", ""
+        return real_sh(argv, **kw)
+
+    monkeypatch.setattr(prop, "sh", fake_sh)
+    findings, ev = prop._self_code_staleness(repo.root)
+
+    assert findings == 0, "still not an accusation — but it must not read as clean either"
+    assert "SHALLOW" in ev[0] and "direction unknown" in ev[0], ev
+
+
+def test_cannot_verify_git_error_is_not_read_as_not_ancestor(repo, monkeypatch):
+    """`--is-ancestor` returns 1 for a valid "no" and >1 for failure. Collapsing them
+    reports a determination that was never made (W84)."""
+    repo.go_behind()
+    real_sh = prop.sh
+
+    def fake_sh(argv, **kw):
+        if argv[:2] == ["git", "merge-base"]:
+            return 128, "", "fatal: bad object"
+        return real_sh(argv, **kw)
+
+    monkeypatch.setattr(prop, "sh", fake_sh)
+    findings, ev = prop._self_code_staleness(repo.root)
+
+    assert findings == 0
+    assert "could not decide ancestry" in ev[0] and "exit 128" in ev[0], ev
+    assert "not an ancestor" not in ev[0], "that is a verdict we did not reach"
 
 
 # ------------------------------------------------- wiring into the probe's verdict
@@ -314,19 +435,24 @@ def test_innocence_no_evidence_at_all_gets_the_registry_remedy():
 
 # --------------------------------------------------------------- provenance field
 
-def test_self_blob_identifies_the_executing_copy(repo):
-    expected = _git(["hash-object", str(repo.script)], repo.root)[:12]
-    assert prop._self_blob(repo.root) == expected
+def test_self_blob_is_the_loaded_bytes(repo, monkeypatch):
+    monkeypatch.setattr(prop, "_RUNNER_SHA", _blob(b"whatever this process loaded\n"))
+    assert prop._self_blob() == _blob(b"whatever this process loaded\n")[:12]
 
 
-def test_self_blob_reports_stdin_rather_than_guessing(repo, tmp_path, monkeypatch):
-    monkeypatch.setattr(prop, "__file__", str(tmp_path / "gone.py"))
-    assert prop._self_blob(repo.root) == "stdin"
+def test_self_blob_names_the_reason_rather_than_guessing(repo, monkeypatch):
+    """"stdin" for a file that was merely deleted is a fabricated state — the reason has
+    to be the one actually observed."""
+    monkeypatch.setattr(prop, "_RUNNER_SHA", "")
+    for reason in ("stdin", "unreadable"):
+        monkeypatch.setattr(prop, "_RUNNER_NO_SHA_REASON", reason)
+        assert prop._self_blob() == reason
 
 
-def test_report_actually_carries_runner_blob(repo):
-    """End-to-end: the field has to reach the JSON a reader opens, not merely exist as a
-    function. Runs the real script against the fixture checkout."""
+def test_report_carries_the_blob_of_the_file_that_ran(repo):
+    """End-to-end, and DISCRIMINATING: the earlier version of this test only asserted
+    non-empty, which a constant would satisfy. It must equal the real hash of the real
+    script the subprocess executed."""
     env = dict(os.environ, NUZ_REPO_ROOT=str(repo.root))
     out = subprocess.run(
         [sys.executable, str(_MODULE_PATH), "--json", "--no-report", "--no-fetch",
@@ -334,8 +460,8 @@ def test_report_actually_carries_runner_blob(repo):
         capture_output=True, text=True, timeout=120, cwd=str(repo.root), env=env)
     assert out.returncode == 0, out.stderr
     report = json.loads(out.stdout)
-    assert "runner_blob" in report, "the report must name WHICH copy wrote it"
-    assert report["runner_blob"], "runner_blob must never be empty"
+
+    assert report["runner_blob"] == _blob(_MODULE_PATH.read_bytes())[:12]
 
 
 if __name__ == "__main__":
