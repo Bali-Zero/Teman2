@@ -143,6 +143,8 @@ from pathlib import Path
 import asyncpg
 import httpx
 
+from backend.scripts._kbli_archive import archive_row, ensure_archive_schema
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kbli_documents_cure")
 
@@ -270,24 +272,13 @@ CONTRADICTED_LICENSING_CLAIM_RE = re.compile(
     re.I,
 )
 
-# One-shot forensic archive of the pre-cure fabricated row — created lazily
-# (IF NOT EXISTS) by this script itself, no formal migration needed for an
-# admin-only audit sidecar. UNIQUE(kode_kbli) backs the ON CONFLICT DO
-# NOTHING one-shot-capture semantics in main().
-ARCHIVE_TABLE_DDL = """
-CREATE TABLE IF NOT EXISTS kbli_documents_archive (
-    id SERIAL PRIMARY KEY,
-    kode_kbli VARCHAR NOT NULL UNIQUE,
-    judul TEXT,
-    content TEXT,
-    metadata JSONB,
-    original_created_at TIMESTAMP,
-    original_updated_at TIMESTAMP,
-    archived_at TIMESTAMP NOT NULL DEFAULT now(),
-    archived_reason TEXT NOT NULL DEFAULT
-        'kbli_documents_cure: pre-cure fabricated-content snapshot (2026-07-19)'
-)
-"""
+# Stable cure-run identifier — derived from this script's name + the cure
+# spec date it runs (2026-07-19). Never a wall-clock timestamp: a per-run
+# clock value would defeat ON CONFLICT idempotency within the same cure pass.
+# The shared DDL + versioned INSERT live in _kbli_archive (single source of
+# truth — the duplicated DDL that was here and in kbli_documents_phantom_cure
+# is how schemas drift).
+CURE_RUN = "kbli_documents_cure:2026-07-19"
 
 
 @dataclass
@@ -929,7 +920,7 @@ async def main() -> int | None:
     conn = await asyncpg.connect(dsn)
     try:
         if args.apply:
-            await conn.execute(ARCHIVE_TABLE_DDL)
+            await ensure_archive_schema(conn)
 
         table_rows = {
             r["kode_kbli"]: r
@@ -1059,13 +1050,7 @@ async def main() -> int | None:
             if args.apply:
                 assert current_row is not None  # update_row=True implies found_in_table=True
                 params = archive_params(code, current_row)
-                await conn.execute(
-                    "INSERT INTO kbli_documents_archive "
-                    "(kode_kbli, judul, content, metadata, original_created_at, original_updated_at) "
-                    "VALUES ($1, $2, $3, $4::text::jsonb, $5, $6) "
-                    "ON CONFLICT (kode_kbli) DO NOTHING",
-                    *params,
-                )
+                await archive_row(conn, code, params, CURE_RUN)
                 # W89 jsonb double-encoding class-guard (kg_kbli_license_fix.py
                 # precedent): bind the pre-serialized json.dumps() string to a
                 # $N::text::jsonb placeholder so the server casts text->jsonb
