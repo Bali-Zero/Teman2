@@ -320,6 +320,22 @@ def deterministic_uuid(code: str) -> str:
     return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
 
 
+def build_point(code: str, gold: dict, base: dict, indexed_at: str) -> dict:
+    """Build one Qdrant point (id + flat payload + text-to-embed) for a gold code.
+
+    Extracted from the main() loop so it can be exercised directly by tests —
+    never a recreated copy of the production logic (Codex review on #3817).
+    """
+    embedding_text = build_embedding_text(code, gold, base)
+    payload = build_payload(code, gold, base, embedding_text)
+    payload["indexed_at"] = indexed_at  # flat payload (KBLI flat-payload golden rule)
+    return {
+        "id": deterministic_uuid(code),
+        "payload": payload,
+        "_text_to_embed": embedding_text,
+    }
+
+
 async def embed_texts(texts: list[str], client) -> list[list[float]]:
     """Embed texts using OpenAI."""
     all_embeddings = []
@@ -402,17 +418,7 @@ async def main():
 
     for code, gold in sorted(gold_entries.items()):
         base = base_data.get(code, {"judul": "", "sektor_id": ""})
-        embedding_text = build_embedding_text(code, gold, base)
-        payload = build_payload(code, gold, base, embedding_text)
-        payload["metadata"]["indexed_at"] = indexed_at
-
-        all_points.append(
-            {
-                "id": deterministic_uuid(code),
-                "payload": payload,
-                "_text_to_embed": embedding_text,
-            },
-        )
+        all_points.append(build_point(code, gold, base, indexed_at))
 
     logger.info(f"Built {len(all_points)} points to index")
 
