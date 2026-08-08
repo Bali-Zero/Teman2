@@ -1,5 +1,12 @@
 # HANDOFF — il blocco osservabilità/HOME-fork rimasto aperto (scritto 2026-08-06, M5)
 
+> ## ✅ ESAURITO 2026-08-08 — NON ri-eseguire il PROMPT
+>
+> Sette reperti su otto sono chiusi; l'unico aperto è **§3**, ed è una decisione di business
+> (Legge 5), non lavoro tecnico. **Il PROMPT qui sotto è archeologia**: chi lo incolla in una
+> sessione nuova rifà lavoro già fatto. La tabella per-sezione, con la misura ri-eseguita e
+> chi ha chiuso cosa, è in fondo → [§ CHIUSURA](#chiusura--2026-08-08).
+
 > **Come usarlo:** incolla la sezione «PROMPT» qui sotto in una sessione nuova. Tutto il resto è
 > il dossier che quel prompt presuppone. **Ogni numero in questo file è una MISURA del 2026-08-06
 > e scade**: la prima cosa che il workflow fa è ri-misurarli, non fidarsi.
@@ -288,3 +295,74 @@ così che una #3 si cura sul solo payload che ti ha morso.
 Uno solo di questi è client-facing: §3, perché `fr`/`ru` sono ancora **servite**. Lì il gate
 adversariale va alzato, e la decisione «cosa facciamo delle 967» è Legge 5 — si porta a Zero
 misurata, non si sceglie in autonomia.
+
+---
+
+## CHIUSURA — 2026-08-08
+
+Ogni riga qui sotto è stata **ri-misurata oggi**, su un `origin/main` fresco (`git fetch` prima),
+non ricordata dal dossier. Dove un numero qui contraddice il corpo sopra, il corpo è la lettura
+vecchia e vince questa tabella: il corpo resta intatto di proposito, così chi legge dopo trova la
+cifra precedente già smentita invece di ri-derivarla (W113).
+
+| §   | Reperto                                                 | Stato                             | Chiuso da                                                           | Prova ri-eseguita oggi                                                                                                                                    |
+| --- | ------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §1  | `auth-sentinel.daily` esegue una copia HOME divergente  | **CHIUSO**                        | non mio — stato già riconciliato                                    | `sha256` di live, `origin/main` e questo checkout tutti `fc7ed0b2b44af2b1`; reconciler: `HOME-fork target (0)`, la coppia ora classificata `Canon-paired` |
+| §2  | `nuzantara-repo-sync` non ha canon per niente           | **CHIUSO** (Opzione A, ritiro)    | questa sessione — #3800                                             | plist su disco come `…plist.retired-20260808` (età 0.2d); record di decisione con header `Status: CLOSED`                                                 |
+| §3  | 967 pagine `fr`/`ru` fuori dal loop orario              | **APERTO — `operator[business]`** | nessuno: è una chiamata Legge 5, non un difetto                     | riga 774 del ledger aperta; il log dell'organo stanotte nomina ancora l'orfano                                                                            |
+| §4  | il battito di `pro.translate_hourly` mente              | **CHIUSO**                        | non mio — #3725 (`scan_sidecars` giudica per giurisdizione)         | sidecar **su Pro**: `ts 2026-08-08T05:30:24Z status ok`; `launchctl` caricato, exit 0                                                                     |
+| §5a | `docs_sync` stantio su due file, la sonda ne nomina uno | **CHIUSO**                        | non mio — #3727 (il parser exit-code di `run_wrap` sotto-riportava) | `docs_sync.py --check` **RC=0**, eseguito su un albero fatto a `origin/main`                                                                              |
+| §5b | plist `worktree-gc-universal` Repo-divergent            | **CHIUSO**                        | questa sessione — #3799                                             | reconciler con lo script mergiato: `Repo-divergent (0)`                                                                                                   |
+| §6  | due sonde prescrivono cure superate                     | **CHIUSO**                        | non mio — #3723                                                     | eseguita contro il checkout vero: ora stampa «do NOT pull it» — vedi il reperto nuovo qui sotto                                                           |
+| §7  | code aperte ereditate dal ledger                        | **CHIUSO come contesto**          | —                                                                   | ciascuno dei cinque item ha ≥1 riga viva a ledger; `phantom_operator=0`, `malformed=0`                                                                    |
+| §8  | `refs_in` conta per substring del basename              | **CHIUSO**                        | non mio — #3777                                                     | un regen dell'inventario in questa sessione ha mosso **2 righe** (il timbro e la mia riga), non le 19 di prima                                            |
+
+### Un reperto nuovo, ed è la stessa malattia un piano sotto
+
+§6 chiedeva di curare la **prescrizione**, e la prescrizione è curata. Eseguendo la sonda curata
+contro il checkout M5 vero, però, emerge la sua metà azionabile:
+
+```
+!! [P1] git_alignment: main checkout: 200 behind origin/main, 16 dirty entries
+   fix: … do NOT pull it … The actionable half is the ledger: refresh just that file from
+   origin/main (e.g. `git checkout origin/main -- .claude/skills/modus/PENDING-ARMS.md`
+   in the main checkout, not a full pull) so TRIAGE stops reading stale state.
+```
+
+Il reperto è reale — il ledger nel main checkout è **99 inserzioni / 10 cancellazioni** indietro
+rispetto a `origin/main`, è `tracked-clean` (nessun lavoro non committato di nessuno è a rischio),
+e TRIAGE legge quella copia. Ma **nessuna sessione può eseguire la prescrizione**:
+`worktree_isolation.py` blocca ogni git mutante nel main checkout, e l'unica via d'uscita che il
+messaggio documenta è `AGENT_WORKTREE_ENFORCEMENT=false`, che disarma la guardia in blocco. I git
+_read-only_ lì passano — misurato più volte in questa sessione — quindi il blocco è selettivo per
+verbo, non un malfunzionamento.
+
+Con «non c'è nessun operatore» in vigore, una prescrizione che solo un umano potrebbe eseguire
+nomina una corsia che non esiste. È esattamente ciò di cui parlava §6: una sonda che consiglia
+una cosa vietata addestra chi legge a ignorarla, e la volta dopo ignorerà quella giusta. Lasciato
+come riga a ledger invece che forzato — la cura sta nel testo del rimedio o in un'uscita stretta
+sanzionata, non in una sessione che disarma la guardia per passare.
+
+### Due letture mie che erano sbagliate, e come sono state prese
+
+- **Una sonda eseguita dall'albero sbagliato.** Il reconciler dava `Repo-divergent (1)` per §5b,
+  cioè ancora rotto. Era lo **script pre-cura**: quel worktree è 10 commit indietro e non porta
+  #3799 (`_rebase_homes`: 0 occorrenze lì, 4 su `origin/main`). Ri-eseguito con la copia mergiata
+  — e col canon plist provato byte-identico fra le due revisioni prima di fidarsi — dà 0. Lo
+  stesso strumento risponde 1 o 0 secondo il checkout che lo esegue.
+- **Assenza letta come salute.** La proprioception di M5 non elenca più `pro.translate_hourly`, e
+  stavo per chiudere §4 su quello. M5 porta **5** sidecar, Pro ne porta **152**. La sparizione non
+  prova niente: solo chiedendo a Pro è arrivata la ricevuta vera. (Il divario 5-vs-152 **non** è un
+  punto cieco: il detector legge i sidecar locali per disegno, il sync cross-host è una allowlist
+  esplicita di UN organo, e il codice dice che i guardiani residenti su Pro «legittimamente non
+  esistono» su M5. Su questo mi ero sbagliato per una misura.)
+
+### Non toccato, di proposito
+
+- **Le 967 pagine di §3** — sono ancora **servite**; se continuino a invecchiare senza manutenzione
+  è una decisione di business (Legge 5), non un difetto da auto-chiudere.
+- **Il main checkout M5** — 200 indietro per progetto; non tirato, e la sonda curata ora lo dice da sé.
+- **I commenti di `com.nuzantara.worktree-gc-universal.daily.plist`** — una lane sibling
+  (`agent/air-m5/infra/worktree-gc-plist-docsync`, creata alle 13:45 di oggi) li sta allineando alla
+  copia viva M5. Complementare, non duplicato: sono commenti XML, che `plistlib` scarta, quindi il
+  reconciler non li ha mai visti e #3799 non poteva vederli. Tocca a loro atterrare.
