@@ -162,6 +162,18 @@ on:
       # exact shape of superscar #2 — the queue's own ejection detector going
       # silently dead would be invisible.
       - merge-queue-watch
+      # Added 2026-08-09: prettier-changed-files.yml (built #3848) triggers
+      # only on pull_request/merge_group — same shape as `actionlint` and
+      # `hot-zone-enforcement` above, which are already in this list despite
+      # never firing a push/schedule-on-main workflow_run event either. The
+      # `alert` job's `if:` below can therefore never match a completed run
+      # of this workflow, same as for those two — that is not a gap this
+      # entry needs to solve: check_watcher_coverage.py's contract is pure
+      # name-set membership against this file's declared `name:` (see its
+      # own docstring), not reachability of the alert path, and this file's
+      # header comment already states the list is deliberately
+      # over-inclusive for exactly this reason.
+      - Prettier (changed files)
     types: [completed]
   # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
   # exists — a reactive workflow_run watcher structurally cannot see the
