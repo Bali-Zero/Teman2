@@ -187,6 +187,46 @@ run_wrapper "$W"; rc=$?
 check "il rc del job resta il suo" 3 "$rc"
 has "l'assenza del gateway e loggata" "gateway MISSING" "$W/logs/wr2-ig-metrics-analyst.err.log"
 
+# ---------------------------------------------------------------- COLPEVOLEZZA 5
+# Coda illeggibile: il pre-flight stampava 0 su QUALSIASI eccezione, quindi "il
+# file non c'e" era indistinguibile da "meno di 10 pubblicati" — e il secondo esce
+# 0 in silenzio dopo aver scritto uno stub. Deve nominare la causa e allarmare.
+echo "[6] coda illeggibile — 'nessuna misura' non e 'nessun dato'"
+W="$TMPROOT/noqueue"; mkdir -p "$W/tmp"
+make_world "$W" 0 "AGYUP" 0 yes
+rm -f "$W/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+run_wrapper "$W"; rc=$?
+check "esce 66, non 0" 66 "$rc"
+has "la causa e nominata nel log" "ERR:FileNotFoundError" "$W/logs/wr2-ig-metrics-analyst.log"
+has "l'ERR distingue le due cose" "it is 'no measurement'" "$W/logs/wr2-ig-metrics-analyst.err.log"
+if [ -f "$W/gateway-called.txt" ] && grep -qF "UNREADABLE" "$W/gateway-called.txt"; then
+    ok "il gateway e stato invocato e il messaggio dice UNREADABLE"
+else
+    ko "coda illeggibile: nessun allarme (o allarme senza causa)"
+fi
+if ls "$W/.claude/skills/bali-zero-brand/_proposed-amendments/"*insufficient-data* >/dev/null 2>&1; then
+    ko "ha scritto lo stub 'insufficient data' su un guasto di lettura"
+else
+    ok "nessuno stub 'insufficient data' su un guasto di lettura"
+fi
+
+# ---------------------------------------------------------------- COLPEVOLEZZA 6
+# Morte NON diagnosticata: TMPDIR inesistente fa fallire il primo `mktemp`, che
+# sta fuori dalla regione con errexit disarmato. Prima di oggi lo script moriva
+# li in totale silenzio, come nell'errexit bug che questo commit cura: nominare
+# solo le uscite a cui ho pensato e l'errore W107 alla scala di un solo organo.
+echo "[7] morte non diagnosticata — la voce di ultima istanza parla"
+W="$TMPROOT/nodiag"
+make_world "$W" 0 "AGYUP" 0 yes   # NOTA: $W/tmp deliberatamente NON creata
+run_wrapper "$W"; rc=$?
+if [ "$rc" -eq 0 ]; then ko "atteso un rc non-zero, ottenuto 0"; else ok "esce non-zero (rc=$rc)"; fi
+has "arriva oltre il pre-flight prima di morire" "published-with-metrics count: 12" "$W/logs/wr2-ig-metrics-analyst.log"
+if [ -f "$W/gateway-called.txt" ] && grep -qF "NO diagnosis" "$W/gateway-called.txt"; then
+    ok "il gateway dice che e morto SENZA diagnosi (fatto diverso da un guasto nominato)"
+else
+    ko "morte fuori da ogni percorso noto: nessuna voce"
+fi
+
 # ------------------------------------------------------------------- MUTAZIONE
 # Rimette errexit dentro e attorno alla sonda — cioe ESATTAMENTE il codice di
 # prima — e pretende che il caso [1] diventi rosso. Un corpus che resta verde

@@ -64,10 +64,12 @@ fi
 #     must not look the same afterwards. Same for the rc, which is always written.
 # It can never be the thing that kills the run: errexit is restored to whatever
 # it was and the function always returns 0.
+NOTIFIED=0
 notify_failure() {
   local msg="$1"
   local dedup="$2"
   local gateway notify_py rc had_errexit=0
+  NOTIFIED=1
   case $- in *e*) had_errexit=1 ;; esac
   notify_py=/opt/homebrew/bin/python3
   [ -x "$notify_py" ] || notify_py=/usr/bin/python3
@@ -85,6 +87,35 @@ notify_failure() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] telegram notify rc=${rc} (gateway=${gateway}, python=${notify_py})" >> "$LOG"
   return 0
 }
+
+# Voice of last resort. Naming the two KNOWN failure exits is not enough: under
+# `set -e` this script can also die at any un-guarded line — a failing `mkdir`,
+# `python3` absent so the pre-flight assignment aborts, `mktemp` failing because
+# TMPDIR does not exist — and every one of those was as silent as the errexit bug
+# this commit cures. Curing only the exits I happened to think of is the W107
+# mistake (one mouth out of five) at the scale of a single organ. So: any non-zero
+# exit that has NOT already spoken gets a message naming that it died WITHOUT a
+# diagnosis, which is a different and more alarming fact than a named failure.
+#
+# Deliberate limit, declared rather than hidden and stated PRECISELY because a
+# comment that overstates its own coverage is the next reader's false premise:
+# the voice covers everything BELOW the `trap` line, so anything failing above it
+# is still silent — `mkdir -p "$LOGDIR"` itself, and the TIMEOUT_SECS/POLL_SECS
+# validation (a non-integer WR2_IG_METRICS_POLL_SECS makes `[ … -lt 1 ]` fail and
+# errexit take the script out before there is any voice to install).
+on_exit_voice() {
+  local rc="$1"
+  if [ "$rc" -eq 0 ] || [ "$NOTIFIED" -eq 1 ]; then
+    return 0
+  fi
+  notify_failure "⚠️ wr2-ig-metrics-analyst exited ${rc} with NO diagnosis on $(hostname -s) — it died outside every path that knows how to explain itself. Weekly IG-insights amendment NOT produced. See ${LOG} / ${ERR}" \
+    "wr2-ig-metrics-analyst:undiagnosed:$(date +%Y-W%V):$(hostname -s)"
+  return 0
+}
+# Installed HERE, before the first line that can fail, and re-installed later by
+# cleanup_active_claude (which REPLACES this trap and therefore has to carry the
+# voice itself — a `trap ... EXIT` written later silently unarms this one).
+trap 'on_exit_voice $?' EXIT
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG"
 
@@ -106,10 +137,26 @@ try:
     n = sum(1 for i in items if i.get('state') in ('published', 'published_with_edits') and (i.get('engagement_metrics') or {}).get('likes') is not None)
     print(n)
 except Exception as e:
-    print(0)
+    # NOT 0 (2026-08-08). Printing 0 on any exception made 'the queue file is
+    # gone / moved / corrupt' indistinguishable from 'fewer than 10 carousels
+    # published', and the second of those exits 0 in silence after writing an
+    # insufficient-data stub. So a broken path would have parked this organ in a
+    # permanent, well-documented, entirely wrong 'not enough data yet' — the
+    # W114 shape, where an empty measurement means either 'all present' or 'the
+    # check never ran'. Name the cause and let the caller alarm.
+    print('ERR:%s' % type(e).__name__)
 ")
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] published-with-metrics count: $PUBLISHED_COUNT" >> "$LOG"
+
+case "$PUBLISHED_COUNT" in
+  ERR:*)
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] pre-flight could NOT read the review queue (${PUBLISHED_COUNT}) — this is not 'no data', it is 'no measurement'" >> "$ERR"
+    notify_failure "⚠️ wr2-ig-metrics-analyst: review queue UNREADABLE (${PUBLISHED_COUNT}) on $(hostname -s) — cannot tell 'not enough data' from 'no file'. Amendment NOT produced." \
+      "wr2-ig-metrics-analyst:queue-unreadable:$(date +%Y-W%V):$(hostname -s)"
+    exit 66
+    ;;
+esac
 
 if [ "$PUBLISHED_COUNT" -lt 10 ]; then
   STUB="${HOME}/.claude/skills/bali-zero-brand/_proposed-amendments/$(date +%Y-%m-%d)-ig-insights-insufficient-data.md"
@@ -246,6 +293,9 @@ terminate_claude_group() {
 }
 
 cleanup_active_claude() {
+  # First line, before anything can clobber it: this is also the script's exit
+  # status when we get here from the EXIT trap.
+  local rc="${1:-$?}"
   trap - EXIT INT TERM
   if [ -n "$ACTIVE_CLAUDE_PGID" ]; then
     terminate_claude_group "$ACTIVE_CLAUDE_PGID"
@@ -253,9 +303,19 @@ cleanup_active_claude() {
   if [ -n "$ACTIVE_CLAUDE_PID" ]; then
     wait "$ACTIVE_CLAUDE_PID" 2>/dev/null || true
   fi
+  # This trap REPLACED the early `trap 'on_exit_voice $?' EXIT`, so it has to
+  # carry the voice or installing it would have unarmed it — a cure that deletes
+  # another cure by being written later in the file.
+  on_exit_voice "$rc"
+  if [ -n "${1:-}" ]; then
+    exit "$rc"
+  fi
 }
 trap cleanup_active_claude EXIT
-trap 'cleanup_active_claude; exit 130' INT TERM
+# 130 explicitly, not $?: on an external SIGTERM (the 28h hang of 2026-07-14 was
+# killed exactly that way) $? can be 0, and a voice that reads 0 stays quiet for
+# the single incident that most needs reporting.
+trap 'cleanup_active_claude 130' INT TERM
 
 claude_stderr_retryable() {
   local stderr_file="$1"
