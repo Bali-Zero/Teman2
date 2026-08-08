@@ -97,6 +97,10 @@ class TestKGFastPath:
         assert result is not None
         assert isinstance(result, CoreResult)
         assert result.model_used == "kg_langgraph"
+        # Parent contract: KG fast-path never populated the public route field.
+        assert result.route_used is None
+        # SurfaceRouter confidence chooses a route; it is not evidence quality.
+        assert result.evidence_score == 0.0
 
     @pytest.mark.asyncio
     async def test_kg_fast_path_returns_none_when_no_orchestrator(self):
