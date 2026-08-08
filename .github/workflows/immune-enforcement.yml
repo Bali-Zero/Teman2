@@ -311,7 +311,7 @@ jobs:
           TMPDIR: ${{ runner.temp }}/runtime-truth-tmp
         run: |
           mkdir -p "$HOME" "$TMPDIR"
-          python -m pip install --quiet pytest PyYAML==6.0.3
+          python -m pip install --quiet pytest PyYAML==6.0.3 httpx==0.28.1
           python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
 
       - name: Runtime Truth CI gauntlet (four incident contracts)

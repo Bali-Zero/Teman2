@@ -59,7 +59,7 @@ EXPECTED_META_STEP: Final[dict[str, object]] = {
     },
     "run": (
         'mkdir -p "$HOME" "$TMPDIR"\n'
-        "python -m pip install --quiet pytest PyYAML==6.0.3\n"
+        "python -m pip install --quiet pytest PyYAML==6.0.3 httpx==0.28.1\n"
         f"python -m pytest {META_TEST} -q\n"
     ),
 }
@@ -454,7 +454,7 @@ def _run_exact_meta_step(
         "test -d \"$HOME\"\n"
         "test -d \"$TMPDIR\"\n"
         "printf '%s\\n' \"$*\" >> \"$RUNTIME_TRUTH_COMMAND_LOG\"\n"
-        "if [ \"$*\" = '-m pip install --quiet pytest PyYAML==6.0.3' ]; then\n"
+        "if [ \"$*\" = '-m pip install --quiet pytest PyYAML==6.0.3 httpx==0.28.1' ]; then\n"
         "  : > \"$RUNTIME_TRUTH_DEP_MARKER\"\n"
         "elif [ \"$*\" = '-m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q' ]; then\n"
         "  test -f \"$RUNTIME_TRUTH_DEP_MARKER\"\n"
@@ -553,7 +553,7 @@ def test_exact_meta_workflow_shell_bootstraps_absent_environment_and_dependencie
         tmp_path=tmp_path,
     )
     assert commands == [
-        "-m pip install --quiet pytest PyYAML==6.0.3",
+        "-m pip install --quiet pytest PyYAML==6.0.3 httpx==0.28.1",
         f"-m pytest {META_TEST} -q",
     ]
 
@@ -562,7 +562,7 @@ def test_exact_meta_workflow_shell_bootstraps_absent_environment_and_dependencie
     "removed_line",
     (
         'mkdir -p "$HOME" "$TMPDIR"\n',
-        "python -m pip install --quiet pytest PyYAML==6.0.3\n",
+        "python -m pip install --quiet pytest PyYAML==6.0.3 httpx==0.28.1\n",
     ),
 )
 def test_guilt_meta_bootstrap_or_dependency_removal_fails_closed(
