@@ -115,7 +115,7 @@ USAGE (dry-run is the default; nothing is written without --apply):
 
     # multiple codes:
     PYTHONPATH=. python backend/scripts/kbli_documents_cure.py \\
-        --only 50113,68112,49213 --apply
+        --only 50113,68112,49213 --apply --cure-run kbli_cure:2026-08-08
 
     # every quarantined code (73 as of 2026-07-19), dry-run against prod
     # GitHub raw main:
@@ -123,7 +123,8 @@ USAGE (dry-run is the default; nothing is written without --apply):
 
     # apply (writes DB):
     fly ssh console -a nuzantara-rag -C \\
-        "python backend/scripts/kbli_documents_cure.py --all-quarantined --apply"
+        "python backend/scripts/kbli_documents_cure.py --all-quarantined --apply \\
+            --cure-run kbli_cure:2026-08-08"
 """
 
 from __future__ import annotations
@@ -784,7 +785,9 @@ async def load_dataset(source: str) -> list[dict]:
         return r.json()["data"]
 
 
-async def main() -> int | None:
+def build_parser() -> argparse.ArgumentParser:
+    """Module-level argparse construction so tests exercise the REAL parser,
+    not a copy that stays green if production validation is deleted."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
     ap.add_argument(
@@ -861,22 +864,35 @@ async def main() -> int | None:
         help="canonical dataset: local file path (read directly) or URL (httpx fetch). "
         "Default: GitHub raw main.",
     )
-    args = ap.parse_args()
+    return ap
 
+
+def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> str:
+    """Module-level validation of parsed args, returning the resolved cure_run.
+
+    Lives outside ``main`` so tests exercise the REAL production validation
+    rather than a re-implementation that stays green if this check is deleted.
+    """
     # --cure-run: REQUIRED on apply; defaults to "dry-run" otherwise. A constant
     # would make every pass of this script share one cure_run, and a later pass's
     # pre-cure snapshot would be silently skipped by ON CONFLICT DO NOTHING — the
     # one-shot disease resurrected across passes.
     if args.apply and not args.cure_run:
-        ap.error("--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id")
+        parser.error("--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id")
     if not args.cure_run:
-        cure_run = "dry-run"
-    else:
-        cure_run = args.cure_run.strip()
-        if not cure_run:
-            ap.error("--cure-run must not be empty")
-        if any(c.isspace() for c in cure_run):
-            ap.error(f"--cure-run must not contain whitespace (got {cure_run!r})")
+        return "dry-run"
+    cure_run = args.cure_run.strip()
+    if not cure_run:
+        parser.error("--cure-run must not be empty")
+    if any(c.isspace() for c in cure_run):
+        parser.error(f"--cure-run must not contain whitespace (got {cure_run!r})")
+    return cure_run
+
+
+async def main() -> int | None:
+    ap = build_parser()
+    args = ap.parse_args()
+    cure_run = validate_args(ap, args)
 
     dataset = await load_dataset(args.dataset)
 

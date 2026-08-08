@@ -511,56 +511,126 @@ def test_kg_arm_skips_a_code_absent_from_the_graph():
 # --cure-run CLI shape (round-2 fix, 2026-08-08): the pass id belongs to the
 # invocation, not a script constant. A constant makes every pass share one
 # cure_run, and a later pass's snapshot is silently skipped by ON CONFLICT.
+#
+# Round-3: tests import build_parser()/validate_args() from the SCRIPT so they
+# exercise the REAL production parser + validation, never a copy rebuilt inside
+# the test (which stays green if production validation is deleted).
 # ---------------------------------------------------------------------------
 
 
-def _phantom_parser():
-    """Build the same argparse parser main() uses, so the CLI contract is
-    tested against the real option definitions rather than a copy."""
-    import argparse as _argparse
-
-    from backend.scripts import kbli_documents_phantom_cure as _mod
-
-    ap = _argparse.ArgumentParser()
-    ap.add_argument("--apply", action="store_true")
-    ap.add_argument(
-        "--cure-run",
-        default=None,
-        help=(
-            "Stable identifier of THIS cure pass, e.g. "
-            "'<script>:<scope-or-spec-date>' — each pass declares its own; "
-            "re-running the same pass with the same id stays idempotent, "
-            "a new pass MUST use a new id or its snapshots are silently skipped. "
-            "REQUIRED when --apply is passed."
-        ),
-    )
-    ap.add_argument("--only", default=None)
-    ap.add_argument("--kg", action="store_true")
-    ap.add_argument("--census", action="store_true")
-    ap.add_argument("--dataset", default=_mod.DATASET_URL)
-    return ap
+from backend.scripts.kbli_documents_phantom_cure import build_parser as _phantom_build_parser
+from backend.scripts.kbli_documents_phantom_cure import validate_args as _phantom_validate_args
 
 
 def test_cure_run_required_when_apply_passed_phantom():
-    """GUILT: --apply without --cure-run must error out (parser.error → exit 2)."""
-    ap = _phantom_parser()
+    """GUILT: --apply without --cure-run must error out (validate_args → parser.error → exit 2)."""
+    ap = _phantom_build_parser()
+    args = ap.parse_args(["--apply", "--only", "82920"])
     with pytest.raises(SystemExit) as exc:
-        ap.parse_args(["--apply", "--only", "82920"])
-        ap.error("--cure-run is REQUIRED")
+        _phantom_validate_args(ap, args)
     assert exc.value.code == 2
 
 
 def test_cure_run_with_whitespace_rejected_phantom():
     """GUILT: whitespace in --cure-run would corrupt the ON CONFLICT key."""
-    ap = _phantom_parser()
+    ap = _phantom_build_parser()
     args = ap.parse_args(["--cure-run", "has space", "--apply", "--only", "82920"])
-    cure_run = args.cure_run.strip()
-    assert any(c.isspace() for c in cure_run)
+    with pytest.raises(SystemExit) as exc:
+        _phantom_validate_args(ap, args)
+    assert exc.value.code == 2
 
 
 def test_dry_run_without_cure_run_is_fine_phantom():
     """INNOCENCE: dry-run (no --apply) does not require --cure-run."""
-    ap = _phantom_parser()
+    ap = _phantom_build_parser()
     args = ap.parse_args(["--only", "82920"])
     assert args.cure_run is None
     assert args.apply is False
+    assert _phantom_validate_args(ap, args) == "dry-run"
+
+
+def test_cure_run_strips_and_returns_clean_value_phantom():
+    """The resolved cure_run is the stripped value, not the raw arg."""
+    ap = _phantom_build_parser()
+    args = ap.parse_args(["--apply", "--only", "82920", "--cure-run", "phantom_cure:2026-08-08"])
+    assert _phantom_validate_args(ap, args) == "phantom_cure:2026-08-08"
+
+
+# ---------------------------------------------------------------------------
+# CALL-SITE PIN (round-3): drive the apply path over one code and assert
+# archive_row is invoked with the cure_run value passed on the CLI. The
+# helper-level tests above cannot pin this — they exercise archive_row
+# directly, not the script's call to it.
+# ---------------------------------------------------------------------------
+
+
+def test_apply_passes_cli_cure_run_to_archive_row_phantom(monkeypatch):
+    """The cure_run from --cure-run must reach archive_row verbatim."""
+    import asyncio as _asyncio
+    import sys as _sys
+
+    from backend.scripts import kbli_documents_phantom_cure as _phantom
+
+    monkeypatch.setattr(_sys, "argv", [
+        "phantom", "--only", "82920", "--apply", "--cure-run", "phantom_cure:2026-08-08",
+        "--dataset", "/fake/pinned-sha-dataset.json",
+    ])
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+
+    async def _dataset(_source):
+        return CANONICAL, "fake-provenance"
+
+    class _ArchiveSpyConn:
+        def __init__(self):
+            self.archive_calls: list[tuple] = []
+
+        async def execute(self, query: str, *args):
+            return "OK"
+
+        async def fetch(self, _sql, codes):
+            return [{
+                "kode_kbli": "82920",
+                "judul": "AKTIVITAS PENGEMASAN",
+                "content": "# KBLI 82920\nstale\n",
+                "metadata": PHANTOM_ROW_82920["metadata"],
+                "created_at": None,
+                "updated_at": None,
+            }]
+
+        async def fetchval(self, _sql, *_a):
+            return True  # has cure_run column + has composite constraint
+
+        async def fetchrow(self, _sql, *_a):
+            return None
+
+        async def close(self):
+            pass
+
+        def transaction(self):
+            class _Tx:
+                async def __aenter__(self_inner):
+                    return self_inner
+
+                async def __aexit__(self_inner, *_a):
+                    pass
+            return _Tx()
+
+    conn = _ArchiveSpyConn()
+
+    async def _connect(_dsn):
+        return conn
+
+    monkeypatch.setattr(_phantom, "load_dataset", _dataset)
+    monkeypatch.setattr(_phantom.asyncpg, "connect", _connect)
+
+    archive_calls: list[dict] = []
+
+    async def _spy_archive_row(_conn, _code, _params, cure_run, **kw):
+        archive_calls.append({"cure_run": cure_run, **kw})
+
+    monkeypatch.setattr(_phantom, "archive_row", _spy_archive_row)
+
+    _asyncio.run(_phantom.main())
+
+    assert len(archive_calls) == 1
+    assert archive_calls[0]["cure_run"] == "phantom_cure:2026-08-08"

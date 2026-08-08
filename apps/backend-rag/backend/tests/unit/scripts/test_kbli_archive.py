@@ -8,6 +8,10 @@ one-shot per code (``UNIQUE(kode_kbli)`` + ``ON CONFLICT DO NOTHING``), so a
 second cure of the same code silently preserved nothing. Migration 269 +
 this module replace that with ``UNIQUE(kode_kbli, cure_run)`` so each
 successive cure snapshot survives.
+
+KNOWN LIMIT: the fake mirrors the module's SQL textually; the PG-level
+contract is exercised only in prod — a real-PG harness is deliberately out
+of unit scope.
 """
 
 from __future__ import annotations
@@ -30,8 +34,9 @@ class _FakeArchiveConn:
     ``(kode_kbli, cure_run)``.
     """
 
-    def __init__(self, *, has_cure_run: bool = True) -> None:
+    def __init__(self, *, has_cure_run: bool = True, has_constraint: bool = True) -> None:
         self.has_cure_run = has_cure_run
+        self.has_constraint = has_constraint
         self.rows: list[dict] = []
         self.execute_calls: list[tuple[str, tuple]] = []
 
@@ -66,6 +71,8 @@ class _FakeArchiveConn:
             self.rows.append(row)
 
     async def fetchval(self, query: str, *_args: object) -> bool:
+        if "pg_constraint" in query:
+            return self.has_constraint
         return self.has_cure_run
 
 
@@ -134,6 +141,19 @@ async def test_ensure_archive_schema_passes_when_cure_run_present():
     conn = _FakeArchiveConn(has_cure_run=True)
     await ensure_archive_schema(conn)
     assert len(conn.execute_calls) >= 1  # DDL ran, no exception
+
+
+# ---------------------------------------------------------------------------
+# ensure_archive_schema on a table lacking the composite constraint => RuntimeError
+# ---------------------------------------------------------------------------
+
+
+async def test_ensure_archive_schema_raises_when_constraint_absent():
+    """A partially-migrated table (column present, constraint dropped by a
+    ROLLBACK) must fail loudly here rather than at the first confusing INSERT."""
+    conn = _FakeArchiveConn(has_cure_run=True, has_constraint=False)
+    with pytest.raises(RuntimeError, match="kbli_documents_archive_code_run_key"):
+        await ensure_archive_schema(conn)
 
 
 # ---------------------------------------------------------------------------

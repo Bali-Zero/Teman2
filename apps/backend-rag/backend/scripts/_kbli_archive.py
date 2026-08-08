@@ -39,6 +39,9 @@ _VERSIONING_MIGRATION = "269_kbli_archive_versioning"
 #: composite unique constraint that migration 269 introduced. Existing prod
 #: tables are upgraded by the migration runner; ``CREATE TABLE IF NOT EXISTS``
 #: is a no-op on them (the column/constraint are already there).
+#:
+#: TWIN of the CREATE TABLE in migration ``269_kbli_archive_versioning.sql`` —
+#: keep them byte-identical; the migration carries the matching comment.
 ARCHIVE_TABLE_DDL = """
 CREATE TABLE IF NOT EXISTS kbli_documents_archive (
     id SERIAL PRIMARY KEY,
@@ -67,13 +70,16 @@ class _Conn(Protocol):
 
 async def ensure_archive_schema(conn: _Conn) -> None:
     """Create the archive table if absent and verify the live table carries the
-    ``cure_run`` column added by migration 269.
+    ``cure_run`` column AND the composite constraint added by migration 269.
 
     ``CREATE TABLE IF NOT EXISTS`` cannot upgrade an old table — if the table
     was created before migration 269 ran, it will lack ``cure_run`` and the
     composite constraint. Falling back to one-shot semantics in that case is
     exactly the disease being cured, so we fail loud (``RuntimeError`` naming
     the migration) rather than degrade silently.
+
+    After a migration ROLLBACK (column/constraint dropped), this guard is what
+    catches the state loudly — ``archive_row`` is never reached.
     """
 
     await conn.execute(ARCHIVE_TABLE_DDL)
@@ -91,6 +97,21 @@ async def ensure_archive_schema(conn: _Conn) -> None:
             f"(added by migration {_VERSIONING_MIGRATION}). "
             "CREATE TABLE IF NOT EXISTS cannot upgrade an old table — "
             f"run migration {_VERSIONING_MIGRATION} before this script."
+        )
+
+    has_constraint = await conn.fetchval(
+        "SELECT EXISTS ("
+        "  SELECT 1 FROM pg_constraint"
+        "  WHERE conname = 'kbli_documents_archive_code_run_key'"
+        ")"
+    )
+    if not has_constraint:
+        raise RuntimeError(
+            "kbli_documents_archive has the 'cure_run' column but lacks the "
+            "composite constraint 'kbli_documents_archive_code_run_key' "
+            f"(added by migration {_VERSIONING_MIGRATION}). "
+            "A partially-migrated table would fail confusingly at the first "
+            f"INSERT — run migration {_VERSIONING_MIGRATION} before this script."
         )
 
 
