@@ -66,6 +66,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "wrapper<->payload",        # exit code vs log content (W84/#2)
     "produced<->promoted",      # artifacts stranded on the producing side
     "guardian<->cadence",       # stale guardians (guardian-of-guardians)
+    "executed<->committed",     # the code a probe RUNS vs origin/main's (2026-08-08)
     "canon<->installed",        # repo launchagent canon vs ~/Library vs launchctl (#1926)
     "organ<->heartbeat",        # declared organs vs sidecar liveness
     "code<->docs",              # W86
@@ -176,6 +177,73 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
 
 _BEHIND_RE = re.compile(r"main checkout: (-?\d+) behind origin/main")
 _SELF_STALE_RE = re.compile(r"^SELF STALE: ")
+
+
+CURRENT, STALE, AHEAD, EDITED, UNVERIFIABLE = "current", "stale", "ahead", "edited", "unverifiable"
+
+
+def _version_vs_main(root: Path, rel: str, actual_sha: str) -> tuple[str, str]:
+    """Attribute ONE tracked path: is the version actually in play behind origin/main?
+
+    Returns (state, detail). For CURRENT and STALE, detail is origin/main's blob sha;
+    otherwise it is the sentence explaining why no direction could be assigned. One
+    engine, two callers — `_self_code_staleness` (whose `actual_sha` is the bytes this
+    process loaded) and `probe_executed_code_currency` (whose `actual_sha` is the file on
+    disk, because that is what the wrap will execute). A second hand-written copy is how
+    twins drift apart while both look cured (W106b, fourth layer).
+
+    DIFFERING IS NOT BEHIND — the whole lesson of W106b is that a comparison knows THAT
+    two copies differ and never WHICH is stale. STALE is returned only on positive
+    evidence, and the evidence is about THIS PATH, not about the branch: the bytes are
+    what HEAD holds, AND they are also what the merge-base held, so main is the only side
+    that moved. Everything git could not decide is UNVERIFIABLE, never a quiet pass.
+
+    Cost: one `rev-parse` when the path is current (the overwhelmingly common case), five
+    when it differs. Nothing here is cached across paths on purpose — a cache keyed by
+    root would answer for the HEAD it was filled at, which is the disease.
+    """
+    rc2, main_blob, _ = sh(["git", "rev-parse", f"origin/main:{rel}"], timeout=10, cwd=root)
+    if rc2 != 0 or not main_blob.strip():
+        return UNVERIFIABLE, (f"cannot compare {rel} against origin/main "
+                              f"(offline, or this path is new on this branch)")
+    if actual_sha == main_blob.strip():
+        return CURRENT, main_blob.strip()
+    rc3, head_blob, _ = sh(["git", "rev-parse", f"HEAD:{rel}"], timeout=10, cwd=root)
+    if rc3 != 0:
+        return UNVERIFIABLE, (f"{rel} is not readable at this HEAD (new, "
+                              f"untracked, or unborn HEAD) — direction cannot be attributed")
+    if head_blob.strip() != actual_sha:
+        return EDITED, (f"{rel} differs from origin/main because it has "
+                        f"UNCOMMITTED edits — it is being worked on, not left behind")
+    # Direction is a question about THIS PATH, and the obvious proxy for it — "is my
+    # branch an ancestor of origin/main" — answers a DIFFERENT one. A single local commit
+    # touching an unrelated file makes `merge-base --is-ancestor HEAD origin/main` say
+    # "no", and the old code read that as "ahead, not stale" and went silent, while the
+    # file actually in play was exactly the version main had replaced. That is a
+    # false-clean produced by the very confusion this probe exists to catch (W88: the
+    # proxy lies; #3: judge the entity, not the form). So ask git about the file:
+    # at the merge-base, was this path the bytes we are running?
+    rcs, shallow, _ = sh(["git", "rev-parse", "--is-shallow-repository"], timeout=10, cwd=root)
+    if rcs != 0:
+        # Not knowing whether the history is truncated is not the same as knowing it is
+        # whole. Reporting a determination we did not make is the calm liar (W84).
+        return UNVERIFIABLE, (f"{rel} differs from origin/main and git could not say "
+                              f"whether this clone is shallow (exit {rcs}) — direction unknown")
+    if shallow.strip() == "true":
+        return UNVERIFIABLE, (f"{rel} differs from origin/main and this "
+                              f"clone is SHALLOW, so history cannot be decided — direction unknown")
+    rcb, base, _ = sh(["git", "merge-base", "HEAD", "origin/main"], timeout=10, cwd=root)
+    if rcb != 0 or not base.strip():
+        return UNVERIFIABLE, (f"{rel} differs from origin/main but they share no "
+                              f"reachable merge-base (exit {rcb}) — direction unknown, not a verdict")
+    rc5, base_blob, _ = sh(["git", "rev-parse", f"{base.strip()}:{rel}"], timeout=10, cwd=root)
+    if rc5 != 0:
+        return UNVERIFIABLE, (f"{rel} differs from origin/main and did not exist at their "
+                              f"merge-base — both sides added it, so neither is behind the other")
+    if base_blob.strip() != actual_sha:
+        return AHEAD, (f"{rel} differs from origin/main because THIS side changed it "
+                       f"since the merge-base — it is our own newer code, not old code")
+    return STALE, main_blob.strip()
 
 
 def _blob_sha(data: bytes) -> str:
@@ -527,41 +595,12 @@ def _self_code_staleness(root: Path | None) -> tuple[int, list[str]]:
     except ValueError:
         return 0, [f"self-version: the executing copy is outside the checkout "
                    f"({self_file}) — version not attributable"]
-    rc2, main_blob, _ = sh(["git", "rev-parse", f"origin/main:{rel.as_posix()}"], timeout=10, cwd=root)
-    if rc2 != 0 or not main_blob.strip():
-        return 0, [f"self-version: cannot compare {rel.as_posix()} against origin/main "
-                   f"(offline, or this path is new on this branch)"]
-    if _RUNNER_SHA == main_blob.strip():
+    state, detail = _version_vs_main(root, rel.as_posix(), _RUNNER_SHA)
+    if state == CURRENT:
         return 0, []
-    # DIFFERING IS NOT BEHIND. The whole lesson of W106b is that a comparison knows THAT
-    # two copies differ and never WHICH is stale; calling an AHEAD copy "OLD text" would
-    # be this organ re-committing, one floor down, the scar it carries. Found by running
-    # this cure in the worktree that authored it — it accused its own newer code. So
-    # attribute the side, and accuse only when the evidence is positive: the running
-    # bytes are what HEAD holds AND this HEAD is an ancestor of origin/main.
-    rc3, head_blob, _ = sh(["git", "rev-parse", f"HEAD:{rel.as_posix()}"], timeout=10, cwd=root)
-    if rc3 != 0:
-        return 0, [f"self-version: {rel.as_posix()} is not readable at this HEAD (new, "
-                   f"untracked, or unborn HEAD) — direction cannot be attributed"]
-    if head_blob.strip() != _RUNNER_SHA:
-        return 0, [f"self-version: {rel.as_posix()} differs from origin/main because it has "
-                   f"UNCOMMITTED edits — it is being worked on, not left behind"]
-    rc4, _, _ = sh(["git", "merge-base", "--is-ancestor", "HEAD", "origin/main"], timeout=10, cwd=root)
-    if rc4 == 1:
-        # A valid "no". Ancestry is still a proxy that lies after a squash-merge (W88),
-        # and on a SHALLOW clone a true ancestor answers 1 because the path is truncated
-        # — so do not call that "not stale", call it unverifiable.
-        rcs, shallow, _ = sh(["git", "rev-parse", "--is-shallow-repository"], timeout=10, cwd=root)
-        if rcs == 0 and shallow.strip() == "true":
-            return 0, [f"self-version: {rel.as_posix()} differs from origin/main and this "
-                       f"clone is SHALLOW, so ancestry cannot be decided — direction unknown"]
-        return 0, [f"self-version: {rel.as_posix()} differs from origin/main and this HEAD is "
-                   f"not an ancestor of it (branch ahead, or diverged) — not stale"]
-    if rc4 != 0:
-        # rc>1 is git failing, not git answering "no" — reporting a determination we did
-        # not make is the calm liar one floor down (W84).
-        return 0, [f"self-version: {rel.as_posix()} differs from origin/main but git could "
-                   f"not decide ancestry (exit {rc4}) — direction unknown, not a verdict"]
+    if state != STALE:
+        return 0, [f"self-version: {detail}"]
+    main_blob = detail
     return 1, [f"SELF STALE: the copy that wrote this report ({rel.as_posix()} "
                f"{_RUNNER_SHA[:8]}) is not origin/main's ({main_blob.strip()[:8]}) "
                f"— every finding and every remedy on this report is that copy's OLD text, "
@@ -615,8 +654,106 @@ def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str,
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
+_REPO_TOKEN = "{repo}/"
+
+
+def _wrap_repo_targets(entry: dict) -> list[str]:
+    """Every repo-relative path a `wrap` entry executes; empty list if none.
+
+    Scans the WHOLE target list for elements beginning with `{repo}/`: a wrap may carry
+    flags before or after the path, so indexing element 1 would judge by POSITION instead
+    of by entity — the form/entity confusion of superscar #3, in a new costume. Returning
+    only the FIRST match is the same mistake wearing the other sleeve: a runner given two
+    repo payloads executes both, and stopping early silences the second.
+    """
+    if entry.get("type") != "wrap":
+        return []
+    target = entry.get("target")
+    # A bare string iterates CHARACTER by character and silently yields nothing — the
+    # entry would drop out of the audit with no trace. Normalise instead of iterating.
+    if isinstance(target, str):
+        target = [target]
+    elif not isinstance(target, list):
+        return []
+    # ALL of them, not the first: `["pytest", "{repo}/a.py", "{repo}/b.py"]` executes two
+    # payloads, and stopping at the first silences the second.
+    return [t[len(_REPO_TOKEN):] for t in target
+            if isinstance(t, str) and t.startswith(_REPO_TOKEN)]
+
+
+def _disk_blob(p: Path) -> str:
+    """The blob git would store for what is ON DISK at `p`.
+
+    For a symlink git stores the LINK TEXT, while `read_bytes()` follows the link and
+    hashes the referent — two different representations of two different things, and the
+    mismatch would read as "uncommitted edits" (silent) on a tracked symlink that is
+    genuinely stale.
+    """
+    if p.is_symlink():
+        return _blob_sha(os.readlink(p).encode())
+    return _blob_sha(p.read_bytes())
+
+
+def probe_executed_code_currency(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Every `{repo}/…` payload this organ EXECUTES — not just the one it is.
+
+    `_self_code_staleness` covers proprioception.py itself. But seven registry entries
+    shell out to OTHER scripts in the same tree, and on 2026-08-08 three of the six in
+    m5's jurisdiction were behind origin/main there, one demonstrably lying: `launchagent_canon`
+    reported `repo_divergent: 1` from the pre-#3799 reconciler while the merged copy
+    reported 0 on the same plists in the same minute. Curing the runner and calling the
+    disease closed is W107 — "I cured one wrapper of five".
+
+    Judged by BLOB. This never runs a target to find out whether it is stale: an alarm
+    that executes the code whose health it reports shares that code's failure mode (W108).
+
+    Scope is declared, not silent (W97), and the two boundaries are drawn for opposite
+    reasons. It DOES audit wraps a `--probes`/`--tags` run did not select — a currency
+    finding about a probe you skipped this time is still true, and hiding it would make
+    the narrow run read cleaner than the machine is. It does NOT audit wraps outside this
+    machine's jurisdiction — those payloads are never executed here, so a finding about
+    them is a P1 nobody on this host can act on, and the host that does run them audits
+    them itself.
+    """
+    ev, findings, seen = [], 0, 0
+    # The registry that main() actually runs, not the embedded default: `config/
+    # boundaries.json` may add or replace a wrap, and auditing the defaults would report
+    # on payloads nobody executes while staying silent about the ones they do.
+    registry, _, _ = load_registry(root)
+    me = machine_label()
+    for entry in registry:
+        # Jurisdiction, exactly as main() scopes it. `arsenal_seats` is mini/pro-only, so
+        # on m5 its payload is never executed — calling it a stale PAYLOAD there is a
+        # finding about code this machine does not run, and the machine that does run it
+        # audits it itself. Same doctrine the heartbeat detector already applies to
+        # guardians that legitimately do not exist on a given host.
+        machines = entry.get("machines", ["all"])
+        if "all" not in machines and me not in machines:
+            continue
+        for rel in _wrap_repo_targets(entry):
+            seen += 1
+            try:
+                sha = _disk_blob(root / rel)
+            except OSError as e:
+                ev.append(f"{entry['id']}: {rel} unreadable on disk ({type(e).__name__}) "
+                          f"— currency cannot be attributed")
+                continue
+            state, detail = _version_vs_main(root, rel, sha)
+            if state == STALE:
+                findings += 1
+                ev.append(f"STALE PAYLOAD: {entry['id']} runs {rel} {sha[:8]}, not "
+                          f"origin/main's {detail[:8]} — whatever it reported on this run is "
+                          f"that older code's verdict, however fresh the report")
+            elif state == UNVERIFIABLE:
+                ev.append(f"{entry['id']}: {detail}")
+    if seen == 0:
+        return UNPROBEABLE, 0, ev + ["no {repo}-executed wrap targets in the registry"]
+    return (DIVERGED if findings else RECONCILED), findings, ev
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
+    "executed_code_currency": probe_executed_code_currency,
     "produced_promoted": probe_produced_promoted,
     "home_fork_scripts": probe_home_fork_scripts,
     "guardian_freshness": probe_guardian_freshness,
@@ -740,6 +877,20 @@ DEFAULT_REGISTRY: list[dict] = [
             {"live": "~/scripts/regulatory-watcher-run.sh", "repo": "infra/launchagents/wrappers/regulatory-watcher-run.sh"},
         ]},
         "fix_hint": "diff the pair, port the newer content into the repo, then refresh the live copy from repo",
+    },
+    {
+        "id": "executed_code_currency", "type": "builtin", "target": "executed_code_currency",
+        "class": "executed<->committed",
+        "boundary": "the {repo}/… payloads this organ RUNS <-> origin/main",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
+        "severity": "P1",
+        "args": {},
+        "fix_hint": ("the SCHEDULE is fine and the report is fresh — the code that produced "
+                     "the named verdicts is old. Do NOT pull the checkout to fix it (W106b); "
+                     "re-run that probe's target from origin/main, e.g. "
+                     "`git show origin/main:<path> > /tmp/p.py && python3 /tmp/p.py`, and "
+                     "believe THAT output. On pro/mini this finding should never appear: "
+                     "their checkouts auto-pull (measured 0/8 stale, 2026-08-08)."),
     },
     {
         "id": "guardian_freshness", "type": "builtin", "target": "guardian_freshness",

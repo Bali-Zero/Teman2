@@ -209,8 +209,14 @@ def test_innocence_a_branch_ahead_of_main_is_never_called_stale(repo):
     findings, ev = prop._self_code_staleness(repo.root)
 
     assert findings == 0, "an AHEAD copy must never be reported as stale"
-    assert "not an ancestor" in ev[0], ev
     assert "SELF STALE" not in ev[0]
+    # The INVARIANT is pinned, not the mechanism. This originally asserted the words
+    # "not an ancestor", because direction was decided by `merge-base --is-ancestor HEAD
+    # origin/main` — a question about the BRANCH. Adversarial review showed that proxy
+    # produces a false CLEAN (one unrelated local commit makes it answer "no" for a file
+    # main has since replaced), so direction is now decided per PATH against the
+    # merge-base blob. What must never change is that this side owns the difference.
+    assert "THIS side changed it" in ev[0], ev
 
 
 def test_innocence_uncommitted_edits_are_work_not_staleness(repo):
@@ -345,8 +351,12 @@ def test_cannot_verify_git_error_is_not_read_as_not_ancestor(repo, monkeypatch):
     findings, ev = prop._self_code_staleness(repo.root)
 
     assert findings == 0
-    assert "could not decide ancestry" in ev[0] and "exit 128" in ev[0], ev
-    assert "not an ancestor" not in ev[0], "that is a verdict we did not reach"
+    # Same amendment as the AHEAD pin above: the surviving requirement is that a git
+    # FAILURE surfaces as "undecided", carrying its exit code, and is never dressed up as
+    # an answer (W84). Which git command establishes direction is an implementation
+    # detail that the defect fix legitimately changed.
+    assert "exit 128" in ev[0] and "direction unknown" in ev[0], ev
+    assert "not a verdict" in ev[0], "an undecided direction must say so in those terms"
 
 
 # ------------------------------------------------- wiring into the probe's verdict
