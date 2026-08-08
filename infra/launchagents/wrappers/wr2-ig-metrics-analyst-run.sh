@@ -45,6 +45,47 @@ if [ "$POLL_SECS" -lt 1 ]; then
   POLL_SECS=1
 fi
 
+# --- FAILURE GATEWAY (2026-08-08) ---------------------------------------------
+# Until today this wrapper had ZERO gateway references and no voice at all.
+# launchd invokes it DIRECTLY (`/bin/bash <script>` in
+# com.balizero.wr2.ig-metrics-analyst.weekly — no cron-runner.sh, no
+# wr2-cron-wrapper.sh), so nothing wrote a receipt and nothing read its exit
+# code; `missed_runs_alerter` watches WarRoom DB rows, not launchd labels, and
+# knows nothing about this job; and no probe watches the freshness of its output
+# dir. Three consecutive weekly runs died with no surface anywhere able to
+# notice — W81/W108 in its plainest form.
+#
+# Routed through the ONE gateway (tg_notify.py owns token resolution, tiering and
+# dedup), like the sibling wr2-external-bench-run.sh. Two deliberate choices:
+#   - the interpreter is ABSOLUTE (W108): the alarm must not share a failure mode
+#     with what it reports, and launchd hands this job a PATH whose FIRST entry is
+#     a user-writable ~/.local/bin;
+#   - a missing gateway is LOGGED, never silent — "armed at nothing" and "fired"
+#     must not look the same afterwards. Same for the rc, which is always written.
+# It can never be the thing that kills the run: errexit is restored to whatever
+# it was and the function always returns 0.
+notify_failure() {
+  local msg="$1"
+  local dedup="$2"
+  local gateway notify_py rc had_errexit=0
+  case $- in *e*) had_errexit=1 ;; esac
+  notify_py=/opt/homebrew/bin/python3
+  [ -x "$notify_py" ] || notify_py=/usr/bin/python3
+  gateway="$(dirname "$0")/tg_notify.py"
+  [ -f "$gateway" ] || gateway="${HOME}/nuzantara/scripts/tg_notify.py"
+  if [ ! -f "$gateway" ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] gateway MISSING (${gateway}) — alert NOT sent: ${msg}" >> "$ERR"
+    return 0
+  fi
+  set +e
+  "$notify_py" "$gateway" --tier p0 --source wr2-ig-metrics-analyst \
+    --dedup-key "$dedup" -- "$msg" >> "$LOG" 2>&1
+  rc=$?
+  if [ "$had_errexit" -eq 1 ]; then set -e; fi
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] telegram notify rc=${rc} (gateway=${gateway}, python=${notify_py})" >> "$LOG"
+  return 0
+}
+
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG"
 
 # Source secrets for Gemini OAuth + any future env
@@ -107,13 +148,34 @@ fi
 # first process of its own job so `set -m` gives it its own process group
 # (PGID == its own PID), and the watchdog kills the WHOLE group
 # (`kill -- -$PGID`, TERM then KILL) — no descendant can outlive the timeout.
+#
+# 2026-08-08 errexit fix (W101, fourth generation): the probe subshell below ran
+# under this script's own `set -e`, and a subshell INHERITS errexit. Both of its
+# exits are non-zero by construction:
+#   - agy DOWN -> `wait "$AGY_PID"` returns agy's own non-zero code;
+#   - agy UP   -> `wait "$WATCHDOG_PID"` returns 143, the watchdog WE just killed.
+# So the block aborted the entire script, always, and nothing after it ever ran.
+# Measured on the live log (Pro): the 2026-07-19, 07-26 and 08-02 runs each stop
+# dead between "published-with-metrics count" and the health-check verdict —
+# zero further lines, .err.log untouched since 2026-06-23, last complete run
+# 2026-06-28. The DOWN branch — the local-fallback hint, the whole reason this
+# probe exists — was unreachable on the exact path it was written for.
+# Fix: disarm errexit around the probe (OUTSIDE *and* INSIDE — the subshell
+# inherits it) and judge by the CAPTURED rc, never by having survived the line.
 GEMINI_HINT=""
-AGY=/Users/nuzantara/.local/bin/agy
+# Overridable ONLY so the corpus can drive the probe; the default is the live Pro
+# path and is what every real run uses. Without the override the guilt test is
+# unwritable on M5, where this path does not exist at all (user `balizero`), so
+# `[ -x ]` is false, the whole block is skipped, and the dev machine is
+# structurally incapable of reproducing the red (W108 GOTCHA).
+AGY="${WR2_IG_AGY_BIN:-/Users/nuzantara/.local/bin/agy}"
 if [ -x "$AGY" ]; then
   AGY_PROMPT="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-agy-prompt.XXXXXX")"
   AGY_TMP="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-agy-health.XXXXXX")"
   echo "reply with exactly: AGYUP" > "$AGY_PROMPT"
+  set +e
   (
+    set +e
     set -m
     "$AGY" -p --print-timeout 20s < "$AGY_PROMPT" > "$AGY_TMP" 2>&1 &
     AGY_PID=$!
@@ -125,15 +187,22 @@ if [ -x "$AGY" ]; then
     ) &
     WATCHDOG_PID=$!
     wait "$AGY_PID" 2>/dev/null
+    AGY_RC=$?
     kill "$WATCHDOG_PID" 2>/dev/null
     wait "$WATCHDOG_PID" 2>/dev/null
+    # Propagate agy's OWN status, not the watchdog reap's: without this explicit
+    # exit the captured rc is always the `wait` on the watchdog we killed (143),
+    # which says nothing about the thing being probed.
+    exit "$AGY_RC"
   ) 2>/dev/null
+  AGY_PROBE_RC=$?
+  set -e
   AGY_OUT="$(cat "$AGY_TMP" 2>/dev/null || true)"
   rm -f "$AGY_PROMPT" "$AGY_TMP"
   if printf '%s' "$AGY_OUT" | grep -qi 'AGYUP'; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: UP" >> "$LOG"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: UP (probe_rc=${AGY_PROBE_RC})" >> "$LOG"
   else
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: DOWN (agy not logged in / unreachable) — instructing local fallback" >> "$LOG"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: DOWN (agy not logged in / unreachable, probe_rc=${AGY_PROBE_RC}) — instructing local fallback" >> "$LOG"
     GEMINI_HINT=" IMPORTANT: agy/Gemini is NOT available right now (auth required or unreachable). DO NOT call agy at Step 2 — skip it and use the LOCAL statistical fallback (Python/jq on the corpus) directly, and mark partial:true. Do not block waiting for Gemini."
   fi
 else
@@ -149,6 +218,8 @@ CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics
 CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-$(command -v claude || true)}"
 if [ -z "$CLAUDE_BIN" ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] claude binary not found" >> "$ERR"
+  notify_failure "⚠️ wr2-ig-metrics-analyst: claude binary not found (exit=127) on $(hostname -s). Weekly IG-insights amendment NOT produced." \
+    "wr2-ig-metrics-analyst:nobin:$(date +%Y-W%V):$(hostname -s)"
   exit 127
 fi
 MAX_CLAUDE_ATTEMPTS=7
@@ -399,6 +470,11 @@ if [ "$CLAUDE_EXIT" -eq 98 ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] all Claude OAuth accounts unavailable" >> "$ERR"
 fi
 
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done" >> "$LOG"
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done (exit=${CLAUDE_EXIT})" >> "$LOG"
+
+if [ "$CLAUDE_EXIT" -ne 0 ]; then
+  notify_failure "⚠️ wr2-ig-metrics-analyst FAILED (exit=${CLAUDE_EXIT}) on $(hostname -s). Weekly IG-insights amendment NOT produced — see ${ERR}" \
+    "wr2-ig-metrics-analyst:$(date +%Y-W%V):$(hostname -s)"
+fi
 
 exit "$CLAUDE_EXIT"
