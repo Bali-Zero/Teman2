@@ -348,13 +348,76 @@ def _mask_templated(canon_value, live_value):
     return canon_value, live_value
 
 
-def plists_equivalent(live_plist: dict, repo_plist: dict) -> bool:
-    """True iff live and repo-canon agree once env-specific keys and
-    install-time template placeholders are both accounted for."""
+# A leading per-machine home root, e.g. `/Users/nuzantara/`. Anchored and
+# requiring the trailing slash: `/Users/nuzantara` alone is not a home PREFIX
+# of anything, and an interior occurrence is not a root.
+_USER_HOME_PREFIX_RE = re.compile(r"^/Users/[^/]+/")
+
+
+def _rebase_homes(canon_value, live_value, live_home: Path):
+    """Recursively rewrite a leading home root to `~/` so a plist correctly
+    installed on THIS machine does not read as divergent purely because canon
+    was authored under another account.
+
+    Why this exists: `ENV_SPECIFIC_KEYS` already forgives `WorkingDirectory`
+    and the two log paths, but NOT `ProgramArguments` — and the payload path
+    lives in `ProgramArguments`. `com.nuzantara.worktree-gc-universal.daily`
+    carries a comment saying it is "HOME-fork-scoped by nature (paths are
+    per-machine under /Users/nuzantara/)", and on M5 (`balizero`) it was
+    reported Repo-divergent every run for exactly that reason. Measured
+    2026-08-08: every functional difference between the live M5 copy and
+    origin/main was the username and nothing else.
+
+    ASYMMETRIC ON PURPOSE, and this is the whole safety of it:
+
+      * the CANON side gives up ANY `/Users/<user>/` prefix — canon is
+        authored on whichever machine happened to write it, so which account
+        appears there carries no meaning;
+      * the LIVE side gives up ONLY this machine's own home. A live path under
+        a FOREIGN home — the `/Users/nuzantara/...` copied onto M5 class, dead
+        paths since the 2026-07-16 move — does not normalise, so it still
+        differs from canon's `~/...` and stays flagged.
+
+    A symmetric rebase would read those two cases as identical and silence the
+    drift this report exists to catch (W94: the fix for an over-match births
+    the under-match twin unless the corpus covers the composition).
+    """
+    if isinstance(canon_value, str) and isinstance(live_value, str):
+        canon_out = _USER_HOME_PREFIX_RE.sub("~/", canon_value)
+        live_prefix = str(live_home).rstrip("/") + "/"
+        live_out = (
+            "~/" + live_value[len(live_prefix):]
+            if live_value.startswith(live_prefix)
+            else live_value
+        )
+        return canon_out, live_out
+    if (
+        isinstance(canon_value, list)
+        and isinstance(live_value, list)
+        and len(canon_value) == len(live_value)
+    ):
+        pairs = [_rebase_homes(cv, lv, live_home)
+                 for cv, lv in zip(canon_value, live_value)]
+        return [p[0] for p in pairs], [p[1] for p in pairs]
+    if isinstance(canon_value, dict) and isinstance(live_value, dict):
+        rebased_canon, rebased_live = dict(canon_value), dict(live_value)
+        for k, cv in canon_value.items():
+            if k in live_value:
+                rebased_canon[k], rebased_live[k] = _rebase_homes(
+                    cv, live_value[k], live_home
+                )
+        return rebased_canon, rebased_live
+    return canon_value, live_value
+
+
+def plists_equivalent(live_plist: dict, repo_plist: dict, live_home: Path) -> bool:
+    """True iff live and repo-canon agree once env-specific keys, install-time
+    template placeholders and this machine's home root are all accounted for."""
     lc = canonical_for_compare(live_plist)
     cc = canonical_for_compare(repo_plist)
     masked_canon, masked_live = _mask_templated(cc, lc)
-    return masked_canon == masked_live
+    rebased_canon, rebased_live = _rebase_homes(masked_canon, masked_live, live_home)
+    return rebased_canon == rebased_live
 
 
 def name_stamp_age_days(name: str, now: datetime) -> Optional[float]:
@@ -539,7 +602,9 @@ def reconcile(
                 repo_symlinked.append(f.name)
             else:
                 repo_plist = parse_plist(twin)
-                if repo_plist is not None and not plists_equivalent(plist, repo_plist):
+                if repo_plist is not None and not plists_equivalent(
+                    plist, repo_plist, home
+                ):
                     repo_divergent.append({"label": label, "file": f.name})
 
     return {
