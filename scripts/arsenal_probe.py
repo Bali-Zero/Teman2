@@ -437,6 +437,19 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     # while reporting it as the MAX seat — strip both for a clean MAX-context probe.
     env.pop("ANTHROPIC_AUTH_TOKEN", None)
     env.pop("ANTHROPIC_BASE_URL", None)
+    # Strip a bare, AMBIENT CLAUDE_CODE_OAUTH_TOKEN before applying the slot-1
+    # fallback below (2026-08-08 live incident: this probe, run from Bash
+    # inside an interactive Claude Code session, inherited that session's own
+    # token — stale from an earlier /login cycle — and reported claude
+    # AUTH_DEAD while the actual on-disk credential the `claude` binary
+    # resolves by default was perfectly LIVE; unsetting the env var and
+    # re-probing flipped AUTH_DEAD -> LIVE instantly. Same class the
+    # ANTHROPIC_AUTH_TOKEN/BASE_URL strip above already guards against for
+    # GLM: a probe must test the SEAT's own credential, not whatever the
+    # calling shell happens to be carrying. A deliberate caller that wants to
+    # test one SPECIFIC token still can, via env_overrides below — that path
+    # is unaffected and remains the only sanctioned way to inject one.
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     # Headless/cron callers (launchd, sshd) often carry only the slotted
     # CLAUDE_CODE_OAUTH_TOKEN_{1,2,3} vars, never the bare one the `claude`
     # binary actually reads — same fallback already established in
@@ -444,7 +457,7 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     # CLI-subprocess auth path). Without this the probe reports a false
     # UNKNOWN_ERR ("Not logged in") even when the MAX-plan session backing
     # slot 1 is perfectly alive.
-    if not env.get("CLAUDE_CODE_OAUTH_TOKEN") and env.get("CLAUDE_CODE_OAUTH_TOKEN_1"):
+    if env.get("CLAUDE_CODE_OAUTH_TOKEN_1"):
         env["CLAUDE_CODE_OAUTH_TOKEN"] = env["CLAUDE_CODE_OAUTH_TOKEN_1"]
     if env_overrides:
         env.update(env_overrides)
