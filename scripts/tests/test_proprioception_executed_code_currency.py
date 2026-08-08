@@ -2,10 +2,15 @@
 
 TRAUMA (measured 2026-08-08): the previous PR taught `proprioception.py` to notice when
 its OWN copy is behind origin/main. That closed one member of a class. Seven registry
-entries are `wrap` probes that shell out to OTHER scripts in the same tree, and on m5 —
-whose checkout is deliberately never pulled (W106b) — four of them were behind:
-`arsenal_probe.py` (3 commits), `launchagent_reconcile.py` (2),
-`launchd_liveness_detector.py` (1), `organism_stale_detector.py` (1).
+entries are `wrap` probes that shell out to OTHER scripts in the same tree; six of them
+are in m5's jurisdiction, and on m5 — whose checkout is deliberately never pulled
+(W106b) — THREE of those six were behind: `launchagent_reconcile.py`,
+`launchd_liveness_detector.py`, `organism_stale_detector.py`.
+
+`arsenal_probe.py` is behind too, and is deliberately NOT counted: its wrap is scoped
+`["mini", "pro"]`, so m5 never executes it, and the hosts that do measured 0/7 diverging
+the same day. Counting it read 4-of-7 and was a finding no one on this host could act
+on — the first draft did exactly that.
 
 One was demonstrably lying, and the A/B was controlled — same machine, same
 ~/Library/LaunchAgents, same minute: the checkout's reconciler reported
@@ -19,14 +24,20 @@ and the cure went to the smallest one".
 Two design rules this corpus pins:
   - judged by BLOB, never by running the target. An alarm that executes the code whose
     health it reports shares that code's failure mode (W108).
-  - the repo-relative path is found by SCANNING the target list for the `{repo}/` token,
-    not by indexing element 1 — position is a form, the token is the entity (#3).
+  - the repo-relative paths are found by SCANNING the whole target list for `{repo}/`
+    tokens — ALL of them, not element 1 and not just the first match: position is a form,
+    the token is the entity (#3), and stopping at the first is the same error inverted.
+  - direction is decided per PATH against the merge-base blob, never by asking whether
+    the BRANCH is an ancestor of origin/main. One unrelated local commit makes that proxy
+    answer "not an ancestor", which the first draft read as "ahead, not stale" — a
+    false-clean of exactly the class this probe exists to catch (W88).
 
 Run:  python3 -m pytest scripts/tests/test_proprioception_executed_code_currency.py -q
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import importlib.util
 import subprocess
 import sys
@@ -92,13 +103,29 @@ def repo(tmp_path: Path, monkeypatch) -> Path:
 def test_target_is_found_by_token_not_by_position():
     """A wrap may carry flags before the path. Indexing element 1 would silently audit
     `--json` — or nothing — the moment someone reorders a target list."""
-    assert prop._wrap_repo_target({"type": "wrap", "target": ["python3", "-u", "{repo}/a/b.py"]}) == "a/b.py"
-    assert prop._wrap_repo_target({"type": "wrap", "target": ["{repo}/x.py", "--flag"]}) == "x.py"
+    assert prop._wrap_repo_targets({"type": "wrap", "target": ["python3", "-u", "{repo}/a/b.py"]}) == ["a/b.py"]
+    assert prop._wrap_repo_targets({"type": "wrap", "target": ["{repo}/x.py", "--flag"]}) == ["x.py"]
+
+
+def test_every_repo_target_is_returned_not_only_the_first():
+    """`["pytest", "{repo}/a.py", "{repo}/b.py"]` executes BOTH. Returning the first is
+    the position mistake wearing the other sleeve: the second payload goes unaudited and
+    the probe reads clean."""
+    got = prop._wrap_repo_targets({"type": "wrap", "target": ["pytest", "{repo}/a.py", "{repo}/b.py"]})
+    assert got == ["a.py", "b.py"]
+
+
+def test_a_string_target_is_normalised_not_iterated_character_by_character():
+    """`validate_registry` does not forbid a bare string, and iterating one yields single
+    characters — none of which start with `{repo}/`, so the entry would drop out of the
+    audit leaving no trace at all."""
+    assert prop._wrap_repo_targets({"type": "wrap", "target": "{repo}/scripts/tool.py"}) == ["scripts/tool.py"]
 
 
 def test_non_wrap_and_targetless_entries_are_skipped():
-    assert prop._wrap_repo_target({"type": "builtin", "target": "git_alignment"}) is None
-    assert prop._wrap_repo_target({"type": "wrap", "target": ["python3", "/abs/path.py"]}) is None
+    assert prop._wrap_repo_targets({"type": "builtin", "target": "git_alignment"}) == []
+    assert prop._wrap_repo_targets({"type": "wrap", "target": ["python3", "/abs/path.py"]}) == []
+    assert prop._wrap_repo_targets({"type": "wrap", "target": {"not": "a list"}}) == []
 
 
 # --------------------------------------------------------------- guilt
@@ -194,14 +221,134 @@ def test_registry_without_wrap_targets_reads_unprobeable_not_clean(repo, monkeyp
 
 def test_self_and_payload_checks_use_the_same_engine(repo):
     """W106b's fourth layer was two 'twins with the same logic' where only one was cured.
-    Both callers must reach the same verdict for the same inputs."""
+    Calling the engine directly proves nothing about the twins, so this asserts that BOTH
+    entry points route through it: reinstating a hand-written copy inside
+    `_self_code_staleness` must turn this red."""
     _git(["checkout", "-q", prop._TEST_OLD_SHA], repo)
     sha = _blob((repo / _TARGET).read_bytes())
+    assert prop._version_vs_main(repo, _TARGET, sha) == (
+        prop.STALE, _git(["rev-parse", f"origin/main:{_TARGET}"], repo))
 
-    state, detail = prop._version_vs_main(repo, _TARGET, sha)
+    calls: list[tuple] = []
+    real = prop._version_vs_main
+    prop._version_vs_main = lambda r, rel, s: (calls.append((rel, s)), real(r, rel, s))[1]
+    try:
+        prop.probe_executed_code_currency(repo, {}, 30)
+        payload_calls = len(calls)
+        # The self-check can only reach the engine when the runner really sits inside the
+        # root it is given, so hand it THIS worktree rather than the fixture.
+        prop._self_code_staleness(_MODULE_PATH.parents[1])
+    finally:
+        prop._version_vs_main = real
 
-    assert state == prop.STALE
-    assert detail == _git(["rev-parse", f"origin/main:{_TARGET}"], repo)
+    assert payload_calls >= 1, "the payload probe must reach the shared engine"
+    assert len(calls) > payload_calls, (
+        "_self_code_staleness did not call _version_vs_main — it is carrying its own copy "
+        "of the comparison again, which is exactly how the twins drifted apart")
+    assert calls[-1][0].endswith("proprioception.py"), calls[-1]
+
+
+def test_a_stale_payload_on_a_diverged_branch_is_not_silenced_as_ahead(repo):
+    """THE false-clean this probe exists to prevent, and the shape the first draft got
+    wrong. One local commit touching an UNRELATED file makes `merge-base --is-ancestor
+    HEAD origin/main` answer "no" — read as "ahead, not stale" — while the audited file
+    is exactly the version main replaced. Direction is a question about the PATH."""
+    _git(["checkout", "-q", "-b", "side", prop._TEST_OLD_SHA], repo)
+    (repo / "UNRELATED.md").write_text("a local commit that touches nothing audited\n")
+    _git(["add", "-A"], repo)
+    _git(["commit", "-qm", "unrelated local work"], repo)
+    assert subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", "origin/main"],
+                          cwd=repo, capture_output=True).returncode == 1, "premise: HEAD is NOT an ancestor"
+
+    status, findings, ev = prop.probe_executed_code_currency(repo, {}, 30)
+
+    assert findings == 1 and status == prop.DIVERGED, f"silenced as 'ahead': {ev}"
+    assert ev[0].startswith("STALE PAYLOAD:")
+
+
+def test_innocence_a_locally_committed_change_to_the_payload_is_ahead_not_stale(repo):
+    """The other side of the same coin: when THIS side is the one that moved the file,
+    silence is the truth. Without this, the fix above would just invert the bug."""
+    _git(["checkout", "-q", "-b", "mine"], repo)
+    (repo / _TARGET).write_text("# our own newer code\n")
+    _git(["add", "-A"], repo)
+    _git(["commit", "-qm", "local change to the payload itself"], repo)
+
+    status, findings, ev = prop.probe_executed_code_currency(repo, {}, 30)
+
+    assert findings == 0 and ev == [], f"our own committed code is not stale, got {ev}"
+
+
+def test_a_wrap_outside_this_machines_jurisdiction_is_not_audited(repo, monkeypatch):
+    """`arsenal_seats` is mini/pro-only, so on m5 its payload is never executed — a
+    STALE finding there is a P1 nobody on that host can act on, and the host that DOES
+    run it audits it itself. Measured: this alone moved the live m5 count from 4 to 3."""
+    _git(["checkout", "-q", prop._TEST_OLD_SHA], repo)
+    monkeypatch.setattr(prop, "DEFAULT_REGISTRY", [{**_ENTRY, "machines": ["somewhere-else"]}])
+    monkeypatch.setattr(prop, "machine_label", lambda: "m5")
+
+    status, findings, ev = prop.probe_executed_code_currency(repo, {}, 30)
+
+    assert findings == 0
+    assert not any("STALE PAYLOAD" in line for line in ev), ev
+    assert status == prop.UNPROBEABLE, "nothing in jurisdiction must not read as nothing wrong"
+
+
+def test_a_wrap_in_jurisdiction_by_explicit_name_is_audited(repo, monkeypatch):
+    """Innocence for the jurisdiction filter itself — it must not swallow the entries it
+    is supposed to keep. An exemption is a guard with the sign flipped (W91/W94)."""
+    _git(["checkout", "-q", prop._TEST_OLD_SHA], repo)
+    monkeypatch.setattr(prop, "DEFAULT_REGISTRY", [{**_ENTRY, "machines": ["m5"]}])
+    monkeypatch.setattr(prop, "machine_label", lambda: "m5")
+
+    _s, findings, ev = prop.probe_executed_code_currency(repo, {}, 30)
+
+    assert findings == 1, f"an in-jurisdiction stale payload must still be named: {ev}"
+
+
+def test_the_loaded_registry_is_audited_not_the_embedded_default(repo, monkeypatch):
+    """`main()` runs whatever `config/boundaries.json` says. Auditing DEFAULT_REGISTRY
+    would report on payloads nobody executes and stay silent about the ones they do."""
+    _git(["checkout", "-q", prop._TEST_OLD_SHA], repo)
+    (repo / "config").mkdir(exist_ok=True)
+    (repo / "config" / "boundaries.json").write_text(json.dumps(
+        {"probes": [{"id": "from_config", "type": "wrap",
+                     "target": ["python3", "{repo}/" + _TARGET]}]}))
+    monkeypatch.setattr(prop, "DEFAULT_REGISTRY", [])
+
+    _s, findings, ev = prop.probe_executed_code_currency(repo, {}, 30)
+
+    assert findings == 1 and "from_config" in ev[0], ev
+
+
+def test_a_tracked_symlink_is_hashed_as_git_stores_it(repo):
+    """git stores a symlink's LINK TEXT; `read_bytes()` follows it and hashes the
+    referent. Comparing those two representations makes a genuinely stale symlink look
+    like uncommitted edits — which this probe deliberately keeps silent."""
+    link = repo / "scripts" / "linked_tool.py"
+    (repo / "scripts" / "real_new.py").write_text("new\n")
+    link.symlink_to("real_new.py")
+    _git(["add", "scripts/linked_tool.py"], repo)
+    # `git hash-object <path>` FOLLOWS the link, so it is not the oracle here; the index
+    # holds what git actually stores for a symlink, which is the link text.
+    stored = _git(["rev-parse", ":scripts/linked_tool.py"], repo)
+
+    assert prop._disk_blob(link) == stored
+    assert prop._disk_blob(link) != _blob(b"new\n"), "hashed the referent, not the link"
+
+
+def test_cannot_verify_a_failed_shallow_probe_is_not_read_as_a_whole_history(repo, monkeypatch):
+    """If git cannot say whether the clone is truncated, we have not established that the
+    history is whole — and answering 'ahead, not stale' on that is the calm liar (W84)."""
+    _git(["checkout", "-q", prop._TEST_OLD_SHA], repo)
+    real_sh = prop.sh
+    monkeypatch.setattr(prop, "sh", lambda a, **k: (
+        (128, "", "boom") if a[:3] == ["git", "rev-parse", "--is-shallow-repository"] else real_sh(a, **k)))
+
+    _s, findings, ev = prop.probe_executed_code_currency(repo, {}, 30)
+
+    assert findings == 0, "an undecidable direction is never a finding"
+    assert "shallow" in ev[0] and "direction unknown" in ev[0], ev
 
 
 def test_registry_entry_is_registered_and_valid():
