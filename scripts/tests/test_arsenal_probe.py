@@ -641,6 +641,29 @@ def test_probe_kimi_no_providers_is_auth_dead(monkeypatch):
     assert status == ap.AUTH_DEAD
 
 
+def test_probe_kimi_billing_cycle_403_is_quota_dead_not_auth_dead(monkeypatch):
+    # guilt: the real-world Allegro billing-cycle cap (PENDING-ARMS 2026-07-27,
+    # "Kimi seat quota-exhausted") has no 401/no-providers marker — it must fall
+    # through the kimi-specific AUTH_DEAD guard clause and land on QUOTA_DEAD via
+    # classify_generic's "usage limit" match, so the cascade can skip-not-retry it
+    # (a quota-dead seat needs wait/upgrade, not re-login).
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(
+            1,
+            "",
+            "403 You've reached your usage limit for this billing cycle. "
+            "To continue now, purchase extra usage or upgrade your plan: "
+            "https://www.kimi.com/code/#pricing",
+        ),
+    )
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.QUOTA_DEAD
+    assert status != ap.AUTH_DEAD
+
+
 def test_probe_kimi_pong_with_provider_prose_stays_live(monkeypatch):
     # innocence: a LIVE answer that happens to mention providers/login in prose
     # must never be reclassified as a credential death
