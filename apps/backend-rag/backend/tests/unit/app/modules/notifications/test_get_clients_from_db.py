@@ -368,3 +368,55 @@ async def test_active_client_with_null_email_does_not_crash() -> None:
     assert len(clients) == 1
     assert clients[0].id == 123
     assert clients[0].email is None
+
+
+def test_query_excludes_soft_deleted_clients() -> None:
+    """GUILT (fix-4 of the notifications lane, found by the prove-live pass
+    after the sweep started running clean post-#3822/#3827): a `status =
+    'active'` scan alone returned 1238 rows against 741 actually-active
+    (non-deleted) clients, measured live 2026-08-08. The 497-row gap is
+    soft-deleted clients whose `status` was never flipped off 'active' —
+    `deleted_at IS NOT NULL` for all of them. Sending a birthday/passport/
+    visa-expiry alert to an ex-client is noise for the team at best, and an
+    unwanted contact with a former client at worst.
+
+    The query text must filter on `c.deleted_at IS NULL` in BOTH branches
+    (single-client and all-active-clients), not just one — a partial fix
+    would still amputate the wrong half of the book depending on call site.
+    """
+    source = _source_without_docstring(get_clients_from_db)
+    assert source.count("c.deleted_at IS NULL") == 2, (
+        "get_clients_from_db must exclude soft-deleted clients "
+        "(c.deleted_at IS NULL) in BOTH the single-client and "
+        "all-active-clients query branches — found "
+        f"{source.count('c.deleted_at IS NULL')} occurrence(s)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_single_client_sql_excludes_soft_deleted() -> None:
+    """GUILT (behavioral, single-client branch): the actual SQL text sent to
+    the connection for a specific client_id must carry the soft-delete
+    filter alongside the existing status filter."""
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = []
+
+    await get_clients_from_db(_Pool(mock_conn), client_id=42)
+
+    sql_sent = mock_conn.fetch.call_args[0][0]
+    assert "c.deleted_at IS NULL" in sql_sent
+    assert "c.status = 'active'" in sql_sent
+
+
+@pytest.mark.asyncio
+async def test_all_clients_sql_excludes_soft_deleted() -> None:
+    """GUILT (behavioral, all-active-clients branch): same filter must be
+    present in the no-client_id branch's SQL text."""
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = []
+
+    await get_clients_from_db(_Pool(mock_conn), client_id=None)
+
+    sql_sent = mock_conn.fetch.call_args[0][0]
+    assert "c.deleted_at IS NULL" in sql_sent
+    assert "c.status = 'active'" in sql_sent
