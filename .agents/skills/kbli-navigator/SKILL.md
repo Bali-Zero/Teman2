@@ -43,7 +43,51 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-05 — keep current)
+## 1. LIVE STATE (last update 2026-08-08 — keep current)
+
+**🟢 2026-08-08 — PENDING-ARMS "4 contradicted-predecessor adjudications" (2026-07-25) CLOSED: 2 of 4
+CONFIRMED and live on every surface, 2 stay genuinely disputed BY DESIGN. Merged as #3778
+(`58a3d01e28`), Vercel promote HTTP 201, proven live by content on `/kbli/49296` (49424) and
+`/kbli/64210` (64200).** The 2026-07-25 line asked to
+"adjudicate which layer holds the true 2020 origin for each of the 4" (`46415`/`46496`/`49296`/`64210`).
+Re-measured against the FULL BPS 2020-to-2025 crosswalk relation file
+(`data/kbli-filiera/phase0/bps_crosswalk.json::relation`, all 1,559 codes) instead of canonical's own
+`bps_2020_ancestors` field, which PR #3082's populate step only ever wrote for OSS-native codes
+(`_l2_status is null`) — `49296` and `64210` have `_l2_status: "no_oss_risk"`, so their corroboration
+was invisible to any probe reading only the canonical field.
+
+- **`49296` → CONFIRMED to `49424`.** PP 28/2025 lampiran (100% title match) AND the official BPS
+  crosswalk table (Lampiran 10, printed page 386) both name `49424` — two structurally independent
+  sources agreeing by membership, same standard as the Lampiran III cross-instrument check
+  (2026-08-02, §F2). Canonical + gold `whatChanged` rewritten to a cited confirmed sentence.
+- **`64210` → CONFIRMED to `64200`.** Same pattern, BPS Lampiran 10 printed page 398, 95% title
+  match. Canonical + gold rewritten.
+- **`46415`/`46496` → STAY UNCONFIRMED, correctly.** The two sources genuinely disagree on both
+  (e.g. `46415`: pp28/`kbli_2020_source` says `46694`, BPS says `46419`) — picking a winner here is
+  the exact disease this lane exists to cure (per the original line's own text). No canonical change.
+- **Separate defect found and fixed while investigating `46496`:** gold's `whatChanged` used a
+  different sentence template ("Previous code(s): NNNNN") that the original `_NAMED_PREDECESSOR`
+  regex (anchored to "KBLI 2020: NNNNN") never scanned — a guard UNDER-match (superscar #3/W82
+  family). Gold (which WINS over canonical on the rendered page —
+  `kbli-data.server.ts::transformCode`) kept serving a false-confident, uncited predecessor claim
+  that canonical had already honestly disclaimed. Realigned gold to canonical's exact honest text.
+
+New compiler `scripts/kbli_filiera/cure_whatchanged_corroborated_predecessor.py` (spec-driven,
+facts-basis-guarded — re-derives the corroboration premise from live data before writing, refuses on
+drift; 14 tests). Applied to canonical + gold + the 3 synced consumer copies + the
+`kbli-dataset-version.json` sidecar sha256.
+
+**KG APPLIED AND PROVEN 2026-08-08, post-merge:** `kg_whatchanged_cure.py` run inside the Fly image
+with the spec pinned to the merge SHA (`58a3d01e28`) — dry-run AND apply both reported
+`already_cured=2 drift=0`: the two nodes ALREADY carried the cured text (an earlier apply had landed;
+both rows hold the `_whatChanged_cure` archive key, which only a real `--apply` writes), so this apply
+was an idempotent no-op. Verified by INDEPENDENT read-only SQL on prod, not by the script's report:
+`kbli:49296` / `kbli:64210` `properties.whatChanged` equal the spec text verbatim (49424 / page 386,
+64200 / page 398). Qdrant `kbli_2025_final` and `kbli_documents` (`chat_kbli`) were checked and do
+**NOT** carry this specific false claim for any of the 4 codes — verified via read-only Postgres MCP
+query, no action needed there. Also fixed while in the file: the badge visible-caption defect
+(`BaliStatusBadge` hover-only `reason` text, invisible on mobile/touch) — client-facing, merged with
+#3778, the caption is live.
 
 **🟢 2026-08-06 — THE BOT/MCP HALF IS SHIPPED, SYNCED AND PROVEN LIVE (#3648, `b5dd5f37ca`). Both
 web surfaces were already live (#3645/#3646); this closes the third.** Every step measured, none

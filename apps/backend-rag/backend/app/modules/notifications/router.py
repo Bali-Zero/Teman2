@@ -92,7 +92,19 @@ class SendEmailResponse(BaseModel):
 
 
 async def get_clients_from_db(pool, client_id: int | None = None) -> list[ClientInfo]:
-    """Fetch clients from database."""
+    """Fetch clients from database.
+
+    Ground truth (2026-08-08, information_schema on live `clients`): there is
+    no `preferred_language`/`language`/`lang`/`locale` column on this table at
+    all — `COALESCE(c.preferred_language, ...)` raised
+    ``asyncpg.UndefinedColumnError``. Same established default used elsewhere
+    in this codebase for the identical gap (lkpm_ready_pack.py: "Default to
+    English — preferred_language column may not exist"). There is also no
+    `is_active` boolean — the live status column is `status` (character
+    varying: 'lead' | 'active' | 'prospect' | 'inactive'); a notifications
+    sweep for expiring passports/visas/birthdays is scoped to clients Bali
+    Zero is actively serving, i.e. `status = 'active'`.
+    """
     async with pool.acquire() as conn:
         if client_id:
             rows = await conn.fetch(
@@ -101,7 +113,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     c.id,
                     c.email,
                     c.full_name,
-                    COALESCE(c.preferred_language, 'en') as preferred_language,
+                    'en' as preferred_language,
                     c.assigned_to as team_leader_email,
                     c.date_of_birth,
                     c.passport_expiry,
@@ -112,12 +124,12 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                 LEFT JOIN (
                     SELECT DISTINCT ON (client_id)
                         client_id, expiry_date, document_type as visa_type
-                    FROM client_documents
+                    FROM documents
                     WHERE document_category = 'immigration'
                     AND expiry_date IS NOT NULL
                     ORDER BY client_id, expiry_date DESC
                 ) v ON v.client_id = c.id
-                WHERE c.id = $1 AND c.is_active = true
+                WHERE c.id = $1 AND c.status = 'active'
                 """,
                 client_id,
             )
@@ -128,7 +140,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     c.id,
                     c.email,
                     c.full_name,
-                    COALESCE(c.preferred_language, 'en') as preferred_language,
+                    'en' as preferred_language,
                     c.assigned_to as team_leader_email,
                     c.date_of_birth,
                     c.passport_expiry,
@@ -139,12 +151,12 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                 LEFT JOIN (
                     SELECT DISTINCT ON (client_id)
                         client_id, expiry_date, document_type as visa_type
-                    FROM client_documents
+                    FROM documents
                     WHERE document_category = 'immigration'
                     AND expiry_date IS NOT NULL
                     ORDER BY client_id, expiry_date DESC
                 ) v ON v.client_id = c.id
-                WHERE c.is_active = true
+                WHERE c.status = 'active'
                 """,
             )
 
@@ -562,14 +574,12 @@ async def _send_via_resend(
     )
 
 
-# Include test endpoints only in non-production environments
-import os
-
-if os.getenv("ENVIRONMENT", "development").lower() != "production":
-    from backend.app.modules.notifications.test_endpoint import router as test_router
-
-    router.include_router(test_router)
-
+# NOTE: test_endpoint.py (staging-only manual test router, self-documented
+# "remove before production") was deleted 2026-08-08 — it queried the
+# never-provisioned client_documents table in all 3 handlers, so it could
+# never have worked in staging or prod. The conditional include that used
+# to mount it here is gone with it.
+#
 # NOTE: admin_router (prefix="/api/admin/notifications") is intentionally NOT
 # nested here. Nesting it under this router (prefix="/api/notifications") gave
 # the double-prefixed path /api/notifications/api/admin/notifications/* — a 404

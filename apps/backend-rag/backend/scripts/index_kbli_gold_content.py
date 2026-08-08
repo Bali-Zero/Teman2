@@ -51,6 +51,59 @@ KBLI_DATA_FILE = (
     Path(__file__).resolve().parents[4] / "apps" / "kbli-navigator" / "data" / "kbli-2025.json"
 )
 
+# 5-digit KBLI codes (e.g. "56101")
+_CODE_RE = re.compile(r"^\d{5}$")
+
+
+def parse_only_codes(raw: str | None) -> list[str] | None:
+    """Parse the --only flag value into a list of validated 5-digit codes.
+
+    Returns ``None`` when *raw* is falsy (flag not given).  Raises
+    ``argparse.ArgumentTypeError`` on any malformed token so argparse surfaces
+    a clean error — the caller never sees junk.
+    """
+    if not raw:
+        return None
+    codes: list[str] = []
+    for token in raw.split(","):
+        code = token.strip()
+        if not _CODE_RE.match(code):
+            raise argparse.ArgumentTypeError(
+                f"invalid KBLI code {code!r} in --only — expected 5-digit numeric",
+            )
+        codes.append(code)
+    if not codes:
+        raise argparse.ArgumentTypeError("--only received no codes")
+    # Deduplicate while preserving order.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for c in codes:
+        if c not in seen:
+            seen.add(c)
+            unique.append(c)
+    return unique
+
+
+def filter_to_codes(
+    entries: dict[str, dict],
+    only_codes: list[str] | None,
+) -> dict[str, dict]:
+    """Filter *entries* to *only_codes*, erroring on any absent code.
+
+    A silent skip would report success over nothing (esiste≠armato), so we exit
+    nonzero naming every missing code instead.
+    """
+    if only_codes is None:
+        return entries
+    missing = [c for c in only_codes if c not in entries]
+    if missing:
+        logger.error(
+            "--only requested code(s) absent from parsed gold: %s",
+            ", ".join(missing),
+        )
+        sys.exit(1)
+    return {c: entries[c] for c in only_codes}
+
 
 def parse_gold_content_ts(filepath: Path) -> dict[str, dict]:
     """
@@ -297,6 +350,14 @@ async def main():
     parser = argparse.ArgumentParser(description="Index KBLI gold content into kbli_2025_final")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--qdrant-url", type=str, default="")
+    parser.add_argument(
+        "--only",
+        type=parse_only_codes,
+        default=None,
+        metavar="CODE[,CODE...]",
+        help="Comma-separated 5-digit KBLI codes — index ONLY these codes "
+        "(errors out if any requested code is absent from the parsed gold).",
+    )
     args = parser.parse_args()
 
     qdrant_url = args.qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -313,7 +374,15 @@ async def main():
     # Parse gold content
     logger.info("Parsing gold content from TypeScript...")
     gold_entries = parse_gold_content_ts(GOLD_CONTENT_FILE)
-    logger.info(f"Parsed {len(gold_entries)} gold entries")
+    total_parsed = len(gold_entries)
+    logger.info(f"Parsed {total_parsed} gold entries")
+
+    # Per-code selection (--only): filter BEFORE building points.
+    gold_entries = filter_to_codes(gold_entries, args.only)
+    if args.only:
+        logger.info(
+            "%d of %d gold entries selected via --only", len(gold_entries), total_parsed
+        )
 
     # Load base KBLI data for enrichment
     base_data = {}

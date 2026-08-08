@@ -356,8 +356,8 @@
     {
       "live": "~/.openclaw/bin/wr2/wr2-script-wrapper.sh",
       "repo": "infra/openclaw/wr2/wr2-script-wrapper.sh",
-      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement.",
-      "machines": ["pro"]
+      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement. 2026-08-06: widened pro -> all. The file EXISTS on Mini too (measured: ~/.openclaw/bin/wr2/wr2-script-wrapper.sh present, 0 plists invoking it), so scoping the pair to pro left a real copy that the lint could never look at — the same shape W107 found for cron-runner, where the divergence was real and the risk was not. Inert-today is not a reason to be unwatched: the failure-voice cure of this date has to reach both copies or the next machine to start invoking it runs a mute wrapper.",
+      "machines": ["all"]
     },
     {
       "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",

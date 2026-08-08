@@ -157,7 +157,7 @@ canon, Option A remains the lower-risk close"_ — holds on both sides.
 ### One correction, and it runs the opposite way from what the ledger assumed
 
 `.claude/skills/modus/PENDING-ARMS.md` carried a competing claim: that `~/Desktop/nuzantara` is
-_"a real, separate checkout (different inode from `~/nuzantara`)"_. **This record was right and
+_"a real, separate checkout (different inode from `~/nuzantara`)"_ — RETRACTED[desktop-nuzantara-is-a-separate-checkout]. **This record was right and
 that line was wrong**, measured rather than argued:
 
 ```
