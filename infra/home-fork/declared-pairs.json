@@ -645,6 +645,18 @@
       "repo": "scripts/auth_sentinel_cron.sh",
       "machines": ["m5"],
       "_note": "Found diverged on 2026-08-07 by a single line (the ~/Desktop path PR #2499 cured on 2026-07-16 had not reached this live copy) and realigned by the auth-sentinel item in the same pending-arms batch. Re-verified sha256-identical to the repo twin 2026-08-07 before this pair was declared (STRICT ORDERING: a pair is only declared after its live sync is proven, per family #1's own antidote — declaring an unsynced pair arms a permanent red on M5). Was UNDECLARED in both surfaces (0 hits in this file and in scripts/proprioception.py's home_fork_scripts args) — until today only scripts/launchagent_reconcile.py caught drift here, and only generically (plist->wrapper diff), not via a dedicated home-fork pair."
+    },
+    {
+      "live": "~/scripts/nb-agents-daily-dr.sh",
+      "repo": "scripts/nb-agents-daily-dr.sh",
+      "_note": "PROMOTED 2026-08-08. Was HOME-only and undeclared while carrying three cures made live on 2026-08-07 (empty nlm alias -> hardcoded NB id; the flat-vs-{value:} JSON shape; a slug step whose error text became the FILENAME, `otloggedinleaserunlogin`). Promoted together with the fix that made its `claude` call reachable at all: under `bash -lc`, the shell its crontab line uses, `claude` is not on PATH and no OAuth seat is in the env, so the bare invocation degraded to the default slug every night. Now routes through scripts/lib/claude_seat.sh. Live consumer: crontab 07:30 daily via cron-state.sh.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/lib/claude_seat.sh",
+      "repo": "scripts/lib/claude_seat.sh",
+      "_note": "NEW 2026-08-08, shipped with the promotion above. Sourceable OAuth-seat helper: resolves the claude binary absolutely (~/.local/bin is on neither the login-shell nor the cron PATH) and rotates the numbered seats, EXTRACTING the refusal classifier from cron-agent.sh rather than copying it — two tools that must agree on 'did this seat refuse' do not get two answers. Deliberately has no bare-keychain fallback: that rung answered 0 of 905 attempts and cannot work in a non-GUI session. Delivered next to ~/scripts/cron-agent.sh, which is the wrapper it extracts from in the delivered layout.",
+      "machines": ["pro"]
     }
   ],
   "allow": [

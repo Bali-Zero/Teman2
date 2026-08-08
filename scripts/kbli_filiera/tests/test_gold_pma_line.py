@@ -41,19 +41,18 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # cross-family adversarial review (Gemini agy, instructed to refute). Four
 # were cured (73100, 47221, 86202, 47222 — see
 # cure_gold_pma_line.py::AUTHORED_SENTENCES and, for 47222's canonical
-# pma_status, cure_canonical_47222_reservation.py). 41011's permissive cure
-# was REFUTED and its reason below replaces the earlier one. 65121 and 86101
-# are untouched.
-ADJUDICATION_BACKLOG = {
-    "41011": (
-        "gold 67% vs canonical 100% — permissive cure REFUTED by cross-family "
-        "review 2026-08-07: a sectoral construction JV cap (67%/70% ASEAN, "
-        "BUJKN partnership, Besar-only qualification) may survive the Perpres "
-        "via UU 2/2017/PUPR instruments; needs a primary-source read before "
-        "any change"
-    ),
-    "65121": "gold cites a historical 80% acquisition cap vs canonical 100%",
-}
+# pma_status, cure_canonical_47222_reservation.py).
+# 2026-08-08: the last two closed the ledger to EMPTY. 41011's earlier
+# "permissive cure REFUTED" note is superseded — the primary-source read it
+# asked for was done this session (Perpres 49/2021 Lampiran II p.6,
+# dialokasikan column, segment-qualified bucket: only the sederhana/madya
+# residential-building slice is UMKM/Koperasi-allocated, not the whole code)
+# and the two-part truth is now authored in cure_gold_pma_line.py::
+# AUTHORED_SENTENCES["41011"]. 65121 is cured under PP 14/2018 Pasal 5(1) jo.
+# PP 3/2020 (Perpres 10/2021 Pasal 11(2) sector-law carve-out) — see
+# AUTHORED_SENTENCES["65121"] and cure_canonical_asuransi_pp14_cap.py for the
+# matching canonical flip. 86101 remains cured (2026-08-07, see below).
+ADJUDICATION_BACKLOG: dict[str, str] = {}
 # 86101 cured 2026-08-07: the whole card described a PRIVATE hospital on the
 # STATE hospital code and was replaced field-by-field (not a sentence swap —
 # see cure_gold_86101_government_hospital.py + cure_specs/
@@ -80,10 +79,12 @@ def stores():
 # ── the live ledger ─────────────────────────────────────────────────────────
 
 
-def _backlog_mismatch(gold: dict, by_code: dict) -> set[str]:
+def _backlog_mismatch(gold: dict, by_code: dict, backlog: dict | None = None) -> set[str]:
     """Symmetric difference between what the scanner flags (findings ∪
-    incomparable) and ADJUDICATION_BACKLOG's keys — empty iff they agree
-    exactly.
+    incomparable) and the backlog's keys — empty iff they agree exactly.
+    `backlog` defaults to the live ADJUDICATION_BACKLOG; a test may pass a
+    synthetic one to exercise the detector without depending on real gold
+    wording that a cure could change out from under it.
 
     A one-directional check (findings ⊆ backlog) only catches a NEW,
     unnamed divergence; it says nothing if a NAMED backlog entry stops
@@ -94,10 +95,12 @@ def _backlog_mismatch(gold: dict, by_code: dict) -> set[str]:
     green while ADJUDICATION_BACKLOG quietly went stale. Set-EQUALITY closes
     both directions with one assertion.
     """
+    if backlog is None:
+        backlog = ADJUDICATION_BACKLOG
     incomparable: list = []
     findings = C.scan(gold, by_code, incomparable)
     found_or_incomparable = set(findings) | {c for c, *_ in incomparable}
-    return found_or_incomparable ^ set(ADJUDICATION_BACKLOG)
+    return found_or_incomparable ^ set(backlog)
 
 
 def test_no_gold_pma_sentence_contradicts_canonical(stores):
@@ -127,27 +130,52 @@ def test_no_gold_pma_sentence_contradicts_canonical(stores):
 
 
 def test_backlog_mismatch_detector_catches_a_vanished_finding(stores):
-    """Guilt for `_backlog_mismatch`: on a COPY of gold with 41011's PMA
-    sentence deleted (as if someone had silently 'fixed' or dropped it
-    without adjudication), the detector must report 41011 as missing —
-    proving the set-equality guard above is not a decoration."""
+    """Guilt for `_backlog_mismatch`, on a SYNTHETIC scenario rather than a
+    real code's live wording — with ADJUDICATION_BACKLOG now empty (2026-08-08:
+    41011 and 65121 both cured), pinning this test to 41011's actual sentence
+    would make it depend on text a future cure is free to change again. A
+    synthetic code exercises the same detector logic without that coupling.
+
+    A fake backlog names a code whose gold text does NOT diverge from
+    canonical (as if a real divergence had been silently fixed without going
+    through adjudication) — the detector must report that entry as a
+    vanished finding, proving the set-equality guard is not a decoration.
+    """
     by_code, gold = stores
-    mutated = copy.deepcopy(gold)
-    live = mutated["41011"]["whatYouNeed"]
-    sentence = "**PMA:** Open up to 67% foreign ownership — a local partner holds the remainder."
-    assert sentence in live, "fixture assumption stale — re-read 41011's live text"
-    mutated["41011"]["whatYouNeed"] = live.replace(sentence, "").strip()
-    mismatch = _backlog_mismatch(mutated, by_code)
-    assert mismatch == {"41011"}
+    synthetic_canon = dict(by_code)
+    synthetic_canon["99001"] = {
+        "kode_kbli_2025": "99001",
+        "pma_max_asing": 100,
+        "pma_status": "TERBUKA",
+        "judul": "Synthetic test code — never a real KBLI",
+    }
+    synthetic_gold = copy.deepcopy(gold)
+    synthetic_gold["99001"] = {
+        "whatYouNeed": "**PMA:** Fully open — 100% foreign ownership allowed."
+    }
+    # This sentence AGREES with canonical (cap 100, stated 100%) — no real
+    # divergence — yet a fake backlog names it anyway, as if a cure had
+    # already silently resolved it without going through adjudication.
+    fake_backlog = {"99001": "synthetic: pretend this needed adjudication"}
+    mismatch = _backlog_mismatch(synthetic_gold, synthetic_canon, backlog=fake_backlog)
+    assert mismatch == {"99001"}
+
+
+def test_backlog_mismatch_detector_is_innocent_when_backlog_is_empty(stores):
+    """Innocence for the same detector: the real, live stores with the real
+    (now-empty) ADJUDICATION_BACKLOG must show zero mismatch — proving the
+    ledger is not just "empty" but actually EMPTY-AND-CORRECT against live
+    gold/canonical data."""
+    by_code, gold = stores
+    assert _backlog_mismatch(gold, by_code) == set()
 
 
 def test_exception_list_only_shrinks():
-    # 2026-08-07: 7 -> 3 -> 2 (five adjudicated and cured, 86101 last). Lower
-    # this number when one is adjudicated; never raise it.
-    assert len(ADJUDICATION_BACKLOG) <= 2
-    # Explicit pin, not just a count — a count alone would not notice one
-    # code swapped for another at the same cardinality.
-    assert set(ADJUDICATION_BACKLOG) == {"41011", "65121"}
+    # 2026-08-07: 7 -> 3 -> 2. 2026-08-08: 2 -> 0 (41011 and 65121 both
+    # adjudicated and cured). This number may only shrink further; it can
+    # never go back up.
+    assert len(ADJUDICATION_BACKLOG) <= 0
+    assert set(ADJUDICATION_BACKLOG) == set()
     assert all(v.strip() for v in ADJUDICATION_BACKLOG.values()), "a reason is required"
 
 

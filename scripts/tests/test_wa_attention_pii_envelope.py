@@ -131,9 +131,17 @@ def test_every_fstring_that_renders_a_phone_goes_through_a_masker(wa):
     Grepping for the line shape that had already been found could only ever
     re-find it. This walks the AST instead and asks a question about the
     ENTITY: does anything named `phone` reach an f-string without passing a
-    masker? The one permitted exception is the LOCAL 4h dedup state key, which
-    never leaves the machine — Law 2 draws the line at output, not at local
-    processing, and that boundary is declared in the source.
+    masker?
+
+    TIGHTENED 2026-08-08: there used to be ONE declared exception — the local
+    4h dedup state key `f"{phone}:{sorted(critical)[0]}"`, which never left the
+    machine (Law 2 draws the line at output, not at local processing). The
+    episode-tier change removed that f-string: episodes are keyed on the phone
+    value directly, so the exception no longer exists and the invariant is now
+    absolute. The count assertion below moved from `== 1` to `== 0` because the
+    exception went away, NOT because it was waived — and it is kept, rather
+    than deleted, so that reintroducing an undeclared local-state f-string
+    still has to come past this test and be argued for.
     """
     allowed = ("mask", "contact_label", "distinct_phones", "phone[:4]", "phone[-4:]")
     offenders = []
@@ -146,12 +154,12 @@ def test_every_fstring_that_renders_a_phone_goes_through_a_masker(wa):
             rendered = ast.unparse(value.value)
             if "phone" in rendered and not any(a in rendered for a in allowed):
                 offenders.append((node.lineno, rendered))
-    # line 228-ish: the local state key, declared in the source as deliberate.
     local_state = [o for o in offenders if o[1] == "phone"]
     leaks = [o for o in offenders if o not in local_state]
     assert not leaks, f"an unmasked phone reaches a message: {leaks}"
-    assert len(local_state) == 1, (
-        f"the local-state exception moved or multiplied: {local_state}")
+    assert local_state == [], (
+        "a bare-phone f-string is back; if it is genuinely local-only state, "
+        f"declare it in the source and in this docstring first: {local_state}")
 
 
 # ----------------------------------------------------------------- innocence

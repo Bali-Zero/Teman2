@@ -132,6 +132,8 @@ jobs:
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
               infra/launchagents/wrappers/cron-agent.sh|\
               scripts/tests/test_cron_agent_oauth_cascade.sh|\
+              scripts/lib/claude_seat.sh|\
+              scripts/tests/test_claude_seat_helper.sh|\
               scripts/tests/test_cron_agent_alert_verdict.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
@@ -476,6 +478,24 @@ jobs:
           # half runs the wrapper in a fake world (W107) so "did not rotate" is
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
+      - name: Claude seat helper corpus (a plain script must reach a live seat)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured on Pro 2026-08-08 under `bash -lc` — the shell 27 of its 135
+          # crontab lines use: `claude` is not on PATH (the binary is in
+          # ~/.local/bin) and no OAuth seat is in the environment. The fallback
+          # everyone assumed covered this does not exist — the bare keychain
+          # identity was tried 905 times across ~/logs/cron-agent/ and succeeded
+          # 0 times, because reading the keychain secret needs `-g`, which
+          # returns rc=36 in any non-GUI session. An interactive login cannot
+          # fix that; cron is never a GUI session.
+          #
+          # The helper therefore has NO bare fallback and fails loudly instead.
+          # It also does not reimplement the refusal rule: it extracts the live
+          # classifier out of cron-agent.sh, so the two cannot drift into
+          # different answers to the same question. This corpus pins both.
+          bash scripts/tests/test_claude_seat_helper.sh
 
       - name: Cron-agent alert verdict corpus (a lost alert must not buy silence)
         if: steps.paths.outputs.relevant == 'true'

@@ -6,6 +6,7 @@ import {
   shouldShowReason,
 } from "@/lib/kbli-bali-block";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
+import { pmaSourceNoteFaq } from "@/lib/kbli-pma-source";
 
 export interface KbliFaqEntry {
   question: string;
@@ -53,8 +54,20 @@ function restrictedPmaAnswer(code: KBLICode): string {
     case "full":
     case "conditional":
       return `Yes, with conditions. ${head} is TERBATAS, but the restriction is not an ownership ceiling — foreign ownership may reach 100%. Verify the applicable conditions in OSS.${cond}`;
-    default:
-      return `Partially. ${head} is TERBATAS — foreign ownership is ${code.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${code.pma.maxForeign}%.${cond} An Indonesian partner holds the remaining shares.`;
+    default: {
+      // The trailing absolute is only true when there IS no condition
+      // narrating who may hold what — a code whose `pma.condition` already
+      // says "listed insurers exempt" / "pre-2018 holdings grandfathered"
+      // (65111 and its siblings, this fix-pack) contradicts itself if this
+      // clause is appended after it: the condition just said an Indonesian
+      // partner is NOT always required, and the trailing sentence asserts
+      // the opposite as flat fact. Drop it whenever a condition is present;
+      // the condition is the more specific, more correct statement.
+      const remainderClause = cond
+        ? ""
+        : " An Indonesian partner holds the remaining shares.";
+      return `Partially. ${head} is TERBATAS — foreign ownership is ${code.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${code.pma.maxForeign}%.${cond}${remainderClause}`;
+    }
   }
 }
 
@@ -140,11 +153,13 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
         ? restrictedPmaAnswer(code)
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
 
-  // PMA source attribution with vintage (FATAL-2 axis): the investment-list
-  // annexes are the in-force regulation but predate KBLI 2025 — disclose the
-  // source and the pending per-code crosswalk instead of asserting bare fact.
-  const pmaSourceNote =
-    " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)";
+  // PMA source attribution with vintage (FATAL-2 axis): disclose the
+  // instrument the RECORD itself names (kbli-pma-source.ts) instead of
+  // hardcoding the Perpres investment-list default onto every code — the six
+  // insurance codes this fix-pack cures are adjudicated under PP 14/2018
+  // Pasal 5(1) jo. PP 3/2020, not the Perpres annexes, and attributing their
+  // 80% cap to "Perpres 10/2021" would have named the wrong instrument.
+  const pmaSourceNote = pmaSourceNoteFaq(code.pma.source);
 
   // BROADER-adjudicated codes render "100% open" correctly for the WHOLE
   // code while a narrower bidang usaha inside them carries a Perpres

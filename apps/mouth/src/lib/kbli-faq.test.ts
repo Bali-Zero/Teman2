@@ -244,3 +244,64 @@ describe("buildKbliFaq — the Bali-block cause is derived, and Italian never le
     expect(answer).not.toContain("  ");
   });
 });
+
+// =============================================================================
+// 2026-08-08 fix-pack, items E + F: the pmaSourceNote and the
+// restrictedPmaAnswer trailing "An Indonesian partner holds the remaining
+// shares" both hardcoded a claim that is false for a subset of TERBATAS
+// codes — the source attribution because it never read `code.pma.source`,
+// the trailing absolute because it ignored `code.pma.condition` entirely.
+// =============================================================================
+describe("buildKbliFaq — pmaSourceNote is source-aware (item E)", () => {
+  it("guilt: a sector-law-sourced code (65111, this fix-pack) attributes PP 14/2018, not Perpres", () => {
+    const code = getCode("65111") as KBLICode;
+    expect(code).toBeDefined();
+    expect(code.pma.source).toContain("PP 14/2018");
+    const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).toContain("PP 14/2018");
+    expect(answer).not.toContain("crosswalk audit in progress");
+  });
+
+  it("innocence: a Perpres-sourced TERBATAS code keeps the existing crosswalk note verbatim", () => {
+    // 52292 (cargo/freight forwarding, max 49% WNA per the l4_bali sample
+    // elsewhere in this file) carries the plain Perpres residual-open
+    // default — untouched by this fix-pack.
+    const code = getAllCodes().find(
+      (c) =>
+        c.pma.status === "restricted" &&
+        !!c.pma.source?.startsWith("Perpres 10/2021"),
+    );
+    expect(code).toBeDefined();
+    const answer = buildKbliFaq(code as KBLICode)[0].answer;
+    expect(answer).toContain(
+      "(Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)",
+    );
+  });
+});
+
+describe("restrictedPmaAnswer — the trailing absolute only holds when there is no condition (item F)", () => {
+  it("guilt: a condition that narrates exemptions (65111, listed insurers exempt / grandfathered) drops the trailing absolute", () => {
+    const code = getCode("65111") as KBLICode;
+    expect(code.pma.condition).toBeTruthy();
+    expect(code.pma.condition).toContain("exempt");
+    const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).not.toContain(
+      "An Indonesian partner holds the remaining shares.",
+    );
+    // The condition itself still renders — dropping the absolute must not
+    // silently drop the real condition prose too.
+    expect(answer).toContain("Condition:");
+  });
+
+  it("innocence: a plain percentage cap with no condition keeps the trailing absolute", () => {
+    const base = getCode("65111") as KBLICode;
+    const synthetic: KBLICode = {
+      ...base,
+      pma: { ...base.pma, condition: null },
+    } as KBLICode;
+    const answer = buildKbliFaq(synthetic)[0].answer;
+    expect(answer).toContain(
+      "An Indonesian partner holds the remaining shares.",
+    );
+  });
+});

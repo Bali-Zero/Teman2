@@ -133,6 +133,7 @@ CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.jso
 UMKM = REPO_ROOT / "data" / "kbli-filiera" / "perpres-umkm-reservation.json"
 CAPS = REPO_ROOT / "data" / "kbli-filiera" / "perpres-foreign-caps.json"
 PRIORITY = REPO_ROOT / "data" / "kbli-filiera" / "perpres-priority-codes.json"
+SECTOR_LAW_CARVEOUT = REPO_ROOT / "data" / "kbli-filiera" / "sector-law-carveout.json"
 
 EXIT_OK, EXIT_DIFFERS, EXIT_CANNOT_VERIFY = 0, 1, 4
 
@@ -154,6 +155,17 @@ BODY_OTHER_REQUIREMENT: dict[str, str] = {
 RESIDUAL_BASIS = "Pasal 3 ayat (1) huruf d + ayat (2)"
 PRIORITY_BASIS = "Pasal 3 ayat (1) huruf a"
 BESAR_BASIS = "Pasal 7 ayat (1)"
+
+# 2026-08-08 fix-pack item G: six insurance/reinsurance codes absent from
+# every annex for a DIFFERENT reason than the residual default — Pasal 11(2)
+# routes financial/banking bidang usaha to sector law instead. Declared in
+# its own file (see write_sector_law_carveout.py's docstring for why) rather
+# than a third hardcoded dict beside BODY_TERTUTUP/BODY_OTHER_REQUIREMENT.
+SECTOR_LAW_CARVEOUT_BASIS = "Pasal 11 ayat (2)"
+SECTOR_LAW_CARVEOUT_CITE = (
+    "Perpres 10/2021 Pasal 11(2) — financial/banking business fields follow "
+    "their own sector legislation"
+)
 
 # The scale a foreign investor must reach, spelled as the catalogue spells it.
 BESAR = "Besar"
@@ -208,6 +220,25 @@ def priority_codes(path: Path = PRIORITY) -> set[str]:
     codes = {str(c) for c in json.loads(path.read_text()).get("codes") or []}
     if not codes:
         raise CannotVerify(f"{path} names no codes; the residual bucket would absorb category (a)")
+    return codes
+
+
+def sector_law_carveout_codes(path: Path = SECTOR_LAW_CARVEOUT) -> set[str]:
+    """The declared sector-law carve-out set (item G, 2026-08-08 fix-pack).
+
+    Missing/empty is a hard failure, same reasoning as `annex_codes` and
+    `priority_codes`: silently treating it as empty would fall these six
+    codes straight through to the residual bucket, re-citing Pasal 3(1)(d)
+    for a code Pasal 11(2) already routed elsewhere — the exact defect this
+    step exists to close.
+    """
+    if not path.is_file():
+        raise CannotVerify(
+            f"{path} missing — run: python scripts/kbli_filiera/write_sector_law_carveout.py --write"
+        )
+    codes = {str(c) for c in json.loads(path.read_text()).get("codes") or []}
+    if not codes:
+        raise CannotVerify(f"{path} names no codes")
     return codes
 
 
@@ -286,7 +317,7 @@ def locate(code: str, record: dict, umkm: set[str], caps: set[str],
 
 
 def classify(code: str, record: dict, umkm: set[str], caps: set[str],
-             priority: set[str]) -> tuple[str, dict]:
+             priority: set[str], sector_law_carveout: set[str] = frozenset()) -> tuple[str, dict]:
     """Locate one code against the instrument. Returns (bucket, evidence).
 
     Order is load-bearing. The BODY names a code before any annex does; among
@@ -300,6 +331,31 @@ def classify(code: str, record: dict, umkm: set[str], caps: set[str],
     evidence["besar"] = besar_state(record)
     evidence["besar_basis"] = BESAR_BASIS
     evidence["scales"] = sorted(scales(record))
+
+    in_carveout = code in sector_law_carveout
+    if in_carveout:
+        # DISJOINTNESS INVARIANT (item G): the carve-out set is declared
+        # against Pasal 11(2), a routing rule independent of every annex and
+        # the body-level lists above. Today the two are disjoint by
+        # construction (none of the six insurance codes is named by any
+        # annex or the body) — if that ever stops being true, the precedence
+        # below would silently let the annex/body branch win and the
+        # carve-out would never be reported, hiding a real conflict between
+        # two adjudications. Raise instead of choosing one silently.
+        named_elsewhere = bool(
+            code in BODY_TERTUTUP
+            or code in BODY_OTHER_REQUIREMENT
+            or evidence["lampiran_ii"]
+            or evidence["lampiran_iii"]
+            or evidence["lampiran_i"]
+        )
+        if named_elsewhere:
+            raise CannotVerify(
+                f"{code}: declared as a Pasal 11(2) sector-law carve-out but "
+                "ALSO named by an annex or the body — the carve-out set is "
+                "supposed to be disjoint from those; re-derive both "
+                "adjudications before trusting either"
+            )
 
     # `basis` is set on EVERY path. The two body branches used to return without
     # it, which nothing noticed until a consumer read the field — the report
@@ -320,6 +376,14 @@ def classify(code: str, record: dict, umkm: set[str], caps: set[str],
         # the blanket attribution this module exists to end.
         evidence["basis"] = PRIORITY_BASIS
         return "priority-lampiran-i", evidence
+    if in_carveout:
+        # Precedence BEFORE the residual bucket: Pasal 11(2) is the reason
+        # these six are absent from every annex, not the residual-open
+        # default — citing Pasal 3(1)(d) for them would be the same
+        # blanket-attribution defect this whole module exists to end, one
+        # article further down the precedence chain.
+        evidence["basis"] = SECTOR_LAW_CARVEOUT_BASIS
+        return "sector-law-carveout", evidence
 
     # Residual by Pasal 3(1)(d)+(2) — genuinely residual only now that (a), (b)
     # and (c) have all been asked.
@@ -383,10 +447,10 @@ def published(record: dict) -> dict:
 
 
 def report(canonical: dict[str, dict], umkm: set[str], caps: set[str],
-           priority: set[str]) -> dict:
+           priority: set[str], sector_law_carveout: set[str] = frozenset()) -> dict:
     buckets: dict[str, list[dict]] = {}
     for code, record in sorted(canonical.items()):
-        bucket, evidence = classify(code, record, umkm, caps, priority)
+        bucket, evidence = classify(code, record, umkm, caps, priority, sector_law_carveout)
         buckets.setdefault(bucket, []).append({"code": code, **published(record), **evidence})
 
     total = sum(len(rows) for rows in buckets.values())
@@ -482,6 +546,7 @@ _LINE = {
         "Perpres 10/2021 Pasal 6(3a) (as amended by 49/2021) — special requirements regime",
     "priority-lampiran-i":
         "Perpres 49/2021 Lampiran I — priority business field (Pasal 3(1)(a))",
+    "sector-law-carveout": SECTOR_LAW_CARVEOUT_CITE,
 }
 
 
@@ -556,7 +621,12 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     try:
-        rep = report(load_canonical(), *annex_codes(), priority_codes())
+        rep = report(
+            load_canonical(),
+            *annex_codes(),
+            priority_codes(),
+            sector_law_carveout_codes(),
+        )
     except (CannotVerify, FileNotFoundError) as exc:
         print(f"CANNOT-VERIFY: {exc}", file=sys.stderr)
         return EXIT_CANNOT_VERIFY
