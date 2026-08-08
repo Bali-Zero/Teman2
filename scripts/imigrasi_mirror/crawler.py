@@ -26,7 +26,7 @@ from urllib import robotparser
 
 import httpx
 
-from extract import extract_text
+from extract import extract_for
 from urls import Page
 
 USER_AGENT = "BaliZero-visa-mirror/1.0 (+https://balizero.com; contact: zero@balizero.com)"
@@ -112,7 +112,7 @@ async def _fetch_one(
             continue
 
         if resp.status_code == 200:
-            text = extract_text(resp.text)
+            text = extract_for(page.extractor, resp.text)
             return FetchResult(page, True, 200, text, None, len(resp.content))
 
         if resp.status_code in RETRYABLE_STATUS:

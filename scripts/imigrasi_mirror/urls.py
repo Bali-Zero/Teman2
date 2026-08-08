@@ -3,15 +3,17 @@ r"""Canonical URL catalog for the imigrasi.go.id scoped mirror.
 Scope (Zero mandate, 2026-08-08): NOT a full-site copy. Only the pages that
 feed the Bali Zero visa engine — the VoA/BVK/Calling subject lists, the
 per-visa-code catalog, and three regional-office mirrors as a counter-proof
-that the schema is uniform. v2 (2026-08-09) adds the national `/berita` news
-index as a daily page — where a subject removal (e.g. San Marino) is announced
-first, before the subject lists are edited. ~124 pages total (10 "daily" +
+that the schema is uniform. v2 (2026-08-09) adds two more daily pages: the
+national `/berita` news index — where a subject removal (e.g. San Marino) is
+announced first, before the subject lists are edited — and the kemenimipas
+Peraturan Menteri legal-doc listing (the legal instrument that enacts a visa
+rule change, feeding the Visa Oracle RulePack). ~125 pages total (11 "daily" +
 114 "weekly").
 
 Every URL below was verified live (200, real content — not a 404) before being
 committed here (anti-hallucination discipline, CLAUDE.md §6): the v1 set on
-2026-08-08, the `/berita` v2 index on 2026-08-09. Do not add a URL to this file
-without the same verification.
+2026-08-08, the `/berita` and kemenimipas Permen v2 pages on 2026-08-09. Do not
+add a URL to this file without the same verification.
 
 The ~114 per-visa-code identifiers are a COPY of the codes in the repo's own
 seed file, not a live import — this keeps the mirror module dependency-free
@@ -77,12 +79,16 @@ class Page:
     slug: str
     label: str
     tier: str  # "daily" | "weekly"
-    category: str  # "list" | "faq" | "index" | "berita" | "regional" | "code"
+    category: str  # "list" | "faq" | "index" | "berita" | "produk-hukum" | "regional" | "code"
+    # Which extractor in extract.py handles this page's HTML. Default = the
+    # generic content-block extractor; a page on a differently-structured CMS
+    # (e.g. the kemenimipas Joomla legal-doc listing) names a specific one.
+    extractor: str = "default"
 
 
 # --- daily tier: the pages that "morde" (bite) — subject lists, FAQ, visa    --
-# --- index, the /berita news index (v2), and 3 regional mirrors as a         --
-# --- schema counter-proof.                                                   --
+# --- index, the /berita news index + kemenimipas Permen listing (v2), and    --
+# --- 3 regional mirrors as a schema counter-proof.                           --
 DAILY_PAGES: list[Page] = [
     Page(
         id="parent",
@@ -139,6 +145,23 @@ DAILY_PAGES: list[Page] = [
         label="Indice Berita (news/annunci — dove le rimozioni si annunciano per prime)",
         tier="daily",
         category="berita",
+    ),
+    Page(
+        # kemenimipas.go.id, NOT imigrasi.go.id — the legal-documents portal
+        # moved to the new ministry domain (imigrasi.go.id/produk-hukum is 404).
+        # The Permen Imipas listing is where a visa rule change (e.g. Permen
+        # 9 & 10/2025 added visa-free countries — the San Marino class — and
+        # 14/2025 the zero-tariff services) is enacted, feeding the Visa Oracle
+        # RulePack thresholds. Custom extractor: the listing lives inside a
+        # Joomla <form> the generic extractor strips, with volatile view
+        # counters the generic extractor would false-diff on — see extract.py.
+        id="produk-hukum-permen",
+        url="https://kemenimipas.go.id/produk-hukum/peraturan-menteri-imipas",
+        slug="produk-hukum-permen",
+        label="Kemenimipas — Peraturan Menteri (produk hukum, alimenta soglie RulePack)",
+        tier="daily",
+        category="produk-hukum",
+        extractor="produk_hukum",
     ),
     Page(
         id="regional-depok",

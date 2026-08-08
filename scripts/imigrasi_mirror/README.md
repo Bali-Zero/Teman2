@@ -1,6 +1,6 @@
 # imigrasi.go.id scoped mirror + diff-alert
 
-**Scope: NOT a full-site copy.** ~124 pages that feed the Bali Zero visa
+**Scope: NOT a full-site copy.** ~125 pages that feed the Bali Zero visa
 engine, versioned daily/weekly, with a Telegram alert when one of them
 changes. The value is the repeated crawl + diff, not a one-off copy
 (cicatrix W90: "anche il ground-truth invecchia" — a static snapshot goes
@@ -14,8 +14,20 @@ stale the moment Imigrasi edits a list; this exists to catch that edit).
 | FAQ (documented for its OWN staleness, not trusted) | 1 | daily | `/faq/visa/negara-mana-saja...e-voa` |
 | Visa catalog index | 1 | daily | `/wna/daftar-visa-indonesia` |
 | News/announcement index (v2 — removals announced here first) | 1 | daily | `/berita` |
+| Kemenimipas Permen legal-doc listing (v2 — enacts visa rule changes) | 1 | daily | `kemenimipas.go.id/produk-hukum/peraturan-menteri-imipas` |
 | Regional kanim mirrors (schema counter-proof) | 3 | daily | depok / bontang / ngurah rai |
 | Per-visa-code detail pages | 114 | weekly | `/wna/daftar-visa-indonesia/{CODE}` |
+
+**The Permen listing needs a page-specific extractor** (`extract_produk_hukum`
+in `extract.py`, selected by `Page.extractor="produk_hukum"`). The generic
+`extract_text` is wrong for it two ways, both verified live: the regulation
+table is wrapped in a Joomla `<form>` that the generic extractor strips (so it
+would silently watch the footer menu — the WRONG signal), and each row carries
+a volatile `Dilihat: N` view counter that would fire a false diff on every
+crawl. The custom extractor pulls only the title links, so a new Permen = a new
+line and nothing else moves. It lives on the NEW ministry domain
+`kemenimipas.go.id` (the immigration legal portal moved there —
+`imigrasi.go.id/produk-hukum` is a 404).
 
 The 114 codes are a **copy** of `apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py`,
 not a live import (keeps this module free of the backend-rag app's
@@ -25,16 +37,17 @@ dependency chain so it can run standalone from cron). Re-check with:
 scripts/imigrasi_mirror/run-mirror.sh --verify-codes
 ```
 
-All 124 URLs in `urls.py` were verified live (200, real content) before being
-committed — 123 on 2026-08-08, the `/berita` v2 index on 2026-08-09. `/berita`
-was also extraction-stability probed (identical extract text across two fetches
-3s apart) so the daily diff fires only on a genuinely new headline, never on
-volatile page furniture. See the module docstring.
+All 125 URLs in `urls.py` were verified live (200, real content) before being
+committed — 123 on 2026-08-08, the `/berita` and kemenimipas Permen v2 pages on
+2026-08-09. Both v2 pages were extraction-stability probed (identical extract
+text across two fetches seconds apart) so the daily diff fires only on genuinely
+new content, never on volatile page furniture (view counters, timestamps). See
+the module docstring.
 
 ## Cadence (coded, NOT yet installed as cron)
 
 ```
-run-mirror.sh --tier daily     # the 10 pages that "morde" — run this one daily
+run-mirror.sh --tier daily     # the 11 pages that "morde" — run this one daily
 run-mirror.sh --tier weekly    # the 114 per-code pages — run this one weekly
 run-mirror.sh --tier all       # everything in one pass
 run-mirror.sh --select parent,voa,bvk,calling,faq-evoa   # ad-hoc subset
