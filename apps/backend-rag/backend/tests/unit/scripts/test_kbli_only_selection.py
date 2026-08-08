@@ -1,15 +1,19 @@
-"""Tests for the --only per-code selection logic added to both Qdrant indexers.
+"""Tests for the --only per-code selection logic and the robust repo-root
+resolver added to both Qdrant indexers.
 
-Pure-function tests only — no network, no Qdrant, no OpenAI.  We exercise the
-two pure helpers each script exposes: ``parse_only_codes`` (flag parsing +
-validation) and the entry-filter function (``filter_to_codes`` for the gold
-indexer, ``filter_entries_to_codes`` for the BPS re-indexer).
+Pure-function / filesystem tests only — no network, no Qdrant, no OpenAI.
+
+We exercise:
+- ``parse_only_codes`` (flag parsing + validation, shared by both scripts).
+- ``filter_to_codes`` / ``filter_entries_to_codes`` (entry filtering).
+- ``resolve_repo_root`` (the shared marker-walk that replaced ``parents[N]``).
 """
 
 import argparse
 
 import pytest
 
+from backend.scripts._kbli_repo_root import resolve_repo_root
 from backend.scripts.index_kbli_gold_content import (
     filter_to_codes,
 )
@@ -153,3 +157,127 @@ class TestFilterEntriesToCodes:
             filter_entries_to_codes(self._entries(), ["99999", "88888"])
         msgs = [r.getMessage() for r in caplog.records]
         assert any("99999" in m and "88888" in m for m in msgs)
+
+
+# ─── resolve_repo_root (shared marker-walk, replaces parents[N]) ────────────
+
+_MARKER = "apps/kbli-navigator/lib/kbli-gold-content.ts"
+
+
+class TestResolveRepoRoot:
+    """The resolver must work in any directory layout — dev checkout, Fly
+    container, or a tmp_path test sandbox — and never raise IndexError."""
+
+    def test_honors_env_override(self, tmp_path, monkeypatch):
+        """KBLI_REPO_ROOT is the authoritative source when set."""
+        root = tmp_path / "fake-repo"
+        marker_dir = root / "apps" / "kbli-navigator" / "lib"
+        marker_dir.mkdir(parents=True)
+        (marker_dir / "kbli-gold-content.ts").write_text("// stub")
+
+        monkeypatch.setenv("KBLI_REPO_ROOT", str(root))
+        result = resolve_repo_root([_MARKER], script_file=str(tmp_path / "script.py"))
+        assert result == root.resolve()
+
+    def test_env_override_missing_marker_exits_with_error(self, tmp_path, monkeypatch):
+        """If KBLI_REPO_ROOT points at a dir without the marker, exit 1."""
+        root = tmp_path / "empty-root"
+        root.mkdir()
+
+        monkeypatch.setenv("KBLI_REPO_ROOT", str(root))
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_repo_root([_MARKER], script_file=str(tmp_path / "script.py"))
+        assert exc_info.value.code == 1
+
+    def test_env_override_not_a_dir_exits_with_error(self, tmp_path, monkeypatch):
+        """If KBLI_REPO_ROOT points at a file, exit 1."""
+        junk = tmp_path / "not-a-dir"
+        junk.write_text("oops")
+
+        monkeypatch.setenv("KBLI_REPO_ROOT", str(junk))
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_repo_root([_MARKER], script_file=str(tmp_path / "script.py"))
+        assert exc_info.value.code == 1
+
+    def test_walk_up_finds_marker(self, tmp_path, monkeypatch):
+        """Without env override, walking up from the script's location finds
+        the first ancestor that contains the marker file."""
+        root = tmp_path / "repo"
+        deep = root / "a" / "b" / "c" / "scripts"
+        deep.mkdir(parents=True)
+
+        marker_dir = root / "apps" / "kbli-navigator" / "lib"
+        marker_dir.mkdir(parents=True)
+        (marker_dir / "kbli-gold-content.ts").write_text("// stub")
+
+        monkeypatch.delenv("KBLI_REPO_ROOT", raising=False)
+        script = deep / "indexer.py"
+        script.write_text("# stub")
+        result = resolve_repo_root([_MARKER], script_file=str(script))
+        assert result == root.resolve()
+
+    def test_walk_up_finds_shallow_root(self, tmp_path, monkeypatch):
+        """Simulates the Fly container layout: /app/backend/scripts/indexer.py
+        with only 2 ancestors before /app — parents[4] would IndexError here."""
+        root = tmp_path / "app"
+        scripts_dir = root / "backend" / "scripts"
+        scripts_dir.mkdir(parents=True)
+
+        marker_dir = root / "apps" / "kbli-navigator" / "lib"
+        marker_dir.mkdir(parents=True)
+        (marker_dir / "kbli-gold-content.ts").write_text("// stub")
+
+        monkeypatch.delenv("KBLI_REPO_ROOT", raising=False)
+        script = scripts_dir / "indexer.py"
+        script.write_text("# stub")
+        result = resolve_repo_root([_MARKER], script_file=str(script))
+        assert result == root.resolve()
+
+    def test_exhausted_walk_exits_without_index_error(self, tmp_path, monkeypatch):
+        """If no ancestor has the marker, sys.exit(1) with a message — NOT
+        IndexError (the original bug)."""
+        # A deep tree with NO marker anywhere.
+        deep = tmp_path / "x" / "y" / "z"
+        deep.mkdir(parents=True)
+        monkeypatch.delenv("KBLI_REPO_ROOT", raising=False)
+        script = deep / "orphan.py"
+        script.write_text("# stub")
+
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_repo_root([_MARKER], script_file=str(script))
+        assert exc_info.value.code == 1
+
+    def test_exhausted_walk_names_probed_paths(self, tmp_path, monkeypatch, capsys):
+        """The error message should name the marker paths probed."""
+        deep = tmp_path / "x" / "y" / "z"
+        deep.mkdir(parents=True)
+        monkeypatch.delenv("KBLI_REPO_ROOT", raising=False)
+        script = deep / "orphan.py"
+        script.write_text("# stub")
+
+        with pytest.raises(SystemExit):
+            resolve_repo_root([_MARKER], script_file=str(script))
+        captured = capsys.readouterr()
+        assert _MARKER in captured.err
+
+    def test_multiple_markers_all_required(self, tmp_path, monkeypatch):
+        """When multiple markers are given, ALL must exist for a candidate."""
+        root = tmp_path / "repo"
+        scripts_dir = root / "deep" / "scripts"
+        scripts_dir.mkdir(parents=True)
+
+        # Only one marker present.
+        m1_dir = root / "apps" / "kbli-navigator" / "lib"
+        m1_dir.mkdir(parents=True)
+        (m1_dir / "kbli-gold-content.ts").write_text("// stub")
+
+        monkeypatch.delenv("KBLI_REPO_ROOT", raising=False)
+        script = scripts_dir / "indexer.py"
+        script.write_text("# stub")
+
+        # Two markers, second missing → should NOT resolve here.
+        with pytest.raises(SystemExit):
+            resolve_repo_root(
+                [_MARKER, "apps/kbli-navigator/data/kbli-2025.json"],
+                script_file=str(script),
+            )
