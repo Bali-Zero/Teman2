@@ -26,7 +26,7 @@
 # backend/scripts/index_kbli_gold_content.py and reindex_kbli_2025_final.py)
 !apps/kbli-navigator/lib/kbli-gold-content.ts
 !apps/kbli-navigator/data/kbli-2025.json
-!source_documents/KBLI_2025_FINAL_CLEAN.json
+!data/source_documents/KBLI_2025_FINAL_CLEAN.json
 
 # Exclude noise inside included dirs
 **/__pycache__/
