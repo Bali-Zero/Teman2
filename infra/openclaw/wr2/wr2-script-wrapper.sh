@@ -19,6 +19,96 @@
 
 set -euo pipefail
 
+# ── Voice: alert on ANY non-zero exit (2026-08-06) ──────────────────────────
+# The sibling `wr2-cron-wrapper.sh` got this on 2026-08-06 and this file did
+# not, which is W107 with the names swapped: curing one wrapper of a pair does
+# not cut the risk, it only moves which cohort dies quietly. Measured before
+# writing this: eight LaunchAgents run through here — daily-metrics,
+# draft-generator, fact-checker, fact-extractor, image-generator, supervisor,
+# supervisor-watchdog, topic-selector — against nine on the cured sibling. The
+# smaller half was the one with a voice.
+#
+# Two independent mechanisms kept these eight mute:
+#
+#   1. EIGHT silent exits — usage 64, DATABASE_URL_LOCAL unset 74, pg-proxy
+#      unreachable 74, script not found 66 (armed-at-nothing, W81), and four
+#      distinct `exit 75` in the venv auto-heal. None said anything to anyone.
+#
+#   2. The final `exec` REPLACED this shell, so the script's own failure never
+#      returned here at all. That is the one that matters most: it is the
+#      normal way these jobs fail.
+#
+# The pre-existing Telegram call is folded in here rather than left beside it.
+# It was a raw `curl … || true` reachable only from the venv-missing branch,
+# so it bypassed tier, budget and dedup entirely, and in launchd's token-poor
+# environment it did nothing AND left no trace of doing nothing (W108). It
+# also carried its own 1h cooldown state file, duplicating — worse — what the
+# gateway's repeat ladder already does. Routing it through the gateway is a
+# reduction in message volume, not an addition: two of these eight
+# (supervisor, supervisor-watchdog) restart on failure, and a flapping job now
+# collapses to ONE alert per 6/24/72/168h window instead of one per restart.
+#
+# The interpreter is ABSOLUTE and system, never "$VENV_PY" and never a bare
+# `python3`. W108: this wrapper's whole job is to find and repair a venv, so a
+# PATH-resolved python3 could be the very interpreter whose breakage it must
+# report on. An alarm that shares the failure mode of what it reports is not
+# an alarm.
+#
+# Fail-open by construction: the exit code is the contract this wrapper exists
+# to preserve. The trap re-exits with the code it was handed, never its own.
+WR2_STAGE="startup"
+SCRIPT_ID="<none>"
+_wr2_alerted=0
+
+# Gateway resolution lives in ONE function, consulted by both the failure trap
+# and the venv notice. Two callers that must agree on "where is the gateway"
+# do not get to invent two answers (W106b: the asymmetry between twins is what
+# hides the defect in one of them).
+#
+# WR2_REPO_ROOT leads the list on purpose. The first draft started at
+# $REPO_ROOT, which is assigned ~30 lines BELOW — so on the usage exit, the
+# earliest failure there is, the trap resolved nothing and stayed mute. The
+# corpus caught it. A trap can fire from anywhere and must not depend on how
+# far execution got; every input it reads has to be available at line one.
+_wr2_gateway() {
+    local root
+    for root in "${WR2_REPO_ROOT:-}" "${REPO_ROOT:-}" "$HOME/nuzantara-deploy" "$HOME/nuzantara"; do
+        [[ -n "$root" && -f "$root/scripts/tg_notify.py" ]] || continue
+        printf '%s' "$root/scripts/tg_notify.py"
+        return 0
+    done
+    return 1
+}
+
+_wr2_alert_exit() {
+    local rc="$1"
+    [[ "$rc" -eq 0 ]] && return 0
+    [[ "${WR2_CRON_ALERT:-true}" == "false" ]] && return 0
+    [[ "$_wr2_alerted" -eq 1 ]] && return 0   # a trap must not re-enter itself
+    _wr2_alerted=1
+    local gateway py key
+    gateway="$(_wr2_gateway)" || return 0
+    # The key names the CONDITION (script + stage), never a measurement: an
+    # exit code or a duration in the key would mint a fresh one per failure
+    # and defeat every window — the defect #3677 cured at the sentinel.
+    key="cron-fail:wr2.${SCRIPT_ID}.${WR2_STAGE}"
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        [[ -x "$py" ]] || continue
+        "$py" "$gateway" \
+            --tier p0 \
+            --source "wr2:${SCRIPT_ID}" \
+            --dedup-key "$key" \
+            -- "CRON FAIL $(hostname -s 2>/dev/null || echo '?')
+Job: wr2 ${SCRIPT_ID}
+Stage: ${WR2_STAGE}
+Exit: ${rc}
+Script: ${FULL_SCRIPT:-${SCRIPT_PATH:-<unresolved>}}" >/dev/null 2>&1 || true
+        return 0
+    done
+    return 0
+}
+trap '_wr2_alert_exit $?' EXIT
+
 if [[ $# -lt 1 ]]; then
     echo "usage: $0 <script-relative-path> [args...]" >&2
     exit 64
@@ -26,6 +116,12 @@ fi
 
 SCRIPT_PATH="$1"
 shift
+
+# Identity for the alert: the script's basename without .py, so
+# `scripts/wr2_image_generator.py` reports as `wr2_image_generator`. Derived
+# once, here, rather than at the alert site — the trap can fire from anywhere
+# below and must never depend on how far execution got.
+SCRIPT_ID="$(basename "$SCRIPT_PATH" .py)"
 
 # 2026-05-06: switched from ~/nuzantara (multi-agent collision zone)
 # to dedicated git worktree ~/nuzantara-deploy on branch deploy/main.
@@ -75,6 +171,7 @@ fi
 # servname" forever. Always pin DATABASE_URL_LOCAL on Pro/Mini regardless of
 # whatever the secrets file pre-set. Bug discovered 2026-05-06 (supervisor in
 # reconnect-loop since 2026-04-30 17:31).
+WR2_STAGE="guard"
 if [[ -z "${DATABASE_URL_LOCAL:-}" ]]; then
     echo "[wr2-script-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE" >&2
     exit 74
@@ -89,6 +186,7 @@ if ! nc -z 127.0.0.1 15432 2>/dev/null; then
 fi
 
 # 3. Resolve script path
+WR2_STAGE="script"
 FULL_SCRIPT="$REPO_ROOT/$SCRIPT_PATH"
 if [[ ! -f "$FULL_SCRIPT" ]]; then
     echo "[wr2-script-wrapper] ERROR: script not found: $FULL_SCRIPT" >&2
@@ -105,6 +203,7 @@ REQ_FILE="$REPO_ROOT/apps/backend-rag/requirements-prod.txt"
 # (`-x`). But a venv-SKELETON — python present, site-packages evaporated by a
 # deploy-worktree re-add — passed that check and crashed at `import asyncpg`
 # (ModuleNotFoundError, supervisor down ~3 days, 20→23 Jun). Probe the real import.
+WR2_STAGE="venv"
 VENV_BROKEN=0
 if [[ -x "$VENV_PY" ]]; then
     "$VENV_PY" -c "import asyncpg" >/dev/null 2>&1 || VENV_BROKEN=1
@@ -132,22 +231,35 @@ if [[ ! -x "$VENV_PY" || "$VENV_BROKEN" == "1" ]]; then
     NOW=$(date '+%Y-%m-%d %H:%M:%S WITA')
     echo "[wr2-script-wrapper] WARN ${NOW}: venv Python missing at $VENV_PY — attempting auto-heal" >&2
 
-    # Telegram alert (cooldown 1h via state file to avoid spam)
-    ALERT_STATE="${HOME}/.agent/decisions/state/wr2_venv_alert.state"
-    NOW_TS=$(date +%s)
-    LAST_TS=$(cat "$ALERT_STATE" 2>/dev/null || echo 0)
-    COOLDOWN_SEC=3600  # 1h between repeat alerts
-    if (( NOW_TS - LAST_TS > COOLDOWN_SEC )); then
-        if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
-            curl -sS --max-time 5 \
-                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-                -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
-                -d text="🚨 WR2 venv missing at ${VENV_DIR} — auto-heal attempted at ${NOW}" \
+    # The venv-missing notice, on the gateway.
+    #
+    # It used to be a raw `curl … || true` behind a hand-rolled 1h cooldown
+    # state file. Three things were wrong with that and all three are why the
+    # cooldown is gone rather than kept: the curl needed TELEGRAM_BOT_TOKEN in
+    # the environment, which launchd does not provide, so it silently did
+    # nothing and left no record of having done nothing (W108); it bypassed
+    # tier, p0 budget and the dedup ladder, so it could not be reasoned about
+    # alongside every other alert; and its 1h window was both narrower and
+    # dumber than the gateway's 6/24/72/168h escalation. Note this notice is
+    # deliberately NOT the failure trap — the auto-heal may well succeed, so
+    # this is `digest` tier, and only a FAILED heal exits non-zero and reaches
+    # the p0 trap above.
+    _wr2_venv_notice() {
+        local gateway py
+        gateway="$(_wr2_gateway)" || return 0
+        for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+            [[ -x "$py" ]] || continue
+            "$py" "$gateway" \
+                --tier digest \
+                --source "wr2:${SCRIPT_ID}" \
+                --dedup-key "wr2-venv-missing.${SCRIPT_ID}" \
+                -- "WR2 venv missing at ${VENV_DIR} — auto-heal attempted (${NOW})" \
                 >/dev/null 2>&1 || true
-        fi
-        mkdir -p "$(dirname "$ALERT_STATE")"
-        echo "$NOW_TS" > "$ALERT_STATE"
-    fi
+            return 0
+        done
+        return 0
+    }
+    _wr2_venv_notice
 
     # Auto-heal: create venv + pip install
     PYENV_PY311="${HOME}/.pyenv/versions/3.11.11/bin/python"
@@ -176,4 +288,13 @@ if [[ ! -x "$VENV_PY" || "$VENV_BROKEN" == "1" ]]; then
     fi
 fi
 
-exec "$VENV_PY" "$FULL_SCRIPT" "$@"
+# Run-and-judge, not `exec`. This line used to be `exec "$VENV_PY" …`, which
+# replaced this shell with the script — so the EXIT trap above could never
+# fire for the way these jobs actually fail. errexit is disarmed around the
+# run and the verdict is the CAPTURED code, never survival (W101/W108).
+WR2_STAGE="job"
+set +e
+"$VENV_PY" "$FULL_SCRIPT" "$@"
+SCRIPT_RC=$?
+set -e
+exit $SCRIPT_RC
