@@ -45,9 +45,10 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-08 — keep current)
 
-**🟡 2026-08-08 — PENDING-ARMS line 610 (the 4 contradicted-predecessor codes) ADJUDICATED: 2 of 4
-were re-measurable and are now CONFIRMED, 2 stay genuinely disputed BY DESIGN. PR open, not yet
-merged — see PR from lane `kbli-navigator/client-facing-defects`.** The 2026-07-25 line asked to
+**🟢 2026-08-08 — PENDING-ARMS "4 contradicted-predecessor adjudications" (2026-07-25) CLOSED: 2 of 4
+CONFIRMED and live on every surface, 2 stay genuinely disputed BY DESIGN. Merged as #3778
+(`58a3d01e28`), Vercel promote HTTP 201, proven live by content on `/kbli/49296` (49424) and
+`/kbli/64210` (64200).** The 2026-07-25 line asked to
 "adjudicate which layer holds the true 2020 origin for each of the 4" (`46415`/`46496`/`49296`/`64210`).
 Re-measured against the FULL BPS 2020-to-2025 crosswalk relation file
 (`data/kbli-filiera/phase0/bps_crosswalk.json::relation`, all 1,559 codes) instead of canonical's own
@@ -76,14 +77,17 @@ facts-basis-guarded — re-derives the corroboration premise from live data befo
 drift; 14 tests). Applied to canonical + gold + the 3 synced consumer copies + the
 `kbli-dataset-version.json` sidecar sha256.
 
-**Declared, not silently skipped:** KG (`kg_nodes`) needs the SAME 2-code update — spec built
-(`scripts/kbli_filiera/cure_specs/kg_whatchanged_corroborated_predecessor_2026_08_08.json`) but
-**NOT YET APPLIED** (`kg_whatchanged_cure.py` refuses a moving `main` raw URL, needs a
-commit-SHA-pinned URL reachable via `fly ssh`, pending this branch's push/merge). Qdrant `kbli_2025_final`
-and `kbli_documents` (`chat_kbli`) were checked and do **NOT** carry this specific false claim for any
-of the 4 codes — verified via read-only Postgres MCP query, no action needed there. Also fixed while
-in the file: the badge visible-caption defect (`BaliStatusBadge` hover-only `reason` text, invisible on
-mobile/touch) — client-facing, same PR, separate commit.
+**KG APPLIED AND PROVEN 2026-08-08, post-merge:** `kg_whatchanged_cure.py` run inside the Fly image
+with the spec pinned to the merge SHA (`58a3d01e28`) — dry-run AND apply both reported
+`already_cured=2 drift=0`: the two nodes ALREADY carried the cured text (an earlier apply had landed;
+both rows hold the `_whatChanged_cure` archive key, which only a real `--apply` writes), so this apply
+was an idempotent no-op. Verified by INDEPENDENT read-only SQL on prod, not by the script's report:
+`kbli:49296` / `kbli:64210` `properties.whatChanged` equal the spec text verbatim (49424 / page 386,
+64200 / page 398). Qdrant `kbli_2025_final` and `kbli_documents` (`chat_kbli`) were checked and do
+**NOT** carry this specific false claim for any of the 4 codes — verified via read-only Postgres MCP
+query, no action needed there. Also fixed while in the file: the badge visible-caption defect
+(`BaliStatusBadge` hover-only `reason` text, invisible on mobile/touch) — client-facing, merged with
+#3778, the caption is live.
 
 **🟢 2026-08-06 — THE BOT/MCP HALF IS SHIPPED, SYNCED AND PROVEN LIVE (#3648, `b5dd5f37ca`). Both
 web surfaces were already live (#3645/#3646); this closes the third.** Every step measured, none
