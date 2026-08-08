@@ -1,13 +1,17 @@
 r"""Canonical URL catalog for the imigrasi.go.id scoped mirror.
 
-Scope v1 (Zero mandate, 2026-08-08): NOT a full-site copy. Only the pages that
+Scope (Zero mandate, 2026-08-08): NOT a full-site copy. Only the pages that
 feed the Bali Zero visa engine — the VoA/BVK/Calling subject lists, the
 per-visa-code catalog, and three regional-office mirrors as a counter-proof
-that the schema is uniform. ~123 pages total (9 "daily" + 114 "weekly").
+that the schema is uniform. v2 (2026-08-09) adds the national `/berita` news
+index as a daily page — where a subject removal (e.g. San Marino) is announced
+first, before the subject lists are edited. ~124 pages total (10 "daily" +
+114 "weekly").
 
-Every URL below was verified live (WebFetch, 200, real content — not a 404)
-on 2026-08-08 before being committed here (anti-hallucination discipline,
-CLAUDE.md §6). Do not add a URL to this file without the same verification.
+Every URL below was verified live (200, real content — not a 404) before being
+committed here (anti-hallucination discipline, CLAUDE.md §6): the v1 set on
+2026-08-08, the `/berita` v2 index on 2026-08-09. Do not add a URL to this file
+without the same verification.
 
 The ~114 per-visa-code identifiers are a COPY of the codes in the repo's own
 seed file, not a live import — this keeps the mirror module dependency-free
@@ -73,11 +77,12 @@ class Page:
     slug: str
     label: str
     tier: str  # "daily" | "weekly"
-    category: str  # "list" | "faq" | "index" | "regional" | "code"
+    category: str  # "list" | "faq" | "index" | "berita" | "regional" | "code"
 
 
-# --- daily tier: the pages that "morde" (bite) — subject lists, FAQ, index, --
-# --- and 3 regional mirrors as a schema counter-proof.                     --
+# --- daily tier: the pages that "morde" (bite) — subject lists, FAQ, visa    --
+# --- index, the /berita news index (v2), and 3 regional mirrors as a         --
+# --- schema counter-proof.                                                   --
 DAILY_PAGES: list[Page] = [
     Page(
         id="parent",
@@ -126,6 +131,14 @@ DAILY_PAGES: list[Page] = [
         label="Indice Daftar Visa Indonesia",
         tier="daily",
         category="index",
+    ),
+    Page(
+        id="berita",
+        url=f"{BASE}/berita",
+        slug="berita-index",
+        label="Indice Berita (news/annunci — dove le rimozioni si annunciano per prime)",
+        tier="daily",
+        category="berita",
     ),
     Page(
         id="regional-depok",
