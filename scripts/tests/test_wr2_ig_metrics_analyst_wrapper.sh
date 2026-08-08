@@ -227,6 +227,81 @@ else
     ko "morte fuori da ogni percorso noto: nessuna voce"
 fi
 
+# ---------------------------------------------------------------- COLPEVOLEZZA 7
+# FALSO UP: agy stampa AGYUP e POI muore. Il vecchio test guardava solo la
+# risposta, quindi diceva UP — e l'agente camminava dentro un Gemini che non c'e,
+# che e' esattamente il guasto per cui la sonda esiste. Copre per costruzione anche
+# il watchdog che uccide agy a meta (muore per segnale => rc != 0).
+echo "[8] agy risponde AGYUP e poi muore — deve essere DOWN, non UP"
+W="$TMPROOT/falseup"; mkdir -p "$W/tmp"
+make_world "$W" 7 "AGYUP" 0 yes
+run_wrapper "$W"; rc=$?
+LOG="$W/logs/wr2-ig-metrics-analyst.log"
+check "il wrapper sopravvive" 0 "$rc"
+has "verdetto DOWN nonostante la risposta giusta" "gemini health-check: DOWN" "$LOG"
+hasnt "NON dice UP" "health-check: UP" "$LOG"
+has "e l'hint viaggia comunque" "DO NOT call agy" "$W/claude-argv.txt"
+
+# ---------------------------------------------------------------- COLPEVOLEZZA 8
+# Il tetto per-seat. `TIMEOUT_SECS/MAX_CLAUDE_ATTEMPTS` da 1028s, e l'unico run
+# completo riuscito di questo organo dura 1065s: avrebbe ucciso il lavoro 37s prima
+# della fine. Non mordeva perche' l'errexit bug impediva di arrivare alla cascata —
+# la cura e' cio' che rende quel tetto raggiungibile, quindi il pavimento misurato
+# fa parte della cura e non e' un extra.
+echo "[9] il tetto per-seat supera un run reale (1065s), non 1028s"
+W="$TMPROOT/budget"; mkdir -p "$W/tmp"
+make_world "$W" 0 "AGYUP" 0 yes
+env -i HOME="$W" PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin" TMPDIR="$W/tmp" \
+    WR2_IG_AGY_BIN="$W/bin/agy" WR2_IG_CLAUDE_BIN="$W/bin/claude" \
+    CLAUDE_CODE_OAUTH_TOKEN_1=faketoken \
+    /bin/bash "$WRAPPER_SRC" >/dev/null 2>&1
+LOG="$W/logs/wr2-ig-metrics-analyst.log"
+has "account_timeout al pavimento misurato" "account_timeout=2700s" "$LOG"
+hasnt "NON il 1028 aritmetico" "account_timeout=1028s" "$LOG"
+if grep -qE "account_timeout=([0-9]+)s" "$LOG" && \
+   [ "$(grep -oE 'account_timeout=[0-9]+' "$LOG" | head -1 | cut -d= -f2)" -gt 1065 ]; then
+    ok "il tetto supera i 1065s dell'unico run riuscito"
+else
+    ko "il tetto NON supera 1065s: la cura rianima l'organo in un cadavere rumoroso"
+fi
+
+# ---------------------------------------------------------------- COLPEVOLEZZA 9
+# Uccisione esterna: e' come e' finito l'hang di 28h del 2026-07-14. Il trap deve
+# nominare il segnale, uscire 143 (non il 130 di SIGINT) e PARLARE — un EXIT trap
+# che legge $? vedrebbe 0 e resterebbe muto proprio nell'incidente che conta.
+echo "[10] SIGTERM esterno — esce 143 e parla"
+W="$TMPROOT/sigterm"; mkdir -p "$W/tmp"
+make_world "$W" 0 "AGYUP" 0 yes
+cat > "$W/bin/agy" <<'EOF'
+#!/bin/bash
+cat > /dev/null
+sleep 20
+echo AGYUP
+EOF
+chmod +x "$W/bin/agy"
+# Il segnale va al processo dello SCRIPT, non a un involucro. La prima stesura
+# faceva `run_wrapper "$W" &`, ma cosi' `$!` e' il subshell della funzione: il kill
+# uccideva quello, il trap dello script non girava mai, e il controllo su rc=143
+# passava per la ragione sbagliata. Sono stati i due controlli di CONTENUTO a
+# smascherarlo — un test che asserisce solo un codice non distingue "il trap ha
+# parlato" da "ho ucciso qualcos'altro".
+env -i HOME="$W" PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin" TMPDIR="$W/tmp" \
+    WR2_IG_AGY_BIN="$W/bin/agy" WR2_IG_CLAUDE_BIN="$W/bin/claude" \
+    WR2_IG_METRICS_TIMEOUT_SECS=70 WR2_IG_METRICS_POLL_SECS=1 \
+    WR2_IG_METRICS_KILL_GRACE_SECS=1 CLAUDE_CODE_OAUTH_TOKEN_1=faketoken \
+    /bin/bash "$WRAPPER_SRC" >/dev/null 2>&1 &
+WPID=$!
+sleep 3
+kill -TERM "$WPID" 2>/dev/null
+wait "$WPID"; rc=$?
+check "esce 143 (SIGTERM), non 130" 143 "$rc"
+has "nomina il segnale" "killed by SIGTERM" "$W/logs/wr2-ig-metrics-analyst.err.log"
+if [ -f "$W/gateway-called.txt" ] && grep -qF "NO diagnosis" "$W/gateway-called.txt"; then
+    ok "ha parlato dell'uccisione esterna"
+else
+    ko "ucciso da fuori e muto — l'incidente del 2026-07-14 sarebbe di nuovo invisibile"
+fi
+
 # ------------------------------------------------------------------- MUTAZIONE
 # Rimette errexit dentro e attorno alla sonda — cioe ESATTAMENTE il codice di
 # prima — e pretende che il caso [1] diventi rosso. Un corpus che resta verde
