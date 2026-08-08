@@ -226,9 +226,42 @@ async def fetch_digest_metrics(conn: asyncpg.Connection) -> dict:
     return {**dict(row), "new_leads_24h": new_leads}
 
 
+def _load_episodes(state: dict) -> dict:
+    """Read episode state, migrating the pre-2026-08-08 `last_alerted` shape.
+
+    Old shape: {"<phone>:<reason>": "<iso ts>"} — one entry per contact+reason,
+    the value a bare timestamp. New shape is keyed on PHONE alone and carries
+    the reason set that has already bought a P0:
+
+        {"<phone>": {"ts": "<iso>", "reasons": ["deadline", ...]}}
+
+    Keyed on phone, NOT on phone+reason, and that is the whole point: the old
+    key embedded `sorted(critical)[0]`, so a contact whose reasons IMPROVED
+    from ["audit","deadline"] to ["deadline"] would change key, look brand new,
+    and buy a fresh P0 — an alert fired by things getting better.
+
+    Migration treats a legacy entry as an episode ALREADY in progress. That is
+    the quiet direction on purpose: the loud alternative would read every one
+    of the ~9 live contacts as a first entry and fire a P0 burst on the first
+    run after deploy, which is the exact failure this change exists to end.
+    """
+    raw = state.get("episodes")
+    if isinstance(raw, dict):
+        return raw
+    migrated: dict = {}
+    for key, ts in (state.get("last_alerted") or {}).items():
+        if not isinstance(key, str):
+            continue
+        phone, _, reason = key.partition(":")
+        ep = migrated.setdefault(phone, {"ts": ts if isinstance(ts, str) else "", "reasons": []})
+        if reason and reason not in ep["reasons"]:
+            ep["reasons"].append(reason)
+    return migrated
+
+
 async def cmd_realtime(force: bool = False):
     state = load_state()
-    last_alerted = state.get("last_alerted", {})
+    episodes = _load_episodes(state)
     now = datetime.now(timezone.utc)
 
     pool = await asyncpg.create_pool(DB_URL, min_size=1, max_size=2, ssl=False)
@@ -238,17 +271,35 @@ async def cmd_realtime(force: bool = False):
     finally:
         await pool.close()
 
-    # PASS 1 — decide WHO is due, without sending anything yet. A scan that
-    # finds N due contacts used to send N separate P0s: on 2026-07-26 that was
-    # 8 messages in 60 seconds, which ate the gateway's whole daily P0 budget
-    # (12) by 02:01 and pushed every later alert of the day into the 12h
-    # digest. One scan is one event — it gets ONE message.
-    due = []
+    # PASS 1 — decide WHO is due and AT WHICH TIER, without sending anything
+    # yet. A scan that finds N due contacts used to send N separate P0s: on
+    # 2026-07-26 that was 8 messages in 60 seconds, which ate the gateway's
+    # whole daily P0 budget (12) by 02:01. One scan is one message per tier.
+    #
+    # Tier rule (Zero, 2026-08-08). Measured on the live spool that day:
+    # wa-attention was 165 of the 390 P0s the whole organism delivered in 32
+    # days — 42.3% of every immediate alert — for NINE recurring conditions
+    # re-raised roughly every 11 hours. The budget is 12/day and ran fully
+    # consumed every single day, so those repeats were not "extra" news: they
+    # were pushing OTHER sources' genuine P0s into the digest.
+    #
+    #   first entry into HIGH  → p0   (news)
+    #   condition persists     → digest (already told you; the digest groups by
+    #                            source, so all of it costs ONE line)
+    #   a NEW critical reason  → p0   (genuinely worse, not merely still true)
+    #
+    # An episode ENDS when the contact leaves the HIGH-unresolved set; the
+    # pruning below is what makes "first entry" mean first entry rather than
+    # first ever.
+    first_or_worse: list = []
+    persisting: list = []
+    live_phones: set = set()
     for it in items:
         critical = [r for r in (it["reasons"] or []) if r in CRITICAL_REASONS]
         if not critical:
             continue
         phone = it["phone"]
+        live_phones.add(phone)
         # DELIBERATE, not an oversight: this key is the LOCAL 4h dedup state in
         # ~/.cache/wa-mirror-attention-state.json. It never reaches Telegram and
         # never reaches the gateway spool — the wire key is the sha256 set
@@ -256,54 +307,90 @@ async def cmd_realtime(force: bool = False):
         # OUTPUT, not at local processing: "il processing PII resta
         # locale-sovrano sul Pro". Recorded here so the next reader can tell a
         # considered boundary from a missed one.
-        key = f"{phone}:{sorted(critical)[0]}"
-        last_ts_str = last_alerted.get(key)
-        if last_ts_str and not force:
-            try:
-                last_ts = datetime.fromisoformat(last_ts_str)
-                if now - last_ts < DEDUP_WINDOW:
-                    continue  # dedup — per contact, unchanged
-            except Exception:
-                pass
-        due.append((key, it, sorted(critical)))
+        cur = sorted(critical)
+        ep = episodes.get(phone)
+        if ep is None:
+            first_or_worse.append((phone, it, cur))
+            continue
+        already = set(ep.get("reasons") or [])
+        if set(cur) - already:
+            # A reason we have never alerted on for this open episode.
+            first_or_worse.append((phone, it, cur))
+            continue
+        # Still true, nothing new. Goes to the digest, rate-limited by the same
+        # window as before so a 10-minute scan cannot write 144 spool records a
+        # day per contact — the digest collapses to one LINE, not one EVENT.
+        if force:
+            persisting.append((phone, it, cur))
+            continue
+        try:
+            if now - datetime.fromisoformat(ep.get("ts") or "") >= DEDUP_WINDOW:
+                persisting.append((phone, it, cur))
+        except (TypeError, ValueError):
+            # Unparseable stored timestamp: treat as due rather than sit silent.
+            persisting.append((phone, it, cur))
 
-    # PASS 2 — one message for the whole scan. The per-contact 4h dedup window
-    # above is untouched: grouping changes HOW MANY messages carry the news,
-    # never WHICH contacts are considered due.
+    # PASS 2 — at most one message per tier for the whole scan.
     alerted = 0
-    if due:
-        msg = _compose_realtime_alert(due)
+    messages = 0
+
+    def _emit(batch: list, tier: str, prefix: str) -> bool:
         # Keyed on the exact set of contacts, so a scan repeating the same set
         # collapses into a counter at the gateway instead of a new message.
-        sig = hashlib.sha256(",".join(sorted(k for k, _, _ in due)).encode()).hexdigest()[:12]
-        if send_telegram(msg, tier="p0", dedup_key=f"wa-attention:set:{sig}"):
-            for key, _, _ in due:
-                last_alerted[key] = now.isoformat()
-            alerted = len(due)
+        sig = hashlib.sha256(",".join(sorted(p for p, _, _ in batch)).encode()).hexdigest()[:12]
+        msg = _compose_realtime_alert([(p, it, c) for p, it, c in batch], tier=tier)
+        return send_telegram(msg, tier=tier, dedup_key=f"wa-attention:{prefix}:{sig}")
 
-    state["last_alerted"] = last_alerted
+    if first_or_worse and _emit(first_or_worse, "p0", "new"):
+        for phone, _, cur in first_or_worse:
+            ep = episodes.setdefault(phone, {"reasons": []})
+            ep["ts"] = now.isoformat()
+            ep["reasons"] = sorted(set(ep.get("reasons") or []) | set(cur))
+        alerted += len(first_or_worse)
+        messages += 1
+
+    if persisting and _emit(persisting, "digest", "still"):
+        for phone, _, _ in persisting:
+            episodes.setdefault(phone, {"reasons": []})["ts"] = now.isoformat()
+        messages += 1
+
+    # An episode ends when the contact drops out of the HIGH-unresolved set.
+    # Without this the state grows forever and, worse, a contact who is
+    # resolved and later comes back would be read as "already told you" and
+    # never earn the P0 that a genuinely new problem deserves.
+    episodes = {p: v for p, v in episodes.items() if p in live_phones}
+
+    state["episodes"] = episodes
+    state.pop("last_alerted", None)
     save_state(state)
-    print(json.dumps({"alerted": alerted, "messages": 1 if alerted else 0,
-                      "high_open": len(items), "ts": now.isoformat()}))
+    print(json.dumps({"alerted": alerted, "messages": messages,
+                      "persisting": len(persisting), "high_open": len(items),
+                      "ts": now.isoformat()}))
 
 
-def _compose_realtime_alert(due: list) -> str:
+def _compose_realtime_alert(due: list, tier: str = "p0") -> str:
     """One contact keeps the full detail; several become a compact roster.
 
     Same OSINT envelope as before either way: display name, masked phone,
     reason codes, unresolved count, dashboard link. No free text ever.
+
+    `tier` only changes the HEADLINE, never the envelope. A digest batch is a
+    reminder about something already reported, and it has to SAY so — a
+    "🚨 HIGH attention" banner on the fourth reminder of the same contact is
+    how a reader learns to stop reading the banner.
     """
+    banner = "🚨 HIGH attention" if tier == "p0" else "🔔 still unresolved"
     if len(due) == 1:
         _, it, critical = due[0]
         crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
         return (
-            "🚨 HIGH attention\n"
+            f"{banner}\n"
             f"{contact_label(it)}\n"
             f"{crm_tag} · {it['n_high']} unresolved msg\n"
             f"Reasons: {', '.join(critical)}\n"
             f"→ {DASHBOARD_URL}"
         )
-    lines = [f"🚨 HIGH attention — {len(due)} contacts"]
+    lines = [f"{banner} — {len(due)} contacts"]
     for _, it, critical in due:
         crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
         lines.append(
