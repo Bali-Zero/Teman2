@@ -108,6 +108,27 @@
         "research/marketing/2026-06-06-sota-carousel-automation.md"
       ],
       "require_bound_marker": true
+    },
+    {
+      "id": "desktop-nuzantara-is-a-separate-checkout",
+      "pattern": "different inode|separate checkout",
+      "context_pattern": "Desktop|repo-sync|symlink|inode|stat\\b",
+      "context_window": 3,
+      "source": "measured on M5 2026-08-08: readlink + stat -L + git rev-parse --absolute-git-dir",
+      "retracted": "2026-08-08",
+      "prs": ["#3800"],
+      "what_was_claimed": "that ~/Desktop/nuzantara is a real, separate checkout with a different inode from ~/nuzantara",
+      "why_retracted": [
+        "IT IS A SYMLINK. `ls -ld` gives `lrwxr-xr-x ... -> /Users/balizero/nuzantara`; `stat -L` gives inode 758478 for BOTH paths; `git rev-parse --absolute-git-dir` answers /Users/balizero/nuzantara/.git for both. One checkout, two names.",
+        "HOW THE WRONG READING IS PRODUCED, which is why it will recur: `stat` WITHOUT -L reports the LINK's own inode (166687231). Comparing that against a directory's inode manufactures a difference that does not exist. Typing `stat` without -L is the natural thing to do, so this is a mistake to catch, not one to assume nobody repeats.",
+        "THE CONSEQUENCE RAN THE OPPOSITE WAY from what the claim implied. It was written to describe a cron writing to a harmless side copy; the truth is that `com.balizero.nuzantara-repo-sync` was aimed at the MAIN checkout, under live sibling work, and would have `git merge --ff-only`d on top of it the moment its tracked edits cleared. A future reader who re-derives 'separate checkout' will under-rate exactly that class of risk."
+      ],
+      "what_still_stands": "The daemon's disposition (retired, Option A, 2026-08-08) and every OTHER measurement in the ledger line and the decision record. Only the identity of ~/Desktop/nuzantara was wrong.",
+      "correction_lives_in": [
+        "docs/operations/2026-08-07-nuzantara-repo-sync-doctrine-conflict.md (section: Closure)",
+        ".claude/skills/modus/PENDING-ARMS.md (the closed 2026-08-08 repo-sync line)"
+      ],
+      "require_bound_marker": true
     }
   ],
   "phrase_directives": [
