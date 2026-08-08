@@ -89,7 +89,7 @@ jobs:
       # promising more foreign ownership than the truth. This step names the corpus so it
       # actually runs: in this repo scripts/tests/ executes only because a workflow says so.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
