@@ -15,6 +15,7 @@ import pytest
 
 from backend.scripts._kbli_repo_root import resolve_repo_root
 from backend.scripts.index_kbli_gold_content import (
+    build_point,
     filter_to_codes,
 )
 from backend.scripts.index_kbli_gold_content import (
@@ -157,6 +158,47 @@ class TestFilterEntriesToCodes:
             filter_entries_to_codes(self._entries(), ["99999", "88888"])
         msgs = [r.getMessage() for r in caplog.records]
         assert any("99999" in m and "88888" in m for m in msgs)
+
+
+# ─── build_point (gold indexer — flat payload, KBLI flat-payload golden rule) ──
+
+
+class TestBuildPoint:
+    """build_point() is the exact function main() calls per code — never a
+    recreated copy of the production logic (Codex review on #3817). It crashed
+    on every code since birth (`payload["metadata"]["indexed_at"]` against a
+    payload that has no "metadata" key at all — build_payload() is flat)."""
+
+    def _gold(self) -> dict:
+        return {"whatItMeans": "Restoran dan penyediaan makanan."}
+
+    def _base(self) -> dict:
+        return {"judul": "Restoran", "sektor_id": "I", "pma_status": "TERBUKA"}
+
+    def test_indexed_at_is_flat_not_nested(self):
+        """Guilt: the point actually produced sets payload['indexed_at'] and
+        carries NO 'metadata' key — this is what crashed unconditionally
+        before the fix."""
+        point = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        assert point["payload"]["indexed_at"] == "2026-08-08T00:00:00+00:00"
+        assert "metadata" not in point["payload"]
+
+    def test_point_shape(self):
+        """Innocence: the rest of the point shape (id + text-to-embed +
+        existing flat fields) is unchanged by the extraction."""
+        point = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        assert set(point.keys()) == {"id", "payload", "_text_to_embed"}
+        assert point["payload"]["kode_kbli"] == "56101"
+        assert point["payload"]["doc_type"] == "kbli_gold"
+        assert point["_text_to_embed"]
+
+    def test_deterministic_id_across_calls(self):
+        """Innocence: id stays deterministic (idempotent upserts) — the
+        extraction must not perturb deterministic_uuid's inputs."""
+        p1 = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        p2 = build_point("56101", self._gold(), self._base(), "2026-08-08T01:00:00+00:00")
+        assert p1["id"] == p2["id"]
+        assert p1["payload"]["indexed_at"] != p2["payload"]["indexed_at"]
 
 
 # ─── resolve_repo_root (shared marker-walk, replaces parents[N]) ────────────

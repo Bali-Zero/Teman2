@@ -319,3 +319,52 @@ async def test_active_status_client_maps_cleanly_with_honest_default_language() 
     assert len(clients) == 1
     assert clients[0].id == 99
     assert clients[0].preferred_language == "en"
+
+
+@pytest.mark.asyncio
+async def test_active_client_with_null_email_does_not_crash() -> None:
+    """GUILT (fix-3 of the notifications lane, third layer of the same
+    disease): on the live DB, 369 of 741 active clients have `email IS NULL`
+    (measured 2026-08-08, post-#3798+#3822 prove-live). `get_clients_from_db`
+    now executes the corrected query cleanly — but `ClientInfo(**client_data)`
+    (models.py) declared `email: str` (non-nullable), so pydantic raised
+    `ValidationError` on the FIRST active client without an email, taking down
+    the whole sweep for the other 372 clients that DO have one behind it in
+    the same result set.
+
+    The downstream already tolerates a missing email: `expiry_checker.py`
+    never references `.email` at all, and the send path resolves the address
+    via `get_client_email_func(alert.client_id)` and explicitly skips sending
+    when `if not client_email:` — plus alerts also reach the team leader via
+    `assigned_to`. So the correct fix is the model (`email: str | None =
+    None`), not an SQL filter that would silently amputate half the active
+    book from every notification sweep.
+
+    INNOCENCE (email present) is already covered by
+    ``test_active_status_client_maps_cleanly_with_honest_default_language``
+    above (asserts a normal active client with a real email maps through
+    intact) and by ``test_single_client_query_returns_expected_shape``
+    (asserts ``clients[0].id == 42`` off a row with a real email) — not
+    duplicated here.
+    """
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "id": 123,
+            "email": None,
+            "full_name": "No Email Client",
+            "preferred_language": "en",
+            "team_leader_email": "ari@balizero.com",
+            "date_of_birth": None,
+            "passport_expiry": None,
+            "passport_number": None,
+            "visa_expiry": None,
+            "visa_type": None,
+        }
+    ]
+
+    clients = await get_clients_from_db(_Pool(mock_conn), client_id=123)
+
+    assert len(clients) == 1
+    assert clients[0].id == 123
+    assert clients[0].email is None

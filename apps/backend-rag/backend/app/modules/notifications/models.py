@@ -36,7 +36,7 @@ class ClientInfo(BaseModel):
     """Client information needed for notifications."""
 
     id: int
-    email: str
+    email: str | None = None
     full_name: str
     preferred_language: str = "en"  # ISO 639-1 code
     team_leader_email: str | None = None
