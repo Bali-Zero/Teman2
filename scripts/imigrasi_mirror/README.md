@@ -36,9 +36,39 @@ run-mirror.sh --tier all       # everything in one pass
 run-mirror.sh --select parent,voa,bvk,calling,faq-evoa   # ad-hoc subset
 ```
 
-**No LaunchAgent/cron is installed by this change.** Arming a schedule is a
-follow-up decision for the operator after reviewing the dry-run output
-below (Zero mandate 2026-08-08: code + dry-run only, this run).
+Both daily and weekly are armed as LaunchAgents on Mini
+(`com.nuzantara.imigrasi-mirror.{daily,weekly}`).
+
+## Self-health (does the mirror still RUN?)
+
+The mirror alerts on content DIFFS — it is structurally blind to its own
+death: an unloaded cron, a broken venv, a network outage or a site-wide 5xx
+either never runs `run.py` or captures nothing, and in every case NO diff
+fires, so the channel stays silent while the sentinel is dead (scar #2
+"Esiste ≠ Armato").
+
+Two independent parts close that gap (kept SEPARATE from the crawl so the
+alarm never shares its failure mode — scar W108):
+
+1. **Heartbeat** — every completed `run.py` writes
+   `~/logs/imigrasi-mirror-heartbeat.json` (env `IMIGRASI_MIRROR_HEARTBEAT`),
+   OUTSIDE the data git repo (so it never breaks the `nothing_to_commit`
+   clean signal), recording tier / captured / failed / epoch.
+
+2. **`healthcheck.py`** — pure stdlib (no venv, no network to the mirrored
+   site), on its OWN LaunchAgent (`com.nuzantara.imigrasi-mirror.healthcheck`,
+   08:30 WITA — after the 06:30 daily run + buffer). Reads the heartbeat and
+   fires a Telegram `🚑 SELF-HEALTH` alert when it is:
+   - **ABSENT / malformed** → CRITICAL (never ran, or logs wiped)
+   - **STALE** > `--max-age-hours` (default 26h) → CRITICAL (cron unloaded / machine off)
+   - **captured 0** of N → CRITICAL (network/proxy dead, site 5xx)
+   - **failed** > `--max-failed` (default 0) → WARN (ran but stumbled)
+
+   Healthy → silent, exit 0. Unhealthy → alert + exit 1. The decision is a
+   pure function (`evaluate_health`) covered by `healthcheck.py --selftest`
+   (no network) with guilt+innocence pairs. Dedup key is
+   `(severity, date)` — one send per severity per day (a persistent outage
+   doesn't spam; a new day re-alerts).
 
 ## Where the data lives
 

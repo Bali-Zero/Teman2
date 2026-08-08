@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import subprocess
 import sys
@@ -33,6 +34,12 @@ from diff_alert import compute_diff, content_hash, send_diff_alert, send_status_
 from urls import ALL_PAGES, Page, pages_for_select, pages_for_tier
 
 DEFAULT_DATA_ROOT = os.environ.get("IMIGRASI_MIRROR_DATA_ROOT") or str(Path.home() / "nuzantara-imigrasi-mirror")
+
+# Self-health heartbeat: written OUTSIDE the data git repo (so it never
+# pollutes the "nothing_to_commit" clean signal) and alongside the launchd
+# logs. The independent healthcheck.py reads it to tell whether the mirror is
+# still running at all. Same default path on both sides — keep in sync.
+DEFAULT_HEARTBEAT = os.environ.get("IMIGRASI_MIRROR_HEARTBEAT") or str(Path.home() / "logs" / "imigrasi-mirror-heartbeat.json")
 
 # Overall wall-clock budget scales with how many pages a tier touches — a
 # 9-page daily run and a 114-page weekly run should not share one constant
@@ -167,6 +174,31 @@ async def run(args: argparse.Namespace) -> dict:
         "data_root": str(data_root),
     }
     return summary
+
+
+def write_heartbeat(summary: dict, path: str = DEFAULT_HEARTBEAT) -> None:
+    """Record that a run happened, with its capture/failure counts, so the
+    independent healthcheck can tell a live-but-stumbling mirror from a dead
+    one. Written on EVERY completed run (including partial) — a total crash in
+    run() writes nothing, which correctly reads as STALE later. A write failure
+    here must never break the run (it's telemetry, not the job)."""
+    try:
+        p = Path(path).expanduser()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        hb = {
+            "last_run_epoch": time.time(),
+            "last_run_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime()),
+            "tier": summary["tier"],
+            "pages_requested": summary["pages_requested"],
+            "captured": summary["captured"],
+            "failed": len(summary["failed"]),
+            "failed_ids": [pid for pid, _err, _code in summary["failed"]],
+            "diffs": len(summary["diffs"]),
+            "commit_status": summary["commit_status"],
+        }
+        p.write_text(json.dumps(hb, indent=2), encoding="utf-8")
+    except Exception as exc:  # telemetry must never break the crawl
+        print(f"  heartbeat write FAILED: {exc}", file=sys.stderr)
 
 
 def print_summary(summary: dict) -> None:
@@ -307,6 +339,7 @@ def main() -> int:
 
     summary = asyncio.run(run(args))
     print_summary(summary)
+    write_heartbeat(summary)
 
     if args.announce:
         n_diffs = len(summary["diffs"])
