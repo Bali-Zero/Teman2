@@ -3,19 +3,22 @@ r"""Canonical URL catalog for the imigrasi.go.id scoped mirror.
 Scope (Zero mandate, 2026-08-08): NOT a full-site copy. Only the pages that
 feed the Bali Zero visa engine — the VoA/BVK/Calling subject lists, the
 per-visa-code catalog, and three regional-office mirrors as a counter-proof
-that the schema is uniform. v2 (2026-08-09) adds three more daily pages: the
+that the schema is uniform. v2 (2026-08-09) adds four more daily pages: the
 national `/berita` news index — where a subject removal (e.g. San Marino) is
 announced first, before the subject lists are edited — the kemenimipas
 Peraturan Menteri legal-doc listing (the legal instrument that enacts a visa
-rule change, feeding the Visa Oracle RulePack), and the applicant-facing
+rule change, feeding the Visa Oracle RulePack), the applicant-facing
 e-Visa eVOA info page (fee, requirements, eligible-country list — the
 downstream-of-policy surface the client actually reads, a second independent
-witness to a rule change). ~126 pages total (12 "daily" + 114 "weekly").
+witness to a rule change), and the TPI entry-point list — the 122 immigration
+checkpoints (airports / seaports / land-border posts) where VoA is actually
+granted, the operational counterpart to the subject lists (WHO may get VoA vs
+WHERE it is issued). ~127 pages total (13 "daily" + 114 "weekly").
 
 Every URL below was verified live (200, real content — not a 404) before being
 committed here (anti-hallucination discipline, CLAUDE.md §6): the v1 set on
-2026-08-08, the `/berita`, kemenimipas Permen and e-Visa eVOA v2 pages on
-2026-08-09. Do not add a URL to this file without the same verification.
+2026-08-08, the `/berita`, kemenimipas Permen, e-Visa eVOA and TPI entry-point
+v2 pages on 2026-08-09. Do not add a URL to this file without the same verification.
 
 The ~114 per-visa-code identifiers are a COPY of the codes in the repo's own
 seed file, not a live import — this keeps the mirror module dependency-free
@@ -81,16 +84,17 @@ class Page:
     slug: str
     label: str
     tier: str  # "daily" | "weekly"
-    category: str  # "list" | "faq" | "index" | "berita" | "produk-hukum" | "evisa" | "regional" | "code"
+    category: str  # "list" | "faq" | "index" | "berita" | "produk-hukum" | "evisa" | "tpi" | "regional" | "code"
     # Which extractor in extract.py handles this page's HTML. Default = the
     # generic content-block extractor; a page on a differently-structured CMS
     # (e.g. the kemenimipas Joomla legal-doc listing) names a specific one.
     extractor: str = "default"
 
 
-# --- daily tier: the pages that "morde" (bite) — subject lists, FAQ, visa    --
-# --- index, the /berita news index + kemenimipas Permen listing + e-Visa     --
-# --- eVOA info (v2), and 3 regional mirrors as a schema counter-proof.       --
+# --- daily tier: the pages that "morde" (bite) — subject lists, the TPI       --
+# --- entry-point list, FAQ, visa index, the /berita news index + kemenimipas  --
+# --- Permen listing + e-Visa eVOA info (v2), and 3 regional mirrors as a      --
+# --- schema counter-proof.                                                    --
 DAILY_PAGES: list[Page] = [
     Page(
         id="parent",
@@ -123,6 +127,23 @@ DAILY_PAGES: list[Page] = [
         label="Lista Calling Visa",
         tier="daily",
         category="list",
+    ),
+    Page(
+        # The operational counterpart to the subject lists above: WHO may get
+        # VoA (the subject lists) vs WHERE it is actually issued (this list of
+        # 122 immigration checkpoints — 16 airports, 11 land-border posts, 95
+        # seaports — "titik masuk bagi pemegang e-VOA" = entry points for e-VOA
+        # holders). A checkpoint added/removed here changes where a Bali Zero
+        # client can physically land on VoA. Sibling of the VoA/BVK/Calling
+        # section. Generic extractor: a plain "name, province" text list, no
+        # form-wrapper and no volatile counters (extraction-stability probed
+        # 2026-08-09 — identical extract sha d42f566c across two fetches).
+        id="tpi-evoa-entry-points",
+        url=f"{BASE}/wna/daftar-negara-voa-bvk-calling-visa/titik-masuk-bagi-pemegang-e-voa",
+        slug="tpi-evoa-entry-points",
+        label="TPI — 122 checkpoint d'ingresso e-VOA (aeroporti/porti/PLBN, dove il VoA è emesso)",
+        tier="daily",
+        category="tpi",
     ),
     Page(
         id="faq-evoa",
