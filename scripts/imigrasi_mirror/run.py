@@ -252,7 +252,7 @@ def selftest() -> int:
     """No-network unit checks (guilt+innocence pairs, tg_notify convention)."""
     import tempfile
 
-    from extract import extract_text
+    from extract import extract_produk_hukum, extract_text
 
     failures: list[str] = []
 
@@ -281,6 +281,41 @@ def selftest() -> int:
     text2 = extract_text(html_no_main)
     check("fallback body keeps real content", "Real content here" in text2)
     check("fallback body strips nav (innocence of a bare-body world)", "Menu" not in text2)
+
+    # --- extract_produk_hukum: kemenimipas Joomla legal-doc listing ---------
+    # The listing table lives inside <form id="adminForm"> (which extract_text
+    # strips) and each row carries a volatile "Dilihat: N" view counter (which
+    # extract_text would false-diff on). extract_produk_hukum pulls ONLY the
+    # title links, so it survives the form and drops the counter.
+    ph_html = """
+    <html><body>
+      <form id="adminForm">
+        <table class="category table table-bordered"><tbody>
+          <tr class="cat-list-row0"><td class="list-title">
+            <a href="/x/15">Permenimipas No 15 Tahun 2025 tentang Politeknik</a>
+          </td><td class="list-hits">Dilihat: 2720</td></tr>
+          <tr class="cat-list-row1"><td class="list-title">
+            <a href="/x/10">Permenimipas No 10 Tahun 2025 tentang penambahan daftar negara bebas visa</a>
+          </td><td class="list-hits">Dilihat: 2994</td></tr>
+        </tbody></table>
+      </form>
+      <footer>KEMENTERIAN IMIGRASI DAN PEMASYARAKATAN — Jakarta Selatan</footer>
+    </body></html>
+    """
+    ph = extract_produk_hukum(ph_html)
+    check("produk-hukum captures BOTH regulation titles (guilt)",
+          "Permenimipas No 15 Tahun 2025" in ph and "Permenimipas No 10 Tahun 2025" in ph)
+    check("produk-hukum drops the volatile view counter (innocence — no false diff)",
+          "Dilihat" not in ph and "2720" not in ph)
+    check("produk-hukum drops the footer menu (innocence — watches the list, not chrome)",
+          "KEMENTERIAN IMIGRASI" not in ph)
+    # a page WITHOUT the category table -> "" (loud empty diff, never a crash):
+    ph_empty = extract_produk_hukum("<html><body><div>no listing here</div></body></html>")
+    check("produk-hukum on a table-less page -> empty (loud, not a crash)", ph_empty == "")
+    # and generic extract_text is BLIND to this listing (proves why we need the
+    # custom one): the <form> is stripped, so the titles never survive.
+    check("generic extract_text is blind to the form-wrapped listing (why custom exists)",
+          "Permenimipas No 15" not in extract_text(ph_html))
 
     # --- compute_diff --------------------------------------------------------
     old = "line1\nline2\nline3"
