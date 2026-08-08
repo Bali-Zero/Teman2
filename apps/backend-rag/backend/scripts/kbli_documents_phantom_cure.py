@@ -101,7 +101,9 @@ USAGE (dry-run is the default; nothing is written without --apply):
     # apply (writes DB) — canonical dataset is NOT in the Fly image, so pin a
     # commit SHA rather than a moving branch:
     fly ssh console -a nuzantara-rag -C \\
-        "python backend/scripts/kbli_documents_phantom_cure.py --only 26120,60111,82920,85598 --dataset https://raw.githubusercontent.com/Balizero1987/Teman2/<sha>/data/source_documents/KBLI_2025_FINAL_CLEAN.json --apply"
+        "python backend/scripts/kbli_documents_phantom_cure.py --only 26120,60111,82920,85598 \\
+            --dataset https://raw.githubusercontent.com/Balizero1987/Teman2/<sha>/data/source_documents/KBLI_2025_FINAL_CLEAN.json \\
+            --apply --cure-run phantom_cure:2026-08-08"
 """
 
 from __future__ import annotations
@@ -118,6 +120,8 @@ from pathlib import Path
 
 import asyncpg
 import httpx
+
+from backend.scripts._kbli_archive import archive_row, ensure_archive_schema
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kbli_documents_phantom_cure")
@@ -164,22 +168,14 @@ RECOGNISED_METADATA_KEYS = frozenset(
     }
 )
 
-# Shared with kbli_documents_cure.py — created lazily (IF NOT EXISTS) so either
-# script can be the first to run. UNIQUE(kode_kbli) backs ON CONFLICT DO NOTHING.
-ARCHIVE_TABLE_DDL = """
-CREATE TABLE IF NOT EXISTS kbli_documents_archive (
-    id SERIAL PRIMARY KEY,
-    kode_kbli VARCHAR NOT NULL UNIQUE,
-    judul TEXT,
-    content TEXT,
-    metadata JSONB,
-    original_created_at TIMESTAMP,
-    original_updated_at TIMESTAMP,
-    archived_at TIMESTAMP NOT NULL DEFAULT now(),
-    archived_reason TEXT NOT NULL DEFAULT
-        'kbli_documents_cure: pre-cure fabricated-content snapshot (2026-07-19)'
-)
-"""
+# The cure-run identifier comes from the INVOCATION (--cure-run), never a
+# script constant. A constant makes every pass of this script share one
+# cure_run: a later pass (different selection, different date) hits
+# ON CONFLICT (kode_kbli, cure_run) DO NOTHING and its pre-cure snapshot is
+# silently skipped — the one-shot disease resurrected across passes (round-2
+# fix, 2026-08-08). The shared DDL + versioned INSERT live in _kbli_archive
+# (single source of truth — the duplicated DDL that was here and in
+# kbli_documents_cure is how schemas drift).
 
 
 @dataclass
@@ -700,6 +696,71 @@ async def load_dataset(source: str) -> tuple[list[dict], str]:
     return data, f"{source} (sha256:{digest[:16]})"
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Module-level argparse construction so tests exercise the REAL parser,
+    not a copy that stays green if production validation is deleted."""
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
+    ap.add_argument(
+        "--cure-run",
+        default=None,
+        help=(
+            "Stable identifier of THIS cure pass, e.g. "
+            "'<script>:<scope-or-spec-date>' — each pass declares its own; "
+            "re-running the same pass with the same id stays idempotent, "
+            "a new pass MUST use a new id or its snapshots are silently skipped. "
+            "REQUIRED when --apply is passed."
+        ),
+    )
+    ap.add_argument(
+        "--only",
+        default=None,
+        help="comma-separated 5-digit codes to cure (MANDATORY — there is no sweep flag)",
+    )
+    ap.add_argument(
+        "--kg",
+        action="store_true",
+        help="cure the KNOWLEDGE-GRAPH arm instead of kbli_documents: detach REQUIRES "
+        "edges (archived on the node) and mark kg_nodes properties, so inspect_kbli "
+        "stops rendering 2020 licensing for a phantom code",
+    )
+    ap.add_argument(
+        "--census",
+        action="store_true",
+        help="report the phantom set (kbli_documents codes absent from the canonical "
+        "catalogue) and exit; writes nothing",
+    )
+    ap.add_argument(
+        "--dataset",
+        default=DATASET_URL,
+        help="canonical dataset: local file path (read directly) or URL (httpx fetch). "
+        "Default: GitHub raw main. Prefer a pinned commit SHA when applying.",
+    )
+    return ap
+
+
+def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> str:
+    """Module-level validation of parsed args, returning the resolved cure_run.
+
+    Lives outside ``main`` so tests exercise the REAL production validation
+    rather than a re-implementation that stays green if this check is deleted.
+    """
+    # --cure-run: REQUIRED on apply; defaults to "dry-run" otherwise. A constant
+    # would make every pass of this script share one cure_run, and a later pass's
+    # pre-cure snapshot would be silently skipped by ON CONFLICT DO NOTHING — the
+    # one-shot disease resurrected across passes.
+    if args.apply and not args.cure_run:
+        parser.error("--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id")
+    if not args.cure_run:
+        return "dry-run"
+    cure_run = args.cure_run.strip()
+    if not cure_run:
+        parser.error("--cure-run must not be empty")
+    if any(c.isspace() for c in cure_run):
+        parser.error(f"--cure-run must not contain whitespace (got {cure_run!r})")
+    return cure_run
+
+
 async def _run_kg_arm(
     conn,
     codes: list[str],
@@ -781,33 +842,9 @@ async def _run_kg_arm(
 
 
 async def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
-    ap.add_argument(
-        "--only",
-        default=None,
-        help="comma-separated 5-digit codes to cure (MANDATORY — there is no sweep flag)",
-    )
-    ap.add_argument(
-        "--kg",
-        action="store_true",
-        help="cure the KNOWLEDGE-GRAPH arm instead of kbli_documents: detach REQUIRES "
-        "edges (archived on the node) and mark kg_nodes properties, so inspect_kbli "
-        "stops rendering 2020 licensing for a phantom code",
-    )
-    ap.add_argument(
-        "--census",
-        action="store_true",
-        help="report the phantom set (kbli_documents codes absent from the canonical "
-        "catalogue) and exit; writes nothing",
-    )
-    ap.add_argument(
-        "--dataset",
-        default=DATASET_URL,
-        help="canonical dataset: local file path (read directly) or URL (httpx fetch). "
-        "Default: GitHub raw main. Prefer a pinned commit SHA when applying.",
-    )
+    ap = build_parser()
     args = ap.parse_args()
+    cure_run = validate_args(ap, args)
 
     if not args.census and not args.only:
         logger.error("--only is MANDATORY (or pass --census to see the phantom set) — "
@@ -868,7 +905,7 @@ async def main() -> None:
             return
 
         if args.apply:
-            await conn.execute(ARCHIVE_TABLE_DDL)
+            await ensure_archive_schema(conn)
 
         table_rows = {
             r["kode_kbli"]: r
@@ -917,13 +954,9 @@ async def main() -> None:
                 # transaction per code keeps a mid-run abort at a clean
                 # code-boundary rather than inside one.
                 async with conn.transaction():
-                    await conn.execute(
-                        "INSERT INTO kbli_documents_archive "
-                        "(kode_kbli, judul, content, metadata, original_created_at, "
-                        "original_updated_at, archived_reason) "
-                        "VALUES ($1, $2, $3, $4::text::jsonb, $5, $6, $7) "
-                        "ON CONFLICT (kode_kbli) DO NOTHING",
-                        *archive_params(code, current_row),
+                    _params = archive_params(code, current_row)
+                    await archive_row(
+                        conn, code, _params[:6], cure_run, archived_reason=_params[6]
                     )
                     # W89 jsonb double-encoding class-guard: bind the pre-serialized
                     # json.dumps() string to a $N::text::jsonb placeholder so the
