@@ -1,0 +1,155 @@
+name: Prettier (changed files)
+
+# WHY THIS EXISTS (2026-08-09 — ledger .claude/skills/modus/PENDING-ARMS.md, lines
+# opened 2026-07-27 twice over: "the repo's prettier gate is declared in three
+# places and armed in none of CI" + "the prettier rule is enforced by nothing
+# that can see the whole repo").
+#
+# prettier is declared THREE times in this repo — package.json's `format` /
+# `format:check` / `lint:check` scripts, package.json's `lint-staged` config,
+# and .husky/pre-commit's own inline `npx prettier --check` on staged files —
+# and until this workflow, armed in NONE of CI (grep over .github/workflows/
+# returned nothing). The local pre-commit hook only ever sees files staged on
+# the machine that commits, so a file nobody commits locally, or a merge that
+# carries someone else's pre-existing drift, trips the rule invisibly until a
+# later merge stumbles over it. Measured live 2026-07-27: 515 tracked files on
+# main already violate the rule the repo's own pre-commit hook enforces
+# locally (44 under apps/mouth/src/lib alone, using the ts/tsx glob).
+#
+# This workflow does NOT attempt that backlog — a repo-wide `format:check`
+# would fail on all 515 at once, and a single reformat commit conflicts with
+# every open branch. It only stops the bleeding: no NEW unformatted file may
+# land through a PR. The 515 retire area by area, on their own schedule.
+#
+# SCOPE matches the repo's OWN declared rule, not a broader one: package.json's
+# format/format:check/lint:check globs are `{ts,js,json,md,yml,yaml}` — no
+# tsx/jsx (the local pre-commit hook's LINT_FILES regex is broader and DOES
+# include tsx/jsx; that pre-existing inconsistency between the hook and the
+# npm scripts is not fixed here — out of scope for a changed-files CI gate).
+#
+# SENTINEL PATTERN (mirrors frontend-typecheck.yml / immune-enforcement.yml):
+# triggers on EVERY pull request, no `paths:` filter — a required check gated
+# by `paths:` leaves innocent PRs permanently "expected but never ran" (W84).
+# Relevance (did this PR touch a prettier-formattable file at all) is decided
+# INSIDE the job, and the expensive steps (npm ci + prettier) are skipped when
+# nothing in scope changed.
+#
+# The changed-file set is enumerated from the MERGE-BASE via the existing
+# scripts/ci/hotzone_changed_files.sh, never a two-dot `git diff BASE HEAD`:
+# `pull_request.base.sha` is main's CURRENT tip, so a branch behind main would
+# be blamed for every file main gained since the branch point (W102, which
+# hard-blocked innocent PR #3057). That helper exits 3 when it cannot
+# determine the changed set — this job treats that as FAILURE, never as
+# "nothing changed" (a blind-empty read would be a disarmed gate that still
+# reports green, superscar #2 "esiste ≠ armato").
+#
+# `.prettierignore` handling — VERIFIED EMPIRICALLY 2026-08-09, not assumed
+# (W114 "mai per contratto immaginato"): does `prettier --check <path>` honor
+# `.prettierignore` when the path is passed explicitly rather than via a glob?
+# Tested against `.claude/skills/modus/PENDING-ARMS.md` — a file BOTH
+# declared-ignored AND independently known to be non-conformant (it is in
+# .prettierignore precisely because prettier corrupts literal tokens in it).
+# Default invocation (ignore file auto-discovered from cwd): reports clean, 0
+# files matched. The identical invocation with `--ignore-path /dev/null`
+# (bypassing the ignore file): correctly flags it, exit 1. Confirmed: prettier
+# DOES respect .prettierignore for explicit paths, so the enumerated file list
+# is passed straight through below — no manual pre-filter against the ignore
+# file is needed or added.
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prettier-changed-files-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prettier:
+    name: prettier --check (changed files)
+    runs-on: ubuntu-latest
+    # Floor is the CHECKOUT + npm ci, not the prettier run itself
+    # (scripts/lint_workflow_timeout_floor.py convention used across sibling gates).
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Enumerate changed files (merge-base anchored, fail-loud)
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ ! -f scripts/ci/hotzone_changed_files.sh ]; then
+            echo "::error::enumerator missing — refusing to guess the changed set"
+            exit 1
+          fi
+          if ! CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"; then
+            echo "::error::could not determine the changed set — failing rather than skipping"
+            exit 1
+          fi
+
+          # Restrict to prettier's own declared scope (package.json
+          # format/format:check/lint:check): ts, js, json, md, yml, yaml.
+          # Deletions/renames-away are dropped by the `[ -f ]` check below —
+          # nothing to check in a file that no longer exists in this tree.
+          CANDIDATES="$(printf '%s\n' "$CHANGED" | grep -E '\.(ts|js|json|md|ya?ml)$' || true)"
+          RELEVANT=""
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] && RELEVANT="$RELEVANT
+          $f"
+          done <<< "$CANDIDATES"
+          RELEVANT="$(printf '%s\n' "$RELEVANT" | sed '/^$/d')"
+
+          {
+            echo "files<<PRETTIER_EOF"
+            echo "$RELEVANT"
+            echo "PRETTIER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          COUNT="$(printf '%s\n' "$RELEVANT" | grep -c . || true)"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "::notice::prettier-changed-files: $COUNT candidate file(s) in this diff"
+
+      - name: Setup Node.js
+        if: steps.diff.outputs.count != '0'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspaces (npm ci, lockfile-bound)
+        if: steps.diff.outputs.count != '0'
+        run: npm ci --no-audit --no-fund
+
+      - name: prettier --check (this PR's files only)
+        if: steps.diff.outputs.count != '0'
+        env:
+          FILES: ${{ steps.diff.outputs.files }}
+        run: |
+          set -uo pipefail
+          echo "--- Checking ---"
+          echo "$FILES"
+          echo "----------------"
+          # .prettierignore is auto-discovered from cwd and honored even for
+          # explicit paths (verified empirically — see header comment), so the
+          # enumerated list is passed straight through with no pre-filter.
+          if ! echo "$FILES" | xargs npx --no-install prettier --check --ignore-unknown; then
+            echo "::error::one or more changed files are not prettier-formatted — run 'npx prettier --write <file>' locally, or 'npx prettier --write <file>' per file listed above"
+            exit 1
+          fi
+
+      - name: Not a prettier-scoped change
+        if: steps.diff.outputs.count == '0'
+        run: echo "::notice::no ts/js/json/md/yml/yaml file in this diff; prettier check skipped"
