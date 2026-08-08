@@ -1,0 +1,42 @@
+{
+  "_comment": "kbli-client-facing-content-defects (ward-round 2026-08-07). Adjudicates the 4 contradicted-predecessor codes L2.1 left open (46415/46496/49296/64210, PENDING-ARMS line 610). For 49296 and 64210, the PP28/2025 lampiran title-match AND the independently-parsed official BPS 2020-to-2025 crosswalk table (Phase-0 gated, P=R=1.0 on holdout) name the SAME KBLI-2020 predecessor -- two structurally independent sources agreeing by membership, the same corroboration pattern already used for the Lampiran III cross-instrument check (2026-08-02). 46415 and 46496 genuinely disagree between the two sources and stay 'unconfirmed' -- this spec only re-aligns gold's SEPARATE (and, for 46496, stale-false-confident) wording to canonical's already-honest text; it does not touch the disagreement itself.",
+  "codes": [
+    {
+      "code": "49296",
+      "predecessor": "49424",
+      "pp28_match_pct": 100,
+      "bps_locator": { "lampiran": 10, "pdf_page": 400, "printed_page": 386 },
+      "canonical_whatChanged": {
+        "old": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (49299) is not supported by our records — our crosswalk sources on file record 49424 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). NIB verification and update are now required following the closure of the June 2026 window.",
+        "new": "Renumbered from KBLI 2020 code 49424 — confirmed by two independent crosswalk sources: the PP 28/2025 lampiran (title match 100%) and the official BPS 2020-to-2025 conversion table (Lampiran 10, page 386). NIB verification and update are recommended following the closure of the June 2026 window."
+      },
+      "gold_whatChanged": {
+        "old": "Renumbered from KBLI 2020. Your OSS registration may need updating to the new code. Previous code(s): 49424.",
+        "new": "Renumbered from KBLI 2020 code 49424 — confirmed by two independent crosswalk sources: the PP 28/2025 lampiran (title match 100%) and the official BPS 2020-to-2025 conversion table (Lampiran 10, page 386). NIB verification and update are recommended following the closure of the June 2026 window."
+      }
+    },
+    {
+      "code": "64210",
+      "predecessor": "64200",
+      "pp28_match_pct": 95,
+      "bps_locator": { "lampiran": 10, "pdf_page": 412, "printed_page": 398 },
+      "canonical_whatChanged": {
+        "old": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (64190) is not supported by our records — our crosswalk sources on file record 64200 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+        "new": "Renumbered from KBLI 2020 code 64200 — confirmed by two independent crosswalk sources: the PP 28/2025 lampiran (title match 95%) and the official BPS 2020-to-2025 conversion table (Lampiran 10, page 398). NIB verification and update are recommended following the closure of the June 2026 window."
+      },
+      "gold_whatChanged": {
+        "old": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (64190) is not supported by our records — our crosswalk sources on file record 64200 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA).",
+        "new": "Renumbered from KBLI 2020 code 64200 — confirmed by two independent crosswalk sources: the PP 28/2025 lampiran (title match 95%) and the official BPS 2020-to-2025 conversion table (Lampiran 10, page 398). NIB verification and update are recommended following the closure of the June 2026 window."
+      }
+    },
+    {
+      "code": "46496",
+      "predecessor": null,
+      "canonical_whatChanged": null,
+      "gold_whatChanged": {
+        "old": "Renumbered from KBLI 2020. Your OSS registration may need updating to the new code. Previous code(s): 47854.",
+        "new": "Renumbered/adjusted from KBLI 2020. The KBLI-2020 origin published here (46496) is not supported by our records — our crosswalk sources on file record 46499, 47854 instead, so the 2020-to-2025 mapping for this code is unconfirmed pending re-verification (GARUDA-FILIERA). NIB verification and update are now required following the closure of the June 2026 window."
+      }
+    }
+  ]
+}

@@ -41,8 +41,12 @@ def gold():
 
 # Codes where the ten-billion figure sits beside "paid-up" and is NOT the PT PMA
 # paid-up minimum. May only shrink; each needs a reason.
+# 2026-08-08: 65121 dropped off this list — `cure_gold_65121_sector_law_sweep.py`
+# (sector-law brief item 2) removed every "IDR 10B"/"IDR 100 billion" figure
+# from its gold entry outright (POJK 23/2023's actual minimum was never
+# primary-fetched, so the rule is no unverified figure at all), so the scan
+# this test exercises no longer has anything to refuse on that code.
 NOT_THE_PAIDUP_MINIMUM = {
-    "65121": "OJK paid-up (100bn) + PT PMA STATED capital (10B) — already separated",
     "66151": "OJK paid-up (200mn) + PT PMA STATED capital (10B) — already separated",
     "85102": "attached to Satuan Pendidikan Kerjasama registration, a sector regime",
 }
@@ -66,7 +70,8 @@ def test_the_refusals_are_exactly_the_named_ones(gold):
 
 
 def test_refusal_list_only_shrinks():
-    assert len(NOT_THE_PAIDUP_MINIMUM) <= 3
+    # 2026-08-08: 3 -> 2 (65121 resolved by cure_gold_65121_sector_law_sweep.py).
+    assert len(NOT_THE_PAIDUP_MINIMUM) <= 2
     assert all(v.strip() for v in NOT_THE_PAIDUP_MINIMUM.values())
 
 

@@ -1,0 +1,19 @@
+{
+  "instrument": "Perpres 10/2021 Pasal 11 ayat (2)",
+  "basis": "Pasal 11 ayat (2)",
+  "unit": "KBLI 2025 code (the six are unchanged 2020->2025; no crosswalk needed)",
+  "note": "These six codes are absent from every Perpres 10/2021/49/2021 annex, but NOT because the residual-open default (Pasal 3(1)(d)) applies to them — Pasal 11(2) routes financial/banking bidang usaha licensing and conduct to their own sector legislation instead, so the Perpres never governed the ownership question here in the first place. The sector law is PP 14/2018 Pasal 5(1) jo. PP 3/2020 (80% foreign-ownership cap; listed insurers exempt; pre-2018 holdings above 80% grandfathered) — see scripts/kbli_filiera/cure_canonical_asuransi_pp14_cap.py and its spec for the full adjudication.",
+  "provenance": {
+    "pasal_11_ayat_2_verbatim": "Perizinan berusaha dan pelaksanaan kegiatan dalam rangka Penanaman Modal untuk Bidang Usaha keuangan dan Bidang Usaha perbankan dilaksanakan sesuai dengan ketentuan peraturan perundang-undangan di bidangnya masing-masing.",
+    "source": "peraturan.bpk.go.id Download/154474, Perpres 10/2021 body",
+    "re_derived": "2026-08-08"
+  },
+  "codes": [
+    "65111",
+    "65112",
+    "65121",
+    "65122",
+    "65201",
+    "65202"
+  ]
+}
