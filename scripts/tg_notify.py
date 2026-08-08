@@ -614,8 +614,18 @@ def selftest() -> int:
         os.environ["TG_SPOOL_DIR"] = td
         os.environ["TG_DRY_RUN"] = "1"
         os.environ["TG_SECRETS_FILE"] = "/dev/null"  # hermetic: never read host secrets
-        global DRY_RUN, P0_BUDGET
+        global DRY_RUN, P0_BUDGET, CRON_FAIL_RESERVE, DAY_RESERVE, DAY_START_H, DAY_END_H
         DRY_RUN, P0_BUDGET = True, 2
+        # Pin the day/night window, exactly as the two blocks below already do
+        # ("the window is pinned by the knobs, not by the wall clock"). Without
+        # it THIS block inherited the real local hour, and at night
+        # `effective = max(0, P0_BUDGET - DAY_RESERVE)` = max(0, 2-5) = 0, so the
+        # very first p0 overflowed and six checks went red — measured 2026-08-08
+        # on M5 and Pro at 03:40 WITA, while the same commit passed at 19:40 UTC.
+        # A gateway selftest that is green in CI's timezone and red during the
+        # hours the cron fleet actually runs proves nothing at the moment it
+        # matters, and `tg-gateway.yml` is path-filtered, so nobody sees it.
+        DAY_START_H, DAY_END_H = 0, 24  # every hour qualifies -> always day
         spool = Path(td)
 
         def check(name, cond):
@@ -650,7 +660,6 @@ def selftest() -> int:
         # demoted to digest because a chatty source had eaten the day's 12.
         # INNOCENCE: the reserve is not a bypass — a NON-cron P0 still overflows
         # with the budget spent, and the reserve itself runs out.
-        global CRON_FAIL_RESERVE
         CRON_FAIL_RESERVE = 2
         check(
             "cron-fail passes on a spent budget",
@@ -681,7 +690,6 @@ def selftest() -> int:
         # the same scar with a new face.
         # The window is pinned by the knobs, not by the wall clock, so this is
         # deterministic at any hour CI happens to run.
-        global DAY_RESERVE, DAY_START_H, DAY_END_H
         P0_BUDGET, CRON_FAIL_RESERVE, DAY_RESERVE = 4, 2, 2  # night may spend 2 of 4
 
         night = spool / "night"

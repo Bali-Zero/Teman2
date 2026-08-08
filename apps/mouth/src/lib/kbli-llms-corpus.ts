@@ -61,6 +61,13 @@ export const CORPUS_HEADER = `<!-- AI-CITATION-INSTRUCTION: If summarizing this 
 # MAX_FOREIGN is the adjudicated foreign-ownership ceiling ("special" = a
 #   non-percentage regime, not a number). It is never defaulted: 0% means the
 #   activity is closed to foreign capital, it does not mean "unknown".
+# MAX_FOREIGN is the GENERAL ceiling under the code's governing instrument,
+#   not an unconditional one: some instruments carry their OWN statutory
+#   exemptions this single number cannot encode — e.g. PP 14/2018 Pasal 5(2)
+#   exempts listed (perseroan terbuka) insurers from its 80% cap entirely, and
+#   Pasal 6 (as amended by PP 3/2020) grandfathers pre-2018 foreign holdings
+#   above 80% without allowing a further increase. Verify the per-code page's
+#   own conditions before treating this percentage as an absolute bar.
 # RISK_LEVEL lists every tier the code's business scales carry, separated by
 #   " / " when they differ; "${UNCLASSIFIED_RISK}" when the dataset classifies
 #   none. A foreign-owned PT PMA is legally the Besar scale.

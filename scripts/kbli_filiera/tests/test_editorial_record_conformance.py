@@ -757,11 +757,23 @@ def test_the_relationship_to_both_existing_lint_rules_is_pinned():
     # (prose more restrictive than the record), which is a different adjudication.
     # With `mine` empty this is now just L10's live population, and it is
     # asserted as such rather than dressed up as a difference. `86201` joined
-    # 41011 and 52292 when the transport lot landed: all three run the OPPOSITE
+    # 41011 and 52292 when the transport lot landed: all three ran the OPPOSITE
     # direction — prose MORE restrictive than the record — which is a different
-    # adjudication and deliberately not cured by this lane. `86201` also steers
-    # a foreign doctor to "code 86103 (klinik) … 67%", and 86103's cap is 100.
-    assert l10 == {"41011", "52292", "86201"}, (
+    # adjudication and deliberately not cured by THAT lane.
+    #
+    # `41011` left the set on 2026-08-08 (the sector-law DO-NOT-SHIP fix-pack,
+    # item A), and this time it WAS the cure, not a mirror-direction adjudication
+    # left standing: 41011's editorial prose asserted a flat "67%" cap the
+    # adjudication itself had already withdrawn (canonical stays TERBUKA/100 —
+    # the real constraint is a Lampiran II madya-segment reservation, not a
+    # whole-code percentage). `cure_canonical_sector_law_prosepack.py` rewrote
+    # `l4_bali.reason`, `whatYouNeed`, every `editorial.*` field and `whoThisIsFor`
+    # to state the segment reservation in words, with no percentage anywhere in
+    # the record — so `L10_PCT` has nothing left to match and L10 correctly
+    # stops finding it. `86201` also steers a foreign doctor to "code 86103
+    # (klinik) … 67%", and 86103's cap is 100 — untouched by this fix-pack,
+    # still the mirror-direction case L10 exists to catch.
+    assert l10 == {"52292", "86201"}, (
         "L10's live findings moved — these are the mirror-direction cases this "
         f"lane declared rather than cured: {sorted(l10)}"
     )

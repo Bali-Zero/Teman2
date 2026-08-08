@@ -42,6 +42,7 @@ from perpres_body_default_relation import (  # noqa: E402
     overlay_reconciliation,
     report,
     scales,
+    sector_law_carveout_codes,
 )
 
 VAULT_BODY_49 = Path.home() / "nuzantara-vault" / "perpres" / "161562__Perpres Nomor 49 Tahun 2021.pdf"
@@ -63,8 +64,13 @@ def prio():
 
 
 @pytest.fixture(scope="module")
-def rep(canonical, annexes, prio):
-    return report(canonical, *annexes, prio)
+def carveout():
+    return sector_law_carveout_codes()
+
+
+@pytest.fixture(scope="module")
+def rep(canonical, annexes, prio, carveout):
+    return report(canonical, *annexes, prio, carveout)
 
 
 # --------------------------------------------------------------------------
@@ -147,6 +153,81 @@ def test_a_body_tertutup_code_is_located_by_the_body_not_by_absence(canonical, a
         assert "Pasal 2 ayat (2) huruf b" in ev["body"]
 
 
+# --------------------------------------------------------------------------
+# THE SECTOR-LAW CARVE-OUT (item G, 2026-08-08 fix-pack) — Pasal 11(2) routes
+# financial/banking bidang usaha to their own sector law, so the six insurance
+# codes absent from every annex must NOT inherit the residual default's
+# citation. This is a fifth locator, same shape as BODY_TERTUTUP above, and it
+# gets the same two-sided treatment: guilt (it fires where it must), innocence
+# (it fires nowhere else), and the disjointness invariant that keeps it from
+# silently losing a conflict with a higher-ranked locator.
+# --------------------------------------------------------------------------
+
+def test_a_sector_law_carveout_code_cites_pasal_11_not_the_residual_default(canonical, annexes, prio, carveout):
+    """`65121` (Asuransi Jiwa Syariah) is named by no annex and no body list —
+    exactly the shape the residual default used to swallow. The carve-out must
+    intercept it before Pasal 3(1)(d) ever gets asked.
+    """
+    umkm, caps = annexes
+    assert "65121" not in umkm and "65121" not in caps
+    assert "65121" in carveout
+    bucket, ev = classify("65121", canonical["65121"], umkm, caps, prio, carveout)
+    assert bucket == "sector-law-carveout"
+    assert ev["basis"] == "Pasal 11 ayat (2)"
+    assert locator_line(bucket, ev) == (
+        "Perpres 10/2021 Pasal 11(2) — financial/banking business fields follow "
+        "their own sector legislation"
+    )
+
+
+def test_all_six_carveout_codes_land_in_the_bucket_via_the_full_report(rep, carveout):
+    """Population-scale version of the guilt case above: not one of the six may
+    stay behind in `residual-besar-observed`, and the bucket may hold nothing
+    else — the carve-out set IS the bucket's membership, exactly.
+    """
+    rows = {row["code"] for row in rep["detail"]["sector-law-carveout"]}
+    assert rows == carveout == {"65111", "65112", "65121", "65122", "65201", "65202"}
+
+
+def test_a_non_financial_residual_code_is_unaffected_by_a_nonempty_carveout_set(canonical, annexes, prio, carveout):
+    """Innocence: `56101` (restaurant) is genuinely residual. Passing a real,
+    nonempty carve-out set into `classify()` must not widen the branch beyond
+    the codes it actually names — same `code in ...` guard as every other
+    locator here, and the population test above already proves it holds for
+    the six; this proves it holds for something it must NOT touch.
+    """
+    umkm, caps = annexes
+    bucket, ev = classify("56101", canonical["56101"], umkm, caps, prio, carveout)
+    assert bucket == "residual-besar-observed"
+    assert ev["basis"] == "Pasal 3 ayat (1) huruf d + ayat (2)"
+
+
+def test_a_carveout_code_also_named_by_an_annex_or_the_body_cannot_verify(canonical, annexes, prio):
+    """DISJOINTNESS INVARIANT. The carve-out set is declared disjoint from every
+    annex and the body by construction (see `write_sector_law_carveout.py`) —
+    if that ever stopped being true, letting the higher-ranked branch win
+    silently would hide a real conflict between two adjudications instead of
+    surfacing it. `11010` is body-tertutup for real (exercised above);
+    declaring it as carve-out too, synthetically, must raise rather than
+    silently resolve to "body-tertutup" as if nothing were wrong.
+    """
+    umkm, caps = annexes
+    with pytest.raises(CannotVerify):
+        classify("11010", canonical["11010"], umkm, caps, prio, sector_law_carveout={"11010"})
+
+
+def test_a_missing_carveout_artifact_is_cannot_verify_not_a_bigger_residual(tmp_path):
+    """Same shape as the empty-annex/empty-priority guards above: silence here
+    reads as six more residual codes citing the wrong article, not as an error.
+    """
+    with pytest.raises(CannotVerify):
+        sector_law_carveout_codes(path=tmp_path / "nope.json")
+    empty = tmp_path / "empty.json"
+    empty.write_text(json.dumps({"codes": []}))
+    with pytest.raises(CannotVerify):
+        sector_law_carveout_codes(path=empty)
+
+
 def test_a_string_where_a_list_belongs_raises_instead_of_iterating_characters(canonical):
     """`"55193"` iterated yields five one-character "codes"; `"Besar"` yields
     five letters and the Besar test silently fails forever. Both are shapes the
@@ -203,8 +284,16 @@ def test_a_genuinely_unnamed_code_with_a_besar_row_is_residual_and_open(canonica
 
 
 def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
-    """Innocence at population scale: if the locator over-fired, this collapses."""
-    assert rep["buckets"]["residual-besar-observed"] == 882
+    """Innocence at population scale: if the locator over-fired, this collapses.
+
+    Was 882 before item G (2026-08-08 fix-pack); is 876 now that the six
+    sector-law carve-out codes (`test_all_six_carveout_codes_land_in_the_bucket_
+    via_the_full_report`, below) route to their own bucket instead of hiding
+    in here under the wrong article. 882 - 6 == 876 exactly — the six moved,
+    nothing else did.
+    """
+    assert rep["buckets"]["residual-besar-observed"] == 876
+    assert rep["buckets"]["sector-law-carveout"] == 6
 
 
 # --------------------------------------------------------------------------
