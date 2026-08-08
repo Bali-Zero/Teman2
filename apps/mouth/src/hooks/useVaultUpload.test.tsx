@@ -69,12 +69,6 @@ const validUploadResp = {
     size_kb: 512,
     created_at: "2026-04-18T00:00:00Z",
     expiry_date: null,
-    extracted_text_preview: null,
-    processing: {
-      virus_clean: true,
-      ocr_pages: 2,
-      drive_uploaded: true,
-    },
   },
 };
 
@@ -106,7 +100,7 @@ describe("useVaultUpload", () => {
   it("rejects oversize file before opening request", () => {
     const { result } = renderHook(() => useVaultUpload());
 
-    // 30 MB — default cap is 20 MB
+    // 30 MB — safely above the backend-aligned 10 MB default cap.
     const big = makeFile("huge.pdf", 30 * 1024 * 1024, "application/pdf");
 
     act(() => result.current.upload(big));
@@ -155,7 +149,7 @@ describe("useVaultUpload", () => {
     }
   });
 
-  it("transitions to done on successful upload with processing block", async () => {
+  it("transitions to done on a client-safe successful upload", async () => {
     const { result } = renderHook(() => useVaultUpload());
     const file = makeFile("ok.pdf", 4096, "application/pdf");
 
@@ -168,28 +162,56 @@ describe("useVaultUpload", () => {
     if (result.current.state.status === "done") {
       expect(result.current.state.file.id).toBe(99);
       expect(result.current.state.file.name).toBe("passport.pdf");
-      expect(result.current.state.processing.virus_clean).toBe(true);
-      expect(result.current.state.processing.ocr_pages).toBe(2);
-      expect(result.current.state.processing.drive_uploaded).toBe(true);
     }
   });
 
-  it("surfaces schema drift in response as error", async () => {
+  it("rejects leaked processing internals in a successful response", async () => {
     const { result } = renderHook(() => useVaultUpload());
     const file = makeFile("ok.pdf", 4096, "application/pdf");
 
     act(() => result.current.upload(file));
     const xhr = MockXHR.last!;
 
-    // Missing `data.processing` — Zod parse throws.
-    const drifted = { success: true, data: { id: 1, type: "x", name: "x" } };
-    act(() => xhr.resolve(200, JSON.stringify(drifted)));
+    const leaked = {
+      ...validUploadResp,
+      data: {
+        ...validUploadResp.data,
+        processing: {
+          virus_clean: true,
+          ocr_pages: 2,
+          drive_uploaded: true,
+        },
+      },
+    };
+    act(() => xhr.resolve(200, JSON.stringify(leaked)));
 
     await waitFor(() => expect(result.current.state.status).toBe("error"));
     if (result.current.state.status === "error") {
       expect(result.current.state.message).toMatch(/invalid server response/i);
       expect(result.current.state.httpStatus).toBe(200);
     }
+    expect(result.current.canRetry).toBe(false);
+  });
+
+  it("surfaces an incomplete response as schema drift", async () => {
+    const { result } = renderHook(() => useVaultUpload());
+    const file = makeFile("ok.pdf", 4096, "application/pdf");
+
+    act(() => result.current.upload(file));
+    const xhr = MockXHR.last!;
+    act(() =>
+      xhr.resolve(
+        200,
+        JSON.stringify({ success: true, data: { id: 1, name: "x.pdf" } }),
+      ),
+    );
+
+    await waitFor(() => expect(result.current.state.status).toBe("error"));
+    if (result.current.state.status === "error") {
+      expect(result.current.state.message).toMatch(/invalid server response/i);
+      expect(result.current.state.httpStatus).toBe(200);
+    }
+    expect(result.current.canRetry).toBe(false);
   });
 
   it("surfaces non-2xx HTTP response as error", async () => {
@@ -206,6 +228,7 @@ describe("useVaultUpload", () => {
       expect(result.current.state.message).toMatch(/413/);
       expect(result.current.state.httpStatus).toBe(413);
     }
+    expect(result.current.canRetry).toBe(false);
   });
 
   it("surfaces network error", async () => {
@@ -221,6 +244,44 @@ describe("useVaultUpload", () => {
     if (result.current.state.status === "error") {
       expect(result.current.state.message).toMatch(/network error/i);
     }
+    expect(result.current.canRetry).toBe(true);
+  });
+
+  it("retries the same validated file and options after transport failure", async () => {
+    const { result } = renderHook(() => useVaultUpload());
+    const file = makeFile("retry.pdf", 4096, "application/pdf");
+
+    act(() =>
+      result.current.upload(file, {
+        practiceId: 42,
+        documentType: "other",
+        purpose: "Synthetic retry proof",
+      }),
+    );
+    const failedRequest = MockXHR.last!;
+    act(() => failedRequest.resolve(503, ""));
+
+    await waitFor(() => expect(result.current.canRetry).toBe(true));
+    act(() => result.current.retry());
+
+    const retryRequest = MockXHR.last!;
+    expect(retryRequest).not.toBe(failedRequest);
+    const retriedFile = retryRequest.sentBody?.get("file");
+    expect(retriedFile).toBeInstanceOf(File);
+    expect(retriedFile).toMatchObject({
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+    expect(retryRequest.sentBody?.get("practice_id")).toBe("42");
+    expect(retryRequest.sentBody?.get("document_type")).toBe("other");
+    expect(retryRequest.sentBody?.get("document_purpose")).toBe(
+      "Synthetic retry proof",
+    );
+
+    act(() => retryRequest.resolve(200, JSON.stringify(validUploadResp)));
+    await waitFor(() => expect(result.current.state.status).toBe("done"));
+    expect(result.current.canRetry).toBe(false);
   });
 
   it("reset() returns state to idle", async () => {

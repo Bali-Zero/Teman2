@@ -63,12 +63,20 @@ export function PortalNotificationsList({
   onMarkAllRead,
   isMarkingRead,
   isMarkingAllRead,
+  isMarkReadError,
+  isMarkAllReadError,
+  onRetryMarkRead,
+  onRetryMarkAllRead,
 }: {
   notifications: PortalNotification[];
   onMarkRead: (id: number) => void;
   onMarkAllRead: () => void;
   isMarkingRead?: boolean;
   isMarkingAllRead?: boolean;
+  isMarkReadError?: boolean;
+  isMarkAllReadError?: boolean;
+  onRetryMarkRead?: () => void;
+  onRetryMarkAllRead?: () => void;
 }) {
   const unread = notifications.filter((n) => !n.read);
 
@@ -95,6 +103,48 @@ export function PortalNotificationsList({
           </button>
         )}
       </div>
+
+      {isMarkReadError && (
+        <div
+          role="alert"
+          className="border-b px-4 py-3 text-xs"
+          style={{ borderColor: "rgba(255,255,255,0.05)" }}
+        >
+          <p style={{ color: "var(--bz-text-2)" }}>
+            Couldn&apos;t mark the notification as read.
+          </p>
+          <button
+            type="button"
+            onClick={onRetryMarkRead}
+            className="mt-2 rounded focus-ring"
+            style={{ color: "var(--bz-accent-warm)" }}
+            aria-label="Retry mark as read"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {isMarkAllReadError && (
+        <div
+          role="alert"
+          className="border-b px-4 py-3 text-xs"
+          style={{ borderColor: "rgba(255,255,255,0.05)" }}
+        >
+          <p style={{ color: "var(--bz-text-2)" }}>
+            Couldn&apos;t mark all notifications as read.
+          </p>
+          <button
+            type="button"
+            onClick={onRetryMarkAllRead}
+            className="mt-2 rounded focus-ring"
+            style={{ color: "var(--bz-accent-warm)" }}
+            aria-label="Retry mark all as read"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* List */}
       {notifications.length === 0 ? (
@@ -182,11 +232,27 @@ export function PortalNotificationsPopover() {
     unreadCount,
     markRead,
     markAllRead,
+    isLoading,
+    isError,
+    isRetrying,
     isMarkingRead,
     isMarkingAllRead,
+    isMarkReadError,
+    isMarkAllReadError,
+    retry,
+    retryMarkRead,
+    retryMarkAllRead,
   } = usePortalNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      dialogRef.current?.focus();
+    }
+  }, [isOpen]);
 
   // Close on outside click
   useEffect(() => {
@@ -204,7 +270,10 @@ export function PortalNotificationsPopover() {
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
@@ -213,10 +282,14 @@ export function PortalNotificationsPopover() {
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg transition-colors hover:bg-[var(--surface-raised)] focus-ring"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-controls="portal-notifications-popover"
       >
         <Bell className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
         <PortalNotificationBadge count={unreadCount} />
@@ -224,6 +297,12 @@ export function PortalNotificationsPopover() {
 
       {isOpen && (
         <div
+          ref={dialogRef}
+          id="portal-notifications-popover"
+          role="dialog"
+          aria-label="Notifications"
+          aria-busy={isLoading || isRetrying}
+          tabIndex={-1}
           className="absolute right-0 top-full mt-2 rounded-xl border shadow-2xl z-50 overflow-hidden"
           style={{
             background: "rgba(24,24,28,0.95)",
@@ -231,13 +310,45 @@ export function PortalNotificationsPopover() {
             backdropFilter: "blur(24px)",
           }}
         >
-          <PortalNotificationsList
-            notifications={notifications}
-            onMarkRead={(id) => markRead(id)}
-            onMarkAllRead={() => markAllRead()}
-            isMarkingRead={isMarkingRead}
-            isMarkingAllRead={isMarkingAllRead}
-          />
+          {isLoading ? (
+            <div
+              role="status"
+              className="w-80 px-4 py-8 text-center text-xs"
+              style={{ color: "var(--bz-text-3)" }}
+            >
+              Loading notifications...
+            </div>
+          ) : isError ? (
+            <div
+              role="alert"
+              className="w-80 px-4 py-8 text-center text-xs"
+              style={{ color: "var(--bz-text-3)" }}
+            >
+              <p>Notifications are unavailable.</p>
+              <button
+                type="button"
+                onClick={retry}
+                disabled={isRetrying}
+                className="mt-3 rounded px-3 py-1.5 focus-ring"
+                style={{ color: "var(--bz-accent-warm)" }}
+                aria-label="Retry notifications"
+              >
+                {isRetrying ? "Retrying..." : "Retry"}
+              </button>
+            </div>
+          ) : (
+            <PortalNotificationsList
+              notifications={notifications}
+              onMarkRead={(id) => markRead(id)}
+              onMarkAllRead={() => markAllRead()}
+              isMarkingRead={isMarkingRead}
+              isMarkingAllRead={isMarkingAllRead}
+              isMarkReadError={isMarkReadError}
+              isMarkAllReadError={isMarkAllReadError}
+              onRetryMarkRead={retryMarkRead}
+              onRetryMarkAllRead={retryMarkAllRead}
+            />
+          )}
         </div>
       )}
     </div>

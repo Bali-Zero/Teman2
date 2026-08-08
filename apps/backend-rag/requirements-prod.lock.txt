@@ -822,6 +822,10 @@ cymem==2.0.13 \
     #   preshed
     #   spacy
     #   thinc
+defusedxml==0.7.1 \
+    --hash=sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69 \
+    --hash=sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61
+    # via -r requirements-prod.txt
 deprecated==1.3.1 \
     --hash=sha256:597bfef186b6f60181535a29fbe44865ce137a5079f295b479886c82729d5f3f \
     --hash=sha256:b1b50e0ff0c1fddaa5708a2c6b0a6588bb09b892825ab2b214ac9ea9d92a5223
@@ -1166,7 +1170,9 @@ h11==0.16.0 \
 h2==4.4.1 \
     --hash=sha256:0e25f1462b23c9cb82d9eb02e28bc706dac2a68cb457c6a0d74d63c8a2a5d0e6 \
     --hash=sha256:4e866ffb1a869ae14dd9b5e6beb5c24a13da0495ad72b65925ded182521c1516
-    # via httpx
+    # via
+    #   -r requirements-prod.txt
+    #   httpx
 hpack==4.2.0 \
     --hash=sha256:0895cfa3b5531fc65fe439c05eb65144f123bf7a394fcaa56aa423548d8e45c0 \
     --hash=sha256:858ac0b02280fa582b5080d68db0899c62a80375e0e5413a74970c5e518b6986
@@ -2363,6 +2369,7 @@ pillow==12.3.0 \
     --hash=sha256:fe3cca2e4e8a592be0f269a1ca4835c25199d9f3ce815c8491048f785b0a0198 \
     --hash=sha256:ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7
     # via
+    #   -r requirements-prod.txt
     #   pdfplumber
     #   reportlab
 portalocker==2.10.1 \

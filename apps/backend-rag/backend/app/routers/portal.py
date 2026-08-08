@@ -15,7 +15,7 @@ All endpoints require client authentication (role='client').
 Created: 2025-12-30
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import quote
 
 import asyncpg
@@ -27,6 +27,15 @@ from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
+from backend.services.portal.upload_validation import (
+    PORTAL_UPLOAD_MIME_TYPES,
+)
+from backend.services.portal.upload_validation import (
+    read_upload_bounded as _read_upload_bounded,
+)
+from backend.services.portal.upload_validation import (
+    validate_upload_type as _validate_upload_type,
+)
 
 if TYPE_CHECKING:
     from backend.services.portal import PortalService
@@ -36,7 +45,6 @@ else:
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
-
 
 # ================================================
 # PYDANTIC MODELS
@@ -61,7 +69,7 @@ class UpdatePreferencesRequest(BaseModel):
 
     email_notifications: bool | None = None
     whatsapp_notifications: bool | None = None
-    language: str | None = None
+    language: Literal["it", "en", "id"] | None = None
     timezone: str | None = None
 
 
@@ -299,9 +307,7 @@ async def get_dashboard(
         # `... WHERE id = $1 AND deleted_at IS NULL`). That's a not-found
         # condition, not an internal error — surface 404 so a soft-deleted
         # client's portal doesn't 500 the whole dashboard.
-        logger.warning(
-            f"Dashboard client not found for client {client['client_id']}: {e}"
-        )
+        logger.warning(f"Dashboard client not found for client {client['client_id']}: {e}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get dashboard for client {client['client_id']}: {e}")
@@ -512,7 +518,9 @@ async def get_tax_overview(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in get_tax_overview for client {client['client_id']}: {e}")
+        logger.warning(
+            f"Client not found in get_tax_overview for client {client['client_id']}: {e}"
+        )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get tax overview for client {client['client_id']}: {e}")
@@ -586,20 +594,36 @@ async def upload_document(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
-    # Check file size (max 10MB)
-    MAX_SIZE = 10 * 1024 * 1024  # 10MB
-    content = await file.read()
-    if len(content) > MAX_SIZE:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB")
-
-    # Check allowed file types
-    allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"}
+    # Validate extension before reading the body.
     file_ext = "." + file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if file_ext not in allowed_extensions:
+    if file_ext not in PORTAL_UPLOAD_MIME_TYPES:
+        allowed_extensions = ", ".join(PORTAL_UPLOAD_MIME_TYPES)
         raise HTTPException(
             status_code=400,
-            detail=f"File type not allowed. Allowed types: {', '.join(allowed_extensions)}",
+            detail=f"File type not allowed. Allowed types: {allowed_extensions}",
         )
+
+    # Read one bounded chunk at a time and probe only one byte beyond the cap.
+    try:
+        content = await _read_upload_bounded(file)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=413,
+            detail="File too large. Maximum size is 10MB",
+        ) from e
+
+    if not content:
+        raise HTTPException(status_code=400, detail="File is empty")
+
+    # Do not trust the multipart MIME header or filename extension alone.
+    try:
+        trusted_mime_type = _validate_upload_type(
+            file_ext=file_ext,
+            declared_mime_type=file.content_type,
+            content=content,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=415, detail=str(e)) from e
 
     # Cap the client-facing purpose note (trust UX field, not free-form storage)
     purpose = (document_purpose or "").strip() or None
@@ -612,7 +636,7 @@ async def upload_document(
             file_content=content,
             file_name=file.filename,
             document_type=document_type,
-            mime_type=file.content_type,
+            mime_type=trusted_mime_type,
             practice_id=practice_id,
             document_purpose=purpose,
             current_user=client,
@@ -624,9 +648,7 @@ async def upload_document(
         }
     except ValueError as e:
         # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
-        logger.warning(
-            f"Client not found in upload_document for client {client['client_id']}: {e}"
-        )
+        logger.warning(f"Client not found in upload_document for client {client['client_id']}: {e}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to upload document for client {client['client_id']}: {e}")
@@ -841,20 +863,26 @@ async def mark_message_read(
     Mark a message as read.
     """
     try:
-        await portal_service.mark_message_read(
+        result = await portal_service.mark_message_read(
             client["client_id"],
             message_id,
             current_user=client,
         )
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail="Message not found")
         return {
             "success": True,
             "message": "Message marked as read",
         }
+    except HTTPException:
+        raise
     except ValueError as e:
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in mark_message_read for client {client['client_id']}: {e}")
+        logger.warning(
+            f"Client not found in mark_message_read for client {client['client_id']}: {e}"
+        )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error("Failed to mark message %s as read: %s", message_id, e)
@@ -932,7 +960,9 @@ async def update_preferences(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in update_preferences for client {client['client_id']}: {e}")
+        logger.warning(
+            f"Client not found in update_preferences for client {client['client_id']}: {e}"
+        )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to update preferences for client {client['client_id']}: {e}")

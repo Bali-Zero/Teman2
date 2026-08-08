@@ -3,13 +3,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspaceLayout from "./layout";
 
-const { mockGetGateStatus, mockGetUserProfile } = vi.hoisted(() => ({
+const {
+  mockGetGateStatus,
+  mockGetUserProfile,
+  mockLocationReplace,
+  mockRouterPush,
+} = vi.hoisted(() => ({
   mockGetGateStatus: vi.fn(),
   mockGetUserProfile: vi.fn(),
+  mockLocationReplace: vi.fn(),
+  mockRouterPush: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => "/dashboard",
 }));
 
@@ -77,7 +84,15 @@ vi.mock("@/hooks/useDashboardData", () => ({
 }));
 
 describe("WorkspaceLayout CELL access", () => {
+  const originalLocation = window.location;
+
   beforeEach(() => {
+    delete (window as { location?: Location }).location;
+    (window as unknown as { location: Partial<Location> }).location = {
+      hostname: "kita.balizero.com",
+      href: "https://kita.balizero.com/dashboard",
+      replace: mockLocationReplace,
+    };
     delete process.env.NEXT_PUBLIC_HIDE_CELL_WIDGET;
     mockGetUserProfile.mockReturnValue({
       name: "Zero",
@@ -92,6 +107,8 @@ describe("WorkspaceLayout CELL access", () => {
   });
 
   afterEach(() => {
+    delete (window as { location?: Location }).location;
+    (window as unknown as { location: Location }).location = originalLocation;
     delete process.env.NEXT_PUBLIC_HIDE_CELL_WIDGET;
     vi.clearAllMocks();
   });
@@ -123,5 +140,28 @@ describe("WorkspaceLayout CELL access", () => {
     expect(
       screen.queryByTitle("CELL — Pulse #42 — GREEN"),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses a full cross-origin navigation when a client lands on kita", async () => {
+    mockGetUserProfile.mockReturnValue({
+      name: "Portal Client",
+      email: "portal-client@example.test",
+      role: "client",
+      team: "Client",
+    });
+
+    render(
+      <WorkspaceLayout>
+        <div>Workspace must not render</div>
+      </WorkspaceLayout>,
+    );
+
+    await waitFor(() => {
+      expect(mockLocationReplace).toHaveBeenCalledWith(
+        "https://my.balizero.com/portal",
+      );
+    });
+    expect(mockRouterPush).not.toHaveBeenCalledWith("/portal");
+    expect(mockGetGateStatus).not.toHaveBeenCalled();
   });
 });

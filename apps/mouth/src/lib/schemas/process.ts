@@ -17,7 +17,7 @@
  * the router. The enum therefore covers ALL status strings the BE can emit.
  */
 
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // ============================================
 // STATE ENUM

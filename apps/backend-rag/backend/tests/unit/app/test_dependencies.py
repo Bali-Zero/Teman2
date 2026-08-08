@@ -157,7 +157,10 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid_token"
 
-        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
+        with (
+            patch("backend.app.deps.auth.jwt.decode") as mock_decode,
+            patch("backend.app.deps.auth.is_session_revoked_sync", return_value=False),
+        ):
             mock_decode.return_value = {
                 "email": "test@example.com",
                 "user_id": "123",
@@ -253,7 +256,10 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid_token"
 
-        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
+        with (
+            patch("backend.app.deps.auth.jwt.decode") as mock_decode,
+            patch("backend.app.deps.auth.is_session_revoked_sync", return_value=False),
+        ):
             mock_decode.return_value = {
                 "email": "test@example.com",
                 "user_id": "123",

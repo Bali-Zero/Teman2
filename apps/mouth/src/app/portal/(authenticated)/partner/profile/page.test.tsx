@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetMe } = vi.hoisted(() => ({ mockGetMe: vi.fn() }));
 
@@ -38,6 +38,10 @@ async function renderLoaded(partner = PARTNER) {
 }
 
 describe("PartnerProfilePage (WS3 day pass)", () => {
+  beforeEach(() => {
+    mockGetMe.mockReset();
+  });
+
   it("renders the day masthead: copper rule + serif headline in --tx-pure", async () => {
     const { container } = await renderLoaded();
 
@@ -93,5 +97,20 @@ describe("PartnerProfilePage (WS3 day pass)", () => {
     expect(html).not.toContain("text-amber-400");
     expect(html).not.toContain("text-white");
     expect(html).not.toContain("text-gray-");
+  });
+
+  it("shows a safe outage state and retries the profile request", async () => {
+    mockGetMe
+      .mockRejectedValueOnce(new Error("private database detail"))
+      .mockResolvedValueOnce(PARTNER);
+    render(<PartnerProfilePage />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Profile is temporarily unavailable");
+    expect(alert).not.toHaveTextContent("private database detail");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByText("My Profile")).toBeInTheDocument();
+    expect(mockGetMe).toHaveBeenCalledTimes(2);
   });
 });

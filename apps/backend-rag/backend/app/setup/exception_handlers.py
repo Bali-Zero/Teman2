@@ -13,6 +13,8 @@ from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from backend.app.utils.logging_utils import sanitize_log_path
+
 logger = logging.getLogger("zantara.backend")
 
 
@@ -70,9 +72,10 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
     # Sanitize detail to prevent JSON serialization errors
     sanitized_detail = sanitize_detail(exc.detail)
+    log_path = sanitize_log_path(request.url.path)
 
     logger.warning(
-        f"[{correlation_id}] HTTPException: {exc.status_code} - {request.method} {request.url.path}. "
+        f"[{correlation_id}] HTTPException: {exc.status_code} - {request.method} {log_path}. "
         f"Detail: {sanitized_detail if isinstance(sanitized_detail, str) else 'See detail object'}",
     )
 
@@ -109,9 +112,10 @@ async def starlette_http_exception_handler(
 
     # Sanitize detail
     sanitized_detail = sanitize_detail(exc.detail)
+    log_path = sanitize_log_path(request.url.path)
 
     logger.warning(
-        f"[{correlation_id}] StarletteHTTPException: {exc.status_code} - {request.method} {request.url.path}",
+        f"[{correlation_id}] StarletteHTTPException: {exc.status_code} - {request.method} {log_path}",
     )
 
     return JSONResponse(
@@ -141,10 +145,11 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
 
     # Get validation errors
     errors = exc.errors() if hasattr(exc, "errors") else []
+    log_path = sanitize_log_path(request.url.path)
 
     logger.warning(
         f"[{correlation_id}] ValidationError: {len(errors)} validation errors - "
-        f"{request.method} {request.url.path}",
+        f"{request.method} {log_path}",
     )
 
     return JSONResponse(
@@ -178,12 +183,13 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
     error_type = type(exc).__name__
     error_module = getattr(type(exc), "__module__", "unknown")
+    log_path = sanitize_log_path(request.url.path)
 
     # asyncpg.InterfaceError = stale connection after Fly.io cold start.
     # Expire pool connections so the next request gets a fresh one, then return 503.
     if isinstance(exc, asyncpg.InterfaceError):
         logger.warning(
-            f"[{correlation_id}] Stale DB connection on {request.method} {request.url.path}: {exc}. "
+            f"[{correlation_id}] Stale DB connection on {request.method} {log_path}: {exc}. "
             "Expiring pool connections.",
         )
         try:
@@ -203,7 +209,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
     logger.critical(
         f"[{correlation_id}] Unhandled exception: Type={error_type}, Module={error_module}, "
-        f"Request={request.method} {request.url.path}",
+        f"Request={request.method} {log_path}",
     )
 
     # Sanitize error message

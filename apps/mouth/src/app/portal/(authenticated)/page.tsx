@@ -21,6 +21,8 @@ import {
   ChevronRight,
   FileText,
   MessageCircle,
+  RefreshCw,
+  UserRoundX,
 } from "lucide-react";
 
 const TimelineItem = dynamic(
@@ -35,8 +37,10 @@ import {
 } from "@/hooks";
 import {
   PortalCardSkeleton,
+  PortalEmptyState,
   PortalPageLoader,
   PortalListSkeleton,
+  PracticeRecapCard,
 } from "@/components/portal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -44,17 +48,28 @@ import type { TimelineEntry } from "@/lib/api/types/timeline.types";
 import type { DashboardSummary } from "@/lib/api/portal/portal.types";
 import { DeadlineBadge } from "@balizero/core";
 
+function getStatusCode(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  const candidate = error as { statusCode?: unknown; status?: unknown };
+  if (typeof candidate.statusCode === "number") return candidate.statusCode;
+  if (typeof candidate.status === "number") return candidate.status;
+  return undefined;
+}
+
+function isClientConnectionError(error: unknown): boolean {
+  return getStatusCode(error) === 404;
+}
+
 export default function PortalHomePage() {
   const router = useRouter();
-  const {
-    data: dashboard,
-    isLoading: isLoadingDashboard,
-    isError,
-    error,
-  } = usePortalDashboard();
-  const { data: summary } = usePortalDashboardSummary();
-  const { data: timelineData, isLoading: isLoadingTimeline } =
-    usePortalTimeline(20);
+  const dashboardQuery = usePortalDashboard();
+  const summaryQuery = usePortalDashboardSummary();
+  const timelineQuery = usePortalTimeline(20);
+
+  const { data: dashboard, isLoading: isLoadingDashboard } = dashboardQuery;
+  const { data: summary } = summaryQuery;
+  const { data: timelineData, isLoading: isLoadingTimeline } = timelineQuery;
 
   const timeline = timelineData?.entries || [];
   const [showAllTimeline, setShowAllTimeline] = useState(false);
@@ -62,6 +77,50 @@ export default function PortalHomePage() {
   const visibleTimeline = showAllTimeline
     ? timeline
     : timeline.slice(0, TIMELINE_PREVIEW_COUNT);
+
+  const portalQueries = [dashboardQuery, summaryQuery, timelineQuery];
+  const clientConnectionMissing = portalQueries.some(
+    (query) => query.isError && isClientConnectionError(query.error),
+  );
+  const unexpectedError = portalQueries.find(
+    (query) => query.isError && !isClientConnectionError(query.error),
+  )?.error;
+  const retryPortalData = () => {
+    void Promise.all(portalQueries.map((query) => query.refetch()));
+  };
+
+  if (clientConnectionMissing) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <section>
+          <div
+            aria-hidden="true"
+            className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+          />
+          <h1
+            className="text-2xl font-semibold tracking-tight text-[var(--foreground)]"
+            style={{ fontFamily: "var(--font-serif)" }}
+          >
+            Welcome Back
+          </h1>
+          <p className="text-[var(--foreground-muted)]">
+            Here is your Bali life overview.
+          </p>
+        </section>
+
+        <PortalEmptyState
+          icon={UserRoundX}
+          title="Client profile connection needed"
+          description="Your portal account is signed in, but it is not connected to an active client profile yet. Contact your Bali Zero team to complete the connection, then try again."
+        />
+
+        <Button onClick={retryPortalData}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoadingDashboard || isLoadingTimeline) {
     return (
@@ -95,7 +154,7 @@ export default function PortalHomePage() {
   }
 
   // Show error state
-  if (isError) {
+  if (unexpectedError) {
     return (
       <div className="space-y-6">
         <section>
@@ -118,13 +177,15 @@ export default function PortalHomePage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Unable to load dashboard</AlertTitle>
           <AlertDescription>
-            {error instanceof Error
-              ? error.message
-              : "An unexpected error occurred. Please try again."}
+            We couldn&apos;t load all of your portal information. Please try
+            again.
           </AlertDescription>
         </Alert>
 
-        <Button onClick={() => window.location.reload()}>Retry</Button>
+        <Button onClick={retryPortalData}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -178,6 +239,8 @@ export default function PortalHomePage() {
         summary={summary}
         onOpenMatter={(id) => router.push(`/portal/matters/${id}`)}
       />
+
+      <PracticeRecapCard recap={summary?.recap} />
 
       {/* Status Cards (Traffic Lights) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">

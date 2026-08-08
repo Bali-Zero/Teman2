@@ -977,6 +977,25 @@ export default function KBLIExplorerPage() {
 
   const isWelcome = messages.length === 0;
 
+  const handleInspect = useCallback(async (code: string) => {
+    setIsInspecting(true);
+    setInspectorOpen(true);
+
+    // Check if it's a legacy code to trigger the funnel later
+    if (KBLI_CONCORDANCE_2025[code]) {
+      setDetectedLegacyCode(code);
+    }
+
+    try {
+      const detail = await kbliApi.inspect(code);
+      setActiveKBLI(detail);
+    } catch {
+      toast.error(`Failed to load KBLI ${code}`);
+    } finally {
+      setIsInspecting(false);
+    }
+  }, []);
+
   // Deep-link: ?inspect={code} (2C)
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1018,25 +1037,6 @@ export default function KBLIExplorerPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const handleInspect = useCallback(async (code: string) => {
-    setIsInspecting(true);
-    setInspectorOpen(true);
-
-    // Check if it's a legacy code to trigger the funnel later
-    if (KBLI_CONCORDANCE_2025[code]) {
-      setDetectedLegacyCode(code);
-    }
-
-    try {
-      const detail = await kbliApi.inspect(code);
-      setActiveKBLI(detail);
-    } catch {
-      toast.error(`Failed to load KBLI ${code}`);
-    } finally {
-      setIsInspecting(false);
-    }
-  }, []);
 
   const handleSendMessage = useCallback(
     async (messageText?: string, e?: React.FormEvent) => {
