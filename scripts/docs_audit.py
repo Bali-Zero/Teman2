@@ -1773,17 +1773,29 @@ def _trusted_ref_tip_date(repo: Path, trusted_ref: str) -> date | None:
     TIGHTENS the combined ceiling relative to "now alone" when it
     succeeds, so a failure degrading to "now alone" loses tightening, not
     safety.
+
+    A FAILED fetch is itself treated as unresolved (returns None), even
+    though a pre-existing local tracking ref might still resolve and log
+    a plausible-looking date. Proceeding past a failed fetch would supply
+    that leftover local ref's date as if it were freshly verified — the
+    exact "fetch failure folded silently into the value" shape W106b
+    layer 4 names (a fetch failure belongs in a CANNOT-VERIFY channel,
+    never folded into the value). Offline (Legge 6) is a natural state,
+    not a fault: degrading to None here only costs the "tightening" this
+    docstring already says is optional, never safety.
     """
     remote, sep, branch = trusted_ref.partition("/")
     if not sep or not remote or not branch:
         return None
-    subprocess.run(
+    fetch = subprocess.run(
         ["git", "-C", str(repo), "fetch", remote, branch, "--quiet"],
         capture_output=True,
         text=True,
         timeout=60,
         check=False,
     )
+    if fetch.returncode != 0:
+        return None
     resolve = subprocess.run(
         ["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", f"{trusted_ref}^{{commit}}"],
         capture_output=True,
