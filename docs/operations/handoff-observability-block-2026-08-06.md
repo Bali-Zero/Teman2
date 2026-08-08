@@ -384,7 +384,11 @@ Su M5 il main checkout è indietro per progetto (223 commit alla chiusura) e `pr
    `runner_blob`, e se la copia che l'ha scritto non è quella di `origin/main` lo dice in prima riga
    e sopprime il rimedio del registro (che parlerebbe di _schedule_ quando il problema è il _codice_).
 2. **Gli script che la sonda ESEGUE** non erano coperti da quella cura. Curare il runner e
-   dichiarare chiusa la malattia è W107. **#3836**: censiti leggendo il registro caricato,
+   dichiarare chiusa la malattia è W107. La PR gemella di questa tornata (branch
+   `agent/air-m5/ops/executed-code-currency`, aperta subito dopo #3835 e da essa dipendente —
+   citata per branch e non per numero, perché il numero non esiste finché la PR non è aperta e
+   indovinarlo produce un riferimento che RISOLVE su una PR altrui): censiti leggendo il
+   registro caricato,
    **3 dei 6 in giurisdizione M5** erano indietro.
 
 **Uno mentiva, e l'A/B è controllato** — stessa macchina, stessa `~/Library/LaunchAgents`, stesso
