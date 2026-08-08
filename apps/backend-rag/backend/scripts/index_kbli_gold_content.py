@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.core.collection_registry import resolve_collection_name
+from backend.scripts._kbli_repo_root import resolve_repo_root
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -43,13 +44,18 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 EMBED_BATCH_SIZE = 20
 BATCH_SIZE = 20
 
-GOLD_CONTENT_FILE = (
-    Path(__file__).resolve().parents[4] / "apps" / "kbli-navigator" / "lib" / "kbli-gold-content.ts"
+# Repo root: robust resolver that works in both the dev checkout and the Fly
+# container (where parents[4] raises IndexError — the layout is shallower).
+# Honours KBLI_REPO_ROOT env override; otherwise walks up looking for the gold
+# content marker file.
+_REPO_ROOT = resolve_repo_root(
+    ["apps/kbli-navigator/lib/kbli-gold-content.ts"],
+    script_file=__file__,
 )
 
-KBLI_DATA_FILE = (
-    Path(__file__).resolve().parents[4] / "apps" / "kbli-navigator" / "data" / "kbli-2025.json"
-)
+GOLD_CONTENT_FILE = _REPO_ROOT / "apps" / "kbli-navigator" / "lib" / "kbli-gold-content.ts"
+
+KBLI_DATA_FILE = _REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.json"
 
 # 5-digit KBLI codes (e.g. "56101")
 _CODE_RE = re.compile(r"^\d{5}$")

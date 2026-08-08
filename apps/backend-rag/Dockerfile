@@ -183,6 +183,16 @@ COPY apps/backend-rag/scripts ./scripts
 COPY apps/backend-rag/training-data ./training-data
 COPY apps/backend-rag/*.py ./
 
+# Copy KBLI data files needed by the two Qdrant indexers
+# (backend/scripts/index_kbli_gold_content.py + reindex_kbli_2025_final.py).
+# Both resolve the repo root by walking up from __file__ looking for these
+# marker files; without them in the image the walk exhausts and the scripts
+# crash — they cannot run where their credentials (QDRANT_URL, OPENAI_API_KEY)
+# actually live.
+COPY apps/kbli-navigator/lib/kbli-gold-content.ts ./apps/kbli-navigator/lib/kbli-gold-content.ts
+COPY apps/kbli-navigator/data/kbli-2025.json ./apps/kbli-navigator/data/kbli-2025.json
+COPY source_documents/KBLI_2025_FINAL_CLEAN.json ./source_documents/KBLI_2025_FINAL_CLEAN.json
+
 # Set Python path (cell-core included for explicit import resolution)
 ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/app/apps/crm-cell:/home/nuzantara/.local/lib/python3.11/site-packages
 ENV PATH=/home/nuzantara/.local/bin:$PATH

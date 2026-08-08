@@ -30,19 +30,28 @@ import re
 import sys
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from dotenv import load_dotenv
 
 from backend.core.collection_registry import resolve_collection_name
+from backend.scripts._kbli_repo_root import resolve_repo_root
+
+# Repo root: robust resolver that works in both the dev checkout and the Fly
+# container (where parents[4] raises IndexError — the layout is shallower).
+# Computed early so the .env loader and SOURCE_FILE both derive from it.
+_REPO_ROOT = resolve_repo_root(
+    ["source_documents/KBLI_2025_FINAL_CLEAN.json"],
+    script_file=__file__,
+)
 
 # Load apps/backend-rag/.env so QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY are present
-# even when this script is invoked directly (not via the FastAPI app). Path is derived
-# from __file__ — backend/scripts/<this> → parents[2] == apps/backend-rag — so it works
-# from any cwd. Without this the script silently fell back to localhost:6333 and aborted
-# on a missing OPENAI_API_KEY (env had to be exported by hand). Existing env vars win
-# (load_dotenv does not override), so CI / explicit exports still take precedence.
-_BACKEND_RAG_ENV = Path(__file__).resolve().parents[2] / ".env"
+# even when this script is invoked directly (not via the FastAPI app). The path is
+# derived from _REPO_ROOT (which replaces the old parents[2] — a frozen measurement
+# of the dev layout that raised IndexError in the container). Without this the script
+# silently fell back to localhost:6333 and aborted on a missing OPENAI_API_KEY (env
+# had to be exported by hand). Existing env vars win (load_dotenv does not override),
+# so CI / explicit exports still take precedence.
+_BACKEND_RAG_ENV = _REPO_ROOT / ".env"
 if _BACKEND_RAG_ENV.exists():
     load_dotenv(_BACKEND_RAG_ENV)
 
@@ -56,9 +65,7 @@ EMBED_BATCH_SIZE = 20
 UPSERT_BATCH_SIZE = 20
 DELETE_BATCH_SIZE = 100
 
-SOURCE_FILE = (
-    Path(__file__).resolve().parents[4] / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
-)
+SOURCE_FILE = _REPO_ROOT / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 
 # 5-digit KBLI codes (e.g. "56101")
 _CODE_RE = re.compile(r"^\d{5}$")
@@ -634,7 +641,7 @@ async def main():
     logger.info(f"Got {len(embeddings)} embeddings (dims={len(embeddings[0])})")
 
     # Step 2: Generate BM25 sparse vectors
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(_REPO_ROOT))
     from backend.core.bm25_vectorizer import BM25Vectorizer
 
     bm25 = BM25Vectorizer()
