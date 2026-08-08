@@ -1,6 +1,6 @@
 # imigrasi.go.id scoped mirror + diff-alert
 
-**Scope: NOT a full-site copy.** ~126 pages that feed the Bali Zero visa
+**Scope: NOT a full-site copy.** ~127 pages that feed the Bali Zero visa
 engine, versioned daily/weekly, with a Telegram alert when one of them
 changes. The value is the repeated crawl + diff, not a one-off copy
 (cicatrix W90: "anche il ground-truth invecchia" — a static snapshot goes
@@ -11,6 +11,7 @@ stale the moment Imigrasi edits a list; this exists to catch that edit).
 | Category | Count | Tier | Examples |
 |---|---|---|---|
 | VoA/BVK/Calling subject lists + parent | 4 | daily | `/wna/daftar-negara-voa-bvk-calling-visa[/...]` |
+| TPI entry-point list — 122 checkpoints where VoA is issued (v2 — WHERE vs the subject lists' WHO) | 1 | daily | `.../titik-masuk-bagi-pemegang-e-voa` |
 | FAQ (documented for its OWN staleness, not trusted) | 1 | daily | `/faq/visa/negara-mana-saja...e-voa` |
 | Visa catalog index | 1 | daily | `/wna/daftar-visa-indonesia` |
 | News/announcement index (v2 — removals announced here first) | 1 | daily | `/berita` |
@@ -38,17 +39,17 @@ dependency chain so it can run standalone from cron). Re-check with:
 scripts/imigrasi_mirror/run-mirror.sh --verify-codes
 ```
 
-All 126 URLs in `urls.py` were verified live (200, real content) before being
-committed — 123 on 2026-08-08, the `/berita`, kemenimipas Permen and e-Visa
-eVOA v2 pages on 2026-08-09. All three v2 pages were extraction-stability probed
-(identical extract text across two fetches seconds apart) so the daily diff
-fires only on genuinely new content, never on volatile page furniture (view
-counters, timestamps). See the module docstring.
+All 127 URLs in `urls.py` were verified live (200, real content) before being
+committed — 123 on 2026-08-08, the `/berita`, kemenimipas Permen, e-Visa eVOA
+and TPI entry-point v2 pages on 2026-08-09. All four v2 pages were
+extraction-stability probed (identical extract text across two fetches seconds
+apart) so the daily diff fires only on genuinely new content, never on volatile
+page furniture (view counters, timestamps). See the module docstring.
 
 ## Cadence (coded, NOT yet installed as cron)
 
 ```
-run-mirror.sh --tier daily     # the 12 pages that "morde" — run this one daily
+run-mirror.sh --tier daily     # the 13 pages that "morde" — run this one daily
 run-mirror.sh --tier weekly    # the 114 per-code pages — run this one weekly
 run-mirror.sh --tier all       # everything in one pass
 run-mirror.sh --select parent,voa,bvk,calling,faq-evoa   # ad-hoc subset
