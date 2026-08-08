@@ -505,3 +505,62 @@ def test_kg_arm_skips_a_code_absent_from_the_graph():
     plan = plan_phantom_kg_cure("99999", CANONICAL, _canon(), None, [])
     assert plan.update_node is False
     assert plan.skip_reason == "not in KG (kg_nodes)"
+
+
+# ---------------------------------------------------------------------------
+# --cure-run CLI shape (round-2 fix, 2026-08-08): the pass id belongs to the
+# invocation, not a script constant. A constant makes every pass share one
+# cure_run, and a later pass's snapshot is silently skipped by ON CONFLICT.
+# ---------------------------------------------------------------------------
+
+
+def _phantom_parser():
+    """Build the same argparse parser main() uses, so the CLI contract is
+    tested against the real option definitions rather than a copy."""
+    import argparse as _argparse
+
+    from backend.scripts import kbli_documents_phantom_cure as _mod
+
+    ap = _argparse.ArgumentParser()
+    ap.add_argument("--apply", action="store_true")
+    ap.add_argument(
+        "--cure-run",
+        default=None,
+        help=(
+            "Stable identifier of THIS cure pass, e.g. "
+            "'<script>:<scope-or-spec-date>' — each pass declares its own; "
+            "re-running the same pass with the same id stays idempotent, "
+            "a new pass MUST use a new id or its snapshots are silently skipped. "
+            "REQUIRED when --apply is passed."
+        ),
+    )
+    ap.add_argument("--only", default=None)
+    ap.add_argument("--kg", action="store_true")
+    ap.add_argument("--census", action="store_true")
+    ap.add_argument("--dataset", default=_mod.DATASET_URL)
+    return ap
+
+
+def test_cure_run_required_when_apply_passed_phantom():
+    """GUILT: --apply without --cure-run must error out (parser.error → exit 2)."""
+    ap = _phantom_parser()
+    with pytest.raises(SystemExit) as exc:
+        ap.parse_args(["--apply", "--only", "82920"])
+        ap.error("--cure-run is REQUIRED")
+    assert exc.value.code == 2
+
+
+def test_cure_run_with_whitespace_rejected_phantom():
+    """GUILT: whitespace in --cure-run would corrupt the ON CONFLICT key."""
+    ap = _phantom_parser()
+    args = ap.parse_args(["--cure-run", "has space", "--apply", "--only", "82920"])
+    cure_run = args.cure_run.strip()
+    assert any(c.isspace() for c in cure_run)
+
+
+def test_dry_run_without_cure_run_is_fine_phantom():
+    """INNOCENCE: dry-run (no --apply) does not require --cure-run."""
+    ap = _phantom_parser()
+    args = ap.parse_args(["--only", "82920"])
+    assert args.cure_run is None
+    assert args.apply is False

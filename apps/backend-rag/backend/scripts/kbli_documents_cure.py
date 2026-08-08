@@ -272,13 +272,14 @@ CONTRADICTED_LICENSING_CLAIM_RE = re.compile(
     re.I,
 )
 
-# Stable cure-run identifier — derived from this script's name + the cure
-# spec date it runs (2026-07-19). Never a wall-clock timestamp: a per-run
-# clock value would defeat ON CONFLICT idempotency within the same cure pass.
-# The shared DDL + versioned INSERT live in _kbli_archive (single source of
-# truth — the duplicated DDL that was here and in kbli_documents_phantom_cure
-# is how schemas drift).
-CURE_RUN = "kbli_documents_cure:2026-07-19"
+# The cure-run identifier comes from the INVOCATION (--cure-run), never a
+# script constant. A constant makes every pass of this script share one
+# cure_run: a later pass (different selection, different date) hits
+# ON CONFLICT (kode_kbli, cure_run) DO NOTHING and its pre-cure snapshot is
+# silently skipped — the one-shot disease resurrected across passes (round-2
+# fix, 2026-08-08). The shared DDL + versioned INSERT live in _kbli_archive
+# (single source of truth — the duplicated DDL that was here and in
+# kbli_documents_phantom_cure is how schemas drift).
 
 
 @dataclass
@@ -787,6 +788,17 @@ async def main() -> int | None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
     ap.add_argument(
+        "--cure-run",
+        default=None,
+        help=(
+            "Stable identifier of THIS cure pass, e.g. "
+            "'<script>:<scope-or-spec-date>' — each pass declares its own; "
+            "re-running the same pass with the same id stays idempotent, "
+            "a new pass MUST use a new id or its snapshots are silently skipped. "
+            "REQUIRED when --apply is passed."
+        ),
+    )
+    ap.add_argument(
         "--only",
         default=None,
         help="comma-separated list of 5-digit codes to process "
@@ -850,6 +862,21 @@ async def main() -> int | None:
         "Default: GitHub raw main.",
     )
     args = ap.parse_args()
+
+    # --cure-run: REQUIRED on apply; defaults to "dry-run" otherwise. A constant
+    # would make every pass of this script share one cure_run, and a later pass's
+    # pre-cure snapshot would be silently skipped by ON CONFLICT DO NOTHING — the
+    # one-shot disease resurrected across passes.
+    if args.apply and not args.cure_run:
+        ap.error("--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id")
+    if not args.cure_run:
+        cure_run = "dry-run"
+    else:
+        cure_run = args.cure_run.strip()
+        if not cure_run:
+            ap.error("--cure-run must not be empty")
+        if any(c.isspace() for c in cure_run):
+            ap.error(f"--cure-run must not contain whitespace (got {cure_run!r})")
 
     dataset = await load_dataset(args.dataset)
 
@@ -1050,7 +1077,7 @@ async def main() -> int | None:
             if args.apply:
                 assert current_row is not None  # update_row=True implies found_in_table=True
                 params = archive_params(code, current_row)
-                await archive_row(conn, code, params, CURE_RUN)
+                await archive_row(conn, code, params, cure_run)
                 # W89 jsonb double-encoding class-guard (kg_kbli_license_fix.py
                 # precedent): bind the pre-serialized json.dumps() string to a
                 # $N::text::jsonb placeholder so the server casts text->jsonb

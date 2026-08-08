@@ -16,7 +16,13 @@ silently preserved nothing. Migration ``269_kbli_archive_versioning`` adds a
 
 ``cure_run`` must be a STABLE per-cure identifier (script name + cure scope /
 spec date) — never a wall-clock timestamp, which would make every re-run
-"new" and defeat ``ON CONFLICT`` idempotency within the same cure pass.
+"new" and defeat ``ON CONFLICT`` idempotency within the same cure pass. The
+pass id comes from the INVOCATION (the ``--cure-run`` flag on the cure
+scripts), NEVER a script-level constant: a constant makes every pass of the
+same script share one ``cure_run``, so a later pass (different selection,
+different date) hits ``ON CONFLICT (kode_kbli, cure_run) DO NOTHING`` and its
+pre-cure snapshot is silently skipped — re-creating one-shot semantics across
+passes (round-2 fix, 2026-08-08).
 """
 
 from __future__ import annotations
