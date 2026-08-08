@@ -211,9 +211,19 @@ def _git_alignment_remedy(entry: dict, machine: str, ev: list[str]) -> str:
             ledger = m.group(1)
             break
     if ledger:
-        return (f"{by_design} The actionable half is the ledger: refresh just that file from "
-                f"origin/main (e.g. `git checkout origin/main -- {ledger}` in the main "
-                f"checkout, not a full pull) so TRIAGE stops reading stale state.")
+        # Was: "refresh just that file from origin/main (e.g. `git checkout
+        # origin/main -- <ledger>` in the main checkout)". Correct in intent and
+        # UNEXECUTABLE in fact — worktree_isolation.py refuses mutating git in the
+        # main checkout for every agent session, and the only documented way past
+        # it disarms the guard wholesale. With no operator lane, that prescribed a
+        # lane that does not exist, which is how a reader learns to skip this
+        # probe. #3824 gave the reader a read-only way to the same truth, so the
+        # remedy now names it: the fix is a READ, not a repair.
+        return (f"{by_design} The actionable half is the ledger, and it is a READ rather than "
+                f"a repair: `python3 scripts/pending_arms_report.py --ref origin/main` reports "
+                f"against main's copy of {ledger} with no pull and no write, which is the only "
+                f"form a session can carry out here. Do not repair the checkout copy — read "
+                f"main's.")
     return f"{by_design} No other actionable half in this finding right now."
 
 
