@@ -210,6 +210,34 @@ true→false`) — verified deliberate (G1 packet point 9, fail-closed
   operational verification"; memory
   `ops_visa_oracle_pack003_gates_proven_2026_08_08.md`.
 
+- 2026-08-08 (Mini, second entry same day — 0%-conclusive-rate diagnosis): **ROOT
+  CAUSE FOUND for the prod ledger's 6,610/6,610 `HUMAN_REVIEW_REQUIRED` (0%
+  conclusive).** Not a fact-collection gap — a live SHADOW `evaluate` call
+  (`mode:CURATED`, innocuous) with ALL 40 facts supplied (IT/TOURISM/10d/valid
+  passport) still returned `HUMAN_REVIEW_REQUIRED`, citing 15 review reasons, all
+  `hr.d1-*`/`hr.d2-*`/`hr.d12-*` (multiple-entry e-visa siblings), zero mention of B1.
+  Mechanism: 31/63 `PRODUCTS`-scoped `HUMAN_REVIEW` rules in the active pack (seq 3,
+  content = `rulepack-prod-002.source.json`) are keyed on `intent.purposes` alone
+  (± `stay_days`) — always TRUE for the declared purpose, regardless of which
+  product route the applicant actually wants (D1/D2/D12 don't even check
+  `intent.entry_pattern`/purpose-specificity) — and `evaluator.py:1391-1397`'s
+  documented precedence ("REVIEW beats SUPPORTED unconditionally", `enums.py:41-47`)
+  lets ANY one reviewed sibling product mask a fully-eligible B1 candidate in the
+  same purpose-set. Systemic, not TOURISM-specific — the 31-rule pattern spans
+  EMPLOYMENT/STUDY/FAMILY/TOURISM/BUSINESS/INVESTMENT categories, explaining the
+  ledger's near-100% abstention across all purposes, not just tourism. Full
+  root-cause write-up + ordered fix list (RulePack seq-4: narrow D1/D2/D12 scope +
+  add VOA-eligible-nationality gate to `el.b1.tourism`, currently absent) in
+  `.agents/skills/visaoracle/HANDOFF-2026-08-08-voa-conclusive-rate.md`. Deploy
+  pipeline note (unrelated to this diagnosis, found while checking state): PR #3766
+  (migration 268, retention-binding `SECURITY DEFINER`) merged to main
+  (`9d27f0f84`), but its post-merge Fly deploy **failed** — `must be owner of
+function public.bind_visa_evaluate_idempotency_retention_policy` (least-privilege
+  ownership gap on the release-command role) — no fix PR open yet as of this commit;
+  does not block the RulePack-only fix above (pack changes go through
+  `activate_pack.py`, not a schema migration). GATE STATUS (ENFORCE) unchanged: 🔴
+  RED, DPIA/analytics-TTL still Zero-only.
+
 - 2026-07-17: corner created. Round 1 research lanes in flight (Gemini/Codex/GLM/web). Worktree
   `mouth-visa-oracle` active. No PR — worktree-only until operator-analyzed final draft.
 - 2026-07-17 (late night): ROUND 1 COMPLETE — 4 lanes delivered (Gemini survey / GLM design / Codex
