@@ -147,19 +147,30 @@ cooldown_set() {
     touch "$COOLDOWN_FILE"
 }
 
+# Through the tg_notify gateway since 2026-08-09. The local 1h COOLDOWN_FILE
+# above is deliberately KEPT: it gates whether this deadman speaks at all, and
+# it is load-bearing for the [S]ilenzia-1h affordance offered in the message
+# itself. The gateway's dedup ladder sits behind it as a second, wider floor —
+# belt and braces on an organ that wakes every 600s.
 tg_alert() {
-    local text="$1"
-    if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
-        log "telegram: missing creds (token or chat_id), skipping alert"
+    local text="$1" gateway py
+    gateway="$(dirname "$0")/tg_notify.py"
+    [[ -f "$gateway" ]] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    if [[ ! -f "$gateway" ]]; then
+        log "telegram: NO GATEWAY at $gateway — alert NOT sent: $text"
         return 1
     fi
-    curl -sS -m 10 -X POST \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
-        -d "text=${text}" \
-        -d "parse_mode=HTML" \
-        -o /dev/null \
-        || log "telegram: post failed"
+    # Absolute interpreter: this deadman exists to report a sick environment,
+    # so its voice must not depend on that environment's PATH (W108).
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        [[ -x "$py" ]] || continue
+        "$py" "$gateway" --tier p0 --source cost-breaker-deadman \
+            --dedup-key "cost-breaker-deadman:governance-mute" -- "$text" \
+            >>"$LOG_FILE" 2>&1 || log "telegram: gateway send failed"
+        return 0
+    done
+    log "telegram: no usable python3 — alert NOT sent: $text"
+    return 1
 }
 
 # --- Main ------------------------------------------------------------------
@@ -210,7 +221,10 @@ main() {
     fi
 
     # The alert is a CHOICE, not just a diagnosis (same G3 spirit as the breaker).
-    tg_alert "🕳️ <b>governance muta</b>: ${stale_detail}— il cost-breaker / verify-the-verifiers non emette più segnale di vita (>${CRITICAL_THRESHOLD_SEC}s). [I]ndaga / [R]iavvia il guardiano / [S]ilenzia 1h?"
+    # Plain text, no <b>: the raw curl this replaced passed parse_mode=HTML, and
+    # the gateway has no parse_mode at all — left as-is the tags would reach Zero
+    # literally. Emphasis carried by the emoji and the leading phrase instead.
+    tg_alert "🕳️ GOVERNANCE MUTA: ${stale_detail}— il cost-breaker / verify-the-verifiers non emette più segnale di vita (>${CRITICAL_THRESHOLD_SEC}s). [I]ndaga / [R]iavvia il guardiano / [S]ilenzia 1h?"
     cooldown_set
 }
 

@@ -897,6 +897,48 @@ def _worktree_has_live_process(worktree: Path) -> bool:
     return bool(data_lines)
 
 
+def _ls_tree_entry(ref: str, path: str, *, cwd: Path) -> str:
+    """mode+type+blob for `path` at `ref`, or "__ABSENT__" if the path does
+    not exist there. Unlike `git rev-parse <ref>:<path>` (blob ID only),
+    `git ls-tree` also carries the mode and object type — a `chmod +x`, or a
+    tracked file replaced by a symlink whose target text equals the blob
+    content, changes the ls-tree entry even though the blob is unchanged."""
+    proc = _run_git(["ls-tree", ref, "--", path], cwd=cwd, check=False)
+    if proc.returncode != 0:
+        return "__ABSENT__"
+    line = proc.stdout.strip()
+    if not line:
+        return "__ABSENT__"
+    # ls-tree emits "<mode> <type> <blob>\t<path>" — keep mode+type+blob,
+    # drop the trailing path (constant for a fixed `path` argument).
+    return line.split("\t", 1)[0]
+
+
+def _is_union_merge_path(path: str, *, cwd: Path) -> bool:
+    """True iff this repo's `.gitattributes` declares `path` `merge=union`
+    (an append-only ledger — see `.claude/skills/modus/PENDING-ARMS.md`)."""
+    proc = _run_git(["check-attr", "merge", "--", path], cwd=cwd, check=False)
+    if proc.returncode != 0:
+        return False
+    # Output form: "<path>: merge: union" (or "unspecified"/"text"/etc).
+    return proc.stdout.strip().endswith(": merge: union")
+
+
+def _content_subset_ok(head_ref: str, main_ref: str, path: str, *, cwd: Path) -> bool:
+    """For a declared merge=union path: True iff every non-blank line HEAD
+    authored is present in origin/main's current copy of the same path —
+    the append-only-superset half of W88's "diff VUOTO o pura-cancellazione
+    (subset)" rule, since exact blob equality can never hold again once any
+    other lane appends a line after this branch merges."""
+    branch_proc = _run_git(["show", f"{head_ref}:{path}"], cwd=cwd, check=False)
+    main_proc = _run_git(["show", f"{main_ref}:{path}"], cwd=cwd, check=False)
+    if branch_proc.returncode != 0 or main_proc.returncode != 0:
+        return False
+    branch_lines = {ln for ln in branch_proc.stdout.splitlines() if ln.strip()}
+    main_lines = {ln for ln in main_proc.stdout.splitlines() if ln.strip()}
+    return branch_lines.issubset(main_lines)
+
+
 def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) -> bool:
     """True iff the worktree's HEAD is fully merged into ``origin/main``.
 
@@ -908,11 +950,35 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
     (exit 0 ⇒ HEAD is an ancestor of origin/main ⇒ every commit is already in
     main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main — but the
     ancestor test is a PROXY that lies on squash-merged/reworked branches
-    (W88), so exit 1 falls through to a blob-per-file CONTENT check: the
-    branch is merged iff every file it authored since its merge-base has the
-    same blob on origin/main. Never the three-dot diff — post-squash the
-    merge-base regresses and three-dot counts main's own progress as
-    branch-only changes, the W88 second-degree trap).
+    (W88), so exit 1 falls through to a per-file CONTENT check: the branch is
+    merged iff every file it authored since its merge-base matches on
+    origin/main. Never the three-dot diff — post-squash the merge-base
+    regresses and three-dot counts main's own progress as branch-only
+    changes, the W88 second-degree trap).
+
+    The per-file check is TWO checks, not one, because "matches" means a
+    different thing depending on the path (both findings opened 2026-08-09
+    while curing the broker, see PENDING-ARMS.md):
+
+      - Default: an ``git ls-tree`` ENTRY comparison (mode + type + blob),
+        not a bare ``git rev-parse <ref>:<path>`` blob lookup. Blob-only
+        comparison is blind to a change that alters a file's MODE or TYPE
+        without altering its bytes — `chmod +x`, or a tracked file replaced
+        by a symlink whose target text happens to equal the blob content —
+        and a mode/type-only branch would read as already-merged and get
+        reaped although its one real change is exactly what the comparison
+        could not see.
+      - A path this repo's `.gitattributes` declares ``merge=union``
+        (currently the sole example: `.claude/skills/modus/PENDING-ARMS.md`,
+        an append-only ledger) can NEVER satisfy blob equality again once any
+        other lane appends a line after this branch merges — main's copy is
+        thereafter a strict superset. For those paths the question is
+        LINE-SUBSET (every non-blank line the branch authored is present in
+        origin/main's current copy), not blob equality — W88's "diff VUOTO o
+        pura-cancellazione (subset)" prescription, applied per-path instead
+        of file-wide. A path's `merge` attribute is a DECLARATIVE trigger
+        (`git check-attr merge`), not a filename special-case, so a second
+        union-merge file inherits the right comparison for free.
 
     Why ``origin/main`` and not local ``main`` or ``@{upstream}`` (the refuter
     killed both earlier designs):
@@ -978,7 +1044,9 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
         # Ancestor check failed (unmerged commits present) — BUT squash merges
         # and reworks break the ancestor proxy (W88). We must verify by CONTENT
         # before refusing to reap. A branch is safe to reap if every file it
-        # authored (changed since its merge-base) has the SAME blob on origin/main.
+        # authored (changed since its merge-base) matches on origin/main —
+        # by ls-tree entry (mode+type+blob) normally, by line-subset for a
+        # declared merge=union path (see this function's own docstring).
         mb_proc = _run_git(
             ["merge-base", "origin/main", "HEAD"], cwd=worktree, check=False
         )
@@ -996,20 +1064,19 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
             f = f.strip()
             if not f:
                 continue
-            bh_proc = _run_git(
-                ["rev-parse", f"HEAD:{f}"], cwd=worktree, check=False
-            )
-            bh = bh_proc.stdout.strip() if bh_proc.returncode == 0 else "__ABSENT__"
 
-            mh_proc = _run_git(
-                ["rev-parse", f"origin/main:{f}"], cwd=worktree, check=False
-            )
-            mh = mh_proc.stdout.strip() if mh_proc.returncode == 0 else "__ABSENT__"
+            if _is_union_merge_path(f, cwd=worktree):
+                if not _content_subset_ok("HEAD", "origin/main", f, cwd=worktree):
+                    return False
+                continue
 
+            bh = _ls_tree_entry("HEAD", f, cwd=worktree)
+            mh = _ls_tree_entry("origin/main", f, cwd=worktree)
             if bh != mh:
                 return False
 
-        # If all changed files match origin/main by blob, the content is merged.
+        # If all changed files match origin/main (entry or line-subset), the
+        # content is merged.
         return True
 
     # rc >= 128 (bad ref, not a git dir, unknown HEAD): fail-safe to protect.
