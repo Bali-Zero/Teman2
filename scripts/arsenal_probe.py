@@ -81,7 +81,7 @@ CONTEXT_LIMITED = {CONTEXT_AUTH, CRED_UNAVAILABLE, NOT_INSTALLED}
 
 # deepseek RETIRED 2026-07-19 (owner order, pre-auth revoked — never top up) —
 # replacement seat kimi already present.
-ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "ollama", "nlm"]
+ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "ollama", "nlm", "qwen-cloud-code"]
 
 REQUIRED_SEATS = {
     # kimi PONG-proven on all three machines 2026-07-19 (mini device-code
@@ -113,6 +113,7 @@ DEFAULT_TIMEOUTS = {
     "codex": 15,
     "ollama": 15,
     "nlm": 15,
+    "qwen-cloud-code": 15,
 }
 OLLAMA_LIVE_GEN_TIMEOUT = 120
 
@@ -640,6 +641,40 @@ def probe_nlm(timeout: float) -> tuple[str, str, int]:
     return status, ev, latency_ms
 
 
+def probe_qwen_cloud_code(timeout: float) -> tuple[str, str, int]:
+    t0 = time.monotonic()
+    binp, via_path = resolve_bin("qwen", ["~/.local/share/mise/installs/node/22/bin/qwen"])
+    if not binp:
+        return NOT_INSTALLED, "qwen binary not found (checked $PATH + mise node 22)", 0
+    path_note = _path_note(via_path)
+    # Arming gate (council + Fable gate 2026-08-08, decision SHIP-AFTER-FIXES): the seat
+    # is UNARMED until the operator rotates its credential into Keychain service
+    # `qwen-cloud-code-token` — the runtime shipped with a cleartext 0644 settings.json
+    # key (P0). No keychain entry -> cannot authenticate -> AUTH_DEAD with an explicit
+    # unarmed note. Deliberately NOT in REQUIRED_SEATS on any machine: machine-scoped
+    # candidate seat (M5 only) whose promotion is an operator+Claude-lane decision.
+    token, cred_note = load_keychain_token("qwen-cloud-code-token")
+    if not token:
+        return (
+            AUTH_DEAD,
+            path_note + f"keychain gate: {cred_note} — seat UNARMED (operator rotation pending, gate 2026-08-08)",
+            0,
+        )
+    env = dict(os.environ)
+    env["BAILIAN_TOKEN_PLAN_API_KEY"] = token
+    # --safe-mode: this build boots MCP servers/hooks/skills on every invocation
+    # (measured: pushed the 1-token probe past the 15 s fleet mandate); safe-mode
+    # disables all customizations, which a probe does not need.
+    res = run_probe_cmd([binp, "-p", PONG_PROMPT, "--safe-mode"], timeout=timeout, env=env)
+    latency_ms = int((time.monotonic() - t0) * 1000)
+    ev = path_note + evidence_tail(res.stdout + " " + res.stderr, extra_secrets=[token])
+    live = "PONG" in res.stdout
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
+    status = classify_generic(res.stdout + res.stderr, live, "qwen-cloud-code", is_ssh_context())
+    return status, ev, latency_ms
+
+
 PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "claude": probe_claude,
     "glm": probe_glm,
@@ -648,6 +683,7 @@ PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "codex": probe_codex,
     "ollama": probe_ollama,
     "nlm": probe_nlm,
+    "qwen-cloud-code": probe_qwen_cloud_code,
 }
 
 
@@ -829,6 +865,7 @@ def run(seats: list[str], timeout_mult: float, live_gen: bool, machine: str) -> 
 _SELFTEST_CANNED = [
     # (seat, evidence_text_lower_ok, expected_status, description)
     ("claude", "PONG", LIVE, "claude PONG"),
+    ("qwen-cloud-code", "PONG", LIVE, "qwen-cloud-code PONG"),
     ("glm", 'HTTP 200 {"model": "glm-5.2", "id": "x"}', LIVE, "glm 200+model"),
     (
         "glm",
