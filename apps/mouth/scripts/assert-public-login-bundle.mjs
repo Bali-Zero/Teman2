@@ -11,6 +11,14 @@ const MANIFEST_PATH = path.join(
   "login-upgraded",
   "page_client-reference-manifest.js",
 );
+const ROUTE_CHUNK_DIRECTORY = path.join(
+  ".next",
+  "static",
+  "chunks",
+  "app",
+  "portal",
+  "login-upgraded",
+);
 
 // Public authentication may reveal its own endpoints. Every other API route is
 // denied by default so adding a new internal domain cannot silently bypass a
@@ -56,16 +64,30 @@ if (!clientEntry) {
   fail(`client entry ${CLIENT_ENTRY_SUFFIX} is absent from route manifest`);
 }
 
-const chunkEntries = clientEntry[1]?.chunks;
-if (!Array.isArray(chunkEntries)) {
+const clientEntryChunks = clientEntry[1]?.chunks;
+if (!Array.isArray(clientEntryChunks)) {
   fail(`client entry ${CLIENT_ENTRY_SUFFIX} has no chunk list`);
 }
 
-const chunkPaths = chunkEntries.filter(
+let chunkPaths = clientEntryChunks.filter(
   (entry) => typeof entry === "string" && entry.endsWith(".js"),
 );
+
+// Vercel can deduplicate the page module and leave its manifest chunk list
+// empty even though Next.js emitted the route entry. The route-specific entry
+// is the narrow fallback; scanning every clientModules entry would include
+// chunks from unrelated authenticated routes.
+if (chunkPaths.length === 0 && fs.existsSync(ROUTE_CHUNK_DIRECTORY)) {
+  chunkPaths = fs
+    .readdirSync(ROUTE_CHUNK_DIRECTORY)
+    .filter((entry) => /^page-[A-Za-z0-9]+\.js$/.test(entry))
+    .map((entry) =>
+      path.join("static", "chunks", "app", "portal", "login-upgraded", entry),
+    );
+}
+
 if (chunkPaths.length === 0) {
-  fail(`client entry ${CLIENT_ENTRY_SUFFIX} resolves to no JavaScript chunks`);
+  fail(`route ${ROUTE} resolves to no JavaScript chunks`);
 }
 
 const violations = [];

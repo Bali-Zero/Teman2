@@ -36,6 +36,12 @@ from typing import Any
 from backend.app.core.config import settings
 from backend.llm.metrics_emitter import emit_llm_metric
 
+# NOTE: `backend.services.llm_clients.pricing` is imported LOCALLY inside the
+# methods below, never at module level: `backend.services.llm_clients.__init__`
+# pulls in `gemini_service`, which imports THIS module — a module-level import
+# here is a circular import (verified 2026-08-09). Same reason the cost-recorder
+# imports in the `finally:` blocks are function-local.
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +52,105 @@ class LLMStructuredOutputError(Exception):
     Callers may catch this and fall back to legacy non-structured paths;
     `query_expansion._llm_translate` does so to keep the dictionary-only
     expansion path alive when the LLM round-trips an unparseable result.
+
+    `reason` carries the closed-vocabulary cause (see
+    `_structured_failure_reason`) OUT OF BAND of the message. The message
+    embeds the pydantic ValidationError, whose `input_value=...` can echo
+    client PII from the prompt — which is why `verification_service` refuses
+    to log `str(exc)` at all. `reason` is enum-only and therefore safe to
+    log, so a caller can name the cause without touching the unsafe text.
     """
+
+    def __init__(self, message: str = "", *, reason: str = "") -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
+# `llm_cost_events.error_class` is varchar(64) and the recorder isolates its
+# sinks: an over-long value raises only on the Postgres write, so JSONL and
+# Prometheus keep the event while the SQL ledger silently loses it. Losing
+# exactly the failure rows makes the failure rate read as ZERO — a diagnostic
+# that hides what it diagnoses. Every composed error_class is clamped here.
+ERROR_CLASS_MAX_LEN = 64
+
+# Closed vocabulary for WHY a structured call produced no schema-valid JSON.
+# Values are short by construction so `LLMStructuredOutputError:<reason>` fits
+# the column with room to spare, and stable so the ledger can be grouped on
+# them. NEVER put model text in here — see _structured_failure_reason.
+STRUCTURED_FAILURE_NO_CANDIDATES = "NO_CANDIDATES"
+STRUCTURED_FAILURE_MAX_TOKENS = "MAX_TOKENS"
+STRUCTURED_FAILURE_EMPTY_TEXT = "EMPTY_TEXT"
+STRUCTURED_FAILURE_INVALID_JSON = "INVALID_JSON"
+STRUCTURED_FAILURE_BLOCKED_PREFIX = "BLOCKED_"
+
+
+def _enum_name(value: object) -> str:
+    """Best-effort short name for an SDK enum, int, or string.
+
+    google-genai returns `FinishReason.MAX_TOKENS` (an enum with `.name`), but
+    older/proto paths hand back a bare int or the fully-qualified `str()`.
+    Normalise all three so the ledger groups on one spelling.
+    """
+    if value is None:
+        return ""
+    name = getattr(value, "name", None)
+    if isinstance(name, str) and name:
+        return name
+    text = str(value)
+    # `FinishReason.MAX_TOKENS` -> `MAX_TOKENS`; a bare int stays as-is.
+    return text.rsplit(".", 1)[-1]
+
+
+def _clamp_error_class(value: str) -> str:
+    """Keep a composed error_class inside the column. See ERROR_CLASS_MAX_LEN."""
+    return value[:ERROR_CLASS_MAX_LEN]
+
+
+def _structured_failure_reason(response: object, raw_text: str) -> str:
+    """Name why a structured call yielded nothing schema-valid.
+
+    Three causes arrive at the ledger indistinguishable today — the model was
+    safety-blocked, it hit `max_output_tokens` mid-thought, or it emitted text
+    that simply is not valid JSON — and they want three different fixes. The
+    ledger recorded only `LLMStructuredOutputError` for all of them, which is
+    why 10 live verifier failures over 7 days could not be attributed.
+
+    PII boundary (UU PDP / SYMBIOSIS Law 2, the same rule the verifier's own
+    except-block already follows): this returns ONLY enum names off the
+    response envelope. The model's text and the pydantic ValidationError —
+    both of which can echo client PII back out of the prompt — never enter
+    the returned string, and `raw_text` is inspected for emptiness only.
+    """
+    candidates = getattr(response, "candidates", None) or []
+
+    # A prompt-level block has no candidates at all; the reason lives on
+    # prompt_feedback instead, so read it before giving up on the envelope.
+    if not candidates:
+        feedback = getattr(response, "prompt_feedback", None)
+        block = getattr(feedback, "block_reason", None) if feedback else None
+        if block is not None:
+            return f"{STRUCTURED_FAILURE_BLOCKED_PREFIX}{_enum_name(block)}"
+        return STRUCTURED_FAILURE_NO_CANDIDATES
+
+    finish = _enum_name(getattr(candidates[0], "finish_reason", None))
+
+    # An abnormal termination outranks whatever text survived it. A response
+    # cut off by MAX_TOKENS or SAFETY often carries a PARTIAL answer, and
+    # partial JSON never validates — reading that stub as INVALID_JSON would
+    # name the symptom (bad shape) and bury the cause (it was cut off).
+    if finish == "MAX_TOKENS":
+        return STRUCTURED_FAILURE_MAX_TOKENS
+    # STOP with no text is not a block — it is an empty answer, and saying
+    # "BLOCKED_STOP" would invent a cause. Only non-STOP terminations name one.
+    if finish and finish not in {"STOP", "UNSPECIFIED", "FINISH_REASON_UNSPECIFIED"}:
+        return f"{STRUCTURED_FAILURE_BLOCKED_PREFIX}{finish}"
+
+    # Normal termination: the model answered and the answer was the wrong
+    # shape. Distinct from an empty envelope, and it wants a prompt/schema fix
+    # rather than a cap or safety fix.
+    if raw_text.strip():
+        return STRUCTURED_FAILURE_INVALID_JSON
+    return STRUCTURED_FAILURE_EMPTY_TEXT
 
 
 # Try to import new SDK
@@ -362,6 +466,8 @@ class GenAIClient:
         t0 = time.perf_counter()
         prompt_tokens = 0
         completion_tokens = 0
+        cached_tokens = 0
+        thinking_tokens = 0
         success = False
         error_class: str | None = None
         try:
@@ -372,8 +478,11 @@ class GenAIClient:
             )
 
             latency_ms = round((time.perf_counter() - t0) * 1000)
-            prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
-            completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
+            from backend.services.llm_clients.pricing import extract_gemini_usage
+
+            prompt_tokens, completion_tokens, cached_tokens, thinking_tokens = (
+                extract_gemini_usage(getattr(response, "usage_metadata", None))
+            )
             success = True
             logger.info(
                 "LLM call",
@@ -426,18 +535,25 @@ class GenAIClient:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call
 
-                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model)
+                cost_usd = calculate_cost(
+                    prompt_tokens,
+                    completion_tokens,
+                    model,
+                    cached_tokens=cached_tokens,
+                    thinking_tokens=thinking_tokens,
+                )
                 await record_llm_call(
                     provider="gemini",
                     model=model,
                     input_tokens=prompt_tokens,
-                    output_tokens=completion_tokens,
+                    output_tokens=completion_tokens + thinking_tokens,
                     cost_usd=cost_usd,
                     success=success,
                     latency_ms=round((time.perf_counter() - t0) * 1000),
                     endpoint=endpoint,
                     request_id=request_id,
                     error_class=error_class,
+                    cache_hit_tokens=cached_tokens,
                 )
             except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
@@ -523,10 +639,17 @@ class GenAIClient:
 
         attempt_prompt: str | list = contents
         last_validation_err: ValidationError | None = None
+        # Bound before the loop so the failure path can attribute a cause even
+        # if the loop body never runs (max_retries < 0). A None response reads
+        # as NO_CANDIDATES, which is honest rather than a NameError.
+        response: Any = None
+        raw_text = ""
 
         t0 = time.perf_counter()
         prompt_tokens = 0
         completion_tokens = 0
+        cached_tokens = 0
+        thinking_tokens = 0
         success = False
         error_class: str | None = None
         try:
@@ -538,10 +661,18 @@ class GenAIClient:
                 )
 
                 # Always accumulate token usage: retries are paid attempts too.
-                prompt_tokens += getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                completion_tokens += (
-                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                # Cached and thinking tokens accumulate on the same footing —
+                # a retry re-sends the same prefix (so it can hit cache again)
+                # and thinks again (so it bills output again).
+                from backend.services.llm_clients.pricing import extract_gemini_usage
+
+                _p, _c, _cached, _think = extract_gemini_usage(
+                    getattr(response, "usage_metadata", None)
                 )
+                prompt_tokens += _p
+                completion_tokens += _c
+                cached_tokens += _cached
+                thinking_tokens += _think
 
                 raw_text = getattr(response, "text", None) or ""
                 try:
@@ -586,10 +717,30 @@ class GenAIClient:
                             else [contents, {"role": "user", "parts": [{"text": feedback}]}]
                         )
 
-            error_class = "LLMStructuredOutputError"
+            # Name the cause in the ledger, not just the symptom. `response`
+            # and `raw_text` are the LAST attempt's — the terminal state is the
+            # one worth attributing. Enum names only; see
+            # _structured_failure_reason for the PII boundary.
+            failure_reason = _structured_failure_reason(response, raw_text)
+            error_class = _clamp_error_class(f"LLMStructuredOutputError:{failure_reason}")
+            logger.warning(
+                "LLM structured call failed to validate",
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "schema": response_schema.__name__,
+                    "reason": failure_reason,
+                    "attempts": max_retries + 1,
+                    "completion_tokens": completion_tokens,
+                    "thinking_tokens": thinking_tokens,
+                    "max_output_tokens": max_output_tokens,
+                },
+            )
             raise LLMStructuredOutputError(
                 f"Model failed to produce {response_schema.__name__}-valid JSON "
-                f"after {max_retries + 1} attempt(s): {last_validation_err}"
+                f"after {max_retries + 1} attempt(s) [{failure_reason}]: "
+                f"{last_validation_err}",
+                reason=failure_reason,
             )
         except LLMStructuredOutputError:
             raise
@@ -612,18 +763,25 @@ class GenAIClient:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call
 
-                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model)
+                cost_usd = calculate_cost(
+                    prompt_tokens,
+                    completion_tokens,
+                    model,
+                    cached_tokens=cached_tokens,
+                    thinking_tokens=thinking_tokens,
+                )
                 await record_llm_call(
                     provider="gemini",
                     model=model,
                     input_tokens=prompt_tokens,
-                    output_tokens=completion_tokens,
+                    output_tokens=completion_tokens + thinking_tokens,
                     cost_usd=cost_usd,
                     success=success,
                     latency_ms=round((time.perf_counter() - t0) * 1000),
                     endpoint=endpoint,
                     request_id=request_id,
                     error_class=error_class,
+                    cache_hit_tokens=cached_tokens,
                 )
             except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)

@@ -1,7 +1,9 @@
 name: cron - fly cost alert (weekly Mon 09:00 WITA)
 
 # Migrated from Pro crontab `0 9 * * 1 fly-cost-alert.sh` (2026-04-26).
-# Weekly check of Fly.io billing; Telegram alert if monthly projection exceeds threshold.
+# Weekly resource-inventory guard. Fly.io does not expose a supported billing
+# alert/API, so direct spend must be reviewed in Cost Explorer. This workflow
+# must never report a fabricated $0 when billing data is unavailable.
 
 on:
   schedule:
@@ -17,58 +19,125 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      THRESHOLD_CENTS: "6000" # $60.00 monthly cap
+      EXPECTED_APPS: "nuzantara-rag,nuzantara-postgres"
+      MAX_TOTAL_MACHINES: "6"
+      MAX_TOTAL_VOLUME_GB: "60"
+      MAX_DEDICATED_IPV4: "1"
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Check Fly.io billing
+      - name: Inventory billable Fly.io resources
         id: check
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          set -uo pipefail
-          INVOICE=$(flyctl bills view --json 2>/dev/null || echo '{}')
-          if [ "$INVOICE" = '{}' ]; then
-            echo "WARNING: could not fetch billing; falling back to machine count"
-            TOTAL=0
-            for app in nuzantara-rag nuzantara-postgres; do
-              COUNT=$(flyctl status --app "$app" 2>/dev/null | grep -c "started" || echo "0")
-              TOTAL=$((TOTAL + COUNT))
-            done
-            echo "Active machines: $TOTAL (manual cost check recommended)"
-            echo "alert=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          TOTAL_CENTS=$(echo "$INVOICE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('total_cents', d.get('amount', 0)))" 2>/dev/null || echo "0")
-          TOTAL_DOLLARS=$(python3 -c "print(f'{${TOTAL_CENTS}/100:.2f}')")
-          THRESHOLD_DOLLARS=$(python3 -c "print(f'{${THRESHOLD_CENTS}/100:.2f}')")
-          echo "Current month cost: \$$TOTAL_DOLLARS (threshold: \$$THRESHOLD_DOLLARS)"
-          if [ "$TOTAL_CENTS" -gt "$THRESHOLD_CENTS" ]; then
-            ALERT="💰 <b>Fly.io Cost Alert</b>
-          Current: \$${TOTAL_DOLLARS}
-          Threshold: \$${THRESHOLD_DOLLARS}
-          Check: flyctl bills view"
-            {
-              echo "alert<<EOF"
-              echo "$ALERT"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-            echo "::warning::Fly.io cost \$$TOTAL_DOLLARS exceeds threshold \$$THRESHOLD_DOLLARS"
-          else
-            echo "Cost within budget ✅"
-            echo "alert=" >> "$GITHUB_OUTPUT"
-          fi
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          import subprocess
+
+
+          def fly_json(*args):
+              result = subprocess.run(
+                  ["flyctl", *args, "--json"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              return json.loads(result.stdout)
+
+
+          expected = {
+              name.strip()
+              for name in os.environ["EXPECTED_APPS"].split(",")
+              if name.strip()
+          }
+          apps = fly_json("apps", "list")
+          app_names = {app.get("Name") or app.get("ID") for app in apps}
+          app_names.discard(None)
+
+          machine_count = 0
+          started_count = 0
+          volume_gb = 0
+          dedicated_ipv4 = 0
+          inventory_errors = []
+
+          for app in sorted(app_names):
+              try:
+                  status = fly_json("status", "--app", app)
+                  machines = status.get("Machines") or []
+                  machine_count += len(machines)
+                  started_count += sum(m.get("state") == "started" for m in machines)
+              except Exception as exc:
+                  inventory_errors.append(f"{app}:status:{type(exc).__name__}")
+
+              try:
+                  volumes = fly_json("volumes", "list", "--app", app)
+                  volume_gb += sum(int(v.get("size_gb") or 0) for v in volumes)
+              except Exception as exc:
+                  inventory_errors.append(f"{app}:volumes:{type(exc).__name__}")
+
+              try:
+                  addresses = fly_json("ips", "list", "--app", app)
+                  dedicated_ipv4 += sum(ip.get("Type") == "v4" for ip in addresses)
+              except Exception as exc:
+                  inventory_errors.append(f"{app}:ips:{type(exc).__name__}")
+
+          unexpected_apps = sorted(app_names - expected)
+          missing_apps = sorted(expected - app_names)
+          limits = {
+              "machines": int(os.environ["MAX_TOTAL_MACHINES"]),
+              "volume_gb": int(os.environ["MAX_TOTAL_VOLUME_GB"]),
+              "dedicated_ipv4": int(os.environ["MAX_DEDICATED_IPV4"]),
+          }
+          findings = []
+          if unexpected_apps:
+              findings.append("unexpected apps=" + ",".join(unexpected_apps))
+          if missing_apps:
+              findings.append("missing apps=" + ",".join(missing_apps))
+          if machine_count > limits["machines"]:
+              findings.append(f"machines {machine_count}>{limits['machines']}")
+          if volume_gb > limits["volume_gb"]:
+              findings.append(f"volumes {volume_gb}GB>{limits['volume_gb']}GB")
+          if dedicated_ipv4 > limits["dedicated_ipv4"]:
+              findings.append(
+                  f"dedicated IPv4 {dedicated_ipv4}>{limits['dedicated_ipv4']}"
+              )
+          if inventory_errors:
+              findings.append("inventory errors=" + ",".join(inventory_errors))
+
+          report = (
+              f"Apps: {len(app_names)} | Machines: {started_count}/{machine_count} started | "
+              f"Volumes: {volume_gb} GB | Dedicated IPv4: {dedicated_ipv4}"
+          )
+          alert = "\n".join(findings)
+          output_path = os.environ["GITHUB_OUTPUT"]
+          with open(output_path, "a", encoding="utf-8") as output:
+              output.write("report<<EOF\n" + report + "\nEOF\n")
+              output.write("alert<<EOF\n" + alert + "\nEOF\n")
+
+          print(report)
+          if findings:
+              print("::warning::Fly resource guard: " + "; ".join(findings))
+          PY
 
       - name: Telegram alert
-        if: steps.check.outputs.alert != ''
+        if: always() && steps.check.outputs.report != ''
         env:
           BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           ALERT: ${{ steps.check.outputs.alert }}
+          REPORT: ${{ steps.check.outputs.report }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
-          TEXT="${ALERT}
+          FINDINGS=""
+          [ -n "${ALERT:-}" ] && FINDINGS="⚠️ <b>Findings</b>: ${ALERT}"$'\n'
+          TEXT="💰 <b>Fly.io weekly resource guard</b>
+          ${REPORT}
+          ${FINDINGS}Direct spend cannot be queried through a supported Fly billing API. Review Cost Explorer:
+          https://fly.io/dashboard/bali-zero/billing/cost-explorer
           Run: ${RUN_URL}"
           curl -sS -m 10 -X POST \
             "https://api.telegram.org/bot${BOT}/sendMessage" \

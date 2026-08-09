@@ -21,6 +21,28 @@ const strataTitleArticles = [
   "src/content/articles/property/strata-title-explained.ru.mdx",
 ];
 
+const productionArticleRegressions = [
+  "src/content/articles/business/export-import-business-guide.mdx",
+  "src/content/articles/business/ota-data-crackdown-bali-2026.mdx",
+  "src/content/articles/business/capital-requirements-guide.mdx",
+  "src/content/articles/business/restaurant-business-guide.mdx",
+  "src/content/articles/business/business-licenses-overview.mdx",
+  "src/content/articles/business/contracts-indonesian-law.mdx",
+  "src/content/articles/business/due-diligence-indonesia.mdx",
+  "src/content/articles/business/labor-law-guide.mdx",
+  "src/content/articles/business/manufacturing-business-guide.mdx",
+  "src/content/articles/business/hiring-indonesian-employees.mdx",
+  "src/content/articles/immigration/airport-procedures.mdx",
+  "src/content/articles/immigration/golden-visa-indonesia-complete-guide.mdx",
+  "src/content/articles/property/property-investment-guide.mdx",
+  "src/content/articles/property/villa-investment-guide.mdx",
+  "src/content/articles/business/pt-pma-first-year-compliance.mdx",
+  "src/content/articles/business/pt-pma-registration-guide.mdx",
+  "src/content/articles/digital-nomad/freelancing-legally-indonesia.mdx",
+  "src/content/articles/tax/freelancer-tax-guide.mdx",
+  "src/content/articles/business/bali-2026-eco-luxury-villas-and-the-new-american-expat-playbook.id.mdx",
+];
+
 describe("renderMDXBody", () => {
   it("server-renders the driving license article interactive MDX body", async () => {
     const articlePath = path.join(
@@ -92,4 +114,18 @@ describe("renderMDXBody", () => {
     expect(html).toContain("PPN raised to 12%");
     expect(html).not.toContain("Cannot read properties of undefined");
   });
+
+  it.each(productionArticleRegressions)(
+    "server-renders an article observed failing in production: %s",
+    async (article) => {
+      const articlePath = path.join(process.cwd(), article);
+      const articleFile = fs.readFileSync(articlePath, "utf8");
+      const { content } = matter(articleFile);
+
+      const mdxBody = await renderMDXBody(stripImports(content));
+      const html = renderToString(<>{mdxBody}</>);
+
+      expect(html).toContain("mdx-content");
+    },
+  );
 });
