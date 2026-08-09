@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 5785e7c57f0c1931bd0e800185903ce93ec972f32dece2808ca4135d26254ada
+checksum: 5742f25d24112e95461883bc6b1547b18c51f598453e8723e24c87128b65a98c
 organs:
 - id: infra.postgres
   runtime: fly_machine
