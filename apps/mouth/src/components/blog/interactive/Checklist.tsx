@@ -19,23 +19,41 @@ import { cn } from "@/lib/utils";
 // ============================================================================
 
 export interface ChecklistItem {
+  id?: string;
+  label?: string;
+  /** Legacy MDX alias for label */
+  text?: string;
+  /** Legacy MDX details */
+  subItems?: string[];
+  description?: string;
+  required?: boolean;
+  /** Group/category */
+  group?: string;
+  /** Legacy MDX alias for group */
+  category?: string;
+}
+
+interface NormalizedChecklistItem {
   id: string;
   label: string;
   description?: string;
   required?: boolean;
-  /** Group/category */
   group?: string;
 }
 
 export interface ChecklistProps {
   /** Unique ID for saving progress */
-  id: string;
+  id?: string;
   /** Title */
   title: string;
   /** Subtitle */
   subtitle?: string;
+  /** Legacy MDX alias for subtitle */
+  description?: string;
   /** Items */
-  items: ChecklistItem[];
+  items?: ChecklistItem[];
+  /** Legacy MDX storage key */
+  persistKey?: string;
   /** Persist to localStorage */
   persist?: boolean;
   /** Allow download as PDF */
@@ -54,16 +72,31 @@ export function Checklist({
   id,
   title,
   subtitle,
+  description,
   items,
+  persistKey,
   persist = true,
   allowDownload = true,
   allowPrint = true,
   className,
 }: ChecklistProps) {
   const hasValidItems = Array.isArray(items);
-  const checklistItems = hasValidItems ? items : [];
+  const checklistItems: NormalizedChecklistItem[] = Array.isArray(items)
+    ? items.map((item, index) => ({
+        id: item.id || `item-${index + 1}`,
+        label: item.label || item.text || `Item ${index + 1}`,
+        description:
+          item.description ||
+          (Array.isArray(item.subItems) ? item.subItems.join(" ") : undefined),
+        required: item.required,
+        group: item.group || item.category,
+      }))
+    : [];
+  const effectiveId =
+    id || persistKey || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const effectiveSubtitle = subtitle || description;
 
-  const storageKey = `checklist-${id}`;
+  const storageKey = `checklist-${effectiveId}`;
 
   // Initialize checked items
   const [checked, setChecked] = useState<Set<string>>(() => {
@@ -117,7 +150,10 @@ export function Checklist({
   };
 
   // Calculate progress
-  const progress = (checked.size / checklistItems.length) * 100;
+  const progress =
+    checklistItems.length > 0
+      ? (checked.size / checklistItems.length) * 100
+      : 0;
   const requiredItems = checklistItems.filter((i) => i.required);
   const requiredComplete = requiredItems.filter((i) =>
     checked.has(i.id),
@@ -132,7 +168,7 @@ export function Checklist({
       acc[group] = checklistItems.filter((i) => (i.group || "Items") === group);
       return acc;
     },
-    {} as Record<string, ChecklistItem[]>,
+    {} as Record<string, NormalizedChecklistItem[]>,
   );
 
   // Handle print
@@ -158,8 +194,10 @@ export function Checklist({
               <h3 className="font-serif text-xl font-semibold text-white">
                 {title}
               </h3>
-              {subtitle && (
-                <p className="text-white/60 text-sm mt-0.5">{subtitle}</p>
+              {effectiveSubtitle && (
+                <p className="text-white/60 text-sm mt-0.5">
+                  {effectiveSubtitle}
+                </p>
               )}
             </div>
           </div>
@@ -206,7 +244,7 @@ export function Checklist({
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-white/60">
-              {checked.size} of {items.length} completed
+              {checked.size} of {checklistItems.length} completed
             </span>
             <span className="text-white/40">
               {requiredItems.length > 0 &&

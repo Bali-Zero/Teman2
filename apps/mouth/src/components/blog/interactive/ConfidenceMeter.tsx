@@ -18,13 +18,19 @@ export interface ConfidenceItem {
 
 export interface ConfidenceMeterProps {
   /** Items to show */
-  items: ConfidenceItem[];
+  items?: ConfidenceItem[];
   /** Title */
   title?: string;
   /** Show legend */
   showLegend?: boolean;
   /** Variant */
   variant?: "compact" | "detailed";
+  /** Legacy single-value format used by older MDX articles */
+  level?: "low" | "medium" | "high";
+  /** Legacy source metadata */
+  source?: string;
+  /** Legacy update metadata */
+  lastUpdated?: string;
   /** Custom class */
   className?: string;
 }
@@ -85,9 +91,27 @@ export function ConfidenceMeter({
   title = "Data Reliability",
   showLegend = true,
   variant = "detailed",
+  level,
+  source,
+  lastUpdated,
   className,
 }: ConfidenceMeterProps) {
   const isCompact = variant === "compact";
+  const legacyValue = level
+    ? { low: 25, medium: 50, high: 90 }[level]
+    : undefined;
+  const displayItems = Array.isArray(items)
+    ? items
+    : legacyValue !== undefined
+      ? [
+          {
+            label: "Overall confidence",
+            value: legacyValue,
+            source,
+            note: lastUpdated ? `Updated ${lastUpdated}` : undefined,
+          },
+        ]
+      : [];
 
   return (
     <div
@@ -107,7 +131,7 @@ export function ConfidenceMeter({
 
       {/* Items */}
       <div className={cn("space-y-3", isCompact && "space-y-2")}>
-        {items.map((item, index) => {
+        {displayItems.map((item, index) => {
           const colors = getConfidenceColor(item.value);
           const Icon = colors.icon;
 
