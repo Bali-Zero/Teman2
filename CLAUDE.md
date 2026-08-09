@@ -191,7 +191,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 
 ## 11. Deploy Lifecycle
 
-**Fly.io 2 apps**: `nuzantara-rag` (shared-2x, 2GB, always-on, EventBus) + `nuzantara-postgres` (postgres-flex 17.2, `repmgr` HA — NOT Stolon; doc-drift corrected 2026-06-12 G3, backup → Tigris daily). Frontend on Vercel (auto-deploy on `git push origin main`).
+**Fly.io 2 apps**: `nuzantara-rag` (shared-2x, 2GB, always-on, EventBus) + `nuzantara-postgres` (postgres-flex 17.7, `repmgr` HA — NOT Stolon; rolling-upgraded 17.2→17.7 on 2026-08-09 after an isolated restore proof; backup → Tigris daily — WAL archiving re-enabled same day: a legacy override had disabled it, so "DONE" backups were not actually restorable). Frontend on Vercel (auto-deploy on `git push origin main`).
 
 **Pre-deploy** (run sequentially):
 ```bash
