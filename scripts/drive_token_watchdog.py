@@ -27,6 +27,7 @@ import json
 import os
 import socket
 import subprocess
+import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
@@ -34,6 +35,12 @@ from pathlib import Path
 from typing import Optional
 
 WITA = timezone(timedelta(hours=8))
+
+# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
+# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
 PROJECT_ROOT = Path(__file__).parent.parent
 BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
 
@@ -333,7 +340,8 @@ def _send_telegram(
              "--dedup-key", dedup_key, "--", text],
             capture_output=True, text=True, timeout=30,
         )
-        log(f"tg_notify exit={proc.returncode}")
+        m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+        log(f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}")
         return proc.returncode == 0
     except Exception as e:
         log(f"Telegram fallito: {e}")
