@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "apps/backend-rag/**"
+      - "!apps/backend-rag/**/*.md"
+      - "!apps/backend-rag/**/tests/**"
+      - "!apps/backend-rag/**/test_*.py"
+      - "!apps/backend-rag/**/*_test.py"
       - ".github/workflows/fly-deploy.yml"
   workflow_dispatch: # allow manual retrigger (e.g. after a secret rotation)
 
@@ -109,12 +113,6 @@ jobs:
           CVE_EXCEPTIONS_PATH=${{ github.workspace }}/.security/exceptions.yaml \
             python ${{ github.workspace }}/scripts/filter_safety_findings.py \
             safety-deploy-report.json
-
-      - name: Check migration status (informational)
-        run: |
-          echo "Checking for pending migrations..."
-          flyctl ssh console --app nuzantara-rag -C "cd /app && python -m backend.db.migrate status" || echo "⚠️ Migration check skipped (non-blocking)"
-        continue-on-error: true
 
       - name: Upload gate test results
         uses: actions/upload-artifact@v7
