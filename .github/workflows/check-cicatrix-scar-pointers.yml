@@ -1,0 +1,59 @@
+# PENDING-ARMS 2026-07-30 antidote, made executable.
+#
+# `cicatrix-superscar.md`'s per-family `→ dettaglio:` lines each claim a set of
+# W-numbers live in `cicatrix-scars.md` or `cicatrix-scars-archive.md`. A fresh
+# parse (2026-08-09) found 27 of 40 such claims false — 11 cited the wrong body
+# file, 16 cited a body that exists nowhere (detail only inline in the bridge's
+# own MEMBRI prose). A session that trusts the pointer and greps only the named
+# file concludes the detail does not exist, which defeats the whole point of the
+# bridge file (`cicatrix-superscar.md`'s own docstring: "il blob piatto pesava
+# ~28k token ... questo file È la promozione a struttura").
+#
+# scripts/tests/test_cicatrix_scar_pointer_integrity.py holds the rule and its
+# guilt/innocence corpus. NON-REQUIRED by design (same posture as
+# check-kbli-dataset-sync.yml / check-ledger-no-silent-loss.yml): a brand-new
+# signal observes for a review cycle before it can block; promoting to a
+# required branch-protection check is a separate, later, operator-only action
+# (repo/branch-protection settings, CLAUDE.md §13).
+#
+# Path-scoped: only runs when one of the three cicatrix files or this guard's
+# own script/workflow changes.
+name: check-cicatrix-scar-pointers
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".claude/rules/cicatrix-superscar.md"
+      - ".claude/rules/cicatrix-scars.md"
+      - ".claude/rules/cicatrix-scars-archive.md"
+      - "scripts/tests/test_cicatrix_scar_pointer_integrity.py"
+      - ".github/workflows/check-cicatrix-scar-pointers.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-cicatrix-scar-pointers-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-cicatrix-scar-pointers:
+    name: check-cicatrix-scar-pointers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: Every dettaglio pointer resolves (guilt AND innocence)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_cicatrix_scar_pointer_integrity.py -q
