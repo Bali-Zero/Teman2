@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""Generate a read-only Guardian board report from MCP tools."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+
+REPO = Path(
+    os.environ.get(
+        "NUZANTARA_GUARDIAN_BOARD_ROOT",
+        "/Users/nuzantara/nuzantara",
+    )
+)
+REPORT_ROOT = Path.home() / ".openclaw" / "reports" / "guardian"
+TIMEZONE = ZoneInfo("Asia/Makassar")
+
+DEFAULT_TOOL_TIMEOUT_SECONDS = 120
+# Per-tool overrides. guardian_risk_score walks RBAC/API-contract/cache/
+# dead-code scoring across the full codebase and was seen degraded
+# (subprocess timeout) 3 times in the last 15 runs at the flat 120s budget.
+TOOL_TIMEOUT_OVERRIDES_SECONDS: dict[str, int] = {
+    "guardian_risk_score": 240,
+}
+
+
+TOOLS: dict[str, list[str]] = {
+    "guardian_risk_score": ["mcporter", "call", "nuzantara-rag.guardian_risk_score"],
+    "guardian_recent_decisions": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.guardian_recent_decisions",
+        "last=24",
+        "limit=10",
+    ],
+    "guardian_risk_score_history": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.guardian_risk_score_history",
+        "days=7",
+    ],
+    "crm_guardian_drive_validation_summary": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.crm_guardian_drive_validation_summary",
+    ],
+    "crm_guardian_find_external_owner_risks": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.crm_guardian_find_external_owner_risks",
+        "limit=1",
+    ],
+    "crm_guardian_find_stale_drive_links": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.crm_guardian_find_stale_drive_links",
+        "limit=1",
+    ],
+    "crm_guardian_find_unlinked_drive_items": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.crm_guardian_find_unlinked_drive_items",
+        "limit=1",
+    ],
+    "crm_guardian_shortcut_resolution_status": [
+        "mcporter",
+        "call",
+        "nuzantara-rag.crm_guardian_shortcut_resolution_status",
+        "limit=1",
+    ],
+}
+
+
+def run_tool(name: str, argv: list[str]) -> dict:
+    env = os.environ.copy()
+    env["PATH"] = (
+        "/opt/homebrew/bin:/opt/homebrew/opt/node/bin:/usr/local/bin:"
+        "/usr/bin:/bin:" + env.get("PATH", "")
+    )
+    command = argv
+    if argv and argv[0] == "mcporter":
+        command = ["mcporter", "--root", str(REPO), *argv[1:]]
+    timeout = TOOL_TIMEOUT_OVERRIDES_SECONDS.get(name, DEFAULT_TOOL_TIMEOUT_SECONDS)
+    proc = subprocess.run(
+        command,
+        cwd=REPO,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return {
+            "ok": False,
+            "error": (proc.stderr or proc.stdout).strip()[:1000],
+        }
+    try:
+        data = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return {"ok": False, "error": proc.stdout.strip()[:1000]}
+    return {"ok": True, "data": data}
+
+
+def first_item(tool_result: dict) -> dict:
+    if not tool_result.get("ok"):
+        return {}
+    data = tool_result.get("data") or {}
+    items = data.get("items") if isinstance(data, dict) else None
+    if not items:
+        return {}
+    item = items[0]
+    if not isinstance(item, dict):
+        return {}
+    return {
+        "priority": item.get("priority"),
+        "status": item.get("status") or item.get("validation_status") or item.get("resolution_status"),
+        "owner_domain": item.get("owner_domain"),
+        "source_mix": item.get("source_mix") or item.get("source_cluster"),
+        "recommended_action": item.get("recommended_action"),
+    }
+
+
+def percent(part: int, total: int) -> str:
+    if total <= 0:
+        return "0.00%"
+    return f"{(part / total) * 100:.2f}%"
+
+
+def compact_report(results: dict[str, dict], now: datetime) -> dict:
+    risk_data = results["guardian_risk_score"].get("data") or {}
+    risk_current = risk_data.get("current") if isinstance(risk_data, dict) else None
+    drive_data = results["crm_guardian_drive_validation_summary"].get("data") or {}
+    total = int(drive_data.get("total") or 0) if isinstance(drive_data, dict) else 0
+    ok = int(drive_data.get("ok") or 0) if isinstance(drive_data, dict) else 0
+    errors = int(drive_data.get("errors") or 0) if isinstance(drive_data, dict) else 0
+    failed = [name for name, value in results.items() if not value.get("ok")]
+    status = "ok" if not failed else "degraded"
+
+    return {
+        "generated_at": now.isoformat(),
+        "status": status,
+        "failed_tools": failed,
+        "risk_score": risk_current,
+        "risk_trend_samples": len(risk_data.get("trend") or []) if isinstance(risk_data, dict) else 0,
+        "recent_decisions": results["guardian_recent_decisions"].get("data") or {},
+        "drive_validation": {
+            "total": total,
+            "ok": ok,
+            "errors": errors,
+            "error_rate": percent(errors, total),
+            "owner_domains": drive_data.get("owner_domains") or [],
+            "statuses": drive_data.get("statuses") or [],
+            "mime_types": drive_data.get("mime_types") or [],
+        },
+        "backlog_probes": {
+            "external_owner_risks": {
+                "ok": results["crm_guardian_find_external_owner_risks"].get("ok"),
+                "sample": first_item(results["crm_guardian_find_external_owner_risks"]),
+            },
+            "stale_drive_links": {
+                "ok": results["crm_guardian_find_stale_drive_links"].get("ok"),
+                "sample": first_item(results["crm_guardian_find_stale_drive_links"]),
+            },
+            "unlinked_drive_items": {
+                "ok": results["crm_guardian_find_unlinked_drive_items"].get("ok"),
+                "sample": first_item(results["crm_guardian_find_unlinked_drive_items"]),
+            },
+            "shortcut_resolution": {
+                "ok": results["crm_guardian_shortcut_resolution_status"].get("ok"),
+                "sample": first_item(results["crm_guardian_shortcut_resolution_status"]),
+            },
+        },
+        "tool_errors": {
+            name: value.get("error")
+            for name, value in results.items()
+            if not value.get("ok")
+        },
+    }
+
+
+def md_table(rows: list[dict], key_field: str = "key", count_field: str = "count") -> str:
+    if not rows:
+        return "_None_\n"
+    lines = ["| Key | Count |", "| --- | ---: |"]
+    for row in rows[:10]:
+        lines.append(f"| `{row.get(key_field, 'unknown')}` | {row.get(count_field, 0)} |")
+    return "\n".join(lines) + "\n"
+
+
+def render_markdown(report: dict, json_path: Path) -> str:
+    risk = report.get("risk_score") or {}
+    drive = report["drive_validation"]
+    decisions = report.get("recent_decisions") or {}
+    probes = report.get("backlog_probes") or {}
+
+    lines = [
+        "# Guardian Board",
+        "",
+        f"- Generated: `{report['generated_at']}`",
+        f"- Status: `{report['status']}`",
+        f"- JSON: `{json_path}`",
+        "",
+        "## Risk",
+        "",
+    ]
+    if risk:
+        lines.extend(
+            [
+                f"- Overall: `{risk.get('overall_score')}`",
+                f"- RBAC: `{risk.get('rbac_score')}`",
+                f"- API contract: `{risk.get('api_contract_score')}`",
+                f"- Cache: `{risk.get('cache_score')}`",
+                f"- Dead code: `{risk.get('dead_code_score')}`",
+                f"- Timestamp: `{risk.get('timestamp')}`",
+            ]
+        )
+    else:
+        lines.append("- No current risk score.")
+    lines.extend(
+        [
+            "",
+            "## Drive Validation",
+            "",
+            f"- Total: `{drive['total']}`",
+            f"- OK: `{drive['ok']}`",
+            f"- Errors: `{drive['errors']}`",
+            f"- Error rate: `{drive['error_rate']}`",
+            "",
+            "### Statuses",
+            "",
+            md_table(drive.get("statuses") or []),
+            "### Owner Domains",
+            "",
+            md_table(drive.get("owner_domains") or []),
+            "## Backlog Probes",
+            "",
+            "| Probe | OK | Sample Priority | Sample Status | Owner Domain | Source | Action |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+    for name, value in probes.items():
+        sample = value.get("sample") or {}
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    f"`{name}`",
+                    f"`{value.get('ok')}`",
+                    f"`{sample.get('priority') or ''}`",
+                    f"`{sample.get('status') or ''}`",
+                    f"`{sample.get('owner_domain') or ''}`",
+                    f"`{sample.get('source_mix') or ''}`",
+                    f"`{sample.get('recommended_action') or ''}`",
+                ]
+            )
+            + " |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Recent Decisions",
+            "",
+            f"- Total in last {decisions.get('hours', 24)}h: `{decisions.get('total', 0)}`",
+            "",
+        ]
+    )
+    for decision in (decisions.get("decisions") or [])[:10]:
+        lines.append(
+            "- "
+            f"`{decision.get('timestamp')}` "
+            f"`{decision.get('severity')}` "
+            f"`{decision.get('component')}` "
+            f"{decision.get('finding')}"
+        )
+    if report.get("tool_errors"):
+        lines.extend(["", "## Tool Errors", ""])
+        for name, error in report["tool_errors"].items():
+            lines.append(f"- `{name}`: `{error}`")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_latest(path: Path, latest: Path) -> None:
+    try:
+        if latest.exists() or latest.is_symlink():
+            latest.unlink()
+        latest.symlink_to(path)
+    except OSError:
+        latest.write_text(str(path) + "\n")
+
+
+def main() -> int:
+    now = datetime.now(TIMEZONE)
+    run_dir = REPORT_ROOT / now.strftime("%Y-%m-%d")
+    run_dir.mkdir(parents=True, exist_ok=True)
+    stamp = now.strftime("%Y%m%d-%H%M%S")
+    json_path = run_dir / f"guardian-board-{stamp}.json"
+    md_path = run_dir / f"guardian-board-{stamp}.md"
+
+    results = {name: run_tool(name, argv) for name, argv in TOOLS.items()}
+    report = compact_report(results, now)
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    os.chmod(json_path, 0o600)
+    md_path.write_text(render_markdown(report, json_path))
+    os.chmod(md_path, 0o600)
+    write_latest(json_path, REPORT_ROOT / "latest.json")
+    write_latest(md_path, REPORT_ROOT / "latest.md")
+
+    print(f"Guardian board report: {md_path}")
+    print(f"Guardian board json: {json_path}")
+    print(f"Status: {report['status']}")
+    if report["failed_tools"]:
+        print("Failed tools: " + ", ".join(report["failed_tools"]))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
