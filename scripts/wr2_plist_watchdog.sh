@@ -84,18 +84,30 @@ _bootstrap() {
     return 1
 }
 
+# Through the tg_notify gateway since 2026-08-09. This watchdog wakes every 900s
+# and had NO cooldown of any kind: a plist that stays disabled was 96 identical
+# messages a day, each one a raw POST whose `|| true` erased the difference
+# between "sent" and "silently did nothing" in a token-poor launchd environment
+# (W108). The gateway supplies the dedup window, the budget and the ledger line.
 _telegram() {
-    local text="$1"
-    local token="${TELEGRAM_BOT_TOKEN:-}"
-    local chat="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
-    if [[ -z "${token}" ]]; then
+    local text="$1" gateway py
+    gateway="$(dirname "$0")/tg_notify.py"
+    [[ -f "$gateway" ]] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    if [[ ! -f "$gateway" ]]; then
+        echo "[wr2-plist-watchdog] NO GATEWAY at ${gateway} — alert NOT sent" >&2
         return 0
     fi
-    curl -fsS -m 10 \
-        --data-urlencode "chat_id=${chat}" \
-        --data-urlencode "text=${text}" \
-        "https://api.telegram.org/bot${token}/sendMessage" \
-        >/dev/null 2>&1 || true
+    # Absolute interpreter, never PATH (W108).
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        [[ -x "$py" ]] || continue
+        # One key for this watchdog's verdict: the body lists which plists moved,
+        # so keying on the body would mint a new key each time the list changes
+        # and hand back exactly the flood the gateway is here to stop.
+        "$py" "$gateway" --tier p0 --source wr2-plist-watchdog \
+            --dedup-key "wr2-plist-watchdog:drift" -- "$text" >&2 || true
+        return 0
+    done
+    echo "[wr2-plist-watchdog] no usable python3 — alert NOT sent" >&2
 }
 
 if [[ ! -d "${SOURCE_DIR}" ]]; then
