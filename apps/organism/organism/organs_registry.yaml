@@ -1344,6 +1344,32 @@ organs:
     label: com.balizero.wr2.reflexion.weekly
   severity_on_silence: info
   cicatrix_refs: []
+- id: wr2.ig_metrics_analyst_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh
+  dependencies:
+  - wr2.reflexion_weekly
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.ig-metrics-analyst.weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: wr2.external_bench_monthly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2764800
+  owner_module: infra/launchagents/wrappers/wr2-external-bench-run.sh
+  dependencies:
+  - wr2.ig_metrics_analyst_weekly
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.external-bench.monthly
+  severity_on_silence: info
+  cicatrix_refs: []
 - id: wr2.supervisor_watchdog
   runtime: pro_launchd
   type: cron

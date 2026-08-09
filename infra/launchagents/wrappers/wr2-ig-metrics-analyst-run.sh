@@ -45,6 +45,21 @@ if [ "$POLL_SECS" -lt 1 ]; then
   POLL_SECS=1
 fi
 
+# G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every
+# run — a fleet-wide dead-organ scan reads this sidecar, not the log tail).
+# Wired into on_exit_voice() below so it fires on both the early EXIT trap
+# and cleanup_active_claude's later replacement (which itself calls
+# on_exit_voice — see that trap's own comment on why the voice must be
+# carried forward rather than re-declared).
+ORGAN_ID="wr2.ig_metrics_analyst_weekly"
+SIDECAR_DIR="${HOME}/.organism/last_seen"
+PIDFILE=""
+heartbeat() { # $1 status $2 note
+  mkdir -p "$SIDECAR_DIR" 2>/dev/null || true
+  printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json" 2>/dev/null || true
+}
+
 # --- FAILURE GATEWAY (2026-08-08) ---------------------------------------------
 # Until today this wrapper had ZERO gateway references and no voice at all.
 # launchd invokes it DIRECTLY (`/bin/bash <script>` in
@@ -122,6 +137,12 @@ notify_failure() {
 # `$((elapsed + sleep_step))`, which is BELOW the trap and therefore has a voice.
 on_exit_voice() {
   local rc="$1"
+  rm -f "${PIDFILE:-}" 2>/dev/null || true
+  if [ "$rc" -eq 0 ]; then
+    heartbeat "ok" "exit=0"
+  else
+    heartbeat "error" "exit=${rc}"
+  fi
   if [ "$rc" -eq 0 ] || [ "$NOTIFIED" -eq 1 ]; then
     return 0
   fi
@@ -149,6 +170,25 @@ trap 'on_exit_voice $?' EXIT
 trap 'signal_exit HUP 129' HUP
 trap 'signal_exit INT 130' INT
 trap 'signal_exit TERM 143' TERM
+
+# G5_kill_switch — operator stop without uninstall (default enabled).
+if [ "${WR2_IG_METRICS_ANALYST_ENABLED:-true}" = "false" ]; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] kill switch WR2_IG_METRICS_ANALYST_ENABLED=false — exiting" >> "$LOG"
+  exit 0
+fi
+
+# G10_single_instance — the cascade below can legitimately run close to the
+# full 2h budget; a pidfile turns a launchd overlap into a clean skip instead
+# of two Claude cascades racing on the same OAuth seats. Cleanup lives in
+# on_exit_voice (fires on both the early trap and cleanup_active_claude's
+# later replacement) rather than a second `trap ... EXIT` here, which would
+# be silently unarmed the moment cleanup_active_claude installs its own.
+PIDFILE="/tmp/nuzantara-wr2-ig-metrics-analyst.pid"
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] previous run still alive (pid $(cat "$PIDFILE")) — skipping" >> "$LOG"
+  exit 0
+fi
+echo $$ > "$PIDFILE"
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG"
 
@@ -301,6 +341,15 @@ fi
 # Spawn Claude agent (Sonnet 5) per spec frontmatter. Each OAuth seat gets a
 # bounded attempt; auth/quota/empty failures rotate to the next seat while the
 # aggregate worst-case stays within the original two-hour budget.
+#
+# G6_spawn_hardened — TCC is PER-BINARY (W84): launchd granting bash access to
+# a path says nothing about the node binary behind `claude`. This is
+# diagnostic-only (log the context, never gate on it) so a sandboxed/mocked
+# HOME used by this wrapper's own test corpus (test_wr2_ig_metrics_analyst_wrapper.sh)
+# is not mistaken for a TCC-denied production host.
+if [ -z "${SSH_CONNECTION:-}" ]; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] no SSH_CONNECTION — running in direct launchd/local context" >> "$LOG"
+fi
 cd "${HOME}/nuzantara"
 CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in .claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
 
@@ -488,15 +537,17 @@ run_claude_account() {
       "$CLAUDE_BIN" -p \
       --model claude-sonnet-5 \
       --permission-mode bypassPermissions \
+      --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
       --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
-      "$CLAUDE_PROMPT" > "$attempt_out" 2> "$attempt_err" &
+      "$CLAUDE_PROMPT" < /dev/null > "$attempt_out" 2> "$attempt_err" &
   else
     "${oauth_env[@]}" -u CLAUDE_CODE_OAUTH_TOKEN \
       "$CLAUDE_BIN" -p \
       --model claude-sonnet-5 \
       --permission-mode bypassPermissions \
+      --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
       --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
-      "$CLAUDE_PROMPT" > "$attempt_out" 2> "$attempt_err" &
+      "$CLAUDE_PROMPT" < /dev/null > "$attempt_out" 2> "$attempt_err" &
   fi
   claude_pid=$!
   ACTIVE_CLAUDE_PID="$claude_pid"
