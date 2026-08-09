@@ -670,7 +670,11 @@ def test_probe_kimi_billing_cycle_403_is_quota_dead_not_auth_dead(monkeypatch):
     # through the kimi-specific AUTH_DEAD guard clause and land on QUOTA_DEAD via
     # classify_generic's "usage limit" match, so the cascade can skip-not-retry it
     # (a quota-dead seat needs wait/upgrade, not re-login).
-    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    # `resolve_bin` returns (path, via_path) — every sibling test in this file
+    # fakes the PAIR. Returning the bare string made `binp, via_path = ...`
+    # unpack the path's characters instead, so the test died inside probe_kimi
+    # with "too many values to unpack" before reaching a single assertion.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
     monkeypatch.setattr(
         ap.subprocess,
         "run",
