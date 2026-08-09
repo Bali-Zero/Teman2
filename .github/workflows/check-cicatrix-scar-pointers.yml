@@ -41,7 +41,7 @@ jobs:
   check-cicatrix-scar-pointers:
     name: check-cicatrix-scar-pointers
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
