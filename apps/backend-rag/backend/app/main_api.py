@@ -62,9 +62,10 @@ def _make_wa_bot_generate(app: FastAPI):
     The pool is bound here via closure because process_outbox_once passes only
     the thread row to bot_generate_fn.
     """
+    from backend.services.integrations.wa_bot_outcomes import BotReply
     from backend.services.integrations.wa_inbox_bot import generate_bot_reply
 
-    async def _bot_generate(thread: object) -> str:
+    async def _bot_generate(thread: object) -> BotReply:
         return await generate_bot_reply(app.state.db_pool, thread)
 
     return _bot_generate

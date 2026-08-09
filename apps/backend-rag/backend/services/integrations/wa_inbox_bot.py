@@ -2,10 +2,10 @@
 
 The wa_outbox scheduler (``main_api.py::_run_wa_outbox_scheduler``) drains the
 send-queue and, for rows with ``needs_generation = true``, calls a
-``bot_generate_fn(thread) -> str`` to produce the reply text. v1 shipped a
+``bot_generate_fn(thread)`` to produce the reply outcome. v1 shipped a
 ``NotImplementedError`` sentinel (human-send only). This module is the v1.1
 follow-up the spec named "Option B": generate the reply via the RAG
-orchestrator and return its text.
+orchestrator and return a typed outcome.
 
 Architecture (Fly process groups):
     The scheduler runs on the ``api`` process group, which does NOT host the
@@ -20,9 +20,11 @@ Safety contract (mirrors the worker's expectations in wa_outbox_worker.py):
     * Feature flag ``WA_INBOX_BOT_AUTOREPLY`` (default OFF) — when off, this
       raises so the worker marks the row failed/retry, NEVER a wrong send. Arm
       it via a Fly secret only when ready.
-    * On ABSTAIN or any RAG error → raise. The worker has a retry/backoff guard
-      (MAX_ATTEMPTS) and then marks ``failed`` — the operator can take over the
-      thread. We NEVER fabricate a reply or send an empty/placeholder body.
+    * On ABSTAIN → never forward ``data.answer``. Return the deterministic,
+      server-owned refusal from the reasoning-stub SSOT in the query language;
+      the worker sends it once and records ``abstained_at``.
+    * On any RAG error, or an empty normal answer → raise. The worker applies
+      its existing retry/backoff ladder. We never send an empty body.
     * The 24h Meta customer-care window is enforced by the worker AFTER us, so
       we do not re-check it here.
 
@@ -44,7 +46,8 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
 from backend.channels.format import format_rich_text
-from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.common.localized_stubs import get_localized_stub_for_text
+from backend.services.integrations.wa_bot_outcomes import BotReply, BotStandingCondition
 
 logger = logging.getLogger("zantara.backend")
 
@@ -75,8 +78,7 @@ logger = logging.getLogger("zantara.backend")
 # happens to follow it (e.g. the KG fast-path's reasoning text, which is
 # appended AFTER the workflow block in some code paths and must survive).
 _KG_WORKFLOW_TRAILER = (
-    "IMPORTANT: This is a suggested workflow. "
-    "Always verify current requirements with the user."
+    "IMPORTANT: This is a suggested workflow. Always verify current requirements with the user."
 )
 _KG_WORKFLOW_SCAFFOLD_RE = re.compile(
     r"\s*##\s+SUGGESTED WORKFLOW \(from .*?" + re.escape(_KG_WORKFLOW_TRAILER),
@@ -281,8 +283,8 @@ async def _load_thread_context(
     return latest_query, history
 
 
-async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
-    """bot_generate_fn for process_outbox_once — produce the reply text.
+async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> BotReply:
+    """bot_generate_fn for process_outbox_once — produce a reply outcome.
 
     Args:
         pool: asyncpg pool (bound via closure in main_api).
@@ -290,7 +292,7 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             passes the meta_inbox_threads row).
 
     Returns:
-        The bot reply text to send.
+        The formatted bot reply plus its terminal abstain classification.
 
     Raises:
         BotStandingCondition: the feature flag is off, or the loaded window
@@ -299,24 +301,20 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             buys is a distinct line in the ledger. (Measured 2026-07-27: 49 of
             the 52 give-ups ever recorded were one of these two, all filed under
             the same sentinel as a genuine crash. See ``wa_bot_outcomes``.)
-        RuntimeError: RAG abstained, or returned an empty answer. The worker's
-            guard turns this into a retry/backoff and eventually ``failed`` —
-            never a wrong send.
+        RuntimeError: RAG returned an empty normal answer, or deterministic
+            channel processing somehow reduced the server-owned refusal to an
+            empty string. The worker's existing retry/backoff policy applies.
         httpx errors propagate (also caught by the worker guard) → retry.
     """
     if not is_bot_autoreply_enabled():
-        raise BotStandingCondition(
-            "wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)"
-        )
+        raise BotStandingCondition("wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)")
 
     thread_id = thread["thread_id"]
     phone = thread["counterpart_phone"]
 
     query, history = await _load_thread_context(pool, thread_id)
     if not query:
-        raise BotStandingCondition(
-            f"wa-inbox bot: no customer message in thread {thread_id}"
-        )
+        raise BotStandingCondition(f"wa-inbox bot: no customer message in thread {thread_id}")
 
     # Team-assistant V1 (2026-07-19) used to resolve the sender's identity
     # HERE and forward it as a `profile` request field. P0-ID containment
@@ -354,16 +352,25 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         resp.raise_for_status()
         data = resp.json()
 
-    if data.get("abstain"):
-        # RAG refused — do not guess. Let the worker park it; operator can take over.
-        raise RuntimeError(
-            f"wa-inbox bot: RAG abstained for thread {thread_id} "
-            f"(reason={data.get('abstain_reason')!r})"
-        )
+    abstained = bool(data.get("abstain"))
+    raw_reason = data.get("abstain_reason")
+    reason = str(raw_reason) if abstained and raw_reason is not None else None
 
-    answer = (data.get("answer") or "").strip()
+    # An abstain label is a hard trust boundary. Even when the RAG response
+    # carries a plausible-looking answer (for example an E33 fast-path claim),
+    # none of that model-owned text may reach WhatsApp. Resolve the refusal
+    # from the server-owned SSOT using the ORIGINAL customer query language
+    # and, only for an ambiguous short turn, the history already loaded above.
+    # This is deliberately independent of abstain_reason: unknown/new reasons
+    # must fail safe without needing another allowlist update here.
+    answer = (
+        get_localized_stub_for_text("abstain", query, history)
+        if abstained
+        else (data.get("answer") or "")
+    ).strip()
     if not answer:
-        raise RuntimeError(f"wa-inbox bot: empty RAG answer for thread {thread_id}")
+        answer_source = "server abstain stub" if abstained else "RAG answer"
+        raise RuntimeError(f"wa-inbox bot: empty {answer_source} for thread {thread_id}")
 
     # Strip an [ESCALATE] marker if the persona emitted one (mirror whatsapp_chat.py).
     answer = answer.replace("[ESCALATE]", "").strip()
@@ -406,9 +413,10 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         )
 
     logger.info(
-        "wa-inbox bot generated reply for thread %s (%d chars post-format, %d chars pre-format)",
+        "wa-inbox bot generated %s for thread %s (%d chars post-format, %d chars pre-format)",
+        "abstention" if abstained else "reply",
         thread_id,
         post_format_len,
         pre_format_len,
     )
-    return answer
+    return BotReply(text=answer, abstained=abstained, reason=reason)

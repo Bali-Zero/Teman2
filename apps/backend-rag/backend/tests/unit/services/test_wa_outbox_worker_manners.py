@@ -30,6 +30,7 @@ import pytest
 
 from backend.services import whatsapp_ack
 from backend.services.integrations import wa_outbox_worker
+from backend.services.integrations.wa_bot_outcomes import BotReply
 from backend.tests.unit.services.test_wa_outbox_worker import (
     ScriptedConn,
     _candidate,
@@ -398,8 +399,8 @@ async def test_ack_fires_during_real_generation_flow() -> None:
     pool = _make_pool(conn)
     svc = _wa_service(send_result={"messages": [{"id": "wamid.REPLY.1"}]})
 
-    async def _bot_gen(_thread: Any) -> str:
-        return "the real generated reply"
+    async def _bot_gen(_thread: Any) -> BotReply:
+        return BotReply(text="the real generated reply")
 
     result = await wa_outbox_worker.process_outbox_once(pool, svc, _bot_gen)
 

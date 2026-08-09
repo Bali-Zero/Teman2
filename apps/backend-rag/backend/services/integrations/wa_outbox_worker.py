@@ -101,7 +101,7 @@ from typing import Any
 
 import asyncpg
 
-from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.integrations.wa_bot_outcomes import BotReply, BotStandingCondition
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +135,11 @@ RETRY_BACKOFF_BASE_SECONDS = 30
 # Meta free-text customer-care window.
 CUSTOMER_WINDOW_HOURS = 24
 
-# Type alias for the injected bot text generator. Given a thread row mapping it
-# returns the reply text to send (or raises). Kept injectable so the worker has
-# no hard dependency on the RAG orchestrator (and is trivially testable).
-BotGenerateFn = Callable[[asyncpg.Record], Awaitable[str]]
+# Type alias for the injected bot generator. ``BotReply`` carries the terminal
+# abstain classification; plain ``str`` remains a compatibility seam for
+# existing injectors and always means a normal (non-abstain) reply. Kept
+# injectable so the worker has no hard dependency on the RAG orchestrator.
+BotGenerateFn = Callable[[asyncpg.Record], Awaitable[BotReply | str]]
 
 # Reused by both the advisory-lock TRY and its matching UNLOCK — must stay
 # identical so the two calls hash to the same lock key for a given thread_id.
@@ -514,8 +515,8 @@ async def process_outbox_once(
         pool: asyncpg pool.
         whatsapp_service: object exposing ``async send_message(phone, text,
             reply_to_message_id=None)`` returning the Graph API response dict.
-        bot_generate_fn: async callable producing the bot reply text for a
-            thread (only invoked when ``needs_generation`` is true).
+        bot_generate_fn: async callable producing ``BotReply`` or legacy plain
+            text for a thread (only invoked when ``needs_generation`` is true).
 
     Returns:
         A short status string describing what happened (for logging/metrics):
@@ -682,6 +683,7 @@ async def _process_claimed_row(
     # 4. Bot replies: re-check human_handling (takeover may have flipped it
     #    since the webhook enqueued this row).
     body_text: str
+    generation_abstained = False
     if needs_generation:
         if thread["human_handling"]:
             fenced = await conn.fetchrow(
@@ -739,8 +741,9 @@ async def _process_claimed_row(
         await _maybe_send_ack(conn, outbox_id, claim_token, thread, whatsapp_service)
 
         # bot_generate_fn may raise (transient RAG error, or — in the
-        # human-send-only v1 — a NotImplementedError sentinel). Without this
-        # guard the exception bubbles to the scheduler and the row is left
+        # human-send-only v1 — a NotImplementedError sentinel), or an injected
+        # implementation may violate the return contract with empty text.
+        # Without this guard the exception bubbles to the scheduler and the row is left
         # ORPHANED in 'generating' (reclaim only resets 'claimed' rows), so
         # it is never retried nor surfaced. Mirror the send retry/backoff
         # policy: retry with backoff up to MAX_ATTEMPTS, then mark failed.
@@ -760,7 +763,20 @@ async def _process_claimed_row(
         )
         gen_exc: Exception | None = None
         try:
-            body_text = await bot_generate_fn(thread)
+            generated_reply = await bot_generate_fn(thread)
+            if isinstance(generated_reply, BotReply):
+                body_text = generated_reply.text
+                generation_abstained = generated_reply.abstained
+            elif isinstance(generated_reply, str):
+                body_text = generated_reply
+                generation_abstained = False
+            else:
+                raise TypeError(
+                    "wa_outbox: bot generator must return BotReply or str, "
+                    f"got {type(generated_reply).__name__}"
+                )
+            if not body_text.strip():
+                raise RuntimeError("wa_outbox: bot generator returned empty reply text")
         except Exception as exc:  # deliberately broad — see the retry/failed handling below
             gen_exc = exc
             body_text = ""
@@ -1085,13 +1101,15 @@ async def _process_claimed_row(
     async with conn.transaction():
         commit_fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'done'
+            UPDATE wa_outbox SET status = 'done',
+                abstained_at = CASE WHEN $4 THEN NOW() ELSE NULL END
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
             outbox_id,
             claim_token,
             expected_status,
+            generation_abstained,
         )
         await conn.execute(
             """

@@ -36,8 +36,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from backend.services.common.localized_stubs import get_localized_stub
 from backend.services.integrations import wa_outbox_worker
-from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.integrations.wa_bot_outcomes import BotReply, BotStandingCondition
 from backend.services.integrations.wa_outbox_worker import process_outbox_once
 
 
@@ -103,6 +104,7 @@ def _wa_service(send_result: dict[str, Any] | None = None, raise_exc: Exception 
 
 
 async def _bot_gen(_thread: Any) -> str:
+    """Legacy compatibility seam: existing injectors may still return text."""
     return "generated bot reply"
 
 
@@ -179,7 +181,9 @@ async def test_human_send_happy_path_applies_staged_status() -> None:
     candidate = _candidate(1, thread_id=7, message_id=100, needs_generation=False)
     conn = ScriptedConn(
         fetchrow_results=[
-            _thread_row(human_handling=True),  # thread load (human_handling irrelevant to human send)
+            _thread_row(
+                human_handling=True
+            ),  # thread load (human_handling irrelevant to human send)
             {"body": "ciao dal team"},  # ledger body load
             {"id": 1},  # pre-send fence RETURNING
             {"id": 1},  # final commit RETURNING
@@ -198,9 +202,7 @@ async def test_human_send_happy_path_applies_staged_status() -> None:
 
     assert result == "sent"
     svc.send_message.assert_awaited_once()
-    assert any(
-        "status = 'sent'" in s and "wamid.SENT.1" in str(a) for s, a in conn.executed
-    )
+    assert any("status = 'sent'" in s and "wamid.SENT.1" in str(a) for s, a in conn.executed)
     assert conn.sql_contains("UPDATE wa_outbox SET status = 'done'")
     assert any(
         "UPDATE meta_inbox_messages" in s and "delivered" in str(a) for s, a in conn.executed
@@ -326,7 +328,10 @@ async def test_bot_generate_failure_retries_not_orphaned() -> None:
 @pytest.mark.asyncio
 async def test_bot_generate_failure_terminal_after_max_attempts() -> None:
     candidate = _candidate(
-        7, thread_id=7, message_id=700, needs_generation=True,
+        7,
+        thread_id=7,
+        message_id=700,
+        needs_generation=True,
         attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
     )
     conn = ScriptedConn(
@@ -363,7 +368,10 @@ async def test_standing_condition_gets_its_own_ledger_text() -> None:
     genuine outage when reading the ledger.
     """
     candidate = _candidate(
-        8, thread_id=7, message_id=800, needs_generation=True,
+        8,
+        thread_id=7,
+        message_id=800,
+        needs_generation=True,
         attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
     )
     conn = ScriptedConn(
@@ -379,9 +387,7 @@ async def test_standing_condition_gets_its_own_ledger_text() -> None:
     svc = _wa_service()
 
     async def _bot_standing(_thread: Any) -> str:
-        raise BotStandingCondition(
-            "wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)"
-        )
+        raise BotStandingCondition("wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)")
 
     result = await process_outbox_once(pool, svc, _bot_standing)
 
@@ -425,6 +431,113 @@ async def test_standing_condition_still_uses_the_retry_ladder() -> None:
     retry_updates = conn.sql_with_args("SET status = 'pending'")
     assert retry_updates, "the row must be re-queued, never parked on the first call"
     assert any(1 in a for _, a in retry_updates), "attempts must still increment"
+    assert not conn.sql_contains("abstained_at")
+
+
+@pytest.mark.asyncio
+async def test_abstain_outcome_sends_once_without_retry_and_marks_ledger() -> None:
+    """GUILT: a server-owned refusal is a successful terminal send, not an
+    exception that enters the retry ladder and eventually becomes silence."""
+    candidate = _candidate(13, thread_id=7, message_id=1300, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),
+            {"id": 13},  # generating-transition fenced RETURNING
+            {"id": 13},  # pre-send fence RETURNING
+            {"id": 13},  # final commit RETURNING
+            None,  # no staged status receipt
+        ],
+        fetchval_results=[True, False, True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service(send_result={"messages": [{"id": "wamid.ABSTAIN.1"}]})
+    forbidden_canary = "CANARY_E33_FORBIDDEN_CLAIM"
+    localized_refusal = get_localized_stub("abstain", "INDONESIAN")
+
+    async def _bot_abstains(_thread: Any) -> BotReply:
+        return BotReply(
+            text=localized_refusal,
+            abstained=True,
+            reason="e33_forbidden_claim",
+        )
+
+    result = await process_outbox_once(pool, svc, _bot_abstains)
+
+    assert result == "sent"
+    svc.send_message.assert_awaited_once_with(
+        phone="628111",
+        text=localized_refusal,
+        reply_to_message_id=None,
+    )
+    assert forbidden_canary not in svc.send_message.await_args.kwargs["text"]
+    assert not conn.sql_contains("next_retry_at = NOW() +")
+    assert not any("bot_generate_failed" in str(args) for _, args in conn.executed)
+    abstain_commits = conn.sql_with_args("abstained_at")
+    assert len(abstain_commits) == 1
+    assert abstain_commits[0][1][-1] is True
+
+
+@pytest.mark.asyncio
+async def test_legacy_string_outcome_sends_as_normal_non_abstain() -> None:
+    candidate = _candidate(14, thread_id=7, message_id=1400, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),
+            {"id": 14},
+            {"id": 14},
+            {"id": 14},
+            None,
+        ],
+        fetchval_results=[True, False, True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service(send_result={"messages": [{"id": "wamid.LEGACY.1"}]})
+
+    result = await process_outbox_once(pool, svc, _bot_gen)
+
+    assert result == "sent"
+    svc.send_message.assert_awaited_once_with(
+        phone="628111",
+        text="generated bot reply",
+        reply_to_message_id=None,
+    )
+    normal_commits = conn.sql_with_args("abstained_at")
+    assert len(normal_commits) == 1
+    assert normal_commits[0][1][-1] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "empty_outcome",
+    ["  \n\t", BotReply(text="  \n\t", abstained=True, reason="low_evidence")],
+)
+async def test_whitespace_bot_outcome_retries_without_graph_send(
+    empty_outcome: str | BotReply,
+) -> None:
+    candidate = _candidate(15, thread_id=7, message_id=1500, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),
+            {"id": 15},
+            {"id": 15},
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    async def _bot_returns_whitespace(_thread: Any) -> str | BotReply:
+        return empty_outcome
+
+    result = await process_outbox_once(pool, svc, _bot_returns_whitespace)
+
+    assert result == "retry"
+    svc.send_message.assert_not_awaited()
+    assert conn.sql_contains("next_retry_at = NOW() +")
+    assert not conn.sql_contains("abstained_at")
 
 
 @pytest.mark.asyncio
@@ -434,7 +547,10 @@ async def test_bare_runtime_error_keeps_the_generic_ledger_text() -> None:
     failure as a standing condition and hide real outages behind a benign name.
     """
     candidate = _candidate(
-        10, thread_id=7, message_id=1000, needs_generation=True,
+        10,
+        thread_id=7,
+        message_id=1000,
+        needs_generation=True,
         attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
     )
     conn = ScriptedConn(
@@ -463,7 +579,10 @@ async def test_bare_runtime_error_keeps_the_generic_ledger_text() -> None:
 @pytest.mark.asyncio
 async def test_send_failure_terminal_after_max_attempts() -> None:
     candidate = _candidate(
-        5, thread_id=7, message_id=500, needs_generation=False,
+        5,
+        thread_id=7,
+        message_id=500,
+        needs_generation=False,
         attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
     )
     conn = ScriptedConn(
@@ -521,12 +640,11 @@ async def test_coalescing_supersedes_other_pending_bot_replies_same_thread() -> 
     svc.send_message.assert_awaited_once()  # exactly ONE reply for the burst
     # the superseded row (id=11 / message 1001) was marked failed with the
     # coalescing marker, never touched by a send
-    assert any(
-        "needs_generation = true" in s and (7, 10) == a for s, a in conn.executed
-    )
-    assert any(
-        "superseded_by_coalescing" in s and 1001 in a for s, a in conn.executed
-    )
+    assert any("needs_generation = true" in s and (7, 10) == a for s, a in conn.executed)
+    assert any("superseded_by_coalescing" in s and 1001 in a for s, a in conn.executed)
+    normal_commits = conn.sql_with_args("abstained_at")
+    assert len(normal_commits) == 1
+    assert normal_commits[0][1][-1] is False
 
 
 @pytest.mark.asyncio
@@ -800,9 +918,7 @@ async def test_lease_heartbeat_loop_renews_and_stops_on_cancel(
         await wa_outbox_worker._lease_heartbeat_loop(conn, 99, claim_token)
 
     renewals = [
-        (s, a)
-        for s, a in conn.executed
-        if "claim_expires_at" in s and "status = 'generating'" in s
+        (s, a) for s, a in conn.executed if "claim_expires_at" in s and "status = 'generating'" in s
     ]
     assert len(renewals) == 2  # ticks 1 and 2 renewed; tick 3 raised before renewing
     assert all(a[0] == 99 and a[1] == claim_token for _, a in renewals)
@@ -815,9 +931,7 @@ async def test_heartbeat_started_during_generation_and_cancelled_after() -> None
     of how long generation actually took."""
     events: list[str] = []
 
-    async def _fake_heartbeat_loop(
-        _conn: Any, _outbox_id: int, _claim_token: uuid.UUID
-    ) -> None:
+    async def _fake_heartbeat_loop(_conn: Any, _outbox_id: int, _claim_token: uuid.UUID) -> None:
         events.append("started")
         try:
             await asyncio.sleep(1000)  # would hang the test if never cancelled
@@ -833,9 +947,9 @@ async def test_heartbeat_started_during_generation_and_cancelled_after() -> None
     # asyncio ever ran the task even once. In production this is a non-issue:
     # the real bot_generate_fn (wa_inbox_bot.generate_bot_reply) always awaits
     # a real httpx call.
-    async def _yielding_bot_gen(_thread: Any) -> str:
+    async def _yielding_bot_gen(_thread: Any) -> BotReply:
         await asyncio.sleep(0)
-        return "generated bot reply"
+        return BotReply(text="generated bot reply")
 
     original = wa_outbox_worker._lease_heartbeat_loop
     wa_outbox_worker._lease_heartbeat_loop = _fake_heartbeat_loop

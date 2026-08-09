@@ -32,13 +32,31 @@ version, which did all three):
   call, so those 44 rows burned zero generations — five cheap no-ops, not five
   LLM round-trips. An earlier draft of this docstring claimed otherwise.
 
-NOT for an ABSTAIN either. A refusal is a SUCCESSFUL send with truthful content
-and belongs on the return path — see task #31.
+NOT for an ABSTAIN either. A refusal is a SUCCESSFUL send with server-owned,
+truthful content and belongs on the return path — see task #31.
 """
 
 from __future__ import annotations
 
-__all__ = ["BotStandingCondition"]
+from dataclasses import dataclass
+
+__all__ = ["BotReply", "BotStandingCondition"]
+
+
+@dataclass(frozen=True, slots=True)
+class BotReply:
+    """A generated WhatsApp reply and its terminal safety classification.
+
+    ``abstained`` is not an error: when ``text`` is non-empty it is truthful,
+    sendable client copy selected from the server-owned refusal SSOT in the
+    client's query language. Raw RAG answer text is never trusted on that
+    branch. The worker sends it once and records the outcome separately from
+    failures.
+    """
+
+    text: str
+    abstained: bool = False
+    reason: str | None = None
 
 
 class BotStandingCondition(RuntimeError):

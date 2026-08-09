@@ -25,6 +25,7 @@ os.environ.setdefault("API_KEYS", "test_api_key_1")
 os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
+from backend.services.common.language_detection import detect_language as shared_detect_language
 from backend.services.whatsapp_context_builder import (
     build_context,
     detect_language,
@@ -90,6 +91,9 @@ def sample_conversation_row():
 
 class TestDetectLanguage:
     """Tests for detect_language function."""
+
+    def test_context_builder_reexports_shared_detector(self) -> None:
+        assert detect_language is shared_detect_language
 
     @pytest.mark.parametrize(
         "text,expected_lang",

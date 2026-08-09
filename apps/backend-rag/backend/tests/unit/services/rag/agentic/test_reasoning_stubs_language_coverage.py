@@ -31,6 +31,12 @@ from pathlib import Path
 
 import pytest
 
+from backend.services.common.localized_stubs import (
+    STUB_MESSAGES as COMMON_STUB_MESSAGES,
+)
+from backend.services.common.localized_stubs import (
+    get_localized_stub as common_get_localized_stub,
+)
 from backend.services.rag.agentic import query_helpers
 from backend.services.rag.agentic._reasoning_stubs import (
     _FALLBACK_MESSAGE,
@@ -45,6 +51,12 @@ from backend.services.rag.agentic._reasoning_stubs import (
 DECLARED_ENGLISH_FALLBACK: frozenset[str] = frozenset(
     {"CHINESE", "ARABIC", "FRENCH", "SPANISH", "GERMAN"}
 )
+
+
+def test_legacy_reasoning_module_reexports_the_common_ssot() -> None:
+    """Compatibility path and API-light path must share the same objects."""
+    assert STUB_MESSAGES is COMMON_STUB_MESSAGES
+    assert get_localized_stub is common_get_localized_stub
 
 
 def _languages_the_detector_can_emit() -> set[str]:
@@ -81,9 +93,7 @@ class TestGuiltEveryProtocolLanguageIsReallyTranslated:
         )
 
     @pytest.mark.parametrize("key", sorted(STUB_MESSAGES))
-    @pytest.mark.parametrize(
-        "language", [lang for lang in PROTOCOL_LANGUAGES if lang != "ENGLISH"]
-    )
+    @pytest.mark.parametrize("language", [lang for lang in PROTOCOL_LANGUAGES if lang != "ENGLISH"])
     def test_translation_is_not_the_english_text(self, key: str, language: str) -> None:
         """Catches the fallback masquerading as a translation, and copy-paste."""
         assert get_localized_stub(key, language) != get_localized_stub(key, "ENGLISH"), (

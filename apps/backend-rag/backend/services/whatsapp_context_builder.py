@@ -12,11 +12,12 @@ Responsibilities:
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+
+from backend.services.common.language_detection import detect_language
 
 logger = logging.getLogger(__name__)
 
@@ -89,61 +90,6 @@ INTEREST_KEYWORDS = {
     "investment": ["invest", "investimento", "investasi", "property", "properti", "immobiliare"],
     "tax": ["tax", "tasse", "pajak", "npwp", "spt", "fiscal"],
 }
-
-# Simple language detection patterns
-LANGUAGE_PATTERNS = {
-    "it": [
-        r"\b(ciao|buongiorno|buonasera|grazie|prego|quanto|costa|vorrei|posso|sono|come|perch[eé]|anche|molto|questo|quello|voglio|bisogno|serve|aiuto|informazioni)\b",
-    ],
-    "en": [
-        r"\b(hello|hi|thanks|please|how much|i want|i need|can i|what is|help|information|looking for|interested)\b",
-    ],
-    "id": [
-        r"\b(halo|terima kasih|tolong|berapa|saya|mau|bisa|apa|bagaimana|butuh|informasi|bantu)\b",
-    ],
-    "de": [
-        r"\b(hallo|danke|bitte|wie viel|ich|möchte|kann|brauche|hilfe|informationen)\b",
-    ],
-    "fr": [
-        r"\b(bonjour|merci|s'il vous plaît|combien|je veux|puis-je|aide|informations)\b",
-    ],
-    "es": [
-        r"\b(hola|gracias|por favor|cuánto|quiero|puedo|necesito|ayuda|información)\b",
-    ],
-    "ru": [
-        r"\b(привет|спасибо|пожалуйста|сколько|хочу|могу|нужно|помощь|информация)\b",
-    ],
-}
-
-
-def detect_language(text: str, history: list[dict[str, str]] | None = None) -> str:
-    """
-    Detect language from text and optionally conversation history.
-
-    Uses pattern matching on the current message + last few messages for accuracy.
-    Returns ISO 639-1 code.
-    """
-    # Combine current message with last 3 user messages from history for better detection
-    texts_to_check = [text.lower()]
-    if history:
-        recent_user_msgs = [m["content"].lower() for m in history[-6:] if m.get("role") == "user"]
-        texts_to_check.extend(recent_user_msgs[-3:])
-
-    combined = " ".join(texts_to_check)
-
-    scores = {}
-    for lang, patterns in LANGUAGE_PATTERNS.items():
-        score = 0
-        for pattern in patterns:
-            matches = re.findall(pattern, combined, re.IGNORECASE)
-            score += len(matches)
-        if score > 0:
-            scores[lang] = score
-
-    if scores:
-        return max(scores, key=lambda lang: scores[lang])
-
-    return "en"  # Default to English
 
 
 def extract_visa_mentions(text: str) -> list[str]:

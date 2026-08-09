@@ -3,25 +3,32 @@
 Covers the Option-B safety contract:
   - feature flag OFF (default) → raises (worker marks failed/retry, no send).
   - no customer message in thread → raises.
-  - RAG abstain → raises (never guess).
-  - empty RAG answer → raises.
-  - happy path → returns the RAG answer, sends the correct payload to the
+  - RAG abstain → ignores the raw answer and returns the server-owned,
+    query-language-localized refusal as a terminal sendable outcome.
+  - empty normal RAG answer → raises.
+  - happy path → returns a normal outcome, sends the correct payload to the
     RAG worker (query = latest customer msg, history oldest→newest, channel).
   - [ESCALATE] marker stripped from the answer.
 """
 
 from __future__ import annotations
 
+import ast
 import asyncio
+import os
+import subprocess
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
 
+from backend.services.common.localized_stubs import get_localized_stub
 from backend.services.integrations import wa_inbox_bot
-from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.integrations.wa_bot_outcomes import BotReply, BotStandingCondition
 
 
 class _Conn:
@@ -119,12 +126,131 @@ async def test_no_customer_message_raises(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_abstain_raises(monkeypatch):
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Quanto costa un KITAS?", "ITALIAN"),
+        ("Serve un visto?", "ITALIAN"),
+        ("Vorrei aprire una società", "ITALIAN"),
+        ("Berapa biaya KITAS?", "INDONESIAN"),
+        ("How much does a KITAS cost?", "ENGLISH"),
+        ("Сколько стоит виза KITAS?", "RUSSIAN"),
+        ("Скільки коштує віза KITAS?", "UKRAINIAN"),
+    ],
+)
+async def test_abstain_never_forwards_rag_claim_and_uses_localized_server_stub(
+    monkeypatch,
+    query: str,
+    language: str,
+):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    _mock_rag(monkeypatch, {"abstain": True, "abstain_reason": "low_evidence", "answer": ""})
-    pool = _Pool(_ROWS_NEWEST_FIRST)
-    with pytest.raises(RuntimeError, match="abstained"):
-        await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    forbidden_canary = (
+        "CANARY_E33_FORBIDDEN_CLAIM: E33 is always approved in one day. "
+        "[ESCALATE]" + _KG_WORKFLOW_BLOCK
+    )
+    _mock_rag(
+        monkeypatch,
+        {
+            "abstain": True,
+            "abstain_reason": "e33_forbidden_claim",
+            "answer": forbidden_canary,
+        },
+    )
+    rows = [dict(_ROWS_NEWEST_FIRST[0], body=query), *_ROWS_NEWEST_FIRST[1:]]
+    pool = _Pool(rows)
+
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert outcome.abstained is True
+    assert outcome.reason == "e33_forbidden_claim"
+    assert outcome.text == get_localized_stub("abstain", language)
+    assert "CANARY_E33_FORBIDDEN_CLAIM" not in outcome.text
+    assert "always approved" not in outcome.text
+
+
+@pytest.mark.asyncio
+async def test_unknown_abstain_reason_never_forwards_raw_answer(monkeypatch):
+    """A future reason value cannot turn model-owned text back into a send."""
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    forbidden_canary = "CANARY_UNKNOWN_REASON_RAW_ANSWER"
+    _mock_rag(
+        monkeypatch,
+        {
+            "abstain": True,
+            "abstain_reason": "future_unrecognized_reason",
+            "answer": forbidden_canary,
+        },
+    )
+    rows = [
+        dict(_ROWS_NEWEST_FIRST[0], body="Serve un visto?"),
+        *_ROWS_NEWEST_FIRST[1:],
+    ]
+
+    outcome = await wa_inbox_bot.generate_bot_reply(_Pool(rows), _thread())
+
+    assert outcome == BotReply(
+        text=get_localized_stub("abstain", "ITALIAN"),
+        abstained=True,
+        reason="future_unrecognized_reason",
+    )
+    assert forbidden_canary not in outcome.text
+
+
+@pytest.mark.asyncio
+async def test_short_followup_uses_existing_user_history_for_abstain_language(monkeypatch):
+    """An ambiguous correction reuses the already-loaded thread history.
+
+    This pins the no-second-DB-read contract: language detection receives the
+    history returned by the same ``_load_thread_context`` fetch.
+    """
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    _mock_rag(
+        monkeypatch,
+        {
+            "abstain": True,
+            "abstain_reason": "no_relevant_context",
+            "answer": "CANARY_HISTORY_RAW_ANSWER",
+        },
+    )
+    rows = [
+        {"direction": "inbound", "sender_role": "customer", "body": "ok"},
+        {
+            "direction": "outbound",
+            "sender_role": "bot",
+            "body": "Puoi precisare?",
+        },
+        {
+            "direction": "inbound",
+            "sender_role": "customer",
+            "body": "Vorrei aprire una società",
+        },
+    ]
+    pool = _Pool(rows)
+
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert outcome.text == get_localized_stub("abstain", "ITALIAN")
+    assert "CANARY_HISTORY_RAW_ANSWER" not in outcome.text
+    assert pool._conn.fetchrow_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_abstain_with_empty_rag_answer_still_returns_server_stub(monkeypatch):
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    _mock_rag(monkeypatch, {"abstain": True, "abstain_reason": "low_evidence", "answer": " "})
+    rows = [
+        dict(_ROWS_NEWEST_FIRST[0], body="Ciao, quanto costa un KITAS?"),
+        *_ROWS_NEWEST_FIRST[1:],
+    ]
+    pool = _Pool(rows)
+
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert outcome == BotReply(
+        text=get_localized_stub("abstain", "ITALIAN"),
+        abstained=True,
+        reason="low_evidence",
+    )
 
 
 @pytest.mark.asyncio
@@ -145,9 +271,9 @@ async def test_happy_path_returns_answer_and_payload(monkeypatch):
     )
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread(thread_id=7, phone="62811"))
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread(thread_id=7, phone="62811"))
 
-    assert answer == "Il KITAS investitore parte da..."
+    assert outcome == BotReply(text="Il KITAS investitore parte da...")
     sent = captured["json"]
     # query = the LATEST inbound customer message
     assert sent["query"] == "Quanto costa un KITAS?"
@@ -170,9 +296,9 @@ async def test_escalate_marker_stripped(monkeypatch):
         {"abstain": False, "answer": "Ti metto in contatto col team [ESCALATE]"},
     )
     pool = _Pool(_ROWS_NEWEST_FIRST)
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
-    assert "[ESCALATE]" not in answer
-    assert answer == "Ti metto in contatto col team"
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    assert "[ESCALATE]" not in outcome.text
+    assert outcome == BotReply(text="Ti metto in contatto col team")
 
 
 # ── Client-voice hardening (2026-07-25): channel formatting + KG-workflow
@@ -200,14 +326,13 @@ async def test_markdown_and_kg_scaffold_stripped_for_whatsapp_client(monkeypatch
     raw_answer = (
         "Hey! Here is the official breakdown for the remote worker visa path.\n"
         "### Key Features\n"
-        "*   **Initial Validity & Stay:** 1 year (365 days) ... [5]"
-        + _KG_WORKFLOW_BLOCK
+        "*   **Initial Validity & Stay:** 1 year (365 days) ... [5]" + _KG_WORKFLOW_BLOCK
     )
     _mock_rag(monkeypatch, {"abstain": False, "answer": raw_answer})
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
     # Internal scaffold fully gone.
     for scaffold_marker in (
@@ -217,14 +342,14 @@ async def test_markdown_and_kg_scaffold_stripped_for_whatsapp_client(monkeypatch
         "Confidence**: medium",
         "IMPORTANT: This is a suggested workflow",
     ):
-        assert scaffold_marker not in answer, f"{scaffold_marker!r} leaked: {answer!r}"
+        assert scaffold_marker not in outcome.text, f"{scaffold_marker!r} leaked: {outcome.text!r}"
     # Raw markdown noise gone too.
     for md_marker in ("###", "**", "[5]"):
-        assert md_marker not in answer, f"{md_marker!r} leaked: {answer!r}"
+        assert md_marker not in outcome.text, f"{md_marker!r} leaked: {outcome.text!r}"
     # The real client-facing content survives, WhatsApp-formatted.
-    assert "*Key Features*" in answer
-    assert "• *Initial Validity & Stay:*" in answer
-    assert "remote worker visa path" in answer
+    assert "*Key Features*" in outcome.text
+    assert "• *Initial Validity & Stay:*" in outcome.text
+    assert "remote worker visa path" in outcome.text
 
 
 @pytest.mark.asyncio
@@ -253,10 +378,10 @@ async def test_kg_reasoning_after_workflow_block_survives_strip(monkeypatch):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
-    assert "SUGGESTED WORKFLOW" not in answer
-    assert "KBLI 70100 per consulenza IT" in answer
+    assert "SUGGESTED WORKFLOW" not in outcome.text
+    assert "KBLI 70100 per consulenza IT" in outcome.text
 
 
 @pytest.mark.asyncio
@@ -269,9 +394,9 @@ async def test_legitimate_workflow_mention_is_not_mangled(monkeypatch):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
-    assert answer == raw_answer
+    assert outcome == BotReply(text=raw_answer)
 
 
 @pytest.mark.asyncio
@@ -289,9 +414,9 @@ async def test_legitimate_numbered_procedure_is_preserved(monkeypatch):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
-    assert answer == raw_answer
+    assert outcome == BotReply(text=raw_answer)
 
 
 @pytest.mark.asyncio
@@ -306,9 +431,9 @@ async def test_oversized_reply_logs_non_silently(monkeypatch, caplog):
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
     with caplog.at_level("WARNING"):
-        answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+        outcome = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
-    assert answer == oversized  # this module does NOT truncate — that's whatsapp_service.py's job
+    assert outcome == BotReply(text=oversized)
     assert any(
         "5000 chars" in r.message and "exceeds WhatsApp" in r.message for r in caplog.records
     )
@@ -464,15 +589,55 @@ async def test_bot_generation_semaphore_bounds_concurrent_rag_calls(monkeypatch)
 
     pool = _Pool(_ROWS_NEWEST_FIRST)
     results = await asyncio.gather(
-        *[
-            wa_inbox_bot.generate_bot_reply(pool, _thread(thread_id=i))
-            for i in range(5)
-        ]
+        *[wa_inbox_bot.generate_bot_reply(pool, _thread(thread_id=i)) for i in range(5)]
     )
 
-    assert results == ["ok"] * 5
+    assert results == [BotReply(text="ok")] * 5
     assert max_in_flight <= 2
     assert client.post.await_count == 5
+
+
+def test_import_boundary_does_not_load_agentic_or_sklearn() -> None:
+    """The API-side generator must stay independent of the RAG package graph."""
+    backend_root = Path(__file__).resolve().parents[4]
+    probe = """
+import sys
+import backend.services.integrations.wa_inbox_bot  # noqa: F401
+
+forbidden = sorted(
+    name
+    for name in sys.modules
+    if name == "backend.services.rag.agentic"
+    or name.startswith("backend.services.rag.agentic.")
+    or name == "sklearn"
+    or name.startswith("sklearn.")
+)
+if forbidden:
+    raise SystemExit("forbidden modules loaded: " + ", ".join(forbidden))
+"""
+    env = {**os.environ, "PYTHONPATH": "."}
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=backend_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+    source_path = Path(wa_inbox_bot.__file__)
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    forbidden_imports = [
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        and node.module
+        and node.module.startswith("backend.services.rag.agentic")
+    ]
+    assert forbidden_imports == []
 
 
 # ── P0-ID containment (2026-07-24): no client-side profile field anymore ──
