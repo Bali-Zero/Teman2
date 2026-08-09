@@ -20,7 +20,46 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-30 — keep current)
+## 1. LIVE STATE (last update 2026-08-10 — keep current)
+
+- **🎯 12-QUESTION DEFECT BATTERY, RUN INSIDE THE PROD CONTAINER (2026-08-10).** Fired at
+  `RAG_WORKER_URL` with the exact payload `wa_inbox_bot.py` sends (`channel=whatsapp`,
+  `max_steps=2`, empty history), synthetic questions, synthetic phone numbers. 12/12 HTTP 200.
+  Script: session scratchpad `wa_probe.py` — **read the C17 correction below before reusing it**,
+  it scores the ENDPOINT and two of its counters do not describe the WhatsApp client.
+  - **French drift REPRODUCED, 2/12, on BOTH shapes the ledger recorded.** `#0` the known
+    KITAS-rejection question (EN in → **FR** out: _"Bonjour, Pour analyser le rejet de l'extension
+    du KITAS…"_) and `#8` `"Zantara jelaskan visa C7A"` (ID in → **FR** out: _"Salut ! Voici les
+    informations officielles…"_). The 2026-07-30 live exchange was not a one-off — it reproduces
+    on demand. Note both drifted answers are on-topic and confident: **the language selector is
+    an independent defect, not a symptom of empty retrieval.**
+  - **`evidence_score` = 0.850 on ELEVEN of twelve.** The twelfth (`#1`, land tenure) is 0.14 and
+    is also the only `abstain=True`. This is the blind-spot bullet below, now measured at n=12
+    instead of inferred: the score is informative only when retrieval fails.
+  - **The one honest abstention is ALSO the one carrying a wrong fact.** `#1` abstained (correct)
+    AND its text hit the forbidden land-tenure pattern. On WhatsApp `wa_inbox_bot.py:346` raises
+    on abstain → **the client gets silence**, so the wrong figure never ships; but neither does
+    anything else.
+  - **CRM honesty is FIXED — the beta-test "semuanya sudah aman" did NOT reproduce.** `#3` and
+    `#4` both refuse cleanly and name the missing capability. Residual, smaller: `#4` prints the
+    internal tool name (`` `crm_query` ``) to a client-role caller — deny-narration, not a leak of
+    data.
+  - **PT PMA pricing is clean.** `#5` returned ONE all-inclusive figure (IDR 20,000,000) with no
+    government-fee split and no fabricated "1.2 billion" — Zero's 2026-07-17 ruling holding on the
+    fast path.
+  - **🔴 The KG scaffold carries a SUPERSEDED CAPITAL FIGURE.** `#7` (asked for the chart of
+    accounts) answered with `## SUGGESTED WORKFLOW (from company_subgraph, confidence: 67%)` whose
+    step 2 is **"Prepare minimum capital: Rp 10,000,000,000"**. Paid-up for a PT PMA is **2.5
+    billion** since BKPM 5/2025 (memory `fact_bkpm_5_2025_paidup_capital_2_5_mld_2026_07_16`; the
+    `>10bn` rule survives only per-KBLI-per-location). WhatsApp strips the scaffold, so this is a
+    **web-chat** exposure — and it is a wrong legal number, not cosmetic noise. Do NOT cure it with
+    a blind sweep on the string "10 miliar" (see #3720). _(This sentence is backticked on purpose:
+    unbackticked, a line beginning `>10bn` is read by Prettier as a blockquote and rewritten to
+    `> 10bn`, turning a legal threshold into a quotation — W112, caught here in the act.)_
+  - **⏱️ Median 74.6s, max 113.2s.** Up again from the ~35s the 2026-07-18 campaign left and worse
+    than the two-point 57/73s reading of 2026-07-30. n=12 on a cold-ish path, stated as such.
+  - `model` came back `None` on all twelve — the response does not carry the model on this route,
+    so a battery cannot attribute behaviour to a model here.
 
 - **🇫🇷 THE FRENCH DRIFT IS NEITHER ENGLISH-ONLY NOR NO-COVERAGE-ONLY — both scopings falsified by
   ONE live exchange (2026-07-30).** Read from the ledger, not from a probe: Ari (team sender) asked
@@ -478,11 +517,25 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
 - **🔴 NEW client-facing defects, found by probing the REAL prod path (not in the spec's C-matrix)**:
   a synthetic client question through `POST /api/agentic-rag/query` (`channel=whatsapp`) returned,
   verbatim, to a _client-role_ caller:
-  - **C17 — Path B ships the RAW answer.** `wa_inbox_bot.generate_bot_reply` applies ONLY
-    `answer.replace("[ESCALATE]","")`. `channels/format.py::format_rich_text` (which does
-    `_strip_markdown` + channel handling, and is fully tested) has **ZERO non-test callers in the
-    whole codebase** — dead code. So `###` headings, `**bold**` and `[1, 5]` citation markers reach
-    WhatsApp raw. Purest Pattern-A instance found so far.
+  - **C17 — CLOSED, and this entry was STALE for days (corrected 2026-08-10 by re-reading the
+    file, not the corner).** It used to say `format_rich_text` has "ZERO non-test callers in the
+    whole codebase — dead code", so `###`/`**bold**`/`[1, 5]` reach WhatsApp raw. **Both halves are
+    now false.** `wa_inbox_bot.py:46` imports it and `:389` calls `format_rich_text(answer,
+"whatsapp")`, right after `_strip_kg_workflow_scaffold`, each with its own empty-result raise.
+    And `_BARE_CITATION_RE` (`channels/format.py:88`) is the CURED, anchored version — it only
+    matches a citation marker in TRAILING position (`(?=[.!?]?\s*(?:\n|\Z))`), which is precisely
+    the fix for the near-miss recorded two bullets below (`Perpres 10/2021 Pasal 6 [1] dan [3]`
+    must survive). Somebody wired it and nobody updated this line.
+    **The trap this cost, and it is the reusable part:** a 2026-08-10 probe battery fired 12
+    questions at `POST /api/agentic-rag/query` and scored `md_leak 10/12`, `kg_scaffold 8/12` —
+    then read those as client-facing. They are not. **That endpoint is upstream of the channel
+    boundary**; the WhatsApp client sees the output of `generate_bot_reply`, which strips both.
+    Measuring the ENDPOINT and reporting it as the CLIENT SURFACE is the same error as measuring a
+    merge and reporting it as live. Any future battery must re-render through
+    `_strip_kg_workflow_scaffold` + `format_rich_text(…, "whatsapp")` before scoring anything
+    presentational — and must therefore keep the FULL answer text, not a truncated head.
+    ⚠️ Still TRUE for OTHER consumers: `apps/mouth` (web chat) calls the same endpoint and has no
+    strip (see C18 / task #25) — the leak is real there, just not on WhatsApp.
   - **C18 — internal scaffolding delivered to clients.** The KG block appended by
     `orchestrator_core.py:~816` — `## SUGGESTED WORKFLOW (from visa_subgraph, confidence: 78%)`,
     `**Confidence**: medium — 3 source(s), relationship strength 90%`, `IMPORTANT: ... verify with
