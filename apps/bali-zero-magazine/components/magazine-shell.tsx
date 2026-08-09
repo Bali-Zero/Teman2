@@ -35,7 +35,7 @@ export function MagazineShell({
       <main id="magazine-content">{children}</main>
       <footer className="magazine-footer">
         <span>Bali Zero Magazine</span>
-        <span>Workspace edition · verified intelligence only</span>
+        <span>Public edition · verified intelligence only</span>
       </footer>
     </>
   );

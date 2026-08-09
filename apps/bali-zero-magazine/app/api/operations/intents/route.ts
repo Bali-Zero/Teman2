@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    await authorizeOperationsRequest(request, "magazine:read");
+    await authorizeOperationsRequest(request, "internal:read");
     const db = getMagazineBindings().DB;
     if (db === undefined) throw new Error("database binding is required");
     const repository = createOperationsRepository(db);

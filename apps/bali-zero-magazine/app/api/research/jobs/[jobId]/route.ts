@@ -24,7 +24,7 @@ export async function GET(
   context: Context,
 ): Promise<Response> {
   try {
-    await authorizeResearchRequest(request, "magazine:read");
+    await authorizeResearchRequest(request, "internal:read");
     const db = getMagazineBindings().DB;
     if (db === undefined) throw new Error("database binding is required");
     const job = await createResearchRepository(db).getJob(
