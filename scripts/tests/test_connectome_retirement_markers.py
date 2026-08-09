@@ -167,3 +167,123 @@ def test_a_missing_live_directory_does_not_crash_and_still_reads_the_repo(dirs, 
     monkeypatch.setattr(vc, "LAUNCHAGENTS_DIR", Path("/nonexistent/LaunchAgents"))
     (repo / "com.x.job.plist.retired").write_text("<plist/>")
     assert vc.plist_intentionally_disabled("com.x.job") == "com.x.job.plist.retired"
+
+
+# ── the SECOND idiom: retirement declared by moving the plist into a dated dir ──
+#
+# Found by PROVE-LIVE of the suffix cure above, hours after it merged. PR #3891
+# retired `com.balizero.nextdns-tamper-detect.weekly` with "bootout + plist moved
+# to `.retired-2026-08-09/`" — the file keeps its exact name, so the suffix glob
+# is structurally blind to it and that label was left as the one remaining
+# REGRESSED on Pro. Curing one idiom of two does not halve the false alarms; it
+# only changes WHICH deliberate retirement gets mistaken for a silent death (W107).
+
+def test_a_plist_moved_into_a_retirement_directory_is_a_declaration(dirs):
+    """The live nextdns case: same filename, one level down, dir name declares it."""
+    live, _ = dirs
+    retired = live / ".retired-2026-08-09"
+    retired.mkdir()
+    (retired / "com.x.job.plist").write_text("<plist/>")
+    assert (
+        vc.plist_intentionally_disabled("com.x.job")
+        == ".retired-2026-08-09/com.x.job.plist"
+    )
+
+
+def test_a_retirement_directory_in_the_repo_counts_too(dirs):
+    """Symmetry with the suffix idiom: either place may hold the declaration."""
+    _, repo = dirs
+    retired = repo / "retired-2026-07-14"
+    retired.mkdir()
+    (retired / "com.x.job.plist").write_text("<plist/>")
+    assert (
+        vc.plist_intentionally_disabled("com.x.job")
+        == "retired-2026-07-14/com.x.job.plist"
+    )
+
+
+def test_the_real_nextdns_shape_with_a_backup_beside_it_resolves(dirs):
+    """Verbatim from Pro: the retirement dir holds the plist AND a TCC-era backup.
+
+    The exact-name file is the declaration; the `bak-*` beside it must not
+    distract the resolution into returning None.
+    """
+    live, _ = dirs
+    retired = live / ".retired-2026-08-09"
+    retired.mkdir()
+    (retired / "com.x.job.plist").write_text("<plist/>")
+    (retired / "com.x.job.plist.bak-tcc-20260716").write_text("<plist/>")
+    assert (
+        vc.plist_intentionally_disabled("com.x.job")
+        == ".retired-2026-08-09/com.x.job.plist"
+    )
+
+
+def test_an_active_plist_beats_a_copy_sitting_in_a_retirement_directory(dirs):
+    """Guilt, unchanged by the new idiom: a loaded-but-dead job still REGRESSES.
+
+    Someone archiving a copy must never silence the live label — this is the one
+    promise the whole function makes (W94).
+    """
+    live, _ = dirs
+    (live / "com.x.job.plist").write_text("<plist/>")
+    retired = live / ".retired-2026-08-09"
+    retired.mkdir()
+    (retired / "com.x.job.plist").write_text("<plist/>")
+    assert vc.plist_intentionally_disabled("com.x.job") is None
+
+
+@pytest.mark.parametrize("dirname", ["wrappers", "templates", "bin", "com.x.job"])
+def test_an_ordinary_subdirectory_is_not_a_retirement(dirs, dirname):
+    """`infra/launchagents/wrappers/` is REAL and must never read as a firebreak.
+
+    The directory NAME is judged by the marker vocabulary, exactly as a suffix is —
+    not the path, and not the mere fact of being nested (W105: the entity, not the
+    form). `com.x.job` as a directory name is included because a directory named
+    after the label is the most tempting thing to mistake for a declaration.
+    """
+    live, _ = dirs
+    sub = live / dirname
+    sub.mkdir()
+    (sub / "com.x.job.plist").write_text("<plist/>")
+    assert vc.plist_intentionally_disabled("com.x.job") is None
+
+
+def test_a_retirement_directory_does_not_excuse_a_neighbouring_label(dirs):
+    """The dir declares a retirement for what is IN it, not for everything."""
+    live, _ = dirs
+    retired = live / ".retired-2026-08-09"
+    retired.mkdir()
+    (retired / "com.x.job2.plist").write_text("<plist/>")
+    assert vc.plist_intentionally_disabled("com.x.job") is None
+
+
+def test_declared_limit_only_one_level_deep(dirs):
+    """DECLARED, not accidental: nesting deeper than one level is not searched.
+
+    Every retirement idiom measured on this fleet is exactly one level down, and a
+    recursive walk of `~/Library/LaunchAgents` would be both a cost and a surprise.
+    If a third idiom ever buries a plist deeper, this test is where it should be
+    changed on purpose rather than discovered as a silent miss.
+    """
+    live, _ = dirs
+    deep = live / ".retired-2026-08-09" / "older"
+    deep.mkdir(parents=True)
+    (deep / "com.x.job.plist").write_text("<plist/>")
+    assert vc.plist_intentionally_disabled("com.x.job") is None
+
+
+def test_declared_limit_a_bare_backup_inside_a_retirement_directory_still_reads_unknown(
+    dirs,
+):
+    """DECLARED: the dir name alone does not upgrade a `bak-*` into a declaration.
+
+    Consistent with `test_a_backup_is_not_a_retirement` above — a backup is
+    ambiguous wherever it sits, and the cure for these is to declare the
+    retirement, never to widen the predicate.
+    """
+    live, _ = dirs
+    retired = live / ".retired-2026-08-09"
+    retired.mkdir()
+    (retired / "com.x.job.plist.bak-tcc-20260716").write_text("<plist/>")
+    assert vc.plist_intentionally_disabled("com.x.job") is None
