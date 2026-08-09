@@ -49,13 +49,13 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
     fast path.
   - **🔴 The KG scaffold carries a SUPERSEDED CAPITAL FIGURE.** `#7` (asked for the chart of
     accounts) answered with `## SUGGESTED WORKFLOW (from company_subgraph, confidence: 67%)` whose
-    step 2 is **"Prepare minimum capital: Rp 10,000,000,000"**. Paid-up for a PT PMA is **2.5
-    billion** since BKPM 5/2025 (memory `fact_bkpm_5_2025_paidup_capital_2_5_mld_2026_07_16`; the
-    `>10bn` rule survives only per-KBLI-per-location). WhatsApp strips the scaffold, so this is a
-    **web-chat** exposure — and it is a wrong legal number, not cosmetic noise. Do NOT cure it with
-    a blind sweep on the string "10 miliar" (see #3720). _(This sentence is backticked on purpose:
-    unbackticked, a line beginning `>10bn` is read by Prettier as a blockquote and rewritten to
-    `> 10bn`, turning a legal threshold into a quotation — W112, caught here in the act.)_
+    step 2 is **"Prepare minimum capital: Rp 10,000,000,000"**. Under BKPM 5/2025, minimum issued
+    and paid-up capital is **Rp 2.5 billion per PT PMA**, unless another law provides otherwise.
+    The separate total-investment threshold above Rp 10 billion generally excludes land and
+    buildings and applies per 5-digit KBLI per project location; express sector and project
+    exceptions change the aggregation unit or the land-and-building treatment. WhatsApp strips
+    the scaffold, so this is a **web-chat** exposure — and it is a wrong legal number, not
+    cosmetic noise. Do NOT cure it with a blind sweep on the string "10 miliar" (see #3720).
   - **⏱️ Median 74.6s, max 113.2s.** Up again from the ~35s the 2026-07-18 campaign left and worse
     than the two-point 57/73s reading of 2026-07-30. n=12 on a cold-ish path, stated as such.
   - `model` came back `None` on all twelve — the response does not carry the model on this route,
