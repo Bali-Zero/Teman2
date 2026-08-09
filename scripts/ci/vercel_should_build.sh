@@ -72,6 +72,7 @@ REF="${VERCEL_GIT_COMMIT_REF:-}"
 BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 
 log() { printf 'should-build: %s\n' "$1" >&2; }
+one_line() { printf '%s' "$1" | tr '\n' ' ' | cut -c1-200; }
 
 if [ -z "$BASE" ]; then
   # No previous deployment on this ref — this is the case that matters. Measured on the real
@@ -117,19 +118,42 @@ if [ -z "$BASE" ]; then
   fi
 
   # (3) Only now pay for the network — and keep the error, which is the whole point.
+  #
+  # The named remote is tried first, but it is NOT how this resolves on Vercel: measured live
+  # on 2026-08-10 (deployment C1BqEsSc…, branch agent/air-m5/ops/tg-senders-batch2), the build
+  # container's clone has no usable `origin` at all —
+  #     fatal: 'origin' does not appear to be a git repository
+  # — so every first deployment fell through to fail-open and bought a full 1,755-page build:
+  # the exact 89%-of-waste case this block exists to close, inert for a second reason after
+  # the 2026-07-30 rework fixed the first. The cure is to fetch the production branch straight
+  # from the repository URL that Vercel itself advertises in the build env
+  # (VERCEL_GIT_REPO_OWNER/SLUG; the repo is public, an anonymous fetch suffices).
+  # SHOULD_BUILD_FETCH_URL overrides the constructed URL — test seam and emergency lever.
+  # Every failure still exits 1 (BUILD), with each attempt's actual error named.
   if [ -z "$BASE" ]; then
+    fetched=
     if fetch_err=$(git fetch --no-tags --depth=200 origin "$PROD_BRANCH" 2>&1); then
-      if BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null) && [ -n "$BASE" ]; then
-        log "fetched $PROD_BRANCH -> merge-base ${BASE:0:9}"
-      else
-        BASE=
-        log "fetched $PROD_BRANCH but no merge-base (shallow clone?) -> BUILD (fail-open)"
+      fetched=origin
+    else
+      FETCH_URL="${SHOULD_BUILD_FETCH_URL:-}"
+      if [ -z "$FETCH_URL" ] && [ -n "${VERCEL_GIT_REPO_OWNER:-}" ] && [ -n "${VERCEL_GIT_REPO_SLUG:-}" ]; then
+        FETCH_URL="https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git"
+      fi
+      if [ -z "$FETCH_URL" ]; then
+        log "cannot fetch $PROD_BRANCH (no origin, no repo env to build a URL) -> BUILD (fail-open). git said: $(one_line "$fetch_err")"
         exit 1
       fi
+      if url_err=$(git fetch --no-tags --depth=200 "$FETCH_URL" "$PROD_BRANCH" 2>&1); then
+        fetched=$FETCH_URL
+      else
+        log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin: $(one_line "$fetch_err") | url: $(one_line "$url_err")"
+        exit 1
+      fi
+    fi
+    if BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null) && [ -n "$BASE" ]; then
+      log "fetched $PROD_BRANCH from $fetched -> merge-base ${BASE:0:9}"
     else
-      # One line, truncated: enough to diagnose auth vs network vs missing remote, without
-      # dumping a wall of git output into every build log.
-      log "cannot fetch $PROD_BRANCH -> BUILD (fail-open). git said: $(printf '%s' "$fetch_err" | tr '\n' ' ' | cut -c1-200)"
+      log "fetched $PROD_BRANCH from $fetched but no merge-base (shallow clone?) -> BUILD (fail-open)"
       exit 1
     fi
   fi
