@@ -86,6 +86,114 @@ concurrency:
   cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
+  changes:
+    name: Change map (shadow)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      map: ${{ steps.classify.outputs.map }}
+      run_all: ${{ steps.classify.outputs.run_all || 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Shadow only: a corpus failure is recorded as run_all=true and does not
+      # alter any live job. This becomes enforcing only in a later PR after the
+      # 20-30 PR observation window has proved guilt and innocence live.
+      - name: Verify change-map guilt and innocence corpus
+        id: classifier-tests
+        continue-on-error: true
+        run: python3 scripts/ci/test_change_map.py
+
+      - name: Enumerate and classify this PR's files
+        id: classify
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+        run: |
+          set -uo pipefail
+          CHANGED_FILE="$RUNNER_TEMP/change-map-changed-files.txt"
+
+          if [ "$CLASSIFIER_TEST_OUTCOME" != "success" ]; then
+            echo "::warning::change-map corpus failed; shadow recommendation defaults to all jobs"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          elif ! bash scripts/ci/hotzone_changed_files.sh \
+            "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" > "$CHANGED_FILE"; then
+            echo "::warning::changed-file enumeration failed; shadow recommendation defaults to all jobs"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          fi
+
+          MAP_JSON="$(python3 scripts/ci/change_map.py < "$CHANGED_FILE")"
+          RUN_ALL="$(MAP_JSON="$MAP_JSON" python3 -c 'import json, os; print(str(json.loads(os.environ["MAP_JSON"])["run_all"]).lower())')"
+          echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
+          echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+          echo "::notice::change-map shadow: $MAP_JSON"
+
+      - name: Publish shadow recommendation
+        if: always()
+        env:
+          MAP_JSON: ${{ steps.classify.outputs.map }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+          CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          raw = os.environ.get("MAP_JSON", "")
+          if raw:
+              result = json.loads(raw)
+          else:
+              result = {
+                  "reason": "classifier_runtime_failure",
+                  "run_all": True,
+                  "suggested_jobs": [
+                      "backend-tests",
+                      "mcp-tests",
+                      "evaluator-critical-tests",
+                      "frontend-tests",
+                      "packages-core-tests",
+                      "e2e-tests",
+                  ],
+                  "would_skip": [],
+                  "unknown_paths": [],
+              }
+
+          lines = [
+              "## Change map — shadow only",
+              "",
+              f"- Classifier corpus: `{os.environ['CLASSIFIER_TEST_OUTCOME']}`",
+              f"- Classification step: `{os.environ['CLASSIFY_OUTCOME']}`",
+              f"- Conservative fallback: `{str(result['run_all']).lower()}`",
+              f"- Reason: `{result['reason']}`",
+              f"- Would run: `{', '.join(result['suggested_jobs']) or 'none'}`",
+              f"- Would skip: `{', '.join(result['would_skip']) or 'none'}`",
+          ]
+          if result.get("unknown_paths"):
+              lines.extend(
+                  ["", "Unclassified paths (therefore all jobs):", ""]
+                  + [f"- `{path}`" for path in result["unknown_paths"]]
+              )
+          lines.extend(
+              [
+                  "",
+                  "No job was skipped. These recommendations are logs for the 20-30 PR observation window.",
+              ]
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n".join(lines) + "\n")
+          PY
+
   backend-tests:
     name: Backend Tests (Python)
     runs-on: ubuntu-latest
