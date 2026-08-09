@@ -62,7 +62,9 @@ RECALL_TRIGGERS = [
 # is routed down the Indonesian branch and therefore receives NO language
 # instruction at all — one of the two paths to the observed reply-language drift.
 INDONESIAN_MARKERS = [
-    "ada",
+    # "ada" is deliberately absent: Ada is also a proper name. One ambiguous
+    # token must not route an otherwise-English client question to Indonesian;
+    # genuine Indonesian sentences containing "ada" carry another marker.
     "aku",
     "anda",
     "apa",
@@ -153,13 +155,13 @@ INDONESIAN_MARKER_RE = _whole_word_matcher(INDONESIAN_MARKERS, _INDONESIAN_ENCLI
 # Whole-word matching alone is not enough here, because two markers are also
 # ordinary ENGLISH words: Italian "come" and French "comment". A single one of
 # those is a coincidence, not a language — so they are HOMOGRAPHS and never
-# decide on their own; they only reinforce a language already named by a
-# decisive marker. To keep the recall that "come"/"comment" used to carry
+# decide on their own; they add one signal only after a decisive marker names
+# the same language. To keep the recall that "come"/"comment" used to carry
 # ("come funziona…", "comment ça marche"), the decisive lists are widened with
 # the function words a real question in that language brings along.
 #
-# Order is preserved from the original (Italian → French → Spanish → German) so
-# that a query these lists genuinely disagree on resolves as it did before.
+# Order is preserved from the original (Italian → French → Spanish → German) as
+# the tie-break after signal counting, so equal evidence resolves as before.
 _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
     (
         "ITALIAN",
@@ -169,16 +171,55 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
         # "una" is deliberately absent: it is Italian AND Spanish, and Italian is
         # tested first, so it would answer a Spanish question in Italian. A marker
         # shared by two candidate languages decides neither.
-        ["ciao", "cosa", "voglio", "posso", "grazie", "perché", "quanto", "quale",
-         "quali", "sono", "della", "vorrei", "devo", "per favore", "il",
-         "che", "anche", "gli", "funziona", "essere"],
+        # "il" is deliberately absent too: it is an Italian article and a French
+        # pronoun, so it cannot be decisive before the French signal check.
+        [
+            "ciao",
+            "cosa",
+            "voglio",
+            "posso",
+            "grazie",
+            "perché",
+            "quanto",
+            "quale",
+            "quali",
+            "sono",
+            "della",
+            "vorrei",
+            "devo",
+            "per favore",
+            "che",
+            "anche",
+            "gli",
+            "funziona",
+            "essere",
+            "ottenere",
+        ],
         ["come"],  # homograph: English "come"
     ),
     (
         "FRENCH",
-        ["bonjour", "pourquoi", "merci", "s'il vous", "combien", "quel", "quelle",
-         "est-ce", "vous", "je", "ça", "c'est", "votre", "nous", "faut", "avec",
-         "dans", "être"],
+        [
+            "bonjour",
+            "pourquoi",
+            "merci",
+            "s'il vous",
+            "combien",
+            "quel",
+            "quelle",
+            "est-ce",
+            "vous",
+            "je",
+            "ça",
+            "c'est",
+            "votre",
+            "nous",
+            "faut",
+            "avec",
+            "dans",
+            "être",
+            "obtenir",
+        ],
         ["comment"],  # homograph: English "comment"
     ),
     ("SPANISH", ["hola", "cómo", "como estas", "gracias", "por qué"], []),
@@ -198,6 +239,21 @@ GERMAN_MARKER_RE = _BY_LANGUAGE["GERMAN"]
 LATIN_HOMOGRAPHS: dict[str, list[str]] = {
     language: homographs for language, _decisive, homographs in _LATIN_MARKERS if homographs
 }
+LATIN_HOMOGRAPH_RES: dict[str, re.Pattern[str]] = {
+    language: _whole_word_matcher(homographs) for language, homographs in LATIN_HOMOGRAPHS.items()
+}
+
+
+def _latin_marker_score(query: str, language: str) -> int:
+    """Count distinct decisive signals, then one supported homograph signal."""
+    decisive_matches = {match.group(0) for match in _BY_LANGUAGE[language].finditer(query)}
+    if not decisive_matches:
+        return 0
+
+    homograph_re = LATIN_HOMOGRAPH_RES.get(language)
+    homograph_bonus = int(homograph_re is not None and homograph_re.search(query) is not None)
+    return len(decisive_matches) + homograph_bonus
+
 
 # Model Tiers
 TIER_FLASH = 0
@@ -242,6 +298,8 @@ def detect_query_language(query: str) -> str:
         return "RUSSIAN"
 
     # Latin-script markers, WHOLE WORDS only — see _LATIN_MARKERS for why.
+    # Compare evidence before applying the historical order: otherwise one weak
+    # early marker can mask several later signals from the actual language.
     #
     # Written as literal returns on purpose, NOT as a loop over LATIN_MARKER_RES:
     # `test_reasoning_stubs_language_coverage` derives the set of languages this
@@ -249,16 +307,24 @@ def detect_query_language(query: str) -> str:
     # a new language cannot be added without either a translated stub or an
     # explicit declaration. A loop returning a variable makes those four
     # languages invisible to that guard — and it passes, quietly covering less.
-    if ITALIAN_MARKER_RE.search(query_lower):
+    latin_scores = {
+        "ITALIAN": _latin_marker_score(query_lower, "ITALIAN"),
+        "FRENCH": _latin_marker_score(query_lower, "FRENCH"),
+        "SPANISH": _latin_marker_score(query_lower, "SPANISH"),
+        "GERMAN": _latin_marker_score(query_lower, "GERMAN"),
+    }
+    best_latin_score = max(latin_scores.values())
+
+    if best_latin_score and latin_scores["ITALIAN"] == best_latin_score:
         return "ITALIAN"
 
-    if FRENCH_MARKER_RE.search(query_lower):
+    if best_latin_score and latin_scores["FRENCH"] == best_latin_score:
         return "FRENCH"
 
-    if SPANISH_MARKER_RE.search(query_lower):
+    if best_latin_score and latin_scores["SPANISH"] == best_latin_score:
         return "SPANISH"
 
-    if GERMAN_MARKER_RE.search(query_lower):
+    if best_latin_score and latin_scores["GERMAN"] == best_latin_score:
         return "GERMAN"
 
     return "ENGLISH"  # Default to English
