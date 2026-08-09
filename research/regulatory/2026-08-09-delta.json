@@ -1,0 +1,127 @@
+{
+  "run_at": "2026-08-09T07:31:10+08:00",
+  "today": "2026-08-09",
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "In-window headlines included \"Di Tengah Urgensi Revisi UU Hak Cipta, Seniman Didorong Proaktif dalam Negosiasi\" (8 Agustus 2026) and \"Menaker Targetkan RUU Ketenagakerjaan Rampung Oktober 2026, Usung Hubungan Industrial Berbasis Kemitraan\" (8 Agt 2026); no published instrument of an allowed type was shown."
+    },
+    {
+      "url": "https://ortax.org/berita/",
+      "reason": "checked_no_new",
+      "note": "Newest visible items were dated 07 Agustus 2026, including \"Percepat Transformasi Danantara, Pemerintah Bebaskan Pajak Konsolidasi BUMN Selama Tiga Tahun\"; no newly published instrument of an allowed type was shown."
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "In-window regulation citation was \"PMK 37/2025\" in \"DJP: Penundaan Pajak Marketplace Tak Ubah Substansi Kebijakan\"; it is not a newly published instrument. \"PMK 60/2026\" was dated 07 Agu 2026 coverage but is already in seen_citations and was promulgated 31 Jul 2026."
+    },
+    {
+      "url": "https://muc.co.id/id/article",
+      "reason": "outside_window",
+      "note": "Newest visible article was \"Patriot Bond Bebas Pidana Pajak, Apakah Kuponnya Juga Bebas Pajak?\" dated July 28, 2026."
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "Visible items dated 07/08/2026 included \"DJP dan BPOM Integrasikan Coretax, UMKM Kini Lebih Mudah Akses Layanan Publik\" and \"Coretax DJP Downtime 24 Jam Mulai Sabtu Pukul 18.00 WIB\"; no published instrument of an allowed type was shown."
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/dokumen/peraturan",
+      "reason": "checked_no_new",
+      "note": "The visible 2026 ministerial entries were Peraturan Menteri Hukum, including \"Peraturan Menteri Hukum Nomor 10 Tahun 2026 tentang Penerapan Prinsip mengenali Pengguna Jasa bagi Notaris\"; no new Permenkumham in the window was shown."
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/",
+      "reason": "outside_window",
+      "note": "Newest visible PMK entries were PMK 61 TAHUN 2026, PMK 60 TAHUN 2026, PMK 56 TAHUN 2026, and PMK 54 TAHUN 2026, all dated 31 Jul 2026."
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan?sort=terbaru",
+      "reason": "outside_window",
+      "note": "Newest dated visible item was Surat Edaran Menteri Ketenagakerjaan Nomor M/7/HK.04/VII/2026, ditetapkan 29 Juli 2026; newest visible Permenaker was Peraturan Menteri Ketenagakerjaan Nomor 11 Tahun 2026, diundangkan 03 Juli 2026."
+    },
+    {
+      "url": "https://peraturan.go.id/",
+      "reason": "outside_window",
+      "note": "Rendered with a Mozilla browser user agent. Latest visible central, ministerial, and agency entries were no newer than 31 Juli 2026; the newest visible allowed-type entries were Peraturan Menteri Keuangan Nomor 60 Tahun 2026 and Peraturan Menteri Keuangan Nomor 61 Tahun 2026, both diundangkan 31 Juli 2026."
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest visible listing was PER-8/PJ/2026 dated 2026-07-28."
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistem administrasi perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025 from NPPN to PPh Final UMKM 0.5%)",
+    "22/MK/EF.2/2026 (nilai kurs — routine, low relevance for Bali Zero service lines)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh s.t.d.d UU HPP (PT dan CV tarif PPh 11% via Pasal 31E(1), June 13 2026)",
+    "KBLI 2025 (implementasi AHU Online dan OSS, effettivo 15 Juni 2026)",
+    "PER-19/PJ/2025",
+    "PMK 6/2026",
+    "PP 21/2026",
+    "PP 24/2026",
+    "PP 20/2026 (suket transitional — Suket PPh Final lama tetap berlaku)",
+    "PER-7/PJ/2025",
+    "PMK 24/2026",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV non penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025)",
+    "22/MK/EF.2/2026 (routine kurs)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh (PT dan CV tarif PPh 11%, June 13 2026)",
+    "PER-11/PJ/2025",
+    "Permendag 19/2026",
+    "UU 4/2026",
+    "PMK 43/2026",
+    "PMK 37/2025",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026",
+    "PMK Nomor 44 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PP 30/2026",
+    "SE-9/PJ/2026",
+    "PMK 49/2026",
+    "PMK Nomor 60 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026"
+  ]
+}
