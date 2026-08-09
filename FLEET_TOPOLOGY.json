@@ -90,7 +90,7 @@
     "codex": {
       "entry": "codex",
       "reads": ["codex.md", "AGENTS.md"],
-      "models": ["gpt-5.6-sol", "terra", "luna"],
+      "models_note": "slugs dead 2026-07-21 — the account's default model carries the seat; do not pass -m until a probe proves slugs live",
       "sandbox": "read-only|workspace-write ONLY"
     },
     "agy": {
@@ -181,8 +181,8 @@
         },
         {
           "model": "glm-5.2",
-          "accounts": ["z.ai (claude-glm shim) while quota alive, then TP1"],
-          "note": "Zero's first-call ruling 2026-07-19 for compact reviews"
+          "accounts": ["TP1"],
+          "note": "primary door today: z.ai claude-glm shim while quota alive; TP1 after (see accounts.alibaba.slots.TP1). Zero's first-call ruling 2026-07-19 for compact reviews"
         },
         {
           "model": "kimi-k3",
@@ -239,17 +239,17 @@
     "batch_throughput": {
       "chain": [
         {
-          "model": "minimax-2.5",
-          "accounts": ["TP1"],
-          "note": "PROBATION until PROBE-4"
-        },
-        {
           "model": "claude-haiku-4-5",
           "accounts": ["A3"]
         },
         {
           "model": "local ollama (MODEL_TOPOLOGY)",
           "accounts": []
+        },
+        {
+          "model": "minimax-2.5",
+          "accounts": ["TP1"],
+          "note": "PROBATION; never load-bearing until promoted — may take first position after PROBE-4 promotion"
         }
       ],
       "on_exhaustion": "queue"
