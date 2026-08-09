@@ -561,3 +561,26 @@ surface (no flag, no settings key found in the installed package) — transcript
 remains harness state until the build exposes a control; Q3 metered-billing confirmation
 remains an operator item. Seat state after this loop: registered, keychain-armed, LIVE on
 M5 only, absent from REQUIRED_SEATS everywhere.
+
+**Round 2 — Claude focused re-review: REQUEST-CHANGES again** (record:
+`reviews/claude-re-review.md`). The four original findings CLOSED (verified via a
+PATH-shadowed argv stub — zero API cost), but: NEW-1 (P0) `qwen review run` defaults the
+CHILD to `--approval-mode=yolo` and the v2 strip deleted even safe `--approval-mode=plan`
+attempts → every wrapper-mediated review ran yolo (live violation of Fable Q2); the
+"no recording surface" claim was FALSE — `--chat-recording` exists on the review family
+(the v2 blind spot: only top-level `--help` was checked); NEW-2 `--yolo=*` unstripped;
+NEW-3 chmod skipped the refusal path.
+
+**Wrapper v3 fixes (verified this session with the same stub technique):**
+- 0600 re-assertion moved before every scan (fires on refusal paths too).
+- Strip extended to `--yolo=*`.
+- review family: after the strip, INJECT `--approval-mode=plan --chat-recording=false`
+  (both flags live-verified on `qwen review run --help`, qwen 0.21.7: approval-mode
+  choices plan|default|auto-edit|auto|yolo, default yolo — confirming the reviewer).
+  Stub proofs: bare `review run 123` → `[review run 123 --approval-mode=plan
+  --chat-recording=false]`; same with `--approval-mode=yolo --yolo=true --approval-mode
+  auto-edit` appended (all stripped); top-level `-p hi --yolo` → `[-p hi]` (no injection
+  where the flags do not exist — appending would break the invocation); `--comment`
+  refused before any exec.
+- Residual now scoped precisely: only TOP-LEVEL prompt-mode transcript retention lacks a
+  disable surface in this build; the sanctioned review lane is fully covered (Fable Q5).

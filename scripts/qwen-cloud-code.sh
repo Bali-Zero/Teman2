@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
 #
 # qwen-cloud-code — hardened dispatch wrapper for the qwen-cloud-code council/verify seat.
-# v2 (2026-08-09): Claude PR review (REQUEST-CHANGES, reviews/claude-pr-review.md)
-# live-proved three bypasses in v1 (bare --yolo, space-separated --approval-mode,
-# fictional auto_edit spelling) + the missing --comment block Fable's gate required,
-# and proved the 0600 mitigation on settings.json is not durable (bare qwen resets it).
+# v3 (2026-08-09): Claude focused re-review (REQUEST-CHANGES round 2) proved two defects
+# in v2: (NEW-1, P0) `qwen review run` defaults the CHILD to --approval-mode=yolo and the
+# v2 strip removed even safe --approval-mode=plan attempts, so every wrapper-mediated
+# review ran yolo — a live violation of Fable gate Q2; and the "no recording-disable
+# surface" claim was false — `--chat-recording` exists on the review command family
+# (verified live by the reviewer, qwen 0.21.7). v2 blind spot: only top-level `qwen --help`
+# had been checked.
 #
-# v2 design change: stop enumerating dangerous spellings (blocklist) — STRIP the whole
-# approval/yolo arg family from argv, refuse Legge-5 verbs and --comment outright, and
-# re-assert the 0600 mitigation on EVERY invocation. This build's top-level help exposes
-# no approval-mode/yolo/config-override flags (bundled docs are ahead of the binary), so
-# nothing legitimate is lost by stripping; if a future build re-adds them, we are defended.
-#
-# Known residual gap (documented, not faked): this build exposes NO chat-recording
-# disable surface (no flag, no settings key found in the installed package). Transcript
-# retention remains harness state; revisit when the build exposes a control.
+# v3 design:
+#   - 0600 re-assertion moved BEFORE every scan (refused paths re-assert too; NEW-3).
+#   - Legge-5 verb/flag refusal unchanged (submit/publish*/channel/serve, --comment).
+#   - Strip the whole approval/yolo arg family, INCLUDING --yolo=* (NEW-2).
+#   - review family: INJECT --approval-mode=plan --chat-recording=false after the strip
+#     (the child documents plan as the non-yolo mode; --chat-recording=false satisfies
+#     Fable Q5 for the wrapper's primary sanctioned lane).
+#   - non-review top-level invocations get no injected flags (the top-level help exposes
+#     neither flag; appending would break them). Their transcript retention remains
+#     harness state — the one declared residual, now scoped precisely.
 #
 set -euo pipefail
 
@@ -22,6 +26,9 @@ KEYCHAIN_SERVICE="qwen-cloud-code-token"
 SETTINGS="$HOME/.qwen/settings.json"
 
 die() { printf '❌ qwen-cloud-code: %s\n' "$*" >&2; exit 1; }
+
+# ---------------------------------------------------------------- 0. Durable perms re-assertion (first, so refused paths also re-assert)
+[ -f "$SETTINGS" ] && chmod 0600 "$SETTINGS" 2>/dev/null || true
 
 # ---------------------------------------------------------------- 1. Legge 5 verb/flag scan
 for arg in "$@"; do
@@ -33,21 +40,25 @@ for arg in "$@"; do
   esac
 done
 
-# ---------------------------------------------------------------- 2. Strip the approval/yolo arg family (never enumerate, never forward)
+# ---------------------------------------------------------------- 2. Strip approval/yolo family; detect the review family
 ARGS=()
 skip_next=0
+REVIEW_MODE=0
 for arg in "$@"; do
   if [ "$skip_next" = "1" ]; then skip_next=0; continue; fi
   case "$arg" in
-    --yolo|--approval-mode|--approval-mode=*)
+    review) REVIEW_MODE=1; ARGS+=("$arg"); continue ;;
+    --yolo|--yolo=*|--approval-mode|--approval-mode=*)
       [ "$arg" = "--approval-mode" ] && skip_next=1
       continue ;;
   esac
   ARGS+=("$arg")
 done
 
-# ---------------------------------------------------------------- 3. Durable perms re-assertion (bare qwen resets settings.json to 0644)
-[ -f "$SETTINGS" ] && chmod 0600 "$SETTINGS" 2>/dev/null || true
+# ---------------------------------------------------------------- 3. review family: force plan + recording-off
+if [ "$REVIEW_MODE" = "1" ]; then
+  ARGS+=("--approval-mode=plan" "--chat-recording=false")
+fi
 
 # ---------------------------------------------------------------- 4. Credential gate (Keychain only)
 if ! TOKEN="$(security find-generic-password -s "$KEYCHAIN_SERVICE" -w 2>/dev/null)"; then
