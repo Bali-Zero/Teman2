@@ -3,7 +3,7 @@ title: "THE FLEET ORDER — binding spec for the Nuzantara LLM fleet (conductor:
 date: 2026-08-10
 author: Fable 5 interactive session (M5) — conductor, per Zero's mandate 2026-08-10
 status: v1.3 — panel-amended (GLM 6 findings · Gemini 8 · Codex 12 · Kimi ABSENT quota-dead; panel = 3 external families, quorum met) + Zero account-estate resolution (3 MAX + 1 Team Premium, no A4) → landing PR
-adversarial_review: "3-family panel 2026-08-10 (GLM 5.2 refuter · Gemini agy constructive · Codex red-team); 26 findings, 24 accepted as inline amendments, dispositions in §10"
+adversarial_review: codex
 supersedes: nothing — CONSOLIDATES harness-v2-teman2-2026-08-09.md + FLOTTA-LLM-ruoli-categorici + quattro-gruppi-e-continuita + FLEET_TOPOLOGY v1.1, and CORRECTS them against repo ground truth verified on disk 2026-08-10
 ratification: Zero ratified the harness/roster/continuity design 2026-08-09 and delegated this spec's authority 2026-08-10 ("hai potere di scrivere la tua spec per questo nuovo ORDINE")
 landing_path: research/operations/2026-08-10-fleet-order-spec.md
@@ -357,6 +357,8 @@ diffs route to Codex/Gemini; activity 2 and activity 3 are mutually exclusive pe
   before.
 
 # 10. Panel record (2026-08-10)
+
+## Adversarial review
 
 Seats dispatched: GLM 5.2 (z.ai, first-call refuter — drain activity #1) · Gemini via agy
 (constructive) · Codex default-model high effort (red team) · Kimi K3 (falsifier — **ABSENT**:

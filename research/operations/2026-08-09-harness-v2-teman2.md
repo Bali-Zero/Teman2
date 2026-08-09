@@ -1,6 +1,6 @@
 ---
 date: 2026-08-09
-adversarial_review: "3-family panel ran on the superseding fleet-order spec 2026-08-10; this is the ratified base it amends"
+adversarial_review: codex
 ---
 
 # Harness Operativo v2 — Nuzantara / Teman2
@@ -8,6 +8,10 @@ adversarial_review: "3-family panel ran on the superseding fleet-order spec 2026
 > Data: 2026-08-09 · Origine: piano ChatGPT (v1) + reasoning Fable-5 su costituzione repo
 > Stato: RATIFIED by Zero 2026-08-09; amended and superseded-where-conflicting by 2026-08-10-fleet-order-spec.md (see its §0 Precedence)
 > Tesi: **il potere non sta nella collezione di famiglie, ma in indipendenza + receipts + enforcement.**
+
+## Adversarial review
+
+Codex participated in the three-family panel run on the superseding Fleet Order spec on 2026-08-10; this document is the ratified base that spec amends.
 
 ---
 
