@@ -214,3 +214,60 @@ def test_mutation_proof_removing_the_machine_check_makes_pro_wrongly_overridden(
     assert mutated_hint != STATIC_GIT_FIX_HINT  # the mutant IS wrong on pro
     cured_hint = prop._git_alignment_remedy(GIT_ALIGNMENT_ENTRY, "pro", BEHIND_120_DIRTY_20_LEDGER_STALE)
     assert cured_hint == STATIC_GIT_FIX_HINT  # the real code stays correct
+
+
+# --- 2026-08-08: the remedy must name an action a session can actually run ---
+#
+# The by-design half was already right: it stops telling m5 to pull. What it
+# then prescribed — restoring the ledger file from origin/main IN the main
+# checkout — is refused by worktree_isolation.py for every agent session, and
+# the only documented way past it disarms the guard wholesale. With no operator
+# lane, that named a lane that does not exist, which is how a reader learns to
+# skip this probe. #3824 shipped the read-only path (`--ref`); these pin the
+# remedy to it.
+
+
+def _stale_ledger_remedy() -> str:
+    """The shape that actually occurs on m5: behind AND ledger stale."""
+    return prop._git_alignment_remedy(
+        GIT_ALIGNMENT_ENTRY, "m5", BEHIND_120_DIRTY_20_LEDGER_STALE
+    )
+
+
+def test_guilt_remedy_prescribes_no_mutating_git_in_the_main_checkout() -> None:
+    """The finding itself: a remedy only a nonexistent lane could carry out.
+
+    Asserted per verb rather than on one phrase — every one of these aimed at
+    the main checkout is refused by the isolation hook, so naming any of them
+    is the same defect wearing a different word.
+    """
+    remedy = _stale_ledger_remedy()
+    for mutating in ("git checkout", "git pull", "git reset", "git restore", "git fetch"):
+        assert mutating not in remedy, f"remedy prescribes {mutating!r}: {remedy}"
+
+
+def test_guilt_remedy_names_the_read_only_path_that_exists() -> None:
+    """Deleting bad advice is half a cure — the reader still needs a way to the truth."""
+    remedy = _stale_ledger_remedy()
+    assert "--ref origin/main" in remedy
+    assert "pending_arms_report.py" in remedy
+
+
+def test_innocence_remedy_still_names_the_ledger_and_still_forbids_the_pull() -> None:
+    """What the previous corpus established must survive this cure.
+
+    A fix that quietly drops an earlier guarantee is a regression the new
+    assertions, on their own, would never notice.
+    """
+    remedy = _stale_ledger_remedy()
+    assert ".claude/skills/modus/PENDING-ARMS.md" in remedy
+    assert "do NOT pull it" in remedy
+
+
+@pytest.mark.parametrize("machine", ["pro", "mini-pro2"])
+def test_innocence_non_m5_remedy_untouched_by_this_change(machine: str) -> None:
+    """pro/mini DO auto-pull; their static advice is correct and must not move."""
+    assert (
+        prop._git_alignment_remedy(GIT_ALIGNMENT_ENTRY, machine, BEHIND_120_DIRTY_20_LEDGER_STALE)
+        == STATIC_GIT_FIX_HINT
+    )

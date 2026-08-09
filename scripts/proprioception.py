@@ -66,6 +66,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "wrapper<->payload",        # exit code vs log content (W84/#2)
     "produced<->promoted",      # artifacts stranded on the producing side
     "guardian<->cadence",       # stale guardians (guardian-of-guardians)
+    "executed<->committed",     # the code a probe RUNS vs origin/main's (2026-08-08)
     "canon<->installed",        # repo launchagent canon vs ~/Library vs launchctl (#1926)
     "organ<->heartbeat",        # declared organs vs sidecar liveness
     "code<->docs",              # W86
@@ -175,6 +176,105 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
 # static fix_hint for anything else.
 
 _BEHIND_RE = re.compile(r"main checkout: (-?\d+) behind origin/main")
+_SELF_STALE_RE = re.compile(r"^SELF STALE: ")
+
+
+CURRENT, STALE, AHEAD, EDITED, UNVERIFIABLE = "current", "stale", "ahead", "edited", "unverifiable"
+
+
+def _version_vs_main(root: Path, rel: str, actual_sha: str) -> tuple[str, str]:
+    """Attribute ONE tracked path: is the version actually in play behind origin/main?
+
+    Returns (state, detail). For CURRENT and STALE, detail is origin/main's blob sha;
+    otherwise it is the sentence explaining why no direction could be assigned. One
+    engine, two callers — `_self_code_staleness` (whose `actual_sha` is the bytes this
+    process loaded) and `probe_executed_code_currency` (whose `actual_sha` is the file on
+    disk, because that is what the wrap will execute). A second hand-written copy is how
+    twins drift apart while both look cured (W106b, fourth layer).
+
+    DIFFERING IS NOT BEHIND — the whole lesson of W106b is that a comparison knows THAT
+    two copies differ and never WHICH is stale. STALE is returned only on positive
+    evidence, and the evidence is about THIS PATH, not about the branch: the bytes are
+    what HEAD holds, AND they are also what the merge-base held, so main is the only side
+    that moved. Everything git could not decide is UNVERIFIABLE, never a quiet pass.
+
+    Cost: one `rev-parse` when the path is current (the overwhelmingly common case), five
+    when it differs. Nothing here is cached across paths on purpose — a cache keyed by
+    root would answer for the HEAD it was filled at, which is the disease.
+    """
+    rc2, main_blob, _ = sh(["git", "rev-parse", f"origin/main:{rel}"], timeout=10, cwd=root)
+    if rc2 != 0 or not main_blob.strip():
+        return UNVERIFIABLE, (f"cannot compare {rel} against origin/main "
+                              f"(offline, or this path is new on this branch)")
+    if actual_sha == main_blob.strip():
+        return CURRENT, main_blob.strip()
+    rc3, head_blob, _ = sh(["git", "rev-parse", f"HEAD:{rel}"], timeout=10, cwd=root)
+    if rc3 != 0:
+        return UNVERIFIABLE, (f"{rel} is not readable at this HEAD (new, "
+                              f"untracked, or unborn HEAD) — direction cannot be attributed")
+    if head_blob.strip() != actual_sha:
+        return EDITED, (f"{rel} differs from origin/main because it has "
+                        f"UNCOMMITTED edits — it is being worked on, not left behind")
+    # Direction is a question about THIS PATH, and the obvious proxy for it — "is my
+    # branch an ancestor of origin/main" — answers a DIFFERENT one. A single local commit
+    # touching an unrelated file makes `merge-base --is-ancestor HEAD origin/main` say
+    # "no", and the old code read that as "ahead, not stale" and went silent, while the
+    # file actually in play was exactly the version main had replaced. That is a
+    # false-clean produced by the very confusion this probe exists to catch (W88: the
+    # proxy lies; #3: judge the entity, not the form). So ask git about the file:
+    # at the merge-base, was this path the bytes we are running?
+    rcs, shallow, _ = sh(["git", "rev-parse", "--is-shallow-repository"], timeout=10, cwd=root)
+    if rcs != 0:
+        # Not knowing whether the history is truncated is not the same as knowing it is
+        # whole. Reporting a determination we did not make is the calm liar (W84).
+        return UNVERIFIABLE, (f"{rel} differs from origin/main and git could not say "
+                              f"whether this clone is shallow (exit {rcs}) — direction unknown")
+    if shallow.strip() == "true":
+        return UNVERIFIABLE, (f"{rel} differs from origin/main and this "
+                              f"clone is SHALLOW, so history cannot be decided — direction unknown")
+    rcb, base, _ = sh(["git", "merge-base", "HEAD", "origin/main"], timeout=10, cwd=root)
+    if rcb != 0 or not base.strip():
+        return UNVERIFIABLE, (f"{rel} differs from origin/main but they share no "
+                              f"reachable merge-base (exit {rcb}) — direction unknown, not a verdict")
+    rc5, base_blob, _ = sh(["git", "rev-parse", f"{base.strip()}:{rel}"], timeout=10, cwd=root)
+    if rc5 != 0:
+        return UNVERIFIABLE, (f"{rel} differs from origin/main and did not exist at their "
+                              f"merge-base — both sides added it, so neither is behind the other")
+    if base_blob.strip() != actual_sha:
+        return AHEAD, (f"{rel} differs from origin/main because THIS side changed it "
+                       f"since the merge-base — it is our own newer code, not old code")
+    return STALE, main_blob.strip()
+
+
+def _blob_sha(data: bytes) -> str:
+    """`git hash-object` in pure Python — sha1 of `blob <len>\\0` + content."""
+    h = hashlib.sha1()
+    h.update(b"blob %d\0" % len(data))
+    h.update(data)
+    return h.hexdigest()
+
+
+def _read_runner_source() -> tuple[str, str]:
+    """Hash the bytes of THIS file at import, returning (sha, reason-if-none).
+
+    Deliberately at import rather than inside the probe. An adversarial review of the
+    first draft caught the window: hashing the PATH later answers "what is on disk now",
+    while the claim being made is "what wrote this report". A file replaced between
+    interpreter start and probe time makes that a lie in both directions — a genuinely
+    stale runner reported clean, or a current one accused. Reading at import narrows the
+    window to the microseconds between the interpreter reading the file and this line,
+    which is as close as Python gets: the compiled bytes are not recoverable afterwards.
+    """
+    try:
+        if "__file__" not in globals():
+            return "", "stdin"                      # `... | python3 -`, nothing on disk
+        p = Path(__file__)
+        return _blob_sha(p.read_bytes()), ""
+    except OSError:
+        return "", "unreadable"
+
+
+_RUNNER_SHA, _RUNNER_NO_SHA_REASON = _read_runner_source()
 _LEDGER_STALE_RE = re.compile(r"^LEDGER STALE: (\S+) differs from origin/main")
 
 
@@ -211,9 +311,19 @@ def _git_alignment_remedy(entry: dict, machine: str, ev: list[str]) -> str:
             ledger = m.group(1)
             break
     if ledger:
-        return (f"{by_design} The actionable half is the ledger: refresh just that file from "
-                f"origin/main (e.g. `git checkout origin/main -- {ledger}` in the main "
-                f"checkout, not a full pull) so TRIAGE stops reading stale state.")
+        # Was: "refresh just that file from origin/main (e.g. `git checkout
+        # origin/main -- <ledger>` in the main checkout)". Correct in intent and
+        # UNEXECUTABLE in fact — worktree_isolation.py refuses mutating git in the
+        # main checkout for every agent session, and the only documented way past
+        # it disarms the guard wholesale. With no operator lane, that prescribed a
+        # lane that does not exist, which is how a reader learns to skip this
+        # probe. #3824 gave the reader a read-only way to the same truth, so the
+        # remedy now names it: the fix is a READ, not a repair.
+        return (f"{by_design} The actionable half is the ledger, and it is a READ rather than "
+                f"a repair: `python3 scripts/pending_arms_report.py --ref origin/main` reports "
+                f"against main's copy of {ledger} with no pull and no write, which is the only "
+                f"form a session can carry out here. Do not repair the checkout copy — read "
+                f"main's.")
     return f"{by_design} No other actionable half in this finding right now."
 
 
@@ -229,6 +339,24 @@ def _arsenal_seats_vcr_m5_remedy(entry: dict) -> str:
     return ("Mini is the documented primary for arsenal-seat freshness "
             '(docs/runbooks/arsenal-probe.md "Mini (primary)"); FRESHNESS_EXPIRED on m5 '
             "between interactive runs is expected, not a seat outage. " + entry["fix_hint"])
+
+
+def _guardian_freshness_remedy(entry: dict, ev: list[str]) -> str:
+    """guardian_freshness now reports two different diseases and they have OPPOSITE cures.
+
+    The registry's static hint answers a stale OUTPUT: "run it by hand, read ITS log,
+    then fix its scheduler". A stale RUNNER is the reverse — the scheduler is fine, it
+    ran on time, and what it wrote is old because the CODE is old. Printing the
+    scheduler advice under a SELF STALE line would be the handoff-§6 defect verbatim: a
+    remedy that does not match the finding it sits under, which trains the reader to
+    skip the fix line — and then to skip the one that mattered.
+    """
+    if ev and _SELF_STALE_RE.match(ev[0]):
+        return ("the guardian's SCHEDULE is not the problem, its CODE is: it ran on time "
+                "and wrote old text. Do NOT repair the checkout to fix this (W106b) — run "
+                "main's copy out of tree exactly as the evidence line spells out, and read "
+                "the report THAT writes.")
+    return entry["fix_hint"]
 
 
 # ---------------------------------------------------------------- builtins
@@ -417,8 +545,84 @@ def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, 
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
+def _self_code_staleness(root: Path | None) -> tuple[int, list[str]]:
+    """Is the code WRITING this report the code origin/main says it should be?
+
+    The loop below answers "did each guardian speak RECENTLY". Nothing answered "is
+    what it said CURRENT" — and on 2026-08-08 the difference bit: the live report was
+    6.7h old, comfortably inside the 48h gate, so this probe stayed silent, and it
+    prescribed `interactive pull on this machine's main` — an action #3723 and #3826
+    had already replaced with an explicit "do NOT pull it". It had been written by the
+    main checkout, 219 commits behind. mtime is a proxy for "current" and it lies when
+    the writer is old (W88); on m5 it lies BY DESIGN, because that checkout is
+    deliberately never pulled (W106b) — so the one machine where a cure takes longest
+    to reach the executed copy is also the one where nothing was watching.
+
+    Same two commands probe_git_alignment already runs against the ledger — hash-object
+    the working copy, rev-parse main's — pointed at __file__ instead. It reads the
+    origin/main ref that probe_git_alignment refreshed earlier in this same run
+    (registry order: git_alignment precedes guardian_freshness); under --no-fetch it
+    compares against the last-known ref, exactly like every other probe here.
+
+    Cannot-verify is EVIDENCE, never a finding. This is a signaler a human reads and
+    offline is a natural state (Law 6); the lint twin is the one that owes an exit code
+    for the same fact (W106b, "where the twins must diverge").
+
+    DECLARED LIMIT — a copy without this check cannot warn about itself. The m5 main
+    checkout that wrote the 2026-08-08 report does not contain this function and will
+    not until that checkout advances past this merge, which is not something a session
+    may make happen (pulling it races live worktrees). So this closes the class from
+    here forward and on the auto-pulled machines; it does not retroactively make today's
+    frozen copy honest. Until then the way to a truthful report on m5 is the out-of-tree
+    invocation this probe's own remedy prints — run main's code, point NUZ_REPO_ROOT at
+    the checkout. Stated rather than implied, because a cure whose reach is assumed
+    wider than it is becomes the next false clean.
+    """
+    if root is None:
+        return 0, ["self-version: no repo root — this copy cannot be attributed"]
+    if not _RUNNER_SHA:
+        # Neither shape is a finding, and they are NOT the same shape: stdin is the
+        # deliberate run-main's-copy escape prescribed below, "unreadable" is a real
+        # blind spot. Naming one for the other would be a false statement written while
+        # fixing a false statement (W113).
+        return 0, [f"self-version: no source bytes to compare ({_RUNNER_NO_SHA_REASON}) "
+                   f"— nothing on disk that could be stale"]
+    # The PATH is only used to name the file to git; the VERSION comes from _RUNNER_SHA,
+    # read at import. So a file deleted mid-run is still attributable.
+    self_file = Path(__file__).resolve()
+    try:
+        rel = self_file.relative_to(root.resolve())
+    except ValueError:
+        return 0, [f"self-version: the executing copy is outside the checkout "
+                   f"({self_file}) — version not attributable"]
+    state, detail = _version_vs_main(root, rel.as_posix(), _RUNNER_SHA)
+    if state == CURRENT:
+        return 0, []
+    if state != STALE:
+        return 0, [f"self-version: {detail}"]
+    main_blob = detail
+    return 1, [f"SELF STALE: the copy that wrote this report ({rel.as_posix()} "
+               f"{_RUNNER_SHA[:8]}) is not origin/main's ({main_blob.strip()[:8]}) "
+               f"— every finding and every remedy on this report is that copy's OLD text, "
+               f"however fresh the timestamp. Run main's copy without touching the "
+               f"checkout: `git -C {root} show origin/main:{rel.as_posix()} > /tmp/prop_main.py "
+               f"&& NUZ_REPO_ROOT={root} python3 /tmp/prop_main.py`"]
+
+
+def _self_blob() -> str:
+    """Provenance for the report header: WHICH copy produced it. `repo_head` is the
+    checkout's HEAD, which does not pin this file — a worktree, an out-of-tree copy and
+    stdin can all report the same head. Diagnosing the 2026-08-08 incident took three
+    steps (read repo_head, resolve it, diff the file); this field makes it one.
+
+    Takes no repo: it reports the bytes this process loaded, which is true even outside
+    a checkout, and it must never disagree with the comparison above by construction."""
+    return _RUNNER_SHA[:12] if _RUNNER_SHA else (_RUNNER_NO_SHA_REASON or "unknown")
+
+
 def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
-    ev, findings, seen = [], 0, 0
+    findings, ev = _self_code_staleness(root)
+    seen = 0
     now = time.time()
     for item in args.get("items", []):
         # Per-item machine scoping (v1.1): a Pro-only guardian probed on M5 is a
@@ -444,12 +648,112 @@ def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str,
             findings += 1
             ev.append(f"{label}: guardian last spoke {age_h:.1f}h ago (max {max_age_h:.0f}h) — a stale guardian is a lying guardian")
     if seen == 0 and findings == 0:
-        return UNPROBEABLE, 0, ["no guardian outputs found on this machine"]
+        # APPEND, never replace: "no outputs found" must not overwrite a self-version
+        # cannot-verify line, or the blind case reads as the clean one (W84).
+        return UNPROBEABLE, 0, ev + ["no guardian outputs found on this machine"]
+    return (DIVERGED if findings else RECONCILED), findings, ev
+
+
+_REPO_TOKEN = "{repo}/"
+
+
+def _wrap_repo_targets(entry: dict) -> list[str]:
+    """Every repo-relative path a `wrap` entry executes; empty list if none.
+
+    Scans the WHOLE target list for elements beginning with `{repo}/`: a wrap may carry
+    flags before or after the path, so indexing element 1 would judge by POSITION instead
+    of by entity — the form/entity confusion of superscar #3, in a new costume. Returning
+    only the FIRST match is the same mistake wearing the other sleeve: a runner given two
+    repo payloads executes both, and stopping early silences the second.
+    """
+    if entry.get("type") != "wrap":
+        return []
+    target = entry.get("target")
+    # A bare string iterates CHARACTER by character and silently yields nothing — the
+    # entry would drop out of the audit with no trace. Normalise instead of iterating.
+    if isinstance(target, str):
+        target = [target]
+    elif not isinstance(target, list):
+        return []
+    # ALL of them, not the first: `["pytest", "{repo}/a.py", "{repo}/b.py"]` executes two
+    # payloads, and stopping at the first silences the second.
+    return [t[len(_REPO_TOKEN):] for t in target
+            if isinstance(t, str) and t.startswith(_REPO_TOKEN)]
+
+
+def _disk_blob(p: Path) -> str:
+    """The blob git would store for what is ON DISK at `p`.
+
+    For a symlink git stores the LINK TEXT, while `read_bytes()` follows the link and
+    hashes the referent — two different representations of two different things, and the
+    mismatch would read as "uncommitted edits" (silent) on a tracked symlink that is
+    genuinely stale.
+    """
+    if p.is_symlink():
+        return _blob_sha(os.readlink(p).encode())
+    return _blob_sha(p.read_bytes())
+
+
+def probe_executed_code_currency(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Every `{repo}/…` payload this organ EXECUTES — not just the one it is.
+
+    `_self_code_staleness` covers proprioception.py itself. But seven registry entries
+    shell out to OTHER scripts in the same tree, and on 2026-08-08 three of the six in
+    m5's jurisdiction were behind origin/main there, one demonstrably lying: `launchagent_canon`
+    reported `repo_divergent: 1` from the pre-#3799 reconciler while the merged copy
+    reported 0 on the same plists in the same minute. Curing the runner and calling the
+    disease closed is W107 — "I cured one wrapper of five".
+
+    Judged by BLOB. This never runs a target to find out whether it is stale: an alarm
+    that executes the code whose health it reports shares that code's failure mode (W108).
+
+    Scope is declared, not silent (W97), and the two boundaries are drawn for opposite
+    reasons. It DOES audit wraps a `--probes`/`--tags` run did not select — a currency
+    finding about a probe you skipped this time is still true, and hiding it would make
+    the narrow run read cleaner than the machine is. It does NOT audit wraps outside this
+    machine's jurisdiction — those payloads are never executed here, so a finding about
+    them is a P1 nobody on this host can act on, and the host that does run them audits
+    them itself.
+    """
+    ev, findings, seen = [], 0, 0
+    # The registry that main() actually runs, not the embedded default: `config/
+    # boundaries.json` may add or replace a wrap, and auditing the defaults would report
+    # on payloads nobody executes while staying silent about the ones they do.
+    registry, _, _ = load_registry(root)
+    me = machine_label()
+    for entry in registry:
+        # Jurisdiction, exactly as main() scopes it. `arsenal_seats` is mini/pro-only, so
+        # on m5 its payload is never executed — calling it a stale PAYLOAD there is a
+        # finding about code this machine does not run, and the machine that does run it
+        # audits it itself. Same doctrine the heartbeat detector already applies to
+        # guardians that legitimately do not exist on a given host.
+        machines = entry.get("machines", ["all"])
+        if "all" not in machines and me not in machines:
+            continue
+        for rel in _wrap_repo_targets(entry):
+            seen += 1
+            try:
+                sha = _disk_blob(root / rel)
+            except OSError as e:
+                ev.append(f"{entry['id']}: {rel} unreadable on disk ({type(e).__name__}) "
+                          f"— currency cannot be attributed")
+                continue
+            state, detail = _version_vs_main(root, rel, sha)
+            if state == STALE:
+                findings += 1
+                ev.append(f"STALE PAYLOAD: {entry['id']} runs {rel} {sha[:8]}, not "
+                          f"origin/main's {detail[:8]} — whatever it reported on this run is "
+                          f"that older code's verdict, however fresh the report")
+            elif state == UNVERIFIABLE:
+                ev.append(f"{entry['id']}: {detail}")
+    if seen == 0:
+        return UNPROBEABLE, 0, ev + ["no {repo}-executed wrap targets in the registry"]
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
 BUILTINS = {
     "git_alignment": probe_git_alignment,
+    "executed_code_currency": probe_executed_code_currency,
     "produced_promoted": probe_produced_promoted,
     "home_fork_scripts": probe_home_fork_scripts,
     "guardian_freshness": probe_guardian_freshness,
@@ -573,6 +877,20 @@ DEFAULT_REGISTRY: list[dict] = [
             {"live": "~/scripts/regulatory-watcher-run.sh", "repo": "infra/launchagents/wrappers/regulatory-watcher-run.sh"},
         ]},
         "fix_hint": "diff the pair, port the newer content into the repo, then refresh the live copy from repo",
+    },
+    {
+        "id": "executed_code_currency", "type": "builtin", "target": "executed_code_currency",
+        "class": "executed<->committed",
+        "boundary": "the {repo}/… payloads this organ RUNS <-> origin/main",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
+        "severity": "P1",
+        "args": {},
+        "fix_hint": ("the SCHEDULE is fine and the report is fresh — the code that produced "
+                     "the named verdicts is old. Do NOT pull the checkout to fix it (W106b); "
+                     "re-run that probe's target from origin/main, e.g. "
+                     "`git show origin/main:<path> > /tmp/p.py && python3 /tmp/p.py`, and "
+                     "believe THAT output. On pro/mini this finding should never appear: "
+                     "their checkouts auto-pull (measured 0/8 stale, 2026-08-08)."),
     },
     {
         "id": "guardian_freshness", "type": "builtin", "target": "guardian_freshness",
@@ -930,6 +1248,8 @@ def main() -> int:
             fix_hint = _git_alignment_remedy(entry, me, ev)
         elif entry["id"] == "arsenal_seats_vcr_m5":
             fix_hint = _arsenal_seats_vcr_m5_remedy(entry)
+        elif entry["id"] == "guardian_freshness":
+            fix_hint = _guardian_freshness_remedy(entry, ev)
         results.append(verdict(entry["id"], entry["boundary"], entry["class"], status,
                                entry["severity"], n, ev, fix_hint, t0))
 
@@ -958,6 +1278,7 @@ def main() -> int:
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "machine": me,
         "repo_head": git_head(root) if root else "no-repo",
+        "runner_blob": _self_blob(),
         "config_source": config_source,
         "config_sha": config_sha,
         "probes_expected": len(selected) + (2 if args.fleet else 0),

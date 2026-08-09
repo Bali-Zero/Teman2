@@ -502,22 +502,45 @@ def test_probe_claude_falls_back_to_oauth_token_slot_1(monkeypatch):
     assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "slot1-token-value"
 
 
-def test_probe_claude_never_overrides_explicit_oauth_token(monkeypatch):
-    # innocence: a bare CLAUDE_CODE_OAUTH_TOKEN already set (interactive/agent
-    # session shape) must survive untouched — the slot-1 fallback is a
-    # last-resort, never a clobber.
+def test_probe_claude_strips_ambient_oauth_token_2026_08_08(monkeypatch):
+    # guilt: this is the live incident. A bare CLAUDE_CODE_OAUTH_TOKEN already
+    # present in the environment (the shape of an interactive Claude Code
+    # session probing its own seat) must be STRIPPED, not preserved — it may
+    # be stale from an earlier /login cycle and shadow a perfectly valid
+    # on-disk credential. Without stripping it, the calling shell's own token
+    # reaches the claude binary verbatim and a revoked one produces a false
+    # AUTH_DEAD read of a live seat (measured 2026-08-08 on M5: unsetting the
+    # var and re-probing flipped AUTH_DEAD -> LIVE with no other change).
     captured_env = {}
 
     def fake_run(cmd, **kwargs):
         captured_env.update(kwargs.get("env") or {})
         return _FakeProc(0, "PONG\n", "")
 
-    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token-value")
-    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "ambient-session-token-possibly-stale")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     ap.probe_claude(timeout=5)
-    assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "explicit-token-value"
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in captured_env
+
+
+def test_probe_claude_explicit_override_still_wins(monkeypatch):
+    # innocence: a caller that deliberately wants to test ONE specific token
+    # still can, via the env_overrides parameter — the only sanctioned
+    # injection path (nothing in the codebase calls it today, but the
+    # capability must survive the ambient-token strip above).
+    captured_env = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_env.update(kwargs.get("env") or {})
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "ambient-token-must-be-ignored")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_claude(timeout=5, env_overrides={"CLAUDE_CODE_OAUTH_TOKEN": "deliberately-injected-token"})
+    assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "deliberately-injected-token"
 
 
 def test_probe_claude_binary_absent_is_not_installed(monkeypatch):
@@ -639,6 +662,33 @@ def test_probe_kimi_no_providers_is_auth_dead(monkeypatch):
     )
     status, ev, latency = ap.probe_kimi(timeout=5)
     assert status == ap.AUTH_DEAD
+
+
+def test_probe_kimi_billing_cycle_403_is_quota_dead_not_auth_dead(monkeypatch):
+    # guilt: the real-world Allegro billing-cycle cap (PENDING-ARMS 2026-07-27,
+    # "Kimi seat quota-exhausted") has no 401/no-providers marker — it must fall
+    # through the kimi-specific AUTH_DEAD guard clause and land on QUOTA_DEAD via
+    # classify_generic's "usage limit" match, so the cascade can skip-not-retry it
+    # (a quota-dead seat needs wait/upgrade, not re-login).
+    # `resolve_bin` returns (path, via_path) — every sibling test in this file
+    # fakes the PAIR. Returning the bare string made `binp, via_path = ...`
+    # unpack the path's characters instead, so the test died inside probe_kimi
+    # with "too many values to unpack" before reaching a single assertion.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(
+            1,
+            "",
+            "403 You've reached your usage limit for this billing cycle. "
+            "To continue now, purchase extra usage or upgrade your plan: "
+            "https://www.kimi.com/code/#pricing",
+        ),
+    )
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.QUOTA_DEAD
+    assert status != ap.AUTH_DEAD
 
 
 def test_probe_kimi_pong_with_provider_prose_stays_live(monkeypatch):

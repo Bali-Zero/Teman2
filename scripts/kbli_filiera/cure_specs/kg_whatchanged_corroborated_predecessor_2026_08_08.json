@@ -1,0 +1,17 @@
+{
+  "spec_id": "whatchanged_corroborated_predecessor_2026_08_08",
+  "entries": [
+    {
+      "entity_id": "kbli:49296",
+      "md5": "11b71834a187a2ed70107ffe8a478467",
+      "new": "Renumbered from KBLI 2020 code 49424 — confirmed by two independent crosswalk sources: the PP 28/2025 lampiran (title match 100%) and the official BPS 2020-to-2025 conversion table (Lampiran 10, page 386). NIB verification and update are recommended following the closure of the June 2026 window.",
+      "passes": ["corroborated_predecessor"]
+    },
+    {
+      "entity_id": "kbli:64210",
+      "md5": "e475fe6cf66287246c6283a11d646538",
+      "new": "Renumbered from KBLI 2020 code 64200 — confirmed by two independent crosswalk sources: the PP 28/2025 lampiran (title match 95%) and the official BPS 2020-to-2025 conversion table (Lampiran 10, page 398). NIB verification and update are recommended following the closure of the June 2026 window.",
+      "passes": ["corroborated_predecessor"]
+    }
+  ]
+}

@@ -464,11 +464,23 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
 
     gen_path = root / "apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py"
     mod = types.ModuleType("rix_for_test")
-    # The module derives a dataset path from __file__ with parents[4]; give it a
-    # deep enough stand-in rather than importing it for real (it would also try
-    # to read that path at import time).
-    mod.__dict__["__file__"] = "/a/b/c/d/e/reindex.py"
-    exec(compile(gen_path.read_text(encoding="utf-8"), str(gen_path), "exec"), mod.__dict__)
+    # The script resolves the repo root via resolve_repo_root(), which honours
+    # KBLI_REPO_ROOT and otherwise walks up from __file__ looking for a marker
+    # file.  Set the env override to the real root and a fake __file__ to avoid
+    # importing the module for real (it would also try to load .env at import
+    # time from the resolved backend-rag dir).
+    mod.__dict__["__file__"] = "/fake/reindex.py"
+    import os
+
+    old_env = os.environ.get("KBLI_REPO_ROOT")
+    os.environ["KBLI_REPO_ROOT"] = str(root)
+    try:
+        exec(compile(gen_path.read_text(encoding="utf-8"), str(gen_path), "exec"), mod.__dict__)
+    finally:
+        if old_env is None:
+            os.environ.pop("KBLI_REPO_ROOT", None)
+        else:
+            os.environ["KBLI_REPO_ROOT"] = old_env
     build_embedding_text = mod.build_embedding_text
 
     records = json.loads(

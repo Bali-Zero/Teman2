@@ -524,6 +524,98 @@ def test_template_placeholder_does_not_mask_a_real_argv_change(world):
     assert [d["file"] for d in r["repo_divergent"]] == [name]
 
 
+def test_per_machine_home_root_does_not_diverge(world):
+    """Innocence: canon authored under one account, live installed under this
+    machine's own home. `ENV_SPECIFIC_KEYS` already forgives WorkingDirectory
+    and the log paths but NOT ProgramArguments, where the payload path lives —
+    so `com.nuzantara.worktree-gc-universal.daily` read Repo-divergent on M5
+    every run. Measured 2026-08-08: the username was the ONLY functional
+    difference between the live M5 copy and origin/main."""
+    name = "com.nuzantara.gc.plist"
+    write_plist(
+        world["agents"] / name, "com.nuzantara.gc",
+        program_args=["/opt/homebrew/bin/python3",
+                      f"{world['home']}/nuzantara/scripts/gc.py", "--apply"],
+    )
+    write_plist(
+        world["repo"] / "infra" / "launchagents" / name, "com.nuzantara.gc",
+        program_args=["/opt/homebrew/bin/python3",
+                      "/Users/nuzantara/nuzantara/scripts/gc.py", "--apply"],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["repo_divergent"] == []
+
+
+def test_foreign_home_in_live_still_diverges(world):
+    """Guilt, and the reason the rebase is asymmetric: a LIVE path under
+    someone else's home is the M5 path-drift scar — `/Users/nuzantara/...`
+    copied onto a machine whose user is `balizero`, dead since the 2026-07-16
+    move. Only THIS machine's home normalises; a foreign one must still bite,
+    or the cure for the over-match births the under-match twin (W94)."""
+    name = "com.nuzantara.drifted.plist"
+    write_plist(
+        world["agents"] / name, "com.nuzantara.drifted",
+        program_args=["/opt/homebrew/bin/python3",
+                      "/Users/someone-else/nuzantara/scripts/gc.py", "--apply"],
+    )
+    write_plist(
+        world["repo"] / "infra" / "launchagents" / name, "com.nuzantara.drifted",
+        program_args=["/opt/homebrew/bin/python3",
+                      "/Users/nuzantara/nuzantara/scripts/gc.py", "--apply"],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert [d["file"] for d in r["repo_divergent"]] == [name]
+
+
+def test_home_rebase_does_not_mask_a_different_payload(world):
+    """Guilt: same home root on both sides, different script + flag. The
+    rebase forgives WHOSE home a path sits under, never WHAT runs."""
+    name = "com.nuzantara.payload.plist"
+    write_plist(
+        world["agents"] / name, "com.nuzantara.payload",
+        program_args=["/opt/homebrew/bin/python3",
+                      f"{world['home']}/nuzantara/scripts/OTHER.py", "--apply"],
+    )
+    write_plist(
+        world["repo"] / "infra" / "launchagents" / name, "com.nuzantara.payload",
+        program_args=["/opt/homebrew/bin/python3",
+                      "/Users/nuzantara/nuzantara/scripts/gc.py", "--dry-run"],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert [d["file"] for d in r["repo_divergent"]] == [name]
+
+
+def test_home_rebase_does_not_mask_an_extra_directory_hop(world):
+    """Guilt: live sits under this machine's home but one directory DEEPER than
+    canon. The home root normalises; the extra hop does not, so this still
+    diverges. Real-world shape this pins: the relocation the fleet ruled off on
+    2026-07-16 for TCC reasons (W84) moved the repo up one level out of a
+    protected directory, and a live plist left pointing at the old, deeper
+    location must not be forgiven by a rebase that only forgives WHOSE home.
+
+    The fixture uses a neutral `parked/` hop rather than the real directory
+    name on purpose. `_rebase_homes` has no knowledge of that directory — it
+    normalises a home root and nothing else — so writing the real literal here
+    would (a) read as though the guard special-cases it, which it does not, and
+    (b) trip `scripts/lint_tcc_desktop_paths.py`. Per that lint's allowlist,
+    an incidental placeholder disconnected from the guard logic under test gets
+    swept, not excepted; only a corpus whose guard actually matches on that
+    string earns a class-2 entry."""
+    name = "com.nuzantara.deeper.plist"
+    write_plist(
+        world["agents"] / name, "com.nuzantara.deeper",
+        program_args=["/opt/homebrew/bin/python3",
+                      f"{world['home']}/parked/nuzantara/scripts/gc.py", "--apply"],
+    )
+    write_plist(
+        world["repo"] / "infra" / "launchagents" / name, "com.nuzantara.deeper",
+        program_args=["/opt/homebrew/bin/python3",
+                      "/Users/nuzantara/nuzantara/scripts/gc.py", "--apply"],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert [d["file"] for d in r["repo_divergent"]] == [name]
+
+
 def test_symlinked_repo_plist_never_divergent(world):
     name = "com.balizero.linked.plist"
     twin = world["repo"] / "infra" / "launchagents" / name

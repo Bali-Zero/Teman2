@@ -2205,6 +2205,63 @@ def test_redteam_blocker2_unresolvable_trusted_ref_fails_closed(tmp_path):
     assert "trusted ref" in (result.stdout + result.stderr).lower()
 
 
+def test_trusted_ref_tip_date_treats_failed_fetch_as_unresolved(tmp_path):
+    """GUILT (W106b layer 4, 2026-07-30 ledger entry: "`_trusted_ref_tip_
+    date` ignores its `git fetch` return code, so a failed fetch silently
+    supplies a possibly-stale CEILING"). A repo whose local tracking ref
+    `refs/remotes/origin/main` already resolves to a real (old) commit —
+    from a PRIOR successful fetch — but whose `origin` remote is now
+    broken must NOT fold that leftover local ref into the ceiling as if
+    freshly verified: the fetch itself fails, and `_trusted_ref_tip_date`
+    must return None (the same degrade-to-"now" path an unresolvable ref
+    already takes), not the stale local ref's commit date.
+    """
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    # Prime the local tracking ref with a real, resolvable, OLD commit —
+    # simulates "this machine fetched origin/main successfully at some
+    # point in the past" (the ordinary case: every prior run's fetch
+    # left this ref exactly where BLOCKER-2's own fixture wiring does).
+    subprocess.run(["git", "fetch", "-q", "origin", "main"], cwd=repo, check=True)
+    resolve_before = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", "origin/main^{commit}"],
+        capture_output=True,
+        text=True,
+    )
+    assert resolve_before.returncode == 0, "fixture setup: origin/main must resolve pre-break"
+
+    # Break the remote so any FUTURE fetch fails, while the already-primed
+    # local tracking ref above stays intact and still resolvable — this is
+    # exactly the shape a real network flap or a revoked/removed remote
+    # produces: fetch fails, but stale local refs are still readable.
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", str(tmp_path / "nonexistent-origin.git")],
+        cwd=repo,
+        check=True,
+    )
+
+    result = docs_audit._trusted_ref_tip_date(repo, "origin/main")
+    assert result is None, (
+        "a failed fetch must degrade to None (same as an unresolvable ref), "
+        f"not silently supply the stale local tracking ref's date: got {result}"
+    )
+
+
+def test_trusted_ref_tip_date_succeeds_when_fetch_succeeds(tmp_path):
+    """INNOCENCE — the ordinary path (working `origin`, fetch succeeds)
+    must still resolve to a real date, unaffected by the guilt fix above.
+    """
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    result = docs_audit._trusted_ref_tip_date(repo, "origin/main")
+    assert result is not None, "a healthy origin + successful fetch must resolve a tip date"
+    assert result == date.today() - timedelta(days=200)
+
+
 def test_redteam_major5_doc_touched_after_flip_resurrects_to_live(tmp_path):
     """INNOCENCE (red-team 2026-07-18 MAJOR-5, exact prescribed shape: "doc
     toccato post-flip -> LIVE"). A doc archived via a genuine organ flip,

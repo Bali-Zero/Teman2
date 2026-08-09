@@ -136,3 +136,29 @@ def mark_resolved(job_id: str) -> int:
         return 0
     write_escalation({"job": job_id, "status": "resolved", "resolved_at": time.time()})
     return len(pending)
+
+
+def is_job_open(job_id: str) -> bool:
+    """True if job_id's LATEST record (by ts) is a pending entry.
+
+    The queue is append-only: mark_resolved() appends a NEW {"status":
+    "resolved", ...} record rather than mutating the original pending one
+    (see write_escalation/mark_resolved docstrings). A naive
+    ``any(e["status"] == "pending" for e in ... if e["job"] == job_id)``
+    scan therefore finds the ORIGINAL pending entry and reports "open"
+    forever, even after resolution — cicatrix #2 Esiste≠Armato / #9
+    state-schema drift (a resolved marker is state a naive reader ignores).
+    Collapse to the newest record per job before checking status, mirroring
+    scripts/hooks/escalations_alert_sessionstart.sh's net-pending logic and
+    modus_autoloop.py's _collapse_by_job — the correct behavior already
+    existed in two consumers; this promotes it into the shared library so
+    every consumer of read_all_escalations() gets it, not just those two.
+
+    A recurring job (escalate → resolve → escalate again) reads OPEN again,
+    because the newest record is the new pending one.
+    """
+    entries = [e for e in read_all_escalations(include_resolved=True) if e.get("job") == job_id]
+    if not entries:
+        return False
+    latest = max(entries, key=lambda e: e.get("ts", 0))
+    return latest.get("status") != "resolved"

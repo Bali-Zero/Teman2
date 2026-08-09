@@ -18,6 +18,7 @@ import logging
 import os
 import time
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 from langsmith import traceable
@@ -32,6 +33,12 @@ from backend.services.rag.agentic.entity_extractor import EntityExtractionServic
 from backend.services.rag.agentic.llm_gateway import LLMGateway
 from backend.services.rag.agentic.memory_handler import MemoryHandler
 from backend.services.rag.agentic.orchestrator_context import OrchestratorContextManager
+from backend.services.rag.agentic.orchestrator_finalization import (
+    FinalizationContext,
+    classify_result_origin,
+    finalize_core_result,
+    is_canonically_finalized,
+)
 from backend.services.rag.agentic.orchestrator_metrics import OrchestratorMetricsManager
 from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder
 from backend.services.rag.agentic.orchestrator_routing import OrchestratorRoutingManager
@@ -40,7 +47,12 @@ from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
 from backend.services.rag.agentic.query_planner import QueryPlanner  # GraphRAG v6.0
 from backend.services.rag.agentic.reasoning import ReasoningEngine
-from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.agentic.schema import (
+    AnalyticsReceiptStatus,
+    CoreResult,
+    ProducerOrigin,
+    TrustedBypassReason,
+)
 from backend.services.rag.agentic.team_crm_tools import is_team_or_creator_profile
 from backend.services.rag.crag_router import CRAGRouter
 from backend.services.rag.grading import (
@@ -135,6 +147,7 @@ def _apply_e33_claim_guard(result: CoreResult) -> None:
             [v.pattern_id for v in guard_outcome.violations],
         )
 
+
 # SPEC v2 D3-L2 (F1b, 2026-07-17): curated_qa grounding injection.
 # NOT verbatim serving — a hit is prepended to the ReAct system context as
 # high-priority evidence; the LLM still answers the real question and the
@@ -193,6 +206,9 @@ _MULTI_AGENT_COORDINATOR_ENABLED = os.getenv(
     "true",
     "yes",
 )
+
+
+_FinalizationAnalyticsClaim = Callable[[], bool]
 
 
 class OrchestratorCore:
@@ -1115,6 +1131,119 @@ class OrchestratorCore:
                 set_span_status("error", f"unexpected:{type(unexpected_error).__name__}")
                 raise RuntimeError(f"ReAct loop failed: {unexpected_error}") from unexpected_error
 
+    async def finalize_result(
+        self,
+        result: CoreResult,
+    ) -> CoreResult:
+        """Purely recompute shadow metadata; never perform or schedule I/O."""
+        if is_canonically_finalized(result):
+            return result
+        producer_origin, trusted_bypass_reason = classify_result_origin(result)
+
+        return finalize_core_result(
+            result,
+            producer_origin=producer_origin,
+            trusted_bypass_reason=trusted_bypass_reason,
+            analytics_receipt=AnalyticsReceiptStatus.SKIPPED,
+        )
+
+    def _claim_execution_analytics_receipt(
+        self,
+        context: FinalizationContext,
+        *,
+        query: str,
+        user_id: str | None,
+        session_id: str | None,
+        claim_analytics: _FinalizationAnalyticsClaim,
+    ) -> AnalyticsReceiptStatus:
+        """Consume one invocation-local capability and return its receipt."""
+        if not claim_analytics():
+            raise RuntimeError("finalization analytics capability already consumed or invalid")
+
+        # ReAct already awaited the canonical repository call. Its receipt is
+        # accepted only from the private ReAct producer context, never public
+        # model fields or another producer. A missing/impossible scheduled
+        # state is fail-visible and never triggers a second write.
+        if context.producer_origin is ProducerOrigin.REACT_PIPELINE:
+            if isinstance(
+                context.analytics_receipt, AnalyticsReceiptStatus
+            ) and context.analytics_receipt in {
+                AnalyticsReceiptStatus.WRITTEN,
+                AnalyticsReceiptStatus.SKIPPED,
+                AnalyticsReceiptStatus.FAILED,
+            }:
+                return context.analytics_receipt
+            return AnalyticsReceiptStatus.FAILED
+
+        if not self.db_pool:
+            return AnalyticsReceiptStatus.SKIPPED
+
+        result = context.result
+        try:
+            sources = list(result.sources)
+            timings = dict(result.timings)
+            collections_used = {
+                str(source.get("collection") or source.get("source"))
+                for source in sources
+                if isinstance(source, dict) and (source.get("collection") or source.get("source"))
+            }
+            token_usage = TokenUsage(
+                prompt_tokens=result.prompt_tokens,
+                completion_tokens=result.completion_tokens,
+                model=result.model_used or "unknown",
+                cost_usd=result.cost_usd,
+            )
+            analytics_work = self._log_query_analytics(
+                query=query,
+                user_id=user_id,
+                session_id=session_id,
+                collections_used=collections_used,
+                sources=sources,
+                model_used=result.model_used or "unknown",
+                token_usage=token_usage,
+                timings=timings,
+                response_generated=bool(result.answer) and not result.abstain,
+            )
+            try:
+                spawn(
+                    analytics_work,
+                    name="orchestrator_finalization_analytics",
+                )
+            except Exception:
+                analytics_work.close()
+                raise
+        except Exception:
+            logger.warning(
+                "Finalization analytics scheduling failed before background execution",
+                exc_info=True,
+            )
+            return AnalyticsReceiptStatus.FAILED
+        return AnalyticsReceiptStatus.SCHEDULED
+
+    def _finalize_process_context(
+        self,
+        context: FinalizationContext,
+        *,
+        query: str,
+        user_id: str | None,
+        session_id: str | None,
+        claim_analytics: _FinalizationAnalyticsClaim,
+    ) -> CoreResult:
+        """Finalize one canonical execution with its single-use authority."""
+        analytics_receipt = self._claim_execution_analytics_receipt(
+            context,
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            claim_analytics=claim_analytics,
+        )
+        return finalize_core_result(
+            context.result,
+            producer_origin=context.producer_origin,
+            trusted_bypass_reason=context.trusted_bypass_reason,
+            analytics_receipt=analytics_receipt,
+        )
+
     @traceable(run_type="chain", name="Agentic RAG Query", tags=["nuzantara", "rag", "production"])
     async def process_query_core(
         self,
@@ -1129,8 +1258,54 @@ class OrchestratorCore:
         agent_role: Any | None = None,
         memory_subject: str | None = None,
     ) -> CoreResult:
+        """Run the core pipeline and cross the shared finalization boundary."""
+        analytics_claimed = False
+
+        def _claim_finalization_analytics_once() -> bool:
+            # This lexical capability cannot be reconstructed by copying or
+            # serialization: function copies share this invocation's cell and
+            # local closures are deliberately not pickleable.
+            nonlocal analytics_claimed
+            if analytics_claimed:
+                return False
+            analytics_claimed = True
+            return True
+
+        context = await self._process_query_core_unfinalized(
+            query=query,
+            user_id=user_id,
+            conversation_history=conversation_history,
+            start_time=start_time,
+            session_id=session_id,
+            tool_execution_counter=tool_execution_counter,
+            profile=profile,
+            max_steps=max_steps,
+            agent_role=agent_role,
+            memory_subject=memory_subject,
+        )
+        return self._finalize_process_context(
+            context,
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            claim_analytics=_claim_finalization_analytics_once,
+        )
+
+    async def _process_query_core_unfinalized(
+        self,
+        query: str,
+        user_id: str | None,
+        conversation_history: list[dict] | None,
+        start_time: float,
+        session_id: str | None = None,
+        tool_execution_counter: dict[str, int] | None = None,
+        profile: dict[str, Any] | None = None,
+        max_steps: int | None = None,
+        agent_role: Any | None = None,
+        memory_subject: str | None = None,
+    ) -> FinalizationContext:
         """
-        Core query processing logic coordinando tutti i moduli.
+        Unfinalized implementation; only ``process_query_core`` may call it.
 
         Questo è il metodo principale che orchestra tutto il flusso:
         1. Load context + Extract Entities/KG (PARALLEL)
@@ -1231,10 +1406,14 @@ class OrchestratorCore:
             conversation_history=optimized_history,
         )
         if gate_result.triggered:
-            return self.query_gates.gate_result_to_core_result(
-                gate_result,
-                start_time,
-                extracted_entities=extracted_entities,
+            return FinalizationContext(
+                result=self.query_gates.gate_result_to_core_result(
+                    gate_result,
+                    start_time,
+                    extracted_entities=extracted_entities,
+                ),
+                producer_origin=ProducerOrigin.QUERY_GATE,
+                trusted_bypass_reason=TrustedBypassReason.DETERMINISTIC_QUERY_GATE,
             )
 
         # WA team-assistant Phase 2 (2026-07-20 ruling): team/creator
@@ -1259,7 +1438,10 @@ class OrchestratorCore:
             )
         )
         if faq_cached_result:
-            return faq_cached_result
+            return FinalizationContext(
+                result=faq_cached_result,
+                producer_origin=ProducerOrigin.FAQ_CACHE,
+            )
 
         # 3b. Check semantic cache (vector similarity, ~50ms)
         # (Already have entities from parallel step 1)
@@ -1273,7 +1455,10 @@ class OrchestratorCore:
             )
         )
         if cached_result:
-            return cached_result
+            return FinalizationContext(
+                result=cached_result,
+                producer_origin=ProducerOrigin.SEMANTIC_CACHE,
+            )
 
         # 3c. [SPEC v2 D3-L2] Curated QA grounding injection — NOT verbatim
         # serving: on a high-confidence curated_qa hit, prepend it as
@@ -1302,13 +1487,16 @@ class OrchestratorCore:
                     grounding_context=system_context_for_prompt,
                 )
                 if ma_result.get("final_answer"):
-                    return CoreResult(
-                        answer=ma_result["final_answer"],
-                        sources=[],
-                        model_used="multi-agent-coordinator",
-                        entities=extracted_entities,
-                        timings={"total": time.time() - start_time},
-                        tools_called=["legal_agent", "financial_agent", "timeline_agent"],
+                    return FinalizationContext(
+                        result=CoreResult(
+                            answer=ma_result["final_answer"],
+                            sources=[],
+                            model_used="multi-agent-coordinator",
+                            entities=extracted_entities,
+                            timings={"total": time.time() - start_time},
+                            tools_called=["legal_agent", "financial_agent", "timeline_agent"],
+                        ),
+                        producer_origin=ProducerOrigin.MULTI_AGENT_COORDINATOR,
                     )
             except Exception as e:
                 logger.warning("⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: %s", e)
@@ -1329,13 +1517,16 @@ class OrchestratorCore:
                     user_id or "anonymous",
                 )
             if ssr_result and ssr_result.get("response"):
-                return CoreResult(
-                    answer=ssr_result["response"],
-                    sources=[],
-                    model_used=ssr_result.get("model", "specialized-router"),
-                    entities=extracted_entities,
-                    timings={"total": time.time() - start_time},
-                    tools_called=[ssr_result.get("category", "specialized_service")],
+                return FinalizationContext(
+                    result=CoreResult(
+                        answer=ssr_result["response"],
+                        sources=[],
+                        model_used=ssr_result.get("model", "specialized-router"),
+                        entities=extracted_entities,
+                        timings={"total": time.time() - start_time},
+                        tools_called=[ssr_result.get("category", "specialized_service")],
+                    ),
+                    producer_origin=ProducerOrigin.SPECIALIZED_SERVICE_ROUTER,
                 )
 
         # 3b.6. R5 Phase 5: KG fast-path — entity/relationship queries bypass Qdrant ReAct loop
@@ -1347,7 +1538,10 @@ class OrchestratorCore:
         )
         if kg_fast_result:
             logger.info("✅ [R5 KG] Fast-path returned answer (skipping ReAct loop)")
-            return kg_fast_result
+            return FinalizationContext(
+                result=kg_fast_result,
+                producer_origin=ProducerOrigin.KNOWLEDGE_GRAPH,
+            )
 
         # 4. Route query (intent classification + tier selection)
         model_tier, _deep_think_mode, state = await self.routing_manager.route_query(query)
@@ -1471,18 +1665,6 @@ class OrchestratorCore:
             token_usage=token_usage,
         )
 
-        # 10. Log to query_analytics (fire-and-forget, non-blocking)
-        await self._log_query_analytics(
-            query=query,
-            user_id=user_id,
-            session_id=session_id,
-            collections_used=collections_used,
-            sources=sources,
-            model_used=model_used_name,
-            token_usage=token_usage,
-            timings=timings,
-        )
-
         # 11. Build and return response (with KG LangGraph workflow if available)
         # Extract reasoning from langgraph_result if available
         langgraph_reasoning = None
@@ -1582,7 +1764,26 @@ class OrchestratorCore:
                 ),
             )
 
-        return result
+        # Canonical ReAct analytics write. This predates the finalization
+        # spine and remains awaited; recording it after the response policy
+        # makes ``response_generated`` reflect the actual abstain decision.
+        analytics_receipt = await self._log_query_analytics(
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            collections_used=collections_used,
+            sources=sources,
+            model_used=model_used_name,
+            token_usage=token_usage,
+            timings=timings,
+            response_generated=bool(result.answer) and not result.abstain,
+        )
+
+        return FinalizationContext(
+            result=result,
+            producer_origin=ProducerOrigin.REACT_PIPELINE,
+            analytics_receipt=analytics_receipt,
+        )
 
     async def _run_query_planner_shadow(
         self,
@@ -1812,32 +2013,38 @@ class OrchestratorCore:
         model_used: str,
         token_usage: TokenUsage,
         timings: dict[str, float],
+        response_generated: bool,
         error_message: str | None = None,
-    ) -> None:
+    ) -> AnalyticsReceiptStatus:
         """
         Persist query execution data to query_analytics table.
-        Fails silently to never block the main query flow.
+        Return a closed, non-PII receipt; failures never block the response.
         """
         if not self.db_pool:
-            return
+            return AnalyticsReceiptStatus.SKIPPED
 
         try:
             repo = QueryAnalyticsRepository(self.db_pool)
-            await repo.log_query(
+            query_id = await repo.log_query(
                 query_text=query,
                 user_id=user_id,
                 session_id=session_id,
                 collections_queried=list(collections_used) if collections_used else [],
                 chunks_retrieved_count=len(sources),
-                response_generated=len(sources) > 0,
+                response_generated=response_generated,
                 model_used=model_used,
                 execution_time_ms=int(timings.get("total", 0) * 1000),
                 token_usage_total=token_usage.total_tokens,
                 cost_usd=token_usage.cost_usd,
                 error_message=error_message,
             )
+            if query_id is None:
+                logger.warning("Query analytics returned no receipt (non-critical)")
+                return AnalyticsReceiptStatus.FAILED
+            return AnalyticsReceiptStatus.WRITTEN
         except Exception as e:
             logger.warning("Failed to log query analytics (non-critical): %s", e)
+            return AnalyticsReceiptStatus.FAILED
 
     # ========== COMMON METHODS FOR STREAMING AND NON-STREAMING ==========
 

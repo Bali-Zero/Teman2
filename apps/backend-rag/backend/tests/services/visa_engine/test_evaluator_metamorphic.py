@@ -563,3 +563,215 @@ class TestRuleOrderInvarianceCoFiring:
                 "for two co-firing review rules"
             )
         assert len(tested_orders | {tuple(reversed(rule_ids))}) == 2
+
+
+# ---------------------------------------------------------------------------
+# (e) Citizenship-conflict — nationality-set growth never defeats a
+#     document-country restriction (pack seq-4, design doc §3 Phase A item 4c
+#     / house-refuter disposition 17). The A1/B1 pattern this guards against:
+#     a HARD_FILTER built as ``not(intersects(nationalities, ALLOWLIST)))``
+#     combined with an ELIGIBILITY built as bare ``intersects(nationalities,
+#     ALLOWLIST)`` is bypassable by ANY multi-national set that contains at
+#     least one allowlisted nationality — {ineligible, eligible} clears BOTH
+#     the hard filter (not-excluded, since the set intersects the allowlist)
+#     and the eligibility rule (same reason), regardless of the OTHER
+#     nationality's real status. ``review.citizenship-conflict`` is the
+#     GLOBAL safety net: whenever the nationality set straddles the
+#     allowlist/complement boundary, force HUMAN_REVIEW_REQUIRED instead of
+#     silently granting an unconditional SUPPORTED_CANDIDATES.
+# ---------------------------------------------------------------------------
+
+#: A small, self-contained VOA-shaped allowlist/complement pair for this
+#: isolated test pack — deliberately NOT the real 97-country production
+#: list (that list is pinned separately by
+#: ``test_prod_sequence4_citizenship_conflict.py`` against the real signed
+#: pack content); this file only needs to prove the MECHANISM.
+_CIT_VOA_ALLOWLIST = ["US", "IT", "GB"]
+_CIT_VOA_COMPLEMENT = ["IR", "KP", "SY"]
+
+_CIT_NS = uuid.UUID("d3d3d3d3-d3d3-4d3d-8d3d-d3d3d3d3d3d3")
+_CIT_SOURCE_ID = str(uuid.uuid5(_CIT_NS, "citizenship-conflict-source"))
+_CIT_PRODUCT_ID = str(uuid.uuid5(_CIT_NS, "citizenship-conflict-product"))
+_CIT_PACK_ID = str(uuid.uuid5(_CIT_NS, "citizenship-conflict-pack"))
+
+
+def _citizenship_pack(*, with_guard: bool) -> CompiledRulePack:
+    """One B1-shaped product with (a) an ELIGIBILITY rule that SUPPORTs on
+    ``intersects(nationalities, ALLOWLIST)``, (b) a HARD_FILTER that
+    EXCLUDEs on ``not(intersects(nationalities, ALLOWLIST))`` — the exact
+    shape already live in prod for A1/B1 — and, iff ``with_guard``, (c) the
+    GLOBAL ``review.citizenship-conflict`` safety net."""
+
+    eligibility = _builders.rule(
+        rule_id="el.b1.tourism",
+        stage="ELIGIBILITY",
+        scope="PRODUCTS",
+        product_version_ids=[_CIT_PRODUCT_ID],
+        when={
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+                {"op": "intersects", "fact": "person.nationalities", "values": _CIT_VOA_ALLOWLIST},
+            ],
+        },
+        effect={
+            "type": "SUPPORT",
+            "reason_code": "B1_VOA_ELIGIBLE",
+            "covered_purposes": ["TOURISM"],
+        },
+        source_id=_CIT_SOURCE_ID,
+        required_facts=["intent.purposes", "person.nationalities"],
+    )
+    hard_filter = _builders.rule(
+        rule_id="hf.b1.not-voa-nationality",
+        stage="HARD_FILTER",
+        scope="PRODUCTS",
+        product_version_ids=[_CIT_PRODUCT_ID],
+        when={
+            "op": "not",
+            "arg": {
+                "op": "intersects",
+                "fact": "person.nationalities",
+                "values": _CIT_VOA_ALLOWLIST,
+            },
+        },
+        effect={"type": "EXCLUDE", "reason_code": "VOA_NATIONALITY_ONLY"},
+        on_unknown="HUMAN_REVIEW",
+        source_id=_CIT_SOURCE_ID,
+        required_facts=["person.nationalities"],
+        safety_critical=True,
+    )
+    rules = [eligibility, hard_filter]
+    if with_guard:
+        rules.append(
+            _builders.rule(
+                rule_id="review.citizenship-conflict",
+                stage="HUMAN_REVIEW",
+                scope="GLOBAL",
+                when={
+                    "op": "all",
+                    "args": [
+                        {
+                            "op": "intersects",
+                            "fact": "person.nationalities",
+                            "values": _CIT_VOA_ALLOWLIST,
+                        },
+                        {
+                            "op": "intersects",
+                            "fact": "person.nationalities",
+                            "values": _CIT_VOA_COMPLEMENT,
+                        },
+                    ],
+                },
+                effect={
+                    "type": "REQUIRE_REVIEW",
+                    "reason_code": "CITIZENSHIP_LIST_DIVERGENCE",
+                },
+                on_unknown="HUMAN_REVIEW",
+                source_id=_CIT_SOURCE_ID,
+                required_facts=["person.nationalities"],
+                safety_critical=True,
+            )
+        )
+    payload = _builders.rule_pack_payload(
+        rules=rules,
+        products=[
+            _builders.product(
+                source_id=_CIT_SOURCE_ID,
+                product_id=_CIT_PRODUCT_ID,
+                product_code="B1",
+                covered_purposes=["TOURISM"],
+            )
+        ],
+        source_records=[_builders.source_record(source_id=_CIT_SOURCE_ID)],
+        rule_pack_id=_CIT_PACK_ID,
+    )
+    return build_compiled_pack(M.RulePack.model_validate(_builders.rule_pack_envelope(payload)))
+
+
+def _evaluate_citizenship(nationalities: list[str], *, with_guard: bool) -> M.Decision:
+    facts = gf.applicant_facts(
+        assessment_id=_FIXED_ASSESSMENT_ID,
+        overrides={
+            "person.nationalities": gf.known(nationalities),
+            "intent.purposes": gf.known(["TOURISM"]),
+            "intent.stay_days": gf.known(10),
+        },
+    )
+    return evaluator.evaluate(
+        facts,
+        _citizenship_pack(with_guard=with_guard),
+        effective_at=_TARGET_EFFECTIVE_AT,
+        observed_at=_TARGET_EFFECTIVE_AT,
+    )
+
+
+class TestCitizenshipConflictNationalitySetMonotonicity:
+    """Design doc §3 Phase A item 4c / house-refuter disposition 17 (seq-4):
+    adding a nationality to the set can never improve the outcome. In
+    particular {IR} alone must never reach SUPPORTED_CANDIDATES on the
+    VOA-gated product (only a hard-excluded product exists in this isolated
+    pack, so the floor is NO_SUPPORTED_PATH), and {IR, US} must never reach
+    SUPPORTED_CANDIDATES without review — the eligible companion (US) must
+    not launder the ineligible one (IR) past the gate."""
+
+    def test_mono_national_ineligible_has_no_supported_path(self) -> None:
+        decision = _evaluate_citizenship(["IR"], with_guard=True)
+        assert decision.state is DecisionState.NO_SUPPORTED_PATH
+        assert decision.candidates == ()
+
+    def test_mono_national_eligible_is_supported_without_review_innocence(self) -> None:
+        """Innocence pin: a mono-national ELIGIBLE set must clear cleanly —
+        the guard must never fire on a set with no divergence."""
+        decision = _evaluate_citizenship(["US"], with_guard=True)
+        assert decision.state is DecisionState.SUPPORTED_CANDIDATES
+        assert decision.review_reasons == ()
+        assert [c.product_code for c in decision.candidates] == ["B1"]
+
+    def test_dual_national_mixed_eligibility_forces_review_not_silent_support(self) -> None:
+        """The exact house-refuter counterexample: {IR, US} must never reach
+        SUPPORTED_CANDIDATES — the guard forces HUMAN_REVIEW_REQUIRED."""
+        decision = _evaluate_citizenship(["IR", "US"], with_guard=True)
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert decision.candidates == ()
+        assert any(r.code == "CITIZENSHIP_LIST_DIVERGENCE" for r in decision.review_reasons)
+
+    def test_without_the_guard_rule_the_dual_national_bypass_is_live_guilt_proof(self) -> None:
+        """Mutation/guilt proof: remove ONLY the citizenship-conflict rule
+        (``with_guard=False``, everything else identical) and the exact same
+        {IR, US} facts DO reach SUPPORTED_CANDIDATES with a clean B1
+        candidate and zero review — the set+intersects HARD_FILTER/
+        ELIGIBILITY pair alone (the pattern already live in prod for A1) is
+        bypassable, proving the guard rule is load-bearing, not decorative.
+        If a future edit deletes ``review.citizenship-conflict`` from the
+        real pack, this is the failure mode it would reintroduce."""
+        decision = _evaluate_citizenship(["IR", "US"], with_guard=False)
+        assert decision.state is DecisionState.SUPPORTED_CANDIDATES
+        assert decision.review_reasons == ()
+        assert [c.product_code for c in decision.candidates] == ["B1"]
+
+    @pytest.mark.parametrize(
+        "baseline,grown",
+        [
+            (["US"], ["US", "IR"]),
+            (["IT"], ["IT", "IR"]),
+            (["GB"], ["GB", "KP"]),
+        ],
+    )
+    def test_adding_an_ineligible_nationality_never_improves_on_supported(
+        self, baseline: list[str], grown: list[str]
+    ) -> None:
+        """The general metamorphic property: if the smaller (mono-national,
+        eligible) set is cleanly SUPPORTED_CANDIDATES, growing it by one
+        INELIGIBLE nationality must never stay a clean, review-free
+        SUPPORTED_CANDIDATES — it must escalate to HUMAN_REVIEW_REQUIRED."""
+        baseline_decision = _evaluate_citizenship(baseline, with_guard=True)
+        assert baseline_decision.state is DecisionState.SUPPORTED_CANDIDATES
+        assert baseline_decision.review_reasons == ()
+
+        grown_decision = _evaluate_citizenship(grown, with_guard=True)
+        assert grown_decision.state is DecisionState.HUMAN_REVIEW_REQUIRED, (
+            f"growing {baseline} -> {grown} must escalate to review, "
+            f"got {grown_decision.state}"
+        )
+        assert grown_decision.candidates == ()

@@ -1,8 +1,14 @@
 """
 Unit tests for CRM automation services.
 
-Tests ProcessAutomationService, CompletedProcessService,
-WaitingDocumentsService and shared helpers.
+Tests ProcessAutomationService and its shared helpers. CompletedProcessService
+and WaitingDocumentsService were removed from automation.py 2026-08-08 — dead
+duplicates of the live backend.services.crm.completed_process_service /
+waiting_documents_service modules (the only ones crm_practices.py actually
+imports); this file's TestCompletedProcessService/TestWaitingDocumentsService
+were testing the unreachable copy, not real behavior. No test coverage for
+the live modules existed before or after this change — that gap is
+pre-existing, not introduced here.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -244,126 +250,3 @@ class TestProcessAutomationService:
             result = await svc.trigger_on_process_start(1, "user@x.com")
         assert result["client_notified"] is False
 
-
-# ---------------------------------------------------------------------------
-# CompletedProcessService
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-class TestCompletedProcessService:
-    def _make_service(self):
-        pool, conn = _make_pool()
-        with (
-            patch("backend.services.integrations.zoho_email_service.ZohoEmailService"),
-            patch("backend.services.integrations.drive_folder_service.DriveFolderService"),
-        ):
-            from backend.services.crm.automation import CompletedProcessService
-
-            svc = CompletedProcessService(pool)
-        svc.zoho_email_service = AsyncMock()
-        svc.drive_service = AsyncMock()
-        return svc, pool, conn
-
-    async def test_trigger_practice_not_found(self):
-        svc, _, _ = self._make_service()
-        with patch(
-            "backend.services.crm.automation._fetch_practice_with_client", new_callable=AsyncMock
-        ) as m:
-            m.return_value = (None, None)
-            result = await svc.trigger_on_completed(999, "user@x.com")
-        assert result["success"] is False
-
-    async def test_trigger_completed_success(self):
-        svc, _, _ = self._make_service()
-        practice = {"id": 1, "practice_type_name": "KITAS", "assigned_to": "lead@x.com"}
-        client = {"id": 10, "full_name": "John", "email": "john@x.com"}
-        with (
-            patch(
-                "backend.services.crm.automation._fetch_practice_with_client",
-                new_callable=AsyncMock,
-            ) as m,
-            patch(
-                "backend.services.crm.automation._send_with_brevo_fallback", new_callable=AsyncMock
-            ),
-            patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
-        ):
-            m.return_value = (practice, client)
-            result = await svc.trigger_on_completed(1, "user@x.com")
-        assert result["success"] is True
-        assert result["client_notified"] is True
-
-    async def test_upload_final_documents_no_folder(self):
-        svc, _, _ = self._make_service()
-        result = await svc._upload_final_documents(
-            client_data={"id": 10, "drive_final_folder_id": None},
-            documents=[{"content": b"pdf", "filename": "doc.pdf"}],
-        )
-        assert result == []
-
-    async def test_save_final_document_record(self):
-        svc, pool, conn = self._make_service()
-        await svc._save_final_document_record(10, "doc.pdf", "gd-123", "https://...")
-        conn.execute.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# WaitingDocumentsService
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-class TestWaitingDocumentsService:
-    def _make_service(self):
-        pool, conn = _make_pool()
-        with patch("backend.services.integrations.zoho_email_service.ZohoEmailService"):
-            from backend.services.crm.automation import WaitingDocumentsService
-
-            svc = WaitingDocumentsService(pool)
-        svc.zoho_email_service = AsyncMock()
-        return svc, pool, conn
-
-    async def test_trigger_not_found(self):
-        svc, _, _ = self._make_service()
-        with patch(
-            "backend.services.crm.automation._fetch_practice_with_client", new_callable=AsyncMock
-        ) as m:
-            m.return_value = (None, None)
-            result = await svc.trigger_on_waiting_documents(999, "user@x.com")
-        assert result["success"] is False
-
-    async def test_trigger_success(self):
-        svc, _, _ = self._make_service()
-        practice = {
-            "id": 1,
-            "practice_type_name": "KITAS",
-            "practice_type_code": "kitas",
-            "assigned_to": "lead@x.com",
-        }
-        client = {"id": 10, "full_name": "John", "email": "john@x.com"}
-        with (
-            patch(
-                "backend.services.crm.automation._fetch_practice_with_client",
-                new_callable=AsyncMock,
-            ) as m,
-            patch(
-                "backend.services.crm.automation._send_with_brevo_fallback", new_callable=AsyncMock
-            ) as ms,
-            patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
-        ):
-            m.return_value = (practice, client)
-            result = await svc.trigger_on_waiting_documents(1, "user@x.com")
-        assert result["success"] is True
-        assert result["team_leader_notified"] is True
-        assert result["client_notified"] is True
-        assert ms.await_count == 2
-
-    async def test_exception_handling(self):
-        svc, _, _ = self._make_service()
-        with patch(
-            "backend.services.crm.automation._fetch_practice_with_client", new_callable=AsyncMock
-        ) as m:
-            m.side_effect = RuntimeError("DB error")
-            result = await svc.trigger_on_waiting_documents(1, "user@x.com")
-        assert result["success"] is False
-        assert "DB error" in result["error"]
