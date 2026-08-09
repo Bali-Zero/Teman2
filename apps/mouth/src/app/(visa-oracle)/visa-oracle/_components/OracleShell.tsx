@@ -24,7 +24,10 @@ import {
   type EvaluationIdentityStorage,
 } from "../_lib/evaluation-identity-store";
 import { EvaluationRunCache } from "../_lib/evaluation-run-cache";
-import { buildEngineOutcome } from "../_lib/engine-adapter";
+import {
+  buildEngineOutcome,
+  buildInternalPreviewOutcome,
+} from "../_lib/engine-adapter";
 import { VisaOracleResponseError } from "../_lib/engine-response";
 import { buildPreviewOutcome } from "../_lib/preview-adapter";
 import {
@@ -63,6 +66,14 @@ import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
 
 const HIDE_COUNTER_ON = new Set(["in_indonesia", "permit_expiry"]);
+
+/**
+ * Shown whenever a real engine decision is rendered from a non-authoritative
+ * (SHADOW/`CURATED`) response. Intentionally English-only and unlocalised:
+ * it addresses the internal Bali Zero tester, never a client.
+ */
+const INTERNAL_PREVIEW_NOTICE =
+  "INTERNAL PREVIEW — engine output shown for testing. Not an authoritative answer and not cleared for a client.";
 
 function isMinorForHandoff(
   birthDateValue: string | undefined,
@@ -118,8 +129,19 @@ function validateStoredSnapshot(
     : (value as InterviewSnapshot);
 }
 
+export interface OracleShellProps {
+  /**
+   * True only when the server has verified the signed `vo_internal` cookie
+   * (see `_lib/internal-access.ts`). Decided on the server and passed down —
+   * never probed from the client — so there is no window in which an unlocked
+   * tester renders (and caches) the public, decision-hidden outcome.
+   * Defaults to the public experience.
+   */
+  internalMode?: boolean;
+}
+
 /** Hydrate sessionStorage after mount so server and first client render match. */
-export function OracleShell() {
+export function OracleShell({ internalMode = false }: OracleShellProps = {}) {
   const [hydrated, setHydrated] = useState<HydratedShell | null>(null);
 
   useEffect(() => {
@@ -150,6 +172,7 @@ export function OracleShell() {
       initialSnapshot={hydrated.snapshot}
       restoreToday={hydrated.restoredAt}
       initialResumeExpiresAtIso={hydrated.resumeExpiresAtIso}
+      internalMode={internalMode}
     />
   );
 }
@@ -158,6 +181,7 @@ interface OracleShellRuntimeProps {
   initialSnapshot: InterviewSnapshot | null;
   restoreToday: Date;
   initialResumeExpiresAtIso: string | null;
+  internalMode: boolean;
 }
 
 /**
@@ -255,6 +279,7 @@ function OracleShellRuntime({
   initialSnapshot,
   restoreToday,
   initialResumeExpiresAtIso,
+  internalMode,
 }: OracleShellRuntimeProps) {
   const [theme, setTheme] = useState<OracleTheme>("light");
   const [frozenToday, setFrozenToday] = useState<Date | null>(null);
@@ -509,7 +534,10 @@ function OracleShellRuntime({
         } catch {
           // A missing correlator is safer than hashing structured applicant data.
         }
-        cacheKey = `${mode}:${state.attempt}:${prepared.evaluationHash}`;
+        // `internalMode` is part of the key: the same interview renders a
+        // different outcome for an unlocked tester, so a cached public result
+        // must never be replayed into the internal preview (or vice versa).
+        cacheKey = `${mode}:${internalMode ? "internal" : "public"}:${state.attempt}:${prepared.evaluationHash}`;
         lastEvaluationKeyRef.current = cacheKey;
         const lease = evaluationCacheRef.current.acquire(
           cacheKey,
@@ -526,6 +554,28 @@ function OracleShellRuntime({
                 idempotencyKey: prepared.identity.idempotencyKey,
                 signal: requestSignal,
               });
+              // Internal (PIN-unlocked) tester: show the REAL engine decision
+              // even while the backend answers SHADOW/`mode:"CURATED"`, which
+              // already carries the full decision. Checked BEFORE the
+              // frontend's own SHADOW branch, which would otherwise swallow
+              // the decision the tester unlocked specifically to see. The
+              // public paths below are deliberately left untouched — their
+              // fail-closed behaviour on a mode mismatch is an invariant, not
+              // an accident, and is pinned by OracleShell.test.tsx.
+              if (internalMode) {
+                const previewOutcome = buildInternalPreviewOutcome(response, {
+                  assumptions,
+                  facts: state.facts,
+                  interviewBranchesRemaining,
+                });
+                emitVisaOracleTelemetry({
+                  event: "visa_oracle_v2_engine_result",
+                  state: previewOutcome.state,
+                  correlationHash: telemetryCorrelationHash,
+                });
+                return previewOutcome;
+              }
+
               if (mode === "SHADOW") {
                 const preview = buildPreviewOutcome(state.facts, frozenToday);
                 emitVisaOracleTelemetry({
@@ -624,6 +674,7 @@ function OracleShellRuntime({
     assumptions,
     current.kind,
     frozenToday,
+    internalMode,
     interviewBranchesRemaining,
     mode,
     memoryIdentityStorage,
@@ -669,8 +720,25 @@ function OracleShellRuntime({
   );
 
   return (
-    <div className="oracle-root" data-oracle-theme={theme} data-funnel="visa">
+    <div
+      className="oracle-root"
+      data-oracle-theme={theme}
+      data-funnel="visa"
+      data-internal-preview={internalMode ? "true" : undefined}
+    >
       <div className="oracle-shell">
+        {internalMode && (
+          // Anyone shown a real engine decision must be told, on the same
+          // screen, that it is an internal preview and not an answer that has
+          // been cleared for a client.
+          <p
+            className="oracle-question__hint"
+            role="status"
+            style={{ fontWeight: 600 }}
+          >
+            {INTERNAL_PREVIEW_NOTICE}
+          </p>
+        )}
         <header className="oracle-topbar">
           <span
             className="oracle-badge"
