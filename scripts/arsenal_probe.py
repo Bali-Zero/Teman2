@@ -662,7 +662,10 @@ def probe_qwen_cloud_code(timeout: float) -> tuple[str, str, int]:
         )
     env = dict(os.environ)
     env["BAILIAN_TOKEN_PLAN_API_KEY"] = token
-    res = run_probe_cmd([binp, "-p", PONG_PROMPT], timeout=timeout, env=env)
+    # --safe-mode: this build boots MCP servers/hooks/skills on every invocation
+    # (measured: pushed the 1-token probe past the 15 s fleet mandate); safe-mode
+    # disables all customizations, which a probe does not need.
+    res = run_probe_cmd([binp, "-p", PONG_PROMPT, "--safe-mode"], timeout=timeout, env=env)
     latency_ms = int((time.monotonic() - t0) * 1000)
     ev = path_note + evidence_tail(res.stdout + " " + res.stderr, extra_secrets=[token])
     live = "PONG" in res.stdout

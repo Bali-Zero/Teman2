@@ -509,11 +509,13 @@ full record is the source of truth: `reviews/fable-gate.md`)
 
 # 4. §Solo-operatore (operator-only actions surfaced by this session)
 
-1. **`operator[credential]` — P0:** rotate the Qwen Code runtime credential found in
-   `~/.qwen/settings.json` and move it to Keychain (claude-glm.sh pattern); permissions
-   already tightened to 0600 this session as mitigation — rotation itself is not something
-   this seat may do to itself. (Joins the already-open: public TG bot token rotation,
-   Sentry token rotation.)
+1. ~~**`operator[credential]` — P0:** rotate the Qwen Code runtime credential~~ —
+   **RULED 2026-08-09 by Zero: "non ruoto, basta"** (no rotation; forward-fix).
+   Consequence executed: value-preserving migration of the EXISTING credential into
+   Keychain service `qwen-cloud-code-token` (Claude PR-review RULING-1; satisfies the
+   no-rotation ruling literally), settings.json re-asserted to 0600 — and the wrapper now
+   re-asserts 0600 on EVERY invocation, because the Claude review proved bare `qwen`
+   resets the file to 0644 (one-time chmod is not a durable state).
 2. `operator[decision]` — ratify Q1-Q5 in §2.5 (doctrine seam one-liner; arming ownership
    = Claude lane; subscription contract + caps; PII gateway; recording-off default).
 3. `operator[decision]` — enforce or waive the 2026-07-23 skill-unification invariant on
@@ -521,3 +523,41 @@ full record is the source of truth: `reviews/fable-gate.md`)
 4. `operator[business]` — Gemini prepay credits (memory 2026-07-27) if relevant.
 5. `operator[decision]` — collision handling for the legacy `~/scripts/qwen-code-review.sh`
    wrapper vs the proposed `qwen-cloud-code` seat name.
+
+# 5. Post-gate PR review loop (2026-08-09, PR #3884)
+
+Zero's rulings (2026-08-09): (1) "non ruoto, basta" — no credential rotation, forward-fix;
+(2) review assigned to a Claude session; (3) after review, Claude is authorized and
+instructed to carry merge → fleet sync/deploy → test.
+
+**Claude PR review verdict: REQUEST-CHANGES** (full record:
+`council/2026-08-08-qwen-seat/reviews/claude-pr-review.md`), with four findings:
+- **P0 live (outside the diff):** `~/.qwen/settings.json` had reverted to 0644 (bare
+  `qwen` invocations rewrite it with default perms) — the one-time 0600 mitigation was
+  not a durable state.
+- **P0 (wrapper v1):** the Legge-5/yolo scan was live-provably bypassed three ways
+  (bare `--yolo`, space-separated `--approval-mode`, fictional `auto_edit` spelling)
+  and omitted the `--comment` block that the Fable gate had explicitly required.
+- **P1:** recording-off was not wrapper-enforced (Fable Q4/Q5).
+- **P1:** Q3 economics still open — the credential authenticates a METERED Token Plan,
+  not a flat subscription; Zero's rotation ruling does not close it.
+
+**Fixes applied (all verified this session):**
+- Wrapper v2: the scan is now an argv FILTER, not a blocklist — the whole
+  approval/yolo arg family is stripped before exec (proved end-to-end: a PONG run with
+  `--yolo` appended succeeds, which it could not if the flag were forwarded, since this
+  build rejects unknown arguments); `--comment` and the Legge-5 verbs refused outright;
+  0600 re-asserted on every invocation.
+- Probe: `--safe-mode` added (measured: MCP boot pushed the 1-token probe past the 15 s
+  fleet mandate; safe-mode disables customizations a probe does not need).
+- Credential: value-preserving migration into Keychain `qwen-cloud-code-token` per the
+  review's RULING-1 (same value, no rotation — honors the ruling literally); the gate
+  design is unchanged and now satisfiable.
+- Re-verification: selftest 18/18; live probe **LIVE 5,916 ms** (PONG, within mandate);
+  refusals fire before any exec.
+
+**Residual gaps (declared, not faked):** this build exposes NO chat-recording disable
+surface (no flag, no settings key found in the installed package) — transcript retention
+remains harness state until the build exposes a control; Q3 metered-billing confirmation
+remains an operator item. Seat state after this loop: registered, keychain-armed, LIVE on
+M5 only, absent from REQUIRED_SEATS everywhere.
