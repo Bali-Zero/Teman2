@@ -77,6 +77,19 @@ run() { # run <expected: BUILD|SKIP> <label> ; env vars come from the caller
   fi
 }
 
+run_log_safe() { # run_log_safe <expected> <label> <sentinel> <required-log-fragment>
+  local want="$1" label="$2" sentinel="$3" required="$4" output got rc
+  output=$( ( cd "$WORK" && bash "$SCRIPT" >/dev/null ) 2>&1 ); rc=$?
+  case $rc in 1) got=BUILD ;; 0) got=SKIP ;; *) got="rc=$rc" ;; esac
+  if [ "$got" = "$want" ] && [[ "$output" == *"$required"* ]] && [[ "$output" != *"$sentinel"* ]]; then
+    PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "$label" "$got"
+  else
+    FAIL=$((FAIL+1))
+    printf '  FAIL  %-58s want %s without sentinel, got %s; log=%s\n' \
+      "$label" "$want" "$got" "$output"
+  fi
+}
+
 echo "=== GUILT: a build is genuinely needed"
 
 git -C "$WORK" checkout -q -b feat/frontend main
@@ -200,6 +213,15 @@ git -C "$WORK" remote remove origin
 VERCEL_GIT_COMMIT_REF=docs/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
   run SKIP "no origin remote, URL fallback resolves -> docs-only skips"
 
+# The override is an operational seam. A credentialed URL (or any sensitive locator) must
+# never be echoed into build logs on either success or failure.
+FETCH_SENTINEL=SAFE_FETCH_TARGET_93af
+PRIVATE_UPSTREAM="$ROOT/$FETCH_SENTINEL/upstream.git"
+mkdir -p "$(dirname "$PRIVATE_UPSTREAM")"
+git clone -q --bare "$UPSTREAM" "$PRIVATE_UPSTREAM"
+VERCEL_GIT_COMMIT_REF=docs/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$PRIVATE_UPSTREAM" \
+  run_log_safe SKIP "URL fallback succeeds without logging its target" "$FETCH_SENTINEL" "from url -> merge-base"
+
 git -C "$WORK" checkout -q -b feat/noorigin main
 commit "apps/mouth/app/no-origin.tsx" "frontend, container without origin"
 VERCEL_GIT_COMMIT_REF=feat/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
@@ -207,8 +229,8 @@ VERCEL_GIT_COMMIT_REF=feat/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_
 
 git -C "$WORK" checkout -q -b docs/nourl main
 commit "docs/no-url.md" "docs only, and nothing fetchable at all"
-VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$ROOT/does-not-exist.git" \
-  run BUILD "no origin remote and dead URL -> BUILD (fail-open)"
+VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$ROOT/$FETCH_SENTINEL/does-not-exist.git" \
+  run_log_safe BUILD "dead URL fails open without logging its target" "$FETCH_SENTINEL" "cannot fetch main from origin or URL"
 
 git -C "$WORK" remote add origin "$UPSTREAM"
 git -C "$WORK" fetch -q origin main:refs/remotes/origin/main

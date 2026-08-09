@@ -73,6 +73,11 @@ BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 
 log() { printf 'should-build: %s\n' "$1" >&2; }
 one_line() { printf '%s' "$1" | tr '\n' ' ' | cut -c1-200; }
+one_line_redacted() {
+  local value="$1" sensitive="$2"
+  [ -n "$sensitive" ] && value=${value//"$sensitive"/<fetch-url>}
+  one_line "$value"
+}
 
 if [ -z "$BASE" ]; then
   # No previous deployment on this ref — this is the case that matters. Measured on the real
@@ -144,9 +149,11 @@ if [ -z "$BASE" ]; then
         exit 1
       fi
       if url_err=$(git fetch --no-tags --depth=200 "$FETCH_URL" "$PROD_BRANCH" 2>&1); then
-        fetched=$FETCH_URL
+        # The override is an operational seam and may contain credentials or another
+        # sensitive locator. The fetch target must never be copied into Vercel logs.
+        fetched=url
       else
-        log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin: $(one_line "$fetch_err") | url: $(one_line "$url_err")"
+        log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin: $(one_line "$fetch_err") | url: $(one_line_redacted "$url_err" "$FETCH_URL")"
         exit 1
       fi
     fi
