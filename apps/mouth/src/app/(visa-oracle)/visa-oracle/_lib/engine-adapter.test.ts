@@ -1,8 +1,44 @@
 import { describe, expect, it } from "vitest";
 import { buildEngineOutcome } from "./engine-adapter";
-import { makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
+  it("shows each source's own dates, not the decision's evaluation clock", () => {
+    // The backend's `_build_sources_dto` stamps EVERY cited source's
+    // applicability block with `decision.effective_at`/`observed_at` — the
+    // evaluation clock — so those two fields say nothing about the document.
+    // Reading them made every source on screen claim it took legal effect at
+    // the instant the reader pressed the button.
+    //
+    // The shared fixture sets every date to TEST_NOW, so it cannot tell the
+    // right field from the wrong one: give this source dates of its own.
+    // The response contract requires these to stay mutually consistent
+    // (`retrieved_at <= verified_at`, `freshness.verified_at === verified_at`),
+    // so move the whole observation forward together — a day before TEST_NOW,
+    // inside the fixture's 86_400s freshness window.
+    const OBSERVED = "2026-08-02T05:00:00Z";
+    const response = makeVisaOracleResponse();
+    response.sources[0].legal_period_from = "2026-07-24T00:00:00Z";
+    response.sources[0].retrieved_at = OBSERVED;
+    response.sources[0].verified_at = OBSERVED;
+    response.sources[0].freshness.verified_at = OBSERVED;
+    response.sources[0].applicability.effective_at = TEST_NOW;
+    response.sources[0].applicability.observed_at = TEST_NOW;
+
+    const outcome = buildEngineOutcome(response);
+    const source = outcome.sources[0];
+    expect(source.effectiveAtIso).toBe("2026-07-24T00:00:00Z");
+    expect(source.observedAtIso).toBe(OBSERVED);
+    expect(source.effectiveAtIso).not.toBe(TEST_NOW);
+
+    // Innocence: the ASSESSMENT's own dates are legitimately the evaluation
+    // moment. This fix must not reach up and rewrite those too.
+    expect(outcome.assessment).not.toBeNull();
+    expect(outcome.assessment?.effectiveAtIso).toBe(
+      response.decision.effective_at,
+    );
+  });
+
   it.each([
     "SUPPORTED_CANDIDATES",
     "NEEDS_INPUT",

@@ -132,8 +132,22 @@ function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
     url,
     authority: source.authority_type,
     primary: source.is_primary_authority,
-    effectiveAtIso: source.applicability.effective_at,
-    observedAtIso: source.applicability.observed_at,
+    // These two feed a line that reads "Effective X · observed Y" ABOUT THE
+    // SOURCE, so they must carry the document's own dates.
+    //
+    // They used to read `source.applicability.*`, which is not a property of
+    // the document at all: the backend writes the decision's evaluation clock
+    // into every cited source's applicability block (`_build_sources_dto` in
+    // evaluate_path.py sets effective_at/observed_at from `decision.*`, itself
+    // `now`). The result on screen was every source claiming it took legal
+    // effect at the instant the reader pressed the button — a date that reads
+    // as a freshness guarantee while carrying no information about the source.
+    //
+    // `verified_at` rather than `retrieved_at` for "observed": the freshness
+    // policy is MAX_AGE_SINCE_VERIFIED_AT, so this is the date that actually
+    // explains the freshness badge rendered next to it.
+    effectiveAtIso: source.legal_period_from,
+    observedAtIso: source.verified_at,
     freshness: source.freshness.status,
   };
 }
