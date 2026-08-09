@@ -90,6 +90,7 @@ def test_healthy_boundaries_read_clean(tmp_path: Path) -> None:
     assert "armed but not yet queued: 1 [4243]" in proc.stdout
     assert "free — no holder, no queue" in proc.stdout
     assert "pending (waiting for digest flush): 4" in proc.stdout
+    assert "last flush age:" in proc.stdout
     assert "P0 archived today: 6" in proc.stdout
     assert "CANNOT-VERIFY" not in proc.stdout
 
@@ -103,6 +104,37 @@ def test_broken_sources_say_cannot_verify_never_zero(tmp_path: Path) -> None:
     assert "in queue: 0" not in proc.stdout
     assert "pending (waiting for digest flush): 0" not in proc.stdout
     assert "INCOMPLETE" in proc.stdout
+
+
+def test_missing_spool_file_is_not_reported_as_an_empty_queue(tmp_path: Path) -> None:
+    lock = tmp_path / "no-such-lock"
+    missing_pending = (
+        'printf "pending MISSING\\n"\n'
+        'printf "last_flush %s\\n" \'{"ts": 1786000000}\'\n'
+        'printf "p0_today %s\\n" 0\n'
+    )
+
+    proc = _run_doctor(tmp_path, gh_body=_HEALTHY_GH, ssh_body=missing_pending, lock=lock)
+
+    assert proc.returncode == 4, proc.stdout + proc.stderr
+    assert "CANNOT-VERIFY" in proc.stdout
+    assert "missing or invalid counters: pending" in proc.stdout
+    assert "pending (waiting for digest flush): 0" not in proc.stdout
+
+
+def test_malformed_last_flush_metadata_is_cannot_verify(tmp_path: Path) -> None:
+    lock = tmp_path / "no-such-lock"
+    malformed_flush = (
+        'printf "pending %s\\n" 0\n'
+        'printf "last_flush %s\\n" not-json\n'
+        'printf "p0_today %s\\n" 0\n'
+    )
+
+    proc = _run_doctor(tmp_path, gh_body=_HEALTHY_GH, ssh_body=malformed_flush, lock=lock)
+
+    assert proc.returncode == 4, proc.stdout + proc.stderr
+    assert "CANNOT-VERIFY" in proc.stdout
+    assert "invalid last_flush metadata" in proc.stdout
 
 
 def test_lock_held_by_live_pid_reads_alive(tmp_path: Path) -> None:
