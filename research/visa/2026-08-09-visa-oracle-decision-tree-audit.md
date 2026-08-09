@@ -108,26 +108,49 @@ pack's hash. Fixed: minted a new uuid5 `rule_pack_id = 4159265d-53e8-5b25-ab5a-f
 (prod-004, read dynamically from its signed bundle — no frozen constant). All four
 activation preconditions re-verified GREEN (unique id · seq 5>4 · prev==prod-004 · PRODUCTION).
 
-**Operator-gated (Zero only — credential/physical/business):**
-1. **Sign on M5** (`ssh air`, user `balizero`) — the Ed25519 PRIVATE key lives only
-   at `~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem` (chmod 0600),
-   never on Pro/Mini/Keychain/repo (cicatrix #4). Command shape (verified arg surface):
-   `python -m backend.scripts.visa_engine.sign_pack rulepack-prod-005.source.json
-   --kid 2026-07-prod-1 --key-file <pem> --environment PRODUCTION --sequence 5
-   --output rulepack-prod-005.signed.json --i-know-this-is-production`.
-2. **Two-login activate** — `activate_pack.py <signed.json> --actor <id> --reason
-   seq5-shadow-activation-260809 --current-sequence 4 --current-payload-sha256
-   1f0f7b0d189d0d9adecb08afa158f1f221ef698340a65b029beb0fc21f410e49 --yes`, with TWO
-   distinct DB identities in env (`VISA_ENGINE_PACK_WRITER_DATABASE_URL` +
-   `VISA_ENGINE_ACTIVATION_DATABASE_URL`); `_assert_production_separation` hard-refuses
-   if the two logins are the same principal or a superuser. Ephemeral ceremony roles
-   (`visa_pack_writer_ceremony_<date>` / `visa_activation_ceremony_<date>`) minted +
-   dropped same session (prod-004 precedent). Run once WITHOUT `--yes` first (dry-run
-   preview of sequence/hash) before the real write.
-3. **Prove-live** (session does after activation): SHADOW binding query resolves to
-   seq-5 (`rule_pack_id 4159265d-53e8-5b25-ab5a-fa4f5b25a2d1`) on next evaluate; the 2
-   corrected branches answer correctly; EVALUATE_MODE stays SHADOW (separate Fly secret
-   `VISA_ENGINE_EVALUATE_MODE`, untouched — ENFORCE remains NO-GO).
+**⚠️ KID CORRECTION (2026-08-09 — the real signing key id, proven against live prod-004):**
+The production signing kid is **`prod-2026-07-1`** (letter-first) — NOT `2026-07-prod-1`.
+The earlier `2026-07-prod-1` was a transcription/transposition that propagated from an
+ILLUSTRATIVE docstring example (`bundle.py:253`, inside `StaticTrustStore.from_env`'s
+`.. code-block:: json`) and the M5 key FILENAME (`2026-07-prod-1.ed25519.pem`) — the file
+name uses a date-first convention that does NOT equal the kid it holds. Proven the hard way:
+signing with `--kid 2026-07-prod-1` is REJECTED (digit-first fails the `Identifier` pattern
+`^[A-Za-z]…`), and `RulePack.model_validate(prod-004.signed.json)` shows the LIVE bundle's
+`protected.kid == 'prod-2026-07-1'`. A GATE probe verified prod-004's Ed25519 signature with
+a trust store built from that key's derived pubkey (`gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA`)
+under kid `prod-2026-07-1` → PASS, so this exact key+kid is prod-004's live signer. There is
+NO kid Identifier regression on main — the pattern accepts `prod-2026-07-1` fine.
+
+**Session-executed (DONE 2026-08-09 — "io sono te", sign_pack reads --key-file, never prints):**
+1. **Signed on M5** (`ssh air`, user `balizero`) — Ed25519 PRIVATE key at
+   `~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem` (chmod 0600, never
+   Pro/Mini/Keychain/repo, cicatrix #4). `python -m backend.scripts.visa_engine.sign_pack
+   rulepack-prod-005.source.json --kid prod-2026-07-1 --key-file <pem> --environment
+   PRODUCTION --sequence 5 --output rulepack-prod-005.signed.json --i-know-this-is-production`.
+   Result: `sequence=5 kid=prod-2026-07-1 payload_sha256=ebc19f5c0550b601350f4e8e9ab95a61cc8107ea15c2ecd03781d023aaad322e
+   public_key=gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA` (IDENTICAL pubkey to prod-004's
+   signer). sign_pack self-verified before writing.
+2. **Faithful dry-run of activate_pack** (no `--yes`, returns before any DB): with a
+   `VISA_ENGINE_TRUST_STORE_KEYS_JSON` built from the derived pubkey, the REAL path ran
+   `StaticTrustStore.from_env` → `verify_rule_pack` (PASS) → `validate_activation`
+   (anti-rollback pre-gate PASS: seq 5>4 · chain `1f0f7b0d…` · PRODUCTION · engine 1.0.0)
+   → `would_insert_and_activate=true rule_pack_id=4159265d-… payload_sha256=ebc19f5c…`.
+
+**Operator-checkpoint (Zero — Legge 5 business go for the IRREVERSIBLE write):**
+3. **Two-login `--yes` activate** — `activate_pack.py <signed.json> --actor
+   session.voa-seq5-tree --reason seq5-shadow-activation-260809 --current-sequence 4
+   --current-payload-sha256 1f0f7b0d189d0d9adecb08afa158f1f221ef698340a65b029beb0fc21f410e49
+   --yes`, with TWO distinct DB identities in env (`VISA_ENGINE_PACK_WRITER_DATABASE_URL`
+   + `VISA_ENGINE_ACTIVATION_DATABASE_URL`); `_assert_production_separation` hard-refuses
+   same-principal or superuser sessions. Ephemeral ceremony roles
+   (`visa_pack_writer_ceremony_260809` in `visa_pack_writer` / `visa_activation_ceremony_260809`
+   in `visa_activation_executor`, invariant `no-pack-writer-activation-combination`) minted
+   via fly superuser on `nuzantara-postgres` (from Pro) + dropped same session (prod-004
+   precedent). This is the single Zero-gated step remaining.
+4. **Prove-live** (session, after activation): SHADOW binding resolves to seq-5
+   (`rule_pack_id 4159265d-53e8-5b25-ab5a-fa4f5b25a2d1`) on next evaluate; the 2 corrected
+   branches answer correctly; EVALUATE_MODE stays SHADOW (`VISA_ENGINE_EVALUATE_MODE`
+   untouched — ENFORCE remains NO-GO).
 
 **NOT a blocker for this SHADOW activation** (corrected 2026-08-09 — earlier draft
 over-flagged it): the enforce-gate doc's DB findings (migration 264 unapplied,
