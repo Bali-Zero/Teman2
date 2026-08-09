@@ -23,21 +23,6 @@ adversarial_review: codex
 > every change against v1 so the next reviewer attacks the CORRECTIONS, not the retired claims
 > (W113: the replacement assertion is a new claim — this file points its next refuter at itself).
 
-## Adversarial review
-
-Cross-family, 2 seats, PRE-authoring: **Codex gpt-5.6-sol** (effort=high, 20 findings) and
-**Qwen 3.8 Max** (12 findings) independently refuted the v1 (Cowork-M5) draft under an identical
-mandate. All 6 conductor objections were CONFIRMED or EXTENDED by both seats. This v2 IS the
-fold-in of that round: every entry in the delta log (§6) traces back to a specific Codex/Qwen
-finding ID, and no claim survives in v2 that either refuter rejected. The 3 load-bearing new
-claims introduced by the rewrite itself were re-grounded on `origin/main` before this file was
-written (see `sources:` in the frontmatter — `tests.yml:951-1000`, PR #3928 statusCheckRollup).
-
-Nothing survived latent from this round — both seats' objections were folded, not deferred.
-Declared residual risk (§7 item 5, not hidden): **this v2 rewrite has not itself been through a
-post-rewrite refutation pass** — the delta log (§6) is the target map for that next round, due
-before Wave 2 arms.
-
 ## 0. What survives from v1 (the sound core)
 
 Three ideas survived both refuters untouched and remain the spine:
@@ -285,3 +270,21 @@ renumbering; no ML test selection at this scale). Added by refutation:
 5. **This v2 has not itself been refuted post-rewrite.** The delta log (§6) is the refuter's
    target map: the corrections are new claims (W113). One cross-family pass on §2 and §4 before
    Wave 2 arms; Waves 0-1 are observational/trap-disarm and may arm after ordinary R1 review.
+
+## Adversarial review
+
+Two cross-family seats refuted the v1 draft under an identical mandate before this rewrite:
+Codex gpt-5.6-sol (effort high, 20 findings) and Qwen 3.8 Max (12 findings; seat not yet in
+this gate's registry — the frontmatter token names the registry seat). All 6 of the
+conductor's pre-existing objections were CONFIRMED or EXTENDED by both seats independently.
+
+Surviving objections and their disposition: every v1 finding that survived is folded into
+this v2 as a design change — the complete mapping (17 corrections, each attributed to the
+finding that forced it) is §6; what was deliberately NOT absorbed is declared in §7 with its
+trigger. Three refuter claims were themselves corrected by re-grounding on origin/main before
+acceptance (Codex F4 partially pre-covered by CODEOWNERS-TIER1; test-summary/required-set
+facts re-read from the live files; the queue-reset mechanics confirmed, not assumed).
+
+Open by declaration (§7.5): this v2 text has not itself been refuted post-rewrite — the §6
+delta log is the target map for one cross-family pass on §2 and §4 before Wave 2 arms.
+Waves 0-1 are observational/trap-disarm and proceed after ordinary R1 review.
