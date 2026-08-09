@@ -11,7 +11,8 @@ Purpose: canonical restart and Claude-review handoff for `/visaoracle`
 Visa Oracle V2 is **ONLINE IN SHADOW with every operational gate proven
 against real production** — roles provisioned, migrations 262–267 applied,
 Privacy Policy V1 registered, a corrected signed RulePack activated
-(`prod-003`, sequence 3), the 15-minute retention scheduler installed and
+(`prod-003`, sequence 3 — since superseded by `prod-004`/sequence 4, see the
+2026-08-08 UPDATE addendum below), the 15-minute retention scheduler installed and
 armed with real deletions (`APPLY=true`), and a full kill-switch drill
 (SHADOW→OFF→SHADOW) executed and proven. It is still **not authorized for
 production ENFORCE** — that flip is a separate, explicit, Zero-gated action,
@@ -23,6 +24,25 @@ open (DPIA, analytics TTL, ENFORCE authorization).
 Do not infer that operational-gates-green means ENFORCE is authorized. Do not
 merge, push, deploy, activate a RulePack or change ENFORCE from this record —
 each is a distinct, explicit action requiring its own Zero go-ahead.
+
+> **UPDATE 2026-08-08 (later, same day) — `prod-004` (sequence 4) is now the
+> active PRODUCTION RulePack, superseding `prod-003`.** Activated under an
+> explicit Zero go-ahead ("fai tu e trovale") via the two-login ceremony
+> (`activate_pack.py --yes`, ephemeral roles minted + dropped same session).
+> `rule_pack_id 720f50fc-12e2-5633-8586-4b31b086ea64`, activation
+> `41fc8d3e-12cf-4d93-b265-9ee554630d5c`, `payload_sha256 1f0f7b0d…f410e49`,
+> `previous_payload_sha256 99b843b8…fb477534` (the real prod-003 hash — chain
+> intact), reason `seq4-shadow-activation-260808`. Independently DB-verified:
+> seq-4 is the single open activation (`legal_period @> now()`,
+> `system_period` open), prod-003 closed at the same instant (no gap/overlap).
+> Prove-live PASS: the SHADOW binding query (`environment=PRODUCTION`,
+> `jurisdiction=ID`, `decision_domain=IMMIGRATION_VISA`, fresh per-request read,
+> no cache) resolves to seq-4 on the next evaluation. Content: 38 products /
+> 112 rules (Fase-A citizenship-conflict guard for dual-nationals + D1/D2/D12
+> purpose scoping + B1 nationality gate). **EVALUATE_MODE stays SHADOW;
+> ENFORCE remains NO-GO** — still a separate Zero-gated action, unchanged by
+> this activation. This addendum records a live prod state change; the
+> historical `prod-003` narrative below is retained as history.
 
 ## Product contract
 

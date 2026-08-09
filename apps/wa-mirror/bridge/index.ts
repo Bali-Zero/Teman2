@@ -18,6 +18,7 @@ import "dotenv/config";
 
 import pino from "pino";
 
+import { downStates, onDisconnected, thresholdMs } from "./down-alarm.js";
 import { closePool } from "./pg.js";
 import { normalizePhone } from "./phone.js";
 import { SessionLoggedOutError, startSession } from "./session.js";
@@ -178,11 +179,26 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
         },
         "wa-mirror session crashed; restarting with backoff",
       );
-      await sendTelegramAlert(
-        `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}`,
-        logger,
-        { tier: "digest", dedupKey: `wa-bridge:reconnect:${account.name}` },
+      // Same incident state as session.ts's close path (down-alarm.ts owns the
+      // one map): a crash-restart is a disconnection by another name, and it must
+      // not be able to re-announce an incident the close path already reported.
+      // This site produced ZERO records in the 30-day spool — the close path
+      // fires first — but a dormant call site left on the old behaviour is how a
+      // cure applied to one of several sites reopens itself (cicatrix W107).
+      const down = onDisconnected(
+        downStates,
+        account.name,
+        Date.now(),
+        thresholdMs(),
       );
+      if (down.speak) {
+        await sendTelegramAlert(
+          `wa-mirror DOWN: ${account.name} for ${down.downMinutes}m and not recovering ` +
+            `(crash restart; reconnect_attempt=${attempt})`,
+          logger,
+          { tier: "p0", dedupKey: `wa-bridge:down:${account.name}` },
+        );
+      }
       await sleep(delayMs);
     }
   }

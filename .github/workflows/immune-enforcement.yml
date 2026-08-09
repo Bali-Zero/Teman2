@@ -85,6 +85,9 @@ jobs:
               scripts/tests/test_home_fork_stale_side_attribution.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
               scripts/tests/test_proprioception_home_fork_merge.py|\
+              scripts/tests/test_proprioception_remedy_selection.py|\
+              scripts/tests/test_proprioception_self_code_staleness.py|\
+              scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
@@ -241,6 +244,9 @@ jobs:
             scripts/tests/test_home_fork_stale_side_attribution.py \
             scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
+            scripts/tests/test_proprioception_remedy_selection.py \
+            scripts/tests/test_proprioception_self_code_staleness.py \
+            scripts/tests/test_proprioception_executed_code_currency.py \
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \

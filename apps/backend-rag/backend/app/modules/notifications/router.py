@@ -104,6 +104,14 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
     varying: 'lead' | 'active' | 'prospect' | 'inactive'); a notifications
     sweep for expiring passports/visas/birthdays is scoped to clients Bali
     Zero is actively serving, i.e. `status = 'active'`.
+
+    Ground truth (2026-08-08, prove-live post-#3822/#3827): the query was
+    missing a soft-delete filter — 1238 rows came back from a `status =
+    'active'` scan against 741 actually-active (non-deleted) clients. The
+    497-row gap is soft-deleted clients (`deleted_at IS NOT NULL`) whose
+    `status` was never flipped off 'active'. Without this filter, the first
+    real daily sweep (APScheduler cron, 09:00 WITA) would have emailed alerts
+    to ~497 ex-clients. `deleted_at` exists on the live `clients` table.
     """
     async with pool.acquire() as conn:
         if client_id:
@@ -129,7 +137,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     AND expiry_date IS NOT NULL
                     ORDER BY client_id, expiry_date DESC
                 ) v ON v.client_id = c.id
-                WHERE c.id = $1 AND c.status = 'active'
+                WHERE c.id = $1 AND c.status = 'active' AND c.deleted_at IS NULL
                 """,
                 client_id,
             )
@@ -156,7 +164,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     AND expiry_date IS NOT NULL
                     ORDER BY client_id, expiry_date DESC
                 ) v ON v.client_id = c.id
-                WHERE c.status = 'active'
+                WHERE c.status = 'active' AND c.deleted_at IS NULL
                 """,
             )
 

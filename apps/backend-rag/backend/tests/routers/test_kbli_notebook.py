@@ -343,9 +343,7 @@ class TestExactCodeFastPath:
         assert codes[0] == "68111"
 
     @pytest.mark.integration
-    def test_search_exact_code_not_found_falls_back_to_semantic(
-        self, client: TestClient
-    ) -> None:
+    def test_search_exact_code_not_found_falls_back_to_semantic(self, client: TestClient) -> None:
         with (
             patch(
                 "backend.app.routers.kbli_notebook._resolve_embedding",
@@ -387,6 +385,186 @@ class TestExactCodeFastPath:
 
         assert response.status_code == 200
         exact_mock.assert_not_awaited()
+
+
+def _condition_matches(payload: dict, condition: dict) -> bool:
+    """Evaluate ONE Qdrant filter condition against a fake payload.
+
+    Handles the two shapes `_get_kbli_payload_from_qdrant` actually sends: a plain
+    FieldCondition (`{"key": ..., "match": {"value": ...}}`, with dotted keys read
+    as one level of nested dict access, mirroring `metadata.doc_type`), and a
+    nested Filter used as a condition (`{"should": [...]}` / `{"must": [...]}`).
+    """
+    if "key" in condition:
+        key = condition["key"]
+        if "." in key:
+            top, _, rest = key.partition(".")
+            value = (payload.get(top) or {}).get(rest)
+        else:
+            value = payload.get(key)
+        match = condition.get("match", {})
+        return "value" in match and value == match["value"]
+    return _filter_matches(payload, condition)
+
+
+def _filter_matches(payload: dict, qdrant_filter: dict) -> bool:
+    """Evaluate a Qdrant `Filter` (must/should/must_not) against a fake payload.
+
+    A real, if simplified, evaluator of the wire filter body the router sends --
+    not a canned response keyed on the request's shape -- per W114 (fake at the
+    HTTP boundary, speak the real vocabulary, don't let the fixture assume what
+    the code under test assumes).
+    """
+    musts = qdrant_filter.get("must", [])
+    shoulds = qdrant_filter.get("should", [])
+    must_nots = qdrant_filter.get("must_not", [])
+    if not all(_condition_matches(payload, c) for c in musts):
+        return False
+    if any(_condition_matches(payload, c) for c in must_nots):
+        return False
+    if shoulds and not any(_condition_matches(payload, c) for c in shoulds):
+        return False
+    return True
+
+
+class _FakeQdrantScrollClient:
+    """Fakes the Qdrant `/points/scroll` HTTP endpoint at the wire boundary.
+
+    `storage` is an ORDERED list of payload dicts standing in for the collection's
+    real (arbitrary, ID-ordered) scroll traversal order -- the guilt fixtures below
+    deliberately put the gold twin FIRST, reproducing the 2026-08-09 incident's
+    observed ordering for 56101/47721/85312, so a passing test proves the doc_type
+    selection filters it out rather than proving nothing because gold never came
+    first in the fixture.
+    """
+
+    def __init__(self, storage: list[dict]) -> None:
+        self.storage = storage
+        self.requests: list[dict] = []
+
+    async def post(self, url: str, json: dict, headers: dict | None = None):
+        self.requests.append(json)
+        qdrant_filter = json["filter"]
+        limit = json.get("limit", 1)
+        matches = [p for p in self.storage if _filter_matches(p, qdrant_filter)]
+        response = httpx.Response(
+            200,
+            json={"result": {"points": [{"payload": p} for p in matches[:limit]]}},
+            request=httpx.Request("POST", url),
+        )
+        return response
+
+
+class TestExactCodeFastPathSelectsCanonicalBPS:
+    """Guilt+innocence for the 2026-08-09 gold-twin coin-flip fix.
+
+    Tests `_get_kbli_payload_from_qdrant` directly at the HTTP boundary (fakes
+    `_get_kbli_client()`'s `.post()`), never the higher-level `/search` route --
+    the defect lives entirely inside this one function's filter body.
+    """
+
+    # Real forms of the 3 codes the 2026-08-09 incident confirmed flip to
+    # gold-first under the un-fixed filter (10/10 UUID-order correlation).
+    _GUILT_CODES = {
+        "56101": {
+            "judul": "Aktivitas Penyediaan Makanan di Bangunan Tetap",
+            "content": "Restaurant activities in fixed buildings",
+        },
+        "47721": {
+            "judul": "Perdagangan Eceran Sediaan Farmasi untuk Manusia di Apotek",
+            "content": "Pharmacy retail activities",
+        },
+        "85312": {
+            "judul": "Pendidikan Menengah Pertama Umum Swasta",
+            "content": "Private junior secondary education",
+        },
+    }
+
+    def _twin_storage(self, code: str, fields: dict) -> list[dict]:
+        gold_first = {
+            "kode_kbli": code,
+            "doc_type": "kbli_gold",
+            "judul": fields["judul"],
+            "content": "## Quick Answer\n" + fields["content"],
+        }
+        bps = {
+            "kode_kbli": code,
+            "doc_type": "kbli_bps",
+            "judul": fields["judul"],
+            "content": fields["content"],
+        }
+        return [gold_first, bps]  # gold deliberately first in storage order
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("code", ["56101", "47721", "85312"])
+    async def test_guilt_bare_code_returns_bps_even_when_gold_sorts_first(self, code: str) -> None:
+        fields = self._GUILT_CODES[code]
+        fake_client = _FakeQdrantScrollClient(self._twin_storage(code, fields))
+        with patch(
+            "backend.app.routers.kbli_notebook._get_kbli_client",
+            return_value=fake_client,
+        ):
+            result = await kbli_notebook_module._get_kbli_payload_from_qdrant(code)
+
+        assert result is not None
+        assert result["doc_type"] == "kbli_bps"
+        assert result["kode_kbli"] == code
+        assert not result["content"].startswith("## Quick Answer")
+
+    @pytest.mark.unit
+    async def test_innocence_bps_only_code_resolves_identically(self) -> None:
+        storage = [
+            {
+                "kode_kbli": "68111",
+                "doc_type": "kbli_bps",
+                "judul": "Real Estat Yang Dimiliki Sendiri Atau Disewa",
+                "content": "Real estate activities",
+            }
+        ]
+        fake_client = _FakeQdrantScrollClient(storage)
+        with patch(
+            "backend.app.routers.kbli_notebook._get_kbli_client",
+            return_value=fake_client,
+        ):
+            result = await kbli_notebook_module._get_kbli_payload_from_qdrant("68111")
+
+        assert result is not None
+        assert result["doc_type"] == "kbli_bps"
+
+    @pytest.mark.unit
+    async def test_innocence_no_points_at_all_returns_none(self) -> None:
+        fake_client = _FakeQdrantScrollClient(storage=[])
+        with patch(
+            "backend.app.routers.kbli_notebook._get_kbli_client",
+            return_value=fake_client,
+        ):
+            result = await kbli_notebook_module._get_kbli_payload_from_qdrant("99999")
+
+        assert result is None
+
+    @pytest.mark.unit
+    async def test_honest_edge_gold_only_orphan_falls_through_to_not_found(self) -> None:
+        """A code with ONLY a gold point (no BPS twin) must NOT serve gold content
+        as if it were the canonical record -- it must fall through to not-found,
+        same as any other unresolvable code (the router's semantic fallback then
+        takes over), per the 2026-08-09 design decision (positive selection, not
+        exclusion)."""
+        storage = [
+            {
+                "kode_kbli": "64921",
+                "doc_type": "kbli_gold",
+                "judul": "Orphan gold-only entry",
+                "content": "## Quick Answer\nno BPS twin exists for this code",
+            }
+        ]
+        fake_client = _FakeQdrantScrollClient(storage)
+        with patch(
+            "backend.app.routers.kbli_notebook._get_kbli_client",
+            return_value=fake_client,
+        ):
+            result = await kbli_notebook_module._get_kbli_payload_from_qdrant("64921")
+
+        assert result is None
 
 
 class TestChatAbstainThreshold:

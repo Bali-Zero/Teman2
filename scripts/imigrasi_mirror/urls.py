@@ -1,13 +1,24 @@
 r"""Canonical URL catalog for the imigrasi.go.id scoped mirror.
 
-Scope v1 (Zero mandate, 2026-08-08): NOT a full-site copy. Only the pages that
+Scope (Zero mandate, 2026-08-08): NOT a full-site copy. Only the pages that
 feed the Bali Zero visa engine — the VoA/BVK/Calling subject lists, the
 per-visa-code catalog, and three regional-office mirrors as a counter-proof
-that the schema is uniform. ~123 pages total (9 "daily" + 114 "weekly").
+that the schema is uniform. v2 (2026-08-09) adds four more daily pages: the
+national `/berita` news index — where a subject removal (e.g. San Marino) is
+announced first, before the subject lists are edited — the kemenimipas
+Peraturan Menteri legal-doc listing (the legal instrument that enacts a visa
+rule change, feeding the Visa Oracle RulePack), the applicant-facing
+e-Visa eVOA info page (fee, requirements, eligible-country list — the
+downstream-of-policy surface the client actually reads, a second independent
+witness to a rule change), and the TPI entry-point list — the 122 immigration
+checkpoints (airports / seaports / land-border posts) where VoA is actually
+granted, the operational counterpart to the subject lists (WHO may get VoA vs
+WHERE it is issued). ~127 pages total (13 "daily" + 114 "weekly").
 
-Every URL below was verified live (WebFetch, 200, real content — not a 404)
-on 2026-08-08 before being committed here (anti-hallucination discipline,
-CLAUDE.md §6). Do not add a URL to this file without the same verification.
+Every URL below was verified live (200, real content — not a 404) before being
+committed here (anti-hallucination discipline, CLAUDE.md §6): the v1 set on
+2026-08-08, the `/berita`, kemenimipas Permen, e-Visa eVOA and TPI entry-point
+v2 pages on 2026-08-09. Do not add a URL to this file without the same verification.
 
 The ~114 per-visa-code identifiers are a COPY of the codes in the repo's own
 seed file, not a live import — this keeps the mirror module dependency-free
@@ -73,11 +84,17 @@ class Page:
     slug: str
     label: str
     tier: str  # "daily" | "weekly"
-    category: str  # "list" | "faq" | "index" | "regional" | "code"
+    category: str  # "list" | "faq" | "index" | "berita" | "produk-hukum" | "evisa" | "tpi" | "regional" | "code"
+    # Which extractor in extract.py handles this page's HTML. Default = the
+    # generic content-block extractor; a page on a differently-structured CMS
+    # (e.g. the kemenimipas Joomla legal-doc listing) names a specific one.
+    extractor: str = "default"
 
 
-# --- daily tier: the pages that "morde" (bite) — subject lists, FAQ, index, --
-# --- and 3 regional mirrors as a schema counter-proof.                     --
+# --- daily tier: the pages that "morde" (bite) — subject lists, the TPI       --
+# --- entry-point list, FAQ, visa index, the /berita news index + kemenimipas  --
+# --- Permen listing + e-Visa eVOA info (v2), and 3 regional mirrors as a      --
+# --- schema counter-proof.                                                    --
 DAILY_PAGES: list[Page] = [
     Page(
         id="parent",
@@ -112,6 +129,23 @@ DAILY_PAGES: list[Page] = [
         category="list",
     ),
     Page(
+        # The operational counterpart to the subject lists above: WHO may get
+        # VoA (the subject lists) vs WHERE it is actually issued (this list of
+        # 122 immigration checkpoints — 16 airports, 11 land-border posts, 95
+        # seaports — "titik masuk bagi pemegang e-VOA" = entry points for e-VOA
+        # holders). A checkpoint added/removed here changes where a Bali Zero
+        # client can physically land on VoA. Sibling of the VoA/BVK/Calling
+        # section. Generic extractor: a plain "name, province" text list, no
+        # form-wrapper and no volatile counters (extraction-stability probed
+        # 2026-08-09 — identical extract sha d42f566c across two fetches).
+        id="tpi-evoa-entry-points",
+        url=f"{BASE}/wna/daftar-negara-voa-bvk-calling-visa/titik-masuk-bagi-pemegang-e-voa",
+        slug="tpi-evoa-entry-points",
+        label="TPI — 122 checkpoint d'ingresso e-VOA (aeroporti/porti/PLBN, dove il VoA è emesso)",
+        tier="daily",
+        category="tpi",
+    ),
+    Page(
         id="faq-evoa",
         url=f"{BASE}/faq/visa/negara-mana-saja-yang-terdaftar-dalam-daftar-electronic-visa-on-arrival-e-voa",
         slug="faq-evoa-countries",
@@ -126,6 +160,49 @@ DAILY_PAGES: list[Page] = [
         label="Indice Daftar Visa Indonesia",
         tier="daily",
         category="index",
+    ),
+    Page(
+        id="berita",
+        url=f"{BASE}/berita",
+        slug="berita-index",
+        label="Indice Berita (news/annunci — dove le rimozioni si annunciano per prime)",
+        tier="daily",
+        category="berita",
+    ),
+    Page(
+        # kemenimipas.go.id, NOT imigrasi.go.id — the legal-documents portal
+        # moved to the new ministry domain (imigrasi.go.id/produk-hukum is 404).
+        # The Permen Imipas listing is where a visa rule change (e.g. Permen
+        # 9 & 10/2025 added visa-free countries — the San Marino class — and
+        # 14/2025 the zero-tariff services) is enacted, feeding the Visa Oracle
+        # RulePack thresholds. Custom extractor: the listing lives inside a
+        # Joomla <form> the generic extractor strips, with volatile view
+        # counters the generic extractor would false-diff on — see extract.py.
+        id="produk-hukum-permen",
+        url="https://kemenimipas.go.id/produk-hukum/peraturan-menteri-imipas",
+        slug="produk-hukum-permen",
+        label="Kemenimipas — Peraturan Menteri (produk hukum, alimenta soglie RulePack)",
+        tier="daily",
+        category="produk-hukum",
+        extractor="produk_hukum",
+    ),
+    Page(
+        # evisa.imigrasi.go.id, NOT www.imigrasi.go.id — the applicant-facing
+        # e-Visa portal is a separate subdomain. This is the eVOA/Visitor-Visa
+        # info page a foreign traveller actually reads: the fee ("IDR 500.000"),
+        # the document requirements, and the full eligible-country list. It is
+        # DOWNSTREAM of the policy pages above — when a Permen changes a fee or
+        # adds a country, this is where the change surfaces to the public, so a
+        # diff here is a second, independent witness to the same rule change.
+        # Generic extractor: the page is a plain content block (extraction-
+        # stability probed 2026-08-09 — identical extract across two fetches,
+        # no volatile view counters), so no page-specific extractor is needed.
+        id="evisa-evoa-info",
+        url="https://evisa.imigrasi.go.id/front/info/evoa",
+        slug="evisa-evoa-info",
+        label="e-Visa — eVOA/Visitor Visa info (fee, requisiti, paesi eleggibili)",
+        tier="daily",
+        category="evisa",
     ),
     Page(
         id="regional-depok",

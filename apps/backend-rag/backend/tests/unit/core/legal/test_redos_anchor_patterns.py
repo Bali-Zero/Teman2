@@ -553,6 +553,26 @@ SWEEP_CEILING_SECONDS = 0.25
 SWEEP_RATIO_FLOOR_SECONDS = 0.004
 SWEEP_MAX_RATIO = 3.0
 
+# CORRECTED 2026-08-08, measured not reasoned (same lineage as the 2026-08-02 note above —
+# `_elapsed_min` cut the false-red rate, it did not close it). PASAL_PATTERN convicted at
+# 0.0056s -> 0.0796s (14.1x) on M5 with 4 pytest + 8 claude processes live, and passed in
+# isolation on the same tree, same second: the window was noisy, min-of-3 on BOTH sides
+# does not save you when the doubled-side's three repeats happen to land inside the same
+# contention burst as each other but the base-side's three don't. More repeats narrows this
+# but never closes it against SUSTAINED (not merely transient) load, because sustained load
+# is a roughly uniform multiplier that a same-side min-of-k cannot distinguish from genuine
+# cost. A uniform multiplier DOES cancel in a ratio, though — which is what a same-run
+# linear control gives you: if a known-linear pattern's OWN doubled/base ratio is also
+# inflated in this exact window, the window is noisy and the candidate's ratio is not
+# evidence. `[\s\S]` is provably O(n) (single character class, no backtracking possible);
+# `_CONTROL_N` is sized independently of SWEEP_N (10x) so the control's own absolute cost
+# clears SWEEP_RATIO_FLOOR_SECONDS with margin — empirically ~13ms at 200k chars, ratio
+# ~1.9-2.4 unloaded — because below the floor its own ratio would be exactly the kind of
+# noise it exists to detect.
+_LINEAR_CONTROL_PATTERN = re.compile(r"[\s\S]")
+_CONTROL_N = SWEEP_N * 10
+_LINEAR_CONTROL_MAX_RATIO = 2.5
+
 SWEEP_PREFIXES = (
     "",
     "\n",
@@ -611,9 +631,20 @@ def _sweep_verdict(rx: re.Pattern) -> str | None:
                         continue
                     ratio = doubled / max(elapsed, 1e-9)
                     if ratio > SWEEP_MAX_RATIO:
+                        # Confirm against a same-run linear control before convicting — see
+                        # _LINEAR_CONTROL_PATTERN above. A noisy window inflates the
+                        # control's own ratio too; a clean one leaves it near its ideal 2.0x.
+                        control_base_text = "\n" * _CONTROL_N
+                        control_doubled_text = "\n" * (_CONTROL_N * 2)
+                        control_elapsed = _elapsed_min(_LINEAR_CONTROL_PATTERN, control_base_text)
+                        control_doubled = _elapsed_min(_LINEAR_CONTROL_PATTERN, control_doubled_text)
+                        control_ratio = control_doubled / max(control_elapsed, 1e-9)
+                        if control_ratio > _LINEAR_CONTROL_MAX_RATIO:
+                            continue
                         return (
                             f"{elapsed:.4f}s -> {doubled:.4f}s ({ratio:.1f}x for 2x input, "
-                            f"max {SWEEP_MAX_RATIO}x) on {where}"
+                            f"max {SWEEP_MAX_RATIO}x; linear control confirmed clean at "
+                            f"{control_ratio:.1f}x) on {where}"
                         )
     return None
 
@@ -663,7 +694,10 @@ class TestPayloadSweep:
         )
 
     @staticmethod
-    def _script(monkeypatch, trigger, base_honest, doubled_first, doubled_honest):
+    def _script(
+        monkeypatch, trigger, base_honest, doubled_first, doubled_honest,
+        control_base_honest=0.002, control_doubled_honest=0.004,
+    ):
         """Drive the whole sweep on a scripted clock: reads answer by ROLE, not by ordinal.
 
         The sweep's very first read is the single-sample TRIGGER and is the only one a
@@ -672,11 +706,25 @@ class TestPayloadSweep:
         side. `doubled_first` is separate so the doubled side's own inflation can be
         scripted independently, which is what makes `_elapsed_min` on THAT side killable
         rather than decorative.
-        """
-        state = {"n": 0, "base_len": None, "d": 0}
 
-        def fake_elapsed(_rx, text):
+        The linear control (`_LINEAR_CONTROL_PATTERN`) is scripted independently by
+        identity, not by length — its texts (`_CONTROL_N`-sized) are a different length
+        class than the candidate's, so reusing the candidate's length bookkeeping for it
+        would silently misclassify every control read. Default control readings are
+        honest 2.0x (0.004 / 0.002) — a clean window — so a test that never overrides
+        them is asserting "the confirmation was consulted and found nothing wrong",
+        not "the confirmation never ran".
+        """
+        state = {"n": 0, "base_len": None, "d": 0, "control_base_len": None}
+
+        def fake_elapsed(rx, text):
             state["n"] += 1
+            if rx is _LINEAR_CONTROL_PATTERN:
+                if state["control_base_len"] is None:
+                    state["control_base_len"] = len(text)
+                    return control_base_honest
+                is_doubled = len(text) > state["control_base_len"]
+                return control_doubled_honest if is_doubled else control_base_honest
             if state["base_len"] is None:
                 state["base_len"] = len(text)
                 return trigger
@@ -725,7 +773,9 @@ class TestPayloadSweep:
         Paired with the two above this brackets the branch — neither "always silent" nor
         "always loud" passes all three — and it is what proves min-of-k cannot hide a real
         regression: 6 ms doubling to 48 ms is slow in every sample, so its minimum is slow
-        too and its doubled minimum still grows.
+        too and its doubled minimum still grows. The linear control is left at its default
+        honest 2.0x (a clean window), so the confirmation added 2026-08-08 does not stand
+        between a real regression and its verdict.
         """
         self._script(
             monkeypatch, trigger=0.006, base_honest=0.006,
@@ -733,6 +783,44 @@ class TestPayloadSweep:
         )
         verdict = _sweep_verdict(CURED["PASAL_PATTERN"])
         assert verdict is not None and "8.0x for 2x input" in verdict, verdict
+
+    def test_a_noisy_window_that_also_inflates_the_linear_control_does_not_convict(
+        self, monkeypatch,
+    ):
+        """The false red of 2026-08-08, reproduced without a clock.
+
+        PASAL_PATTERN measured 0.0056s -> 0.0796s (14.1x) on M5 with 4 pytest + 8 claude
+        processes live, and passed in isolation on the same tree, same second — the
+        window was noisy, not the regex. Scripted here with the same magnitudes: the
+        candidate's own numbers are indistinguishable from
+        `test_a_consistently_slow_and_growing_pattern_still_fails` above (which DOES
+        convict) — the only difference is the linear control ALSO reads a blown-out
+        ratio in this window (15x, scripted independently), which is what tells the
+        branch to stand down. Without the control confirmation this test is identical to
+        the false red that actually happened.
+        """
+        self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.080, doubled_honest=0.080,
+            control_base_honest=0.002, control_doubled_honest=0.030,
+        )
+        assert _sweep_verdict(CURED["PASAL_PATTERN"]) is None
+
+    def test_a_control_confirming_clean_lets_the_verdict_through(self, monkeypatch):
+        """Innocence for the confirmation step itself: a clean control does not suppress.
+
+        Same shape as the noisy-window test above but the control stays honest (default
+        2.0x) — proving the `continue` above is reached ONLY when the control itself is
+        inflated, not on every ratio-branch trip. Without this, an implementation that
+        always suppressed (e.g. `if True: continue`) would pass the noisy-window test
+        for the wrong reason.
+        """
+        self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.080, doubled_honest=0.080,
+        )
+        verdict = _sweep_verdict(CURED["PASAL_PATTERN"])
+        assert verdict is not None and "13.3x for 2x input" in verdict, verdict
 
     @pytest.mark.parametrize("name", sorted(CURED))
     def test_no_cured_pattern_is_superlinear_on_any_swept_payload(self, name):

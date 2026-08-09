@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import subprocess
 import sys
@@ -33,6 +34,12 @@ from diff_alert import compute_diff, content_hash, send_diff_alert, send_status_
 from urls import ALL_PAGES, Page, pages_for_select, pages_for_tier
 
 DEFAULT_DATA_ROOT = os.environ.get("IMIGRASI_MIRROR_DATA_ROOT") or str(Path.home() / "nuzantara-imigrasi-mirror")
+
+# Self-health heartbeat: written OUTSIDE the data git repo (so it never
+# pollutes the "nothing_to_commit" clean signal) and alongside the launchd
+# logs. The independent healthcheck.py reads it to tell whether the mirror is
+# still running at all. Same default path on both sides — keep in sync.
+DEFAULT_HEARTBEAT = os.environ.get("IMIGRASI_MIRROR_HEARTBEAT") or str(Path.home() / "logs" / "imigrasi-mirror-heartbeat.json")
 
 # Overall wall-clock budget scales with how many pages a tier touches — a
 # 9-page daily run and a 114-page weekly run should not share one constant
@@ -169,6 +176,31 @@ async def run(args: argparse.Namespace) -> dict:
     return summary
 
 
+def write_heartbeat(summary: dict, path: str = DEFAULT_HEARTBEAT) -> None:
+    """Record that a run happened, with its capture/failure counts, so the
+    independent healthcheck can tell a live-but-stumbling mirror from a dead
+    one. Written on EVERY completed run (including partial) — a total crash in
+    run() writes nothing, which correctly reads as STALE later. A write failure
+    here must never break the run (it's telemetry, not the job)."""
+    try:
+        p = Path(path).expanduser()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        hb = {
+            "last_run_epoch": time.time(),
+            "last_run_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime()),
+            "tier": summary["tier"],
+            "pages_requested": summary["pages_requested"],
+            "captured": summary["captured"],
+            "failed": len(summary["failed"]),
+            "failed_ids": [pid for pid, _err, _code in summary["failed"]],
+            "diffs": len(summary["diffs"]),
+            "commit_status": summary["commit_status"],
+        }
+        p.write_text(json.dumps(hb, indent=2), encoding="utf-8")
+    except Exception as exc:  # telemetry must never break the crawl
+        print(f"  heartbeat write FAILED: {exc}", file=sys.stderr)
+
+
 def print_summary(summary: dict) -> None:
     print(f"[imigrasi-mirror] date={summary['date']} tier={summary['tier']}")
     print(f"  requested={summary['pages_requested']} captured={summary['captured']} "
@@ -220,7 +252,7 @@ def selftest() -> int:
     """No-network unit checks (guilt+innocence pairs, tg_notify convention)."""
     import tempfile
 
-    from extract import extract_text
+    from extract import extract_produk_hukum, extract_text
 
     failures: list[str] = []
 
@@ -249,6 +281,41 @@ def selftest() -> int:
     text2 = extract_text(html_no_main)
     check("fallback body keeps real content", "Real content here" in text2)
     check("fallback body strips nav (innocence of a bare-body world)", "Menu" not in text2)
+
+    # --- extract_produk_hukum: kemenimipas Joomla legal-doc listing ---------
+    # The listing table lives inside <form id="adminForm"> (which extract_text
+    # strips) and each row carries a volatile "Dilihat: N" view counter (which
+    # extract_text would false-diff on). extract_produk_hukum pulls ONLY the
+    # title links, so it survives the form and drops the counter.
+    ph_html = """
+    <html><body>
+      <form id="adminForm">
+        <table class="category table table-bordered"><tbody>
+          <tr class="cat-list-row0"><td class="list-title">
+            <a href="/x/15">Permenimipas No 15 Tahun 2025 tentang Politeknik</a>
+          </td><td class="list-hits">Dilihat: 2720</td></tr>
+          <tr class="cat-list-row1"><td class="list-title">
+            <a href="/x/10">Permenimipas No 10 Tahun 2025 tentang penambahan daftar negara bebas visa</a>
+          </td><td class="list-hits">Dilihat: 2994</td></tr>
+        </tbody></table>
+      </form>
+      <footer>KEMENTERIAN IMIGRASI DAN PEMASYARAKATAN — Jakarta Selatan</footer>
+    </body></html>
+    """
+    ph = extract_produk_hukum(ph_html)
+    check("produk-hukum captures BOTH regulation titles (guilt)",
+          "Permenimipas No 15 Tahun 2025" in ph and "Permenimipas No 10 Tahun 2025" in ph)
+    check("produk-hukum drops the volatile view counter (innocence — no false diff)",
+          "Dilihat" not in ph and "2720" not in ph)
+    check("produk-hukum drops the footer menu (innocence — watches the list, not chrome)",
+          "KEMENTERIAN IMIGRASI" not in ph)
+    # a page WITHOUT the category table -> "" (loud empty diff, never a crash):
+    ph_empty = extract_produk_hukum("<html><body><div>no listing here</div></body></html>")
+    check("produk-hukum on a table-less page -> empty (loud, not a crash)", ph_empty == "")
+    # and generic extract_text is BLIND to this listing (proves why we need the
+    # custom one): the <form> is stripped, so the titles never survive.
+    check("generic extract_text is blind to the form-wrapped listing (why custom exists)",
+          "Permenimipas No 15" not in extract_text(ph_html))
 
     # --- compute_diff --------------------------------------------------------
     old = "line1\nline2\nline3"
@@ -307,6 +374,7 @@ def main() -> int:
 
     summary = asyncio.run(run(args))
     print_summary(summary)
+    write_heartbeat(summary)
 
     if args.announce:
         n_diffs = len(summary["diffs"])

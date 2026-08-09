@@ -631,7 +631,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/openclaw-zantara-scientific-team.md | LIVE | 2026-05-30 | 2026-08-28 | — | 2 | 0 | no | — | — |
 | docs/runbooks/organism-digest.md | LIVE | 2026-07-06 | 2026-10-04 | — | 1 | 0 | no | — | — |
 | docs/runbooks/prod-crm-smoke.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
-| docs/runbooks/proprioception-boundary-recon.md | LIVE | 2026-07-02 | 2026-09-30 | — | 1 | 0 | no | — | — |
+| docs/runbooks/proprioception-boundary-recon.md | LIVE | 2026-08-08 | 2026-11-06 | — | 1 | 0 | no | — | — |
 | docs/runbooks/qdrant-estate-reconciliation.md | LIVE | 2026-07-05 | 2026-10-03 | — | 2 | 0 | no | — | — |
 | docs/runbooks/redis-lease-registry.md | LIVE | 2026-05-25 | 2026-08-23 | — | 3 | 0 | no | — | — |
 | docs/runbooks/repomap-and-branch-cleanup.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |

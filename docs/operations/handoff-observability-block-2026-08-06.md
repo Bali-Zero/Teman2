@@ -366,3 +366,58 @@ sanzionata, non in una sessione che disarma la guardia per passare.
   (`agent/air-m5/infra/worktree-gc-plist-docsync`, creata alle 13:45 di oggi) li sta allineando alla
   copia viva M5. Complementare, non duplicato: sono commenti XML, che `plistlib` scarta, quindi il
   reconciler non li ha mai visti e #3799 non poteva vederli. Tocca a loro atterrare.
+
+---
+
+### §9 — il guardiano non sapeva quale versione di sé stesso, né dei payload che esegue, stesse girando `[famiglia #2 + #9]`
+
+Trovato **chiudendo** questo dossier, non cercandolo. §6 chiedeva di curare una prescrizione
+superata, e la cura è entrata. Ma la domanda che §6 pone — _«questa prescrizione è più vecchia della
+decisione che la contraddice?»_ — vale anche un piano sotto, e lì nessuno l'aveva posta: **quale
+copia del codice ha scritto la riga che sto leggendo?**
+
+Su M5 il main checkout è indietro per progetto (223 commit alla chiusura) e `proprioception.py` gira
+**da lì**. Due insiemi distinti, due PR:
+
+1. **La sonda stessa** era 4 commit indietro: ogni reperto e ogni rimedio del report erano il testo
+   VECCHIO di quella copia, sotto un timestamp di minuti prima. **#3835** — il report ora porta
+   `runner_blob`, e se la copia che l'ha scritto non è quella di `origin/main` lo dice in prima riga
+   e sopprime il rimedio del registro (che parlerebbe di _schedule_ quando il problema è il _codice_).
+2. **Gli script che la sonda ESEGUE** non erano coperti da quella cura. Curare il runner e
+   dichiarare chiusa la malattia è W107. La PR gemella di questa tornata (branch
+   `agent/air-m5/ops/executed-code-currency`, aperta subito dopo #3835 e da essa dipendente —
+   citata per branch e non per numero, perché il numero non esiste finché la PR non è aperta e
+   indovinarlo produce un riferimento che RISOLVE su una PR altrui): censiti leggendo il
+   registro caricato,
+   **3 dei 6 in giurisdizione M5** erano indietro.
+
+**Uno mentiva, e l'A/B è controllato** — stessa macchina, stessa `~/Library/LaunchAgents`, stesso
+minuto: il `launchagent_reconcile.py` del checkout risponde `repo_divergent:
+[com.nuzantara.worktree-gc-universal.daily]`, quello di `origin/main` risponde `[]`; `_rebase_homes`,
+la funzione aggiunta da #3799, compare **0** volte nella copia eseguita e **4** su `origin/main`.
+Cioè: **il P2 in cima al banner di sessione era il verdetto pre-cura di §5b, che questa stessa
+sessione aveva chiuso**, e nulla nel report permetteva di distinguerlo da un P2 vero.
+
+**Il conto giusto è 3 su 6, non 4 su 7 — e la differenza è una lezione, non un arrotondamento.**
+`arsenal_probe.py` è anch'esso indietro qui, ma il suo wrap è `machines: ["mini","pro"]`: M5 non lo
+esegue mai, e le macchine che lo eseguono sono state misurate lo stesso giorno a **0/7 divergenti**.
+Contarlo produceva un P1 su cui nessuno su questo host può agire. La prima stesura lo contava.
+
+**Perché è una malattia di M5 e non del codice**: Pro e Mini sono auto-pulled e misurati oggi a 0/7
+payload divergenti ciascuno — la sonda tace lì per costruzione, e l'innocenza è verificata sulle
+macchine vere. È anche il motivo per cui giudica il **blob del singolo file** e non la distanza in
+commit: entrambe sono «1 indietro», e nessuno dei sette file è cambiato in quel commit.
+
+**Non curabile tirando il checkout** (W106b: corre contro ~45 worktree vivi). La cura è che l'organo
+lo DICHIARI e indichi la sola via percorribile qui — eseguire la copia di `origin/main` fuori albero,
+senza toccare il checkout:
+
+```
+git -C <root> show origin/main:scripts/proprioception.py > /tmp/prop_main.py \
+  && NUZ_REPO_ROOT=<root> python3 /tmp/prop_main.py
+```
+
+**Resta aperto a ledger**: su M5 ogni payload di hook risolto via `${CLAUDE_PROJECT_DIR}` è congelato
+all'HEAD del main checkout, quindi «merged» non raggiunge quelle superfici. Misurato oggi: **5
+payload, 0 divergenti** — l'esposizione è latente, non attiva, e la riga a ledger lo dice
+esplicitamente invece di lasciar credere il contrario.
