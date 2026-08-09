@@ -85,7 +85,7 @@ async def ingest_documents(
 
     **Usage:**
     ```python
-    import requests
+    import httpx
 
     chunks = [
         {

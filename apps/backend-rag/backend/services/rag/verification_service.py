@@ -63,6 +63,12 @@ class VerificationResult(BaseModel):
     verdict_available: bool = True
 
 
+# Thinking + verdict must both fit under this, not the verdict alone — see the
+# long note at the call site. Named rather than inlined so a test can assert
+# the floor instead of re-litigating the number in a comment.
+VERIFIER_MAX_OUTPUT_TOKENS = 8192
+
+
 class VerifierVerdict(BaseModel):
     """Schema the verifier LLM is constrained to via generate_structured()'s
     response_schema (JSON mode — response_mime_type="application/json",
@@ -191,13 +197,33 @@ Return a JSON object with this exact structure:
 """
 
         # Use low temperature for deterministic evaluation.
-        # Verdict JSON (status/score/reasoning/corrections/missing_citations)
-        # is small — 8192 was a leftover generation-sized cap for a
-        # judge-sized output. Trimmed to 2048 (increment-1, latency): a
-        # representative sample verdict on this exact prompt schema
-        # measured ~95 output tokens (see scripts/verifier_model_ab.py /
-        # self-correction-speed-design.md validation note), leaving ~20x
-        # headroom. generate_structured() (PR #311) forces JSON mode
+        #
+        # CORRECTED 2026-08-09, measured in production. The cap was trimmed
+        # 8192 → 2048 "for latency" on the reasoning that a representative
+        # verdict measured ~95 output tokens, "leaving ~20x headroom". The
+        # verdict is indeed ~95 tokens — but this cap does not govern the
+        # verdict. It governs THINKING + verdict, and Gemini 2.5+ thinks by
+        # default. The number measured was not the number the constant
+        # controls.
+        #
+        # What that cost, live: `rag.verifier` was failing 10 of 44 calls
+        # over 7 days with LLMStructuredOutputError — i.e. the fact-check
+        # gate silently off for ~23% of answers, since the failure path
+        # returns verdict_available=False and self-correction is skipped.
+        # The arithmetic is unambiguous once thinking tokens are recorded
+        # (they were invisible until the same day's ledger fix): failed
+        # calls report 4062 / 4064 / 4065 output tokens. Halved, that is
+        # ~2032 — generate_structured's one retry, with BOTH attempts
+        # truncated at the 2048 cap. A successful gemini-3.5-flash call
+        # in the same window reports 1661: under the cap, but only just.
+        # The incumbent was living one long chain-of-thought from failure.
+        #
+        # 8192 restored. It is not "generation-sized leftover" — it is the
+        # room a thinking judge needs. If latency must be cut, cut it by
+        # lowering effort or shortening the context, never by a ceiling
+        # that a model's own reasoning has to fit inside.
+        #
+        # generate_structured() (PR #311) forces JSON mode
         # (response_mime_type="application/json" + response_schema) — the
         # model can no longer wrap its verdict in a markdown ```json fence,
         # which is what silently killed the fact-check gate in prod (the
@@ -213,7 +239,7 @@ Return a JSON object with this exact structure:
                 response_schema=VerifierVerdict,
                 model=self.model_name,
                 temperature=0.0,
-                max_output_tokens=2048,
+                max_output_tokens=VERIFIER_MAX_OUTPUT_TOKENS,
                 endpoint="rag.verifier",
             )
         except LLMStructuredOutputError as exc:

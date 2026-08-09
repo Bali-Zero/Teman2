@@ -1,20 +1,35 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { EvidenceDrawer } from "@/components/evidence-drawer";
-import {
-  MagazineShell,
-  WorkspaceAccessRequired,
-} from "@/components/magazine-shell";
-import {
-  readStoryDetail,
-  requireMagazineViewer,
-} from "@/lib/server/magazine-read-model";
+import { MagazineShell } from "@/components/magazine-shell";
+import { readStoryDetail } from "@/lib/server/magazine-read-model";
 
 export const dynamic = "force-dynamic";
 
 type StoryPageProps = Readonly<{
   params: Promise<{ slug: string }>;
 }>;
+
+export async function generateMetadata({
+  params,
+}: StoryPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const detail = await readStoryDetail(slug);
+  if (detail === null) return { title: "Story not found | Bali Zero Magazine" };
+  const canonical = `/stories/${encodeURIComponent(slug)}`;
+  return {
+    title: `${detail.story.title} | Bali Zero Magazine`,
+    description: detail.story.deck,
+    alternates: { canonical },
+    openGraph: {
+      title: detail.story.title,
+      description: detail.story.deck,
+      url: canonical,
+      type: "article",
+    },
+  };
+}
 
 function readableTimestamp(value: string | null): string {
   if (value === null) return "Not recorded";
@@ -37,15 +52,6 @@ function titleCase(value: string): string {
 }
 
 export default async function StoryPage({ params }: StoryPageProps) {
-  const viewer = await requireMagazineViewer();
-  if (viewer === null) {
-    return (
-      <MagazineShell eyebrow="Private workspace">
-        <WorkspaceAccessRequired />
-      </MagazineShell>
-    );
-  }
-
   const { slug } = await params;
   const detail = await readStoryDetail(slug);
   if (detail === null) notFound();
@@ -121,22 +127,6 @@ export default async function StoryPage({ params }: StoryPageProps) {
               <p>{detail.story.whyItMatters}</p>
             </section>
           </div>
-          <aside
-            className="story-contributors"
-            aria-labelledby="contributors-title"
-          >
-            <p className="section-label">Provenance</p>
-            <h2 id="contributors-title">Contributing systems</h2>
-            {detail.contributors.length > 0 ? (
-              <ul>
-                {detail.contributors.map((contributor) => (
-                  <li key={contributor}>{contributor}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>No contributor label is cleared for publication.</p>
-            )}
-          </aside>
         </div>
 
         <section className="visual-provenance" aria-labelledby="visual-title">
