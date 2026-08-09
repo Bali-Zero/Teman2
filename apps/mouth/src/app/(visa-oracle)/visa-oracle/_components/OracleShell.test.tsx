@@ -204,6 +204,36 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(screen.queryByText("Visit Visa C1")).toBeNull();
   });
 
+  // The PIN-gated internal preview. Its innocence case is the test directly
+  // above: without `internalMode`, the very same CURATED response must still
+  // fail closed and show no candidates.
+  it("internal preview renders the real decision from a CURATED response", async () => {
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
+    render(<OracleShell internalMode />);
+
+    expect(await screen.findByText("Visit Visa C1")).toBeInTheDocument();
+    // Never show an engine decision without saying what it is.
+    expect(screen.getByText(/INTERNAL PREVIEW/)).toBeInTheDocument();
+  });
+
+  it("internal preview is decided before the frontend SHADOW branch", async () => {
+    // Ordering is deliberate: a SHADOW-configured frontend would otherwise
+    // swallow the decision the tester unlocked specifically to see.
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "SHADOW");
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
+    render(<OracleShell internalMode />);
+
+    expect(await screen.findByText("Visit Visa C1")).toBeInTheDocument();
+  });
+
+  it("public traffic never sees the internal preview notice", async () => {
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES");
+    render(<OracleShell />);
+
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    expect(screen.queryByText(/INTERNAL PREVIEW/)).toBeNull();
+  });
+
   it("never claims no evaluation was submitted when the engine adapter rejects one review-hold citation", async () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.sources[0].canonical_url = "https://imigrasi.go.id.evil.test/x";

@@ -521,3 +521,32 @@ export function buildShadowComparisonOutcome(
   }
   return buildValidatedOutcome(input, options);
 }
+
+/**
+ * INTERNAL PIN-GATED PREVIEW — a deliberately separate rendering boundary
+ * from `buildEngineOutcome`, which stays the public one ("CURATED can never
+ * become visible authority").
+ *
+ * Callers MUST have proven server-side PIN possession first (the `vo_internal`
+ * httpOnly cookie, set only by `/api/visa-oracle-unlock` after a timing-safe
+ * comparison). It exists so the Bali Zero team can exercise the real engine
+ * while `VISA_ENGINE_EVALUATE_MODE` is still SHADOW: the backend already
+ * computes and returns the full decision in that mode (`evaluate_path.py`
+ * fills `decision`/`sources`/`display` unconditionally and only varies the
+ * `mode` string), so nothing here reaches past what the response already
+ * carries — no backend change, and NO durable ENFORCE write, which keys off
+ * the global `engine_mode`, never off this string.
+ *
+ * A CURATED response rendered through here is comparison-grade, NOT
+ * authoritative: the caller is responsible for labelling it as an internal
+ * preview in the UI. Never call this for anonymous public traffic.
+ */
+export function buildInternalPreviewOutcome(
+  input: VisaOracleEvaluateResponse,
+  options: BuildEngineOutcomeOptions = {},
+): OutcomeViewModel {
+  if (input.mode !== "ENGINE" && input.mode !== "CURATED") {
+    throw new VisaOracleResponseError("MALFORMED_RESPONSE");
+  }
+  return buildValidatedOutcome(input, options);
+}
