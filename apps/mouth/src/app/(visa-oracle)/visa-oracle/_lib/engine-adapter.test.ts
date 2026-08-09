@@ -1,8 +1,55 @@
 import { describe, expect, it } from "vitest";
 import { buildEngineOutcome } from "./engine-adapter";
-import { makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
+  it("shows each source's own dates, not the decision's evaluation clock", () => {
+    // The backend's `_build_sources_dto` stamps EVERY cited source's
+    // applicability block with `decision.effective_at`/`observed_at` — the
+    // evaluation clock — so those two fields say nothing about the document.
+    // Reading them made every source on screen claim it took legal effect at
+    // the instant the reader pressed the button.
+    //
+    // The shared fixture sets every date to TEST_NOW, so it cannot tell the
+    // right field from the wrong one: give this source dates of its own.
+    // Four DISTINCT dates, so each assertion can only be satisfied by the one
+    // field it names. In particular `retrieved_at` and `verified_at` must not
+    // share a value: they are adjacent candidates for "observed", and a test
+    // that collapses them cannot tell which one the adapter read.
+    //
+    // `decisiveSource` (engine-adapter.ts) enforces the ordering that makes a
+    // source usable as decisive evidence — `retrieved_at <= verified_at`,
+    // `freshness.verified_at === verified_at`, `verified_at <= observed_at` —
+    // so these move together, forward, inside the fixture's 86_400s window.
+    const LEGAL_FROM = "2026-07-24T00:00:00Z";
+    const RETRIEVED = "2026-08-02T04:00:00Z";
+    const VERIFIED = "2026-08-02T05:00:00Z";
+    const response = makeVisaOracleResponse();
+    response.sources[0].legal_period_from = LEGAL_FROM;
+    response.sources[0].retrieved_at = RETRIEVED;
+    response.sources[0].verified_at = VERIFIED;
+    response.sources[0].freshness.verified_at = VERIFIED;
+    response.sources[0].applicability.effective_at = TEST_NOW;
+    response.sources[0].applicability.observed_at = TEST_NOW;
+
+    const outcome = buildEngineOutcome(response);
+    const source = outcome.sources[0];
+    expect(source.effectiveAtIso).toBe(LEGAL_FROM);
+    expect(source.observedAtIso).toBe(VERIFIED);
+    // Name every value it must NOT be: the evaluation clock (the bug) and
+    // `retrieved_at` (the near-miss the freshness policy makes wrong).
+    expect(source.effectiveAtIso).not.toBe(TEST_NOW);
+    expect(source.observedAtIso).not.toBe(TEST_NOW);
+    expect(source.observedAtIso).not.toBe(RETRIEVED);
+
+    // Innocence: the ASSESSMENT's own dates are legitimately the evaluation
+    // moment. This fix must not reach up and rewrite those too.
+    expect(outcome.assessment).not.toBeNull();
+    expect(outcome.assessment?.effectiveAtIso).toBe(
+      response.decision.effective_at,
+    );
+  });
+
   it.each([
     "SUPPORTED_CANDIDATES",
     "NEEDS_INPUT",
