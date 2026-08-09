@@ -53,10 +53,21 @@ Come si riconciliano i numeri che circolavano:
 - **Media 18.168 token in ingresso contro 211 in uscita sul gateway** (la corsia che vale l'80% del
   conto). Il verifier ha un profilo diverso: 11.001 in / 263 out. **Non esiste una media unica per
   «Gemini»** — la prima stesura applicava quella del gateway a tutto.
-- **L'input domina.** Sul totale 3.5-flash: $47,13 di input contro $4,05 di output ricalcolati a
-  listino. ⚠️ Questa ripartizione **sottostima l'output**: fino a oggi il ledger non leggeva
-  `thoughts_token_count`, che Gemini fattura a tariffa output. Il 92% è quindi un **tetto** per la
-  quota input, non una misura chiusa; il segno è certo (l'input domina comunque), l'entità no.
+- **L'input domina, ma molto meno di quanto dicesse il ledger.** Sul totale 3.5-flash: $47,13 di
+  input contro $4,05 di output ricalcolati a listino — il 92%. ⚠️ **Quel 92% è un tetto, e adesso
+  so quanto è ottimista.** Fino a oggi il ledger non leggeva `thoughts_token_count`, che Gemini
+  fattura a tariffa OUTPUT. Misurato in questo turno su un prompt di 50 token:
+
+  | Modello | `candidatesTokenCount` | **`thoughtsTokenCount`** | rapporto |
+  |---|---|---|---|
+  | `gemini-3.5-flash` | 505 | **1.383** | ×2,7 |
+  | `gemini-2.5-flash` | 377 | **1.568** | ×4,2 |
+
+  Il ragionamento costa **più del triplo della risposta visibile**, e non compariva da nessuna
+  parte. Non estrapolo il ×2,7 al traffico reale — quel prompt è sintetico, il gateway ne manda da
+  18k con function calling e il verifier gira a temperatura 0 su uno schema stretto, tre regimi di
+  ragionamento diversi. Ma il segno non è più in dubbio: **il conto vero è sopra $51,18**, e la
+  quota input sotto il 92%. Il numero esatto arriva dal ledger corretto dopo qualche giorno.
 - **~2,9 chiamate al gateway per risposta completa.** Il verifier gira una volta per risposta
   (`reasoning.py:1005`), quindi 481 verdetti ≈ 481 risposte. Il raggruppamento temporale
   indipendente (gap 15s) ne conta 498: due metodi convergono su **~490 risposte in 30 giorni**.
@@ -174,7 +185,10 @@ stanno peggio dei 2.5. Il modello che usavamo prima del 17/7 (`gemini-3-flash-pr
 Cosa se ne può concludere, e cosa no:
 
 - ✅ `gemini-2.5-flash-lite` (3,3%) è **misurato più fedele di `gemini-3-flash-preview`** (13,5%),
-  il modello che avevamo prima, **e costa un terzo**.
+  il modello che avevamo prima, **e costa un terzo**. ⚠️ **Su HHEM, cioè nel generare.** Sul
+  *giudicare* — il compito del verifier — la misura diretta di §7 lo mette **ultimo fra i quattro
+  provati** (28 false-accept su 30). Non è una contraddizione nei dati: è la distanza fra il proxy
+  e il compito, e su questo asse il proxy inverte l'ordine.
 - ❌ **Non** si può dire che sia più fedele di `gemini-3.5-flash`: quel modello non è in classifica.
   La prima stesura scriveva «più fedele di entrambi» e sei righe dopo ammetteva di non poterlo
   sapere. Contraddizione rimossa: sull'incumbent, **nessun dato**.
@@ -208,11 +222,18 @@ Sono due lavori diversi che oggi girano sullo stesso modello caro:
 **Corsia verifier** — giudice deterministico (`temperature=0.0`), output JSON schema-validato di
 ~95 token, compito = "questa bozza è fedele al contesto?".
 
-| | costo 30gg | allucinazione HHEM (proxy imparentato) |
-|---|---|---|
-| gemini-3.5-flash (oggi) | $9,08 | non pubblicata |
-| gpt-5.4-nano | $1,22 | 3.1% |
-| gemini-2.5-flash-lite | **$0,58** | **3.3%** |
+| | costo 30gg | HHEM (proxy imparentato) | **false-accept misurati /30 (§7)** |
+|---|---|---|---|
+| gemini-3.5-flash (oggi) | $9,08 | non pubblicata | 26 |
+| **gemini-2.5-flash** | **$1,90** | 7.8% | **8** |
+| gemini-3.5-flash-lite | $1,90 | non pubblicata | 14 |
+| gemini-2.5-flash-lite | $0,58 | **3.3%** | **28 — il peggiore** |
+| gpt-5.4-nano | $1,22 | 3.1% | non misurato (non-Gemini) |
+
+**Le due colonne di qualità si contraddicono, e vince quella misurata sul nostro compito.** Il
+modello con la fedeltà HHEM migliore è quello che giudica peggio: HHEM misura il *generare*, non il
+*giudicare*. Un benchmark pubblico su un compito adiacente ordina i candidati in modo diverso da
+50 casi del nostro compito reale.
 
 **Corsia gateway** — deve fare function calling e generare in 5 lingue. HHEM è un proxy debole e
 non ho BFCL. Qui non si cambia sulla fiducia: si misura.
@@ -222,9 +243,9 @@ Scenari sul volume congelato:
 | | 30gg | oggi | se il bot va pubblico (×20) |
 |---|---|---|---|
 | A. com'è oggi | $51,18 | 100% | ~$1.024/mese |
-| B. solo verifier → 2.5-flash-lite | $42,68 | 83% | ~$854 |
-| C. B + il prefisso colpisce la cache al 100% | $33,03 | 65% | ~$661 |
-| D. tutto su 2.5-flash-lite | $3,32 | 6% | ~$66 |
+| B. solo verifier → **2.5-flash** (3× meglio, non solo più economico) | $44,01 | 86% | ~$880 |
+| C. B + il prefisso colpisce la cache al 100% | $34,35 | 67% | ~$687 |
+| D. tutto su 2.5-flash *(gateway incluso — NON raccomandato senza A/B sul tool-calling)* | $10,55 | 21% | ~$211 |
 
 Lo scenario C è un **tetto**, non una previsione: presuppone hit su ogni chiamata (vedi §2).
 
@@ -264,9 +285,11 @@ ledger W81 come debito tecnico, non nascosto in un diff di pricing.
 
 ## 6. Raccomandazione
 
-1. **Verifier → `gemini-2.5-flash-lite`**: −$8,50/mese, reversibile con una variabile
-   d'ambiente. **Il criterio di switch è zero false-accept** (vedi §7), non l'accordo con
-   l'incumbent: due modelli possono concordare ed essere entrambi sbagliati.
+1. **Verifier → `gemini-2.5-flash`** (NON `-lite`: vedi §7, la misura ha ribaltato la scelta che
+   il solo HHEM suggeriva). Motivo primario **qualità, non costo**: 8 false-accept contro 26
+   dell'incumbent sugli stessi 30 casi, zero falsi rifiuti. Il −$7,18/mese è un effetto collaterale.
+   Reversibile con `fly secrets set VERIFIER_MODEL`, nessun deploy di codice.
+   **Prima**: rifare la misura con un campione più grande e positivi parafrasati (§7).
 2. **Caching: misurare, non costruire.** L'implicito è già attivo e gratuito; l'esplicito
    costerebbe $3,73/mese di storage per un guadagno marginale a questi volumi. La prossima azione è
    leggere `cache_hit_tokens` dal ledger corretto dopo qualche giorno di produzione.
@@ -323,15 +346,63 @@ Altri due difetti dell'harness, trovati eseguendolo:
   è locale — ma la sonda che avevo usato per attribuire la colpa leggeva il client *condiviso*,
   non quello del verifier: **misuravo l'oggetto sbagliato**.
 
+### Il risultato che conta più del costo: il gate accetta quasi tutto
+
+Baseline `gemini-3.5-flash` — **il verifier che gira in produzione** — su 50 casi
+(20 fedeli, 30 corrotti):
+
+**26 false-accept su 30. Zero falsi rifiuti.**
+
+Distribuzione dei punteggi (soglia del gate: 0,7):
+
+| Tipo di caso | n | ≥0,7 | punteggi |
+|---|---|---|---|
+| fedele *(dovrebbe passare)* | 20 | 20 | `1.0` ×20 |
+| **numero sbagliato** *(dovrebbe fallire)* | 10 | **10** | `0.9` ×9 · `0.8` ×1 |
+| **norma inventata** *(dovrebbe fallire)* | 20 | **16** | `0.8` ×6 · `0.75` ×5 · `0.7` ×5 · `0.6` ×3 · `0.5` ×1 |
+
+Non sono verdetti incerti: sulle cifre contraddette il modello accetta **con sicurezza** (0,9).
+E non è cecità — nel caso letto per intero il verifier **nomina l'errore** e poi lo promuove.
+Conseguenza operativa: il self-correction, che parte sotto 0,7, **non scatta quasi mai**
+sull'infedeltà reale. Il gate esiste, è vivo dal #2973, e lascia passare l'87% delle bozze
+infedeli.
+
+> ⚠️ **Limite di questo campione, e non è piccolo.** I casi fedeli sono la risposta vagliata usata
+> come contesto di se stessa: **copie verbatim**, non parafrasi. Il loro `1.0` non dice quanto
+> scorerebbe una risposta legittima ma riformulata, quindi **questi dati NON permettono di
+> concludere «basta alzare la soglia a 0,95»** — alzarla potrebbe respingere parafrasi buone, e
+> questo campione non può misurarlo. Quello che i dati stabiliscono è più stretto e già grave:
+> su bozze realmente infedeli il punteggio cade **sopra** la soglia.
+
 ### Cosa NON è ancora misurato
 
-Il giro a quattro modelli con le corruzioni corrette (50 casi: 20 fedeli, 30 corrotti) è **in
-esecuzione al momento della stesura, non concluso** — a ~15s per verdetto sono ~50 minuti. Le
-tabelle di false-accept per modello **non esistono ancora** e vanno appese qui prima che il punto 1
-della raccomandazione diventi azione. Quello che è già evidenza solida è il **singolo caso
-ispezionato** sopra (`75 July`): un'istanza verificata, non un tasso. Il criterio resta **zero
-false-accept sui casi sostanziali**, e a oggi non ho il numero né per l'incumbent né per i
-candidati.
+### Il confronto a quattro modelli — e ribalta la raccomandazione
+
+50 casi identici per modello (20 fedeli, 30 corrotti), stesso harness, stessa chiave.
+
+| Modello | **False-accept /30** | Falsi rifiuti /20 | Latenza | Accordo con l'incumbent | Verifier 30gg |
+|---|---|---|---|---|---|
+| `gemini-3.5-flash` *(oggi)* | 26 | 0 | 6,51s | — | $9,08 |
+| **`gemini-2.5-flash`** | **8** | 0 | 8,20s | **60%** | **$1,90** |
+| `gemini-3.5-flash-lite` | 14 | 0 | 3,83s | 76% | $1,90 |
+| `gemini-2.5-flash-lite` | **28** | 0 | 4,13s | 88% | $0,58 |
+
+Tre cose, e due sono contro quello che avevo scritto tre ore fa:
+
+1. **`gemini-2.5-flash` giudica 3× meglio dell'incumbent e costa 1/5** — 8 false-accept contro 26,
+   zero falsi rifiuti. È l'unico candidato che migliora davvero il gate.
+2. **`gemini-2.5-flash-lite`, il modello che avevo raccomandato, è il PEGGIORE della lista** (28/30).
+   L'avevo scelto sulla fedeltà HHEM (3,3%, la migliore fra i Gemini misurati). **HHEM misura il
+   generare, non il giudicare**: l'avevo dichiarato come limite del proxy e il limite era reale.
+   Seguire quella raccomandazione avrebbe peggiorato il fact-check risparmiando $8,50.
+3. **L'accordo con l'incumbent è ANTI-correlato con la qualità**: 88% di accordo → il peggiore,
+   60% → il migliore. Ovvio a posteriori — l'incumbent sbaglia 26 volte su 30, quindi somigliargli
+   è un difetto — ma è esattamente il criterio che l'harness misurava prima di oggi, e avrebbe
+   incoronato `2.5-flash-lite`. **Un test di somiglianza a un giudice sbagliato premia lo sbaglio.**
+
+⚠️ Campione piccolo (30 negativi per modello) e positivi non realistici (copie verbatim, vedi
+sopra). Prima di spostare `VERIFIER_MODEL` in produzione questo va rifatto con `--n` più alto e con
+positivi parafrasati, altrimenti si sostituisce un giudizio su 30 casi a uno su nessuno.
 
 Riproducibile:
 
@@ -365,7 +436,12 @@ Verdetto: **DOES-NOT-SURVIVE**, 17 rilievi. Nessuno derogato. Esito, uno per uno
   sono trattate separatamente: un'abbreviazione ambigua risolve a `unknown` e lo dichiara nel log.
 - **#15 ALTA** — `create_token_usage()` (che alimenta il tetto di spesa del gateway) non riceveva
   cache né thinking: ledger e guardia operativa prezzavano la stessa chiamata in due modi. Corretto.
-- **#8 ALTA** — l'harness non poteva misurare i false-accept. Corretto con casi negativi (§7).
+- **#8 ALTA** — l'harness non poteva misurare i false-accept. Corretto con casi negativi (§7), **e
+  la misura che ne è uscita ha ribaltato la raccomandazione di questo stesso documento**: il
+  modello che raccomandavo (`2.5-flash-lite`, scelto su HHEM) è risultato il peggiore dei quattro,
+  e il criterio che l'harness usava prima — accordo con l'incumbent — è anti-correlato con la
+  qualità. Il rilievo non era una formalità: senza, avremmo spostato il verifier sul giudice
+  peggiore chiamandolo un risparmio.
   **E la correzione ha avuto essa stessa il difetto**: la prima versione corrompeva qualunque
   cifra, quindi mutava numeri d'elenco e contava come fallimento la reazione corretta del modello
   (29 false-accept apparenti, contaminati). Trovato leggendo due casi per intero invece di fidarsi
