@@ -3,14 +3,19 @@ import {
   WorkspaceAccessRequired,
 } from "@/components/magazine-shell";
 import { OperationsBoard } from "@/components/operations-board";
+import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { requireMagazineViewer } from "@/lib/server/magazine-read-model";
 import { createOperationsRepository } from "@/lib/server/operations-repository";
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function OperationsPage() {
-  const viewer = await requireMagazineViewer();
+  await requireChatGPTUser("/operations");
+  const viewer = await requireMagazineViewer("internal:read");
   if (viewer === null)
     return (
       <MagazineShell eyebrow="Private workspace">
@@ -37,3 +42,4 @@ export default async function OperationsPage() {
     </MagazineShell>
   );
 }
+import type { Metadata } from "next";
