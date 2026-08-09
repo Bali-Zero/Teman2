@@ -62,12 +62,45 @@ REPO_ROOT_ENV = "NUZ_REPO_ROOT"
 
 
 def _carries_root_signature(root: Path) -> bool:
-    """True iff `root` looks like the nuzantara main checkout."""
+    """True iff `root` carries the signature file.
+
+    NOT the same question as "is the main checkout": a linked worktree is a full
+    checkout and carries it too. Compose with `_main_checkout_of` before trusting
+    this as an answer about the main checkout.
+    """
     try:
         return (root / ROOT_SIGNATURE).is_file()
     except OSError:
         # An unreadable/absurd path is "not the repo", never a crash.
         return False
+
+
+def _main_checkout_of(path: Path) -> Path | None:
+    """The MAIN checkout owning `path`, or None if git cannot say.
+
+    `git rev-parse --git-common-dir` reports the SHARED `.git` from anywhere
+    inside a repo — including from a linked worktree, where the per-worktree
+    git-dir differs. Its parent is therefore the main checkout whether `path` is
+    the main checkout, a worktree, or a subdirectory of either.
+
+    This is what stops the signature from over-accepting: `.worktrees/ops-task`
+    contains `scripts/agent_start.py` (it is a checkout of this very repo), so a
+    signature test alone would happily accept a worktree as "the main checkout"
+    and nest `.worktrees` inside it — the W63 shape the signature was added to
+    prevent. Normalising is friendlier than refusing and matches what this
+    function is documented to return: someone who points at a worktree gets the
+    main checkout, which is the only thing the broker may operate on.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=str(path), capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return Path(out.stdout.strip()).parent
 
 
 def _derive_repo_root() -> Path:
@@ -107,23 +140,36 @@ def _derive_repo_root() -> Path:
       1. `NUZ_REPO_ROOT`  — explicit override; the SAME name `proprioception.py`
          and both worktree hooks read, so the out-of-tree escape hatch finally
          carries over to this script instead of stopping at the other two.
-      2. `git rev-parse --git-common-dir` — answers with the MAIN repo from inside
-         a linked worktree, which is the W105 reason this beats the script's own
-         location.
-      3. the script's own directory — the ordinary in-repo case.
-      4. `~/nuzantara` — machine-agnostic (Pro `/Users/nuzantara`, m5
+      2. git, asked from the CALLER's cwd.
+      3. git, asked from the script's directory — the W105 reason git beats the
+         script's own location: from a worktree it still answers "main checkout".
+      4. the script's own directory — the ordinary in-repo case with no git.
+      5. `~/nuzantara` — machine-agnostic (Pro `/Users/nuzantara`, m5
          `/Users/balizero`), the same last resort the hooks use. This is what makes
          a `/tmp` copy work rather than merely fail politely.
 
+    Candidates that did NOT come out of git are normalised through
+    `_main_checkout_of` before being returned, because a linked worktree carries
+    the signature too: without that step `NUZ_REPO_ROOT=.worktrees/ops-task`
+    would be accepted as "the main checkout" and the broker would nest under it
+    (W63) — the signature answers "is this a checkout of this repo", never "is
+    this THE main one". The git-derived candidates are already main checkouts by
+    construction, and normalisation runs on the WINNER only, so no invocation
+    pays for a candidate it never reaches.
+
     If NOTHING carries the signature we RAISE. Refusing to answer is the only
     honest option left: any Path we could return here produces a confident,
-    empty, wrong inventory. An explicit `NUZ_REPO_ROOT` that fails the signature
-    is named in the error rather than silently skipped — a wrong override that
-    degrades to a different repo is exactly the retarget the guard exists to stop.
+    empty, wrong inventory. An explicit `NUZ_REPO_ROOT` that fails is named in
+    the error rather than silently skipped — a wrong override that degrades to a
+    different repo is exactly the retarget the guard exists to stop.
     """
+    def _normalise(p: Path) -> Path:
+        """A worktree (or a subdirectory) resolves to the main checkout that owns it."""
+        return _main_checkout_of(p) or p
+
     env_root = os.environ.get(REPO_ROOT_ENV, "").strip()
     if env_root:
-        explicit = Path(env_root).expanduser()
+        explicit = _normalise(Path(env_root).expanduser())
         if _carries_root_signature(explicit):
             return explicit
         # Deliberately terminal, not "try the next candidate": someone NAMED a
@@ -131,33 +177,44 @@ def _derive_repo_root() -> Path:
         # than the one asked for, which is the exact retarget the signature
         # guard exists to prevent — and it would do it silently.
         raise SystemExit(
-            f"ERROR: {REPO_ROOT_ENV}={explicit} does not carry {ROOT_SIGNATURE} — "
-            "that is not the nuzantara main checkout. Fix or unset it; refusing to "
-            "silently fall back to a different root than the one you named."
+            f"ERROR: {REPO_ROOT_ENV}={env_root} does not resolve to a checkout "
+            f"carrying {ROOT_SIGNATURE}. Fix or unset it; refusing to silently fall "
+            "back to a different root than the one you named."
         )
 
-    candidates: list[tuple[str, Path]] = []
+    # (label, path, needs_normalising). Candidates that already came OUT of
+    # `--git-common-dir` are main checkouts by construction; normalising them
+    # again would spend a git subprocess to learn what we just asked. The flag
+    # keeps the remaining normalisation LAZY — it runs on the winner only, not
+    # once per invocation on a `~/nuzantara` we may never reach.
+    candidates: list[tuple[str, Path, bool]] = []
     script_dir = Path(__file__).resolve().parents[1]
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            cwd=str(script_dir), capture_output=True, text=True, timeout=5,
-        )
-        if out.returncode == 0 and out.stdout.strip():
-            # `--git-common-dir` is `<root>/.git` for a normal checkout and for a
-            # linked worktree alike; the parent is the main checkout either way.
-            candidates.append(("git --git-common-dir", Path(out.stdout.strip()).parent))
-    except Exception:
-        pass
 
-    candidates.append(("script location", script_dir))
-    candidates.append(("~/nuzantara", Path.home() / "nuzantara"))
+    # The CALLER's cwd first: running an out-of-tree copy (`python3 /tmp/x.py`)
+    # from inside the checkout is a real and correct invocation, and asking git
+    # only where the SCRIPT sits answers about /tmp — a repo the caller is
+    # standing in gets ignored in favour of raising. The signature guard below
+    # is what keeps this safe when the cwd has wandered into another project.
+    try:
+        cwd_root = _main_checkout_of(Path.cwd())
+        if cwd_root is not None:
+            candidates.append(("git --git-common-dir (cwd)", cwd_root, False))
+    except OSError:
+        pass  # cwd deleted underneath us
+
+    script_root = _main_checkout_of(script_dir)
+    if script_root is not None:
+        candidates.append(("git --git-common-dir (script)", script_root, False))
+
+    candidates.append(("script location", script_dir, True))
+    candidates.append(("~/nuzantara", Path.home() / "nuzantara", True))
 
     tried: list[str] = []
-    for label, cand in candidates:
-        if _carries_root_signature(cand):
-            return cand
-        tried.append(f"{label}={cand}")
+    for label, cand, needs_norm in candidates:
+        if not _carries_root_signature(cand):
+            tried.append(f"{label}={cand}")
+            continue
+        return _normalise(cand) if needs_norm else cand
 
     raise SystemExit(
         "ERROR: cannot locate the nuzantara main checkout — every candidate lacks "
@@ -840,7 +897,7 @@ def _worktree_has_live_process(worktree: Path) -> bool:
     return bool(data_lines)
 
 
-def _branch_in_origin_main(worktree: Path) -> bool:
+def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) -> bool:
     """True iff the worktree's HEAD is fully merged into ``origin/main``.
 
     W80 ANTIBODY guard #2. The reaper must NOT remove a worktree whose work is
@@ -866,9 +923,16 @@ def _branch_in_origin_main(worktree: Path) -> bool:
         bug case, but it ALSO reads >0 for the merge-base check, so we use the
         unambiguous ancestor test against the integration branch directly.
 
-    FAIL-SAFE TO FALSE ("treat as NOT merged ⇒ do NOT reap") on any git error,
-    missing origin/main, or detached/unknown HEAD. A worktree we cannot prove is
-    merged is protected, never reaped.
+    FAIL-SAFE TO FALSE ("treat as NOT merged ⇒ do NOT reap") on any git error or
+    missing origin/main. A worktree we cannot prove is merged is protected.
+
+    `expect_branch` is how a caller that is about to DELETE a branch says which
+    entity the verdict must be about. Without it this function answers only
+    about HEAD, and a detached HEAD sitting at an ancestor of origin/main
+    returns True while the registered branch is unmerged — which is a data-loss
+    path for `git branch -D`, not a fail-safe. Pass it from every call site that
+    deletes; an earlier version of this docstring claimed detached HEAD failed
+    safe, and that was simply not true.
 
     Note: this does not fetch — it tests against the locally-known origin/main
     ref. The daily cron environment refreshes refs out of band; a stale
@@ -878,6 +942,31 @@ def _branch_in_origin_main(worktree: Path) -> bool:
         # Directory already gone — nothing to protect; let cleanup proceed to
         # prune the stale metadata/pointer.
         return True
+
+    if expect_branch is not None:
+        # Every question below is answered by the worktree's HEAD, but the
+        # caller is about to `git branch -D expect_branch` — a DIFFERENT
+        # entity the moment HEAD is not that branch. Detach a worktree at
+        # origin/main (`git checkout --detach origin/main`) and the ancestor
+        # test passes instantly while the registered branch still holds
+        # unmerged commits: the proof is about the location, not the entity
+        # named in the verdict (#3, the shape of W105).
+        #
+        # Fail-safe to False on detached/renamed/unreadable HEAD: we have not
+        # DISPROVEN the branch is merged, we have failed to ask about it, and
+        # cannot-verify must never read as proven (W84).
+        head = _run_git(
+            ["symbolic-ref", "--quiet", "--short", "HEAD"], cwd=worktree, check=False
+        )
+        actual = head.stdout.strip() if head.returncode == 0 else ""
+        if actual != expect_branch:
+            logger.warning(
+                "content-merge probe declined for %s: HEAD is %s, not the branch "
+                "under judgement (%s) — cannot prove that branch is merged",
+                worktree, actual or "detached/unknown", expect_branch,
+            )
+            return False
+
     proc = _run_git(
         ["merge-base", "--is-ancestor", "HEAD", "origin/main"],
         cwd=worktree,
@@ -1149,7 +1238,7 @@ def cmd_cleanup(
                     "— active session, will reap when idle"
                 )
                 continue
-            if not _branch_in_origin_main(wt):
+            if not _branch_in_origin_main(wt, expect_branch=meta.branch):
                 logger.warning(
                     "cleanup skip %s — branch %s has commits not in origin/main "
                     "(W80: unmerged work, refusing to reap its only checkout)",
@@ -1248,7 +1337,7 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
 
     merged = _branch_is_merged(meta.branch, base=base)
     proven_by = "ancestor of base" if merged else ""
-    if not merged and wt.is_dir():
+    if not merged and wt.is_dir() and (base == "main" or not _rev_exists(base)):
         # W88: the ancestor proxy says "unmerged" for every squash-merged
         # branch. Fall back to the blob-per-file content check the cleanup
         # reaper uses. Gated on wt.is_dir() — with the checkout gone the
@@ -1266,7 +1355,7 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
         # of safety whatever the recorded base was — the work is upstream, so
         # deleting the branch loses nothing — and `_branch_in_origin_main`
         # fail-safes to False on any git error or missing ref.
-        merged = _branch_in_origin_main(wt)
+        merged = _branch_in_origin_main(wt, expect_branch=meta.branch)
         if merged:
             proven_by = "content already on origin/main"
     if not merged and not force:

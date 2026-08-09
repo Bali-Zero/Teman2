@@ -1437,3 +1437,105 @@ def test_innocence_a_stacked_branch_with_real_work_is_still_refused(fake_repo):
         "the refusal must name the DELETED BASE as the cause; blaming the merge "
         f"sends the reader to fix something that is not broken (W106). Got: {msg}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Round 2 — every test below exists because an independent refuter found the
+# first cure incomplete. A cure written in answer to an objection is a NEW
+# claim, and gets its own proof (W113).
+# ---------------------------------------------------------------------------
+
+
+def test_an_override_pointing_at_a_worktree_resolves_to_the_main_checkout(
+    out_of_tree_copy,
+):
+    """A linked worktree carries `scripts/agent_start.py` — it IS a checkout of this
+    repo. So the signature alone answers "is this a checkout", never "is this THE
+    main one", and NUZ_REPO_ROOT=<worktree> would have been accepted, nesting
+    `.worktrees` inside a worktree (W63 — the shape the signature was added to stop).
+    """
+    copy, outside, home, root, wt = out_of_tree_copy
+    # The premise, asserted rather than assumed: the worktree really does carry
+    # the signature, so the signature test alone CANNOT tell it from the main
+    # checkout. Without this the test could pass for the wrong reason.
+    assert (wt / "scripts" / "agent_start.py").is_file()
+
+    res = _derive_probe(
+        copy, cwd=outside, env_extra={"HOME": str(home), "NUZ_REPO_ROOT": str(wt)}
+    )
+    assert res.returncode == 0, res.stderr[-800:]
+    # It resolved to the MAIN checkout, so it sees the main checkout's inventory.
+    assert "b/existing" in res.stdout, (
+        "pointing at a worktree did not resolve to the main checkout: "
+        f"stdout={res.stdout!r}"
+    )
+
+
+def test_an_out_of_tree_script_uses_the_repo_the_caller_is_standing_in(out_of_tree_copy):
+    """git was asked only where the SCRIPT sits, so `cd <repo> && python3 /tmp/x.py`
+    answered about /tmp and raised — ignoring the repo the caller was standing in.
+    That is the exact m5 invocation, and refusing it would have replaced a silent
+    wrong answer with a loud wrong refusal.
+    """
+    copy, _outside, home, root, _wt = out_of_tree_copy
+    res = _derive_probe(copy, cwd=root, env_extra={"HOME": str(home)})
+    assert res.returncode == 0, (
+        "an out-of-tree copy run from INSIDE the checkout refused; "
+        f"stderr={res.stderr[-500:]}"
+    )
+    assert "b/existing" in res.stdout, res.stdout
+
+
+def test_release_refuses_when_head_is_not_the_branch_being_deleted(fake_repo):
+    """GUILT for the entity-vs-location hole. The content proof is read off the
+    worktree's HEAD, but the command then runs `git branch -D <meta.branch>` — a
+    different entity the moment HEAD is detached. Detach at origin/main and the
+    proof passes instantly while the registered branch still holds unmerged work,
+    so --release would DESTROY it. Cannot-ask must not read as proven (W84).
+    """
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "rel-detached")
+    _commit_in(wt, "unlanded.txt", "work that never landed\n", "wip")
+    branch = [m for m in mod._iter_metadata() if m.task_id == "rel-detached"][0].branch
+
+    subprocess.run(["git", "checkout", "--detach", "origin/main"], cwd=wt, check=True,
+                   capture_output=True)
+
+    with pytest.raises(SystemExit):
+        mod.cmd_release("rel-detached")
+
+    still = subprocess.run(["git", "branch", "--list", branch], cwd=repo,
+                           capture_output=True, text=True, check=True)
+    assert branch in still.stdout, f"the unmerged branch {branch} was deleted"
+    assert wt.exists()
+
+
+def test_innocence_a_stacked_branch_on_a_LIVE_base_is_not_judged_against_main(fake_repo):
+    """INNOCENCE for the narrowing. The first draft dropped the `base == "main"` gate
+    outright; the refuter produced the case that breaks: a child branch can match
+    origin/main by content while its diff against its LIVE base is the whole point
+    of its existence. main-relative proof is only meaningful when main is the
+    integration target — i.e. base IS main, or base is GONE. A live non-main base
+    keeps the strict ancestry rule.
+    """
+    mod, repo = fake_repo
+    subprocess.run(["git", "checkout", "-b", "feature/live"], cwd=repo, check=True,
+                   capture_output=True)
+    _commit_in(repo, "flag.txt", "X\n", "base diverges from main")
+    subprocess.run(["git", "push", "-u", "origin", "feature/live"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "rel-child", base_branch="feature/live")
+    # The child restores what main has — content-identical to origin/main, yet its
+    # real change (undoing the base's X) is nowhere upstream.
+    subprocess.run(["git", "rm", "-q", "flag.txt"], cwd=wt, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "undo base"],
+        cwd=wt, check=True, capture_output=True,
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_release("rel-child")
+    assert wt.exists()
+    assert "feature/live" in str(exc.value)
