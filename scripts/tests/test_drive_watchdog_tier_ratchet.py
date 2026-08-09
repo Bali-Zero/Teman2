@@ -612,7 +612,7 @@ def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(
         # the caller's `except` swallowed it, and the function reported "not
         # sent" for a send that worked — the fake and the code were wrong
         # together, which is why the test stayed green while the fake was unfaithful (W114).
-        stderr = "tg_notify: spooled\n"
+        stderr = "tg_notify: sent\n"
         stdout = ""
 
     def fake_run(cmd, **kw):
