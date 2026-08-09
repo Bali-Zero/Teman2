@@ -159,6 +159,27 @@ LLM_PRICING: dict[str, dict[str, float]] = {
 }
 
 
+def _as_token_count(value: object) -> int:
+    """Coerce a usage field to a token count, or 0 if it is not a number.
+
+    The extractor promises never to break a chat response, and until this
+    function existed it kept that promise only by luck: it returned whatever
+    the attribute happened to be, and the arithmetic downstream was all
+    division and multiplication, which most objects tolerate. Adding the
+    cache clamp (`min`/`max`) introduced an ORDER comparison, which a
+    non-number does not support — four gateway tests went from green to
+    `TypeError: '<' not supported between instances of 'int' and 'MagicMock'`.
+    The cure belongs here, not in the tests: a meter handed a value it cannot
+    interpret must record nothing, never take a live answer down with it.
+
+    `bool` is excluded deliberately — it is an `int` subclass, and `True`
+    silently metering as 1 token is a wrong number rather than a missing one.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    return int(value)
+
+
 def extract_gemini_usage(usage_metadata: object) -> tuple[int, int, int, int]:
     """Pull (prompt, completion, cached, thinking) tokens off a google-genai response.
 
@@ -169,16 +190,16 @@ def extract_gemini_usage(usage_metadata: object) -> tuple[int, int, int, int]:
 
     Field names verified against google-genai 2.7.0
     (``types.GenerateContentResponseUsageMetadata``) on 2026-08-09. Returns zeros
-    for a missing/None metadata object rather than raising — cost accounting must
-    never break a chat response.
+    for a missing/None metadata object — or for any field that is not a number —
+    rather than raising: cost accounting must never break a chat response.
     """
     if not usage_metadata:
         return 0, 0, 0, 0
     return (
-        getattr(usage_metadata, "prompt_token_count", 0) or 0,
-        getattr(usage_metadata, "candidates_token_count", 0) or 0,
-        getattr(usage_metadata, "cached_content_token_count", 0) or 0,
-        getattr(usage_metadata, "thoughts_token_count", 0) or 0,
+        _as_token_count(getattr(usage_metadata, "prompt_token_count", 0)),
+        _as_token_count(getattr(usage_metadata, "candidates_token_count", 0)),
+        _as_token_count(getattr(usage_metadata, "cached_content_token_count", 0)),
+        _as_token_count(getattr(usage_metadata, "thoughts_token_count", 0)),
     )
 
 

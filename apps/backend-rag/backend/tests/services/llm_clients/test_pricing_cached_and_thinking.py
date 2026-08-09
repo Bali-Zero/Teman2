@@ -59,6 +59,32 @@ def test_extract_treats_none_fields_as_zero():
     assert extract_gemini_usage(_FakeUsage(None, None, None, None)) == (0, 0, 0, 0)
 
 
+def test_extract_zeroes_a_field_that_is_not_a_number():
+    """INNOCENCE for the live path, and a real regression this caught.
+
+    A meter handed something it cannot interpret must record nothing, never
+    take the answer down with it. Before this, a non-numeric field flowed
+    into the cache clamp and raised
+    `TypeError: '<' not supported between instances of 'int' and 'MagicMock'` —
+    four gateway tests went red, and in production the same shape would have
+    turned an unreadable usage field into a failed chat response.
+    """
+    opaque = object()
+    assert extract_gemini_usage(_FakeUsage(opaque, "12", [], opaque)) == (0, 0, 0, 0)
+
+
+def test_extract_does_not_meter_a_boolean_as_one_token():
+    """`bool` is an `int` subclass: True would silently meter as 1 token —
+    a wrong number, which is worse than a missing one."""
+    assert extract_gemini_usage(_FakeUsage(True, False, True, True)) == (0, 0, 0, 0)
+
+
+def test_calculate_cost_survives_non_numeric_usage_end_to_end():
+    """GUILT: the crash was in the composition, so assert the composition."""
+    tokens = extract_gemini_usage(_FakeUsage(object(), object(), object(), object()))
+    assert calculate_cost(*tokens[:2], MODEL, cached_tokens=tokens[2], thinking_tokens=tokens[3]) == 0.0
+
+
 # ── cached tokens ───────────────────────────────────────────────────────────
 
 
