@@ -127,6 +127,21 @@ jobs:
                             scripts/tests/test_tg_notify_identity_ladder.py \
                             scripts/tests/test_sentinel_condition_key.py -q
 
+      - name: Migrated senders must REACH the gateway, not just name it
+        run: |
+          # The 2026-08-09 batch moved six organs (~2,350 wake-ups/day between
+          # them) off raw sendMessage. The anti-regrowth lint below proves they
+          # no longer POST directly; it cannot prove the replacement WORKS —
+          # a call that resolves no gateway, or resolves `python3` from a PATH
+          # the sick environment just broke, satisfies the lint and still leaves
+          # the organ mute (W108). So this executes each sender against a fake
+          # gateway and asserts what it was actually handed.
+          #
+          # Bash + stdlib python only — hence this job and not
+          # `guard-pins-pytest`, and emphatically not `scripts/tests/ sweep`,
+          # which is continue-on-error and gates nothing.
+          bash scripts/tests/test_tg_sender_migration.sh
+
       - name: Direct-sender lint (anti-regrowth + monotone grandfather)
         run: python3 scripts/lint_tg_direct_senders.py
 
