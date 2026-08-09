@@ -143,9 +143,13 @@ function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
     // effect at the instant the reader pressed the button — a date that reads
     // as a freshness guarantee while carrying no information about the source.
     //
-    // `verified_at` rather than `retrieved_at` for "observed": the freshness
-    // policy is MAX_AGE_SINCE_VERIFIED_AT, so this is the date that actually
-    // explains the freshness badge rendered next to it.
+    // `verified_at` rather than `retrieved_at` for "observed": the only
+    // freshness policy the schema can express is MAX_AGE_SINCE_VERIFIED_AT,
+    // so this is the date that explains the freshness badge rendered beside
+    // it. Narrower than it sounds — `freshness_policy` is optional for packs
+    // signed under the older schema, and a source without one is reported
+    // UNKNOWN; there the badge has no rule to explain, and `verified_at` is
+    // simply the better of two dates rather than the one the policy names.
     effectiveAtIso: source.legal_period_from,
     observedAtIso: source.verified_at,
     freshness: source.freshness.status,
