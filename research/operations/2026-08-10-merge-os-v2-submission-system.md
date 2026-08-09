@@ -12,7 +12,7 @@ sources:
   - research/operations/2026-07-26-ci-pr-latency-the-excursus-is-cheap-the-slots-are-not.md
   - docs/runbooks/merge-queue-discipline.md
   - "external: Google TAP (SWE-book ch.23) · Micco ICST 2017 · Meta arXiv 1810.05286 · Chromium CQ · Uber SubmitQueue EuroSys 2019 · Zuul gating · bors.tech · Aviator/Mergify batching docs · Dropbox Athena · DORA"
-adversarial_review: "cross-family, 2 seats, PRE-authoring: Codex gpt-5.6-sol (20 findings) + Qwen 3.8 Max (12 findings) refuted v1; all 6 conductor objections CONFIRMED/EXTENDED by both; the 3 load-bearing new claims re-grounded on origin/main before this rewrite. This v2 IS the fold-in; residual risks in §7."
+adversarial_review: codex
 ---
 
 # Merge-OS v2 — the submission system, rewritten after refutation
@@ -22,6 +22,21 @@ adversarial_review: "cross-family, 2 seats, PRE-authoring: Codex gpt-5.6-sol (20
 > concurred on waves 1-2. This v2 folds in all 26 confirmed findings. The delta log (§6) records
 > every change against v1 so the next reviewer attacks the CORRECTIONS, not the retired claims
 > (W113: the replacement assertion is a new claim — this file points its next refuter at itself).
+
+## Adversarial review
+
+Cross-family, 2 seats, PRE-authoring: **Codex gpt-5.6-sol** (effort=high, 20 findings) and
+**Qwen 3.8 Max** (12 findings) independently refuted the v1 (Cowork-M5) draft under an identical
+mandate. All 6 conductor objections were CONFIRMED or EXTENDED by both seats. This v2 IS the
+fold-in of that round: every entry in the delta log (§6) traces back to a specific Codex/Qwen
+finding ID, and no claim survives in v2 that either refuter rejected. The 3 load-bearing new
+claims introduced by the rewrite itself were re-grounded on `origin/main` before this file was
+written (see `sources:` in the frontmatter — `tests.yml:951-1000`, PR #3928 statusCheckRollup).
+
+Nothing survived latent from this round — both seats' objections were folded, not deferred.
+Declared residual risk (§7 item 5, not hidden): **this v2 rewrite has not itself been through a
+post-rewrite refutation pass** — the delta log (§6) is the target map for that next round, due
+before Wave 2 arms.
 
 ## 0. What survives from v1 (the sound core)
 
