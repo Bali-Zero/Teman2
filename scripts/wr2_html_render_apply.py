@@ -96,6 +96,12 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("wr2_html_apply")
 
+# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
+# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+
 MAX_DRAFTS_PER_RUN = 1
 DEFAULT_RECIPIENTS = ["6282230102328", "628213454726"]  # Antonello +62 822-3010-2328, Damar +62 821-3454-726
 TELEGRAM_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
@@ -117,7 +123,10 @@ def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
             "--tier", tier, "--source", "wr2-html-apply",
             "--dedup-key", dedup_key, text,
         ]
-        res = subprocess.run(cmd, capture_output=True, timeout=30)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        m = _GATEWAY_VERDICT_RE.search(res.stderr or "")
+        logger.info("tg_notify[%s]: %s", dedup_key,
+                    m.group(1) if m else f"NESSUN verdetto rc={res.returncode}")
         return res.returncode == 0
     except Exception as exc:  # noqa: BLE001
         logger.warning("tg_notify failed (%s): %s", dedup_key, exc)
