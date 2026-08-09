@@ -640,6 +640,24 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
             ("kim-2025-ranking-supports-the-no-peer-rule",
              "Independent is lowest, therefore use centralized state (2512.08296)"),
         ]
+        # The mirror of _EVASIONS: real repo prose that CARRIES the relic number
+        # and is NOT the claim. `4.4x` is a homograph — a wall-clock ratio is the
+        # commonest way a number-followed-by-x appears in an ops ledger — so the
+        # context_pattern is the only thing standing between the guard and a false
+        # accusation. It failed on 2026-08-09 (PR #3837, blocked for a ReDoS timing
+        # measurement) because the pattern carried `agents?` and `never`: tokens
+        # present in 556 and 834 tracked .md files respectively, i.e. satisfied by
+        # ambient prose in a repo about agents. Verbatim, so a future widening of
+        # the context re-opens this loudly instead of on someone else's PR.
+        _HOMOGRAPHS = [
+            ("kim-2025-17x-error-amplification-as-cause",
+             "promote the plist into `infra/launchagents/`, and check whether the other wr2 agents' plists\n"
+             "are in the same state | proof-of-armed: the tracked copy is byte-identical to the loaded one\n"
+             "the suite then failed at 96% on `test_redos_anchor_patterns.py`: `0.0049s -> 0.0216s "
+             "(4.4x for 2x input, max 3.0x)`, and again at 3.8x when re-run alone at load average 9-11\n"
+             "**Deliberately NOT fixed by widening the allowlist**: unblocking my own push by relaxing\n"
+             "the gate that blocked it is the generator grading its own diff, and it must never be done"),
+        ]
         prod_path = registry_path or DEFAULT_REGISTRY
         if prod_path.is_file():
             pclaims, pwindow, pdirs = load_registry(prod_path)
@@ -683,6 +701,13 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                     expect(
                         f"PROD GUILT `{c.id}` catches the evasive form: {text[:46]}...",
                         len(scan_text(text + "\n", [c], pdirs, pwindow)) == 1,
+                    )
+                for hid, text in _HOMOGRAPHS:
+                    if hid != c.id:
+                        continue
+                    expect(
+                        f"PROD INNOCENCE `{c.id}` a homograph of the relic number is not the claim",
+                        scan_text(text + "\n", [c], pdirs, pwindow) == [],
                     )
                 if c.require_marker:
                     expect(
