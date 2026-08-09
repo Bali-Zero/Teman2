@@ -14,6 +14,7 @@ import json
 import os
 import socket
 import subprocess
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,12 @@ WITA = timezone(timedelta(hours=8))
 CRON_LOG_DIR = Path.home() / "logs" / "cron"
 SECRETS_FILE = Path.home() / ".nuzantara-secrets.env"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
+# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
 
 # Expected jobs and their max intervals (hours).
 # If a job hasn't run in 2× this interval, it's considered dead.
@@ -198,6 +205,8 @@ def send_alert(results: list[dict]) -> None:
              "--source", "job-health", "--dedup-key", dedup_key, "--", msg],
             capture_output=True, text=True, timeout=30,
         )
+        m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+        print(f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}", file=sys.stderr)
         if proc.returncode != 0:
             print(f"WARN: tg_notify exit={proc.returncode}: {proc.stderr[:200]}", file=sys.stderr)
     except Exception as e:
