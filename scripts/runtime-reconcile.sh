@@ -26,7 +26,6 @@ STRICT="${RUNTIME_RECONCILE_STRICT:-0}"                          # P0 default 0 
 PULL_STATE="${HOME}/.agent/decisions/state/wr2_deploy_pull.state"
 LOG="${HOME}/logs/runtime-reconcile.log"
 STATE="${HOME}/.organism/last_seen/pro.runtime_reconcile.json"
-SECRETS="${HOME}/.nuzantara-secrets.env"
 ALERT_COOLDOWN_SEC="${RUNTIME_RECONCILE_ALERT_COOLDOWN_SEC:-21600}"
 ALERT_STAMP="${HOME}/.agent/decisions/state/runtime_reconcile.alert"
 
@@ -51,15 +50,26 @@ alert() {
       return 0
     fi
   fi
-  if [[ -f "$SECRETS" ]]; then
-    local tok cid
-    tok="$(grep '^TELEGRAM_BOT_TOKEN=' "$SECRETS" | head -1 | cut -d= -f2- | tr -d '"')" || true
-    cid="$(grep '^TELEGRAM_OWNER_CHAT_ID=' "$SECRETS" | head -1 | cut -d= -f2- | tr -d '"')" || true
-    if [[ -n "${tok:-}" && -n "${cid:-}" ]]; then
-      curl -s -m 10 "https://api.telegram.org/bot${tok}/sendMessage" \
-        --data-urlencode "chat_id=${cid}" \
-        --data-urlencode "text=🛟 runtime-reconcile P0 breach: ${msg}" >/dev/null 2>&1 || true
-    fi
+  # Through the tg_notify gateway (2026-08-09). Two gains, not one: this wakes
+  # every 1800s so a standing breach was up to 48 un-budgeted sends a day, AND
+  # the old path grep'd the bot token out of the secrets file into a shell
+  # variable to build a URL with it — the gateway owns credential resolution,
+  # so no secret passes through this script at all any more (superscar #4).
+  # The local cooldown above is kept: it also gates the log line.
+  local gateway py
+  gateway="$(dirname "$0")/tg_notify.py"
+  [[ -f "$gateway" ]] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+  if [[ ! -f "$gateway" ]]; then
+    log "NO GATEWAY at $gateway — alert NOT sent"
+  else
+    # Absolute interpreter, never PATH (W108).
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+      [[ -x "$py" ]] || continue
+      "$py" "$gateway" --tier p0 --source runtime-reconcile \
+        --dedup-key "runtime-reconcile:invariant-breach" \
+        -- "🛟 runtime-reconcile P0 breach: ${msg}" >>"$LOG" 2>&1 || log "gateway send failed"
+      break
+    done
   fi
   echo "$now" > "$ALERT_STAMP"
 }

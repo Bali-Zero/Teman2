@@ -14,6 +14,38 @@ function getBackendUrl(): string {
 }
 const BACKEND_URL = getBackendUrl();
 
+interface LoginUpstreamPayload {
+  message?: string;
+  data?: {
+    token?: unknown;
+    csrfToken?: unknown;
+    expiresIn?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+async function parseUpstreamPayload(
+  upstream: Response,
+): Promise<LoginUpstreamPayload | null> {
+  const responseBody = await upstream.text();
+
+  if (!responseBody.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(responseBody) as LoginUpstreamPayload;
+  } catch {
+    logger.warn("Login upstream returned a non-JSON response", {
+      component: "LoginRoute",
+      action: "parseUpstreamResponse",
+      code: upstream.status,
+    });
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
@@ -25,10 +57,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body: JSON.stringify(body),
     });
 
-    const data = await upstream.json();
+    const data = await parseUpstreamPayload(upstream);
 
-    if (!upstream.ok || !data?.data?.token) {
-      return NextResponse.json(data, { status: upstream.status });
+    if (!upstream.ok) {
+      return NextResponse.json(
+        data ?? {
+          success: false,
+          message: "Login service unavailable",
+        },
+        { status: upstream.status },
+      );
+    }
+
+    if (!data?.data?.token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid response from login service",
+        },
+        { status: 502 },
+      );
     }
 
     const { expiresIn } = data.data;

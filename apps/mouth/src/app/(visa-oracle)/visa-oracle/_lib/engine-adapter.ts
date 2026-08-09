@@ -52,8 +52,83 @@ const NEXT_STEPS: OutcomeNextSteps = [
 
 const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
 
+/**
+ * Human-readable copy for the pack's SUPPORT reason codes — the "why this
+ * path is supported" line. Without it the UI printed the bare machine code
+ * (`Verified reason: B1_VOA_ELIGIBLE`) on every candidate of every product.
+ *
+ * Each sentence is derived from the rule's own `when` clause and may claim
+ * NOTHING the rule did not test. `PURPOSE_PRODUCT_MATCH` is deliberately
+ * generic: 16 rules share that one code — employment, six family relations,
+ * D1/D2/D12 multi-entry and study — so any specific sentence would be false
+ * for fifteen of them.
+ *
+ * Unknown codes keep the existing `Verified reason: <code>` form rather than
+ * degrading to a generic sentence: a code we have not written copy for is
+ * still information, and silently blanking it would hide a new rule instead
+ * of surfacing it. (The REVIEW map above chooses the opposite fallback on
+ * purpose — there, a wrong-sounding specific is worse than a safe generic.)
+ */
+export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
+  A1_BVK_ELIGIBLE: text(
+    "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
+    "Kewarganegaraan Anda ada dalam daftar bebas visa (BVK) untuk wisata atau transit, dan masa tinggal Anda 30 hari atau kurang.",
+  ),
+  B1_VOA_ELIGIBLE: text(
+    "Your nationality is on the Visa on Arrival list for tourism, and your stay is 30 days or less.",
+    "Kewarganegaraan Anda ada dalam daftar Visa on Arrival untuk wisata, dan masa tinggal Anda 30 hari atau kurang.",
+  ),
+  C1_VISIT_ELIGIBLE: text(
+    "A tourism or family visit with a stay of 60 days or less.",
+    "Kunjungan wisata atau keluarga dengan masa tinggal 60 hari atau kurang.",
+  ),
+  C2_BUSINESS_ELIGIBLE: text(
+    "Business meetings or investment, with a confirmed sponsor and a stay of 60 days or less.",
+    "Pertemuan bisnis atau investasi, dengan penjamin terkonfirmasi dan masa tinggal 60 hari atau kurang.",
+  ),
+  C6_SOCIAL_ELIGIBLE: text(
+    "A social or other stated purpose, with a confirmed sponsor and a stay of 60 days or less.",
+    "Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan masa tinggal 60 hari atau kurang.",
+  ),
+  E28A_INVESTMENT_ELIGIBLE: text(
+    "You committed to a PT PMA as shareholder-director or shareholder-commissioner, with paid-up capital of IDR 2.5 billion or more.",
+    "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
+  ),
+  E33E_RETIREMENT_ELIGIBLE: text(
+    "Retirement, age 55 or over, with a deposit of USD 50,000 or more held in your own name at a state bank.",
+    "Pensiun, usia 55 tahun ke atas, dengan deposito minimal USD 50.000 atas nama sendiri di bank BUMN.",
+  ),
+  E33F_RETIREMENT_ELIGIBLE: text(
+    "Retirement with passive income of USD 3,000 per month or more and a confirmed sponsor.",
+    "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan dan penjamin terkonfirmasi.",
+  ),
+  E33_DEPOSIT_BASIS_ELIGIBLE: text(
+    "Second Home on the deposit basis: USD 130,000 or more held in your own name at a state bank.",
+    "Rumah Kedua berbasis deposito: minimal USD 130.000 atas nama sendiri di bank BUMN.",
+  ),
+  E33_PROPERTY_BASIS_ELIGIBLE: text(
+    "Second Home on the property basis: qualifying property valued at USD 1,000,000 or more.",
+    "Rumah Kedua berbasis properti: properti memenuhi syarat senilai minimal USD 1.000.000.",
+  ),
+  REMOTE_WORK_ELIGIBLE: text(
+    "You work remotely for a non-Indonesian employer, serve no Indonesian clients, and take no Indonesian-source compensation.",
+    "Anda bekerja jarak jauh untuk pemberi kerja non-Indonesia, tidak melayani klien Indonesia, dan tidak menerima kompensasi dari sumber Indonesia.",
+  ),
+  BRIDGING_DESTINATION_STATED: text(
+    "You named a destination status other than the bridging permit itself, so a bridging route can be assessed.",
+    "Anda menyebut status tujuan selain izin peralihan itu sendiri, sehingga jalur peralihan dapat dinilai.",
+  ),
+  PURPOSE_PRODUCT_MATCH: text(
+    "Your stated purpose and the circumstances you confirmed match what this visa covers.",
+    "Tujuan yang Anda nyatakan dan keadaan yang Anda konfirmasi sesuai dengan cakupan visa ini.",
+  ),
+};
+
 function reasonMessage(code: string): LocalizedText {
-  return text(`Verified reason: ${code}`, `Alasan terverifikasi: ${code}`);
+  return (
+    SUPPORT_REASON_COPY[code] ??
+    text(`Verified reason: ${code}`, `Alasan terverifikasi: ${code}`)
+  );
 }
 
 function reason(
@@ -132,8 +207,26 @@ function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
     url,
     authority: source.authority_type,
     primary: source.is_primary_authority,
-    effectiveAtIso: source.applicability.effective_at,
-    observedAtIso: source.applicability.observed_at,
+    // These two feed a line that reads "Effective X · observed Y" ABOUT THE
+    // SOURCE, so they must carry the document's own dates.
+    //
+    // They used to read `source.applicability.*`, which is not a property of
+    // the document at all: the backend writes the decision's evaluation clock
+    // into every cited source's applicability block (`_build_sources_dto` in
+    // evaluate_path.py sets effective_at/observed_at from `decision.*`, itself
+    // `now`). The result on screen was every source claiming it took legal
+    // effect at the instant the reader pressed the button — a date that reads
+    // as a freshness guarantee while carrying no information about the source.
+    //
+    // `verified_at` rather than `retrieved_at` for "observed": the only
+    // freshness policy the schema can express is MAX_AGE_SINCE_VERIFIED_AT,
+    // so this is the date that explains the freshness badge rendered beside
+    // it. Narrower than it sounds — `freshness_policy` is optional for packs
+    // signed under the older schema, and a source without one is reported
+    // UNKNOWN; there the badge has no rule to explain, and `verified_at` is
+    // simply the better of two dates rather than the one the policy names.
+    effectiveAtIso: source.legal_period_from,
+    observedAtIso: source.verified_at,
     freshness: source.freshness.status,
   };
 }

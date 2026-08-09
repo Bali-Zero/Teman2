@@ -99,6 +99,28 @@ function enumFact<T extends string>(
     : unknownFact(NOT_PROVIDED);
 }
 
+/**
+ * A SINGLE country code — the wire type `KnownCountryCode`, whose `value` is a
+ * bare string, not a one-element array.
+ *
+ * Kept separate from `countryCodesFact` on purpose. The two shapes look alike
+ * and are not: `person.nationalities` / `family.sponsor_nationalities` are
+ * `KnownCountrySet`, while `work.employer_country_code` is `KnownCountryCode`.
+ * Sending the set shape for the singular field made the API reject the whole
+ * request (422 `string_type`), which the interview surfaced as a "Client
+ * safety hold" — so every remote-work interview that answered the employer's
+ * country died before it ever reached the engine.
+ */
+function countryCodeFact(value: string | undefined): FactValue<string> {
+  if (value === undefined) return unknownFact(NOT_ASKED);
+  if (value === "unsure") return unknownFact(UNVERIFIED);
+  const codes = value.split(",");
+  if (codes.length !== 1) return unknownFact(NOT_PROVIDED);
+  return canonicalCountryCodes(codes, false) === value
+    ? known(codes[0])
+    : unknownFact(NOT_PROVIDED);
+}
+
 function countryCodesFact(
   value: string | undefined,
   multiple: boolean,
@@ -420,10 +442,9 @@ export function mapOracleFactsToApplicantFacts(
     "intent.desired_entry_date": unknownFact(NOT_ASKED),
     "intent.entry_pattern": enumFact(facts.entry_pattern, ENTRY_PATTERNS),
     "intent.requested_product_code": unknownFact(NOT_ASKED),
-    "work.employer_country_code": countryCodesFact(
+    "work.employer_country_code": countryCodeFact(
       facts.remote_employer_country,
-      false,
-    ) as ApplicantFactsDataWire["work.employer_country_code"],
+    ),
     "work.employer_is_indonesian_entity": mapEmployerIsIndonesianEntity(facts),
     "work.serves_indonesian_clients": remoteClients.servesIndonesianClients,
     "work.indonesia_source_compensation": pairedBooleanFact(

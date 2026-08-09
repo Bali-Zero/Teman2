@@ -202,7 +202,7 @@ Companies investing in Indonesia can also apply for Golden Visa sponsorship for 
   ]}
   calculateResult={(values) => {
     const amount = Number(values.amount);
-    const tier = values.tier as string;
+    const tier = String(values.tier);
 
     const thresholds = {
       "5year": 350000000,

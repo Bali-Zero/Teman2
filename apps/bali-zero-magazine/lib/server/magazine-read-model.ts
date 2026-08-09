@@ -5,7 +5,7 @@ import type {
   EditionPlacementV1,
   StoryVersionV1,
 } from "../contracts/publication.ts";
-import type { Viewer } from "./authorization.ts";
+import type { Permission, Viewer } from "./authorization.ts";
 import { authorize, parseRoleAllowlist } from "./authorization.ts";
 import { isAssetEligible } from "./asset-eligibility.ts";
 import { requireViewer } from "./identity.ts";
@@ -124,7 +124,6 @@ export type StoryDetailView = Readonly<{
   eventOccurredAt: string | null;
   updatedAt: string;
   verifiedAt: string | null;
-  contributors: readonly string[];
   claims: readonly ClaimView[];
   currentVisibility: "Visible now";
   imageProvenance: ImageProvenanceView | null;
@@ -171,7 +170,9 @@ type AssetRow = Readonly<{
   rights_status: string;
 }>;
 
-export async function requireMagazineViewer(): Promise<Viewer | null> {
+export async function requireMagazineViewer(
+  permission: Permission = "magazine:read",
+): Promise<Viewer | null> {
   try {
     const runtime = getMagazineBindings();
     const roleAllowlist = parseRoleAllowlist(runtime.ROLE_ALLOWLIST_JSON);
@@ -179,9 +180,7 @@ export async function requireMagazineViewer(): Promise<Viewer | null> {
       actorKeySecret: runtime.ACTOR_KEY_SECRET ?? "",
       roleAllowlist,
     });
-    return authorize(viewer, "magazine:read", roleAllowlist).allowed
-      ? viewer
-      : null;
+    return authorize(viewer, permission, roleAllowlist).allowed ? viewer : null;
   } catch {
     return null;
   }
@@ -289,8 +288,7 @@ async function readApprovedAsset(
         dlpStatus: "passed",
         sanitizationStatus: "passed",
         perceptualDedupStatus: safe.perceptual_dedup_status as
-          | "unique"
-          | "intentional-reuse",
+          "unique" | "intentional-reuse",
         createdAt: safe.created_at,
       };
 }
@@ -466,60 +464,32 @@ async function readTimeline(
   db: D1DatabaseLike,
   story: PublishedStory,
 ): Promise<readonly StoryTimelineEvent[]> {
-  const [historyResult, visibilityResult] = await Promise.all([
-    db
-      .prepare(
-        `/* magazine:story-history */
-         SELECT version, lifecycle_state, publication_state, published_at
-         FROM story_versions
-         WHERE story_id = ? AND publication_state IN ('published', 'superseded')
-         ORDER BY version`,
-      )
-      .bind(story.story_id)
-      .all<{
-        version: number;
-        lifecycle_state: StoryVersionV1["lifecycle_state"];
-        publication_state: "published" | "superseded";
-        published_at: string | null;
-      }>(),
-    db
-      .prepare(
-        `/* magazine:story-visibility-history */
-         SELECT story_version, desired_quarantined, created_at
-         FROM story_visibility_events
-         WHERE story_id = ?
-         ORDER BY visibility_seq`,
-      )
-      .bind(story.story_id)
-      .all<{
-        story_version: number;
-        desired_quarantined: number;
-        created_at: string;
-      }>(),
-  ]);
+  const historyResult = await db
+    .prepare(
+      `/* magazine:story-history */
+       SELECT version, published_at
+       FROM story_versions
+       WHERE story_id = ? AND publication_state IN ('published', 'superseded')
+       ORDER BY version`,
+    )
+    .bind(story.story_id)
+    .all<{
+      version: number;
+      published_at: string | null;
+    }>();
 
   const versions = historyResult.results ?? [];
   const timeline: StoryTimelineEvent[] = versions.flatMap((item) => {
     if (item.published_at === null) return [];
-    const stateLabel =
-      item.publication_state === "superseded" ? " — currently superseded" : "";
     return [
       {
-        kind: item.lifecycle_state === "amended" ? "amendment" : "publication",
-        label: `Revision published — lifecycle ${item.lifecycle_state}${stateLabel}`,
+        kind: "publication",
+        label: "Revision published",
         occurredAt: item.published_at,
         version: item.version,
       },
     ];
   });
-  for (const event of visibilityResult.results ?? []) {
-    timeline.push({
-      kind: event.desired_quarantined === 1 ? "quarantine" : "restoration",
-      label: event.desired_quarantined === 1 ? "Quarantined" : "Restored",
-      occurredAt: event.created_at,
-      version: event.story_version,
-    });
-  }
   return timeline.sort(
     (left, right) => Date.parse(left.occurredAt) - Date.parse(right.occurredAt),
   );
@@ -534,23 +504,10 @@ export async function readStoryDetail(
     const row = await createPublicationRepository(db).getCurrentStory(slug);
     if (row === null) return null;
 
-    const [contributorsResult, claimsResult, evidenceResult, asset, metadata] =
-      await Promise.all([
-        db
-          .prepare(
-            `/* magazine:story-contributors */
-             SELECT DISTINCT system.display_name
-             FROM story_versions version,
-                  json_each(version.contributing_system_ids_json) contributor
-             JOIN source_systems system ON system.system_id = contributor.value
-             WHERE version.story_id = ? AND version.version = ?
-             ORDER BY system.display_name`,
-          )
-          .bind(row.story_id, row.version)
-          .all<{ display_name: string }>(),
-        db
-          .prepare(
-            `/* magazine:story-claims */
+    const [claimsResult, evidenceResult, asset, metadata] = await Promise.all([
+      db
+        .prepare(
+          `/* magazine:story-claims */
              SELECT claim_id, claim_kind, normalized_text, numeric_value,
                     numeric_unit, as_of
              FROM story_claims
@@ -558,12 +515,12 @@ export async function readStoryDetail(
                AND publication_state = 'published'
              ORDER BY CASE claim_kind WHEN 'fact' THEN 0 WHEN 'numeric' THEN 1 ELSE 2 END,
                       claim_id`,
-          )
-          .bind(row.story_id, row.version)
-          .all<ClaimRow>(),
-        db
-          .prepare(
-            `/* magazine:story-evidence */
+        )
+        .bind(row.story_id, row.version)
+        .all<ClaimRow>(),
+      db
+        .prepare(
+          `/* magazine:story-evidence */
              SELECT link.claim_id, evidence.publisher,
                     evidence.document_citation, evidence.canonical_url,
                     evidence.source_type, evidence.published_at,
@@ -574,17 +531,17 @@ export async function readStoryDetail(
              WHERE link.story_id = ? AND link.version = ?
                AND link.publication_state = 'published'
              ORDER BY link.claim_id, evidence.publisher`,
-          )
-          .bind(row.story_id, row.version)
-          .all<EvidenceRow>(),
-        readApprovedAsset(db, row.story_id, row.version),
-        readStorySectionAndVerification(
-          db,
-          row.story_id,
-          row.version,
-          row.domain,
-        ),
-      ]);
+        )
+        .bind(row.story_id, row.version)
+        .all<EvidenceRow>(),
+      readApprovedAsset(db, row.story_id, row.version),
+      readStorySectionAndVerification(
+        db,
+        row.story_id,
+        row.version,
+        row.domain,
+      ),
+    ]);
     const evidence = evidenceResult.results ?? [];
     const claims = (claimsResult.results ?? []).map<ClaimView>((claim) => ({
       kind: claim.claim_kind,
@@ -613,9 +570,6 @@ export async function readStoryDetail(
       eventOccurredAt: row.event_occurred_at,
       updatedAt: row.updated_at,
       verifiedAt: metadata.verifiedAt,
-      contributors: (contributorsResult.results ?? []).map(
-        (item) => item.display_name,
-      ),
       claims,
       currentVisibility: "Visible now",
       imageProvenance: asset,

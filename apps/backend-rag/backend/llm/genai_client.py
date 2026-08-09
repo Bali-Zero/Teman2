@@ -36,6 +36,12 @@ from typing import Any
 from backend.app.core.config import settings
 from backend.llm.metrics_emitter import emit_llm_metric
 
+# NOTE: `backend.services.llm_clients.pricing` is imported LOCALLY inside the
+# methods below, never at module level: `backend.services.llm_clients.__init__`
+# pulls in `gemini_service`, which imports THIS module — a module-level import
+# here is a circular import (verified 2026-08-09). Same reason the cost-recorder
+# imports in the `finally:` blocks are function-local.
+
 logger = logging.getLogger(__name__)
 
 
@@ -362,6 +368,8 @@ class GenAIClient:
         t0 = time.perf_counter()
         prompt_tokens = 0
         completion_tokens = 0
+        cached_tokens = 0
+        thinking_tokens = 0
         success = False
         error_class: str | None = None
         try:
@@ -372,8 +380,11 @@ class GenAIClient:
             )
 
             latency_ms = round((time.perf_counter() - t0) * 1000)
-            prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
-            completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
+            from backend.services.llm_clients.pricing import extract_gemini_usage
+
+            prompt_tokens, completion_tokens, cached_tokens, thinking_tokens = (
+                extract_gemini_usage(getattr(response, "usage_metadata", None))
+            )
             success = True
             logger.info(
                 "LLM call",
@@ -426,18 +437,25 @@ class GenAIClient:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call
 
-                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model)
+                cost_usd = calculate_cost(
+                    prompt_tokens,
+                    completion_tokens,
+                    model,
+                    cached_tokens=cached_tokens,
+                    thinking_tokens=thinking_tokens,
+                )
                 await record_llm_call(
                     provider="gemini",
                     model=model,
                     input_tokens=prompt_tokens,
-                    output_tokens=completion_tokens,
+                    output_tokens=completion_tokens + thinking_tokens,
                     cost_usd=cost_usd,
                     success=success,
                     latency_ms=round((time.perf_counter() - t0) * 1000),
                     endpoint=endpoint,
                     request_id=request_id,
                     error_class=error_class,
+                    cache_hit_tokens=cached_tokens,
                 )
             except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
@@ -527,6 +545,8 @@ class GenAIClient:
         t0 = time.perf_counter()
         prompt_tokens = 0
         completion_tokens = 0
+        cached_tokens = 0
+        thinking_tokens = 0
         success = False
         error_class: str | None = None
         try:
@@ -538,10 +558,18 @@ class GenAIClient:
                 )
 
                 # Always accumulate token usage: retries are paid attempts too.
-                prompt_tokens += getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                completion_tokens += (
-                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                # Cached and thinking tokens accumulate on the same footing —
+                # a retry re-sends the same prefix (so it can hit cache again)
+                # and thinks again (so it bills output again).
+                from backend.services.llm_clients.pricing import extract_gemini_usage
+
+                _p, _c, _cached, _think = extract_gemini_usage(
+                    getattr(response, "usage_metadata", None)
                 )
+                prompt_tokens += _p
+                completion_tokens += _c
+                cached_tokens += _cached
+                thinking_tokens += _think
 
                 raw_text = getattr(response, "text", None) or ""
                 try:
@@ -612,18 +640,25 @@ class GenAIClient:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call
 
-                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model)
+                cost_usd = calculate_cost(
+                    prompt_tokens,
+                    completion_tokens,
+                    model,
+                    cached_tokens=cached_tokens,
+                    thinking_tokens=thinking_tokens,
+                )
                 await record_llm_call(
                     provider="gemini",
                     model=model,
                     input_tokens=prompt_tokens,
-                    output_tokens=completion_tokens,
+                    output_tokens=completion_tokens + thinking_tokens,
                     cost_usd=cost_usd,
                     success=success,
                     latency_ms=round((time.perf_counter() - t0) * 1000),
                     endpoint=endpoint,
                     request_id=request_id,
                     error_class=error_class,
+                    cache_hit_tokens=cached_tokens,
                 )
             except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
