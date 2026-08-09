@@ -1,6 +1,6 @@
 ---
 date: 2026-08-09
-adversarial_review: "3-family panel ran on the superseding fleet-order spec 2026-08-10; this is the ratified base it amends"
+adversarial_review: codex
 ---
 
 # I Quattro Gruppi e l'Architettura di Continuità
@@ -8,6 +8,10 @@ adversarial_review: "3-family panel ran on the superseding fleet-order spec 2026
 > Data: 2026-08-09 · Compagno di: Harness v2 + Roster Flotta (stesso giorno)
 > Mandato Zero: (1) Conduttore = ruolo, non modello; (2) fallback fluidi su account E modelli — nessuna linea si ferma mai; (3) studio dei 4 gruppi; (4) config al massimo potenziale.
 > Esiti operativi: `FLEET_TOPOLOGY.json` (nuovo SSOT cloud) · AGENTS.md §17 · codex.md §7 · GEMINI.md §Conduttore · `kimi.md` + `qwen.md` (nuovi).
+
+## Adversarial review
+
+Codex participated in the three-family panel run on the superseding Fleet Order spec on 2026-08-10; this document is the ratified base that spec amends.
 
 ---
 

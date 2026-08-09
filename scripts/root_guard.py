@@ -38,6 +38,8 @@ WHITELIST_FILES: set[str] = {
     "AGENTS.md",
     "GEMINI.md",
     "codex.md",
+    "kimi.md",
+    "qwen.md",
     # Standard project files
     "README.md",
     "LICENSE",
@@ -60,6 +62,7 @@ WHITELIST_FILES: set[str] = {
     "AUTONOMOUS_OPS.md",
     "FOLLOWUPS.md",
     # SSOT config
+    "FLEET_TOPOLOGY.json",
     "MODEL_TOPOLOGY.json",
     # Entry launcher
     "sentinel",
