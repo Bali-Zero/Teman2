@@ -35,7 +35,7 @@ function exactSubmission(value: unknown): {
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    await authorizeResearchRequest(request, "magazine:read");
+    await authorizeResearchRequest(request, "internal:read");
     const db = getMagazineBindings().DB;
     if (db === undefined) throw new Error("database binding is required");
     const repository = createResearchRepository(db);

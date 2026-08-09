@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import {
   MagazineShell,
   WorkspaceAccessRequired,
@@ -11,6 +13,9 @@ import { createResearchRepository } from "@/lib/server/research-repository";
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 function displaySelection(values: readonly string[]): string {
   return values.length > 0 ? values.join(" · ") : "None selected";
@@ -19,15 +24,16 @@ function displaySelection(values: readonly string[]): string {
 export default async function ResearchJobPage({
   params,
 }: Readonly<{ params: Promise<{ jobId: string }> }>) {
-  const viewer = await requireMagazineViewer();
+  const jobId = (await params).jobId;
+  if (!/^research-job-[A-Za-z0-9-]{16,80}$/.test(jobId)) notFound();
+  await requireChatGPTUser(`/research/jobs/${encodeURIComponent(jobId)}`);
+  const viewer = await requireMagazineViewer("internal:read");
   if (viewer === null)
     return (
       <MagazineShell eyebrow="Private workspace">
         <WorkspaceAccessRequired />
       </MagazineShell>
     );
-  const jobId = (await params).jobId;
-  if (!/^research-job-[A-Za-z0-9-]{16,80}$/.test(jobId)) notFound();
   const db = getMagazineBindings().DB;
   if (db === undefined) throw new Error("Research database is unavailable");
   const storedJob = await createResearchRepository(db).getJob(jobId);

@@ -9,11 +9,62 @@ from pydantic import ValidationError
 
 from backend.llm.genai_client import LLMStructuredOutputError
 from backend.services.rag.verification_service import (
+    VERIFIER_MAX_OUTPUT_TOKENS,
     VerificationResult,
     VerificationService,
     VerificationStatus,
     VerifierVerdict,
 )
+
+
+class TestVerifierOutputBudget:
+    """The cap governs THINKING + verdict, not the verdict alone.
+
+    Measured in production 2026-08-09: with the cap at 2048, `rag.verifier`
+    failed 10 of 44 calls over 7 days with LLMStructuredOutputError — the
+    fact-check gate silently off for ~23% of answers, since that path returns
+    verdict_available=False and self-correction is then skipped. The failing
+    rows report 4062/4064/4065 output tokens: halved, ~2032 each, i.e.
+    generate_structured's one retry with BOTH attempts truncated at the cap.
+    A successful gemini-3.5-flash call in the same window reports 1661 —
+    under 2048, but only just.
+
+    The cap had been trimmed 8192 → 2048 "for latency" because a sample
+    verdict measured ~95 tokens, "~20x headroom". The verdict really is ~95
+    tokens. It is simply not what the constant controls.
+    """
+
+    def test_budget_leaves_room_for_a_thinking_judge(self):
+        """GUILT: 2048 is the value that was measured breaking the gate, and
+        1661 (a real successful verdict) already sits at 81% of it."""
+        assert VERIFIER_MAX_OUTPUT_TOKENS > 2048, "2048 truncated 23% of live verdicts"
+        assert VERIFIER_MAX_OUTPUT_TOKENS >= 4096, (
+            "a verdict observed at 1661 tokens needs more than 2x headroom when the "
+            "same budget also has to hold the model's chain of thought"
+        )
+
+    @pytest.mark.asyncio
+    async def test_the_budget_actually_reaches_the_model(self):
+        """A constant nothing passes is a comment. Pin the call site.
+
+        Innocence-side value: this also catches someone re-inlining a literal
+        at the call site while leaving the constant looking correct.
+        """
+        service = VerificationService()
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        mock_client.generate_structured = AsyncMock(
+            return_value=VerifierVerdict(reasoning="ok", status="verified", score=0.9),
+        )
+        service._genai_client = mock_client
+
+        await service.verify_response(
+            query="What is KITAS?",
+            draft_answer="A temporary stay permit.",
+            context_chunks=["KITAS is a temporary stay permit."],
+        )
+        kwargs = mock_client.generate_structured.await_args.kwargs
+        assert kwargs["max_output_tokens"] == VERIFIER_MAX_OUTPUT_TOKENS
 
 
 class TestVerificationStatus:

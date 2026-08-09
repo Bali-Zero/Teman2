@@ -29,6 +29,7 @@ LOG_DIR="$HOME/logs/healer"
 LOG="$LOG_DIR/healer.log"
 mkdir -p "$LOG_DIR"
 REPO="${HEALER_REPO:-$HOME/nuzantara}"
+TG_SOURCE="healer-mini"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
@@ -63,10 +64,32 @@ heartbeat() { # $1 status, $2 note
         "$1" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SIDECAR"
 }
 
-telegram() { # $1 text — best-effort, never blocks the run
-    [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_OWNER_CHAT_ID:-}" ] && return 0
-    curl -sS -m 15 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" --data-urlencode text="$1" >/dev/null 2>&1 || true
+telegram() { # $1 tier, $2 dedup-key, $3 text — through the tg_notify gateway
+    # Was a raw POST guarded by `[ -z "$TELEGRAM_BOT_TOKEN" ] && return 0` and
+    # ending in `>/dev/null 2>&1 || true`: in the token-poor environment of
+    # launchd it did nothing AND left no trace of doing nothing (W108). The
+    # gateway owns credential resolution, the tier router and the dedup ladder,
+    # so no secret passes through this script and a standing fault is one
+    # message per window instead of one per run.
+    local tier="$1" key="$2" text="$3" gateway py
+    gateway="$(dirname "$0")/../../scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    if [ ! -f "$gateway" ]; then
+        log "NO GATEWAY at $gateway — alert NOT sent: ${text:0:80}"
+        return 0
+    fi
+    # Absolute interpreter, never PATH: this script heals a machine that is
+    # already sick, so its alarm must not share a failure mode with what it
+    # reports (W108).
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        [ -x "$py" ] || continue
+        # Verdict on stderr — the gateway exits 0 by design, so an exit code
+        # would read every refusal as a success (W104).
+        log "tg_notify[$key]: $("$py" "$gateway" --tier "$tier" --source "$TG_SOURCE" \
+            --dedup-key "$key" -- "$text" 2>&1 | tail -1)"
+        return 0
+    done
+    log "no absolute python3 — alert NOT sent: ${text:0:80}"
 }
 
 # ---- kill switch -----------------------------------------------------------
@@ -190,7 +213,7 @@ PY
 )
     if [ -n "$NEW_DEAD" ]; then
         ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
-        telegram "🔌 ARSENALE (Mini): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
+        telegram p0 "healer-mini:arsenal-seat-dead" "🔌 ARSENALE (Mini): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
     fi
 fi
 
@@ -310,18 +333,18 @@ log "session exit=$CEXIT — tail: ${TAIL:0:300}"
 
 if [ $CEXIT -eq 0 ]; then
     heartbeat "ok" "session done: ${REASONS}"
-    telegram "🩹 HEALER (Mini): run completato su ${REASONS}. Esito: ${TAIL:0:400}"
+    telegram digest "healer-mini:run-complete" "🩹 HEALER (Mini): run completato su ${REASONS}. Esito: ${TAIL:0:400}"
 else
     FAILURE_CLASS=$(printf '%s' "$TAIL" | python3 scripts/healer_run_checks.py classify-session-tail 2>/dev/null || echo session_error)
     if [ "$FAILURE_CLASS" = "rate_or_quota_limit" ]; then
         heartbeat "degraded" "claude quota/rate limit: ${REASONS}"
-        telegram "⚠️ HEALER (Mini): tutti i seat Claude esauriti su ${REASONS}. Nessuna cascade cross-provider per policy; log: $SESSION_LOG"
+        telegram p0 "healer-mini:seats-exhausted" "⚠️ HEALER (Mini): tutti i seat Claude esauriti su ${REASONS}. Nessuna cascade cross-provider per policy; log: $SESSION_LOG"
     elif [ "$FAILURE_CLASS" = "auth_required" ]; then
         heartbeat "degraded" "claude auth required: ${REASONS}"
-        telegram "⚠️ HEALER (Mini): autenticazione fallita su tutti i seat Claude per ${REASONS}. Nessuna cascade cross-provider per policy; log: $SESSION_LOG"
+        telegram p0 "healer-mini:auth-failed" "⚠️ HEALER (Mini): autenticazione fallita su tutti i seat Claude per ${REASONS}. Nessuna cascade cross-provider per policy; log: $SESSION_LOG"
     else
         heartbeat "degraded" "session exit=$CEXIT"
-        telegram "⚠️ HEALER (Mini): sessione uscita $CEXIT su ${REASONS}. Log: $SESSION_LOG"
+        telegram p0 "healer-mini:session-exit" "⚠️ HEALER (Mini): sessione uscita $CEXIT su ${REASONS}. Log: $SESSION_LOG"
     fi
 fi
 exit 0
