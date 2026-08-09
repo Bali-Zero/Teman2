@@ -18,6 +18,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle, User, Baby } from "lucide-react";
 
 interface FamilyMember {
@@ -75,7 +76,7 @@ function FamilyMasthead() {
 }
 
 export default function PortalFamilyPage() {
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["portal", "family"],
     queryFn: fetchFamily,
     staleTime: 5 * 60 * 1000,
@@ -112,9 +113,13 @@ export default function PortalFamilyPage() {
           />
           <AlertTitle>Unable to load family</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : "Unexpected error."}
+            We could not verify your family records. Check your connection and
+            try again.
           </AlertDescription>
         </Alert>
+        <Button onClick={() => void refetch()} variant="outline">
+          Retry
+        </Button>
       </div>
     );
   }

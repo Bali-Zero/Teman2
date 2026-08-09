@@ -31,68 +31,11 @@ import { getSectionVisual } from "./kbli-cover-design";
 import { deriveProvenance } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
 import { perpresSlice } from "./kbli-perpres-slice";
+import { getSectionFromCode } from "./kbli-section";
 
 // =============================================================================
 // Constants: Section metadata
 // =============================================================================
-
-/** KBLI section letter -> 2-digit code prefixes */
-const SECTION_PREFIX_MAP: Record<string, string[]> = {
-  A: ["01", "02", "03"],
-  B: ["05", "06", "07", "08", "09"],
-  C: [
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "30",
-    "31",
-    "32",
-    "33",
-  ],
-  D: ["35"],
-  E: ["36", "37", "38", "39"],
-  F: ["41", "42", "43"],
-  G: ["45", "46", "47"],
-  H: ["49", "50", "51", "52", "53"],
-  I: ["55", "56"],
-  J: ["58", "59", "60", "61", "62", "63"],
-  K: ["64", "65", "66"],
-  L: ["68"],
-  M: ["69", "70", "71", "72", "73", "74", "75"],
-  N: ["77", "78", "79", "80", "81", "82"],
-  O: ["84"],
-  P: ["85"],
-  Q: ["86", "87", "88"],
-  R: ["90", "91", "92", "93"],
-  S: ["94", "95", "96"],
-  T: ["97", "98"],
-  U: ["99"],
-};
-
-/** Reverse lookup: 2-digit prefix -> section letter */
-const PREFIX_TO_SECTION: Record<string, string> = {};
-for (const [section, prefixes] of Object.entries(SECTION_PREFIX_MAP)) {
-  for (const prefix of prefixes) {
-    PREFIX_TO_SECTION[prefix] = section;
-  }
-}
 
 /** Section display metadata */
 const SECTION_META: Record<
@@ -294,15 +237,6 @@ function mapPmaStatus(raw: string): KBLIPmaStatus {
     default:
       return "open";
   }
-}
-
-// =============================================================================
-// Section derivation from KBLI code
-// =============================================================================
-
-function getSectionFromCode(code: string): string | null {
-  const prefix = code.substring(0, 2);
-  return PREFIX_TO_SECTION[prefix] ?? null;
 }
 
 // =============================================================================

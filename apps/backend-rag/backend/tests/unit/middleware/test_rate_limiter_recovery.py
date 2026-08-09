@@ -46,19 +46,23 @@ class TestRedisErrorBehavior:
         """
         client = MagicMock()
         pipe = MagicMock()
-        pipe.execute.side_effect = ConnectionError("redis down")
+        sensitive_detail = "redis down for ratelimit:203.0.113.5:/api/auth/verify-magic/token"
+        pipe.execute.side_effect = ConnectionError(sensitive_detail)
         client.pipeline.return_value = pipe
 
         rl = _fresh_limiter(redis_client=client)
         assert rl.redis_available is True
 
-        _, info = rl.is_allowed("k1", limit=10, window=60)
+        with patch("backend.middleware.rate_limiter.logger") as logger_mock:
+            _, info = rl.is_allowed("k1", limit=10, window=60)
+        rendered_log = " ".join(str(value) for value in logger_mock.warning.call_args.args)
         # Fell back to memory with HALF limit
         assert info["limit"] == 5  # max(1, 10//2)
         assert info["backend"] == "memory_degraded"
         assert rl.metrics["redis_errors"] == 1
-        assert rl._last_error is not None
-        assert "ConnectionError" in rl._last_error
+        assert rl._last_error == "ConnectionError"
+        assert sensitive_detail not in rl._last_error
+        assert sensitive_detail not in rendered_log
         # Per-call fail-safe: redis_available stays True so the NEXT call
         # tries Redis again.
         assert rl.redis_available is True

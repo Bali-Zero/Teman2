@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockGetTaxOverview, mockToastError } = vi.hoisted(() => ({
@@ -157,5 +157,33 @@ describe("TaxesPage", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Tax Overview",
     );
+  });
+
+  it("distinguishes an initial outage from a truthful empty state and recovers", async () => {
+    mockGetTaxOverview
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce(TAX_DATA);
+    render(<TaxesPage />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Unable to load tax information",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No tax data available")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We couldn't verify your tax records. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockToastError).toHaveBeenCalledWith(
+      "Failed to load tax information",
+      "Please try again later",
+    );
+
+    const callsAfterFailure = mockGetTaxOverview.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Tax Status")).toBeInTheDocument();
+    expect(mockGetTaxOverview).toHaveBeenCalledTimes(callsAfterFailure + 1);
   });
 });

@@ -23,6 +23,15 @@ interface WorkspaceLayoutProps {
   children: React.ReactNode;
 }
 
+const CLIENT_PORTAL_URL = "https://my.balizero.com/portal";
+
+function getClientPortalDestination(hostname: string): string {
+  return hostname === "kita.balizero.com" ||
+    hostname === "www.kita.balizero.com"
+    ? CLIENT_PORTAL_URL
+    : "/portal";
+}
+
 function getRouteTitle(pathname: string | null): string {
   if (!pathname) return "Workspace";
   if (routeTitles[pathname]) return routeTitles[pathname];
@@ -161,7 +170,14 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
           const profile = api.getUserProfile();
           if (profile?.role === "client") {
-            router.push("/portal");
+            // This is a cross-origin transition in production. A Next router
+            // navigation first requests an RSC payload from kita, whose 301 to
+            // my.balizero.com is cross-origin and can be rejected by the RSC
+            // client. Use a document navigation so the browser owns the domain
+            // handoff; previews and localhost stay on their current origin.
+            window.location.replace(
+              getClientPortalDestination(window.location.hostname),
+            );
             return;
           }
 
@@ -408,6 +424,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                 aria-modal="true"
                 aria-label="Workspace navigation"
                 className="fixed inset-y-0 left-0 z-50 md:hidden"
+                style={{ width: "var(--bz-sidebar-width, 216px)" }}
               >
                 <AppSidebar
                   id="workspace-mobile-nav"

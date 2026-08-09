@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import PortalHomePage from "./page";
@@ -64,11 +64,13 @@ const createEmptyDashboard = (): PortalDashboard => ({
 });
 
 // Hoisted mocks (must be defined before vi.mock)
-const { mockPush, mockGetDashboard, mockGetTimeline } = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockGetDashboard: vi.fn(),
-  mockGetTimeline: vi.fn(),
-}));
+const { mockPush, mockGetDashboard, mockGetDashboardSummary, mockGetTimeline } =
+  vi.hoisted(() => ({
+    mockPush: vi.fn(),
+    mockGetDashboard: vi.fn(),
+    mockGetDashboardSummary: vi.fn(),
+    mockGetTimeline: vi.fn(),
+  }));
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -85,6 +87,7 @@ vi.mock("@/lib/api", () => ({
   api: {
     portal: {
       getDashboard: mockGetDashboard,
+      getDashboardSummary: mockGetDashboardSummary,
       getTimeline: mockGetTimeline,
     },
   },
@@ -94,7 +97,7 @@ vi.mock("@/lib/api", () => ({
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, retryDelay: 0 },
       mutations: { retry: false },
     },
   });
@@ -110,6 +113,11 @@ function renderWithQueryClient(ui: React.ReactElement) {
 describe("PortalHomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetDashboardSummary.mockResolvedValue({
+      open_actions: [],
+      upcoming_deadlines: [],
+      unread_messages: 0,
+    });
   });
 
   afterEach(() => {
@@ -144,6 +152,30 @@ describe("PortalHomePage", () => {
     });
   });
 
+  it("renders the facts-locked client recap returned by the summary API", async () => {
+    mockGetDashboard.mockResolvedValue(createMockDashboard());
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+    mockGetDashboardSummary.mockResolvedValue({
+      open_actions: [],
+      upcoming_deadlines: [],
+      unread_messages: 0,
+      recap: {
+        text: "Welcome back. Nothing needs your attention right now.",
+        polished: false,
+        disclaimer:
+          "Summary of your Bali Zero records — not legal advice. Always confirm with your case officer.",
+      },
+    });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    expect(await screen.findByText("Your update")).toBeInTheDocument();
+    expect(
+      screen.getByText("Welcome back. Nothing needs your attention right now."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/not legal advice/i)).toBeInTheDocument();
+  });
+
   it("should render status cards for visa, company, and taxes", async () => {
     const mockDashboard = createMockDashboard();
 
@@ -167,9 +199,51 @@ describe("PortalHomePage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Unable to load dashboard")).toBeInTheDocument();
-      expect(screen.getByText("API Error")).toBeInTheDocument();
+      expect(
+        screen.getByText(/couldn't load all of your portal information/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("API Error")).not.toBeInTheDocument();
       expect(screen.getByText("Retry")).toBeInTheDocument();
     });
+  });
+
+  it("settles a missing client as a safe account-link state with retry", async () => {
+    mockGetDashboard
+      .mockRejectedValueOnce(
+        Object.assign(new Error("Client not found"), { statusCode: 404 }),
+      )
+      .mockResolvedValueOnce(createEmptyDashboard());
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    expect(
+      await screen.findByText("Client profile connection needed"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Client not found")).not.toBeInTheDocument();
+    expect(mockGetDashboard).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("Immigration")).toBeInTheDocument();
+    expect(mockGetDashboard).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a generic 403 in the authorization error path", async () => {
+    mockGetDashboard.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { statusCode: 403 }),
+    );
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    expect(
+      await screen.findByText("Unable to load dashboard"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Client profile connection needed"),
+    ).not.toBeInTheDocument();
+    expect(mockGetDashboard).toHaveBeenCalledTimes(1);
   });
 
   it("should render timeline when available", async () => {

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockApiGet, mockToastError } = vi.hoisted(() => ({
@@ -71,8 +72,10 @@ const RECEIPTS = [
     lokasi: null,
     tanggal_diterima: "2026-04-10",
     nama_perusahaan_oss: null,
-    file_drive_id: null,
-    file_drive_url: "https://example.com/receipt.pdf",
+    file_drive_id: "drive-file-id-must-never-render",
+    file_drive_url:
+      "https://drive.google.com/file/d/drive-file-id-must-never-render/view",
+    download_url: "/api/v1/lkpm/receipts/1/download",
     file_name: null,
     quarter: "Q1",
     year: 2026,
@@ -100,6 +103,88 @@ async function renderLoaded() {
 }
 
 describe("LKPMPage (list)", () => {
+  it("distinguishes a report outage from a truthful empty history and recovers", async () => {
+    const user = userEvent.setup();
+    let historyAttempts = 0;
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === "/api/v1/lkpm/history/me") {
+        historyAttempts += 1;
+        return historyAttempts === 1
+          ? Promise.reject(new Error("history unavailable"))
+          : Promise.resolve({ success: true, items: HISTORY });
+      }
+      if (url === "/api/v1/lkpm/deadlines")
+        return Promise.resolve({ success: true, deadlines: DEADLINES });
+      if (url === "/api/v1/lkpm/receipts/me")
+        return Promise.resolve({ success: true, items: RECEIPTS });
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+
+    render(<LKPMPage />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Unable to load LKPM reports",
+      }),
+    ).toBeVisible();
+    expect(screen.queryByText(/No LKPM reports yet/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Perlu persetujuan Anda")).toBeVisible();
+    expect(historyAttempts).toBe(2);
+  });
+
+  it("keeps report data visible when receipts fail and recovers receipts independently", async () => {
+    const user = userEvent.setup();
+    let receiptAttempts = 0;
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === "/api/v1/lkpm/history/me")
+        return Promise.resolve({ success: true, items: HISTORY });
+      if (url === "/api/v1/lkpm/deadlines")
+        return Promise.resolve({ success: true, deadlines: DEADLINES });
+      if (url === "/api/v1/lkpm/receipts/me") {
+        receiptAttempts += 1;
+        return receiptAttempts === 1
+          ? Promise.reject(new Error("receipts unavailable"))
+          : Promise.resolve({ success: true, items: RECEIPTS });
+      }
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+
+    render(<LKPMPage />);
+
+    expect(await screen.findByText("Perlu persetujuan Anda")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Unable to load OSS receipts" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "Open" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Retry receipts" }));
+    expect(await screen.findByRole("link", { name: "Open" })).toBeVisible();
+    expect(receiptAttempts).toBe(2);
+  });
+
+  it("renders the empty-history copy only after successful empty responses", async () => {
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === "/api/v1/lkpm/history/me")
+        return Promise.resolve({ success: true, items: [] });
+      if (url === "/api/v1/lkpm/deadlines")
+        return Promise.resolve({ success: true, deadlines: [] });
+      if (url === "/api/v1/lkpm/receipts/me")
+        return Promise.resolve({ success: true, items: [] });
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+
+    render(<LKPMPage />);
+
+    expect(await screen.findByText(/No LKPM reports yet/)).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: /Unable to load/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the day masthead and token-driven surfaces (WS3 slice 5)", async () => {
     const { container } = await renderLoaded();
 
@@ -174,6 +259,14 @@ describe("LKPMPage (list)", () => {
     // PDF link: small copper text on the AA daylight step.
     expect(screen.getByText("Open").style.color).toBe(
       "var(--bz-copper-text, var(--tx-secondary))",
+    );
+    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/api/v1/lkpm/receipts/1/download",
+    );
+    expect(document.body.innerHTML).not.toContain("drive.google.com");
+    expect(document.body.innerHTML).not.toContain(
+      "drive-file-id-must-never-render",
     );
   });
 

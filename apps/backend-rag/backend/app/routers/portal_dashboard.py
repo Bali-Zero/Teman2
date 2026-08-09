@@ -158,8 +158,9 @@ async def summary(
         deadlines = await _fetch_deadlines(conn, client_id)
         unread = await _fetch_unread_count(conn, client_id)
 
-    # FASE 3 — AI recap: facts-locked (deterministic from the audited fields
-    # above) + optional local-Ollama prose polish that cannot alter any number.
+    # The client recap is facts-locked and deterministic from the audited
+    # fields above. Local-Ollama polish is intentionally not part of this
+    # request path: an optional style pass must never delay the dashboard.
     # Never 500 the dashboard if the recap fails — degrade to no recap.
     recap: dict[str, Any] | None = None
     try:
@@ -168,6 +169,7 @@ async def summary(
             upcoming_deadlines=deadlines,
             unread_messages=unread,
             client_name=client.get("name"),
+            polish=False,
         )
     except Exception as e:  # defensive: recap is additive, never load-bearing
         logger.warning("recap build failed: %s", e)

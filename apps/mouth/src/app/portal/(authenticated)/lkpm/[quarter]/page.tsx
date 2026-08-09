@@ -16,7 +16,7 @@
  * approve button carries --bz-on-warm text (slice 6). No hardcoded hexes.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
   CheckCircle,
@@ -24,12 +24,14 @@ import {
   ArrowLeft,
   ThumbsUp,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { ApiError } from "@/lib/api/error-handler";
 import type {
   LKPMDraft,
   LKPMValidationAlert,
@@ -72,28 +74,36 @@ export default function LKPMReviewPage() {
   const { error, success } = useToast();
   const [draft, setDraft] = useState<LKPMDraft | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
 
-  useEffect(() => {
-    loadDraft();
-  }, [quarter, year]);
-
-  const loadDraft = async () => {
+  const loadDraft = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadFailed(false);
+      setDraft(null);
       const data = await api.portal.getLKPMDraft(0, quarter, year); // 0 = resolve from authenticated session
       setDraft(data);
     } catch (err) {
-      error("Failed to load draft", "Please try again later");
-      logger.error(
-        `Failed to load LKPM draft ${quarter} ${year}`,
-        {},
-        err as Error,
-      );
+      const isVerifiedMissing =
+        err instanceof ApiError && err.statusCode === 404;
+      if (!isVerifiedMissing) {
+        setLoadFailed(true);
+        error("Failed to load draft", "Please try again later");
+      }
+      logger.error("LKPM draft load failed", {
+        component: "LKPMReviewPage",
+        action: "load_draft",
+        reason: isVerifiedMissing ? "not_found" : "unavailable",
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [error, quarter, year]);
+
+  useEffect(() => {
+    void loadDraft();
+  }, [loadDraft]);
 
   const handleApprove = async () => {
     if (!draft) return;
@@ -105,9 +115,13 @@ export default function LKPMReviewPage() {
         "Your LKPM report has been approved for submission",
       );
       setDraft((prev) => (prev ? { ...prev, status: "approved" } : null));
-    } catch (err) {
+    } catch {
       error("Approval failed", "Please try again");
-      logger.error(`LKPM approval failed ${draft.id}`, {}, err as Error);
+      logger.error("LKPM approval failed", {
+        component: "LKPMReviewPage",
+        action: "approve_draft",
+        reason: "unavailable",
+      });
     } finally {
       setIsApproving(false);
     }
@@ -194,10 +208,60 @@ export default function LKPMReviewPage() {
   }
 
   if (!draft) {
+    if (loadFailed) {
+      return (
+        <div className="space-y-4 animate-in fade-in duration-500">
+          <Link
+            href="/portal/lkpm"
+            prefetch={false}
+            className="flex items-center gap-2 text-sm"
+            style={{ color: "var(--bz-text-2)" }}
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to LKPM
+          </Link>
+          <section
+            role="alert"
+            className="rounded-xl border p-6 space-y-3"
+            style={statePanelStyle("--state-danger")}
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle
+                className="w-5 h-5 mt-0.5 shrink-0"
+                style={{ color: "var(--state-danger)" }}
+              />
+              <div className="space-y-1">
+                <h1 className="text-lg font-semibold">
+                  Unable to load LKPM draft
+                </h1>
+                <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+                  We couldn&apos;t verify this report. Check your connection and
+                  try again.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={loadDraft}
+              className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+              style={{
+                background: "var(--bz-card)",
+                borderColor: "var(--bz-border)",
+                color: "var(--bz-text-1)",
+              }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Retry
+            </button>
+          </section>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
         <Link
           href="/portal/lkpm"
+          prefetch={false}
           className="flex items-center gap-2 text-sm"
           style={{ color: "var(--bz-text-2)" }}
         >
@@ -221,7 +285,7 @@ export default function LKPMReviewPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header — day masthead: copper rule + Cormorant serif in --tx-pure */}
       <section className="flex items-center gap-3">
-        <Link href="/portal/lkpm">
+        <Link href="/portal/lkpm" prefetch={false}>
           <ArrowLeft
             className="w-5 h-5"
             style={{ color: "var(--bz-text-2)" }}

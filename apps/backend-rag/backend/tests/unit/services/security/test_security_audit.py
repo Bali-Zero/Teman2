@@ -24,8 +24,11 @@ class TestSecurityAuditService:
             details={"method": "pin"},
         )
         mock_conn.execute.assert_called_once()
-        call_sql = mock_conn.execute.call_args[0][0]
+        call_args = mock_conn.execute.call_args[0]
+        call_sql = call_args[0]
         assert "INSERT INTO security_audit_log" in call_sql
+        assert call_args[9] == {"method": "pin"}
+        assert not isinstance(call_args[9], str)
 
     @pytest.mark.asyncio
     async def test_log_event_with_resource(self):
@@ -44,6 +47,7 @@ class TestSecurityAuditService:
         )
         call_args = mock_conn.execute.call_args[0]
         assert call_args[3] == "token_revoke"
+        assert call_args[9] is None
 
     @pytest.mark.asyncio
     async def test_log_event_handles_db_error_gracefully(self):
@@ -59,6 +63,7 @@ class TestSecurityAuditService:
             user_email="zero@balizero.com",
             success=True,
         )
+        assert mock_conn.execute.await_count == 1
 
     @pytest.mark.asyncio
     async def test_log_rbac_violation(self):

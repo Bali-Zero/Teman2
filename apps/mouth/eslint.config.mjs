@@ -7,6 +7,8 @@ const config = [
       'node_modules/',
       '.next/',
       'out/',
+      'playwright-report/',
+      'test-results/',
       'scripts/',
       'e2e/',
       'src/test/',
