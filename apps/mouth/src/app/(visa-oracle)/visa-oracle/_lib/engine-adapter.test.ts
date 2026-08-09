@@ -1,5 +1,8 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
-import { buildEngineOutcome } from "./engine-adapter";
+import { SUPPORT_REASON_COPY, buildEngineOutcome } from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
@@ -280,5 +283,68 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       code: "intent.stay_days",
       questionId: "stay_days",
     });
+  });
+});
+
+describe("support reasons are sentences, not machine codes", () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const PACK = path.resolve(
+    HERE,
+    "../../../../../../..",
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-005.source.json",
+  );
+
+  function supportReasonCodesInPack(): string[] {
+    const codes = new Set<string>();
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (node === null || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      const effect = record.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "SUPPORT" &&
+        typeof effect.reason_code === "string"
+      ) {
+        codes.add(effect.reason_code);
+      }
+      Object.values(record).forEach(walk);
+    };
+    walk(JSON.parse(fs.readFileSync(PACK, "utf-8")));
+    return [...codes].sort();
+  }
+
+  function firstReasonEn(code: string): string {
+    const response = makeVisaOracleResponse();
+    response.decision.candidates[0].reason_codes = [code];
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "SUPPORTED_CANDIDATES")
+      throw new Error("unexpected state");
+    return outcome.candidates[0].legal.reasons[0].message.en;
+  }
+
+  it("renders a pack reason as prose, never the bare code", () => {
+    const message = firstReasonEn("B1_VOA_ELIGIBLE");
+    expect(message).not.toMatch(/^Verified reason: /);
+    expect(message).not.toContain("B1_VOA_ELIGIBLE");
+    expect(message).toContain("Visa on Arrival");
+  });
+
+  it("still surfaces an unmapped code instead of blanking it", () => {
+    // A code with no copy must stay visible: hiding it would conceal a new
+    // rule rather than reveal it.
+    expect(firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK")).toBe(
+      "Verified reason: SOMETHING_NEW_FROM_A_FUTURE_PACK",
+    );
+  });
+
+  /**
+   * The tripwire: a future pack that adds a SUPPORT reason without copy would
+   * print a machine code at a real reader. Fail here first, naming the codes.
+   */
+  it("has copy for every SUPPORT reason code the live pack can emit", () => {
+    const codes = supportReasonCodesInPack();
+    expect(codes.length).toBeGreaterThan(0);
+    expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
   });
 });
