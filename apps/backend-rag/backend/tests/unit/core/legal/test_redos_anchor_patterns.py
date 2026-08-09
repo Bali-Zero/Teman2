@@ -641,10 +641,47 @@ def _sweep_verdict(rx: re.Pattern) -> str | None:
                         control_ratio = control_doubled / max(control_elapsed, 1e-9)
                         if control_ratio > _LINEAR_CONTROL_MAX_RATIO:
                             continue
+                        # ADDED 2026-08-09, measured not reasoned. The control certifies a
+                        # window it did not measure: it runs AFTER the candidate, on a
+                        # different payload, and only the CONTROL is re-timed — the
+                        # candidate's possibly-inflated numbers are kept verbatim. So a
+                        # burst that lands on the candidate's doubled side and then ENDS
+                        # leaves a stale ratio convicting under a control that reads clean,
+                        # which is the one shape the 2026-08-08 confirmation cannot see. The
+                        # file already states the mechanism for the candidate ("min-of-3 on
+                        # BOTH sides does not save you when the doubled-side's three repeats
+                        # happen to land inside the same contention burst as each other but
+                        # the base-side's three don't"); it was never applied to the
+                        # exoneration step. Measured on M5: AYAT_MARKER_PREFIX convicted at
+                        # 5.1x with the control clean at 0.7x, and 3 of 5 consecutive runs
+                        # failed with a DIFFERENT parametrization each time — a real
+                        # quadratic does not move around. Its payload is `\n` + ` \n\n `*n,
+                        # whose longest `[^\S\n]` run is 2 characters, so its backtracking is
+                        # bounded by a constant and the pattern cannot be quadratic here:
+                        # the verdict was false, not merely unlucky.
+                        #
+                        # Re-measure the candidate in the window the control just certified.
+                        # This is NOT a widened ceiling and NOT retry-until-green: conviction
+                        # now needs the candidate over SWEEP_MAX_RATIO in TWO separate
+                        # measurement windows with a clean control between them. A
+                        # deterministic super-linear path clears that every time; a burst has
+                        # to strike twice, on either side of a reading that says the machine
+                        # was quiet in between. The two guards are complementary and neither
+                        # subsumes the other — the control catches SUSTAINED load (a uniform
+                        # multiplier cancels in a ratio), this catches TRANSIENT load (a
+                        # multiplier that is gone by the second window).
+                        elapsed = _elapsed_min(rx, text)
+                        doubled = _elapsed_min(rx, prefix + pump * (SWEEP_N * 2) + suffix)
+                        if elapsed <= SWEEP_RATIO_FLOOR_SECONDS:
+                            continue
+                        ratio = doubled / max(elapsed, 1e-9)
+                        if ratio <= SWEEP_MAX_RATIO:
+                            continue
                         return (
                             f"{elapsed:.4f}s -> {doubled:.4f}s ({ratio:.1f}x for 2x input, "
                             f"max {SWEEP_MAX_RATIO}x; linear control confirmed clean at "
-                            f"{control_ratio:.1f}x) on {where}"
+                            f"{control_ratio:.1f}x, and the candidate re-measured over the "
+                            f"ceiling in a second window) on {where}"
                         )
     return None
 
@@ -697,6 +734,7 @@ class TestPayloadSweep:
     def _script(
         monkeypatch, trigger, base_honest, doubled_first, doubled_honest,
         control_base_honest=0.002, control_doubled_honest=0.004,
+        base_after_control=None, doubled_after_control=None,
     ):
         """Drive the whole sweep on a scripted clock: reads answer by ROLE, not by ordinal.
 
@@ -715,11 +753,15 @@ class TestPayloadSweep:
         them is asserting "the confirmation was consulted and found nothing wrong",
         not "the confirmation never ran".
         """
-        state = {"n": 0, "base_len": None, "d": 0, "control_base_len": None}
+        state = {
+            "n": 0, "base_len": None, "d": 0,
+            "control_base_len": None, "control_seen": False,
+        }
 
         def fake_elapsed(rx, text):
             state["n"] += 1
             if rx is _LINEAR_CONTROL_PATTERN:
+                state["control_seen"] = True
                 if state["control_base_len"] is None:
                     state["control_base_len"] = len(text)
                     return control_base_honest
@@ -728,7 +770,19 @@ class TestPayloadSweep:
             if state["base_len"] is None:
                 state["base_len"] = len(text)
                 return trigger
-            if len(text) > state["base_len"]:
+            is_doubled = len(text) > state["base_len"]
+            # A candidate read that happens AFTER the control has run is, by
+            # construction, the re-measurement added 2026-08-09 — the control is the
+            # only thing that reads between the two candidate windows. Scripting it
+            # separately is what lets a burst END: without these two knobs the clock
+            # can only express a machine that is loaded forever or not at all, which
+            # is precisely why the corpus could not see the false red that happened.
+            if state["control_seen"]:
+                if is_doubled and doubled_after_control is not None:
+                    return doubled_after_control
+                if not is_doubled and base_after_control is not None:
+                    return base_after_control
+            if is_doubled:
                 state["d"] += 1
                 return doubled_first if state["d"] == 1 else doubled_honest
             return base_honest
@@ -821,6 +875,75 @@ class TestPayloadSweep:
         )
         verdict = _sweep_verdict(CURED["PASAL_PATTERN"])
         assert verdict is not None and "13.3x for 2x input" in verdict, verdict
+
+    def test_a_burst_that_ends_before_the_reconfirmation_does_not_convict(
+        self, monkeypatch,
+    ):
+        """The false red of 2026-08-09: the shape a clean control cannot see.
+
+        Identical scripting to `test_a_control_confirming_clean_lets_the_verdict_through`
+        above — 6 ms base, 80 ms doubled on EVERY repeat, control honest at 2.0x — which
+        that test asserts must convict, and which is why this one is the cure's whole
+        reason to exist. The single difference is that the burst ENDS: measured again
+        after the control, the doubled side is 12 ms, an honest 2.0x.
+
+        Live provenance: `AYAT_MARKER_PREFIX` convicted at 5.1x with the control clean at
+        0.7x, and 3 of 5 consecutive runs failed naming a DIFFERENT parametrization each
+        time. Its payload's longest `[^\\S\\n]` run is two characters, so the pattern is
+        bounded-backtracking and cannot be quadratic on it — the conviction was false, and
+        the control had already passed on it. Mutation-checked: delete the re-measurement
+        and this test convicts at 13.3x, which is the red that actually happened.
+        """
+        state = self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.080, doubled_honest=0.080,
+            doubled_after_control=0.012,
+        )
+        assert _sweep_verdict(CURED["PASAL_PATTERN"]) is None
+        assert state["control_seen"], (
+            "the control never ran, so this passed for the wrong reason — the ratio "
+            "branch was never entered and the re-measurement was never reached"
+        )
+
+    def test_the_reconfirmed_numbers_are_the_ones_that_convict(self, monkeypatch):
+        """Guilt for the re-measurement: it must be authoritative, not merely performed.
+
+        The burst partially subsides — 80 ms in the first window, 30 ms in the second —
+        so both windows convict but at DIFFERENT ratios. The verdict must carry 5.0x (the
+        re-measured truth), never 13.3x (the stale first read). Without this an
+        implementation that re-measures and then reports the original numbers passes every
+        other test in this class while telling the reader a number no window ever saw.
+        """
+        self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.080, doubled_honest=0.080,
+            doubled_after_control=0.030,
+        )
+        verdict = _sweep_verdict(CURED["PASAL_PATTERN"])
+        assert verdict is not None, "a pattern slow in BOTH windows must still convict"
+        assert "5.0x for 2x input" in verdict, verdict
+        assert "13.3x" not in verdict, (
+            f"the stale first-window ratio was reported instead of the re-measured one: "
+            f"{verdict}"
+        )
+
+    def test_a_base_that_falls_under_the_floor_on_reconfirmation_does_not_convict(
+        self, monkeypatch,
+    ):
+        """The floor is re-checked in the second window too, not only in the first.
+
+        The first window puts the base at 6 ms, legitimately above the 4 ms floor; the
+        second reads it at 1 ms, under the floor — the pattern was never eligible for the
+        ratio branch, so its 30x is noise about a sub-floor measurement. Pins the
+        `elapsed <= SWEEP_RATIO_FLOOR_SECONDS` guard inside the re-measurement, which
+        nothing else reaches: drop it and this convicts.
+        """
+        self._script(
+            monkeypatch, trigger=0.006, base_honest=0.006,
+            doubled_first=0.080, doubled_honest=0.080,
+            base_after_control=0.001, doubled_after_control=0.030,
+        )
+        assert _sweep_verdict(CURED["PASAL_PATTERN"]) is None
 
     @pytest.mark.parametrize("name", sorted(CURED))
     def test_no_cured_pattern_is_superlinear_on_any_swept_payload(self, name):
