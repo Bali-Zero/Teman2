@@ -698,6 +698,36 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                     # NOT absolve a claim that declares an absolution pattern.
                     bare = scan_text(probe + "\n> RETRACTED — see registry.\n", [c], pdirs, pwindow)
                     expect(f"PROD GUILT `{c.id}` bare directive (no correction stated) -> still flagged", len(bare) == 1)
+
+            # REGRESSION PIN (2026-08-09, unblocking #3837). The kim-17x pattern
+            # once also matched a bare `4.4x` — the Centralized 4.4 figure from
+            # S4.3 — which is NOT a distinctive number and, paired with the
+            # deliberately-broad context list (it carries `agents?`, `never`,
+            # `error`, `Google`), false-positived on ANY 4.4x ratio. A ReDoS
+            # timing row in a ledger, "0.0049s -> 0.0216s (4.4x for 2x input)",
+            # with the word "agents" in its window, was flagged as a re-citation
+            # of a paper about error amplification — superscar #3 (form, not
+            # entity). The headline "17.2x" alone uniquely identifies every real
+            # re-derivation, so the bare "4.4x" was dropped. These pins go red if
+            # it is re-added: innocence (the ratio is not the claim) AND guilt
+            # (17.2x is still caught, so the drop did not gut the guard).
+            _kim = [c for c in pclaims if c.id == "kim-2025-17x-error-amplification-as-cause"]
+            if _kim:
+                _kc = _kim[0]
+                expect(
+                    "PIN INNOCENCE kim-17x: a bare 4.4x ratio (ReDoS timing, 'agents' in window) is NOT the claim",
+                    scan_text(
+                        "the suite failed at 96%: 0.0049s -> 0.0216s (4.4x for 2x input, max 3.0x) under agents load\n",
+                        [_kc], pdirs, pwindow,
+                    ) == [],
+                )
+                expect(
+                    "PIN GUILT kim-17x: the headline 17.2x re-citation is still caught after dropping 4.4x",
+                    len(scan_text(
+                        "Google's 17.2x error-amplification finding forbids peer-to-peer agents\n",
+                        [_kc], pdirs, pwindow,
+                    )) == 1,
+                )
         else:
             print(
                 f"SELFTEST NOTE - production registry not found at {prod_path}: SKIPPING the "
