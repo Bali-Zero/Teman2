@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Cormorant_Garamond } from "next/font/google";
 
@@ -36,10 +36,15 @@ const CTA_STYLE = {
  * UI shows the same confirmation regardless of whether the email is registered.
  */
 export default function MagicLinkRequestPage() {
+  const [isHydrated, setIsHydrated] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +121,7 @@ export default function MagicLinkRequestPage() {
             )}
             <button
               type="submit"
-              disabled={status === "sending"}
+              disabled={!isHydrated || status === "sending"}
               className="block w-full text-center py-4 rounded-xl font-bold uppercase tracking-[0.08em] disabled:opacity-60"
               style={CTA_STYLE}
             >

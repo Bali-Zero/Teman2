@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { SWRConfig } from "swr";
 import React from "react";
 import { useNotificationPrefs } from "./useNotificationPrefs";
+import { ApiError } from "@/lib/api/error-handler";
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -48,11 +49,9 @@ describe("useNotificationPrefs", () => {
     );
   });
 
-  it("gracefully handles 503 migration-missing on GET", async () => {
-    // ApiClient turns FastAPI HTTPException(503) into `new Error(detail)`
-    // whose `.message` is the BE detail string.
+  it("gracefully handles a client-safe 503 on GET by status", async () => {
     vi.mocked(api.get).mockRejectedValue(
-      new Error("notification_prefs unavailable — run migration 110"),
+      new ApiError("Notification preferences are temporarily unavailable", 503),
     );
 
     const { result } = renderHook(() => useNotificationPrefs(), { wrapper });
@@ -98,10 +97,10 @@ describe("useNotificationPrefs", () => {
     expect(result.current.isUpdating).toBe(false);
   });
 
-  it("updatePrefs maps 503 migration-missing to migrationMissing flag (no throw)", async () => {
+  it("updatePrefs maps a client-safe 503 to the unavailable flag", async () => {
     vi.mocked(api.get).mockResolvedValue(validPrefs as never);
     vi.mocked(api.put).mockRejectedValue(
-      new Error("notification_prefs unavailable — run migration 110"),
+      new ApiError("Notification preferences are temporarily unavailable", 503),
     );
 
     const { result } = renderHook(() => useNotificationPrefs(), { wrapper });

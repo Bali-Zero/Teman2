@@ -215,7 +215,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 3
+    assert len(CONTENT_KEYED_RULES) == 4  # +1: infra/vcr/expected_claims.yaml certified_hash (#3575)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -395,3 +395,28 @@ def test_innocence_wrong_shape_is_not_approved() -> None:
         'source_sha256: "5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d" api_key: "ghp_x"',
     ):
         assert not content_pat.match(line), f"must NOT be approved: {line!r}"
+
+
+# --- tests?/**.sh gap (PRs #3591/#3596, 2026-08-04) ------------------------
+#
+# The generic "tests?/** tree" AUTO_APPROVE_RULES entry listed
+# py/ts/tsx/js/jsx/json/yaml/yml but not sh, so a synthetic 40-char git oid
+# fixture in scripts/tests/test_branch_graveyard_prmerged.sh read as a real
+# "Hex High Entropy String" and blocked the Detect Secrets gate despite
+# already living under a tests?/ dir. Guilt: a .sh file under scripts/tests/
+# is now approved. Innocence: a .sh file NOT under a tests?/ dir is
+# unaffected (still relies on some other rule or stays unaudited).
+
+
+def test_guilt_shell_test_fixture_under_scripts_tests_is_approved() -> None:
+    auto, reason = classify("scripts/tests/test_branch_graveyard_prmerged.sh", 54)
+    assert auto, "scripts/tests/*.sh fixtures should be auto-approved"
+    assert "tests/** tree" in reason
+
+
+def test_innocence_shell_script_outside_tests_dir_not_approved_by_this_rule() -> None:
+    auto, reason = classify("scripts/branch_graveyard_cleanup.sh", 10)
+    assert not (auto and "tests/** tree" in reason), (
+        "a .sh file outside a tests?/ dir must not be approved by the "
+        f"tests-tree rule (got: auto={auto}, reason={reason!r})"
+    )

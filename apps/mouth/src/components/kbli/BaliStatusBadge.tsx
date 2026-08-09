@@ -72,21 +72,39 @@ export function BaliStatusBadge({
       tone: "block",
     };
   }
+  // `reason` used to reach the client ONLY via the `title` attribute — a hover
+  // tooltip that never fires on mobile/touch (no hover event) and that most
+  // screen readers do not announce either. For a badge that can read "Closed
+  // to foreigners" the WHY is the load-bearing half of the claim, so it now
+  // also renders as visible text beneath the pill. `title` stays too (free
+  // desktop-hover affordance, never the only channel).
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border font-medium",
-        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
-        toneClass[c.tone],
+        "inline-flex max-w-full flex-col items-start gap-1",
+        size === "sm" && "max-w-[220px]",
       )}
-      title={reason}
     >
-      <span aria-hidden="true">🏝️</span>
-      <span aria-hidden="true">{c.icon}</span>
-      <span>{c.label}</span>
-      {needsReview && <span className="opacity-70">· needs review</span>}
-      {confidence && confidence !== "HIGH" && (
-        <span className="opacity-60">· {confidence.toLowerCase()} conf.</span>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border font-medium",
+          size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
+          toneClass[c.tone],
+        )}
+        title={reason}
+      >
+        <span aria-hidden="true">🏝️</span>
+        <span aria-hidden="true">{c.icon}</span>
+        <span>{c.label}</span>
+        {needsReview && <span className="opacity-70">· needs review</span>}
+        {confidence && confidence !== "HIGH" && (
+          <span className="opacity-60">· {confidence.toLowerCase()} conf.</span>
+        )}
+      </span>
+      {reason && (
+        <span className="text-xs leading-snug text-[var(--kbli-text-muted)]">
+          {reason}
+        </span>
       )}
     </span>
   );

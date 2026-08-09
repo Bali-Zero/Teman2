@@ -30,12 +30,14 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
 import httpx
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -258,12 +260,29 @@ def nlm_source_add(
             timeout=timeout + 30,
         )
         if result.returncode != 0:
-            logger.error("nlm source add failed: %s", result.stderr[:300])
+            # Report BOTH streams. This CLI writes its human-readable output to
+            # STDOUT, so a handler that logs only stderr produces
+            # "nlm source add failed: " with nothing after the colon — which is
+            # exactly what six consecutive nights of failures recorded on Pro
+            # (2026-08-01..08-07): the log says THAT it gave up, never WHY, and
+            # the reader at 07:30 has nothing to go on. Say so explicitly when
+            # both streams really are empty, so "no diagnosis" is a stated fact
+            # rather than an empty string that looks like a truncated message.
+            detail = " | ".join(
+                f"{name}: {stream.strip()[:300]}"
+                for name, stream in (("stderr", result.stderr or ""), ("stdout", result.stdout or ""))
+                if stream.strip()
+            ) or "both streams empty — the CLI exited non-zero and said nothing"
+            logger.error("nlm source add failed (rc=%d): %s", result.returncode, detail)
             return None
 
-        # Try to parse source_id from JSON output
         output = result.stdout.strip()
         if output:
+            # JSON first — kept because a future --json flag would arrive here,
+            # but note it has NEVER matched: `nlm source add` has no --json
+            # option and prints prose. Measured 2026-08-07 across the eight
+            # synthesis state files: 279 of 279 recorded source_ids were the
+            # "ok" sentinel below, not one real id, ever.
             try:
                 data = json.loads(output)
                 # Handle {"value": {"source_id": "..."}} or {"source_id": "..."}
@@ -279,7 +298,16 @@ def nlm_source_add(
                     return str(source_id)
             except json.JSONDecodeError:
                 pass
-        # No parseable source_id but command succeeded — return sentinel
+            # The id IS printed, just as prose: "Source ID: <uuid>".
+            m = re.search(r"Source ID:\s*([0-9a-fA-F-]{8,})", output)
+            if m:
+                logger.info("NLM source added: id=%s", m.group(1))
+                return m.group(1)
+        # Command succeeded but we could not name the source. Return a TRUTHY
+        # sentinel, deliberately: callers gate the weekly/monthly roll-up on
+        # `if sid:` and use the stored TEXT, never the id — so returning None
+        # here would trade a mislabelled map for a dead roll-up. Widening the
+        # parse is safe; tightening this branch is not.
         logger.info("NLM source add succeeded (no source_id in output)")
         return "ok"
 
@@ -309,7 +337,7 @@ def nlm_source_list(notebook_id: str, timeout: int = NLM_TIMEOUT) -> list[dict]:
             timeout=timeout + 30,
         )
         if result.returncode != 0:
-            logger.error("nlm source list failed: %s", result.stderr[:300])
+            logger.error("nlm source list failed: %s", nlm_error_reason(result, limit=300))
             return []
 
         output = result.stdout.strip()
@@ -355,7 +383,7 @@ def nlm_source_delete(
             timeout=timeout + 30,
         )
         if result.returncode != 0:
-            logger.error("nlm source delete failed: %s", result.stderr[:300])
+            logger.error("nlm source delete failed: %s", nlm_error_reason(result, limit=300))
             return False
         return True
     except subprocess.TimeoutExpired:

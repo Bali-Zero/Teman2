@@ -1,0 +1,970 @@
+{
+  "_meta": {
+    "spec_id": "prose_unverifiable_tier_2026_08_05",
+    "population_basis": "canonical records carrying intel_2026._l3_gap_disclosure (152 on origin/main at 2026-08-05) — the set the disclosure lane marked, seen from the other side. Membership is structural; WHICH sentence asserts is a per-code reading, because the disclosure lane measured that no pattern separates the asserting subset (19 <= truth <= 152) and said so in its own docstring.",
+    "authored_by": "16 Sonnet lanes, one per batch of 10, each reading the full record packet",
+    "graded_by": "Codex GPT-5.6 (terra/luna) via a per-batch reviewer lane — a different model family from the author (W100: same-family agreement certified 7 false-clean of 8). 0 dead seats across 16 batches.",
+    "rounds": "TWO. Round 1 produced 91 patches and the grader refused 65 of 69 codes: the replacement wording asserted what the OSS portal 'publishes', which the record never supports — it supports only that WE could not retrieve the tier when the dataset was built. That wording came from the orchestrator's own instructions, and the rule against it was already written in cure_l3_prose_gap_disclosure.py's docstring (F12). Round 2 corrected the instructions AND armed a mechanical pre-gate on the banned phrasing; it rejected 0, because the authors no longer produced it.",
+    "verdicts_round2": "72 codes asserting, 98 patches, 54 SOUND / 18 DEFECTIVE",
+    "independently_revalidated": "every SOUND patch was re-checked on disk by the orchestrator against the same canonical the packets were built from (sha256 equal): verbatim, exactly-once, correct surface, disclosure marker still present, no banned phrasing, no tier named. 0 rejected. Positive control: the same validator DOES stop 87101, whose 'old' uses a typographic apostrophe the record does not have.",
+    "deferred_not_shipped": [
+      "60103",
+      "65123",
+      "72201",
+      "85203",
+      "85317",
+      "85318",
+      "85330",
+      "85581",
+      "85582",
+      "85583",
+      "85584",
+      "87101",
+      "87102",
+      "88101",
+      "91424",
+      "91426",
+      "98100",
+      "98200"
+    ],
+    "deferred_why": "graded DEFECTIVE for semantic reasons a mechanical check cannot see — mostly hedged process claims that survived the removal ('what verification steps may apply'), a scale label carried over from set-aside rows, and two that still asserted a settled Bali registrability outcome. They are named here rather than force-fitted; a later round re-authors them."
+  },
+  "codes": {
+    "01700": {
+      "judul": "Perburuan, Penangkapan, dan Kegiatan Jasa Terkait",
+      "expect_l4_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expect_l4_blocked": false,
+      "author_reason": "zantaraOpener asserts a settled risk tier ('This is classified as Medium-High risk') even though l4_reason says this record's tier cannot currently be re-derived and the appended disclosure in whatYouNeed already hedges it. whatYouNeed's own prose (above the disclosure) makes no tier claim, and whatChanged's '[high]' tag is attached to the historical predecessor code 01711 (2020 mapping), which is the explicitly-exempted historical case — left alone. No gold_prose exists.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "zantaraOpener",
+          "old": "This is classified as Medium-High risk with PMA status: Open.",
+          "new": "PMA status: Open.",
+          "why": "Removes the settled-fact risk-tier claim (unsupported per l4_reason/disclosure) while keeping the PMA-openness statement, which comes from a different, unquestioned layer. No replacement tier language is introduced."
+        }
+      ]
+    },
+    "05102": {
+      "judul": "Benefisiasi atau Peningkatan Kualitas Batu Bara",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "zantaraOpener asserts a settled risk tier ('This is classified as High risk') that contradicts l4_reason's 'cannot currently be re-derived' and the appended disclosure. whatChanged's '[high]' tag is attributed to the historical predecessor code 05100 (2020 mapping) — the explicitly-exempted historical case, left alone. No gold_prose exists.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "zantaraOpener",
+          "old": "This is classified as High risk with PMA status: Open.",
+          "new": "PMA status: Open.",
+          "why": "Removes the unsupported settled-fact risk-tier claim while preserving the PMA-openness statement from the unrelated layer; no replacement tier wording is added."
+        }
+      ]
+    },
+    "05200": {
+      "judul": "Pertambangan Lignit",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "zantaraOpener asserts a settled risk tier ('This is classified as High risk') that the record itself (l4_reason, disclosure) says cannot currently be re-derived. Other fields (whatYouNeed hedged, whatChanged unchanged-match note, baliContext) contain no tier assertion. No gold_prose exists.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "zantaraOpener",
+          "old": "This is classified as High risk with PMA status: Open.",
+          "new": "PMA status: Open.",
+          "why": "Removes the unsupported settled-fact risk-tier claim while preserving the PMA-openness statement from the unrelated layer; no replacement tier wording is added."
+        }
+      ]
+    },
+    "49233": {
+      "judul": "Angkutan Tidak Bermotor untuk Barang",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "canonical_prose.whoThisIsFor states as settled fact that the activity is 'only feasible in other regions of Indonesia, not Bali' — this restates the CHIUSO_MORATORIA_BALI block, which l4_reason itself marks '[derivation under review]' because it was derived from the Besar-scale risk tier ('Rendah') the record now calls unverifiable ('the licensing rows this verdict's risk tier was read from have since been set aside as unverifiable'). The claim is removed rather than softened; no agency/process/deadline is invented in its place.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": "Foreign entrepreneurs exploring niche, low-tech logistics or eco-friendly distribution using traditional non-motorized methods—but only feasible in other regions of Indonesia, not Bali.",
+          "new": "Foreign entrepreneurs exploring niche, low-tech logistics or eco-friendly distribution using traditional non-motorized methods.",
+          "why": "Removes the 'not Bali' feasibility claim, which restates the tier-derived Bali moratorium block that l4_reason itself flags as '[derivation under review]' and unverifiable — rather than weakening it to a hedge, the claim is dropped entirely, leaving only the activity description which is not in question."
+        }
+      ]
+    },
+    "52105": {
+      "judul": "Aktivitas Penyimpanan Barang Berbahaya dan Beracun (B3)",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "canonical_prose.whoThisIsFor states as settled fact that operators must locate 'outside Bali's restricted zones' — this restates the CHIUSO_MORATORIA_BALI block, which l4_reason itself marks '[derivation under review]' because it was derived from the Besar-scale risk tier ('Menengah Rendah') the record now calls unverifiable. The claim is removed rather than softened.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": "This suits foreign logistics operators, chemical distributors, or manufacturers that need compliant hazardous storage—provided they can locate outside Bali’s restricted zones.",
+          "new": "This suits foreign logistics operators, chemical distributors, or manufacturers that need compliant hazardous storage.",
+          "why": "Removes the 'outside Bali's restricted zones' clause, which restates the tier-derived Bali moratorium block that l4_reason itself flags as '[derivation under review]' and unverifiable, rather than weakening it — the remaining sentence describes only who the activity suits, which is not in question."
+        }
+      ]
+    },
+    "60101": {
+      "judul": "Aktivitas Penyiaran Radio Analog",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whoThisIsFor states as settled fact that the buyer must be 'ready for higher regulatory scrutiny at the Bali address' — a consequence drawn from the medium-high/high risk tier this record's l4_reason itself calls unverifiable. Removed the clause rather than softening it. whatYouNeed is already hedged with the disclosure and describes the removal of a mismatched licensing regime; whatChanged is a factual BPS crosswalk-split statement (not a risk claim) — both left alone.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": ", provided they are ready for higher regulatory scrutiny at the Bali address.",
+          "new": ".",
+          "why": "This clause asserted a tier-derived regulatory-scrutiny consequence as settled fact, but the record's own l4_reason marks the underlying risk tier as unverifiable ('licensing rows this verdict's risk tier was read from have since been set aside as unverifiable'). Removing rather than softening; invents no replacement claim."
+        }
+      ]
+    },
+    "60203": {
+      "judul": "Aktivitas Distribusi dan Streaming Video Atas Permintaan",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "gold.whatChanged states in the present tense that this code 'inherits the broadcasting regulatory burden' — a settled tier-derived claim contradicting the record's own hedge that the risk tier/licensing 'are not yet reliably defined'. Removed the clause. Left alone: gold.whatYouNeed/baliContext/zantaraOpener, which already hedge ('not yet reliably defined', 'do not assume High Risk timelines until confirmed') and attribute the old specifics to the historical predecessor code 60202 (leave-alone exception); baliContext's separate mention of 'platform operators bear the regulatory burden' is about YouTube/Instagram content-creator economics, unrelated to this code's KBLI risk tier, so left untouched. canonical.whoThisIsFor makes no risk claim.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatChanged",
+          "old": ", but inherits the broadcasting regulatory burden.",
+          "new": ".",
+          "why": "Asserted in the present tense that broadcasting-derived regulatory burden currently applies to this code — a tier-derived conclusion the same record calls unverifiable elsewhere. Deleted rather than softened."
+        }
+      ]
+    },
+    "66197": {
+      "judul": "Aktivitas Pendukung di Pasar Uang dan Pasar Valuta Asing",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "whoThisIsFor asserts the moratorium-blocked conclusion as settled fact ('they must either wait for the moratorium to be lifted or use a domestic (non-PMA) structure'). Per l4_reason this 'blocked by moratorium' conclusion is derived from the Besar-scale risk tier ('Menengah Rendah') the record itself calls unverifiable, so restating it as settled fact carries the same defect as the 'not blocked' case the brief describes. All other fields (whatYouNeed, whatItMeans, whatChanged, zantaraOpener) are clean or already correctly caveated. gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": "Foreign entrepreneurs who want to run an independent money market or forex intermediation service, but they must either wait for the moratorium to be lifted or use a domestic (non-PMA) structure to operate in Bali now.",
+          "new": "Foreign entrepreneurs who want to run an independent money market or forex intermediation service — verify current Bali eligibility with the Bali Zero team before proceeding.",
+          "why": "The moratorium-blocked verdict was derived from the Besar-scale risk tier that l4_reason and the record's own disclosure call unverifiable; the claim is removed rather than softened, and the only supported next step (verify with Bali Zero) is substituted in its place."
+        }
+      ]
+    },
+    "66299": {
+      "judul": "Aktivitas Penunjang Lainnya untuk Asuransi, Penjamian, dan Dana Pensiun YTDL",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "whoThisIsFor asserts the moratorium-blocked conclusion as settled fact ('who are prepared to establish their company outside Bali or wait until the moratorium lifts'), which per l4_reason is derived from the Besar-scale risk tier ('Menengah Rendah') the record calls unverifiable. Same defect class as 66197. Other fields are clean or already correctly caveated. gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": "Foreign entrepreneurs offering specialized insurance or pension consulting, or salvage administration services, who are prepared to establish their company outside Bali or wait until the moratorium lifts.",
+          "new": "Foreign entrepreneurs offering specialized insurance or pension consulting, or salvage administration services — verify current Bali eligibility with the Bali Zero team before proceeding.",
+          "why": "The moratorium-blocked verdict traces back to the same unverifiable Besar-scale risk tier flagged in l4_reason; the claim is removed (not weakened) and replaced with the only supported next step, verifying with the Bali Zero team."
+        }
+      ]
+    },
+    "70100": {
+      "judul": "Aktivitas Kantor Pusat",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "author_reason": "canonical_prose is already fully hedged (whatYouNeed and baliContext both explicitly say the licensing/tier could not be verified and treat the Bali position as unresolved/blocked pending verification). gold_prose.whatYouNeed is likewise already hedged. But gold_prose.baliContext still ends with a settled scale-tier conclusion ('the absence of a Large-scale entry is unusual but doesn't block operations ... fit within the Medium scale definition') that was read off the same set-aside licensing rows (licensing_rows_count=0) the record's own disclosure block disclaims — removed rather than softened.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "baliContext",
+          "old": " One catch: the absence of a Large-scale entry is unusual but doesn't block operations — most holding companies comfortably fit within the Medium scale definition.",
+          "new": "",
+          "why": "Asserts a settled scale-tier consequence ('doesn't block operations', 'fit within Medium scale') derived from licensing rows the record itself says have been set aside as unverifiable (licensing_rows_count=0); removed rather than softened per the no-carryover rule."
+        }
+      ]
+    },
+    "72101": {
+      "judul": "Penelitian dan Pengembangan Ilmu Alam",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose is already fully hedged — no field asserts a settled tier or moratorium consequence. gold_prose, by contrast, asserts a complete licensing table (Medium-High risk per scale, Bupati/Walikota vs Gubernur authority split, 7-working-day/2-3-day timelines, Sertifikat Standar certificate) even though licensing_rows_count=0 — none of it could have been read from any real row. The same tier/authority/timeline claim recurs in baliContext (a '7 working days is manageable' comparison) and zantaraOpener. l4_reason also flags the underlying 'medium-high/high risk -> not blocked by moratorium' chain as unverifiable. Removed the fabricated tier/authority/certificate/timeline claims; kept PMA-openness and the unrelated KLHK/KKP/BRIN/MOU permit content, which are not risk-tier derived.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "**Small + Medium scales:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Bupati/Walikota** (district/city level).\n\n**Large scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Gubernur** (Governor, provincial level).\n\n",
+          "new": "**Licensing:** our records hold no verified risk classification or licensing pathway for this code — the tier, certificate, authority, and timeline shown here earlier have been set aside as unverifiable. We cannot currently confirm the risk tier, certificate type, authority, or processing time for 72101.\n\n",
+          "why": "Asserts a settled risk tier, authority split, and processing time despite licensing_rows_count=0 — content that could not have come from any real licensing row."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "2. **NIB via OSS** — register on oss.go.id, select 72101, Menengah Tinggi path (~2–3 days)\n",
+          "new": "2. **NIB via OSS** — register on oss.go.id, select 72101\n",
+          "why": "The 'Menengah Tinggi path' tier label and the '~2-3 days' timing are read off the same unverifiable rows."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "3. **Sertifikat Standar** — submitted to Bupati/Walikota (Small/Medium) or Gubernur (Large), issued within 7 working days\n",
+          "new": "",
+          "why": "Certificate name, authority-by-scale, and processing time all carried over from the set-aside/nonexistent licensing rows."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "\n\n**Typical total timeline:** 2–4 months from PT PMA to operational research facility (NIB + SS is fast; timeline driven by lab setup and permit acquisition).\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**Authority:** Bupati/Walikota (Small/Medium) · Gubernur (Large).\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.\n\n",
+          "new": "\n\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.\n\n",
+          "why": "The total-timeline estimate ('NIB + SS is fast') and the authority-by-scale line both restate the unverifiable tier; PT PMA capital and PMA-openness are independent facts and were kept."
+        },
+        {
+          "surface": "gold",
+          "field": "baliContext",
+          "old": "\n- **7 working days is manageable:** Unlike experimental research (72109) which can take 30 days for high-risk activities, pure natural science research has a straightforward 7-day approval timeline",
+          "new": "",
+          "why": "Restates the fabricated 7-working-day processing time as a settled fact, derived from the same unverifiable tier."
+        },
+        {
+          "surface": "gold",
+          "field": "zantaraOpener",
+          "old": "Medium-High risk, 7 working days, Bupati/Walikota for Small/Medium or Gubernur for Large. ",
+          "new": "",
+          "why": "Opener restates the settled tier/authority/timeline as fact; removed rather than softened."
+        }
+      ]
+    },
+    "72202": {
+      "judul": "Penelitian dan Pengembangan Humaniora",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed asserts 'it is not blocked by the moratorium but has a medium-high risk classification' as settled fact — the same tier-derived moratorium conclusion that l4_reason says could not be retrieved from the OSS API and is unverifiable. gold_prose is empty. Other canonical fields (whatItMeans, whatChanged, whoThisIsFor, zantaraOpener) are factual/generic with no risk-tier or moratorium claim.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the moratorium but has a medium-high risk classification, so you will likely need to verify your business address and may encounter additional local licensing steps or inspections — the activity is registrable but requires careful compliance.",
+          "new": "We cannot currently confirm the risk tier for this code, so its Bali licensing position is unresolved; verify it with the Bali Zero team before registering or investing.",
+          "why": "Asserts a settled risk tier and moratorium 'not blocked' conclusion drawn from a tier l4_reason says was never retrievable from the OSS API."
+        }
+      ]
+    },
+    "75001": {
+      "judul": "Aktivitas Personel Kesehatan Hewan Mandiri",
+      "expect_l4_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose is already fully hedged — no assertion found. gold_prose asserts the same fabricated per-scale licensing table as 72101/75009 (Medium-High risk, Bupati/Walikota vs Gubernur authority, 7-working-day timeline, Sertifikat Standar) despite licensing_rows_count=0, restated again in zantaraOpener. l4_reason confirms the underlying Besar-scale tier is now unverifiable. Patched to remove the tier/authority/certificate/timeline claims while keeping the STR Veteriner/PDHI professional-registration requirement (an independent fact, not risk-tier derived) and the PMA-openness statement.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "**Small scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Bupati/Walikota**.\n\n**Medium scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Bupati/Walikota**.\n\n**Large scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Gubernur**.\n\n",
+          "new": "**Licensing:** our records hold no verified risk classification or licensing pathway for this code — the tier, certificate, authority, and timeline shown here earlier have been set aside as unverifiable. We cannot currently confirm the risk tier, certificate type, authority, or processing time for 75001.\n\n",
+          "why": "Asserts a settled per-scale risk tier, authority split, and processing time despite licensing_rows_count=0."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "2. **NIB via OSS** — register on oss.go.id, select 75001, Menengah Tinggi path (~2–3 days)\n",
+          "new": "2. **NIB via OSS** — register on oss.go.id, select 75001\n",
+          "why": "Tier label and timing embedded in a process step, read off the same unverifiable rows."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "3. **Sertifikat Standar** — submitted to Bupati/Walikota (Small/Medium) or Gubernur (Large), issued within 7 working days\n",
+          "new": "",
+          "why": "Certificate name, authority-by-scale, and processing time carried over from the set-aside/nonexistent rows."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "\n\n**Typical total timeline:** 3–5 months from PT PMA to operational vet clinic (NIB + SS is fast; timeline driven by STR Veteriner for foreign vets and clinic setup).\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**Authority:** Bupati/Walikota (Small/Medium) · Gubernur (Large).\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.\n\n",
+          "new": "\n\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.\n\n",
+          "why": "Timeline ('NIB + SS is fast') and authority-by-scale restate the unverifiable tier; capital and PMA-openness are independent and kept."
+        },
+        {
+          "surface": "gold",
+          "field": "zantaraOpener",
+          "old": "Medium-High risk, 7 working days, Bupati/Walikota for Small/Medium or Gubernur for Large. ",
+          "new": "",
+          "why": "Opener restates the settled tier/authority/timeline as fact."
+        }
+      ]
+    },
+    "75002": {
+      "judul": "Aktivitas Pengelolaan Sarana Kesehatan Hewan",
+      "expect_l4_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whoThisIsFor asserts the code is 'currently not in Bali' — a moratorium-consequence claim that directly contradicts the record's own l4_status (APERTO_BALI_RISCHIO_ALTO, l4_blocked=false, 'Registrable by a PT PMA in Bali'), which is itself derived from the now-unverifiable Besar-scale tier; the claim is removed rather than asserted either way. gold_prose.whatYouNeed is an entirely fabricated OSS licensing table (per-scale risk tier, authority, timing, plus three Indonesian-language 'post-license obligation' certificate fragments) despite licensing_rows_count=0 backing none of it. Replaced with an honest our-side-unverifiable statement, keeping only the independent PMA-openness line; gold_prose.baliContext's zoning/vet-licensing content is a separate, non-risk-tier claim and was left alone.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": "Foreign entrepreneurs aiming to open a modern veterinary clinic, animal hospital, or pet care center in Indonesia—but currently not in Bali.",
+          "new": "Foreign entrepreneurs aiming to open a modern veterinary clinic, animal hospital, or pet care center in Indonesia — the Bali position is unresolved; verify it with the Bali Zero team.",
+          "why": "Asserts the code is currently blocked/unavailable in Bali — a moratorium consequence contradicting the record's own l4_blocked=false verdict, itself derived from a now-unverifiable tier."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Micro, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Small, Medium-High risk) — Authority: Bupati/Walikota — 7 Hari\n5. **NIB + Standard Certificate** (Medium / Large, Medium-High risk) — automatic\n6. **Memiliki surat keterangan pemenuhan persyaratan teknis untuk Ambulatori, Praktik Dokter Hewan Mandir...** — post-license obligation\n7. **Memiliki surat keterangan pemenuhan persyaratan teknis untuk Praktik Dokter Hewan Mandiri Kuda, Prak...** — post-license obligation\n8. **Memenuhi standar pengelolaan shelter hewan untuk kegiatan usaha shelter hewan** — post-license obligation\n\n**Authority by scale:**\nMicro: **Bupati/Walikota** (Otomatis) · Small: **Bupati/Walikota** (7 Hari) · Medium / Large: **OSS** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.\n\n",
+          "new": "**Licensing:** our records hold no verified risk classification or licensing pathway for this code — the scale-based tiers, authorities, processing times, and post-license obligations shown here earlier have been set aside as unverifiable. We cannot currently confirm the risk tier, certificate type, authority, or processing time for 75002.\n\n**PMA:** Fully open — 100% foreign ownership allowed.\n\n",
+          "why": "Asserts a full per-scale risk tier/authority/certificate/timeline table and specific post-license obligation names despite licensing_rows_count=0 — none of it could have come from a real row."
+        }
+      ]
+    },
+    "75009": {
+      "judul": "Aktivitas Pengelolaan Kesehatan Hewan Lainnya",
+      "expect_l4_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose is already fully hedged — no assertion found. gold_prose asserts the same fabricated per-scale licensing table as 72101/75001 (Medium-High risk, Bupati/Walikota vs Gubernur authority, 7-working-day timeline, Sertifikat Standar) despite licensing_rows_count=0, restated again in zantaraOpener. Patched to remove the tier/authority/certificate/timeline claims while keeping the STR Veteriner/PDHI professional-registration content (independent of risk tier) and the PMA-openness statement.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "**Small scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Bupati/Walikota**.\n\n**Medium scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Bupati/Walikota**.\n\n**Large scale:** Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**. Authority: **Gubernur**.\n\n",
+          "new": "**Licensing:** our records hold no verified risk classification or licensing pathway for this code — the tier, certificate, authority, and timeline shown here earlier have been set aside as unverifiable. We cannot currently confirm the risk tier, certificate type, authority, or processing time for 75009.\n\n",
+          "why": "Asserts a settled per-scale risk tier, authority split, and processing time despite licensing_rows_count=0."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "2. **NIB via OSS** — register on oss.go.id, select 75009, Menengah Tinggi path (~2–3 days)\n",
+          "new": "2. **NIB via OSS** — register on oss.go.id, select 75009\n",
+          "why": "Tier label and timing embedded in a process step, read off the same unverifiable rows."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "3. **Sertifikat Standar** — submitted to Bupati/Walikota (Small/Medium) or Gubernur (Large), issued within 7 working days\n",
+          "new": "",
+          "why": "Certificate name, authority-by-scale, and processing time carried over from the set-aside/nonexistent rows."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "\n\n**Typical total timeline:** 3–5 months from PT PMA to operational specialized service (NIB + SS is fast; timeline driven by STR Veteriner for foreign vets and specialized facility setup).\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**Authority:** Bupati/Walikota (Small/Medium) · Gubernur (Large).\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.\n\n",
+          "new": "\n\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.\n\n",
+          "why": "Timeline ('NIB + SS is fast') and authority-by-scale restate the unverifiable tier; capital and PMA-openness are independent and kept."
+        },
+        {
+          "surface": "gold",
+          "field": "zantaraOpener",
+          "old": "Medium-High risk, 7 working days, Bupati/Walikota for Small/Medium or Gubernur for Large. ",
+          "new": "",
+          "why": "Opener restates the settled tier/authority/timeline as fact."
+        }
+      ]
+    },
+    "79909": {
+      "judul": "Aktivitas Terkait Perjalanan Lainnya YTDL",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed states as settled fact that the code 'is NOT blocked by' the moratorium because its OSS risk class 'at the large-enterprise (Besar) scale is medium-high or high' -- l4_reason shows this moratorium conclusion is derived from the very tier the record calls unverifiable ('medium-high/high risk -> not blocked by moratorium ... NOTE: no KBLI-2025 risk scope ... could be retrieved'). canonical.whoThisIsFor restates the same tier-derived conclusion ('higher-risk licensing requirements', 'one of the doors that stays open in Bali'). gold_prose.whatYouNeed does NOT assert a tier (it only says licensing data is unavailable in PP28/2025 and states PMA openness, which is a separate/independent layer) -- left alone.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally this activity is open to foreign ownership, and in Bali it is NOT blocked by the 13 May 2026 moratorium — its OSS risk class at the large-enterprise (Besar) scale is medium-high or high, which the moratorium leaves open. A PT PMA can pursue this code in Bali, subject to the standard licensing for its risk class.",
+          "new": "Nationally this activity is open to foreign ownership. Our records hold no verified risk classification for this code, so whether it is affected by the 13 May 2026 Bali moratorium cannot currently be confirmed from our sources. Verify the current position with the Bali Zero team before pursuing this code in Bali.",
+          "why": "Removes the settled-fact risk-tier claim and the moratorium conclusion derived from it (per l4_reason's own 'tier -> not blocked' arrow), speaks only about our sources being unable to verify, invents no agency/process/deadline, and points only to the Bali Zero team as the supported next step."
+        },
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": "A foreign entrepreneur who can meet the higher-risk licensing requirements — one of the doors that stays open in Bali.",
+          "new": "A foreign entrepreneur exploring this catch-all travel-services code for a Bali-based business, pending a verified risk classification.",
+          "why": "The original restates the same tier-derived 'higher-risk' and 'stays open in Bali' conclusions as settled fact in the audience-description field; replaced to remove the claim rather than soften it."
+        }
+      ]
+    },
+    "85103": {
+      "judul": "Pendidikan Prasekolah Keagamaan Islam",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed asserts as settled fact that the code is 'a medium-high/high-risk education activity' and derives from that a requirement for 'address-specific verification' and 'additional licensing steps per location' -- l4_reason confirms the tier itself is unverifiable ('no KBLI-2025 risk scope for this code could be retrieved from the OSS API'). gold_prose is empty. Other fields make no risk-tier claim.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally, this activity is open to 100% foreign ownership. In Bali, it is not blocked by any general moratorium, but as a medium-high/high-risk education activity, it will require address-specific verification and is subject to additional licensing steps per location.",
+          "new": "Nationally, this activity is open to 100% foreign ownership. Our records hold no verified risk classification for this code, so we cannot currently confirm what, if any, additional licensing steps apply in Bali. Verify the current requirements with the Bali Zero team before registering or investing.",
+          "why": "Removes the settled-fact risk-tier claim and the derived licensing-step/verification consequence, keeps the independent PMA-openness fact, and points only to the Bali Zero team -- no invented agency, permit, or deadline."
+        }
+      ]
+    },
+    "85104": {
+      "judul": "Pendidikan Prasekolah Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed asserts the code 'is classified as medium-high/high risk' as settled fact and derives from it both a moratorium conclusion ('not blocked by the current moratorium') and invented process steps ('a formal location permit (izin lokasi)' and 'approvals from regency-level education and religious affairs offices') that were never supported by any surviving licensing row (licensing_rows_count=0). gold_prose is empty. Other fields make no risk-tier claim.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "At the national level, this activity is 100% open to foreign investment, but in Bali it is classified as medium-high/high risk. It is not blocked by the current moratorium, so a foreign-owned company (PMA) can pursue it, but the exact address will be strictly scrutinized—expect extra requirements like a formal location permit (izin lokasi) and approvals from regency-level education and religious affairs offices.",
+          "new": "At the national level, this activity is 100% open to foreign investment. Our records hold no verified risk classification for this code in Bali, so we cannot currently confirm what additional requirements, if any, apply to a specific address. Verify the current requirements with the Bali Zero team before registering or investing.",
+          "why": "Removes the settled-fact tier claim, the tier-derived moratorium conclusion, and the invented izin-lokasi/ministry-approval process steps that have no basis in any verified licensing row; keeps the independent national PMA-openness fact and points only to the Bali Zero team."
+        }
+      ]
+    },
+    "85204": {
+      "judul": "Pendidikan Dasar Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed asserts the code 'falls under a medium-high/high risk category' as settled fact and derives from it invented agency/process steps ('ministry-level approvals (e.g., from the Ministry of Religious Affairs)' and 'strict address verification for local zoning compliance') that have no basis in any surviving licensing row (licensing_rows_count=0). whoThisIsFor is empty, no patch needed there. gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally, this KBLI is open for 100% foreign ownership (PMA). In Bali, it is not blocked by the current moratorium but falls under a medium-high/high risk category, meaning a foreign-owned company can register it, though expect extra regulatory steps—such as ministry-level approvals (e.g., from the Ministry of Religious Affairs) and strict address verification for local zoning compliance.",
+          "new": "Nationally, this KBLI is open for 100% foreign ownership (PMA). Our records hold no verified risk classification for this code in Bali, so we cannot currently confirm what additional regulatory steps, if any, apply. Verify the current requirements with the Bali Zero team before registering or investing.",
+          "why": "Removes the settled-fact tier claim, the tier-derived moratorium conclusion, and the invented Ministry of Religious Affairs / zoning-verification process steps; keeps the independent national PMA-openness fact and points only to the Bali Zero team."
+        }
+      ]
+    },
+    "85313": {
+      "judul": "Pendidikan Menengah Pertama Keagamaan Islam",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed asserts as settled fact that the code 'falls under a higher-risk category' and derives from it a moratorium conclusion and a process claim ('extra scrutiny on your location and must verify compliance per specific address with local authorities') -- l4_reason shows the tier is unverifiable. gold_prose is empty. Other fields make no risk-tier claim.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally, this activity is fully open to foreign ownership (100% PMA). In Bali, it is not blocked by the foreign business moratorium, but it falls under a higher-risk category. That means while registration is possible, you will likely face extra scrutiny on your location and must verify compliance per specific address with local authorities before you can operate.",
+          "new": "Nationally, this activity is fully open to foreign ownership (100% PMA). Our records hold no verified risk classification for this code in Bali, so we cannot currently confirm what licensing steps apply. Verify the current requirements with the Bali Zero team before registering or investing.",
+          "why": "Removes the settled-fact risk-tier claim and the moratorium/local-authority-verification conclusions derived from it, keeps the independent national PMA-openness fact, and points only to the Bali Zero team -- no invented authority or process step."
+        }
+      ]
+    },
+    "85314": {
+      "judul": "Pendidikan Menengah Pertama Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed asserts as settled fact that the code 'is classified as medium-high to high risk' and derives from it a moratorium conclusion and a process claim ('extra scrutiny ... must be verified per specific address'); l4_reason shows the tier itself is unverifiable. gold_prose is empty. Other fields make no risk-tier claim.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally, this activity is fully open to foreign ownership (100% PMA). In Bali, it is not blocked by the local moratorium but is classified as medium-high to high risk; registration is possible but will face extra scrutiny and must be verified per specific address, so the exact location can affect approval.",
+          "new": "Nationally, this activity is fully open to foreign ownership (100% PMA). Our records hold no verified risk classification for this code in Bali, so we cannot currently confirm what licensing steps apply. Verify the current requirements with the Bali Zero team before registering or investing.",
+          "why": "Removes the settled-fact risk-tier claim and the moratorium/address-verification conclusions derived from it, keeps the independent national PMA-openness fact, and points only to the Bali Zero team."
+        }
+      ]
+    },
+    "85585": {
+      "judul": "Pelatihan Kerja Bisnis dan Manajemen Perusahaan",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed states the risk tier and a moratorium conclusion as settled fact ('because it falls into a medium-high/high risk category, the local authorities will scrutinize...'). l4_reason shows this verdict's 'not blocked by moratorium' line was literally derived from the tier ('medium-high/high risk → not blocked by moratorium'), and licensing_rows_count=0 / no OSS scope was retrievable, so both the tier claim and the moratorium conclusion drawn from it are unsupported. gold_prose.whatYouNeed only states the PMA fact plus the appended disclosure block — no assertion there, left unchanged.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Under national regulations, this line is 100% open to foreign ownership (PMA). In Bali, it is not blocked by the general moratorium, but because it falls into a medium-high/high risk category, the local authorities will scrutinize the training venue’s physical address and zoning. A commercial location that fits local rules is essential, and extra permits or checks may apply depending on the exact spot you choose.",
+          "new": "Under national regulations, this line is 100% open to foreign ownership (PMA). Our records hold no verified risk classification for this code — verify current licensing requirements with the Bali Zero team before proceeding.",
+          "why": "The tier assertion and the tier-derived 'not blocked by moratorium' conclusion are removed rather than softened; replacement speaks only about our unverified records and the only supported next step (Bali Zero team), inventing no agency, permit, or deadline."
+        }
+      ]
+    },
+    "85586": {
+      "judul": "Pelatihan Kerja Pekerjaan Domestik Perusahaan",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed asserts 'it is not blocked by the general moratorium, but it is classified as medium-high to high risk' as settled fact. Same l4_reason tier→moratorium derivation and licensing_rows_count=0 apply. gold_prose is empty — nothing to patch there.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally, 100% foreign ownership (PMA) is allowed for this KBLI. In Bali, it is not blocked by the general moratorium, but it is classified as medium-high to high risk, so you will need to verify eligibility per specific address—expect additional requirements or scrutiny during licensing.",
+          "new": "Nationally, 100% foreign ownership (PMA) is allowed for this KBLI. Our records hold no verified risk classification for this code — verify current licensing requirements with the Bali Zero team before proceeding.",
+          "why": "Removes the tier claim and the tier-derived moratorium conclusion; speaks only about our unverified records, no invented agency/permit/deadline."
+        }
+      ]
+    },
+    "85587": {
+      "judul": "Pelatihan Kerja Pertanian dan Perikanan Perusahaan",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed asserts 'it is registrable ... classified as medium-high/high risk' (registrable = the same not-blocked-by-moratorium conclusion the l4_reason shows is tier-derived). gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "Nationally, this activity is fully open to 100% foreign ownership. In Bali, it is registrable but classified as medium-high/high risk, meaning the local government may impose stricter scrutiny — you’ll need to verify that your chosen training address and setup meet all safety and zoning requirements, as approvals are not automatic.",
+          "new": "Nationally, this activity is fully open to 100% foreign ownership. Our records hold no verified risk classification for this code — verify current licensing requirements with the Bali Zero team before proceeding.",
+          "why": "Removes the tier claim and the tier-derived registrability/moratorium conclusion; no invented agency, permit, or deadline."
+        }
+      ]
+    },
+    "85589": {
+      "judul": "Pelatihan Kerja Perusahaan Lainnya",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed asserts 'not blocked by the moratorium, but it's flagged as medium-high to high risk' as settled fact, tier-derived per l4_reason. gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "National regulations allow full foreign ownership (PMA 100%). In Bali, this activity is not blocked by the moratorium, but it’s flagged as medium-high to high risk. That means you can register it, but expect extra scrutiny—licensing will depend on your specific address and compliance with local zoning or operational requirements.",
+          "new": "National regulations allow full foreign ownership (PMA 100%). Our records hold no verified risk classification for this code — verify current licensing requirements with the Bali Zero team before proceeding.",
+          "why": "Removes the tier claim and its moratorium conclusion; no invented agency/permit/deadline."
+        }
+      ]
+    },
+    "86109": {
+      "judul": "Aktivitas Rumah Sakit Lainnya",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed was already cured (explains the crosswalk citation was removed, no tier assertion) — left unchanged. gold_prose.whatYouNeed still carries item 3 '(Large, High risk)' plus a certificate name, an 'Authority: Bupati/Walikota' and a '28 Hari' processing time, and post-license obligation items 4-5 — all read from the same licensing rows the record's own l4_reason says 'have since been set aside as unverifiable for KBLI 2025'. Items 1-2 are generic PT PMA/NIB boilerplate identical across codes and are left alone.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "3. **NIB + Business License (Izin)** (Large, High risk) — Authority: Bupati/Walikota — 28 Hari\n4. **Mendapatkan akreditasi rumah sakit setelah beroperasi 2 tahun** — post-license obligation\n5. **Melakukan pelaporan melalui Sistem Informasi** — post-license obligation\n\n**Authority:** Bupati/Walikota · Processing: 28 Hari\n\n",
+          "new": "\n",
+          "why": "licensing_rows_count=0 and l4_reason states the licensing rows this risk tier was read from were set aside as unverifiable; the risk tier '(Large, High risk)', the certificate name, the Authority/Processing line, and the post-license obligation items were all read off those same rows and inherit the unverifiability — removed rather than restated with a softer tier."
+        }
+      ]
+    },
+    "86203": {
+      "judul": "Aktivitas Praktik Dokter Gigi",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed was already cured (crosswalk-citation-removed explanation, no tier assertion) — left unchanged. gold_prose.whatYouNeed still carries item 3 '(Micro / Small / Medium / Large, Medium-High risk)' plus certificate name, 'Authority: Bupati/Walikota', '25 Hari' processing time, and post-license obligation items 4-6 — all read from the set-aside licensing rows per l4_reason. Items 1-2 are generic boilerplate and left alone.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "3. **NIB + Standard Certificate** (Micro / Small / Medium / Large, Medium-High risk) — Authority: Bupati/Walikota — 25 Hari\n4. **Melakukan registrasi klinik sesuai ketentuan yang berlaku** — post-license obligation\n5. **Menyelenggara kan tata kelola klinik yang baik, termasuk pelayanan kesehatan diberikan sesuai standa...** — post-license obligation\n6. **Melakukan input/pembah aruan data di sistem informasi milik Kemenkes sesuai ketentuan yang berlaku (...** — post-license obligation\n\n**Authority:** Bupati/Walikota · Processing: 25 Hari\n\n",
+          "new": "\n",
+          "why": "licensing_rows_count=0 and l4_reason states the licensing rows this risk tier was read from were set aside as unverifiable; the risk tier, certificate name, Authority/Processing line, and post-license obligation items were all read off those same rows and inherit the unverifiability — removed rather than restated with a softer tier."
+        }
+      ]
+    },
+    "87202": {
+      "judul": "Aktivitas Perawatan untuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Lembaga Kesejahteraan Sosial (LKS)",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed states as settled fact that the activity is 'classified as medium-high to high risk' and derives 'not blocked by the moratorium' plus site-specific permit/inspection requirements from that tier; l4_reason shows the not-blocked conclusion is tier-derived and the licensing rows (permits/inspections) are unverifiable (licensing_rows_count=0). gold_prose is empty, no gold patch needed.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the moratorium, but because the activity is classified as medium-high to high risk, authorities treat it with extra caution. A PMA can be registered, but the specific address will be verified, and additional site-specific permits or inspections are likely required.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies here or what, if anything, a PMA registration would additionally require; verify with the Bali Zero team or at oss.go.id before choosing an address.",
+          "why": "Removes the settled risk-tier claim, removes the tier-derived moratorium conclusion, drops invented site-specific permit/inspection detail read off the unverifiable licensing rows, and speaks only about our own records rather than about what OSS publishes."
+        }
+      ]
+    },
+    "87302": {
+      "judul": "Aktivitas Sosial untuk Lanjut Usia atau Penyandang Disabilitas Fisik oleh Lembaga Kesejahteraan Sosial (LKS)",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('classified as a medium-high to high-risk activity') and the tier-derived 'not blocked by the general moratorium' plus zoning/social-welfare permit consequences, all unverifiable per l4_reason and licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the general moratorium, but it is classified as a medium-high to high-risk activity, so registration will depend heavily on your specific address and may require additional zoning approvals or social welfare permits; due diligence at the chosen location is essential.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what, if anything, registration at a specific address would additionally require; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier assertion and its derived moratorium/permit consequences; keeps the nationally-open sentence untouched; points only to the two supported next steps."
+        }
+      ]
+    },
+    "87991": {
+      "judul": "Aktivitas Lembaga Kesejahteraan Sosial Anak Berbasis Residensial",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts 'classified as medium-high to high risk' as fact and derives the moratorium exemption plus social-welfare-agency approvals from it; both unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is classified as medium-high to high risk, so it is not blocked by the provincial moratorium but will require address-specific verification and likely extra approvals from local social welfare agencies before registration.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what, if anything, registration would additionally require; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier claim and the tier-derived moratorium conclusion, drops the invented social-welfare-agency approval detail sourced from the zeroed licensing rows."
+        }
+      ]
+    },
+    "87992": {
+      "judul": "Aktivitas Perawatanuntuk Anak yang Berhadapan dengan Hukum Berbasis Residensial",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('flagged as medium-high to high risk') and derives 'not blocked by the general moratorium' plus stricter-checks consequences from it; unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "but in Bali this activity is flagged as medium-high to high risk. It is not blocked by the general moratorium, yet registrations will face stricter checks, including address verification and additional permits from social agencies.",
+          "new": "but our records currently hold no verified risk classification for this code in Bali, so we cannot confirm whether the moratorium applies or what, if anything, registration would additionally require; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Keeps the opening national-PMA clause intact and replaces only the Bali tier assertion and its derived moratorium/permit conclusions."
+        }
+      ]
+    },
+    "87993": {
+      "judul": "Aktivitas Tunasosial Berbasis Residensial",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('classified as medium-high to high risk') and derives moratorium-exemption plus zoning/operational-permit/oversight detail and license-issuance timing from it; unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by any general moratorium, but it is classified as medium-high to high risk, so each proposed address undergoes scrutiny. You can register the PMA, but location-specific approvals – such as zoning compliance, operational permits, and potential oversight from social welfare departments – will be verified before your license is issued.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what location-specific approvals, if any, would be required; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier assertion, the tier-derived moratorium conclusion, and the invented zoning/operational-permit/license-timing detail carried over from the set-aside licensing rows."
+        }
+      ]
+    },
+    "88102": {
+      "judul": "Aktivitas Sosial Lembaga Kesejahteraan Sosial Tanpa Akomodasi untuk Orang Lanjut Usia atau Penyandang Disabilitas",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('classifies it as higher risk') and derives moratorium-exemption plus location/operational-permit checks from it; unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, the authorithy classifies it as higher risk, so you may face extra checks on your location and operational permits. It is not subject to the current moratorium, but each address needs individual verification.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what checks, if any, a specific address would face; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier assertion and its derived moratorium/permit-check consequences; leaves the nationally-open PMA sentence untouched."
+        }
+      ]
+    },
+    "88901": {
+      "judul": "Aktivitas Sosial Pemerintah Tanpa Akomodasi Lainnya",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('classified as higher risk') and derives moratorium-exemption plus strict address-verification consequence from it; unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, the activity is not blocked by the moratorium but is classified as higher risk; registration is possible only after strict address-specific verification, so location choice is critical.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what, if anything, registration would additionally require; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier claim and the tier-derived moratorium/verification conclusions carried over from the unverifiable licensing rows."
+        }
+      ]
+    },
+    "88902": {
+      "judul": "Aktivitas Sosial Lembaga Kesejahteraan Sosial Tanpa Akomodasi Lainnya",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('classified as medium-high/high risk') and derives 'not blocked outright' plus commercial-address/license-issuance requirements from it; unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is classified as medium-high/high risk, which means it is not blocked outright, but the local authorities will apply extra scrutiny—you should expect to provide a verified commercial address and satisfy specific local requirements before the business license is issued.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what, if anything, registration would additionally require; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier assertion, the tier-derived moratorium conclusion, and the invented commercial-address/license-issuance process detail."
+        }
+      ]
+    },
+    "88903": {
+      "judul": "Aktivitas Sosial Pengumpulan Dana Keislaman",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "whatYouNeed asserts the tier ('carries a medium-high to high risk') and derives 'not blocked by the moratorium' plus address-verification/compliance-check consequences from it; unverifiable per l4_reason/licensing_rows_count=0.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is classified as OK but carries a medium-high to high risk, meaning it is not blocked by the moratorium but requires careful address verification and may trigger additional compliance checks. A foreign-owned PT PMA can use this activity, though expect closer scrutiny from local authorities.",
+          "new": "In Bali, our records currently hold no verified risk classification for this code, so we cannot confirm whether the moratorium applies or what, if anything, use of this activity would additionally require; verify with the Bali Zero team or at oss.go.id before proceeding.",
+          "why": "Removes the tier claim and its derived moratorium/compliance-check conclusions carried over from the unverifiable licensing rows."
+        }
+      ]
+    },
+    "88904": {
+      "judul": "Aktivitas Sosial Pengumpulan Dana Nonislam",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed states as settled fact that the code 'is not blocked by the current moratorium' and 'is flagged as medium-high to high risk', then invents a consequence ('the Business Licensing Office will scrutinize your specific address and may impose additional local requirements'). l4_reason shows this exact 'medium-high/high risk -> not blocked by moratorium' derivation is under review and explicitly NOTEs the tier could not be retrieved from the OSS API and is unverifiable, so the whole clause is the defect. No independent (tier-free) basis for the moratorium conclusion is given. All other fields (whatItMeans/whatChanged/whoThisIsFor/zantaraOpener) only discuss PMA openness/scope and are unaffected. gold_prose is empty, so no gold patch applies.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": " In Bali, it is not blocked by the current moratorium, but it is flagged as medium‑high to high risk—meaning the Business Licensing Office will scrutinize your specific address and may impose additional local requirements before approval.",
+          "new": "",
+          "why": "Removes the settled-fact risk-tier assertion and the tier-derived moratorium/consequence claim; the tier this was derived from is declared unverifiable in l4_reason, and no invented agency/process/deadline is left in its place. The appended disclosure block already covers the honest caveat."
+        }
+      ]
+    },
+    "88905": {
+      "judul": "Aktivitas Sosial Pengumpulan Dana Lainnya",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed states 'in Bali it is flagged as higher risk (medium-high/high)' and 'It is not blocked by the moratorium, so a PMA can still be registered', then invents a licensing consequence ('extra scrutiny from local authorities'). Same l4_reason pattern as 88904: the tier this verdict rests on could not be retrieved from OSS and is unverifiable, so both the tier label and the derived moratorium conclusion must go. Other fields are unaffected; gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": ", but in Bali it is flagged as higher risk (medium-high/high). It is not blocked by the moratorium, so a PMA can still be registered—however, your business address and operational plan will face extra scrutiny from local authorities during the licensing process.",
+          "new": ".",
+          "why": "Removes the risk-tier label and the tier-derived 'not blocked, so a PMA can still be registered' conclusion plus the invented extra-scrutiny consequence, none of which have an independent basis per l4_reason."
+        }
+      ]
+    },
+    "91212": {
+      "judul": "Museum yang Dikelola Swasta",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "Two separate defects on two surfaces. (1) canonical.whoThisIsFor tells the reader they can 'wait out the moratorium', restating the CHIUSO_MORATORIA_BALI block as settled advice -- but l4_reason shows that block was derived from the Besar-scale tier ('Rendah') read from licensing rows now set aside as unverifiable, with no independent basis given, so the same tier-derived-conclusion rule applies to the blocked side, not just the 'not blocked' side. (2) gold_prose.whatYouNeed still carries the exact defect canonical_prose already cured: a full licensing checklist (PT PMA incorporation, NIB, LKPM, and a step reading Library-accreditation/NPP obligations) plus an Authority/Processing line, all read off the same set-aside licensing rows canonical_prose says were removed for being an unrelated Library-Law obligation. Since the page renders gold_prose over canonical when gold exists, this carry-over is live to readers.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": ", provided they can navigate local partnerships or wait out the moratorium.",
+          "new": ".",
+          "why": "Removes the tier-derived 'blocked by moratorium, so wait it out' conclusion, which per l4_reason rests on a Besar-scale tier now set aside as unverifiable with no independent basis stated."
+        },
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **Submit quarterly investment activity report (LKPM) via OSS** — post-license obligation\n4. **Mendapatkan Nomor Pokok Perpustakaan (NPP) dan Akreditasi Perpustakaan Khusus dari Lembaga Akreditas...** — post-license obligation\n\n**Authority:** Menteri/ Kepala Badan · Processing: Otomatis\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
+          "new": "This code covers privately-managed museums. The licensing row shown here earlier was in fact a library-accreditation obligation under the Library Law (UU 43/2007) — an unrelated regulatory regime, since museums are separately governed under heritage/cagar-budaya law — so it has been removed from this page; the correct licensing for this activity is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team.\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
+          "why": "gold_prose (which the page actually renders) still listed the same library-accreditation checklist item plus an Authority/Processing line read from the set-aside licensing rows that canonical_prose already removed for this identical code; carrying it over here reintroduces the defect one surface downstream. Replacement mirrors canonical_prose's already-supported fix and points the reader only to the Bali Zero team, inventing no new agency or deadline."
+        }
+      ]
+    },
+    "91222": {
+      "judul": "Aktivitas Situs Bersejarah dan Monumen yang Dikelola Swasta",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "canonical_prose is already correctly cured (whatYouNeed explains the crosswalk citation was illegitimate and licensing is 'not yet reliably defined'; whoThisIsFor is generic and names no tier/moratorium fact). But gold_prose.whatYouNeed -- what the page actually renders -- still carries a full licensing checklist read from the same set-aside rows, including an explicit settled risk-tier label '(Micro / Small / Medium / Large, Medium-Low risk)' plus an Authority/Processing line, none of which survive l4_reason's statement that these licensing rows have been set aside as unverifiable for KBLI 2025.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "whatYouNeed",
+          "old": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Micro / Small / Medium / Large, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **Standard Certificate (auto-issued)** — post-license obligation\n5. **Comply with applicable standards** — post-license obligation\n\n**Authority:** Bupati/Walikota · Processing: Otomatis\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
+          "new": "This code covers privately-managed historical sites and monuments. The licensing row shown here earlier relied on a crosswalk citation our review found illegitimate: the cited 2020-era source code does not actually feed into this code under any crosswalk reading, forward or reverse — its true lineage points elsewhere — so the licensing row has been removed from this page pending a full re-adjudication; the correct licensing for this activity is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team.\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
+          "why": "Removes a settled risk-tier label ('Medium-Low risk') and a certificate/Authority/Processing checklist all read off the licensing rows that l4_reason says have been set aside as unverifiable, replacing it with canonical_prose's already-supported explanation for this same code so the rendered gold surface matches the cured canonical surface."
+        }
+      ]
+    },
+    "91421": {
+      "judul": "Suaka Margasatwa",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed states as settled fact 'it is not blocked by the general moratorium, but the province considers it a medium-high to high-risk activity' and invents a consequence ('site-specific requirements and... location permits for each address'). l4_reason confirms this exact tier could not be retrieved from OSS and is unverifiable, so the whole clause is the defect. whoThisIsFor/whatItMeans/whatChanged/zantaraOpener are unaffected; gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": " In Bali, it is not blocked by the general moratorium, but the province considers it a medium‑high to high‑risk activity, so actual registration will depend on meeting site‑specific requirements and obtaining the necessary location permits for each address.",
+          "new": "",
+          "why": "Removes the settled risk-tier assertion and the tier-derived moratorium/consequence claim, which l4_reason shows rests on a tier that could not be retrieved from the OSS API and is unverifiable, with no independent basis given."
+        }
+      ]
+    },
+    "91422": {
+      "judul": "Taman Nasional",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical.whatYouNeed states as settled fact 'it's not blocked by the current moratorium, but it falls under a higher-risk category' and invents a consequence ('the local licensing office will likely require extra scrutiny and a verified address'). Same unverifiable-tier pattern per l4_reason. Other fields are unaffected; gold_prose is empty.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": " In Bali, it's not blocked by the current moratorium, but it falls under a higher-risk category, meaning the local licensing office will likely require extra scrutiny and a verified address before approving a PMA for this activity.",
+          "new": "",
+          "why": "Removes the settled risk-tier assertion and the tier-derived moratorium/consequence claim; l4_reason shows the underlying tier could not be retrieved from the OSS API and is unverifiable, and no invented agency/deadline is left behind."
+        }
+      ]
+    },
+    "91423": {
+      "judul": "Hutan Lindung",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "canonical_prose.whatYouNeed states as settled fact that the code 'is not blocked by the moratorium but classes as medium-high risk' - a moratorium/tier conclusion the record's own l4_reason now flags: 'no KBLI-2025 risk scope for this code could be retrieved from the OSS API ... the risk tier this verdict was derived from is not verifiable.' Patched to speak only about our sources being unable to verify, per the acceptable-wording template, without inventing an agency/process/deadline. gold_prose is empty for this record, so no second-surface patch needed.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the moratorium but classes as medium-high risk, meaning a PMA can still establish such an entity.",
+          "new": "In Bali, our records hold no verified risk classification for this code, so whether the moratorium applies cannot currently be confirmed.",
+          "why": "Removes the settled-fact risk-tier claim and the moratorium conclusion drawn from it (l4_reason: tier 'not verifiable'); rewords to speak only about our sources' inability to verify, not about what the regulator publishes."
+        }
+      ]
+    },
+    "91425": {
+      "judul": "Taman Hutan Raya",
+      "expect_l4_status": "CHIUSO_MORATORIA_BALI",
+      "expect_l4_blocked": true,
+      "author_reason": "canonical_prose.whatYouNeed and gold_prose.whatYouNeed/baliContext are already properly hedged. But canonical_prose.whoThisIsFor asserts as settled fact that the activity is 'suited for locations across Indonesia except Bali under the current local freeze' - this is the CHIUSO_MORATORIA_BALI conclusion, which l4_reason draws from 'the Besar scale is Rendah -> blocked by the Bali PMA moratorium' while the same l4_reason NOTE says that tier 'have since been set aside as unverifiable ... the verdict cannot currently be re-derived.' gold_prose has no whoThisIsFor key, so only canonical needed patching.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whoThisIsFor",
+          "old": ", suited for locations across Indonesia except Bali under the current local freeze.",
+          "new": "; the Bali position for this code cannot currently be confirmed pending re-derivation.",
+          "why": "Removes the settled 'blocked in Bali / local freeze' conclusion, which l4_reason derives from a risk tier the record itself now calls unverifiable; replacement makes no claim about what OSS publishes, invents no agency/step/deadline."
+        }
+      ]
+    },
+    "93129": {
+      "judul": "Klub Olahraga Lainnya",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "author_reason": "gold_prose carries the defect the packet describes: gold_prose.baliContext states \"The medium-low risk at small/medium scale keeps barriers manageable\" and gold_prose.zantaraOpener states \"medium-low risk and fully PMA-open\" — both assert a settled risk tier that l4_reason says is unknown (\"The catalogue holds no licensing rows for this code, so its Bali risk tier is unknown\"). canonical_prose for this code does not carry the defect (whoThisIsFor already hedges with 'needs case-by-case verification'). Both gold_prose patches replace the tier claim with a statement about our own records' lack of verification, invent no agency/process/deadline, and leave PMA-open status (a different, unquestioned layer) intact.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "baliContext",
+          "old": "The medium-low risk at small/medium scale keeps barriers manageable.",
+          "new": "Our records currently hold no verified risk classification for this code, so we can't speak to how manageable the barriers to entry are at any scale.",
+          "why": "\"medium-low risk\" asserts a settled OSS risk tier that l4_reason explicitly says is unknown (no licensing rows in the catalogue for this code); replacement speaks only about the state of our own records, invents no tier, agency, or deadline."
+        },
+        {
+          "surface": "gold",
+          "field": "zantaraOpener",
+          "old": "medium-low risk and fully PMA-open.",
+          "new": "fully PMA-open, though we don't currently have a verified risk classification for it.",
+          "why": "Same tier claim repeated in the opener; PMA-open status is left untouched (a different, unquestioned layer), while the risk-tier assertion is replaced with an honest statement about our records rather than a claim about what the regulator publishes."
+        }
+      ]
+    },
+    "93199": {
+      "judul": "Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL",
+      "expect_l4_status": "NON_CLASSIFICABILE",
+      "expect_l4_blocked": true,
+      "author_reason": "canonical_prose has no assertion (same generic licensing-unconfirmed wording as 93197, plus the disclosure block already appended — left alone). But gold_prose is what actually renders on the page, and it asserts risk tier as settled fact in two places: baliContext states 'The low risk classification at all relevant scales makes this incredibly accessible' and zantaraOpener states '93199 is low risk, fully PMA-open...'. l4_reason says the catalogue holds no licensing rows for this code and the Bali risk tier is unknown, so both are unsupported settled-fact claims. Removed rather than softened; no agency/process/deadline invented; nothing carried over from set-aside rows.",
+      "patches": [
+        {
+          "surface": "gold",
+          "field": "baliContext",
+          "old": "The low risk classification at all relevant scales makes this incredibly accessible. ",
+          "new": "",
+          "why": "Asserts a specific risk tier ('low risk... at all relevant scales') as settled fact while l4_reason states the catalogue holds no licensing rows for this code and the Bali risk tier is unknown — deleted rather than softened, per instructions to remove unsupportable claims outright."
+        },
+        {
+          "surface": "gold",
+          "field": "zantaraOpener",
+          "old": "93199 is low risk, fully PMA-open, and covers the activities that make Bali famous.",
+          "new": "93199 is fully PMA-open, and covers the activities that make Bali famous.",
+          "why": "Drops the unsupported 'low risk' assertion (same defect as baliContext) while keeping the PMA-openness claim, which is independently sourced from pma_status and not from the unverifiable risk tier."
+        }
+      ]
+    },
+    "94110": {
+      "judul": "Aktivitas Organisasi Bisnis dan Pengusaha",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "l4_reason explicitly flags: '[derivation under review] medium-high/high risk -> not blocked by moratorium ... no KBLI-2025 risk scope for this code could be retrieved from the OSS API when this dataset was built ... the risk tier this verdict was derived from is not verifiable'. canonical_prose.whatYouNeed nonetheless states the tier ('medium-high or high-risk activity') as settled fact, restates the moratorium 'not blocked' conclusion that l4_reason says was derived from that very tier, and adds an invented process consequence ('enhanced scrutiny', 'address will be verified before approval') read off the same unverifiable basis. The appended disclosure block already covers the hedge and is left untouched.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the current moratorium, but it is classified as a medium-high or high-risk activity, so the business license will face enhanced scrutiny and your specific address will be verified before approval.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the local moratorium and the licensing process cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the settled-fact tier claim, the moratorium conclusion l4_reason says was derived from that same unverifiable tier, and the invented scrutiny/verification consequence; speaks only about our own inability to verify, points only to the Bali Zero team as next step, invents no agency/process/deadline."
+        }
+      ]
+    },
+    "94121": {
+      "judul": "Aktivitas Organisasi Ilmu Pengetahuan Sosial dan Masyarakat",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect class as 94110: l4_reason marks the medium-high/high-risk -> not-blocked-by-moratorium derivation as under review and unverifiable (no OSS risk scope retrieved, no licensing rows served). canonical_prose.whatYouNeed states the tier as settled fact, restates the moratorium conclusion drawn from it, and invents specific process detail (zoning compliance, local permits, sectoral approvals from professional authorities) that was necessarily read off the same set-aside basis.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "At national level this KBLI is fully open (100% foreign ownership allowed), but in Bali it is treated as a medium-high or high risk activity. It is not blocked by the local moratorium, however the PMA company must expect extra verification for each address—zoning compliance, local permits and possibly sectoral approvals from relevant professional authorities will be scrutinised closely.",
+          "new": "At national level this KBLI is fully open (100% foreign ownership allowed). In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the local moratorium and any address-level requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the tier assertion, the tier-derived moratorium conclusion, and the invented zoning/permit/sectoral-approval detail that was carried over from the unverifiable basis; keeps the independently-sourced national PMA-openness statement intact."
+        }
+      ]
+    },
+    "94122": {
+      "judul": "Aktivitas Organisasi Ilmu Pengetahuan Alam dan Teknologi",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect: l4_reason marks the tier->moratorium derivation as under review, no risk scope retrievable, no licensing rows served. canonical_prose.whatYouNeed states the tier as settled fact and restates the derived moratorium conclusion plus an invented compliance-checks consequence.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the current moratorium, but it is classified as a medium‑high to high‑risk activity. That means licensing is possible, yet it will involve address‑specific verification and tighter compliance checks compared to low‑risk businesses.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the local moratorium and any licensing requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the settled-fact tier claim and the tier-derived moratorium/compliance conclusions; no new tier, percentage, permit name or deadline invented."
+        }
+      ]
+    },
+    "94200": {
+      "judul": "Aktivitas Organisasi Buruh",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect: l4_reason marks the tier->moratorium derivation as under review and unverifiable. canonical_prose.whatYouNeed states the tier as settled fact ('classified as a higher-risk activity') and restates the derived moratorium conclusion plus an invented address-verification consequence.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the general moratorium but is classified as a higher-risk activity, meaning registration is possible but may face additional scrutiny and requires that the specific business address be verified for compliance.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the general moratorium and any address-verification requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the tier assertion and the moratorium conclusion derived from the same unverifiable tier, plus the invented address-verification detail carried over from set-aside rows."
+        }
+      ]
+    },
+    "94910": {
+      "judul": "Aktivitas Organisasi Keagamaan",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect: l4_reason marks this derivation under review. canonical_prose.whatYouNeed states the tier as settled fact ('medium-high/high‑risk category') and restates the derived moratorium conclusion plus an invented address-verification consequence.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not blocked by the current moratorium but falls into a medium-high/high‑risk category, so registration will trigger stricter local verification tied to the specific business address.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the moratorium and any address-verification requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the tier assertion and the tier-derived moratorium/verification conclusion; nothing invented, next step limited to verifying with the Bali Zero team."
+        }
+      ]
+    },
+    "94920": {
+      "judul": "Aktivitas Organisasi Politik",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect: l4_reason marks this derivation under review. canonical_prose.whatYouNeed states the tier as settled fact ('treated as a higher-risk sector') and restates the derived moratorium conclusion plus invented zoning/permit-check consequences.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it’s treated as a higher-risk sector—so it’s not blocked by the blanket moratorium, but every location must be verified individually, and you’ll face extra regulatory checks on zoning and permits.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the moratorium and any zoning or permit requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the settled-fact tier claim and the moratorium/zoning/permit consequences derived from it; preserves the sentence's position and client-facing tone."
+        }
+      ]
+    },
+    "94990": {
+      "judul": "Aktivitas Organisasi Keanggotaan Lainnya YTDL",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect: l4_reason marks this derivation under review. canonical_prose.whatYouNeed states the tier as settled fact ('classified as medium‑high to high risk') and restates the derived moratorium conclusion plus an invented commercial-address-verification consequence.",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is classified as medium‑high to high risk, so while it is not blocked by the current moratorium, the business registration will face extra scrutiny and requires a verified commercial address that fits the activity.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the moratorium and any address-verification requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the tier assertion and the tier-derived moratorium/verification conclusion carried over from the unverifiable basis."
+        }
+      ]
+    },
+    "97000": {
+      "judul": "Aktivitas Rumah Tangga sebagai Pemberi Kerja bagi Pekerja Rumah Tangga (PRT)",
+      "expect_l4_status": "OK_or_HIGHER_RISK",
+      "expect_l4_blocked": false,
+      "author_reason": "Same defect: l4_reason marks this derivation under review. canonical_prose.whatYouNeed states the tier as settled fact ('flagged as a medium-to-high risk business') and restates the derived moratorium conclusion plus invented process detail (regency-level licensing, residential/domicile address verification, scrutiny on the employer-worker relationship before issuing permits).",
+      "patches": [
+        {
+          "surface": "canonical",
+          "field": "whatYouNeed",
+          "old": "In Bali, it is not caught by the local foreign-investment moratorium, but it is flagged as a medium-to-high risk business. That means regency-level licensing will require a verified residential or domicile address and may impose additional scrutiny on the employer-worker relationship before issuing permits.",
+          "new": "In Bali, we cannot currently confirm the risk tier for this code, so its treatment under the local foreign-investment moratorium and any licensing requirements cannot be stated with confidence — verify with the Bali Zero team before proceeding.",
+          "why": "Removes the settled-fact tier claim and every invented downstream detail (regency-level licensing specifics, address type, employer-worker scrutiny) that was carried over from the same unverifiable basis."
+        }
+      ]
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetMyCommissions } = vi.hoisted(() => ({
   mockGetMyCommissions: vi.fn(),
@@ -16,9 +16,10 @@ const COMMISSIONS = [
     id: "c1",
     status: "paid",
     practice_type_name: "KITAS New",
-    net_amount: 1_500_000,
-    gross_amount: 2_000_000,
-    withholding_amount: 500_000,
+    base_amount_idr: 20_000_000,
+    net_amount_idr: 1_500_000,
+    gross_amount_idr: 2_000_000,
+    withholding_amount_idr: 500_000,
     created_at: "2026-07-10T00:00:00Z",
     paid_at: "2026-07-15T00:00:00Z",
   },
@@ -26,9 +27,10 @@ const COMMISSIONS = [
     id: "c2",
     status: "accrued",
     practice_type_name: "Company Setup",
-    net_amount: 750_000,
-    gross_amount: 1_000_000,
-    withholding_amount: 250_000,
+    base_amount_idr: 10_000_000,
+    net_amount_idr: 750_000,
+    gross_amount_idr: 1_000_000,
+    withholding_amount_idr: 250_000,
     created_at: "2026-07-20T00:00:00Z",
     paid_at: null,
   },
@@ -42,6 +44,10 @@ async function renderLoaded() {
 }
 
 describe("PartnerCommissionsPage (WS3 day pass)", () => {
+  beforeEach(() => {
+    mockGetMyCommissions.mockReset();
+  });
+
   it("renders the day masthead: copper rule + serif headline in --tx-pure", async () => {
     const { container } = await renderLoaded();
 
@@ -95,5 +101,20 @@ describe("PartnerCommissionsPage (WS3 day pass)", () => {
     expect(html).not.toContain("border-white/10");
     expect(html).not.toContain("text-white");
     expect(html).not.toContain("text-gray-");
+  });
+
+  it("shows a safe outage state and retries the commissions request", async () => {
+    mockGetMyCommissions
+      .mockRejectedValueOnce(new Error("private database detail"))
+      .mockResolvedValueOnce(COMMISSIONS);
+    render(<PartnerCommissionsPage />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Commissions are temporarily unavailable");
+    expect(alert).not.toHaveTextContent("private database detail");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByText("KITAS New")).toBeInTheDocument();
+    expect(mockGetMyCommissions).toHaveBeenCalledTimes(2);
   });
 });

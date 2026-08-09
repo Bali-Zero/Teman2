@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "policy_id": "visa-oracle-privacy-v1",
+  "policy_version": "1.0",
+  "approved_by": "Zero",
+  "approved_on": "2026-08-06",
+  "status": "APPROVED_PRE_ENFORCE",
+  "scope": "Visa Oracle V2 public evaluation and consented handoff",
+  "decision_processing": {
+    "lawful_basis": "PRE_CONTRACTUAL_STEPS_AT_DATA_SUBJECT_REQUEST",
+    "retention_days": 30,
+    "retention_anchor": "EVALUATED_AT"
+  },
+  "idempotency": {
+    "retention_hours": 24,
+    "purpose": "SAFE_RETRY_AND_REPLAY_PREVENTION"
+  },
+  "telemetry": {
+    "retention_days": 90,
+    "pii_free": true,
+    "allowed_fields": [
+      "event",
+      "terminal_state",
+      "non_reversible_random_correlation_hash",
+      "occurred_at"
+    ],
+    "forbidden_fields": [
+      "raw_answers",
+      "nationality",
+      "passport_data",
+      "family_data",
+      "free_text",
+      "request_payload",
+      "response_payload"
+    ]
+  },
+  "data_subject_requests": {
+    "service_level_hours": 72,
+    "identity_verification_required": true,
+    "legal_hold_override_requires_documented_basis": true
+  },
+  "consent": {
+    "whatsapp": "SEPARATE_EXPLICIT_OPT_IN",
+    "crm": "SEPARATE_EXPLICIT_OPT_IN",
+    "bundled_consent_forbidden": true,
+    "withdrawal_must_be_as_easy_as_grant": true
+  },
+  "minors": {
+    "guardian_consent_required": true,
+    "automated_supported_outcome_without_guardian_confirmation": false,
+    "default_state_without_confirmed_guardian": "HUMAN_REVIEW_REQUIRED"
+  },
+  "legal_hold": {
+    "case_reference_required": true,
+    "reason_required": true,
+    "approver_required": true,
+    "review_interval_days": 30,
+    "release_audited": true
+  },
+  "activation_conditions": {
+    "dpia_required_before_enforce": true,
+    "production_smoke_required_before_enforce": true,
+    "independent_gate_required_before_enforce": true
+  },
+  "official_legal_sources": [
+    "https://www.peraturan.go.id/id/uu-no-27-tahun-2022",
+    "https://jdih.komdigi.go.id/produk_hukum/view/id/832/t/undangundang%2Bnomor%2B27%2Btahun%2B2022"
+  ]
+}

@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const { mockUseQuery } = vi.hoisted(() => ({
+const { mockUseQuery, mockRefetch } = vi.hoisted(() => ({
   mockUseQuery: vi.fn(),
+  mockRefetch: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -57,6 +58,7 @@ function mockLoaded(data: unknown = FAMILY) {
     isLoading: false,
     isError: false,
     error: null,
+    refetch: mockRefetch,
   });
 }
 
@@ -112,6 +114,7 @@ describe("PortalFamilyPage", () => {
       isLoading: false,
       isError: true,
       error: new Error("boom"),
+      refetch: mockRefetch,
     });
     render(<PortalFamilyPage />);
 
@@ -120,7 +123,15 @@ describe("PortalFamilyPage", () => {
     expect(alert.style.borderColor).toContain("var(--state-danger) 30%");
     expect(alert.style.color).toBe("var(--bz-text-1)");
     expect(screen.getByText("Unable to load family")).toBeInTheDocument();
-    expect(screen.getByText("boom")).toBeInTheDocument();
+    expect(screen.queryByText("boom")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We could not verify your family records. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(mockRefetch).toHaveBeenCalledOnce();
   });
 
   it("renders the empty-state guidance when no members are on file", () => {

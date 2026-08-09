@@ -30,6 +30,21 @@ describe("ForgotPasswordPage (WS3 day pass)", () => {
     expect(cta.getAttribute("href")).toContain("Portal%20Access%20Recovery");
   });
 
+  it("truthfully explains that recovery starts only after contacting the team", () => {
+    render(<ForgotPasswordPage />);
+
+    expect(
+      screen.getByText(
+        "Contact our team to recover access. No request has been sent yet.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "We received your request. Our team will contact you.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("back link reads --bz-copper-text", () => {
     render(<ForgotPasswordPage />);
 

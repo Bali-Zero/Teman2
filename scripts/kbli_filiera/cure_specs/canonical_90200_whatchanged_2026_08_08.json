@@ -1,0 +1,13 @@
+{
+  "adjudicated": "2026-08-08 — item 5 of the sector-law brief: align canonical's own intel_2026.whatChanged with the gold wording already shipped in #3749 for the same code.",
+  "verdict": "canonical's bps_2020_ancestors.codes already lists the four KBLI 2020 predecessors (90011, 90021, 90022, 90024), and cure_gold_90200_whatchanged.py (cure_specs/gold_90200_whatchanged_merged_2026_08_07.json) already corrected GOLD's whatChanged to say so — but that compiler only ever wrote gold's copy (apps/mouth/data/kbli-gold-all.json); canonical's own intel_2026.whatChanged field was never touched and still claimed 'a completely new code ... no equivalent in KBLI 2020', directly contradicting canonical's own bps_2020_ancestors field on the very same record. Gold wins at render (client-facing surface is correct today), but canonical's own field lied about its own sibling field.",
+  "code": "90200",
+  "old_sha256": "291a6d5327f3da41deb7fa91a611360cee7dea36812c73e1596380073350f16b",
+  "expect": {
+    "bps_2020_ancestors.codes": ["90011", "90021", "90022", "90024"]
+  },
+  "patch": {
+    "intel_2026.whatChanged": "Merged in KBLI 2025 from four KBLI 2020 codes (90011, 90021, 90022, 90024 — performing-arts activities and venues). If you held any of those, this is your code now."
+  },
+  "new_sha256": "978281d444eee113f01aa4b40b763c8edf8872e3e49f124ea280f222822c61e6"
+}

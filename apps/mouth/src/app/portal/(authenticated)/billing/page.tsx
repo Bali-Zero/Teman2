@@ -52,14 +52,20 @@ function BillingMasthead() {
 }
 
 export default function BillingPage() {
-  const { data, isLoading, isError, error } = usePortalBilling();
+  const { data, isLoading, isError, refetch } = usePortalBilling();
   const { error: toastError } = useToast();
 
   const handleDownloadPdf = async (invoice: PortalInvoice) => {
     try {
       const result = await api.portal.getInvoicePdfUrl(invoice.id);
       if (result.download_url) {
-        window.open(result.download_url, "_blank", "noopener,noreferrer");
+        const link = document.createElement("a");
+        link.href = result.download_url;
+        link.download = `${invoice.invoice_number}.pdf`;
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }
     } catch (err) {
       toastError("Download failed", "Could not get invoice PDF");
@@ -94,6 +100,7 @@ export default function BillingPage() {
       <div className="space-y-6 animate-in fade-in duration-500">
         <BillingMasthead />
         <section
+          role="alert"
           className="rounded-xl border p-8 text-center"
           style={{
             background: "var(--bz-card)",
@@ -104,13 +111,13 @@ export default function BillingPage() {
             className="w-12 h-12 mx-auto mb-3"
             style={{ color: "var(--state-warning)" }}
           />
-          <p>
-            {error instanceof Error
-              ? error.message
-              : "Failed to load billing data"}
+          <h2 className="font-semibold">Unable to load billing</h2>
+          <p className="mt-2 text-sm text-[var(--tx-secondary)]">
+            We could not verify your invoices. Check your connection and try
+            again.
           </p>
           <Button
-            onClick={() => window.location.reload()}
+            onClick={() => void refetch()}
             variant="outline"
             className="mt-3"
           >

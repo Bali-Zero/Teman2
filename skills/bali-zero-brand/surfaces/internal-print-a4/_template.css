@@ -1,5 +1,31 @@
 /* Bali Zero — design template extracted from PBG_Villa_Kutuh_BaliZero_ID.pdf */
 
+/* Font: Montserrat per brand constitution (Article 3.1).
+   Caricato via Google Fonts CDN. Fallback Inter / Poppins / system sans (sempre sans, mai serif — Article 3.2).
+
+   ⚠️ QUESTA RIGA DEVE RESTARE LA PRIMA REGOLA DEL FILE. Per specifica CSS un
+   `@import` che segue una qualsiasi altra regola viene SCARTATO dal parser,
+   senza errore. Stava dopo `@page` e `*` (riga 21), quindi questo foglio di
+   stile non ha mai caricato nessun webfont. Misurato 2026-08-06 con due render
+   identici a meno della posizione, stesso renderer, CDN raggiungibile (200):
+   @import dopo una regola → `AAAAAA+HelveticaNeue`; @import per primo →
+   `AAAAAA+Montserrat-Regular`.
+
+   L'effetto NON era uniforme, ed è la parte che conta: dove Montserrat è
+   installato localmente (Pro: `Montserrat[wght].ttf` in ~/Library/Fonts) il
+   `font-family` si risolveva comunque, dal SISTEMA, e il PDF usciva giusto per
+   accidente; dove non c'è (M5: zero corrispondenze, e qualunque render headless
+   o in container) cadeva su Helvetica in silenzio. Prova nel repo: i due PDF
+   tracciati usciti da questa superficie portano Montserrat-**Thin** e -Italic,
+   pesi che questo @import non ha mai chiesto (400–800) — quindi venivano da un
+   variable font locale, non dal CDN. Cioè la conformità all'Articolo 3.1
+   dipendeva da un font installato sul portatile di chi renderizzava: una
+   dipendenza a forma di HOME-fork. Con l'@import vivo la dipendenza sparisce.
+
+   Chi rimette una regola sopra questa riga la ri-uccide, e sulla sua macchina
+   probabilmente non se ne accorge. */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
 @page {
   size: A4;
   margin: 0;
@@ -15,10 +41,6 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-
-/* Font: Montserrat per brand constitution (Article 3.1).
-   Caricato via Google Fonts CDN. Fallback Inter / Poppins / system sans (sempre sans, mai serif — Article 3.2). */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 
 html, body {
   margin: 0;

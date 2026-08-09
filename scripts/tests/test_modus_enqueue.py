@@ -91,6 +91,11 @@ def test_reenqueue_of_pending_job_does_not_double_write(fake_queue: list[dict]) 
 
 
 def test_reenqueue_after_resolution_is_allowed(fake_queue: list[dict]) -> None:
+    """The queue is append-only: resolution APPENDS a new record, it never
+    mutates the original pending one (matches sentinel_lib.escalations'
+    real mark_resolved() semantics — see test_reenqueue_after_ancient_
+    resolution_is_allowed below for why a fake that mutates in place would
+    hide the actual production bug this guards against)."""
     kwargs = dict(
         job="resolvable-job",
         source="regulatory-watcher",
@@ -101,7 +106,29 @@ def test_reenqueue_after_resolution_is_allowed(fake_queue: list[dict]) -> None:
     modus_enqueue.enqueue_task(**kwargs)
     assert len(fake_queue) == 1
 
-    fake_queue[0]["status"] = "resolved"
+    fake_queue.append({"job": "resolvable-job", "status": "resolved", "ts": 2})
 
     modus_enqueue.enqueue_task(**kwargs)
-    assert len(fake_queue) == 2  # not pending anymore, so a new entry is allowed
+    assert len(fake_queue) == 3  # not pending anymore, so a new entry is allowed
+
+
+def test_reenqueue_after_ancient_resolution_is_allowed(fake_queue: list[dict]) -> None:
+    """Regression test for the append-only staleness bug: an OLD pending
+    entry for a job must not block re-enqueue once a LATER resolved marker
+    exists for that same job — even though the old pending entry's own
+    'status' field still literally reads 'pending' forever (immutable log).
+    Pre-fix, _already_pending() did a naive per-entry status scan and would
+    see the ancient pending entry and refuse to re-enqueue, silently
+    swallowing every future recurrence of an already-fixed job."""
+    fake_queue.append({"job": "flaky-job", "status": "pending", "ts": 1})
+    fake_queue.append({"job": "flaky-job", "status": "resolved", "ts": 2})
+    assert len(fake_queue) == 2
+
+    modus_enqueue.enqueue_task(
+        job="flaky-job",
+        source="regulatory-watcher",
+        mandate="recurred after being fixed once",
+        klass="green",
+        perimeter="research/**",
+    )
+    assert len(fake_queue) == 3  # new pending record written, not skipped

@@ -90,9 +90,23 @@ reply, never assume success" discipline as _ledger_freshness (W104): an
 unverifiable ref just doesn't count toward merged_pr_refs, it does not crash
 the report and it is not silently promoted to "merged" either.
 
+READING MAIN FROM A CHECKOUT THAT IS BEHIND (--ref, added 2026-08-08): this ledger is
+read out of a working tree, and on m5 the main checkout is deliberately left behind
+origin/main (pulling it races live worktrees), so the rows can be genuinely stale.
+The freshness line has always SAID so — but until now it prescribed "pull", which is
+exactly what m5 must not do and what `worktree_isolation.py` refuses for any agent
+session in the main checkout. A prescription only a nonexistent lane can carry out
+trains its reader to ignore the probe, and the next one that matters gets ignored too.
+`--ref origin/main` reads the ledger with `git show`: no pull, no fetch, no write, so
+it works from the main checkout as well. It is deliberately FATAL when the ref cannot
+be read — silently answering with the working tree would let a caller believe it is
+looking at main while it looks at its own stale copy, which is the lie the flag exists
+to end. Default (no --ref) still reads the working tree, so a session that has just
+written its own line still sees it.
+
 Usage:
-    python3 scripts/pending_arms_report.py [--ledger PATH] [--now YYYY-MM-DD] [--json]
-                                           [--strict] [--strict-phantom]
+    python3 scripts/pending_arms_report.py [--ledger PATH] [--ref GITREF] [--now YYYY-MM-DD]
+                                           [--json] [--strict] [--strict-phantom]
 
 Exit codes:
     0   always, by default (pure signaler — a report is not a failure)
@@ -560,8 +574,62 @@ def parse_entry(raw: str, now: date) -> Entry:
     )
 
 
-def load_entries(ledger_path: Path, now: date) -> List[Entry]:
-    text = ledger_path.read_text(encoding="utf-8")
+def _git(argv: List[str], *, cwd: Path, timeout: int = 15) -> tuple[int, str, str]:
+    """Run a read-only git command. Returns (rc, stdout, stderr), never raises.
+
+    A spawn failure is reported as a non-zero rc with the reason in stderr, so
+    every caller decides on the same three values and none of them has to
+    remember that "no output" might mean "git is missing".
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(cwd), *argv], capture_output=True, text=True, timeout=timeout
+        )
+    except FileNotFoundError:
+        return 127, "", "git not on PATH"
+    except (subprocess.SubprocessError, OSError) as exc:
+        return 1, "", f"git invocation failed: {type(exc).__name__}"
+    return proc.returncode, (proc.stdout or "").strip(), (proc.stderr or "").strip()
+
+
+class LedgerRefUnreadable(RuntimeError):
+    """`--ref` was given and could not be honoured.
+
+    Deliberately fatal rather than a fallback. Silently reading the working
+    tree after being asked for a ref is the worst possible outcome: the caller
+    believes it is looking at main and is looking at its own stale checkout —
+    the same class of lie the ref option exists to end.
+    """
+
+
+def _ledger_text_at_ref(ledger_path: Path, ref: str) -> str:
+    """Read the ledger as of `ref`, without touching the working tree.
+
+    Read-only by construction: `git show` writes nothing, changes no branch and
+    fetches nothing. `origin/main` is therefore only as fresh as the last fetch
+    — stated in the freshness line rather than papered over with a fetch, so
+    this stays a pure signaler (offline is a natural state, Law 6).
+    """
+    repo = ledger_path.parent
+    rc, top, err = _git(["rev-parse", "--show-toplevel"], cwd=repo)
+    if rc != 0:
+        raise LedgerRefUnreadable(f"not a git repository at {repo}: {err or f'git exited {rc}'}")
+    try:
+        rel = ledger_path.resolve().relative_to(Path(top).resolve())
+    except ValueError as exc:  # ledger outside the repo — nothing to resolve against
+        raise LedgerRefUnreadable(f"{ledger_path} is not inside {top}") from exc
+    rc, out, err = _git(["show", f"{ref}:{rel.as_posix()}"], cwd=repo)
+    if rc != 0:
+        raise LedgerRefUnreadable(f"cannot read {rel.as_posix()} at {ref!r}: {err or f'git exited {rc}'}")
+    if not out.strip():
+        # Empty is not a ledger. Zero entries is a claim, and a claim this tool
+        # must not make on the strength of an empty read.
+        raise LedgerRefUnreadable(f"{rel.as_posix()} at {ref!r} is empty")
+    return out
+
+
+def load_entries(ledger_path: Path, now: date, ref: Optional[str] = None) -> List[Entry]:
+    text = _ledger_text_at_ref(ledger_path, ref) if ref else ledger_path.read_text(encoding="utf-8")
     return [parse_entry(raw, now) for raw in extract_open_entries(text)]
 
 
@@ -684,12 +752,26 @@ def compute_counts(entries: List[Entry], check_pr_refs: bool = False) -> Dict[st
     return counts
 
 
-def _freshness_line(freshness: Optional[Dict[str, Any]]) -> str:
+def _freshness_line(freshness: Optional[Dict[str, Any]], ref: Optional[str] = None) -> str:
     """One line, always printed. Silence about freshness is what made this necessary."""
     if not freshness:
         return "- ledger-freshness: not checked"
     state = freshness.get("state")
     detail = freshness.get("detail", "")
+    if ref:
+        # The rows below came from `ref`, so how far the WORKING TREE has fallen
+        # behind cannot make them wrong. Still reported, because it is the number
+        # a reader would otherwise have to go and measure.
+        behind = freshness.get("behind")
+        gap = (
+            f"this checkout is {behind} commit(s) behind on this file"
+            if isinstance(behind, int) and behind > 0
+            else f"checkout gap {state}"
+        )
+        return (
+            f"- ledger-freshness: read at `{ref}` — {gap}, which does NOT affect the rows "
+            f"below (`{ref}` is itself only as fresh as your last fetch)"
+        )
     if state == "stale":
         return f"- ⚠️ ledger-freshness: **STALE** — {detail}"
     if state == "current":
@@ -703,13 +785,15 @@ def render_report(
     entries: List[Entry],
     freshness: Optional[Dict[str, Any]] = None,
     check_pr_refs: bool = False,
+    ref: Optional[str] = None,
 ) -> str:
     counts = compute_counts(entries, check_pr_refs=check_pr_refs)
     lines: List[str] = []
     lines.append("# PENDING-ARMS reconciliation report")
     lines.append("")
-    lines.append(f"- ledger: `{ledger_path}`")
-    lines.append(_freshness_line(freshness))
+    source = f"`{ledger_path}` @ `{ref}`" if ref else f"`{ledger_path}`"
+    lines.append(f"- ledger: {source}")
+    lines.append(_freshness_line(freshness, ref))
     lines.append(
         f"- now: {now.isoformat()} (day-precision dates; overdue = age_days >= "
         f"{OVERDUE_AGE_DAYS}, the closest day-precision proxy for >48h)"
@@ -910,8 +994,10 @@ def _ledger_freshness(ledger_path: Path) -> Dict[str, Any]:
         "behind": behind,
         "detail": (
             f"origin/main has {behind} commit(s) to this ledger that this checkout lacks — "
-            "rows shown as open may already be closed on main; pull before trusting this report "
-            "(and note origin/main itself is only as fresh as your last fetch)"
+            "rows shown as open may already be closed on main. Re-run with `--ref origin/main` "
+            "to read main's ledger: read-only, no pull and no write, so it works from the main "
+            "checkout too, where a session is (correctly) forbidden to mutate git. "
+            "(origin/main is itself only as fresh as your last fetch.)"
         ),
     }
 
@@ -936,6 +1022,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Path to PENDING-ARMS.md (default: <repo-root>/.claude/skills/modus/PENDING-ARMS.md)",
+    )
+    parser.add_argument(
+        "--ref",
+        type=str,
+        default=None,
+        metavar="GITREF",
+        help=(
+            "Read the ledger as of a git ref (e.g. origin/main) instead of the working "
+            "tree. Read-only: no pull, no fetch, no write — the way to see main's ledger "
+            "from a checkout that is behind. Fatal if the ref cannot be read; it never "
+            "falls back to the working tree."
+        ),
     )
     parser.add_argument(
         "--now",
@@ -1008,7 +1106,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         return 2
 
-    entries = load_entries(ledger_path, now)
+    try:
+        entries = load_entries(ledger_path, now, ref=args.ref)
+    except LedgerRefUnreadable as exc:
+        # Fail loud. A caller who asked for a ref and silently got the working
+        # tree would draw conclusions about main from its own stale checkout.
+        print(f"pending_arms_report: --ref {args.ref!r} unreadable: {exc}", file=sys.stderr)
+        return 2
     if args.check_pr_refs:
         annotate_pr_refs(entries)
     freshness = _ledger_freshness(ledger_path)
@@ -1022,7 +1126,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     else:
         print(
-            render_report(ledger_path, now, entries, freshness, check_pr_refs=args.check_pr_refs),
+            render_report(ledger_path, now, entries, freshness, check_pr_refs=args.check_pr_refs, ref=args.ref),
             end="",
         )
 

@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { SERVICES_DATA } from "@/data/services_data";
+import { WA_NUMBER } from "@/lib/whatsapp-utm";
+import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
 import { useEffect, useState } from "react";
 
 interface PageSchema {
@@ -39,7 +41,7 @@ export function DynamicJsonLd() {
           logo: `${baseUrl}/assets/logo/balizero-logo.png`,
           contactPoint: {
             "@type": "ContactPoint",
-            telephone: "+62-859-0436-9574",
+            telephone: `+${WA_NUMBER}`,
             contactType: "customer service",
             availableLanguage: ["English", "Indonesian"],
           },
@@ -48,17 +50,23 @@ export function DynamicJsonLd() {
           "@type": "Country",
           name: "Indonesia",
         },
-        offers: service.packages
-          .filter((pkg) => pkg.price !== "Contact")
-          .map((pkg) => ({
-            "@type": "Offer",
-            name: pkg.name,
-            description: pkg.description,
-            price: pkg.price.replace(/\./g, ""),
-            priceCurrency: "IDR",
-            availability: "https://schema.org/InStock",
-            validFrom: "2026-01-01",
-          })),
+        offers: service.packages.flatMap((pkg) => {
+          const exactPrice =
+            pkg.livePriceCategory && pkg.livePriceKey
+              ? getExactSnapshotPrice(pkg.livePriceCategory, pkg.livePriceKey)
+              : null;
+          if (!exactPrice) return [];
+          return [
+            {
+              "@type": "Offer",
+              name: pkg.name,
+              description: pkg.description,
+              price: exactPrice.replace(/\D/g, ""),
+              priceCurrency: "IDR",
+              availability: "https://schema.org/InStock",
+            },
+          ];
+        }),
         serviceType: service.name,
         hoursAvailable: service.timeline,
       };
@@ -121,7 +129,7 @@ export function DynamicJsonLd() {
           contactPoint: [
             {
               "@type": "ContactPoint",
-              telephone: "+62-859-0436-9574",
+              telephone: `+${WA_NUMBER}`,
               contactType: "customer service",
               availableLanguage: ["English", "Indonesian"],
               areaServed: "ID",

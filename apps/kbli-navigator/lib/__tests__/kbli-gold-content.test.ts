@@ -126,7 +126,59 @@ function innocenceCase() {
   );
 }
 
+function guiltCorroboratedPredecessor(code: string, predecessor: string) {
+  const gold = getGoldContent(code);
+  assert.ok(gold, `${code} must still have a gold-content entry`);
+
+  // The old text asserted "Direct match from KBLI 2020" -- i.e. no
+  // renumbering happened at all. That is false: both codes ARE renumbered,
+  // confirmed by two independent crosswalk sources (2026-08-08, PR
+  // kbli-navigator/client-facing-defects) that this hand-authored file
+  // never scanned (it is a separate, third whatChanged surface distinct
+  // from canonical and apps/mouth's kbli-gold-all.json).
+  assert.doesNotMatch(
+    gold!.whatChanged,
+    /^Direct match from KBLI 2020/,
+    `${code} whatChanged must not claim a direct/unchanged match`,
+  );
+  assert.match(
+    gold!.whatChanged,
+    new RegExp(`code ${predecessor}\\b`),
+    `${code} whatChanged must name its confirmed KBLI-2020 predecessor ${predecessor}`,
+  );
+  assert.match(
+    gold!.whatChanged,
+    /confirmed 2026-08-08/,
+    `${code} whatChanged must cite the corroboration date`,
+  );
+
+  console.log(
+    `PASS guilt: ${code} gold-content — false "direct match" replaced with confirmed predecessor ${predecessor}`,
+  );
+}
+
+function innocenceCorroboratedPredecessor() {
+  // 46415/46496 stay genuinely disputed (sources disagree) and never had
+  // an entry in this file to begin with -- must remain absent, not gain
+  // a fabricated one as a side effect of this fix.
+  assert.ok(
+    !getGoldContent("46415"),
+    "46415 (genuinely disputed, no corroboration) must not gain a gold-content entry",
+  );
+  assert.ok(
+    !getGoldContent("46496"),
+    "46496 (genuinely disputed, no corroboration) must not gain a gold-content entry",
+  );
+
+  console.log(
+    "PASS innocence: 46415/46496 (disputed predecessors) still absent from gold-content",
+  );
+}
+
 guilt68112();
 guilt49213();
 innocenceCase();
+guiltCorroboratedPredecessor("49296", "49424");
+guiltCorroboratedPredecessor("64210", "64200");
+innocenceCorroboratedPredecessor();
 console.log("\nAll kbli-gold-content.ts collision-code honesty checks passed.");

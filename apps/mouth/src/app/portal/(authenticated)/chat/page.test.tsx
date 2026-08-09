@@ -22,7 +22,7 @@ import {
   afterEach,
   afterAll,
 } from "vitest";
-import { render, act, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -114,6 +114,36 @@ afterAll(() => {
 });
 
 describe("ChatPage – infinite-fetch regression", () => {
+  it("distinguishes an initial load failure from a truthful empty inbox and recovers", async () => {
+    mockGetMessages
+      .mockRejectedValueOnce(new Error("synthetic offline"))
+      .mockResolvedValueOnce(UNREAD_RESPONSE);
+
+    await act(async () => {
+      render(<ChatPage />);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Unable to load messages" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No messages yet")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Your messages are still safe. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Hello from team")).toBeInTheDocument();
+    expect(mockGetMessages).toHaveBeenCalledTimes(2);
+  });
+
   it("calls getMessages ONCE on initial load when there are no unread messages", async () => {
     mockGetMessages.mockResolvedValue(EMPTY_RESPONSE);
 

@@ -18,6 +18,7 @@ import { MatterCard } from "@balizero/core";
 import { usePortalMatters } from "@/hooks";
 import { PortalListSkeleton } from "@/components/portal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
 // Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
@@ -43,7 +44,7 @@ function MattersMasthead() {
 }
 
 export default function PortalMattersPage() {
-  const { data, isLoading, isError, error } = usePortalMatters();
+  const { data, isLoading, isError, refetch } = usePortalMatters();
 
   if (isLoading) {
     return (
@@ -62,11 +63,13 @@ export default function PortalMattersPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Unable to load matters</AlertTitle>
           <AlertDescription>
-            {error instanceof Error
-              ? error.message
-              : "An unexpected error occurred."}
+            We could not verify your matters. Check your connection and try
+            again.
           </AlertDescription>
         </Alert>
+        <Button onClick={() => void refetch()} variant="outline">
+          Retry
+        </Button>
       </div>
     );
   }
@@ -100,6 +103,7 @@ export default function PortalMattersPage() {
               action={
                 <Link
                   href={`/portal/matters/${m.id}`}
+                  prefetch={false}
                   className="text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper-text,var(--tx-secondary))] hover:text-[var(--tx-pure)] transition-colors"
                 >
                   Open →

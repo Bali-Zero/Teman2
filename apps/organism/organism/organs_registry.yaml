@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d4b9a4e76fea35aed57a14f8062f825594f0a9b50272a4d4af4eb3647ce67512
+checksum: 5742f25d24112e95461883bc6b1547b18c51f598453e8723e24c87128b65a98c
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -161,6 +161,23 @@ organs:
     path: ~/.organism/last_seen/auth-sentinel.json
     timestamp_field: ts
     status_field: status
+- id: pro.claude_settings_watcher
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2592000
+  owner_module: scripts/claude-settings-change-alert.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.claude-settings-watcher
+  severity_on_silence: info
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/claude-settings-watcher.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.modus_autoloop_nightly
   runtime: pro_launchd
   type: cron
@@ -193,6 +210,22 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.web_lead_funnel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: scripts/web_lead_funnel_report_run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.web-lead-funnel
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.web_lead_funnel.json
     timestamp_field: ts
     status_field: status
 - id: pro.cpu_monitor
@@ -404,12 +437,20 @@ organs:
   runtime: pro_launchd
   type: cron
   expected_hb_seconds: 5400
-  owner_module: scripts/translate-articles.py
+  owner_module: scripts/translate-articles-cron-wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
   recovery_params:
+    host: pro
     label: com.balizero.translate.hourly
   severity_on_silence: warning
+  notes: Hourly article translator, runs translate-articles.py inside an isolated
+    worktree (scripts/agent_start.py, lane=mouth) via scripts/translate-articles-cron-wrapper.sh
+    so the main checkout is never written to directly (mouth main-dirt structural
+    fix, 2026-08-07) — output is promoted via an auto-merge PR only when something
+    actually changed, most runs are no-ops. The heartbeat carries the real verdict
+    (ok / degraded = PR opened but auto-merge did not arm / error = worktree creation,
+    push, or PR creation failed), never "reached the end". Kill switch TRANSLATE_HOURLY_ENABLED=false.
   cicatrix_refs: []
   bridge_source:
     type: state_file
@@ -1303,6 +1344,32 @@ organs:
     label: com.balizero.wr2.reflexion.weekly
   severity_on_silence: info
   cicatrix_refs: []
+- id: wr2.ig_metrics_analyst_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh
+  dependencies:
+  - wr2.reflexion_weekly
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.ig-metrics-analyst.weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: wr2.external_bench_monthly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2764800
+  owner_module: infra/launchagents/wrappers/wr2-external-bench-run.sh
+  dependencies:
+  - wr2.ig_metrics_analyst_weekly
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.external-bench.monthly
+  severity_on_silence: info
+  cicatrix_refs: []
 - id: wr2.supervisor_watchdog
   runtime: pro_launchd
   type: cron
@@ -2161,5 +2228,32 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.nb_curator_daily.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.zoho_mail_loop
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/zoho-mail-loop.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.zoho-mail-loop.daily
+  severity_on_silence: warning
+  notes: Zoho inbox routing + reply drafting + Sent-diff learning, 07:30 WITA on Pro.
+    Never sends. The heartbeat carries the real verdict (ok / degraded = a folder
+    is missing or nothing was drafted while there was mail to answer / error = could
+    not run at all), never "reached the end". Kill switch MAIL_LOOP_ENABLED=false;
+    MAIL_LOOP_DRY_RUN=1 makes the run mutate nothing. Ships NOT loaded — the stored
+    Zoho grant covers messages but not folders, so the loop can read the mailbox and
+    cannot list the folders it routes into; it exits 2 naming INVALID_OAUTHSCOPE until
+    someone re-consents. Loading it before that buys a p0 every morning. Client credentials
+    were the previous blocker and are resolved. See docs/runbooks/zoho-mail-loop.md
+    §8.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.zoho_mail_loop.json
     timestamp_field: ts
     status_field: status

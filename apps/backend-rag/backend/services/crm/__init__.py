@@ -29,11 +29,7 @@ from .assignment import (
 )
 
 # ── automation ───────────────────────────────────────────────────────────────
-from .automation import (
-    CompletedProcessService,
-    ProcessAutomationService,
-    WaitingDocumentsService,
-)
+from .automation import ProcessAutomationService
 from .cache_query import (
     CRMCache,
     CRMQueryOptimizer,
@@ -69,7 +65,6 @@ from .collaborator_service import CollaboratorProfile, CollaboratorService
 from .documents import (
     CATEGORIZATION_RULES,
     CATEGORY_TO_FOLDER,
-    DocumentUploadService,
     auto_categorize_document,
     auto_categorize_documents_batch,
     get_categorization_stats,
@@ -121,9 +116,6 @@ __all__ = [
     # standalone
     "CollaboratorProfile",
     "CollaboratorService",
-    # automation
-    "CompletedProcessService",
-    "DocumentUploadService",
     "EnhancedCRMService",
     "InteractionValidator",
     "LeadAssignmentState",
@@ -131,7 +123,6 @@ __all__ = [
     "ProcessAutomationService",
     "QueryCache",
     "StalePracticeNotifier",
-    "WaitingDocumentsService",
     "auto_categorize_document",
     "auto_categorize_documents_batch",
     "cache_crm_result",

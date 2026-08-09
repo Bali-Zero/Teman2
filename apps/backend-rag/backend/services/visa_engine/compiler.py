@@ -239,6 +239,7 @@ def compile_rule_pack(
     _check_product_reference_integrity(payload, errors)
     _check_source_reference_integrity(payload, errors)
     _check_support_purposes_on_product(payload, errors)
+    _check_extension_policy_status(payload, errors)
     _check_unique_ids(payload, errors)
     _check_utc_and_nfc(payload, errors)
     _check_pack_size_limits(payload, errors)
@@ -248,6 +249,28 @@ def compile_rule_pack(
         sequence=payload.sequence,
         errors=tuple(errors),
     )
+
+
+def _check_extension_policy_status(
+    payload: RulePackPayload,
+    errors: list[CompilationError],
+) -> None:
+    """Sequence 2+ must never inherit the ambiguous sequence-1 shape."""
+
+    if payload.sequence < 2:
+        return
+    for product in payload.products:
+        if product.extension_policy.status is None:
+            errors.append(
+                CompilationError(
+                    code="EXTENSION_POLICY_STATUS_REQUIRED",
+                    message=(
+                        "sequence >=2 products must declare extension_policy.status "
+                        "as VERIFIED or UNKNOWN"
+                    ),
+                    product_code=product.product_code,
+                )
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -1304,6 +1327,20 @@ class CompiledRulePack:
     rules: tuple[CompiledRule, ...]
     source_pack: RulePack
 
+    def active_rules(self, *, effective_at: datetime) -> tuple[CompiledRule, ...]:
+        """All compiled rules in force at the effective legal clock.
+
+        Centralizing the half-open validity test keeps cross-cutting safety
+        gates aligned with product evaluation and prevents a future/expired
+        rule from affecting an otherwise current decision.
+        """
+
+        return tuple(
+            rule
+            for rule in self.rules
+            if _valid_period_contains(rule.source_rule.valid_period, effective_at)
+        )
+
     def rules_for(
         self, product: CompiledProduct, *, effective_at: datetime
     ) -> tuple[CompiledRule, ...]:
@@ -1324,7 +1361,7 @@ class CompiledRulePack:
 
         selected = [
             rule
-            for rule in self.rules
+            for rule in self.active_rules(effective_at=effective_at)
             if (
                 rule.scope is RuleScope.GLOBAL
                 or (
@@ -1332,7 +1369,6 @@ class CompiledRulePack:
                     and product.product_version_id in rule.product_version_ids
                 )
             )
-            and _valid_period_contains(rule.source_rule.valid_period, effective_at)
         ]
         return tuple(
             sorted(selected, key=lambda rule: (rule.stage.order, rule.priority, rule.rule_id))

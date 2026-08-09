@@ -23,6 +23,32 @@ from backend.app.core.constants import HttpTimeoutConstants
 logger = logging.getLogger(__name__)
 
 
+# One user can own SEVERAL rows in `zoho_email_tokens`: reconnecting through
+# /admin/zoho/auth inserts a row rather than replacing one, and the live table
+# carries duplicate pairs for a single mailbox. Every read below used to be a
+# bare `WHERE user_id = $1` with no ORDER BY, so which row answered was
+# undefined — and worse, two reads could answer from two DIFFERENT rows,
+# pairing one row's account id with another row's access token.
+#
+# Not hypothetical: user 7dfe56b2 owns two rows for the same mailbox, and the
+# unusable one answered. Its `account_id` holds an e-mail address instead of the
+# numeric Zoho accountId, and its `api_domain` points at zohoapis.com instead of
+# the Mail API host, so every request built from it 404s with
+# URL_RULE_NOT_CONFIGURED — a failure that looks nothing like "you picked the
+# wrong row".
+#
+# Zoho only accepts a numeric accountId in the URL path, so a well-formed row
+# wins over a malformed one; recency breaks the next tie; `id` makes the order
+# total, so the SAME row answers every read. COALESCE keeps a NULL account_id
+# from sorting first (in Postgres, DESC means NULLS FIRST by default), which
+# would have re-created the bug with a different unusable row.
+_TOKEN_ROW_ORDER = (
+    "ORDER BY (COALESCE(account_id, '') ~ '^[0-9]+$') DESC, "
+    "updated_at DESC NULLS LAST, id DESC "
+    "LIMIT 1"
+)
+
+
 class ZohoOAuthService:
     """
     Manages Zoho OAuth 2.0 authentication flow and token lifecycle.
@@ -36,6 +62,13 @@ class ZohoOAuthService:
         "ZohoMail.messages.UPDATE",
         "ZohoMail.messages.DELETE",
         "ZohoMail.folders.READ",
+        # Provisioning the mail loop's routing folders (_Visa, _Tax, ...) needs
+        # more than READ: with READ alone `POST /folders` answers 401
+        # INVALID_OAUTHSCOPE while listing the very same folders succeeds —
+        # measured, not inferred. CREATE and not ALL on purpose: nothing in this
+        # system has any business deleting a folder, and a grant is the wrong
+        # place to be generous.
+        "ZohoMail.folders.CREATE",
         "ZohoMail.attachments.READ",
         "ZohoMail.attachments.CREATE",
     ]
@@ -305,10 +338,11 @@ class ZohoOAuthService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                """
+                f"""
                 SELECT access_token, refresh_token, token_expires_at, account_id
                 FROM zoho_email_tokens
                 WHERE user_id = $1
+                {_TOKEN_ROW_ORDER}
                 """,
                 user_id,
             )
@@ -350,7 +384,9 @@ class ZohoOAuthService:
             ValueError: If refresh fails
         """
         if not refresh_token:
-            raise ValueError("No refresh token available - reconnect required")
+            raise ValueError(
+                "No refresh token stored — reconnect required at /admin/zoho/auth"
+            )
 
         client = self._get_client()
         response = await client.post(
@@ -364,14 +400,46 @@ class ZohoOAuthService:
         )
 
         if response.status_code != 200:
+            # A transport-level failure, NOT a statement about this user's grant.
+            # 429, 502, 503 and a proxy hiccup all land here, and they are all
+            # retryable. Saying "reconnect required" for them sends whoever reads
+            # it to re-run the OAuth consent — which is the very act that created
+            # the duplicate rows this file now has to order around. The wording is
+            # load-bearing: `mail_loop.cli` decides between "retry tomorrow" and
+            # "only a human can fix this" by looking for the consent endpoint in
+            # the message, so a retryable fault must not name it.
             error_data = response.json() if response.content else {}
             logger.error(f"Token refresh failed: {response.status_code} - {error_data}")
-            raise ValueError("Failed to refresh token - reconnect required")
+            raise ValueError(
+                f"Token refresh temporarily unavailable (HTTP {response.status_code}) — "
+                "retryable, not a consent problem"
+            )
 
         token_data = response.json()
 
         if "error" in token_data:
+            # Zoho answers HTTP 200 with the error in the BODY, so the status code
+            # above proves nothing. Read the reply.
+            zoho_error = str(token_data.get("error") or "")
             logger.error("Token refresh error: %s", token_data)
+
+            # `invalid_client` is a statement about the CALLER — our client id and
+            # secret are wrong or missing on this host. It says nothing whatsoever
+            # about the user's token, so recording it as a dead user token
+            # invalidates a working grant for every OTHER consumer, including a
+            # host that is correctly configured.
+            #
+            # Measured, not reasoned: on 2026-08-04 three production rows for
+            # zero@balizero.com were stamped dead in a few minutes by a machine
+            # that merely lacked ZOHO_CLIENT_ID. They had to be restored by hand.
+            # A caller-side fault must never be written onto the user's row.
+            if zoho_error == "invalid_client":
+                raise ValueError(
+                    "Zoho rejected OUR client credentials (invalid_client): "
+                    "ZOHO_CLIENT_ID/ZOHO_CLIENT_SECRET are wrong or missing on "
+                    "this host. The stored token was left untouched."
+                )
+
             # Invalidate stored token so we stop retrying on every request
             async with self.db_pool.acquire() as conn:
                 await conn.execute(
@@ -384,7 +452,10 @@ class ZohoOAuthService:
                     user_id,
                     account_id,
                 )
-            raise ValueError(f"Refresh error: {token_data.get('error')} — reconnect required")
+            raise ValueError(
+                f"Zoho refused the refresh ({zoho_error}) — "
+                "reconnect required at /admin/zoho/auth"
+            )
 
         # Update stored token
         expires_at = datetime.now(timezone.utc) + timedelta(
@@ -422,7 +493,8 @@ class ZohoOAuthService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT account_id FROM zoho_email_tokens WHERE user_id = $1",
+                f"SELECT account_id FROM zoho_email_tokens WHERE user_id = $1 "
+                f"{_TOKEN_ROW_ORDER}",
                 user_id,
             )
 
@@ -443,10 +515,11 @@ class ZohoOAuthService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                """
+                f"""
                 SELECT account_id, email_address, token_expires_at, api_domain
                 FROM zoho_email_tokens
                 WHERE user_id = $1
+                {_TOKEN_ROW_ORDER}
                 """,
                 user_id,
             )
@@ -480,14 +553,21 @@ class ZohoOAuthService:
             True if disconnected successfully
         """
         async with self.db_pool.acquire() as conn:
-            # Get refresh token to revoke
-            row = await conn.fetchrow(
-                "SELECT refresh_token FROM zoho_email_tokens WHERE user_id = $1",
+            # EVERY refresh token, not the first one an unordered query happened
+            # to return: the DELETE below is already unconditional across all of
+            # the user's rows, so revoking one of N left the other N-1 grants
+            # live at Zoho AND unrevocable, because the only copy of each token
+            # had just been deleted. Disconnect has to mean disconnected.
+            rows = await conn.fetch(
+                "SELECT refresh_token FROM zoho_email_tokens "
+                "WHERE user_id = $1 AND refresh_token IS NOT NULL",
                 user_id,
             )
 
-            if row and row["refresh_token"]:
-                # Attempt to revoke token (optional, may fail)
+            for row in rows:
+                # Best-effort, as before: a revoke that fails must not stop the
+                # local disconnect, or a Zoho outage would pin the user to an
+                # account they asked to leave.
                 try:
                     client = self._get_client()
                     await client.post(

@@ -16,12 +16,17 @@ from typing import Any
 logger = logging.getLogger("cell.sensors.cron")
 
 _STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
-_CRON_AGENT_DIR = os.path.expanduser("~/.cron-agent")
 _CRON_AGENT_PYTHON_DIR = os.path.expanduser("~/.cron-agent-python")
 
 _JOB_STATE_ALIASES: dict[str, list[str]] = {
+    # nlm_deep_research (the ~/.cron-agent/nlm-deep-research.state.json cron)
+    # was deliberately DISABLED 2026-08-07 as a duplicate of run_nb2_pipeline
+    # (cure #3726). Its old state file is now frozen forever, which made this
+    # alias a permanent false-red. Repoint it to the receipt the surviving
+    # job actually writes, so freshness tracks the live duplicate instead of
+    # the retired one.
     "nlm_deep_research": [
-        os.path.join(_CRON_AGENT_DIR, "nlm-deep-research.state.json"),
+        os.path.join(_STATE_DIR, "run_nb2_pipeline.last.json"),
     ],
     "system_doctor": [
         os.path.join(_CRON_AGENT_PYTHON_DIR, "system-doctor.state.json"),
@@ -55,6 +60,14 @@ _JOB_PERIODS: dict[str, float] = {
     # 02:00), not daily. Period 168h. Yellow at 1.5×=252h, red at 3×=504h.
     "knowledge_graph_builder": 168.0,
     "metabolic_rollup":        24.0,   # daily 23:30
+    "visa_oracle_retention":    0.25,   # every 15 minutes
+}
+
+# Jobs with an explicit operational SLA instead of the generic 1.5x/3x
+# freshness multipliers. Visa Oracle's approved warning/critical thresholds
+# are 30/60 minutes even though its worker cadence is 15 minutes.
+_JOB_THRESHOLDS: dict[str, tuple[float, float]] = {
+    "visa_oracle_retention": (0.5, 1.0),
 }
 
 
@@ -99,9 +112,11 @@ class CronSensor:
         self,
         state_dir: str = _STATE_DIR,
         job_periods: dict[str, float] | None = None,
+        job_thresholds: dict[str, tuple[float, float]] | None = None,
     ) -> None:
         self._dir = state_dir
         self._periods = job_periods or _JOB_PERIODS
+        self._thresholds = _JOB_THRESHOLDS if job_thresholds is None else job_thresholds
 
     def read(self) -> CronReading:
         now = datetime.now(timezone.utc)
@@ -134,12 +149,21 @@ class CronSensor:
             age_hours = (now.timestamp() - float(ts)) / 3600.0
             last_run_iso = datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat()
 
+            warning_hours, critical_hours = self._thresholds.get(
+                job_name,
+                (period_hours * 1.5, period_hours * 3.0),
+            )
+            if not 0 < warning_hours <= critical_hours:
+                logger.error("CronSensor: invalid thresholds for %s", job_name)
+                jobs.append(CronJobStatus(name=job_name, status="unknown"))
+                continue
+
             if not job_ok:
                 # Job ran but reported failure
-                cron_status = "yellow" if age_hours <= period_hours * 3.0 else "red"
-            elif age_hours <= period_hours * 1.5:
+                cron_status = "yellow" if age_hours <= critical_hours else "red"
+            elif age_hours <= warning_hours:
                 cron_status = "green"
-            elif age_hours <= period_hours * 3.0:
+            elif age_hours <= critical_hours:
                 cron_status = "yellow"
             else:
                 cron_status = "red"

@@ -9,9 +9,13 @@ import {
   isProposalOnly,
   narratesUnverifiedRoute,
   baliBlockedHint,
+  isNationalClosure,
+  nationalClosureBasis,
 } from "./kbli-bali-block";
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 import goldData from "../../data/kbli-gold-all.json";
+import { buildKbliFaq } from "./kbli-faq";
+import type { KBLICode } from "./kbli-types";
 
 interface RawL4 {
   blocked?: boolean;
@@ -31,6 +35,42 @@ const BLOCKED = RECORDS.filter((r) => r.l4_bali?.blocked === true);
 const GOLD = goldData as unknown as Record<string, { whatYouNeed?: string }>;
 
 const MORATORIUM_SENTENCE = "under the 13 May 2026 moratorium";
+
+// The FAQ reads a transformed `KBLICode`, and `transformCode` is module-private
+// in the loader. Rather than export internals for a test, this builds the exact
+// subset `buildKbliFaq` touches — and takes every load-bearing value FROM THE
+// LIVE RECORD, so the fixture cannot drift into fiction while the catalogue moves
+// underneath it. The fields the PMA answer does not read are inert placeholders.
+function toKbliCodeForFaq(r: RawRecord): KBLICode {
+  return {
+    code: r.kode_kbli_2025,
+    titleId: "(judul)",
+    titleEn: "(title)",
+    titleEnIsReal: false,
+    section: "A",
+    licensing: [],
+    transition: { mappingStatus: null, mappingNote: null, previousCodes: [] },
+    pma: {
+      status:
+        r.pma_status === "TERBUKA"
+          ? "open"
+          : r.pma_status === "TERBATAS"
+            ? "restricted"
+            : "closed",
+      maxForeign: r.pma_max_asing ?? null,
+      capVerified: false,
+      capSpecial: r.pma_cap_special ?? false,
+      condition: null,
+    },
+    baliL4: r.l4_bali?.status
+      ? {
+          status: r.l4_bali.status,
+          reason: r.l4_bali.reason ?? null,
+          blocked: r.l4_bali.blocked ?? false,
+        }
+      : null,
+  } as unknown as KBLICode;
+}
 
 describe("baliBlockClause — the cause is derived, never defaulted", () => {
   it("GUILT: a non-moratorium block never claims the moratorium", () => {
@@ -212,11 +252,38 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
     expect(narratesUnverifiedRoute(0, undefined)).toBe(false);
   });
 
-  it("pins the live population: 8 of the 44 zero-row gold pages", () => {
+  it("pins the live population: 0 of the 44 zero-row gold pages", () => {
     // (see the PMA-verdict-banner block below for the second render site)
-    // Measured on the canonical + gold of 2026-07-27. Pinned so that widening
-    // or narrowing the frame is a visible, deliberate change rather than a
-    // silent one — the same discipline as the untraceable-PMA pin.
+    // Measured on the canonical + gold of 2026-07-27, re-measured 2026-08-05.
+    // Pinned so that widening or narrowing the frame is a visible, deliberate
+    // change rather than a silent one — the same discipline as the
+    // untraceable-PMA pin.
+    //
+    // 8 -> 1 on 2026-08-05, and the pin earned its keep by making that visible.
+    // `cure_prose_unverifiable_tier.py` removed the narrated route from seven of
+    // the eight (72101, 75001, 75002, 75009, 86109, 86203, 91222): each is in
+    // that cure's spec, each carried gold prose walking a client through a
+    // licensing path the same page declared unverifiable.
+    //
+    // 1 -> 0 on 2026-08-05, same day, by the second lane. The note this replaces
+    // said 86202 survived "ON PURPOSE", belonging to the separate family where a
+    // NATIONAL closure is recorded in the Bali field while `pma_status` stays
+    // TERBUKA at 100% (the family of 64110, Bank Sentral) — and that curing it
+    // "means deciding what the national ceiling should say, which is not this
+    // cure's business." `cure_national_ceiling_framing.py` is that business:
+    // 86202's gold walkthrough no longer offers a PT-PMA/NIB route beneath a
+    // sentence saying solo practice is closed to foreign nationals.
+    //
+    // AN EMPTY LIVE SET IS NOT A VACUOUS ASSERTION HERE, and that is worth
+    // stating because normally it would be: a filter that always returned []
+    // would satisfy this line. Two things keep it honest. `zeroRow.length` is
+    // still asserted at 44, so the denominator is computed from the real
+    // canonical + gold and a broken data path fails loudly. And guilt for
+    // `narratesUnverifiedRoute` itself is carried by the synthetic cases above
+    // ("a zero-row page that still walks a client through a licensing path" and
+    // the authority/tier pair), which fail if the detector stops detecting.
+    // If a future record re-enters this set, this line goes red — which is the
+    // whole point of pinning a population rather than a count.
     const goldMap = GOLD as Record<
       string,
       { whatYouNeed?: string } | undefined
@@ -230,16 +297,7 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
       narratesUnverifiedRoute(0, goldMap[r.kode_kbli_2025]?.whatYouNeed),
     );
     expect(zeroRow.length).toBe(44);
-    expect(framed.map((r) => r.kode_kbli_2025).sort()).toEqual([
-      "72101",
-      "75001",
-      "75002",
-      "75009",
-      "86109",
-      "86202",
-      "86203",
-      "91222",
-    ]);
+    expect(framed.map((r) => r.kode_kbli_2025).sort()).toEqual([]);
   });
 });
 
@@ -296,10 +354,44 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // they are all still Bali-blocked, so this is a re-attribution, not an
     // opening. If a future change moves `notice` too, that is a different
     // event and this test should fail rather than absorb it.
-    expect(notice.length).toBe(455);
-    expect(msme.length).toBe(7);
-    // 448 pages carry the notice for a cause other than an MSME reservation.
-    expect(notice.length - msme.length).toBe(448);
+    //
+    // 455 -> 451 and 7 -> 6 on 2026-08-06, and this is the "different event"
+    // the paragraph above demanded be argued rather than absorbed. The Lampiran
+    // II re-adjudication reserved nine codes at 0% foreign; FOUR of them
+    // (10214, 95220, 95291, 95299) are also Bali-blocked, so by the same rule
+    // that removed 16221 they now leave a notice whose whole job is to explain
+    // a BALI-specific cause — theirs is national.
+    //
+    // The msme drop is the one worth reading: 95291 carried
+    // CHIUSO_PMA_NO_BESAR, i.e. the Bali layer already said "reserved for
+    // Koperasi/UMKM" while the national layer published it 100% open. That
+    // contradiction is what the cure closed. The code did not become freer; the
+    // two layers stopped disagreeing, and the national one now carries it.
+    // 451 -> 448 and 6 -> 3 on 2026-08-06 (second movement the same day), and
+    // it is the same event argued once more rather than absorbed. The
+    // SPLIT-HEIR cure reserved four more codes at 0%; THREE of them — 96210
+    // barbering, 96220 beauty care, 96100 laundry — are Bali-blocked, so by the
+    // rule that removed 16221 and the previous four, they leave a notice whose
+    // job is to explain a BALI-specific cause. Theirs is national.
+    //
+    // The fourth cured code, 55105 (one-star hotel), is absent from every count
+    // in this file and that is correct, not an oversight: its l4_bali.blocked
+    // is false, so it was never in `blocked` to begin with. Four codes cured,
+    // three departures — twice over, since the Pasal 7(1) queue moved by three
+    // for its own unrelated reason.
+    //
+    // Read the two drops TOGETHER, because that is where the meaning is: all
+    // three left `notice` AND all three left `msme`, so the difference below is
+    // UNCHANGED at 445. That is the signature of the Bali layer and the
+    // national layer ceasing to disagree — each of the three carried
+    // CHIUSO_PMA_NO_BESAR, i.e. Bali already said "reserved for Koperasi/UMKM"
+    // while the national fields published 100% open. Nothing became freer. Had
+    // 445 moved, codes would have left the notice for some cause other than
+    // gaining a national one, and that would be a different event again.
+    expect(notice.length).toBe(448);
+    expect(msme.length).toBe(3);
+    // 445 pages carry the notice for a cause other than an MSME reservation.
+    expect(notice.length - msme.length).toBe(445);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -316,7 +408,18 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     const blocked = RECORDS.filter((r) => r.l4_bali?.blocked === true);
     const excluded = blocked.filter(nationallyClosed);
     expect(excluded.map((r) => r.kode_kbli_2025)).toContain("16221");
-    expect(blocked.length - excluded.length).toBe(455);
+    // …and the four the Lampiran II cure sent the same way, for the same
+    // reason: a 0% national cap outranks a Bali-scoped explanation.
+    for (const code of ["10214", "95220", "95291", "95299"]) {
+      expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
+    }
+    // …and the three the SPLIT-HEIR cure sent the same way on 2026-08-06. Named
+    // rather than counted, for the same reason as the four above: a population
+    // that only has a size cannot be checked by the pass that closes it.
+    for (const code of ["96210", "96220", "96100"]) {
+      expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
+    }
+    expect(blocked.length - excluded.length).toBe(448);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -394,12 +497,28 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // no-Usaha-Besar-row inference was withdrawn and each of the 39 codes was
     // adjudicated against the annex. This site reaches the SAME seven, by a
     // different predicate — which is what makes it worth pinning separately.
-    expect(answers.length).toBe(454);
-    expect(msme.length).toBe(7);
-    // 447 answers carry the block for a cause other than an MSME reservation —
+    //
+    // 454 -> 450 and 7 -> 6 on 2026-08-06: the SAME four codes as the banner
+    // (10214, 95220, 95291, 95299), and again by the other predicate — there
+    // they left because their cap became 0, here because their status became
+    // TERBATAS. The two guards agreeing on all four is once more a property of
+    // this particular cure, which writes both fields in one go, and not
+    // evidence that the populations have merged. The subset test below still
+    // proves they have not.
+    // 450 -> 447 and 6 -> 3 on 2026-08-06: the SAME three codes as the banner
+    // (96210, 96220, 96100) reaching this site by the OTHER predicate — there
+    // they left because their cap became 0, here because their status became
+    // TERBATAS. As with the previous cure, the two guards agreeing on all three
+    // is a property of a cure that writes both fields in one go, not evidence
+    // that the two populations have merged; the subset test below still proves
+    // they have not. And again the difference is UNCHANGED at 444, because the
+    // three left both sets together.
+    expect(answers.length).toBe(447);
+    expect(msme.length).toBe(3);
+    // 444 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
     // site.
-    expect(answers.length - msme.length).toBe(447);
+    expect(answers.length - msme.length).toBe(444);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
@@ -563,5 +682,217 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     // sentence might gain later, which is how a pin stops pinning.
     expect(hint).toContain("420 of them");
     expect(hint).toContain("the other 98");
+  });
+});
+
+// =============================================================================
+// isNationalClosure — a national bar recorded in the Bali-scoped field
+// =============================================================================
+
+describe("isNationalClosure — the banner and the FAQ must not send a client to Jakarta", () => {
+  // The two statuses whose recorded reason is national on EVERY member, read one
+  // by one off the live catalogue: a sectoral regulator / State monopoly, and a
+  // Perpres 49/2021 Lampiran II allocation to Koperasi/UMKM.
+  const NATIONAL = ["CHIUSO_REGOLATORE_SETTORIALE", "CHIUSO_PMA_NO_BESAR"];
+  // Everything else `l4_bali` can carry while blocked. These are Bali-scoped (or
+  // mixed, in TERTUTUP's case) and must keep the Bali framing.
+  const BALI_SCOPED = [
+    "BLOCCATO_CLASSE_RISCHIO",
+    "CHIUSO_MORATORIA_BALI",
+    "CHIUSO_BALI",
+    "CHIUSO_BALI_PROPOSTO",
+    "TERTUTUP",
+  ];
+
+  it("GUILT: every live record carrying a national status is recognised", () => {
+    const national = RECORDS.filter((r) =>
+      NATIONAL.includes(r.l4_bali?.status ?? ""),
+    );
+    // Premise first: an empty set would make every assertion below vacuous.
+    expect(national.length).toBeGreaterThan(0);
+    for (const r of national) {
+      expect(isNationalClosure(r.l4_bali?.status)).toBe(true);
+    }
+    // The shape that fooled the old derivation was: a national cause recorded
+    // in the Bali field while the NATIONAL signals still read wide open. That
+    // used to be all nine. On 2026-08-06 the Lampiran II re-adjudication fixed
+    // exactly one of them at the source — 95291 now reads TERBATAS/0 — so the
+    // property is no longer universal, and asserting it as universal would make
+    // this test fail every time the catalogue gets MORE honest.
+    //
+    // What is pinned instead is the size of the remaining contradiction. It may
+    // only shrink: a new member means a code gained a national cause in the
+    // Bali field while still publishing 100%, which is the bug this file is
+    // about.
+    //
+    // 8 -> 5 on 2026-08-06: the split-heir cure fixed three more at the source
+    // (96210, 96220, 96100), each of which had carried CHIUSO_PMA_NO_BESAR
+    // while publishing 100%.
+    //
+    // The five that remain are NAMED below and not merely counted, because a
+    // population with only a size cannot be closed by the pass that comes for
+    // it — and these five are not one population at all:
+    //
+    //   64110 (Bank Indonesia) and 38122 (radioactive-waste collection) are
+    //     CHIUSO_REGOLATORE_SETTORIALE — shut by their own sector's regulator,
+    //     nothing to do with Lampiran II. They need their own adjudication and
+    //     have never had one. Writing them down here is the point: they have
+    //     been sitting inside an aggregate labelled "the remaining
+    //     contradiction" and would have left it only by accident.
+    //
+    //   55201 (homestay), 55203 (villa) and 79903 (tour guide) are the vintage
+    //     carries, adjudicated 2026-08-06 across two model families. 55203 is
+    //     due to be cured (three seats, two families, all SAME); 55201 and
+    //     79903 stay open on purpose — a cross-family seat withheld on 55201
+    //     because settling it needs the KBLI-2020 text for "Pondok Wisata",
+    //     which we do not hold, and 79903's own 2025 description adds
+    //     coordinating freelance guides for travel agencies, which the annex
+    //     row "Jasa pramuwisata" does not name.
+    const stillContradictory = national.filter(
+      (r) => r.pma_status === "TERBUKA" && r.pma_max_asing === 100,
+    );
+    expect(stillContradictory.length).toBe(5);
+    expect(stillContradictory.map((r) => r.kode_kbli_2025).sort()).toEqual([
+      "38122",
+      "55201",
+      "55203",
+      "64110",
+      "79903",
+    ]);
+    expect(national.map((r) => r.kode_kbli_2025)).toContain("95291");
+    expect(stillContradictory.map((r) => r.kode_kbli_2025)).not.toContain(
+      "95291",
+    );
+  });
+
+  it("INNOCENCE: no Bali-scoped block is turned into a national one", () => {
+    const baliScoped = BLOCKED.filter(
+      (r) =>
+        BALI_SCOPED.includes(r.l4_bali?.status ?? "") &&
+        // The 8 per-code adjudications ARE national and are supposed to be
+        // caught; excluding them keeps this test about the STATUS rule instead
+        // of quietly re-testing the code list.
+        nationalClosureBasis(r.kode_kbli_2025) === null,
+    );
+    // This is the set that would silently lose its Bali framing if the rule were
+    // widened by "closed-sounding status" instead of by named entity.
+    expect(baliScoped.length).toBeGreaterThan(100);
+    const misclassified = baliScoped.filter((r) =>
+      isNationalClosure(r.l4_bali?.status, r.kode_kbli_2025),
+    );
+    expect(misclassified.map((r) => r.kode_kbli_2025)).toEqual([]);
+  });
+
+  it("GUILT: the 8 per-code TERTUTUP adjudications each name their instrument", () => {
+    // A code list is data wearing code's clothes, so it earns its keep only if
+    // every entry stays auditable: the code must still be TERTUTUP on the live
+    // catalogue (otherwise the adjudication is stale and nobody would know) and
+    // must carry a stated basis. Read one by one — UU 18/2003 for advocates, UU
+    // 30/2004 for notaries, Kemenkes health law for solo practice, the WNI
+    // retail reservation, and the two national TERTUTUP/0% entries.
+    const adjudicated = [
+      "01287",
+      "47111",
+      "47112",
+      "59131",
+      "69102",
+      "69104",
+      "86201",
+      "86202",
+    ];
+    for (const code of adjudicated) {
+      const record = RECORDS.find((r) => r.kode_kbli_2025 === code);
+      expect(record, `${code} left the catalogue`).toBeDefined();
+      expect(record!.l4_bali?.status, `${code} is no longer TERTUTUP`).toBe(
+        "TERTUTUP",
+      );
+      expect(nationalClosureBasis(code)).toBeTruthy();
+      expect(isNationalClosure(record!.l4_bali?.status, code)).toBe(true);
+    }
+  });
+
+  it("DECLARED GAP: the other TERTUTUP records never state a scope at all", () => {
+    // The 68 split into 8 with a national legal basis, 2 that say "in Bali", and
+    // 58 whose reason is "medium-high/high risk -> not blocked by moratorium
+    // (verify per address)" — a sentence answering whether the MORATORIUM TEST
+    // fired, never where the closure applies. The record does not hold the fact,
+    // so no rule over `l4_bali` can invent it; those keep the Bali framing,
+    // which understates rather than misdirects.
+    // If this goes red the reasons gained a scope — read them and adjudicate,
+    // do not just delete the test.
+    const tertutup = RECORDS.filter((r) => r.l4_bali?.status === "TERTUTUP");
+    expect(tertutup.length).toBeGreaterThan(1);
+    const unscoped = tertutup.filter(
+      (r) =>
+        nationalClosureBasis(r.kode_kbli_2025) === null &&
+        /not\s+blocked\s+by\s+moratorium/i.test(r.l4_bali?.reason ?? ""),
+    );
+    expect(unscoped.length).toBeGreaterThan(20);
+    for (const r of unscoped) {
+      expect(isNationalClosure(r.l4_bali?.status, r.kode_kbli_2025)).toBe(
+        false,
+      );
+    }
+    // …and the status ALONE still never nationalises anything.
+    expect(isNationalClosure("TERTUTUP")).toBe(false);
+  });
+
+  it("an unknown or absent status is never treated as national", () => {
+    for (const s of [
+      undefined,
+      null,
+      "",
+      "OK_or_HIGHER_RISK",
+      "SOMETHING_NEW",
+    ]) {
+      expect(isNationalClosure(s)).toBe(false);
+    }
+  });
+});
+
+describe("the FAQ answer for a national closure", () => {
+  it("GUILT: it never tells the reader the activity is open outside Bali", () => {
+    const national = RECORDS.filter((r) =>
+      ["CHIUSO_REGOLATORE_SETTORIALE", "CHIUSO_PMA_NO_BESAR"].includes(
+        r.l4_bali?.status ?? "",
+      ),
+    );
+    expect(national.length).toBeGreaterThan(0);
+    // …plus the per-code adjudications, whose headline case is the notary page
+    // that started this whole lane.
+    const byCode = RECORDS.filter(
+      (r) => nationalClosureBasis(r.kode_kbli_2025) !== null,
+    );
+    expect(byCode.map((r) => r.kode_kbli_2025)).toContain("69104");
+    // Split by BRANCH, because only the `pma.status === "open"` records ever
+    // reached the defective answer. Measured on the live catalogue: of the 8
+    // per-code adjudications, 3 (`01287`, `59131` TERTUTUP/0 and `47111`
+    // TERBATAS/0) were ALREADY answered correctly off `pma_status`, and 5
+    // (`47112`, `69102`, `69104`, `86201`, `86202`) carry TERBUKA/100 — the
+    // absence-from-the-annex default — and are what this rule actually changes.
+    // They stay in the list regardless: the point is to stop depending on a
+    // default fill that can move underneath us.
+    let changed = 0;
+    for (const r of [...national, ...byCode]) {
+      const answer = buildKbliFaq(toKbliCodeForFaq(r))[0].answer.toLowerCase();
+      // No branch, ever, may route the reader to another province.
+      expect(answer, r.kode_kbli_2025).not.toContain("outside bali it is open");
+      expect(answer, r.kode_kbli_2025).not.toContain("nationally yes");
+      if (r.pma_status === "TERBUKA" && (r.pma_max_asing ?? 0) > 0) {
+        expect(answer, r.kode_kbli_2025).toContain("everywhere in indonesia");
+        changed += 1;
+      }
+    }
+    // Premise: if this ever hits 0 the loop above is asserting nothing.
+    expect(changed).toBeGreaterThanOrEqual(5);
+  });
+
+  it("INNOCENCE: a genuine Bali-only block keeps the 'nationally yes' answer", () => {
+    const baliOnly = BLOCKED.filter(
+      (r) => r.l4_bali?.status === "CHIUSO_MORATORIA_BALI",
+    );
+    expect(baliOnly.length).toBeGreaterThan(0);
+    const answer = buildKbliFaq(toKbliCodeForFaq(baliOnly[0]))[0].answer;
+    expect(answer).toContain("Nationally yes");
   });
 });

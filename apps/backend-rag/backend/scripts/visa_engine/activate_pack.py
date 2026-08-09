@@ -13,12 +13,14 @@ every step:
 4. ``repository.insert_rule_pack`` — skipped cleanly (idempotent) when the
    row already exists with the identical ``payload_sha256``; a payload
    mismatch for the same id is a hard error (packs are immutable).
-5. ``repository.activate_rule_pack`` — the SECURITY DEFINER bitemporal
-   writer (migration 251) is the only ledger write path; requires the
-   operator-provisioned ``visa_activation_executor`` role.
+5. Close the pack-writer connection, then use a distinct activation identity
+   to call ``repository.activate_rule_pack`` — the SECURITY DEFINER bitemporal
+   writer is the only ledger write path. Production refuses a combined login.
 
 Usage:
-    PYTHONPATH=. python -m backend.scripts.visa_engine.activate_pack \\
+    VISA_ENGINE_PACK_WRITER_DATABASE_URL=... \\
+    VISA_ENGINE_ACTIVATION_DATABASE_URL=... PYTHONPATH=. \\
+      python -m backend.scripts.visa_engine.activate_pack \\
         backend/services/visa_engine/contracts/packs/rulepack-prod-001.signed.json \\
         --actor operator.zero-2026-07 --reason w2-first-prod-pack --yes
 """
@@ -53,7 +55,21 @@ logger = logging.getLogger("visa_engine.activate_pack")
 #: (migration 253). Validating here keeps the error local and readable.
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
 
-DATABASE_URL_ENV = "DATABASE_URL"
+PACK_WRITER_DATABASE_URL_ENV = "VISA_ENGINE_PACK_WRITER_DATABASE_URL"
+ACTIVATION_DATABASE_URL_ENV = "VISA_ENGINE_ACTIVATION_DATABASE_URL"
+MAX_SIGNED_BUNDLE_BYTES = 2 * 1024 * 1024
+ACTIVATION_FUNCTION = "public.visa_activate_rule_pack(uuid,text,text)"
+ACTIVATION_SET_FUNCTION = "public.visa_replace_activation_set(uuid[],text,text)"
+TABLE_PRIVILEGES = (
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "TRUNCATE",
+    "REFERENCES",
+    "TRIGGER",
+)
+PG17_TABLE_PRIVILEGES = ("MAINTAIN",)
 
 
 def _b64url_nopad_decode(value: str) -> bytes:
@@ -72,6 +88,34 @@ def _validate_token(label: str, value: str) -> str:
         raise SystemExit(
             f"FAIL: --{label} must match {_TOKEN_RE.pattern} (opaque token, no free text): {value!r}"
         )
+    return value
+
+
+def _reject_duplicate_object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise ValueError("duplicate JSON object key rejected")
+        parsed[key] = value
+    return parsed
+
+
+def _reject_non_finite_json_number(_value: str) -> None:
+    raise ValueError("non-finite JSON number rejected")
+
+
+def _load_strict_json(path: Path) -> dict[str, Any]:
+    with path.open("rb") as handle:
+        raw_document = handle.read(MAX_SIGNED_BUNDLE_BYTES + 1)
+    if len(raw_document) > MAX_SIGNED_BUNDLE_BYTES:
+        raise ValueError("signed bundle exceeds the 2 MiB ceremony limit")
+    value = json.loads(
+        raw_document.decode("utf-8"),
+        object_pairs_hook=_reject_duplicate_object_pairs,
+        parse_constant=_reject_non_finite_json_number,
+    )
+    if not isinstance(value, dict):
+        raise ValueError("signed bundle must be a JSON object")
     return value
 
 
@@ -119,9 +163,126 @@ async def _pack_row_payload_hash(db: asyncpg.Pool, pack_id: UUID) -> bytes | Non
     return bytes(row["payload_sha256"]) if row is not None else None
 
 
+async def _database_identity(db: asyncpg.Pool) -> tuple[str, bool]:
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT session_user::text AS session_user, "
+            "COALESCE(bool_or(r.rolsuper), true) AS is_superuser "
+            "FROM pg_roles r "
+            "WHERE r.rolname IN (session_user::text, current_user::text)"
+        )
+    if row is None:
+        raise RuntimeError("database identity unavailable")
+    # Distinct DSNs must resolve to distinct LOGIN principals. Comparing
+    # current_user would let one login masquerade as two identities through
+    # SET ROLE. Capabilities below intentionally remain checked as current_user.
+    return str(row["session_user"]), bool(row["is_superuser"])
+
+
+async def _assert_production_separation(
+    writer_pool: asyncpg.Pool,
+    activation_pool: asyncpg.Pool,
+) -> None:
+    """Prove distinct, non-superuser, least-privilege ceremony identities."""
+
+    writer_identity, writer_superuser = await _database_identity(writer_pool)
+    activation_identity, activation_superuser = await _database_identity(activation_pool)
+    if writer_superuser or activation_superuser:
+        raise RuntimeError("production pack activation refuses superuser sessions")
+    if writer_identity == activation_identity:
+        raise RuntimeError("production pack write and activation require distinct database logins")
+    async with writer_pool.acquire() as conn:
+        writer_table_privileges = await _supported_table_privileges(conn)
+        writer_can_select = await conn.fetchval(
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            "public.visa_rule_packs",
+            "SELECT",
+        )
+        writer_can_insert = await conn.fetchval(
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            "public.visa_rule_packs",
+            "INSERT",
+        )
+        writer_forbidden_pack_access = await _has_any_table_privilege(
+            conn,
+            table="public.visa_rule_packs",
+            privileges=tuple(
+                privilege
+                for privilege in writer_table_privileges
+                if privilege not in {"SELECT", "INSERT"}
+            ),
+        )
+        writer_activation_table_access = await _has_any_table_privilege(
+            conn,
+            table="public.visa_ruleset_activations",
+            privileges=writer_table_privileges,
+        )
+        writer_can_activate = await conn.fetchval(
+            "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+            ACTIVATION_FUNCTION,
+        )
+        writer_can_replace = await conn.fetchval(
+            "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+            ACTIVATION_SET_FUNCTION,
+        )
+    async with activation_pool.acquire() as conn:
+        activation_table_privileges = await _supported_table_privileges(conn)
+        activator_can_activate = await conn.fetchval(
+            "SELECT has_function_privilege(current_user, $1, 'EXECUTE')",
+            ACTIVATION_FUNCTION,
+        )
+        activator_table_access = await _has_any_table_privilege(
+            conn,
+            table="public.visa_rule_packs",
+            privileges=activation_table_privileges,
+        ) or await _has_any_table_privilege(
+            conn,
+            table="public.visa_ruleset_activations",
+            privileges=activation_table_privileges,
+        )
+    if (
+        not writer_can_select
+        or not writer_can_insert
+        or writer_forbidden_pack_access
+        or writer_activation_table_access
+        or writer_can_activate
+        or writer_can_replace
+    ):
+        raise RuntimeError(
+            "pack writer must have only pack SELECT/INSERT and no activation capability"
+        )
+    if not activator_can_activate or activator_table_access:
+        raise RuntimeError("activation identity must be EXECUTE-only with no direct table access")
+
+
+async def _supported_table_privileges(connection: asyncpg.Connection) -> tuple[str, ...]:
+    server_version_num = int(
+        await connection.fetchval("SELECT current_setting('server_version_num')::integer")
+    )
+    if server_version_num >= 170000:
+        return (*TABLE_PRIVILEGES, *PG17_TABLE_PRIVILEGES)
+    return TABLE_PRIVILEGES
+
+
+async def _has_any_table_privilege(
+    connection: asyncpg.Connection,
+    *,
+    table: str,
+    privileges: tuple[str, ...],
+) -> bool:
+    for privilege in privileges:
+        if await connection.fetchval(
+            "SELECT has_table_privilege(current_user, $1, $2)",
+            table,
+            privilege,
+        ):
+            return True
+    return False
+
+
 async def run(args: argparse.Namespace) -> int:
     bundle_path = Path(args.signed_bundle)
-    bundle = json.loads(bundle_path.read_text())
+    bundle = _load_strict_json(bundle_path)
 
     trust_store = StaticTrustStore.from_env()
     verified = verify_rule_pack(
@@ -144,43 +305,59 @@ async def run(args: argparse.Namespace) -> int:
     pack_id: UUID = insert_kwargs["id"]
 
     if not args.yes:
-        print(
-            f"DRY RUN — would insert+activate rule_pack_id={pack_id} "
-            f"sequence={insert_kwargs['sequence']} env={insert_kwargs['environment']} "
-            f"payload_sha256={verified.payload_sha256.hex()} "
-            f"actor={args.actor} reason={args.reason}. Re-run with --yes to execute."
+        logger.info(
+            "dry_run=true would_insert_and_activate=true rule_pack_id=%s sequence=%s "
+            "environment=%s payload_sha256=%s actor=%s reason=%s",
+            pack_id,
+            insert_kwargs["sequence"],
+            insert_kwargs["environment"],
+            verified.payload_sha256.hex(),
+            args.actor,
+            args.reason,
         )
         return 0
 
-    database_url = os.environ.get(args.database_url_env)
-    if not database_url:
-        raise SystemExit(f"FAIL: ${args.database_url_env} is not set")
+    writer_database_url = os.environ.get(args.pack_writer_database_url_env)
+    activation_database_url = os.environ.get(args.activation_database_url_env)
+    if not writer_database_url:
+        raise SystemExit(f"FAIL: ${args.pack_writer_database_url_env} is not set")
+    if not activation_database_url:
+        raise SystemExit(f"FAIL: ${args.activation_database_url_env} is not set")
 
-    pool = await asyncpg.create_pool(database_url, min_size=1, max_size=2)
+    writer_pool = await asyncpg.create_pool(writer_database_url, min_size=1, max_size=2)
     try:
-        existing_hash = await _pack_row_payload_hash(pool, pack_id)
-        if existing_hash is not None:
-            if existing_hash != verified.payload_sha256:
-                raise SystemExit(
-                    f"FAIL: visa_rule_packs already holds {pack_id} with a DIFFERENT "
-                    f"payload_sha256 ({existing_hash.hex()[:16]}… vs "
-                    f"{verified.payload_sha256.hex()[:16]}…) — packs are immutable"
-                )
-            logger.info("pack row already present with identical hash — skipping insert")
-        else:
-            repo = VisaEngineRepository(pool)
-            await repo.insert_rule_pack(**insert_kwargs)
-            logger.info("pack row inserted")
+        activation_pool = await asyncpg.create_pool(activation_database_url, min_size=1, max_size=2)
+        try:
+            if insert_kwargs["environment"] == "PRODUCTION":
+                await _assert_production_separation(writer_pool, activation_pool)
 
-        repo = VisaEngineRepository(pool)
-        activation_id = await repo.activate_rule_pack(
-            rule_pack_id=pack_id,
-            activated_by=args.actor,
-            activation_reason=args.reason,
-        )
-        print(f"ACTIVATED rule_pack_id={pack_id} activation_id={activation_id}")
+            existing_hash = await _pack_row_payload_hash(writer_pool, pack_id)
+            if existing_hash is not None:
+                if existing_hash != verified.payload_sha256:
+                    raise SystemExit(
+                        f"FAIL: visa_rule_packs already holds {pack_id} with a DIFFERENT "
+                        f"payload_sha256 ({existing_hash.hex()[:16]}… vs "
+                        f"{verified.payload_sha256.hex()[:16]}…) — packs are immutable"
+                    )
+                logger.info("pack row already present with identical hash — skipping insert")
+            else:
+                repo = VisaEngineRepository(writer_pool)
+                await repo.insert_rule_pack(**insert_kwargs)
+                logger.info("pack row inserted")
+
+            # The activation identity never receives the pack-writer pool. Even
+            # a future refactor cannot accidentally reuse the broader capability.
+            repo = VisaEngineRepository(activation_pool)
+            activation_id = await repo.activate_rule_pack(
+                rule_pack_id=pack_id,
+                activated_by=args.actor,
+                activation_reason=args.reason,
+            )
+            logger.info("activated rule_pack_id=%s activation_id=%s", pack_id, activation_id)
+        finally:
+            await activation_pool.close()
     finally:
-        await pool.close()
+        await writer_pool.close()
     return 0
 
 
@@ -206,9 +383,14 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="engine contract version gate (matches the pack's contract)",
     )
     parser.add_argument(
-        "--database-url-env",
-        default=DATABASE_URL_ENV,
-        help="env var holding the database URL (default DATABASE_URL)",
+        "--pack-writer-database-url-env",
+        default=PACK_WRITER_DATABASE_URL_ENV,
+        help="env var holding the separated immutable-pack writer URL",
+    )
+    parser.add_argument(
+        "--activation-database-url-env",
+        default=ACTIVATION_DATABASE_URL_ENV,
+        help="env var holding the separated activation-executor URL",
     )
     parser.add_argument(
         "--yes",

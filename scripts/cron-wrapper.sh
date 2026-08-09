@@ -166,6 +166,17 @@ run_command_with_timeout() {
     return "$exit_code"
 }
 
+# ── One voice per failure (2026-08-07) ───────────────────────────────────────
+# Same cure as cron-runner.sh, applied here because this wrapper alarms too and
+# two of the nlm_deep_research jobs (t4-monitor, db-nlm-sync) run under it —
+# curing one wrapper of five is how W107 happened. Both paths of
+# run_command_with_timeout land the payload's output in $OUTPUT, so this
+# wrapper can always carry the words and claims the voice unconditionally.
+# Marker duplicated on purpose (see _alert.sh); agreement pinned by
+# scripts/test_cron_single_voice.sh.
+CRON_ALERT_MARKER="CRON_ALERT_P0:"
+export CRON_ALARM_OWNER="$JOB_NAME"
+
 # ── Execute with retry ───────────────────────────────────────────────────────
 ATTEMPT=0
 EXIT_CODE=1
@@ -267,7 +278,16 @@ printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","d
 
 # ── Alert on failure ─────────────────────────────────────────────────────────
 if [ $EXIT_CODE -ne 0 ]; then
-    LAST_LINES=$(echo "$OUTPUT" | tail -5)
+    # Prefer the sentence the job named for itself over five lines of raw tail;
+    # fall back to the tail when it did not name one. The receipt above keeps
+    # the raw tail either way — only this human-facing body changes.
+    LAST_LINES=$(printf '%s' "$OUTPUT" | grep -a "^${CRON_ALERT_MARKER}" | tail -1)
+    if [ -n "$LAST_LINES" ]; then
+        LAST_LINES="${LAST_LINES#"$CRON_ALERT_MARKER"}"
+        LAST_LINES="${LAST_LINES# }"
+    else
+        LAST_LINES=$(echo "$OUTPUT" | tail -5)
+    fi
     MSG="CRON FAIL $HOSTNAME_SHORT
 Job: $JOB_NAME
 Exit: $EXIT_CODE (after $ATTEMPT attempts)

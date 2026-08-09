@@ -261,6 +261,7 @@
       "errors": {
         "invalid_credentials": "Email atau PIN salah. Silakan coba lagi.",
         "account_locked": "Akun dikunci untuk keamanan. Hubungi team@balizero.com.",
+        "portal_unavailable": "Akses portal tidak tersedia untuk akun ini. Hubungi team@balizero.com.",
         "rate_limited": "Terlalu banyak percobaan. Coba lagi dalam {{seconds}} detik.",
         "invalid_2fa": "Kode 2FA tidak valid.",
         "network_error": "Koneksi terputus. Periksa jaringan dan coba lagi.",
@@ -271,7 +272,7 @@
     },
     "forgot_password": {
       "title": "Pemulihan akses",
-      "sent": "Kami telah menerima permintaan Anda. Tim akan menghubungi Anda."
+      "instructions": "Hubungi tim kami untuk memulihkan akses. Belum ada permintaan yang dikirim."
     }
   },
   "book": {
@@ -383,7 +384,7 @@
       "q5": "Apakah keluarga saya bisa ikut dengan Visa Second Home?",
       "a5": "Tersedia add-on keluarga — anggota keluarga yang memenuhi syarat dapat ikut melalui jalur dependen. Aturan dependen terkini dan biayanya dikonfirmasi secara individual dalam fit memo gratis.",
       "q6": "Berapa biaya Visa Second Home dengan Bali Zero?",
-      "a6": "IDR 39.000.000 all-inclusive untuk E33 dasar — satu angka, semua sudah termasuk. Fit memo untuk menilai jalur Anda gratis."
+      "a6": "{{price}} all-inclusive untuk E33 dasar — satu angka, semua sudah termasuk. Fit memo untuk menilai jalur Anda gratis."
     },
     "cta": {
       "title": "Mulai dengan fit memo gratis",

@@ -14,9 +14,10 @@
  * ~1.9:1 on paper). No hardcoded hexes.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { getMe, type Partner } from "@/lib/api/partners/partners";
+import { PartnerLoadError } from "../PartnerLoadError";
 
 // Day surface: token card + concept .panel shadow (soft navy on paper,
 // near-invisible on dark). Was border-white/10 + bg-white/5 dark glass.
@@ -59,24 +60,35 @@ function StatusField({ status }: { status: string | undefined | null }) {
 export default function PartnerProfilePage() {
   const [partner, setPartner] = useState<Partner | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setUnavailable(false);
+    try {
+      const data = await getMe();
+      if (!data) throw new Error("Invalid partner profile response");
+      setPartner(data);
+    } catch {
+      setPartner(null);
+      setUnavailable(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    getMe()
-      .then((data) => setPartner(data))
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e)),
-      )
-      .finally(() => setLoading(false));
-  }, []);
+    void load();
+  }, [load]);
 
   if (loading)
     return <div className="p-6 text-[var(--tx-secondary)]">Loading...</div>;
-  if (error)
+  if (unavailable)
     return (
-      <div className="p-6" style={{ color: "var(--state-danger)" }}>
-        Error: {error}
-      </div>
+      <PartnerLoadError
+        title="Profile is temporarily unavailable"
+        onRetry={load}
+      />
     );
   if (!partner)
     return (

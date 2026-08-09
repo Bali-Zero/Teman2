@@ -42,6 +42,7 @@ from perpres_body_default_relation import (  # noqa: E402
     overlay_reconciliation,
     report,
     scales,
+    sector_law_carveout_codes,
 )
 
 VAULT_BODY_49 = Path.home() / "nuzantara-vault" / "perpres" / "161562__Perpres Nomor 49 Tahun 2021.pdf"
@@ -63,8 +64,13 @@ def prio():
 
 
 @pytest.fixture(scope="module")
-def rep(canonical, annexes, prio):
-    return report(canonical, *annexes, prio)
+def carveout():
+    return sector_law_carveout_codes()
+
+
+@pytest.fixture(scope="module")
+def rep(canonical, annexes, prio, carveout):
+    return report(canonical, *annexes, prio, carveout)
 
 
 # --------------------------------------------------------------------------
@@ -147,6 +153,81 @@ def test_a_body_tertutup_code_is_located_by_the_body_not_by_absence(canonical, a
         assert "Pasal 2 ayat (2) huruf b" in ev["body"]
 
 
+# --------------------------------------------------------------------------
+# THE SECTOR-LAW CARVE-OUT (item G, 2026-08-08 fix-pack) — Pasal 11(2) routes
+# financial/banking bidang usaha to their own sector law, so the six insurance
+# codes absent from every annex must NOT inherit the residual default's
+# citation. This is a fifth locator, same shape as BODY_TERTUTUP above, and it
+# gets the same two-sided treatment: guilt (it fires where it must), innocence
+# (it fires nowhere else), and the disjointness invariant that keeps it from
+# silently losing a conflict with a higher-ranked locator.
+# --------------------------------------------------------------------------
+
+def test_a_sector_law_carveout_code_cites_pasal_11_not_the_residual_default(canonical, annexes, prio, carveout):
+    """`65121` (Asuransi Jiwa Syariah) is named by no annex and no body list —
+    exactly the shape the residual default used to swallow. The carve-out must
+    intercept it before Pasal 3(1)(d) ever gets asked.
+    """
+    umkm, caps = annexes
+    assert "65121" not in umkm and "65121" not in caps
+    assert "65121" in carveout
+    bucket, ev = classify("65121", canonical["65121"], umkm, caps, prio, carveout)
+    assert bucket == "sector-law-carveout"
+    assert ev["basis"] == "Pasal 11 ayat (2)"
+    assert locator_line(bucket, ev) == (
+        "Perpres 10/2021 Pasal 11(2) — financial/banking business fields follow "
+        "their own sector legislation"
+    )
+
+
+def test_all_six_carveout_codes_land_in_the_bucket_via_the_full_report(rep, carveout):
+    """Population-scale version of the guilt case above: not one of the six may
+    stay behind in `residual-besar-observed`, and the bucket may hold nothing
+    else — the carve-out set IS the bucket's membership, exactly.
+    """
+    rows = {row["code"] for row in rep["detail"]["sector-law-carveout"]}
+    assert rows == carveout == {"65111", "65112", "65121", "65122", "65201", "65202"}
+
+
+def test_a_non_financial_residual_code_is_unaffected_by_a_nonempty_carveout_set(canonical, annexes, prio, carveout):
+    """Innocence: `56101` (restaurant) is genuinely residual. Passing a real,
+    nonempty carve-out set into `classify()` must not widen the branch beyond
+    the codes it actually names — same `code in ...` guard as every other
+    locator here, and the population test above already proves it holds for
+    the six; this proves it holds for something it must NOT touch.
+    """
+    umkm, caps = annexes
+    bucket, ev = classify("56101", canonical["56101"], umkm, caps, prio, carveout)
+    assert bucket == "residual-besar-observed"
+    assert ev["basis"] == "Pasal 3 ayat (1) huruf d + ayat (2)"
+
+
+def test_a_carveout_code_also_named_by_an_annex_or_the_body_cannot_verify(canonical, annexes, prio):
+    """DISJOINTNESS INVARIANT. The carve-out set is declared disjoint from every
+    annex and the body by construction (see `write_sector_law_carveout.py`) —
+    if that ever stopped being true, letting the higher-ranked branch win
+    silently would hide a real conflict between two adjudications instead of
+    surfacing it. `11010` is body-tertutup for real (exercised above);
+    declaring it as carve-out too, synthetically, must raise rather than
+    silently resolve to "body-tertutup" as if nothing were wrong.
+    """
+    umkm, caps = annexes
+    with pytest.raises(CannotVerify):
+        classify("11010", canonical["11010"], umkm, caps, prio, sector_law_carveout={"11010"})
+
+
+def test_a_missing_carveout_artifact_is_cannot_verify_not_a_bigger_residual(tmp_path):
+    """Same shape as the empty-annex/empty-priority guards above: silence here
+    reads as six more residual codes citing the wrong article, not as an error.
+    """
+    with pytest.raises(CannotVerify):
+        sector_law_carveout_codes(path=tmp_path / "nope.json")
+    empty = tmp_path / "empty.json"
+    empty.write_text(json.dumps({"codes": []}))
+    with pytest.raises(CannotVerify):
+        sector_law_carveout_codes(path=empty)
+
+
 def test_a_string_where_a_list_belongs_raises_instead_of_iterating_characters(canonical):
     """`"55193"` iterated yields five one-character "codes"; `"Besar"` yields
     five letters and the Besar test silently fails forever. Both are shapes the
@@ -203,8 +284,16 @@ def test_a_genuinely_unnamed_code_with_a_besar_row_is_residual_and_open(canonica
 
 
 def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
-    """Innocence at population scale: if the locator over-fired, this collapses."""
-    assert rep["buckets"]["residual-besar-observed"] == 882
+    """Innocence at population scale: if the locator over-fired, this collapses.
+
+    Was 882 before item G (2026-08-08 fix-pack); is 876 now that the six
+    sector-law carve-out codes (`test_all_six_carveout_codes_land_in_the_bucket_
+    via_the_full_report`, below) route to their own bucket instead of hiding
+    in here under the wrong article. 882 - 6 == 876 exactly — the six moved,
+    nothing else did.
+    """
+    assert rep["buckets"]["residual-besar-observed"] == 876
+    assert rep["buckets"]["sector-law-carveout"] == 6
 
 
 # --------------------------------------------------------------------------
@@ -244,14 +333,76 @@ def test_a_code_named_in_an_annex_still_reports_its_besar_state(canonical, annex
 
 
 def test_the_barred_but_open_list_reads_across_every_bucket(rep):
-    """Measured: 23 codes publish TERBUKA while their own scale data names no
-    Besar row. A locator-partitioned reading found only 14.
+    """Codes that publish TERBUKA while their own scale data names no Besar row.
+    A locator-partitioned reading found only 14; reading across every bucket
+    found 23.
+
+    It went to 19 for a few hours on 2026-08-06, back to 23, then 22, and now 19
+    again for an unrelated reason (the split-heir cure, at the bottom of this
+    docstring). The round trip is worth more than any of the numbers. The Lampiran II cure had restricted
+    `55201` (homestay), `55203` (villa), `79110` (travel agent) and `95291`
+    (clothing alterations) for a stronger and different reason — the annex
+    allocates those activities to Koperasi/UMKM — so they stopped publishing as
+    open and their Pasal 7(1) question became moot. That cure was WITHDRAWN the
+    same day: a cross-family review of the finished determination found the
+    evidence it rested on had the scope qualifier stripped out (the annex
+    reserves food crops only "dengan luas kurang dari 25 Ha", and the rows we
+    emitted carried the bare crop name). See `apply_umkm_reservations.py` and
+    the `withdrawn` block in its spec.
+
+    So these four are back in the queue, where an unexplained openness belongs.
+    The queue is meant to hold codes whose openness nobody has justified — and
+    the honest state of these four is exactly that: not "reserved" and not
+    "cleared", but unadjudicated on evidence that was never complete.
     """
     rows = pasal7_review_flags(rep)
-    assert len(rows) == 23
+    assert len(rows) == 19
     codes = {r["code"] for r in rows}
-    assert {"55203", "55201", "96210", "96220"} <= codes  # annex-named AND Besar-less
-    assert {"56304", "70201", "86995"} <= codes           # residual AND Besar-less
+    # 2026-08-06, THIRD movement — and the one that empties the "annex-named AND
+    # Besar-less" example slot this line used to hold. `96210` (barber),
+    # `96220` (salon) and `96100` (laundry) are gone because the SPLIT-HEIR cure
+    # adjudicated them: each is the sole 2025 heir of the 2020 code the annex
+    # names, absorbing no other ancestor, so the whole code is the reserved
+    # bidang usaha. They left as RESERVED, which is a resolution — not as
+    # "still unexplained", which is what this queue is for.
+    assert not ({"96210", "96220", "96100"} & codes)
+    # The fourth code that cure restricted, `55105` (Hotel Bintang I), was never
+    # in this queue and did not move: its own scale data DOES name a Besar row
+    # (`besar_state == "observed"`), so its openness had a scale justification
+    # and the Pasal 7(1) question never attached to it. Four codes cured, three
+    # departures — a cure's own count is not the count of rows that move.
+    assert "55105" not in codes
+    assert {"56304", "70201", "86995"} <= codes  # residual AND Besar-less
+    # The three the withdrawn cure had removed, asserted as PRESENT: re-applying
+    # a Lampiran II verdict to them shows up here as a failure and gets read
+    # against the withdrawal above rather than landing unnoticed.
+    #
+    # `79110` (travel agent) is deliberately NOT in this set, and finding that
+    # out cost an assertion. It appeared in the earlier version of this list, but
+    # it was never in the withdrawn patch — it had been dropped from that spec
+    # days before, as contested by a determination living in `test_kbli_eye.py`.
+    # It is out of the queue on its own terms: the catalogue already publishes it
+    # TERBATAS, so it is not "barred but open" and this list has no claim on it.
+    # A code can leave a queue for a reason that has nothing to do with the cure
+    # you are writing about.
+    #
+    # 2026-08-06, second movement: `95291` is OUT again, and this time on
+    # evidence that was complete. The re-adjudication re-ran the annex rows with
+    # the parent bidang usaha attached AND with the sibling 2025 codes sharing
+    # each ancestor; two families agreed independently that the whole of `95291`
+    # (Reparasi Pakaian dan Tekstil) is the reserved activity, with no
+    # restricting parent and no absorbed sibling to widen it. So it is reserved,
+    # not merely unadjudicated, and it does not belong in a queue for
+    # unexplained openness. `55201` (homestay) and `55203` (villa) STAY here:
+    # both are vintage carries whose 1:1 crosswalk edge proves lineage and not
+    # activity identity, and that check has not been done.
+    #
+    # This assertion existing is why the movement had to be argued rather than
+    # absorbed: the tripwire fired on the apply and sent the reader back to the
+    # withdrawal, which is exactly the job it was written for.
+    assert {"55201", "55203"} <= codes
+    assert "95291" not in codes
+    assert "79110" not in codes
     assert all(r["besar"] == "absent" for r in rows)
 
 

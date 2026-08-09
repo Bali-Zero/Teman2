@@ -261,6 +261,7 @@
       "errors": {
         "invalid_credentials": "Wrong email or PIN. Please try again.",
         "account_locked": "Account locked for security. Contact team@balizero.com.",
+        "portal_unavailable": "Portal access is not available for this account. Contact team@balizero.com.",
         "rate_limited": "Too many attempts. Retry in {{seconds}} seconds.",
         "invalid_2fa": "Invalid 2FA code.",
         "network_error": "Connection lost. Check your network and retry.",
@@ -271,7 +272,7 @@
     },
     "forgot_password": {
       "title": "Recover access",
-      "sent": "We received your request. Our team will contact you."
+      "instructions": "Contact our team to recover access. No request has been sent yet."
     }
   },
   "book": {
@@ -383,7 +384,7 @@
       "q5": "Can my family join me on a Second Home Visa?",
       "a5": "A family add-on is available — eligible family members can join through dependent routes. The current dependent rules and costs are confirmed individually during the free fit memo.",
       "q6": "How much does the Second Home Visa cost with Bali Zero?",
-      "a6": "IDR 39,000,000 all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
+      "a6": "{{price}} all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
     },
     "cta": {
       "title": "Start with a free fit memo",

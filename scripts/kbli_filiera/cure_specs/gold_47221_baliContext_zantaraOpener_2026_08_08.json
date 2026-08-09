@@ -1,0 +1,22 @@
+{
+  "adjudicated": "2026-08-08 fix-pack, item B: gold's own whatYouNeed PMA sentence was already corrected by cure_gold_pma_line.py::AUTHORED_SENTENCES['47221'] ('Restricted — special conditions, no percentage cap. Perpres 49/2021 Pasal 6 ayat (3a) huruf b ...') but baliContext and zantaraOpener kept asserting a 49% cap plus a local-partner requirement, plus a nominee-structuring warning anchored on that phantom partner requirement. The record's own pma_official_basis and this PR's pma_kondisi cure both say the condition is a distribution-network/location requirement (Perpres 10/2021 Lampiran III line 4202 #44), not a percentage, not a UMKM/local- partner duty.",
+  "code": "47221",
+  "old_sha256": "24ffa44547a06acfaa401c8bd044309834b02e0730ef43dbe38dd3bcfaa2c9aa",
+  "edits": [
+    {
+      "field": "baliContext",
+      "old": "Selling alcohol retail in Bali is heavily restricted and capped at 49% foreign ownership, strictly requiring a local partner for your PT PMA.",
+      "new": "Selling alcohol retail in Bali is heavily restricted by special conditions rather than a percentage cap: Perpres 10/2021 Lampiran III requires a dedicated distribution network and location for your PT PMA, with no equity ceiling attached."
+    },
+    {
+      "field": "baliContext",
+      "old": "An insider tip: bypassing the local partner requirement via nominee structures is highly illegal and actively audited.",
+      "new": "An insider tip: the distribution-network and location requirement is enforced at licensing, not sidestepped by ownership structuring — plan your site and supply chain before applying."
+    },
+    {
+      "field": "zantaraOpener",
+      "old": "Alcohol retail is capped at 49% foreign ownership and requires strict zoning checks.",
+      "new": "Alcohol retail carries special distribution-network and location conditions (no percentage cap) and requires strict zoning checks."
+    }
+  ]
+}

@@ -184,6 +184,20 @@ class SourceLocator(BaseModel):
     value: Annotated[str, Field(min_length=1, max_length=256)]
 
 
+class SourceFreshnessPolicy(BaseModel):
+    """Signed, source-specific external re-verification policy.
+
+    The literal discriminator keeps the policy vocabulary closed.  A future
+    policy basis therefore requires an explicit contract revision instead of
+    being silently interpreted as a max-age rule.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    kind: Literal["MAX_AGE_SINCE_VERIFIED_AT"]
+    max_age_seconds: Annotated[int, Field(ge=1, strict=True)]
+
+
 class SourceRecord(BaseModel):
     """A single verified regulatory/pricing source, bitemporally tracked.
 
@@ -216,6 +230,9 @@ class SourceRecord(BaseModel):
     verified_at: UtcDateTime
     verified_by: Identifier
     supersedes_source_record_id: uuid.UUID | None
+    # Optional for backward compatibility with already-signed RulePack 1.0
+    # payloads. Absence is semantically UNKNOWN, never implicitly current.
+    freshness_policy: SourceFreshnessPolicy | None = None
 
     @field_validator("retrieved_at", "verified_at")
     @classmethod
@@ -259,6 +276,11 @@ class StayPolicy(BaseModel):
 class ExtensionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    # Sequence-1 compatibility: absence is UNKNOWN, never implicitly
+    # VERIFIED. Sequence >=2 makes this explicit at compile time.
+    status: Literal["VERIFIED", "UNKNOWN"] | None = None
+    reason_code: Identifier | None = None
+
     # StrictBool (PR1b item 3): a bare `bool` field accepts `1`/`0`/"true"/
     # "yes" via Pydantic's lax-mode coercion — the same class of gap the
     # int fields in this module already closed with `strict=True` (see
@@ -268,6 +290,34 @@ class ExtensionPolicy(BaseModel):
     allowed: Annotated[bool, Field(strict=True)]
     maximum_extensions: Annotated[int, Field(ge=0, le=100, strict=True)]
     days_per_extension: Annotated[int, Field(ge=1, le=3650, strict=True)] | None
+
+    @model_validator(mode="after")
+    def _check_status_shape(self) -> ExtensionPolicy:
+        if self.status is None:
+            return self
+        if self.status == "UNKNOWN":
+            if self.allowed or self.maximum_extensions != 0 or self.days_per_extension is not None:
+                raise ValueError(
+                    "UNKNOWN extension policy must use the neutral shape "
+                    "allowed=false, maximum_extensions=0, days_per_extension=null"
+                )
+            if self.reason_code is None:
+                raise ValueError("UNKNOWN extension policy requires reason_code")
+            return self
+
+        if self.reason_code is not None:
+            raise ValueError("VERIFIED extension policy must have reason_code=null")
+        if self.allowed:
+            if self.maximum_extensions < 1 or self.days_per_extension is None:
+                raise ValueError(
+                    "VERIFIED allowed extension policy requires a positive count and duration"
+                )
+        elif self.maximum_extensions != 0 or self.days_per_extension is not None:
+            raise ValueError(
+                "VERIFIED non-extendable policy requires maximum_extensions=0 and "
+                "days_per_extension=null"
+            )
+        return self
 
 
 class ClockCheckpointSpec(BaseModel):
@@ -1135,7 +1185,10 @@ class Decision(BaseModel):
     observed_at: UtcDateTime
     evaluated_at: UtcDateTime
     rule_pack: RulePackRef | None
-    facts_fingerprint: Fingerprint
+    # No evaluation occurs for TEMPORARILY_UNAVAILABLE, so fabricating a
+    # facts HMAC on that path would be dishonest.  All evaluated states
+    # require this field below; the outage state requires it to be null.
+    facts_fingerprint: Fingerprint | None
     candidates: tuple[Candidate, ...] = Field(..., max_length=256)
     missing_facts: tuple[FactPath, ...] = Field(...)
     review_reasons: tuple[Reason, ...] = Field(...)
@@ -1174,10 +1227,14 @@ class Decision(BaseModel):
             DecisionState.NO_SUPPORTED_PATH,
         )
         if identity_required and (
-            self.decision_id is None or self.public_id is None or self.rule_pack is None
+            self.decision_id is None
+            or self.public_id is None
+            or self.rule_pack is None
+            or self.facts_fingerprint is None
         ):
             raise ValueError(
-                f"state={state.value} requires non-null decision_id/public_id/rule_pack"
+                f"state={state.value} requires non-null "
+                "decision_id/public_id/rule_pack/facts_fingerprint"
             )
         if identity_required and self.outage is not None:
             raise ValueError(f"state={state.value} forbids a non-null outage")
@@ -1222,6 +1279,8 @@ class Decision(BaseModel):
                 )
             if self.outage is None:
                 raise ValueError("state=TEMPORARILY_UNAVAILABLE requires a non-null outage")
+            if self.facts_fingerprint is not None:
+                raise ValueError("state=TEMPORARILY_UNAVAILABLE requires facts_fingerprint=null")
 
         return self
 

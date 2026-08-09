@@ -26,22 +26,32 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from dotenv import load_dotenv
 
 from backend.core.collection_registry import resolve_collection_name
+from backend.scripts._kbli_repo_root import resolve_repo_root
+
+# Repo root: robust resolver that works in both the dev checkout and the Fly
+# container (where parents[4] raises IndexError — the layout is shallower).
+# Computed early so the .env loader and SOURCE_FILE both derive from it.
+_REPO_ROOT = resolve_repo_root(
+    ["source_documents/KBLI_2025_FINAL_CLEAN.json"],
+    script_file=__file__,
+)
 
 # Load apps/backend-rag/.env so QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY are present
-# even when this script is invoked directly (not via the FastAPI app). Path is derived
-# from __file__ — backend/scripts/<this> → parents[2] == apps/backend-rag — so it works
-# from any cwd. Without this the script silently fell back to localhost:6333 and aborted
-# on a missing OPENAI_API_KEY (env had to be exported by hand). Existing env vars win
-# (load_dotenv does not override), so CI / explicit exports still take precedence.
-_BACKEND_RAG_ENV = Path(__file__).resolve().parents[2] / ".env"
+# even when this script is invoked directly (not via the FastAPI app). The path is
+# derived from _REPO_ROOT (which replaces the old parents[2] — a frozen measurement
+# of the dev layout that raised IndexError in the container). Without this the script
+# silently fell back to localhost:6333 and aborted on a missing OPENAI_API_KEY (env
+# had to be exported by hand). Existing env vars win (load_dotenv does not override),
+# so CI / explicit exports still take precedence.
+_BACKEND_RAG_ENV = _REPO_ROOT / ".env"
 if _BACKEND_RAG_ENV.exists():
     load_dotenv(_BACKEND_RAG_ENV)
 
@@ -55,9 +65,65 @@ EMBED_BATCH_SIZE = 20
 UPSERT_BATCH_SIZE = 20
 DELETE_BATCH_SIZE = 100
 
-SOURCE_FILE = (
-    Path(__file__).resolve().parents[4] / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
-)
+SOURCE_FILE = _REPO_ROOT / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+
+# 5-digit KBLI codes (e.g. "56101")
+_CODE_RE = re.compile(r"^\d{5}$")
+
+
+def parse_only_codes(raw: str | None) -> list[str] | None:
+    """Parse the --only flag value into a list of validated 5-digit codes.
+
+    Returns ``None`` when *raw* is falsy (flag not given).  Raises
+    ``argparse.ArgumentTypeError`` on any malformed token so argparse surfaces
+    a clean error — the caller never sees junk.
+    """
+    if not raw:
+        return None
+    codes: list[str] = []
+    for token in raw.split(","):
+        code = token.strip()
+        if not _CODE_RE.match(code):
+            raise argparse.ArgumentTypeError(
+                f"invalid KBLI code {code!r} in --only — expected 5-digit numeric",
+            )
+        codes.append(code)
+    if not codes:
+        raise argparse.ArgumentTypeError("--only received no codes")
+    # Deduplicate while preserving order.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for c in codes:
+        if c not in seen:
+            seen.add(c)
+            unique.append(c)
+    return unique
+
+
+def filter_entries_to_codes(
+    entries: list[dict],
+    only_codes: list[str] | None,
+) -> list[dict]:
+    """Filter *entries* to *only_codes*, erroring on any absent code.
+
+    A silent skip would report success over nothing (esiste≠armato), so we exit
+    nonzero naming every missing code instead.
+    """
+    if only_codes is None:
+        return entries
+    lookup: dict[str, dict] = {}
+    for e in entries:
+        code = e.get("kode_kbli_2025", "")
+        if code:
+            lookup[code] = e
+    missing = [c for c in only_codes if c not in lookup]
+    if missing:
+        logger.error(
+            "--only requested code(s) absent from source data: %s",
+            ", ".join(missing),
+        )
+        sys.exit(1)
+    return [lookup[c] for c in only_codes]
 
 
 def deterministic_uuid(code: str) -> str:
@@ -452,6 +518,17 @@ async def main():
     )
     parser.add_argument("--skip-delete", action="store_true", help="Skip deleting old points")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of codes (0=all)")
+    parser.add_argument(
+        "--only",
+        type=parse_only_codes,
+        default=None,
+        metavar="CODE[,CODE...]",
+        help="Comma-separated 5-digit KBLI codes — re-index ONLY these codes. "
+        "Errors out if any requested code is absent from the source data. "
+        "When set, the delete step is SKIPPED automatically (upsert-only path): "
+        "deterministic UUIDs overwrite the old points for those codes anyway, "
+        "and the collection-wide delete would wipe codes you did NOT select.",
+    )
     args = parser.parse_args()
 
     qdrant_url = args.qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -477,8 +554,14 @@ async def main():
 
     version = source["metadata"]["version"]
     entries = source["data"]
+    total_codes = len(entries)
     logger.info(f"Version: {version}")
-    logger.info(f"Total codes: {len(entries)}")
+    logger.info(f"Total codes: {total_codes}")
+
+    # Per-code selection (--only): filter BEFORE building points.
+    entries = filter_entries_to_codes(entries, args.only)
+    if args.only:
+        logger.info("%d of %d codes selected via --only", len(entries), total_codes)
 
     if args.limit > 0:
         entries = entries[: args.limit]
@@ -558,7 +641,7 @@ async def main():
     logger.info(f"Got {len(embeddings)} embeddings (dims={len(embeddings[0])})")
 
     # Step 2: Generate BM25 sparse vectors
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(_REPO_ROOT))
     from backend.core.bm25_vectorizer import BM25Vectorizer
 
     bm25 = BM25Vectorizer()
@@ -575,9 +658,15 @@ async def main():
     # Step 3: Ensure payload indexes (delete/verify filters depend on them), then delete old points
     logger.info(f"\nStep 3: Ensuring payload indexes on {COLLECTION_NAME}...")
     await ensure_payload_indexes(qdrant_url, qdrant_api_key)
-    if not args.skip_delete:
+    # --only forces skip-delete: the collection-wide delete would wipe codes
+    # we did NOT select, and deterministic UUIDs overwrite the old points for
+    # the selected codes anyway (upsert-only path).
+    effective_skip_delete = args.skip_delete or args.only is not None
+    if not effective_skip_delete:
         logger.info(f"Step 3: Deleting old OSS_RBA_API points from {COLLECTION_NAME}...")
         await delete_old_points(qdrant_url, qdrant_api_key)
+    elif args.only is not None:
+        logger.info("Step 3: Delete skipped (--only implies upsert-only)")
     else:
         logger.info("Step 3: Delete skipped (--skip-delete)")
 

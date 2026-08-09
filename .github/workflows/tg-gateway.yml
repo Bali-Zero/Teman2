@@ -85,6 +85,48 @@ jobs:
           # and the lint keeps passing on diffs it was never started for.
           python3 scripts/tests/test_tg_gateway_trigger_symmetry.py
 
+      - name: The selftest above must reach the same verdict at every hour
+        run: |
+          # The step above is only worth reading if its verdict does not depend
+          # on when it runs. Measured 2026-08-08: it was GREEN at 19:40 UTC and
+          # RED at 03:41 WITA on byte-identical code — six checks on the p0 send
+          # path, because the first selftest block set P0_BUDGET=2 without
+          # pinning the day window, so at night
+          #   effective = max(0, P0_BUDGET - DAY_RESERVE) = max(0, 2 - 5) = 0
+          # and the very first p0 overflowed instead of sending. The two blocks
+          # after it already pinned the window ("deterministic at any hour CI
+          # happens to run"); the discipline just never reached upward.
+          #
+          # This workflow is path-filtered, so the selftest runs only when the
+          # gateway's own files change — at whatever hour that lands. The window
+          # in which it was reliably red is Bali night, which is exactly when
+          # the cron fleet runs and when a session chasing a missing alert would
+          # reach for it. Hence a pin, not a one-line fix: forced-night,
+          # forced-day and unforced must all agree.
+          bash scripts/tests/test_tg_notify_selftest_is_clock_independent.sh
+
+      - name: tg_notify unit pins (stdlib, no install)
+        run: |
+          # tg_notify.py imports stdlib only, so its own unit tests belong in
+          # this job rather than in `guard-pins-pytest` (which exists to carry
+          # the httpx/structlog/asyncpg import chain) — and emphatically not in
+          # `scripts/tests/ sweep`, which is continue-on-error and gates
+          # nothing. test_tg_notify_env_parse.py shipped in #3660 named by no
+          # workflow at all: the guard that cost Mini its voice for a day had
+          # no executor that could go red. Superscar #2, in the file that fixed
+          # a superscar #2.
+          #
+          # test_sentinel_condition_key.py belongs here for the same reason and
+          # one more: it is about the PRODUCER side of the same rule. The
+          # gateway's `key = dedup_key or derived` means a producer's explicit
+          # key WINS, so a producer that keys on md5(message) silently disables
+          # every guard tested one line above. The two halves of that rule
+          # cannot be allowed to drift into different executors.
+          python3 -m pip -q install pytest
+          python3 -m pytest scripts/tests/test_tg_notify_env_parse.py \
+                            scripts/tests/test_tg_notify_identity_ladder.py \
+                            scripts/tests/test_sentinel_condition_key.py -q
+
       - name: Direct-sender lint (anti-regrowth + monotone grandfather)
         run: python3 scripts/lint_tg_direct_senders.py
 

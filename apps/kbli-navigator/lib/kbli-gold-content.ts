@@ -1103,7 +1103,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
 
 **PMA:** Fully open — 100% foreign ownership.`,
     whatChanged:
-      "Direct match from KBLI 2020. Holding company classification remains stable and straightforward.",
+      "Renumbered from KBLI 2020 code 64200 — confirmed 2026-08-08 by two independent crosswalk sources (PP 28/2025 lampiran, 95% title match; official BPS 2020-to-2025 conversion table, Lampiran 10, page 398). Corrected from an earlier 'direct match' claim, which was inaccurate. Holding company classification and its LOW risk tier remain stable and straightforward.",
     baliContext:
       "A popular structuring tool for foreign investors in Bali who own multiple businesses — e.g., a villa company (55203), a restaurant (56101), and a management consultancy (70209) all under one holding entity (64210). The LOW risk classification means fast-track activation. Strategic for asset protection and multi-business control. Highlight as 'Fast-track' for asset holding purposes.",
     youllAlsoNeed:
@@ -43820,7 +43820,7 @@ Confirm current requirements with the Bali Zero team before committing to a rout
 
 **PMA:** Fully open — 100% foreign ownership.`,
     whatChanged:
-      "Direct match from KBLI 2020. Despite being open to foreign investment, the HIGH risk classification and Ministry of Transport licensing create significant barriers.",
+      "Renumbered from KBLI 2020 code 49424 — confirmed 2026-08-08 by two independent crosswalk sources (PP 28/2025 lampiran, 100% title match; official BPS 2020-to-2025 conversion table, Lampiran 10, page 386). Corrected from an earlier 'direct match' claim, which was inaccurate: this is not a same-number carryover. Despite being open to foreign investment, the HIGH risk classification and Ministry of Transport licensing create significant barriers.",
     baliContext:
       "Bali-specific requirements are strict: drivers must hold local Bali domicile (KTP Bali), and the vehicle fleet MUST use DK plates (Bali registration). Using non-DK plated vehicles will cause localized conflict and regulatory suspension. The ojol market in Bali is dominated by Grab and Gojek — a PT PMA play here is more realistic as a fleet operator or last-mile logistics provider than as a competitor to established platforms.",
     youllAlsoNeed:

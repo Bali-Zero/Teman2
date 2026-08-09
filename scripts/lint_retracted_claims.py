@@ -640,10 +640,47 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
             ("kim-2025-ranking-supports-the-no-peer-rule",
              "Independent is lowest, therefore use centralized state (2512.08296)"),
         ]
+        # The other half, and the half this guard did not have: text that
+        # contains the NUMBER and means something else entirely. `4.4x` is a
+        # bare ratio shape — a benchmark, a speedup, a regex timing — and the
+        # claim's subject is what makes it a citation.
+        #
+        # MEASURED 2026-08-09, this guard blocking a live PR (#3837): a ledger
+        # row reading `0.0049s -> 0.0216s (4.4x for 2x input, max 3.0x)` — a
+        # ReDoS timing benchmark — was flagged, because the anchor list carried
+        # the bare word `agents?` and the window was +/-3 lines, so it matched
+        # `agents` in an UNRELATED row of the same list. In an agent ledger that
+        # word is background noise, not an entity (superscar #3: the form, not
+        # the fact). The anchor is now same-line, and the generic tokens
+        # (`agents?`, `talk`, `never`) are gone — every evasion above still
+        # fires via `Google`, `error`, or `Independent`, asserted right here.
+        # Each case pins ONE half of the fix, because either half alone happens
+        # to clear the live PR — so a corpus that only replays the live text
+        # lets the other half be reverted in silence. Written after both
+        # mutations SURVIVED a first draft of this list (W116: a surviving
+        # mutant is sometimes a vacuous test, not a missing one).
+        _INNOCENTS = [
+            # pins REMOVING the generic tokens: one line, ratio + `agents`,
+            # obviously not a citation. Fires again if `agents?` returns.
+            ("generic token on the same line",
+             "the wa-mirror agents' bench went 4.4x faster after caching"),
+            # pins context_window: 0. The ratio is alone on its line; the
+            # anchor `error` sits on a NEIGHBOUR, which is exactly how an
+            # unrelated ledger row three lines away flagged #3837.
+            ("anchor bleeding from a neighbouring line",
+             "regex sweep: 0.0049s -> 0.0216s (4.4x for 2x input, max 3.0x)\n"
+             "the error budget for this lane is tracked separately\n"),
+            ("plain speedup", "throughput improved 17.2x on the new index"),
+        ]
         prod_path = registry_path or DEFAULT_REGISTRY
         if prod_path.is_file():
             pclaims, pwindow, pdirs = load_registry(prod_path)
             expect("production registry parses", len(pclaims) >= 1)
+            for label, text in _INNOCENTS:
+                expect(
+                    f"PROD INNOCENCE bare ratio is not a citation ({label})",
+                    scan_text(text + "\n", pclaims, pdirs, pwindow) == [],
+                )
             for c in pclaims:
                 probe, truth = {
                     "kim-2025-17x-error-amplification-as-cause": (
@@ -653,6 +690,20 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                     "kim-2025-ranking-supports-the-no-peer-rule": (
                         "no peer-to-peer: Centralized > Independent confirms the rule (Kim et al.)",
                         "Table 5: Decentralized 0.477 > Centralized 0.463; no single architecture dominates",
+                    ),
+                    # The probe states ONE of the pattern's two phrases, not both:
+                    # scan_text reports per match, so a probe carrying `separate
+                    # checkout` AND `different inode` would flag twice and fail an
+                    # assertion that is about the guard biting, not about arithmetic.
+                    "desktop-nuzantara-is-a-separate-checkout": (
+                        # Context comes from `repo-sync`, not from the pre-2026-07-16
+                        # home location the claim is about: spelling that path here
+                        # would hardcode it into a payload and trip the
+                        # tcc-desktop-paths lint (superscar #1) — which is exactly what
+                        # the first draft of this probe did. Another disjunct of
+                        # context_pattern exercises the guard just as well.
+                        "the repo-sync target is a separate checkout, so the cron writes a side copy",
+                        "it is a symlink: stat -L gives 758478 for both, and both git-dirs are ~/nuzantara/.git",
                     ),
                 }.get(c.id, (None, None))
                 if probe is None:

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import * as treeRegistry from "./tree";
 import {
-  MOCK_CATALOG,
   QUESTIONS,
   daysRemaining,
   formatIsoDateForDisplay,
@@ -8,23 +8,10 @@ import {
   parseIsoDateUtc,
 } from "./tree";
 
-describe("tree.ts — mock catalog", () => {
-  it("has ~12 cards with unique real current codes (no legacy B211*)", () => {
-    expect(MOCK_CATALOG.length).toBeGreaterThanOrEqual(10);
-    expect(MOCK_CATALOG.length).toBeLessThanOrEqual(14);
-    const codes = MOCK_CATALOG.map((c) => c.code);
-    expect(new Set(codes).size).toBe(codes.length);
-    for (const code of codes) {
-      expect(code.toUpperCase()).not.toMatch(/^B211/);
-    }
-  });
-
-  it("every card has one all-inclusive price and an honest [min,max] timeline", () => {
-    for (const card of MOCK_CATALOG) {
-      expect(typeof card.allInclusivePriceIDR).toBe("number");
-      expect(card.allInclusivePriceIDR).toBeGreaterThanOrEqual(0);
-      expect(card.timelineDays[0]).toBeLessThanOrEqual(card.timelineDays[1]);
-    }
+describe("tree.ts — interview registry only", () => {
+  it("exports no frontend visa catalog or volatile display facts", () => {
+    expect("MOCK_CATALOG" in treeRegistry).toBe(false);
+    expect("MockVisaCard" in treeRegistry).toBe(false);
   });
 
   it("every question option has a resolvable i18n key shape", () => {
@@ -33,6 +20,66 @@ describe("tree.ts — mock catalog", () => {
         expect(option.labelI18nKey.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe("tree.ts — interview decision boundary", () => {
+  it("has unique ids that exactly match their registry keys", () => {
+    const entries = Object.entries(QUESTIONS);
+    expect(new Set(entries.map(([, question]) => question.id)).size).toBe(
+      entries.length,
+    );
+    for (const [key, question] of entries) {
+      expect(question.id).toBe(key);
+    }
+  });
+
+  it("documents every question as an exact fact, review-only, or human context", () => {
+    for (const question of Object.values(QUESTIONS)) {
+      expect(["FACT", "REVIEW_ONLY", "HUMAN_CONTEXT"]).toContain(
+        question.decisionMapping.kind,
+      );
+      if (question.decisionMapping.kind !== "HUMAN_CONTEXT") {
+        expect(question.decisionMapping.factPaths.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("uses only the verified current-status values read by the production pack", () => {
+    expect(QUESTIONS.current_status_code.options.map(({ key }) => key)).toEqual(
+      [
+        "A1",
+        "C1",
+        "C2",
+        "C6",
+        "ITK_FROM_BVK",
+        "ITK_FROM_VISIT_C",
+        "ITK_FROM_VISIT_D",
+        "ITK_PERALIHAN",
+        "other",
+      ],
+    );
+    expect(QUESTIONS.current_status_code.kind).toBe("choice");
+  });
+
+  it("bounds active overstay at the API-safe 0..36500 range", () => {
+    expect(QUESTIONS.overstay_days.numberInput).toMatchObject({
+      min: 0,
+      max: 36_500,
+      step: 1,
+    });
+  });
+
+  it("keeps free-text sponsor status and legacy buckets outside engine facts", () => {
+    expect(QUESTIONS.family_sponsor_status_code.decisionMapping).toEqual({
+      kind: "HUMAN_CONTEXT",
+    });
+    expect(QUESTIONS.tourism_duration.decisionMapping.kind).toBe(
+      "HUMAN_CONTEXT",
+    );
+    expect(QUESTIONS.tourism_duration.notSure).toEqual({
+      mode: "human-review",
+    });
   });
 });
 
@@ -48,6 +95,9 @@ describe("tree.ts — daysRemaining / getLane", () => {
   it("returns null when offshore or unanswered", () => {
     expect(getLane({}, today)).toBeNull();
     expect(getLane({ in_indonesia: "no" }, today)).toBeNull();
+    expect(
+      getLane({ in_indonesia: "unsure", permit_expiry: "2026-07-18" }, today),
+    ).toBeNull();
     expect(getLane({ in_indonesia: "yes" }, today)).toBeNull();
   });
 

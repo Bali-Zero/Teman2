@@ -535,6 +535,13 @@ openclaw
 !.claude/agents/wr2-brief-interpreter.md
 !.claude/agents/wr2-critic.md
 !.claude/agents/wr2-design-architect.md
+# 2026-08-08: the last two wr2-* specs that still lived ONLY in ~/.claude/agents/
+# (family #1). Vendored here so the repo copy is canon on every machine; each
+# carries a `CANON:` marker naming this directory. Adding them to this allowlist
+# is the deliberate act the comment above asks for — without these two lines
+# `git add -A` skips the files in silence and the vendoring is a no-op.
+!.claude/agents/wr2-external-bench.md
+!.claude/agents/wr2-ig-metrics-analyst.md
 !.claude/agents/wr2-image-prompt-author.md
 !.claude/agents/wr2-layout-composer.md
 !.claude/agents/wr2-storyboarder.md
@@ -759,6 +766,21 @@ apps/backend-rag/training-data/
 # Package lock files in sub-apps (root handles dependencies)
 apps/*/package-lock.json
 apps/team-agent/bridge/package-lock.json
+# ...except where that premise is FALSE. "root handles dependencies" holds only
+# for the eight npm workspaces declared in the root package.json; six apps under
+# apps/ carry a package.json and are NOT among them (bali-zero-magazine,
+# kbli-navigator, osint-nexus-ui, wa-dashboard-m1, wa-meta-inbox, wa-mirror).
+# Measured 2026-08-09: the root package-lock.json has 2202 entries and ZERO of
+# them are wa-mirror's — no baileys, no qrcode-terminal, not even the @types it
+# declares. So its install floated on every machine, and on 2026-08-06 a rebuild
+# left Pro with the production half of the tree and none of the devDependencies:
+# `npm run build` then exited 2 on four "type errors" that were nothing but the
+# absent @types/qrcode-terminal, while tsc emitted correct JS anyway (it compiled
+# with the Homebrew global 5.9.3, since the pinned typescript was missing too).
+# An exit code that says "failed" over a correct artifact is unusable, which is
+# how a live organ's deploy step lost its verdict. The remaining five stay
+# uncovered on the W81 ledger — do not read this negation as the class being cured.
+!apps/wa-mirror/package-lock.json
 
 # Backend test/state artifacts
 apps/backend-rag/business-testing/

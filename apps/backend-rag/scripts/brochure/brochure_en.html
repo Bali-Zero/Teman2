@@ -1,0 +1,526 @@
+<!--
+  Bali Zero — client brochure, EN. SOURCE of the PDF served at
+  https://kita.balizero.com/static/brochure_balizero_en.pdf and base64-attached
+  to every welcome email by welcome_email_service.py.
+
+  Authored on the canonical `internal-print-a4` brand surface: antracite cover,
+  light interior, one accent (the brand yellow), Montserrat only. The stylesheet
+  is REFERENCED, never copied — surface spec A6.3: "any agent producing a new A4
+  brief MUST reference the canonical CSS, not re-write tokens inline. Hex codes
+  belong to tokens.json only." That is why there is not a single colour value in
+  this file: change the brand and this document changes with it.
+
+  Do not hardcode a price here. Every {{PRICE_*}} placeholder is filled by
+  generate_brochure.py from bali_zero_official_prices_2026.json, by EXACT key,
+  and both a miss and an unused mapping stop the build.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bali Zero — Immigration, Company Setup &amp; Tax in Indonesia</title>
+<link rel="stylesheet" href="../../../../skills/bali-zero-brand/surfaces/internal-print-a4/_template.css">
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="cover-header">
+    <div class="cover-logo bz-logo-image"></div>
+    <div class="cover-header-text">
+      <div class="cover-eyebrow">BALI ZERO <span class="sep">·</span> EST. 2020 <span class="sep">·</span> KEROBOKAN, BALI</div>
+      <div class="cover-tagline">Powered by humans, fueled by a thinking engine.</div>
+    </div>
+  </div>
+
+  <div class="cover-title-block">
+    <h1 class="cover-title">Your Bali.<br>Done right.</h1>
+    <div class="cover-subtitle">Immigration · Company · Tax</div>
+    <div class="cover-rule"></div>
+    <p class="cover-description">
+      Expert immigration, company setup and tax advisory for expats and investors
+      in Indonesia. 22 years on the island, 10,000+ clients served, one team from
+      your first visa to your annual filing.
+    </p>
+    <div class="cover-chips">
+      <span class="cover-chip">10,000+ clients served</span>
+      <span class="cover-chip">22 years in Bali</span>
+      <span class="cover-chip">40+ nationalities</span>
+      <span class="cover-chip">First consultation free</span>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div>
+      <div class="cover-footer-left">balizero.com — Jl. Raya Anyar No. 2, Kerobokan Kelod, Bali</div>
+      <div class="cover-footer-disclaimer">
+        Figures are Bali Zero service fees for standard processing, all-inclusive and valid
+        at the date of issue; urgent handling is quoted separately. This brochure is an
+        introduction, not legal advice — your case is scoped in a free first consultation.
+      </div>
+    </div>
+    <div class="cover-footer-right">zero@balizero.com<br>+62 821 3454 721</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 1 — WHO WE ARE ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">01</div>
+  </div>
+
+  <div class="eyebrow">About us</div>
+  <h1 class="section-title">Who we are</h1>
+  <p class="lead">
+    Bali Zero is the expat services division of Bayu Santero Group, founded in 2003 —
+    22 years of uninterrupted presence on the island. We serve expats and investors
+    from more than 40 countries, and we have handled over 10,000 client cases.
+  </p>
+  <p>
+    We combine deep local expertise with AI-verified research, so you get answers that
+    are both current and grounded in Indonesian law. One team covers your whole
+    journey: the first visa, the company, the tax filings, and the renewals that
+    follow for years afterwards.
+  </p>
+
+  <div class="chapter">
+    <div class="chapter-num">01</div>
+    <div class="chapter-title-wrap"><h2 class="chapter-title">Local authority</h2></div>
+  </div>
+  <p>
+    We know the immigration offices, the notaries and the tax officers we work with by
+    name — and we usually see a rule change coming before it is published.
+  </p>
+
+  <div class="chapter">
+    <div class="chapter-num">02</div>
+    <div class="chapter-title-wrap"><h2 class="chapter-title">AI-verified accuracy</h2></div>
+  </div>
+  <p>
+    Our own system cross-references every regulation we cite and flags what does not
+    add up. AI verifies; humans decide. Nothing reaches you unchecked.
+  </p>
+
+  <div class="chapter">
+    <div class="chapter-num">03</div>
+    <div class="chapter-title-wrap"><h2 class="chapter-title">One team, end to end</h2></div>
+  </div>
+  <p>
+    Visa, company, KBLI compliance, tax and property — handled by the same people, in
+    one relationship, with one point of contact.
+  </p>
+
+  <div class="callout">
+    <div class="callout-title">Our transparency guarantee</div>
+    <p class="callout-body">
+      We never keep your original documents. Every step of your case is visible in your
+      client portal, and every member of our team is identifiable by name.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 2 — VISAS ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">02</div>
+  </div>
+
+  <div class="eyebrow">Immigration</div>
+  <h1 class="section-title">Visas</h1>
+  <p class="lead">
+    From a 30-day visa on arrival to a multi-year business entry, every application is
+    filed digitally through the Molina portal by our licensed team.
+  </p>
+
+  <h3>Single entry</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 54%">Visa</th><th style="width: 20%">Stay</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>B1 Visa on Arrival</td><td>30 days</td><td>{{PRICE_VOA}}</td></tr>
+      <tr><td>C1 Tourism</td><td>60 days</td><td>{{PRICE_C1}}</td></tr>
+      <tr><td>C1 Tourism — extension</td><td>+60 days</td><td>{{PRICE_C1_EXT}}</td></tr>
+      <tr><td>C2 Business</td><td>60 days</td><td>{{PRICE_C2}}</td></tr>
+      <tr><td>C18 Work Trial</td><td>90 days</td><td>{{PRICE_C18}}</td></tr>
+      <tr><td>C22A&amp;B Internship</td><td>180 days</td><td>{{PRICE_C22}}</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Multiple entry</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 54%">Visa</th><th style="width: 20%">Validity</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>D1 Tourism</td><td>1 year</td><td>{{PRICE_D1_1}}</td></tr>
+      <tr><td>D2 Business</td><td>1 year</td><td>{{PRICE_D2_1}}</td></tr>
+      <tr><td>D12 Business Investigation</td><td>1 year</td><td>{{PRICE_D12_1}}</td></tr>
+      <tr><td>D12 Business Investigation</td><td>2 years</td><td>{{PRICE_D12_2}}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-title">Which one is yours</div>
+    <p class="callout-body">
+      A visa gets you in; a KITAS lets you stay long term, open a bank account and — for
+      the types that carry it — work. If you intend to live here rather than visit, the
+      next page is the one that matters.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 3 — KITAS / KITAP ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">03</div>
+  </div>
+
+  <div class="eyebrow">Immigration</div>
+  <h1 class="section-title">Stay permits</h1>
+  <p class="lead">
+    A KITAS is a limited stay permit — six months to five years, renewable. A KITAP is
+    the permanent one. Either will normally make you an Indonesian tax resident, which is
+    decided by how long you stay and why, not by the permit alone.
+  </p>
+
+  <h3>KITAS</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 54%">Permit</th><th style="width: 20%">Applied from</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>E33G Remote Worker</td><td>Offshore</td><td>{{PRICE_E33G_OFF}}</td></tr>
+      <tr><td>E33G Remote Worker</td><td>Onshore</td><td>{{PRICE_E33G_ALT}}</td></tr>
+      <tr><td>Investor KITAS, 2 years</td><td>Offshore</td><td>{{PRICE_INV_OFF}}</td></tr>
+      <tr><td>Freelance E23</td><td>Offshore</td><td>{{PRICE_E23_OFF}}</td></tr>
+      <tr><td>Retirement</td><td>Offshore</td><td>{{PRICE_RET_OFF}}</td></tr>
+      <tr><td>Spouse or dependent, 1 year</td><td>Offshore</td><td>{{PRICE_SPOUSE_OFF}}</td></tr>
+      <tr><td>E33E Second Home Senior, 5 years</td><td>Offshore</td><td>{{PRICE_E33E_OFF}}</td></tr>
+    </tbody>
+  </table>
+
+  <h3>KITAP — permanent</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 74%">Permit</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Investor KITAP — re-entry included</td><td>{{PRICE_KITAP_INV}}</td></tr>
+      <tr><td>Retirement KITAP — re-entry included</td><td>{{PRICE_KITAP_RET}}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-title">Offshore or onshore</div>
+    <p class="callout-body">
+      <strong>Offshore</strong> means the permit is applied for while you are outside
+      Indonesia — the usual route, and the cheaper one. <strong>Onshore</strong> (Altus)
+      is applied for while you are already here: faster, no flight, slightly more.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 4 — COMPANY ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">04</div>
+  </div>
+
+  <div class="eyebrow">Business</div>
+  <h1 class="section-title">Company setup</h1>
+  <p class="lead">
+    A PT PMA — the foreign-owned Indonesian company — takes you through OSS, BKPM, KBLI
+    classification and a notarial deed, and commits you to periodic LKPM investment
+    reporting to BKPM from then on. We handle all of it, and we stay on for the reporting.
+  </p>
+
+  <h3>Formation and registrations</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 74%">Service</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>New PT PMA — full package, including OSS, BKPM, NIB and notarial deed</td><td>{{PRICE_NEWCO}}</td></tr>
+      <tr><td>Virtual office, 1 year</td><td>{{PRICE_VO}}</td></tr>
+      <tr><td>NPWPD — regional tax registration</td><td>{{PRICE_NPWPD}}</td></tr>
+      <tr><td>BPJS Ketenagakerjaan — employee social security</td><td>{{PRICE_BPJS_TK}}</td></tr>
+      <tr><td>BPJS Kesehatan — health insurance</td><td>{{PRICE_BPJS_KES}}</td></tr>
+      <tr><td>Closing a PMA company</td><td>{{PRICE_CLOSE_PMA}}</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Work permits for foreign staff</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 54%">Permit</th><th style="width: 20%">Applied from</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Working KITAS</td><td>Offshore</td><td>{{PRICE_WK_OFF}}</td></tr>
+      <tr><td>Working KITAS</td><td>Onshore</td><td>{{PRICE_WK_ALT}}</td></tr>
+      <tr><td>Working KITAS — renewal</td><td>In place</td><td>{{PRICE_WK_EXT}}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <div class="callout-title">KBLI 2025 — deadline 18 June 2026</div>
+    <p class="callout-body">
+      Every registered business must migrate from KBLI 2020 codes to KBLI 2025. A NIB
+      left on the old codes risks suspension. Check yours in seconds with our free KBLI
+      Navigator at <strong>balizero.com/kbli</strong> — it also tells you whether a code
+      is open to foreign ownership.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 5 — TAX ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">05</div>
+  </div>
+
+  <div class="eyebrow">Tax &amp; accounting</div>
+  <h1 class="section-title">Staying compliant</h1>
+  <p class="lead">
+    A PT PMA files withholding tax every month, VAT every month once it is VAT-registered
+    (PKP), and a corporate return every year. If you hold a KITAS you will normally be a
+    tax resident yourself, with your own annual return. We act as your local
+    representative for both.
+  </p>
+
+  <h3>Monthly bookkeeping and filing</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 44%">Transactions per month</th><th style="width: 28%">Monthly only</th><th>With LKPM &amp; annual</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Up to 50</td><td>{{PRICE_TAX_M_0_50}}</td><td>{{PRICE_TAX_B_0_50}}</td></tr>
+      <tr><td>50 to 100</td><td>{{PRICE_TAX_M_50_100}}</td><td>{{PRICE_TAX_B_50_100}}</td></tr>
+      <tr><td>100 to 200</td><td>{{PRICE_TAX_M_100_200}}</td><td>{{PRICE_TAX_B_100_200}}</td></tr>
+      <tr><td>Over 200</td><td>{{PRICE_TAX_M_200}}</td><td>{{PRICE_TAX_B_200}}</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Annual</h3>
+  <table>
+    <thead>
+      <tr><th style="width: 74%">Filing</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Corporate annual return — SPT Tahunan Badan</td><td>{{PRICE_ANNUAL_CO}}</td></tr>
+      <tr><td>Personal annual return — SPT Tahunan Orang Pribadi</td><td>{{PRICE_ANNUAL_PERS}}</td></tr>
+      <tr><td>LKPM investment report</td><td>{{PRICE_LKPM}}</td></tr>
+      <tr><td>Dormant company — yearly financial report</td><td>{{PRICE_ANNUAL_ZERO}}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-title">The numbers that decide your structure</div>
+    <p class="callout-body">
+      Personal income tax runs 5% to 35% progressive; corporate income tax is 22%, with
+      reduced rates for smaller companies; VAT is 12%. An NPWP is mandatory once you hold
+      a KITAS, the annual return is due 31 March, and a tax resident is taxed on worldwide
+      income — which is exactly why the structure is worth getting right before the first
+      filing, not after.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 6 — DOCUMENTS ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">06</div>
+  </div>
+
+  <div class="eyebrow">Personal documents</div>
+  <h1 class="section-title">The paperwork around you</h1>
+  <p class="lead">
+    The small documents that make daily life work — and the ones the immigration office
+    asks for when you leave, move or renew.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th style="width: 74%">Document</th><th>Bali Zero fee</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>SKTT — resident registration card</td><td>{{PRICE_SKTT}}</td></tr>
+      <tr><td>SKCK — police clearance certificate</td><td>{{PRICE_SKCK}}</td></tr>
+      <tr><td>Domicile letter</td><td>{{PRICE_DOM}}</td></tr>
+      <tr><td>Passport, 5 years</td><td>{{PRICE_PP5}}</td></tr>
+      <tr><td>Passport, 10 years</td><td>{{PRICE_PP10}}</td></tr>
+      <tr><td>Passport mutation — new passport, same permit</td><td>{{PRICE_MUT_PP}}</td></tr>
+      <tr><td>Address mutation</td><td>{{PRICE_MUT_ADDR}}</td></tr>
+      <tr><td>Driving licence</td><td>{{PRICE_SIM}}</td></tr>
+      <tr><td>Exit permit (EPO) — filed in Indonesia, surrendering your stay permit</td><td>{{PRICE_EPO}}</td></tr>
+      <tr><td>Exit permit — filed from abroad, if you have already left for good</td><td>{{PRICE_ERP}}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <div class="callout-title">Property — before you sign anything</div>
+    <p class="callout-body">
+      A foreign national cannot hold Hak Milik, Indonesian freehold. What you can hold is
+      Hak Pakai (right of use) or Hak Sewa (leasehold), and a PT PMA can hold Hak Guna
+      Bangunan. Any arrangement that promises you freehold through a nominee is void
+      under Indonesian law, and the land is not yours. Ask us first.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 7 — HOW WE WORK ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">07</div>
+  </div>
+
+  <div class="eyebrow">Our process</div>
+  <h1 class="section-title">How we work</h1>
+  <p class="lead">
+    One dedicated advisor, a private portal where you can watch your case move, and an AI
+    assistant available at any hour for the questions that arrive at 2am.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th style="width: 7%">#</th><th style="width: 28%">Step</th><th>What happens</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Discovery call</td><td>Free. We map your situation — visa, business, tax — and tell you which pathway is actually yours.</td></tr>
+      <tr><td>2</td><td>Fixed-price proposal</td><td>One all-inclusive figure per service. No hourly billing, no fees revealed later.</td></tr>
+      <tr><td>3</td><td>Your advisor</td><td>One person owns your case and coordinates everyone else. You never re-explain your situation.</td></tr>
+      <tr><td>4</td><td>Preparation</td><td>Every document is cross-checked against current regulation before it is submitted.</td></tr>
+      <tr><td>5</td><td>Filing</td><td>We file with the authority, and you follow the progress in your portal.</td></tr>
+      <tr><td>6</td><td>Aftercare</td><td>We deliver the permit — and we hold the renewal dates, so the next deadline is ours to remember.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-title">Your client portal</div>
+    <p class="callout-body">
+      <strong>my.balizero.com</strong> — live case status, your document vault, and a
+      direct line to your advisor. <strong>zantara.balizero.com</strong> answers
+      immigration, company and tax questions around the clock.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 8 — CONTACT ============================ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">Bali Zero</div>
+      <div class="page-header-doc">Company brochure</div>
+    </div>
+    <div class="page-header-num">08</div>
+  </div>
+
+  <div class="eyebrow">Get in touch</div>
+  <h1 class="section-title">Start today</h1>
+  <p class="lead">
+    WhatsApp is the fastest way to reach us. The first consultation costs nothing and
+    ends with a fixed price, so you know what you are committing to before you commit.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th style="width: 26%">Channel</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>WhatsApp</td><td>+62 821 3454 721</td></tr>
+      <tr><td>Email</td><td>zero@balizero.com</td></tr>
+      <tr><td>Web</td><td>balizero.com</td></tr>
+      <tr><td>Client portal</td><td>my.balizero.com</td></tr>
+      <tr><td>AI assistant</td><td>zantara.balizero.com — 24/7</td></tr>
+      <tr><td>Office</td><td>Jl. Raya Anyar No. 2 Gg. 3, Kerobokan Kelod, Kuta Utara, Badung, Bali 80361</td></tr>
+      <tr><td>Hours</td><td>Monday to Friday, 09:00–18:00 WITA</td></tr>
+    </tbody>
+  </table>
+
+  <div class="divider"></div>
+
+  <p>
+    <em>Most people arrive in Bali with a plan. Very few arrive with the right one. After
+    22 years here, we know the difference — and we are the team that makes sure yours
+    holds up when it actually matters.</em>
+  </p>
+  <p><strong>The Bali Zero founding team</strong></p>
+
+  <div class="page-footer">
+    <div>balizero.com — zero@balizero.com</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+</body>
+</html>

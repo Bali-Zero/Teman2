@@ -1,0 +1,34 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "Two pull quotes that survived the first two prose batches because every probe this lane had was blind to them: the detector acquits a sentence whose negation precedes the claim ('is NOT a hidden restriction: ... open to 100%'), and the token scan missed 'foreign ownership up to 100'. Both codes now carry a cured whatYouNeed saying 0% and a pull quote on the same page saying 100%.",
+  "codes": {
+    "41018": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "b3204562be00886cb3485b512fc6a217c842bad76d3c90fe0a0a5c88b746ade0",
+          "old_excerpt": "For this slim record, the conclusion is not a hidden restriction: KBLI 41018 is nationally open to foreign ownership up to 100%, and the Bali field do",
+          "new": "The obstacle here is not Bali. The bidang usaha is allocated to Koperasi and UMKM, which sets foreign ownership at 0%, so a PT PMA cannot register KBLI 41018 anywhere in Indonesia."
+        }
+      }
+    },
+    "55105": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "b02bf99da72ebd16f14408f7edd4c87800c4fe5df62975045b7c4a2489dc84b2",
+          "old_excerpt": "The national 100% ceiling does not automatically produce a Bali registration route.",
+          "new": "There is no national ceiling to fall back on: the allocation to Koperasi and UMKM sets foreign ownership at 0%, so the Bali scope test no longer decides whether a PT PMA can register."
+        }
+      }
+    }
+  }
+}

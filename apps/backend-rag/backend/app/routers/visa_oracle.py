@@ -197,7 +197,7 @@ def _obsolete_code_static_answer(obsolete_hits: list[tuple[str, str]]) -> str | 
         return None
     lines.append(
         "A Bali Zero consultant can confirm the exact match for your specific "
-        "case on WhatsApp (+62 821-3107-363)."
+        "case on WhatsApp (+62 821-3454-721)."
     )
     return "\n".join(lines)
 
@@ -285,39 +285,39 @@ HEDGING_PREFIX_BY_LANG: dict[str, str] = {
 ABSTAIN_FALLBACK_BY_LANG: dict[str, str] = {
     "en": (
         "I don't have reliable context to answer that specifically. "
-        "Contact our Bali Zero team on WhatsApp (+62 821-3107-363) — "
+        "Contact our Bali Zero team on WhatsApp (+62 821-3454-721) — "
         "we'll give you a tailored answer in minutes."
     ),
     "it": (
         "Non ho informazioni sufficienti per rispondere con precisione "
         "a questa domanda specifica. Scrivi al nostro team Bali Zero su "
-        "WhatsApp (+62 821-3107-363) — ti rispondiamo in pochi minuti "
+        "WhatsApp (+62 821-3454-721) — ti rispondiamo in pochi minuti "
         "con una guida su misura."
     ),
     "id": (
         "Saya belum punya informasi spesifik untuk menjawab pertanyaan ini. "
-        "Hubungi tim Bali Zero di WhatsApp (+62 821-3107-363) — kami akan "
+        "Hubungi tim Bali Zero di WhatsApp (+62 821-3454-721) — kami akan "
         "memberi jawaban yang disesuaikan dalam beberapa menit."
     ),
     "fr": (
         "Je n'ai pas d'informations fiables pour répondre précisément à "
         "cette question. Contacte l'équipe Bali Zero sur WhatsApp "
-        "(+62 821-3107-363) — réponse sur mesure en quelques minutes."
+        "(+62 821-3454-721) — réponse sur mesure en quelques minutes."
     ),
     "es": (
         "No tengo información suficiente para responder con precisión a "
         "esta pregunta. Escribe al equipo Bali Zero por WhatsApp "
-        "(+62 821-3107-363) — te respondemos a medida en pocos minutos."
+        "(+62 821-3454-721) — te respondemos a medida en pocos minutos."
     ),
     "de": (
         "Ich habe keine zuverlässigen Informationen, um diese Frage "
         "präzise zu beantworten. Schreib dem Bali Zero Team auf WhatsApp "
-        "(+62 821-3107-363) — maßgeschneiderte Antwort in wenigen Minuten."
+        "(+62 821-3454-721) — maßgeschneiderte Antwort in wenigen Minuten."
     ),
     "ru": (
         "У меня нет достоверной информации, чтобы точно ответить на "
         "этот вопрос. Напишите в команду Bali Zero в WhatsApp "
-        "(+62 821-3107-363) — индивидуальный ответ за несколько минут."
+        "(+62 821-3454-721) — индивидуальный ответ за несколько минут."
     ),
 }
 
@@ -325,31 +325,31 @@ ABSTAIN_FALLBACK_BY_LANG: dict[str, str] = {
 TIMEOUT_FALLBACK_BY_LANG: dict[str, str] = {
     "en": (
         "Our AI is taking longer than usual. Please try again or contact "
-        "us on WhatsApp (+62 821-3107-363) for immediate assistance."
+        "us on WhatsApp (+62 821-3454-721) for immediate assistance."
     ),
     "it": (
         "La nostra AI sta impiegando più tempo del solito. Riprova oppure "
-        "scrivici su WhatsApp (+62 821-3107-363) per assistenza immediata."
+        "scrivici su WhatsApp (+62 821-3454-721) per assistenza immediata."
     ),
     "id": (
         "AI kami membutuhkan waktu lebih lama. Silakan coba lagi atau "
-        "hubungi WhatsApp (+62 821-3107-363) untuk bantuan langsung."
+        "hubungi WhatsApp (+62 821-3454-721) untuk bantuan langsung."
     ),
     "fr": (
         "Notre IA prend plus de temps que d'habitude. Réessaie ou "
-        "contacte-nous sur WhatsApp (+62 821-3107-363)."
+        "contacte-nous sur WhatsApp (+62 821-3454-721)."
     ),
     "es": (
         "Nuestra IA está tardando más de lo habitual. Inténtalo de nuevo o "
-        "escríbenos por WhatsApp (+62 821-3107-363)."
+        "escríbenos por WhatsApp (+62 821-3454-721)."
     ),
     "de": (
         "Unsere KI braucht länger als üblich. Versuche es erneut oder "
-        "schreib uns auf WhatsApp (+62 821-3107-363)."
+        "schreib uns auf WhatsApp (+62 821-3454-721)."
     ),
     "ru": (
         "Наш ИИ отвечает дольше обычного. Повторите попытку или напишите "
-        "нам в WhatsApp (+62 821-3107-363)."
+        "нам в WhatsApp (+62 821-3454-721)."
     ),
 }
 
@@ -990,7 +990,7 @@ async def chat(
                 token,
                 _settings.jwt_secret_key,
                 algorithms=[_settings.jwt_algorithm],
-                options={"verify_exp": True},
+                options={"verify_exp": True, "require_exp": True},
             )
         except JWTError:
             raise HTTPException(status_code=401, detail="Invalid or expired token")

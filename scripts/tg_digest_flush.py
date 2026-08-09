@@ -30,7 +30,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tg_notify import _spool_lock, resolve_credentials, send_telegram  # noqa: E402
+from tg_notify import _spool_lock, harden, resolve_credentials, send_telegram  # noqa: E402
 
 MAX_CHARS = 3500
 
@@ -91,7 +91,9 @@ def _archive(spool: Path, records: list[dict]) -> None:
     day = time.strftime("%Y-%m-%d")
     adir = spool / "archive"
     adir.mkdir(parents=True, exist_ok=True)
-    with (adir / f"{day}.jsonl").open("a") as fh:
+    # harden() not open(0o600): `open("a")` on a file that already exists keeps
+    # its mode, and 33 days of these were written 0644 before this.
+    with harden(adir / f"{day}.jsonl").open("a") as fh:
         for r in records:
             fh.write(json.dumps(r, ensure_ascii=False) + "\n")
 
@@ -107,7 +109,7 @@ def _archive_log_only(spool: Path) -> int:
     adir = spool / "archive"
     adir.mkdir(parents=True, exist_ok=True)
     lines = [ln for ln in logf.read_text(errors="replace").splitlines() if ln.strip()]
-    with (adir / f"{day}.log-only.jsonl").open("a") as fh:
+    with harden(adir / f"{day}.log-only.jsonl").open("a") as fh:
         for ln in lines:
             fh.write(ln + "\n")
     logf.unlink()
@@ -178,7 +180,7 @@ def flush(dry_run: bool = False) -> int:
     if not records:
         # heartbeat for the self-probe even when silent-healthy;
         # claims are empty by construction here (anything with content was adopted)
-        (spool / "last_flush.json").write_text(
+        harden(spool / "last_flush.json").write_text(
             json.dumps({"ts": time.time(), "sent": False, "events": 0})
         )
         for c in claim_files:
@@ -203,7 +205,7 @@ def flush(dry_run: bool = False) -> int:
             _restore(spool, records)
         for c in claim_files:
             c.unlink(missing_ok=True)
-        (spool / "last_flush.json").write_text(
+        harden(spool / "last_flush.json").write_text(
             json.dumps({"ts": time.time(), "sent": False, "events": len(records), "error": "send-failed"})
         )
         print("tg_digest_flush: SEND FAILED — spool preserved", file=sys.stderr)
@@ -213,7 +215,7 @@ def flush(dry_run: bool = False) -> int:
         _archive(spool, records)
     for c in claim_files:
         c.unlink(missing_ok=True)
-    (spool / "last_flush.json").write_text(
+    harden(spool / "last_flush.json").write_text(
         json.dumps({"ts": time.time(), "sent": True, "events": len(records)})
     )
     print(f"tg_digest_flush: sent digest with {len(records)} events")
@@ -243,6 +245,10 @@ def selftest() -> int:
             {"ts": 2, "tier": "digest", "source": "fly-watcher", "text": "still green"},
             {"ts": 3, "tier": "p0", "source": "dlq", "text": "late", "p0_overflow": True},
         ]
+        # NOT hardened, and deliberately: every write below lands in the
+        # TemporaryDirectory above, never in the real spool. `harden` states a
+        # production invariant — using it on fixtures would blur which writes
+        # actually carry alert content.
         with (spool / "pending.jsonl").open("w") as fh:
             for r in recs:
                 fh.write(json.dumps(r) + "\n")

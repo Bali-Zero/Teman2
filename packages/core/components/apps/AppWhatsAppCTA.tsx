@@ -90,7 +90,7 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
       setError(
         "We could not open WhatsApp automatically. Opening the basic link.",
       );
-      window.location.href = "https://wa.me/6282230102328";
+      window.location.href = "https://wa.me/628213454721";
     } finally {
       setPending(false);
     }

@@ -87,11 +87,18 @@ def enqueue_task(
 
 
 def _already_pending(job: str) -> bool:
-    """True if the queue already has a pending entry for this job."""
-    for entry in escalations.read_all_escalations(include_resolved=False):
-        if entry.get("job") == job and entry.get("status") == "pending":
-            return True
-    return False
+    """True if the queue's LATEST record for this job is still open (pending).
+
+    Delegates to escalations.is_job_open() — a naive per-entry status scan
+    over read_all_escalations(include_resolved=False) sees the job's
+    ORIGINAL pending entry forever, because mark_resolved() appends a new
+    resolved record rather than mutating it (append-only queue). Without
+    the collapse-to-latest step, a job that fails once, gets resolved, then
+    fails again months later would never re-enqueue: this function would
+    keep reporting "already pending" against the ancient, since-resolved
+    entry.
+    """
+    return escalations.is_job_open(job)
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:

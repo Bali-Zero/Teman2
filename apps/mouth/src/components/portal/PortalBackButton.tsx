@@ -38,6 +38,7 @@ export function PortalBackButton({
     return (
       <Link
         href={href}
+        prefetch={false}
         className={`${baseClass} ${className ?? ""}`}
         style={style}
       >

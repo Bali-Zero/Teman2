@@ -15,6 +15,9 @@ const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
+  // This fail-closed smoke requires the complete synthetic contract and is
+  // collected only by playwright.prodlike.config.ts.
+  testIgnore: "portal-prodlike-smoke.spec.ts",
 
   // Timeout per singolo test
   timeout: 60 * 1000,
@@ -74,21 +77,22 @@ export default defineConfig({
     },
   ],
 
-  // In CI we always need the webServer (there is no pre-running dev server).
-  // Locally, opt out by setting PLAYWRIGHT_EXTERNAL_SERVER=1 so that the
-  // already-running `npm run dev` on :3000 is used instead.
+  // Exercise the same optimized runtime and CSP path used in production.
+  // The development runtime requires `unsafe-eval`, which the portal policy
+  // intentionally rejects, so running `next dev` here prevents hydration and
+  // leaves the client shell stuck on its loading state.
+  //
+  // Locally, opt out by setting PLAYWRIGHT_EXTERNAL_SERVER=1 when a compatible
+  // server is already running on the configured port.
   webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER
     ? undefined
     : {
-        // Webpack is the deterministic CI path verified by the offline suite.
-        // Local development keeps the project's default bundler.
-        command: process.env.CI
-          ? `npm run dev -- --webpack --port ${E2E_PORT}`
-          : `npm run dev -- --port ${E2E_PORT}`,
+        command: `npm run build && npm run start -- --port ${E2E_PORT}`,
         url: `http://127.0.0.1:${E2E_PORT}`,
         env: {
           NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS: "1",
           NEXT_PUBLIC_HIDE_CELL_WIDGET: "1",
+          NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER: "628123456789",
         },
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,

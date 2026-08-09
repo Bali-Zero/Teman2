@@ -115,7 +115,7 @@ USAGE (dry-run is the default; nothing is written without --apply):
 
     # multiple codes:
     PYTHONPATH=. python backend/scripts/kbli_documents_cure.py \\
-        --only 50113,68112,49213 --apply
+        --only 50113,68112,49213 --apply --cure-run kbli_cure:2026-08-08
 
     # every quarantined code (73 as of 2026-07-19), dry-run against prod
     # GitHub raw main:
@@ -123,7 +123,8 @@ USAGE (dry-run is the default; nothing is written without --apply):
 
     # apply (writes DB):
     fly ssh console -a nuzantara-rag -C \\
-        "python backend/scripts/kbli_documents_cure.py --all-quarantined --apply"
+        "python backend/scripts/kbli_documents_cure.py --all-quarantined --apply \\
+            --cure-run kbli_cure:2026-08-08"
 """
 
 from __future__ import annotations
@@ -137,10 +138,13 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import asyncpg
 import httpx
+
+from backend.scripts._kbli_archive import archive_row, ensure_archive_schema
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kbli_documents_cure")
@@ -220,8 +224,33 @@ CONFORMANCE_EXIT_CANNOT_VERIFY = 4
 # machine template earns a rebuild. Measured 2026-08-02: all 50 machine-shaped
 # rows in the live divergent set carry exactly these three sections and nothing
 # else, so a row with a hand-added section is refused rather than overwritten.
+#
+# THE CURE COULD NOT RE-CURE ITS OWN OUTPUT (measured 2026-08-05).
+#
+# This set held the three sections of the 2026-02-18 SEED. But `build_content`
+# also writes `## Perizinan` (always) and `## Catatan Verifikasi` (when there is
+# a data note) — sections the seed never had. So every row this tool wrote
+# failed its own `is_machine_template` and was refused on the next run as
+# hand-written prose that must not be destroyed: prose the machine itself wrote.
+# Measured on the live table: of the 55 rows cured on 2026-08-03, **0** were
+# still recognised — all 55 were frozen against any future licensing update.
+#
+# The listed constant is now the seed's three PLUS everything the builder emits,
+# and `test_the_builders_own_output_is_recognised_by_the_recogniser` regenerates
+# real content and asserts the round trip — so adding a section to
+# `build_content` without declaring it here fails CI instead of silently
+# freezing the rows it writes.
 MACHINE_TEMPLATE_SECTIONS = frozenset(
-    {"Informasi Umum", "Deskripsi Kegiatan Usaha", "Investasi Asing (PMA)"}
+    {
+        # the 2026-02-18 seed
+        "Informasi Umum",
+        "Deskripsi Kegiatan Usaha",
+        "Investasi Asing (PMA)",
+        # emitted by build_content — see the round-trip test
+        "Perizinan",
+        "Kewajiban",
+        "Catatan Verifikasi",
+    }
 )
 _SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
 
@@ -244,24 +273,14 @@ CONTRADICTED_LICENSING_CLAIM_RE = re.compile(
     re.I,
 )
 
-# One-shot forensic archive of the pre-cure fabricated row — created lazily
-# (IF NOT EXISTS) by this script itself, no formal migration needed for an
-# admin-only audit sidecar. UNIQUE(kode_kbli) backs the ON CONFLICT DO
-# NOTHING one-shot-capture semantics in main().
-ARCHIVE_TABLE_DDL = """
-CREATE TABLE IF NOT EXISTS kbli_documents_archive (
-    id SERIAL PRIMARY KEY,
-    kode_kbli VARCHAR NOT NULL UNIQUE,
-    judul TEXT,
-    content TEXT,
-    metadata JSONB,
-    original_created_at TIMESTAMP,
-    original_updated_at TIMESTAMP,
-    archived_at TIMESTAMP NOT NULL DEFAULT now(),
-    archived_reason TEXT NOT NULL DEFAULT
-        'kbli_documents_cure: pre-cure fabricated-content snapshot (2026-07-19)'
-)
-"""
+# The cure-run identifier comes from the INVOCATION (--cure-run), never a
+# script constant. A constant makes every pass of this script share one
+# cure_run: a later pass (different selection, different date) hits
+# ON CONFLICT (kode_kbli, cure_run) DO NOTHING and its pre-cure snapshot is
+# silently skipped — the one-shot disease resurrected across passes (round-2
+# fix, 2026-08-08). The shared DDL + versioned INSERT live in _kbli_archive
+# (single source of truth — the duplicated DDL that was here and in
+# kbli_documents_phantom_cure is how schemas drift).
 
 
 @dataclass
@@ -320,6 +339,61 @@ def is_machine_template(code: str, content: str | None) -> bool:
     return bool(sections) and sections <= MACHINE_TEMPLATE_SECTIONS
 
 
+def selector_conflict(
+    *, quarantined: bool, licensing_absent: bool, machine_template: bool
+) -> str | None:
+    """Pure. The refusal message when more than one scope selector is on, or None.
+
+    The three selectors choose populations three different WAYS — a canonical
+    marker, a detector's verdict about live state, and the stored text itself —
+    so a union has no single sentence that describes what acted, and the run
+    report is the only record of a write to a client-facing table. They also
+    carry OPPOSITE duties: the quarantine scope deliberately destroys stored
+    content (it is fabricated by definition) while the table scope refuses to.
+    Silently letting one win is how a run destroys prose under a flag the
+    operator thought meant something narrower.
+
+    Pure and out here because the refusal lives in `main`, which no test can
+    execute (it opens a real connection) — inline, a mutation disabling the
+    check survived the whole suite.
+    """
+    chosen = [
+        name
+        for name, on in (
+            ("--all-quarantined", quarantined),
+            ("--all-licensing-absent", licensing_absent),
+            ("--all-machine-template", machine_template),
+        )
+        if on
+    ]
+    if len(chosen) < 2:
+        return None
+    return (
+        f"{' and '.join(chosen)} select DIFFERENT populations DIFFERENT ways (marker vs detector "
+        "state vs stored text) — refusing to union them, because the run report could no longer "
+        "say which scope acted. Run them separately."
+    )
+
+
+def select_machine_template_rows(
+    codes: list[str], table_rows: dict[str, dict]
+) -> tuple[list[str], int]:
+    """Pure. The `--all-machine-template` population: of the codes queried, the
+    rows the table actually holds, narrowed to the ones whose STORED TEXT is a
+    machine seed. Returns (kept, how many were present) so the caller can print
+    N of M rather than a bare N (W97).
+
+    It lives out here, and `main` does nothing but call it, on purpose: while it
+    was three lines inlined in `main` a mutation that replaced the predicate with
+    `True` — rebuild every row present, including 316 pieces of hand-written
+    editorial prose — SURVIVED the whole suite, because the test re-implemented
+    the filter instead of calling it. A decision that only exists inside an
+    un-runnable function is a decision nothing tests.
+    """
+    present = [c for c in codes if c in table_rows]
+    return [c for c in present if is_machine_template(c, table_rows[c]["content"])], len(present)
+
+
 def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str | None:
     """Pure. Why this row may be rebuilt wholesale — or None to refuse it.
 
@@ -340,14 +414,70 @@ def rebuild_reason(code: str, content: str | None, canonical_rows: int) -> str |
     return None
 
 
-def fetch_conformance_report(script: Path | None) -> dict:
+SNAPSHOT_MAX_AGE_MINUTES = 60
+
+
+def _check_snapshot_freshness(captured_at: str | None) -> None:
+    """A supplied snapshot is a MEASUREMENT OF THE WORLD, and a measurement
+    frozen into a file goes stale silently (W106). The caller must say when it
+    was taken; a value older than an hour is refused rather than trusted.
+
+    Deliberately an assertion by the caller rather than the file's mtime: `scp`
+    without `-p` restamps mtime, so an mtime check would read every shipped
+    snapshot as fresh — a guard that cannot fail is worse than none."""
+    if captured_at is None:
+        raise RuntimeError(
+            "--conformance-table-json requires --snapshot-captured-at <ISO8601>: a snapshot "
+            "with no stated capture time cannot be distinguished from one taken last week"
+        )
+    try:
+        taken = datetime.fromisoformat(captured_at)
+    except ValueError as exc:
+        raise RuntimeError(f"--snapshot-captured-at is not ISO8601: {captured_at!r} ({exc})") from exc
+    if taken.tzinfo is None:
+        taken = taken.replace(tzinfo=timezone.utc)
+    age = (datetime.now(timezone.utc) - taken).total_seconds() / 60
+    if age > SNAPSHOT_MAX_AGE_MINUTES:
+        raise RuntimeError(
+            f"snapshot was captured {age:.0f} minutes ago (limit {SNAPSHOT_MAX_AGE_MINUTES}) — "
+            "re-capture it. Curing against a stale reading of the table is how a cure writes "
+            "over rows it never actually looked at."
+        )
+    if age < -5:
+        raise RuntimeError(
+            f"--snapshot-captured-at is {-age:.0f} minutes in the FUTURE — refusing rather than "
+            "accepting a timestamp that cannot be true"
+        )
+
+
+def fetch_conformance_report(
+    script: Path | None,
+    table_json: Path | None = None,
+    snapshot_captured_at: str | None = None,
+) -> dict:
     """I/O. Runs the detector and returns its JSON report.
 
     Judged by EXIT CODE, never by "did it print something": exit 4 means the
     detector could not read one of the two sides, and its report then carries
     zero divergences — the exact shape of a healthy fleet. Consuming that as
     "nothing to cure" is how a cure silently becomes a no-op (W84). Anything
-    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict."""
+    outside {0, 1, 4} is also a refusal: an unknown exit is not a verdict.
+
+    WHY `table_json` EXISTS. Reading the live table needs a Keychain password,
+    and reading THAT needs an interactive session: over ssh the same lookup
+    returns `errSecInteractionNotAllowed` (rc 36) — the entry is present and
+    simply unreadable, which is not the same as absent. The write DSN lives on
+    a different machine than the readable Keychain, so no single non-interactive
+    run holds both halves. This lets the snapshot be captured where the table
+    can be read and carried to where the write can happen.
+
+    What it does NOT do: hand the cure a verdict. The detector still derives the
+    divergence itself from canonical plus the snapshot, and still owns the
+    predicate — passing a hand-written REPORT would let anything drive a write."""
+    if table_json is not None:
+        _check_snapshot_freshness(snapshot_captured_at)
+        if not table_json.is_file():
+            raise RuntimeError(f"--conformance-table-json not found at {table_json}")
     if script is None:
         raise RuntimeError(
             "conformance detector not found by walking up from this file — no repo layout "
@@ -360,9 +490,10 @@ def fetch_conformance_report(script: Path | None) -> dict:
             f"conformance detector not found at {script} — refusing to guess scope from a "
             "predicate this script does not own"
         )
-    proc = subprocess.run(
-        [sys.executable, str(script), "--json"], capture_output=True, text=True, check=False
-    )
+    cmd = [sys.executable, str(script), "--json"]
+    if table_json is not None:
+        cmd += ["--table-json", str(table_json)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode == CONFORMANCE_EXIT_CANNOT_VERIFY:
         raise RuntimeError(
             "conformance detector returned CANNOT-VERIFY (exit 4) — it could not read canonical "
@@ -398,6 +529,93 @@ def _render_per_skala_entry(entry: dict) -> str:
         f"Perizinan: {perizinan_txt} | Kewenangan: {kewenangan_txt} | "
         f"Jangka Waktu: {jangka}"
     )
+
+
+# The extraction carries markup on ~1.8% of obligation strings (1,524 of 86,241
+# requirement+obligation entries, measured 2026-08-05). Stripped, never
+# rendered: this text is read by an LLM and spoken to a client, and `<strong>`
+# is not a fact.
+_HTML_TAG_RE = re.compile(r"<[a-zA-Z/][^>]*>")
+
+# Beyond this, the obligation block would dominate the document it is part of.
+# Measured on canonical: 1,490 of 1,559 records (95.6%) fit whole; 69 do not,
+# and those say so IN THE TEXT rather than being quietly cut (W97 — a silent
+# truncation reads downstream as "this is everything").
+KEWAJIBAN_BLOCK_MAX_CHARS = 8000
+
+
+def _scale_label(entry: dict) -> str:
+    label = _join(entry.get("skala_usaha"))
+    scope = entry.get("scope_uraian")
+    return f"{label} ({scope})" if scope else label
+
+
+def build_kewajiban_section(record: dict) -> list[str]:
+    """The statutory obligations, grouped by the scales that share them.
+
+    WHY THIS EXISTS (measured on canonical 2026-08-05, 9,095 per-scale rows):
+
+        perizinan    non-empty in     17 rows  (0.19%)
+        persyaratan  non-empty in  5,369 rows  (59%)
+        kewajiban    non-empty in  8,951 rows  (98%)
+
+    `## Perizinan` renders `perizinan` and nothing else — the ONE field that is
+    empty 99.8% of the time — so the channel's answer about what a business must
+    actually do was `Perizinan: N/A` for practically the whole catalogue, while
+    the field carrying the real obligations was dropped. On `96230` (a day spa)
+    canonical holds "Memiliki Sertifikat Standar Usaha Pariwisata" and "Memiliki
+    Sertifikat Laik Sehat (SLS)" — the SLHS itself — and the channel was telling
+    clients the requirements were "still pending". The WEBSITE already renders
+    them (`balizero.com/kbli/96230` prints "Laik Sehat"), so this is the same
+    shape as the rest of this lane: the page tells the truth, the channel does not.
+
+    GROUPED, not per-scale-repeated, because the same obligation is usually
+    carried by every scale: rendering it once per row costs 3.5M characters
+    catalogue-wide against 1.1M grouped, and a client does not need "Sertifikat
+    Laik Sehat" four times. The scales are NAMED on each group, because 912 of
+    1,341 records genuinely differ by scale — collapsing them to one block would
+    lose which scale an obligation belongs to.
+
+    `persyaratan` is deliberately NOT rendered here: 6% of its entries are
+    multi-line OSS document checklists (max 6,622 chars) whose bounded shape is
+    a separate design question, ledgered rather than guessed at. Stating that is
+    the point — an omission nobody wrote down reads as "there was nothing".
+    """
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for entry in record.get("per_skala") or []:
+        if not isinstance(entry, dict):
+            continue
+        raw = entry.get("kewajiban") or []
+        if not isinstance(raw, list):
+            raw = [raw]
+        cleaned = tuple(
+            text
+            for text in (_HTML_TAG_RE.sub("", str(v)).strip() for v in raw if v)
+            if text
+        )
+        if not cleaned:
+            continue
+        groups.setdefault(cleaned, []).append(_scale_label(entry))
+
+    if not groups:
+        return []
+
+    lines: list[str] = []
+    budget = KEWAJIBAN_BLOCK_MAX_CHARS
+    dropped = 0
+    for obligations, scales in groups.items():
+        bullet = f"- **{', '.join(scales)}**: " + "; ".join(obligations)
+        if len(bullet) > budget and lines:
+            dropped += 1
+            continue
+        budget -= len(bullet)
+        lines.append(bullet)
+    if dropped:
+        lines.append(
+            f"- _({dropped} ulteriori kelompok kewajiban tidak ditampilkan di sini "
+            f"karena panjang — tanyakan skala usaha tertentu untuk rinciannya.)_"
+        )
+    return ["", "## Kewajiban", *lines]
 
 
 def build_perizinan_section(record: dict) -> str:
@@ -446,6 +664,7 @@ def build_cured_content(code: str, record: dict) -> str:
     if pma_nota:
         lines.append(f"- Catatan PMA: {pma_nota}")
     lines += ["", "## Perizinan", build_perizinan_section(record)]
+    lines += build_kewajiban_section(record)
     if data_note:
         lines += ["", "## Catatan Verifikasi", data_note]
     return "\n".join(lines).strip() + "\n"
@@ -566,9 +785,22 @@ async def load_dataset(source: str) -> list[dict]:
         return r.json()["data"]
 
 
-async def main() -> int | None:
+def build_parser() -> argparse.ArgumentParser:
+    """Module-level argparse construction so tests exercise the REAL parser,
+    not a copy that stays green if production validation is deleted."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
+    ap.add_argument(
+        "--cure-run",
+        default=None,
+        help=(
+            "Stable identifier of THIS cure pass, e.g. "
+            "'<script>:<scope-or-spec-date>' — each pass declares its own; "
+            "re-running the same pass with the same id stays idempotent, "
+            "a new pass MUST use a new id or its snapshots are silently skipped. "
+            "REQUIRED when --apply is passed."
+        ),
+    )
     ap.add_argument(
         "--only",
         default=None,
@@ -590,10 +822,41 @@ async def main() -> int | None:
         "1,423 rows no --only list ever named. Refuses if the detector cannot verify.",
     )
     ap.add_argument(
+        "--all-machine-template",
+        action="store_true",
+        help="rebuild every row the table itself shows to be a machine-seed document, i.e. every "
+        "row `is_machine_template` accepts (299 of 1,563 measured 2026-08-05). TABLE-selected: "
+        "the population is a property of the stored text, not of a marker or a detector, so this "
+        "is the only selector that can DELIVER a change to the builder — the other three each "
+        "answer a narrower question and together they reach a few dozen rows. Lossless by "
+        "construction: a machine-seed row is regenerated from the same canonical fields it was "
+        "built from. The other 1,264 rows keep their hand-written prose and are named, not "
+        "silently skipped.",
+    )
+    ap.add_argument(
         "--conformance-script",
         type=Path,
         default=CONFORMANCE_SCRIPT,
         help="path to kbli_surface_conformance.py (the sole owner of the divergence predicate)",
+    )
+    ap.add_argument(
+        "--conformance-table-json",
+        type=Path,
+        default=None,
+        help=(
+            "table snapshot for the detector to read INSTEAD of querying the DB, for when the "
+            "readable Keychain and the write DSN are on different machines. The detector still "
+            "derives the verdict itself. Requires --snapshot-captured-at"
+        ),
+    )
+    ap.add_argument(
+        "--snapshot-captured-at",
+        default=None,
+        metavar="ISO8601",
+        help=(
+            f"when --conformance-table-json was captured; refused if older than "
+            f"{SNAPSHOT_MAX_AGE_MINUTES} minutes"
+        ),
     )
     ap.add_argument(
         "--dataset",
@@ -601,26 +864,68 @@ async def main() -> int | None:
         help="canonical dataset: local file path (read directly) or URL (httpx fetch). "
         "Default: GitHub raw main.",
     )
+    return ap
+
+
+def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> str:
+    """Module-level validation of parsed args, returning the resolved cure_run.
+
+    Lives outside ``main`` so tests exercise the REAL production validation
+    rather than a re-implementation that stays green if this check is deleted.
+    """
+    # --cure-run: REQUIRED on apply; defaults to "dry-run" otherwise. A constant
+    # would make every pass of this script share one cure_run, and a later pass's
+    # pre-cure snapshot would be silently skipped by ON CONFLICT DO NOTHING — the
+    # one-shot disease resurrected across passes.
+    if args.apply and not args.cure_run:
+        parser.error("--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id")
+    if not args.cure_run:
+        return "dry-run"
+    cure_run = args.cure_run.strip()
+    if not cure_run:
+        parser.error("--cure-run must not be empty")
+    if any(c.isspace() for c in cure_run):
+        parser.error(f"--cure-run must not contain whitespace (got {cure_run!r})")
+    return cure_run
+
+
+async def main() -> int | None:
+    ap = build_parser()
     args = ap.parse_args()
+    cure_run = validate_args(ap, args)
 
     dataset = await load_dataset(args.dataset)
 
     canonical_rows_by_code: dict[str, int] = {}
-    if args.all_quarantined and args.all_licensing_absent:
-        logger.error(
-            "--all-quarantined and --all-licensing-absent are two DIFFERENT populations selected "
-            "two different ways (marker vs state) — refusing to union them, because the run "
-            "report could no longer say which scope acted. Run them separately."
-        )
+    conflict = selector_conflict(
+        quarantined=args.all_quarantined,
+        licensing_absent=args.all_licensing_absent,
+        machine_template=args.all_machine_template,
+    )
+    if conflict:
+        logger.error("%s", conflict)
         return
 
-    if args.all_quarantined:
+    if args.all_machine_template:
+        # Every code the canonical carries. The table-shaped narrowing happens
+        # below, after the rows are read — the predicate is a property of the
+        # STORED TEXT, so it cannot be evaluated before the fetch, and it is the
+        # SAME `rebuild_reason` the other gate calls rather than a second copy
+        # of it (two predicates for one decision is how they start disagreeing).
+        codes = [str(r.get("kode_kbli_2025")) for r in dataset if r.get("kode_kbli_2025")]
+        if args.only:
+            logger.warning("--only ignored: --all-machine-template takes precedence")
+    elif args.all_quarantined:
         codes = quarantined_codes(dataset)
         if args.only:
             logger.warning("--only ignored: --all-quarantined takes precedence")
     elif args.all_licensing_absent:
         try:
-            report = fetch_conformance_report(args.conformance_script)
+            report = fetch_conformance_report(
+                args.conformance_script,
+                table_json=args.conformance_table_json,
+                snapshot_captured_at=args.snapshot_captured_at,
+            )
         except (RuntimeError, OSError, json.JSONDecodeError) as exc:
             logger.error("refusing to cure: %s", exc)
             return EXIT_REFUSED
@@ -658,7 +963,7 @@ async def main() -> int | None:
     conn = await asyncpg.connect(dsn)
     try:
         if args.apply:
-            await conn.execute(ARCHIVE_TABLE_DDL)
+            await ensure_archive_schema(conn)
 
         table_rows = {
             r["kode_kbli"]: r
@@ -675,7 +980,28 @@ async def main() -> int | None:
         # revoked regulation), so "preserve what a human wrote" would preserve
         # exactly what the cure exists to destroy. Same code, opposite duty,
         # decided by which selector chose the row.
-        if args.all_licensing_absent:
+        if args.all_machine_template:
+            # Table-selected: keep ONLY rows whose stored text is a machine seed.
+            # `contradicted-licensing-claim` is deliberately NOT admitted here —
+            # that reason needs the detector's per-code `canonical_rows`, which
+            # this path does not have, and inventing a second count for it is
+            # exactly the drift W105 describes. A broad rebuild must be the
+            # lossless case and nothing else.
+            keep, n_present = select_machine_template_rows(codes, table_rows)
+            logger.info(
+                "table-selected scope: %d machine-seed row(s) of %d present in the table "
+                "(%d canonical codes queried); the other %d keep hand-written prose and are NOT "
+                "rebuilt — closing them needs prose re-authored around the new rows, not a script",
+                len(keep),
+                n_present,
+                len(codes),
+                n_present - len(keep),
+            )
+            codes = keep
+            if not codes:
+                logger.warning("no machine-seed row in the table — nothing to do")
+                return
+        elif args.all_licensing_absent:
             keep, refused = [], []
             for code in codes:
                 row = table_rows.get(code)
@@ -767,13 +1093,7 @@ async def main() -> int | None:
             if args.apply:
                 assert current_row is not None  # update_row=True implies found_in_table=True
                 params = archive_params(code, current_row)
-                await conn.execute(
-                    "INSERT INTO kbli_documents_archive "
-                    "(kode_kbli, judul, content, metadata, original_created_at, original_updated_at) "
-                    "VALUES ($1, $2, $3, $4::text::jsonb, $5, $6) "
-                    "ON CONFLICT (kode_kbli) DO NOTHING",
-                    *params,
-                )
+                await archive_row(conn, code, params, cure_run)
                 # W89 jsonb double-encoding class-guard (kg_kbli_license_fix.py
                 # precedent): bind the pre-serialized json.dumps() string to a
                 # $N::text::jsonb placeholder so the server casts text->jsonb

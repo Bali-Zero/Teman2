@@ -7,7 +7,7 @@ import { MessageCircle } from "lucide-react";
  * Fixed bottom-left. Always visible on every page/route.
  */
 export function WhatsAppFAB({
-  phone = "6282230102328",
+  phone = "628213454721",
   message = "Hi Bali Zero, I would like to get in touch.",
 }: {
   phone?: string;

@@ -30,6 +30,7 @@ export default function VisaEntryPage() {
       {/* Ambient video — 12% opacity screen-blend, full-bleed behind AppFrame main */}
       <div
         aria-hidden
+        className="hidden lg:block"
         style={{
           position: "absolute",
           inset: 0,

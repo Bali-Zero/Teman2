@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Iterable
 from inspect import isawaitable
 from typing import Annotated, Any
 
@@ -25,7 +26,11 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
-from backend.services.kbli_requires_kind import classify_requires_target
+from backend.services.kbli_pp28_provenance import licensing_disclosure
+from backend.services.kbli_requires_kind import (
+    classify_requires_target,
+    permit_name_verdict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +63,7 @@ async def close_kbli_http_client() -> None:
     await _kbli_http_client.aclose()
     _kbli_http_client = None
 
+
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook"])
 
 # =============================================================================
@@ -89,6 +95,18 @@ class KBLIDetail(BaseModel):
     related_requirements: dict[str, list[str]] = {}
     related_codes: list[str] = []
     expert_legal: dict | None = None
+    # WHOSE licences these are. A KBLI-2025 code that is new in the 2025
+    # numbering has no PP 28/2025 row of its own; the canonical fills it from
+    # the KBLI-2020 ancestors and records them here. 390 of 1,559 codes serve
+    # carried content, and 217 inherit a `pb_umku` permit that way — `62110`
+    # (video games) shows three defence-industry permits belonging to the five
+    # 62xxx programming codes it was sourced from.
+    #
+    # Both fields are additive and defaulted, so a payload cached before they
+    # existed still validates on read. The note is BUILT FROM the list, so the
+    # sentence and the codes cannot drift apart.
+    licensing_content_inherited_from: list[str] | None = None
+    licensing_note: str | None = None
 
 
 class KBLISearchResult(BaseModel):
@@ -112,6 +130,19 @@ class KBLISearchResult(BaseModel):
     bali_status: str | None = None
     bali_blocked: bool | None = None
     bali_reason: str = ""
+    # The national foreign-ownership CEILING, carried on the same flat payload.
+    # `pma_status` is a word ("TERBUKA"/"TERBATAS"/"TERTUTUP") and it is the only
+    # ownership fact the context line prints; the ceiling is the number, and the
+    # two can disagree in the direction that matters. Measured 2026-08-05 on the
+    # canonical: `79122` (Umrah/Hajj travel) reads `TERBATAS` with a ceiling of
+    # **0** — closed to foreign capital outright — while its Bali verdict is "not
+    # blocked". A reader shown only the word hears "restricted, so find a local
+    # partner"; the number says there is nothing to partner into.
+    #
+    # `None` means the payload carried no ceiling. It is NOT zero: an absent cap
+    # is stored as `""` by the indexer, and reading absence as 0% would invent a
+    # closure on every point written before the field existed.
+    pma_max_asing: int | str | None = None
 
 
 class KBLINotebookChatRequest(BaseModel):
@@ -171,6 +202,7 @@ def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchRe
         + "...",
         score=round(score, 4),
         pma_status=_payload_value(payload, "pma_status", default="UNKNOWN"),
+        pma_max_asing=_payload_value(payload, "pma_max_asing"),
         risk_category=_payload_value(payload, "kategori_risiko", default="Unknown"),
     )
 
@@ -243,7 +275,32 @@ async def kbli_llm_health() -> Any:
 
 
 async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
-    """Fetch Qdrant payload for a specific KBLI code (by exact match on kode_kbli)."""
+    """Fetch Qdrant payload for a specific KBLI code (by exact match on kode_kbli).
+
+    Selects the canonical BPS record POSITIVELY (doc_type == kbli_bps) rather than
+    excluding kbli_gold. Since 2026-08-09 a code can carry a second Qdrant point
+    (doc_type=kbli_gold, same kode_kbli — index_kbli_gold_content.py::build_payload
+    writes the identical field this filter matches on) sharing this exact query.
+    With `limit: 1` below and no `order_by`, Qdrant used to return whichever of the
+    two points has the smaller internal point ID — and the BPS/gold point IDs are
+    md5-hash UUIDs of two UNRELATED strings ("kbli_2025_bps::<code>" in
+    reindex_kbli_2025_final.py::deterministic_uuid() vs "kbli_gold_editorial::<code>"
+    in index_kbli_gold_content.py::deterministic_uuid()), so which one sorted first
+    was a per-code coin-flip with zero relation to score, recency, or doc_type —
+    measured empirically at 10/10 correlation between "smaller UUID" and the
+    observed winner on a 10-code sample during the 2026-08-09 gold-314 apply, 3 of
+    which flipped to gold-first with the twin BPS record vanishing entirely from
+    `/search` results (not merely demoted: the semantic-search branch below
+    separately drops any hit sharing this code once `exact_result` is chosen, so
+    the losing twin was excluded twice over).
+    A NEGATIVE filter (exclude kbli_gold) would have fixed today's known culprit
+    but left the same coin-flip primed for the next new doc_type this collection
+    grows; a POSITIVE selection of the entity this endpoint's contract actually
+    promises -- "the canonical BPS record for this code" -- stays correct by
+    construction regardless of what else gets indexed later. Honest edge: a code
+    with no BPS point (e.g. a gold-only orphan) now correctly falls through to
+    not-found instead of serving gold content as if it were canonical.
+    """
     headers = {"Content-Type": "application/json"}
     if settings.qdrant_api_key:
         headers["api-key"] = settings.qdrant_api_key
@@ -258,7 +315,23 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
             "metadata.kode_kbli_2025",
         ):
             payload = {
-                "filter": {"must": [{"key": filter_key, "match": {"value": code}}]},
+                "filter": {
+                    "must": [
+                        {"key": filter_key, "match": {"value": code}},
+                        # Flat vs legacy-nested doc_type, same dual-key idiom used
+                        # by reindex_kbli_2025_final.py's own delete/count filters
+                        # and by this router's _payload_value() reader.
+                        {
+                            "should": [
+                                {"key": "doc_type", "match": {"value": "kbli_bps"}},
+                                {
+                                    "key": "metadata.doc_type",
+                                    "match": {"value": "kbli_bps"},
+                                },
+                            ],
+                        },
+                    ],
+                },
                 "limit": 1,
                 "with_payload": True,
             }
@@ -296,6 +369,26 @@ def get_kbli_ttl(code: str) -> int:
         return 604800  # 7 Days
     # Green Zone: Manufacturing, Services, Agriculture
     return 2592000  # 30 Days
+
+
+def related_codes_from_rows(rows: Iterable[str], code: str) -> list[str]:
+    """Map `kbli:<code>` entity ids to bare codes, deduped, self excluded.
+
+    The SQL already does both (see the caller), so this is a second, independent
+    line rather than the only one: the graph holds 1,341 duplicated BELONGS_TO
+    rows, and a future edit to that query — or a caller that forgets `DISTINCT` —
+    would put the duplicates straight back in front of a client. Order is the
+    caller's (the query is `ORDER BY source_entity_id`), preserved here.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for row in rows:
+        bare = row.replace("kbli:", "", 1).strip()
+        if not bare or bare == code or bare in seen:
+            continue
+        seen.add(bare)
+        out.append(bare)
+    return out
 
 
 def _resolve_risk_profile(qdrant_risk: str | None, licenses: list["KBLILicense"]) -> str:
@@ -368,7 +461,24 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
     from backend.core.cache import get_cache_service
 
-    cache_key = f"kbli_inspect_v2_{code}"
+    # v2 → v3 (2026-08-06): the payload gained the inherited-licensing
+    # disclosure. A cached v2 entry validates on read — the new fields simply
+    # default to None — so a carried code would keep answering WITHOUT the note
+    # for up to the 30-day TTL, and a shipped cure invisible for a month is
+    # indistinguishable from one that never shipped. Bumping the version evicts
+    # atomically at deploy instead of depending on someone remembering to run
+    # the per-code cache-bust for the right 390 codes.
+    #
+    # v3 → v4 (2026-08-06): this one is WORSE than a missing field and needs the
+    # bump for a different reason. `permit_name_verdict` changes the CONTENT of
+    # `licenses[]` — entries that were served as permits move to `obligations`
+    # and `unspecified_permits`. A cached v3 entry is fully valid on read and
+    # would keep serving `izin_usaha_tidak_diketahui` as a permit named "Izin
+    # Usaha" on the 186 codes that carry it. The stale payload is not
+    # incomplete, it is WRONG, and nothing in the response would betray it.
+    # Rule of thumb for the next reader: bump whenever the meaning of an
+    # existing field changes, not only when a field is added.
+    cache_key = f"kbli_inspect_v4_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
@@ -437,6 +547,16 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     lic_props = {}
 
                 kind = classify_requires_target(lic["target_entity_type"])
+                if kind == "license":
+                    # The TYPE says permit; the NAME can still say otherwise.
+                    # `izin_usaha_tidak_diketahui` — the graph admitting it does
+                    # not know which permit — reached 186 codes as a permit
+                    # called "Izin Usaha"; 71 whole obligation sentences reached
+                    # 39 more. Same treatment as any non-permit: bucketed, never
+                    # dropped. See kbli_requires_kind.permit_name_verdict.
+                    kind = permit_name_verdict(lic["entity_id"], lic["name"])
+                    if kind == "permit":
+                        kind = "license"
                 if kind != "license":
                     # Kept, never silently dropped — bucketed so a reader can
                     # still see what the graph attached to this code.
@@ -472,20 +592,29 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             if sector_id:
                 # Filter by same 2-digit sector prefix to prevent cross-sector contamination
                 # e.g. 56210 (catering, sector I) should only relate to 56xxx codes
+                #
+                # DISTINCT and the self-exclusion both belong in SQL, not after the
+                # fetch: `LIMIT 6` is applied by Postgres, so anything filtered out
+                # afterwards silently COSTS A SLOT instead of being replaced. The
+                # graph carries 1,341 duplicated (source, sector) BELONGS_TO rows —
+                # every duplicated pair appears exactly twice — so the old query
+                # spent its six rows on three codes and then showed each twice.
+                # Measured on prod: 79122 returned ['79110','79110','79121','79121']
+                # and now returns six distinct siblings; 56101 likewise.
                 sector_prefix = code[:2]
                 others = await conn.fetch(
-                    "SELECT source_entity_id FROM kg_edges "
+                    "SELECT DISTINCT source_entity_id FROM kg_edges "
                     "WHERE target_entity_id = $1 AND relationship_type = 'BELONGS_TO' "
                     "AND source_entity_id LIKE $2 "
+                    "AND source_entity_id <> $3 "
                     "ORDER BY source_entity_id LIMIT 6",
                     sector_id,
                     f"kbli:{sector_prefix}%",
+                    f"kbli:{code}",
                 )
-                related_codes = [
-                    r["source_entity_id"].replace("kbli:", "")
-                    for r in others
-                    if r["source_entity_id"] != f"kbli:{code}"
-                ]
+                related_codes = related_codes_from_rows(
+                    (r["source_entity_id"] for r in others), code
+                )
 
             # 5. Enrich with Qdrant payload (pma_status, risk category)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
@@ -507,8 +636,21 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     if lic.risk_level == "Unknown":
                         lic.risk_level = qdrant_risk
 
+            # Disclose carried licensing content. Requires
+            # `properties.pp28_sources` on the node, which
+            # `backend/scripts/kg_kbli_resync.py` syncs from the canonical; an
+            # unsynced node yields None here — today's silence, never a
+            # fabricated provenance.
+            inherited_from, licensing_note = licensing_disclosure(
+                props.get("pp28_sources"), code, bool(licenses)
+            )
+
             logger.info(
-                "✅ KBLI %s details retrieved (pma=%s, risk=%s)", code, pma_status, risk_profile
+                "✅ KBLI %s details retrieved (pma=%s, risk=%s, inherited_licensing=%s)",
+                code,
+                pma_status,
+                risk_profile,
+                bool(inherited_from),
             )
 
             result = KBLIDetail(
@@ -523,6 +665,8 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 related_requirements=related_requirements,
                 related_codes=related_codes,
                 expert_legal=props.get("expert_legal"),
+                licensing_content_inherited_from=inherited_from,
+                licensing_note=licensing_note,
             )
 
             # Save to cache with dynamic TTL

@@ -54,7 +54,7 @@ export default function VisaError({
           <>
             <Button asChild variant="outline">
               <a
-                href="https://wa.me/6282230102328"
+                href="https://wa.me/628213454721"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -63,7 +63,7 @@ export default function VisaError({
               </a>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/portal/messages">
+              <Link href="/portal/messages" prefetch={false}>
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Chat with your team
               </Link>
@@ -71,7 +71,7 @@ export default function VisaError({
           </>
         ) : (
           <Button asChild variant="outline">
-            <Link href="/portal/messages">
+            <Link href="/portal/messages" prefetch={false}>
               <MessageSquare className="mr-2 h-4 w-4" />
               Chat with your team
             </Link>

@@ -115,9 +115,12 @@ class TestRedisManagerInitialize:
     def test_initialize_none_url_reads_settings(self) -> None:
         """When redis_url is None, it reads from settings."""
         mgr = RedisManager()
-        with patch("backend.core.redis_manager.RedisManager.initialize"):
-            # Just verify it can be called
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.redis_url = ""
             mgr.initialize(redis_url=None)
+
+        assert mgr._redis_url == ""
+        assert mgr.available is False
 
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
@@ -149,7 +152,7 @@ class TestRedisManagerInitialize:
         mock_async_from_url: MagicMock,
         mock_sync_from_url: MagicMock,
     ) -> None:
-        """Graceful degradation: sync fails but async succeeds."""
+        """A sync failure keeps the client pair unavailable."""
         mock_sync_from_url.side_effect = Exception("connection refused")
 
         mock_async_client = MagicMock()
@@ -158,10 +161,11 @@ class TestRedisManagerInitialize:
         mgr = RedisManager()
         mgr.initialize(redis_url="redis://localhost:6379/0")
 
-        assert mgr.available is True  # async still works
+        assert mgr.available is False
         assert mgr._sync_client is None
-        assert mgr._async_client is mock_async_client
-        assert mgr._stats["connections_created"] == 1
+        assert mgr._async_client is None
+        assert mgr._stats["connections_created"] == 0
+        mock_async_from_url.assert_not_called()
 
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
@@ -170,7 +174,7 @@ class TestRedisManagerInitialize:
         mock_async_from_url: MagicMock,
         mock_sync_from_url: MagicMock,
     ) -> None:
-        """Graceful degradation: async fails but sync succeeds."""
+        """An async construction failure closes and withholds the sync client."""
         mock_sync_client = MagicMock()
         mock_sync_client.ping.return_value = True
         mock_sync_from_url.return_value = mock_sync_client
@@ -180,10 +184,11 @@ class TestRedisManagerInitialize:
         mgr = RedisManager()
         mgr.initialize(redis_url="redis://localhost:6379/0")
 
-        assert mgr.available is True  # sync still works
-        assert mgr._sync_client is mock_sync_client
+        assert mgr.available is False
+        assert mgr._sync_client is None
         assert mgr._async_client is None
-        assert mgr._stats["connections_created"] == 1
+        assert mgr._stats["connections_created"] == 0
+        mock_sync_client.close.assert_called_once_with()
 
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
@@ -224,8 +229,10 @@ class TestRedisManagerInitialize:
 
         # Sync ping failure means sync client set to None
         assert mgr._sync_client is None
-        assert mgr._async_client is mock_async_client
-        assert mgr.available is True  # async still available
+        assert mgr._async_client is None
+        assert mgr.available is False
+        mock_async_from_url.assert_not_called()
+        mock_sync_client.close.assert_called_once_with()
 
 
 # =============================================================================
@@ -419,7 +426,8 @@ class TestRedisManagerClose:
     def test_close_sync_without_client(self) -> None:
         """Should not raise when no sync client."""
         mgr = RedisManager()
-        mgr._close_sync()  # no error
+        mgr._close_sync()
+        assert mgr._sync_client is None
 
     def test_close_sync_suppresses_exception(self) -> None:
         """close() on sync client that raises should be suppressed."""
@@ -427,7 +435,8 @@ class TestRedisManagerClose:
         mock_sync = MagicMock()
         mock_sync.close.side_effect = Exception("close failed")
         mgr._sync_client = mock_sync
-        mgr._close_sync()  # should not raise
+        mgr._close_sync()
+        mock_sync.close.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_close_both_clients(self) -> None:
@@ -446,7 +455,9 @@ class TestRedisManagerClose:
     async def test_close_no_clients(self) -> None:
         """Should not raise when no clients exist."""
         mgr = RedisManager()
-        await mgr.close()  # no error
+        await mgr.close()
+        assert mgr._sync_client is None
+        assert mgr._async_client is None
 
     @pytest.mark.asyncio
     async def test_close_async_suppresses_exception(self) -> None:
@@ -455,7 +466,8 @@ class TestRedisManagerClose:
         mock_async.close.side_effect = Exception("async close failed")
         mgr._async_client = mock_async
 
-        await mgr.close()  # should not raise
+        await mgr.close()
+        mock_async.close.assert_awaited_once()
 
     def test_reset_calls_close_sync(self) -> None:
         mgr = RedisManager.get_instance()
@@ -607,10 +619,9 @@ class TestRedisManagerReconnectLoop:
         assert mgr._sync_client is mock_sync_client, "sync client must be restored (rate-limiter)"
 
     @pytest.mark.asyncio
-    async def test_reconnect_loop_async_only_when_sync_fails(self) -> None:
+    async def test_reconnect_loop_withholds_async_when_sync_fails(self) -> None:
         """
-        If sync client cannot reconnect, async-only mode is used and
-        _available is still set to True (graceful degradation).
+        If the sync client cannot reconnect, neither client is published.
         """
         mgr = RedisManager()
         mgr._redis_url = "redis://localhost:6379"
@@ -623,12 +634,17 @@ class TestRedisManagerReconnectLoop:
             patch("redis.asyncio.from_url", return_value=mock_async_client),
             patch("redis.from_url", side_effect=Exception("sync refused")),
         ):
-            with patch("asyncio.sleep", new_callable=AsyncMock):
-                await mgr._reconnect_loop()
+            with patch(
+                "asyncio.sleep",
+                new=AsyncMock(side_effect=[None, asyncio.CancelledError()]),
+            ):
+                with pytest.raises(asyncio.CancelledError):
+                    await mgr._reconnect_loop()
 
-        assert mgr._available is True
-        assert mgr._async_client is mock_async_client
-        assert mgr._sync_client is None  # Sync failed but async-only is fine
+        assert mgr._available is False
+        assert mgr._async_client is None
+        assert mgr._sync_client is None
+        mock_async_client.close.assert_awaited_once_with()
 
     @pytest.mark.asyncio
     async def test_reconnect_loop_cancelled_during_sleep(self) -> None:

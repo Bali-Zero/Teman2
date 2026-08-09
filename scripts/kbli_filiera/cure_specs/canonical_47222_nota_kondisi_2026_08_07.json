@@ -1,0 +1,34 @@
+{
+  "code": "47222",
+  "adjudicated": "team-lead addendum (cure G), 2026-08-07 — found live on the channel after the 47222 TERTUTUP->TERBATAS flip propagated; implement verbatim",
+  "facts_basis": {
+    "canonical_verdict": "47222 Perdagangan Eceran Minuman Tidak Beralkohol — TERBATAS, pma_max_asing 0, pma_cap_verified True, pma_official_basis names Lampiran II line 3731 with 'KEMITRAAN column EMPTY = pure reservation'",
+    "why": "pma_nota carried 'Perdagangan eceran minuman beralkohol di bar' — the ALCOHOL-in-bar activity title, copy-paste residue from a neighbouring annex row (47221's own subject, not 47222's). pma_kondisi carried 'Kemitraan dengan UMKM/Koperasi' — a PARTNERSHIP mechanism the record's own pma_official_basis explicitly denies ('KEMITRAAN column EMPTY = pure reservation'): a pure dialokasikan allocation has no kemitraan path, so a kemitraan condition string contradicts the basis it sits next to. Both fields feed the WhatsApp/webchat channel's 'Catatan PMA' line — verified live serving the alcohol note on the non-alcoholic code. Found after dispatch (team-lead, 2026-08-07): intel_2026.whatChanged's tail ALSO carried a third instance of the same TERTUTUP-vs-TERBATAS confusion — 'The closed-to-foreign-investment status (TERTUTUP, 0% PMA) carries over unchanged' — contradicting the record's own TERBATAS status on the same page. The opening two sentences ('Unchanged from KBLI 2020 — direct match...') are true and kept verbatim; only the tail is replaced."
+  },
+  "expect": {
+    "pma_status": "TERBATAS",
+    "pma_max_asing": 0,
+    "pma_cap_verified": true,
+    "pma_official_basis_contains": "KEMITRAAN column EMPTY"
+  },
+  "fields": {
+    "pma_nota": {
+      "old": "Perdagangan eceran minuman beralkohol di bar",
+      "new": "Dialokasikan untuk Koperasi dan UMKM — Perpres 49/2021 Lampiran II (Minuman Tidak Beralkohol)"
+    },
+    "pma_kondisi": {
+      "old": "Kemitraan dengan UMKM/Koperasi",
+      "new": null
+    },
+    "intel_2026.whatChanged": {
+      "old": "Unchanged from KBLI 2020 — direct match. Direct match from KBLI 2020 — same code, same scope. The closed-to-foreign-investment status (TERTUTUP, 0% PMA) carries over unchanged: retail of non-alcoholic beverages remains reserved for domestic ownership, exactly as under the 2020 classification.",
+      "new": "Unchanged from KBLI 2020 — direct match. Direct match from KBLI 2020 — same code, same scope. The activity is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign investment is 0% (TERBATAS by reservation, not TERTUTUP by law) — carried over unchanged from the 2020 classification."
+    }
+  },
+  "untouched_fields": [
+    "pma_status",
+    "pma_max_asing",
+    "pma_cap_verified",
+    "pma_official_basis"
+  ]
+}

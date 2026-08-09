@@ -63,6 +63,52 @@ def _forward_and_rollback(sql_text: str) -> tuple[str, str]:
     return forward, rollback
 
 
+# The three tables 114/115/116 own. The two autocommit tests at the bottom of
+# this file DROP them on a shared database and rebuild them from 114/115/116
+# alone — which is exactly the m115-era shape, not today's.
+_ROUNDTRIP_TABLES = ("compliance_alerts", "alert_outcomes", "intel_validator_log")
+
+
+def _later_migrations_touching_roundtrip_tables() -> list[pathlib.Path]:
+    """Post-116 migrations whose FORWARD half alters the tables we rebuild.
+
+    Derived from the files, never a hardcoded {258}: a future migration that
+    widens one of these tables must be restored too, and nobody will remember
+    to add its number here.
+    """
+    later: list[pathlib.Path] = []
+    for path in _MIG_DIR.glob("*.sql"):
+        if _migration_number(path) <= 116:
+            continue
+        forward, _ = _forward_and_rollback(path.read_text(encoding="utf-8"))
+        if any(table in forward for table in _ROUNDTRIP_TABLES):
+            later.append(path)
+    return sorted(later, key=_migration_number)
+
+
+async def _restore_roundtrip_tables(conn: asyncpg.Connection) -> None:
+    """Put the shared DB back at HEAD schema, not at the m115-era one.
+
+    Why this exists (2026-08-08): the two tests below commit their DDL — they
+    do NOT use the transactional `db_tx` fixture — and they deliberately leave
+    the physical tables in place because later suites need them. But rebuilding
+    from 114/115/116 alone recreates `alert_outcomes` with m115's
+    `ck_alert_outcomes_outcome CHECK (outcome IN ('dismissed','acted','expired'))`,
+    and m258 (which adds 'acknowledged') is marked pre-applied so it never
+    re-runs. Everything downstream that writes 'acknowledged' — the compliance
+    outcome router, `test_intake_gate` — then dies on a CheckViolationError,
+    and only when pytest-randomly happens to order it after this file. That
+    intermittency is what made the local pre-push gate spuriously red and
+    stranded pushes on machines with a provisioned test DB.
+    """
+    for name in ("114_compliance_alerts.sql", "115_alert_outcomes.sql", "116_intel_validator_log.sql"):
+        forward, _ = _forward_and_rollback((_MIG_DIR / name).read_text(encoding="utf-8"))
+        await conn.execute(forward)
+    for path in _later_migrations_touching_roundtrip_tables():
+        forward, _ = _forward_and_rollback(path.read_text(encoding="utf-8"))
+        await conn.execute(forward)
+
+
 @pytest.mark.asyncio
 async def test_migration_114_roundtrip(db_tx: asyncpg.Connection) -> None:
     await _ensure_clean_slate(db_tx)
@@ -196,10 +242,14 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
             "the rollback section is being executed against the live DB"
         )
 
-        # Cleanup: drop what we just created so other tests are not affected.
-        await conn.execute("DROP TABLE IF EXISTS compliance_alerts CASCADE")
+        # Cleanup: reset only the bookkeeping so a re-run can re-apply 114.
         await conn.execute("DELETE FROM schema_migrations WHERE migration_number = 114")
     finally:
+        # This test DROPped alert_outcomes + compliance_alerts on a SHARED
+        # database and rebuilt m114 only, so it would hand the next suite a
+        # missing alert_outcomes. Restore runs in `finally` on purpose: a
+        # failed assertion above must not leave the database maimed either.
+        await _restore_roundtrip_tables(conn)
         await conn.close()
 
 
@@ -280,9 +330,13 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
         # tables here — other suites in the same pytest session (compliance
         # services tests, router tests, alert_feedback) rely on
         # compliance_alerts / alert_outcomes / intel_validator_log being
-        # present. The _ensure_clean_slate + apply_all_pending round-trip
-        # above already proved the migrations are idempotent (CREATE TABLE
-        # IF NOT EXISTS), so leaving the tables in place is safe.
+        # present.
+        #
+        # Leaving them PRESENT was never the whole job, though: this test runs
+        # apply_all_pending() with every other migration marked pre-applied,
+        # so the rebuild stops at 116 and the tables come back in their
+        # m115-era shape. `_restore_roundtrip_tables` in the `finally` below
+        # is what makes "leaving the tables in place" actually safe.
         await conn.execute(
             "DELETE FROM schema_migrations WHERE migration_number IN (114, 115, 116)"
         )
@@ -293,4 +347,48 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             preapplied_names,
         )
     finally:
+        await _restore_roundtrip_tables(conn)
+        await conn.close()
+
+
+_CONSTRAINT_DEF_SQL = (
+    "SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c "
+    "JOIN pg_class t ON t.oid = c.conrelid "
+    "WHERE c.conname = 'ck_alert_outcomes_outcome' AND t.relname = 'alert_outcomes'"
+)
+
+
+@pytest.mark.asyncio
+async def test_restore_puts_alert_outcomes_back_at_head_not_m115() -> None:
+    """Pin for the 2026-08-08 cross-test pollution.
+
+    Guilt and innocence in one body, because the interesting claim is the
+    DIFFERENCE: rebuilding from m115 alone must produce the narrow constraint
+    (asserted, not assumed — a vacuous premise would make the green below
+    meaningless), and `_restore_roundtrip_tables` must widen it again.
+    """
+    conn = await asyncpg.connect(_TEST_DB_URL)
+    try:
+        await conn.execute("DROP TABLE IF EXISTS alert_outcomes CASCADE")
+        await conn.execute("DROP TABLE IF EXISTS compliance_alerts CASCADE")
+        for name in ("114_compliance_alerts.sql", "115_alert_outcomes.sql"):
+            forward, _ = _forward_and_rollback((_MIG_DIR / name).read_text(encoding="utf-8"))
+            await conn.execute(forward)
+
+        narrow = await conn.fetchval(_CONSTRAINT_DEF_SQL)
+        assert narrow is not None, "m115 must create ck_alert_outcomes_outcome"
+        assert "acknowledged" not in narrow, (
+            "PREMISE FAILED: m115 alone is supposed to leave the NARROW constraint. "
+            f"Got {narrow!r} — this test can no longer prove anything about the restore."
+        )
+
+        await _restore_roundtrip_tables(conn)
+
+        widened = await conn.fetchval(_CONSTRAINT_DEF_SQL)
+        assert widened is not None and "acknowledged" in widened, (
+            "restore left alert_outcomes at its m115 shape; every later test that "
+            f"writes 'acknowledged' will die on CheckViolationError. Got {widened!r}"
+        )
+    finally:
+        await _restore_roundtrip_tables(conn)
         await conn.close()

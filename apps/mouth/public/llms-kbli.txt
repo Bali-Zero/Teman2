@@ -4,6 +4,13 @@
 # MAX_FOREIGN is the adjudicated foreign-ownership ceiling ("special" = a
 #   non-percentage regime, not a number). It is never defaulted: 0% means the
 #   activity is closed to foreign capital, it does not mean "unknown".
+# MAX_FOREIGN is the GENERAL ceiling under the code's governing instrument,
+#   not an unconditional one: some instruments carry their OWN statutory
+#   exemptions this single number cannot encode — e.g. PP 14/2018 Pasal 5(2)
+#   exempts listed (perseroan terbuka) insurers from its 80% cap entirely, and
+#   Pasal 6 (as amended by PP 3/2020) grandfathers pre-2018 foreign holdings
+#   above 80% without allowing a further increase. Verify the per-code page's
+#   own conditions before treating this percentage as an absolute bar.
 # RISK_LEVEL lists every tier the code's business scales carry, separated by
 #   " / " when they differ; "Not classified" when the dataset classifies
 #   none. A foreign-owned PT PMA is legally the Besar scale.
@@ -184,7 +191,7 @@
 10211 | Pengolahan dan Pengawetan Ikan dengan Penggaraman atau Pengeringan | TERBUKA | 100% | Menengah Rendah
 10212 | Pengolahan dan Pengawetan Ikan dengan Pengasapan atau Pemanggangan | TERBUKA | 100% | Menengah Rendah
 10213 | Pengolahan dan Pengawetan Ikan dengan Pembekuan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
-10214 | Pengolahan dan Pengawetan Ikan dengan Pemindangan | TERBUKA | 100% | Menengah Rendah
+10214 | Pengolahan dan Pengawetan Ikan dengan Pemindangan | TERBATAS | 0% | Menengah Rendah
 10215 | Pengolahan dan Pengawetan Ikan dengan Fermentasi | TERBUKA | 100% | Rendah / Tinggi
 10216 | Pengolahan dan Pengawetan Ikan dengan Pelumatan | TERBUKA | 100% | Menengah Rendah / Tinggi
 10217 | Pengolahan dan Pengawetan Ikan dengan Pengalengan | TERBUKA | 100% | Menengah Tinggi / Tinggi
@@ -247,7 +254,7 @@
 10636 | Industri Minyak dari Beras dan Jagung | TERBUKA | 100% | Menengah Rendah / Tinggi
 10710 | Industri Produk Bakeri | TERBUKA | 100% | Rendah / Tinggi
 10721 | Industri Gula Pasir | TERBUKA | 100% | Tinggi
-10722 | Industri Gula Merah | TERBUKA | 100% | Rendah / Tinggi
+10722 | Industri Gula Merah | TERBATAS | 0% | Rendah / Tinggi
 10723 | Industri Sirop | TERBUKA | 100% | Menengah Tinggi
 10729 | Industri Gula Lainnya | TERBUKA | 100% | Rendah / Tinggi
 10731 | Industri Pengolahan Kakao | TERBUKA | 100% | Tinggi
@@ -416,13 +423,13 @@
 21013 | Industri Produk Farmasi untuk Hewan | TERBUKA | 100% | Menengah Rendah
 21014 | Industri Bahan Baku Farmasi untuk Hewan | TERBUKA | 100% | Menengah Tinggi
 21015 | Industri Alat Diagnosis Medis, Perban, Kasa, dan Penunjang Kesehatan Lainnya | TERBUKA | 100% | Tinggi
-21021 | Industri Bahan Baku Obat Bahan Alam untuk Manusia | TERBUKA | 100% | Tinggi
-21022 | Industri Produk Obat Bahan Alam untuk Manusia | TERBUKA | 100% | Tinggi
+21021 | Industri Bahan Baku Obat Bahan Alam untuk Manusia | TERBATAS | 0% | Tinggi
+21022 | Industri Produk Obat Bahan Alam untuk Manusia | TERBATAS | 0% | Tinggi
 21023 | Industri Produk Obat Bahan Alam Untuk Hewan | TERBUKA | 100% | Menengah Rendah
 21024 | Industri Bahan Baku Obat Bahan Alam untuk Hewan | TERBUKA | 100% | Tinggi
 22111 | Industri Ban Luar dan Ban Dalam | TERBUKA | 100% | Menengah Tinggi
 22112 | Industri Pembentukan Kembali Ban dan Vulkanisasi Ban | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
-22121 | Industri Karet Asap | TERBUKA | 100% | Rendah / Tinggi
+22121 | Industri Karet Asap | TERBATAS | 0% | Rendah / Tinggi
 22122 | Industri Karet Lembaran dan Crepe Rubber | TERBUKA | 100% | Rendah / Tinggi
 22123 | Industri Karet Remah (Crumb Rubber) | TERBUKA | 100% | Rendah / Tinggi
 22129 | Industri Karet Setengah Jadi Lainnya | TERBUKA | 100% | Rendah / Tinggi
@@ -680,11 +687,11 @@
 41013 | Konstruksi Konvensional Gedung Industri | TERBUKA | 100% | Menengah Tinggi
 41014 | Konstruksi Konvensional Gedung Perbelanjaan | TERBUKA | 100% | Menengah Tinggi
 41015 | Konstruksi Konvensional Gedung Kesehatan | TERBUKA | 100% | Menengah Tinggi
-41016 | Konstruksi Konvensional Gedung Pendidikan | TERBUKA | 100% | Menengah Tinggi
+41016 | Konstruksi Konvensional Gedung Pendidikan | TERBATAS | 0% | Menengah Tinggi
 41017 | Konstruksi Konvensional Gedung Penginapan | TERBUKA | 100% | Menengah Tinggi
-41018 | Konstruksi Konvensional Gedung Hiburan dan Olahraga | TERBUKA | 100% | Menengah Tinggi
+41018 | Konstruksi Konvensional Gedung Hiburan dan Olahraga | TERBATAS | 0% | Menengah Tinggi
 41019 | Konstruksi Konvensional Gedung Lainnya | TERBUKA | 100% | Menengah Tinggi
-41020 | Konstruksi Prapabrikasi Bangunan Gedung | TERBUKA | 100% | Menengah Tinggi
+41020 | Konstruksi Prapabrikasi Bangunan Gedung | TERBATAS | 0% | Menengah Tinggi
 42101 | Konstruksi Jalan pada Permukaan Tanah | TERBUKA | 100% | Menengah Tinggi
 42102 | Konstruksi Bangunan Sipil Jembatan, Jalan Layang, Fly Over, dan Underpass | TERBUKA | 100% | Menengah Tinggi
 42103 | Konstruksi Jalan Rel | TERBUKA | 100% | Menengah Tinggi
@@ -841,7 +848,7 @@
 47216 | Perdagangan Eceran Hasil Kehutanan dan Perburuan | TERBUKA | 100% | Rendah
 47219 | Perdagangan Eceran Hasil Pertanian Lainnya | TERBUKA | 100% | Rendah
 47221 | Perdagangan Eceran Minuman Beralkohol | TERBATAS | special | Tinggi / Rendah
-47222 | Perdagangan Eceran Minuman Tidak Beralkohol | TERTUTUP | 0% | Rendah
+47222 | Perdagangan Eceran Minuman Tidak Beralkohol | TERBATAS | 0% | Rendah
 47230 | Perdagangan Eceran Rokok dan Tembakau | TERBUKA | 100% | Rendah
 47241 | Perdagangan Eceran Beras | TERBUKA | 100% | Rendah
 47242 | Perdagangan Eceran Roti, Kue Kering, serta Kue Basah dan Sejenisnya | TERBUKA | 100% | Rendah
@@ -1043,7 +1050,7 @@
 55102 | Aktivitas Hotel Bintang Empat | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 55103 | Aktivitas Hotel Bintang Tiga | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 55104 | Aktivitas Hotel Bintang Dua | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
-55105 | Aktivitas Hotel Bintang Satu | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+55105 | Aktivitas Hotel Bintang Satu | TERBATAS | 0% | Menengah Rendah / Menengah Tinggi
 55106 | Aktivitas Hotel Nonbintang | TERBUKA | 100% | Menengah Tinggi / Menengah Rendah
 55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | TERBUKA | 100% | Menengah Rendah
 55202 | Aktivitas Hostel Remaja (Youth Hostel) | TERBUKA | 100% | Menengah Rendah
@@ -1154,15 +1161,15 @@
 64996 | Aktivitas Perbankan Bulion Konvensional | TERBUKA | 100% | Not classified
 64997 | Aktivitas Perbankan Bulion Syariah | TERBUKA | 100% | Not classified
 64999 | Aktivitas Jasa Keuangan Lainnya YTDL, Bukan Asuransi dan Dana Pensiun | TERBUKA | 100% | Tinggi
-65111 | Asuransi Jiwa Konvensional | TERBUKA | 100% | Tinggi
-65112 | Asuransi Jiwa Syariah | TERBUKA | 100% | Tinggi
-65121 | Asuransi Umum Konvensional | TERBUKA | 100% | Tinggi
-65122 | Asuransi Umum Syariah | TERBUKA | 100% | Tinggi
+65111 | Asuransi Jiwa Konvensional | TERBATAS | 80% | Tinggi
+65112 | Asuransi Jiwa Syariah | TERBATAS | 80% | Tinggi
+65121 | Asuransi Umum Konvensional | TERBATAS | 80% | Tinggi
+65122 | Asuransi Umum Syariah | TERBATAS | 80% | Tinggi
 65123 | Aktivitas Penjaminan Simpanan dan Asuransi | TERBUKA | 100% | Not classified
 65131 | Penjaminan Konvensional | TERBUKA | 100% | Tinggi
 65132 | Penjaminan Syariah | TERBUKA | 100% | Tinggi
-65201 | Reasuransi Konvensional | TERBUKA | 100% | Tinggi
-65202 | Reasuransi Syariah | TERBUKA | 100% | Tinggi
+65201 | Reasuransi Konvensional | TERBATAS | 80% | Tinggi
+65202 | Reasuransi Syariah | TERBATAS | 80% | Tinggi
 65203 | Penjaminan Ulang Konvensional | TERBUKA | 100% | Tinggi
 65204 | Penjaminan Ulang Syariah | TERBUKA | 100% | Tinggi
 65301 | Aktivitas Dana Pensiun Pemberi Kerja Konvensional | TERBUKA | 100% | Tinggi
@@ -1549,18 +1556,18 @@
 95101 | Reparasi dan Pemeliharaan Komputer dan Peralatan Sejenisnya | TERBUKA | 100% | Rendah / Menengah Rendah
 95102 | Reparasi dan Pemeliharaan Peralatan Komunikasi | TERBUKA | 100% | Rendah / Menengah Rendah
 95210 | Reparasi dan Pemeliharaan Alat-alat Elektronik Konsumen | TERBUKA | 100% | Rendah / Menengah Rendah
-95220 | Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun | TERBUKA | 100% | Rendah / Menengah Rendah
+95220 | Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun | TERBATAS | 0% | Rendah / Menengah Rendah
 95230 | Reparasi dan Pemeliharaan Alas Kaki dan Barang dari Kulit | TERBUKA | 100% | Rendah / Menengah Rendah
 95240 | Reparasi dan Pemeliharaan Furnitur Dan Perlengkapan Rumah | TERBUKA | 100% | Rendah / Menengah Rendah
-95291 | Aktivitas Vermak Pakaian | TERBUKA | 100% | Rendah
-95299 | Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya | TERBUKA | 100% | Rendah
+95291 | Aktivitas Vermak Pakaian | TERBATAS | 0% | Rendah
+95299 | Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya | TERBATAS | 0% | Rendah
 95311 | Reparasi Mobil | TERBUKA | 100% | Menengah Rendah
 95312 | Pencucian dan Salon Mobil | TERBUKA | 100% | Rendah
 95320 | Reparasi dan Perawatan Sepeda Motor | TERBUKA | 100% | Menengah Rendah
 95400 | Jasa Intermediasi Reparasi dan Perawatan Komputer, Barang Pribadi dan Rumah Tangga, Mobil, serta Sepeda Motor | TERBUKA | 100% | Menengah Rendah / Rendah / Tinggi / Menengah Tinggi
-96100 | Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu | TERBUKA | 100% | Rendah
-96210 | Aktivitas Penataan dan Pangkas Rambut | TERBUKA | 100% | Rendah
-96220 | Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya | TERBUKA | 100% | Rendah
+96100 | Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu | TERBATAS | 0% | Rendah
+96210 | Aktivitas Penataan dan Pangkas Rambut | TERBATAS | 0% | Rendah
+96220 | Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya | TERBATAS | 0% | Rendah
 96230 | Aktivitas Sante Par Aqua (SPA) Harian, Sauna, dan Pemandian Uap | TERBUKA | 100% | Tinggi / Menengah Tinggi
 96300 | Aktivitas Pemakaman dan Kegiatan Terkait | TERBUKA | 100% | Rendah
 96400 | Aktivitas Jasa Intermediasi untuk Jasa Perorangan | TERBUKA | 100% | Rendah / Tinggi / Menengah Rendah / Menengah Tinggi

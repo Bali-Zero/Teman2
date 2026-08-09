@@ -63,7 +63,7 @@ export function BookShell({
         chapterNames={translations?.chapters}
       />
       <BookShellContext.Provider value={{ onVisible: handleChapterVisible }}>
-        <main className="pb-20 md:pb-0">{children}</main>
+        <main>{children}</main>
       </BookShellContext.Provider>
     </div>
   );

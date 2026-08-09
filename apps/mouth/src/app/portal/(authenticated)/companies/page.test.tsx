@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockGetCompanies, mockToastError, mockPush } = vi.hoisted(() => ({
@@ -163,13 +163,30 @@ describe("CompaniesPage (WS3 day pass)", () => {
     expect(await screen.findByText("No companies yet")).toBeInTheDocument();
   });
 
-  it("shows a toast and keeps the shell quiet when loading fails", async () => {
-    mockGetCompanies.mockRejectedValue(new Error("boom"));
+  it("distinguishes an initial outage from a truthful empty state and recovers", async () => {
+    mockGetCompanies
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce(COMPANIES);
     render(<CompaniesPage />);
-    await screen.findByRole("heading", { level: 1 });
+    expect(
+      await screen.findByRole("heading", {
+        name: "Unable to load companies",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No companies yet")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We couldn't verify your company records. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
     expect(mockToastError).toHaveBeenCalledWith(
       "Failed to load companies",
       "Please try again later",
     );
+
+    const callsAfterFailure = mockGetCompanies.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("PT Example Nusantara")).toBeInTheDocument();
+    expect(mockGetCompanies).toHaveBeenCalledTimes(callsAfterFailure + 1);
   });
 });

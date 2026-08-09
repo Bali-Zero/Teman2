@@ -159,6 +159,21 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "recomputable integrity anchor, never a credential (open writer set, "
         "so content-keyed and restricted to translation files)",
     ),
+    # infra/vcr/expected_claims.yaml (VCR pilot, #3575): certified_hash is the
+    # sha256 of scripts/arsenal_probe.py at registry-authoring time — a public
+    # integrity anchor used to detect HOME-fork drift and unreviewed hand-edits
+    # of the prober (scar family #1), never a credential; recomputable by
+    # anyone with `hashlib.sha256(open('scripts/arsenal_probe.py','rb').read())`.
+    # Same shape-check discipline as the two rules above: value must be exactly
+    # 64 lowercase hex characters, end-anchored to the line, so a real secret
+    # pasted onto a certified_hash line would not match this rule.
+    (
+        re.compile(r"^infra/vcr/expected_claims\.yaml$"),
+        re.compile(r'^\s*certified_hash\s*:\s*"[0-9a-f]{64}"\s*$'),
+        "VCR pilot expected-claim registry: certified_hash is a public sha256 "
+        "integrity anchor of scripts/arsenal_probe.py (R5, scar family #1 "
+        "HOME-fork drift detection), not a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
@@ -227,13 +242,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)env\.example$"),
         "env.example (no leading dot): documented placeholder",
     ),
-    # Test fixtures and unit tests — conventional location for fake credentials
+    # Test fixtures and unit tests — conventional location for fake credentials.
+    # `sh` is in the extension list because scripts/tests/ holds many shell test
+    # scripts with synthetic fixtures (e.g. fake 40-char git oids) that read as
+    # high-entropy — the gap that let a fake oid in test_branch_graveyard_prmerged.sh
+    # block Detect Secrets on PRs #3591/#3596 (2026-08-04) despite already living
+    # under a tests?/ dir.
     (
-        re.compile(r"(^|/)tests?/.*\.(py|ts|tsx|js|jsx|json|yaml|yml)$"),
+        re.compile(r"(^|/)tests?/.*\.(py|ts|tsx|js|jsx|json|yaml|yml|sh)$"),
         "tests/** tree: test fixtures, not production secrets",
     ),
     (
-        re.compile(r"(^|/)__tests__/.*\.(py|ts|tsx|js|jsx|json|yaml|yml)$"),
+        re.compile(r"(^|/)__tests__/.*\.(py|ts|tsx|js|jsx|json|yaml|yml|sh)$"),
         "__tests__/** tree: test fixtures",
     ),
     (
@@ -338,6 +358,32 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"^research/operations/.*FROZEN\.json$"),
         "frozen operations audit snapshot: git SHAs + secret-name rotation checklists (public/structural identifiers), not credentials",
+    ),
+    # docs/audits/evidence/visa-oracle-v2/: archived PUBLIC official-source
+    # evidence for the visa-oracle-v2 audit trail — a source-archive manifest
+    # plus verbatim page snapshots of imigrasi.go.id (Indonesian Directorate
+    # General of Immigration) official announcements. High-entropy hits here
+    # are (a) sha256 content-integrity digests in the manifest, recording the
+    # hash of each archived PDF/HTML/JSON so the copy can be proven byte-
+    # identical to the official download, and (b) strings embedded in the
+    # archived HTML pages themselves — a Google Search Console site-
+    # verification meta tag and a per-render CSRF nonce. Both (b) values
+    # belong to the FOREIGN GOVERNMENT PAGE being archived, not to this repo,
+    # and neither grants access to anything: site-verification tags are
+    # public by protocol design (Google requires them visible in page source
+    # to prove domain ownership), and the CSRF token has no accompanying
+    # session cookie in this static snapshot — meaningless without one, and
+    # scoped to a single archived page-render regardless. Verified manually
+    # line-by-line 2026-08-07 against the live findings (13 hits, all in this
+    # class). Scoped to this dated evidence subdirectory only, not the wider
+    # docs/audits/ tree, per the naming-scoped-triage convention already used
+    # for contracts/packs/rulepack-*.json above.
+    (
+        re.compile(r"(^|/)docs/audits/evidence/visa-oracle-v2/.*\.(json|html)$"),
+        "visa-oracle-v2 evidence archive: sha256 integrity digests + verbatim "
+        "snapshots of public imigrasi.go.id pages (site-verification tag + "
+        "ephemeral CSRF nonce belong to the archived government page, not "
+        "this repo), not credentials",
     ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
@@ -527,6 +573,20 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"(^|/)apps/backend-rag/backend/services/crm/welcome/welcome_email_service\.py$"),
         "welcome email service: base64-inlined SVG icons, not credentials",
+    ),
+    # visa-oracle-v2 fullstack smoke script: two findings verified manually
+    # 2026-08-07. Line ~21 is a DOCUMENTED EXAMPLE Postgres DSN in the
+    # module docstring (postgresql://test:test@127.0.0.1:5433/postgres) —
+    # illustrative, never a live connection string. Line ~80 is the PUBLIC
+    # half of an Ed25519 keypair belonging to the TEST trust store (declared
+    # by the adjacent comment) — public keys are, by definition, safe to
+    # publish; the private half is never written to this file.
+    (
+        re.compile(
+            r"(^|/)apps/backend-rag/backend/scripts/visa_engine/fullstack_smoke\.py$"
+        ),
+        "fullstack_smoke.py: example DSN in module docstring + TEST trust-store "
+        "Ed25519 PUBLIC key (declared in comment), not credentials",
     ),
     # Organism Innervation Genoma manifest: contains a content-derived
     # SHA256 integrity checksum

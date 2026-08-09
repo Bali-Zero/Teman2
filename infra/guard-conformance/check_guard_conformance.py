@@ -351,6 +351,9 @@ def main(argv: list[str] | None = None) -> int:
     violations += check_bridge(
         registry["surfaces"]["wr2_editorial_pregate"], wf_text, label="wr2-pregate"
     )
+    violations += check_bridge(
+        registry["surfaces"]["wa_mirror_control_api"], wf_text, label="wa-mirror-api"
+    )
     violations += check_simple_surfaces(registry, wf_text)
 
     bridge_count = len(registry["surfaces"]["bridge_reply_guards"]["guards"])

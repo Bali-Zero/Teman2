@@ -94,6 +94,41 @@ class TestRoundTrip:
         rebuilt = M.SourceRecord.model_validate(dumped)
         assert rebuilt == source_record
 
+    def test_source_record_round_trips_with_closed_freshness_policy(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        dumped["freshness_policy"] = {
+            "kind": "MAX_AGE_SINCE_VERIFIED_AT",
+            "max_age_seconds": 86_400,
+        }
+        rebuilt = M.SourceRecord.model_validate(dumped)
+        assert rebuilt.freshness_policy is not None
+        assert rebuilt.freshness_policy.max_age_seconds == 86_400
+
+    @pytest.mark.parametrize(
+        "invalid_policy",
+        [
+            {"kind": "UNREVIEWED_POLICY", "max_age_seconds": 86_400},
+            {
+                "kind": "MAX_AGE_SINCE_VERIFIED_AT",
+                "max_age_seconds": 86_400,
+                "grace_seconds": 60,
+            },
+            {"kind": "MAX_AGE_SINCE_VERIFIED_AT", "max_age_seconds": 0},
+            {"kind": "MAX_AGE_SINCE_VERIFIED_AT", "max_age_seconds": 1.5},
+        ],
+    )
+    def test_source_record_rejects_open_or_invalid_freshness_policy(
+        self,
+        source_record: M.SourceRecord,
+        invalid_policy: dict[str, object],
+    ) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        dumped["freshness_policy"] = invalid_policy
+        with pytest.raises(ValidationError):
+            M.SourceRecord.model_validate(dumped)
+
     def test_rule_round_trips(self, minimal_valid_pack: M.RulePack) -> None:
         rule = minimal_valid_pack.payload.rules[0]
         dumped = rule.model_dump(mode="json", by_alias=True)
@@ -433,6 +468,14 @@ class TestSchemaExportInvariants:
             "source-record.schema.json",
         ):
             assert filename in schemas, f"{filename} missing from exported schema set"
+
+    def test_public_evaluate_request_and_response_entrypoints_exported(self) -> None:
+        schemas = SE.build_schemas()
+        assert "visa-oracle-evaluate-request.schema.json" in schemas
+        assert "visa-oracle-evaluate-response.schema.json" in schemas
+        contract_defs = schemas["contract.schema.json"]["$defs"]
+        assert "VisaOracleEvaluateRequest" in contract_defs
+        assert "VisaOracleEvaluateResponse" in contract_defs
 
     def test_decision_state_present_in_contract(self) -> None:
         schemas = SE.build_schemas()
@@ -846,7 +889,7 @@ class TestDecisionStateConditionals:
                 quotes=[],
                 notices=[],
                 decision_integrity=None,
-                **self._base_kwargs(),
+                **{**self._base_kwargs(), "facts_fingerprint": None},
             )
 
     def test_supported_candidates_valid_is_innocent(self) -> None:
@@ -940,7 +983,7 @@ class TestDecisionStateConditionals:
                 quotes=[],
                 notices=[],
                 decision_integrity=None,
-                **self._base_kwargs(),
+                **{**self._base_kwargs(), "facts_fingerprint": None},
             )
 
     def test_temporarily_unavailable_with_outage_is_innocent(self) -> None:
@@ -957,9 +1000,46 @@ class TestDecisionStateConditionals:
             quotes=[],
             notices=[],
             decision_integrity=None,
-            **self._base_kwargs(),
+            **{**self._base_kwargs(), "facts_fingerprint": None},
         )
         assert decision.state.value == "TEMPORARILY_UNAVAILABLE"
+        assert decision.facts_fingerprint is None
+
+    def test_temporarily_unavailable_forbids_fabricated_facts_fingerprint(self) -> None:
+        with pytest.raises(ValidationError, match="facts_fingerprint=null"):
+            M.Decision(
+                decision_id=None,
+                public_id=None,
+                state="TEMPORARILY_UNAVAILABLE",
+                rule_pack=None,
+                candidates=[],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage={"code": "RULE_PACK_UNAVAILABLE", "retryable": True},
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_evaluated_state_requires_facts_fingerprint(self) -> None:
+        with pytest.raises(ValidationError, match="facts_fingerprint"):
+            M.Decision(
+                decision_id=uuid.uuid4(),
+                public_id="a" * 16,
+                state="NEEDS_INPUT",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[],
+                missing_facts=["person.birth_date"],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **{**self._base_kwargs(), "facts_fingerprint": None},
+            )
 
     def test_non_supported_candidates_state_forbids_nonempty_candidates(self) -> None:
         with pytest.raises(ValidationError, match="forbids non-empty candidates"):
@@ -1605,12 +1685,16 @@ class TestIsoDatePatternAsciiOnly:
         # just proving pydantic-core's separate Rust engine is.
         contract = _load_snapshot("contract.schema.json")
         pattern = contract["$defs"]["KnownDate"]["properties"]["value"]["pattern"]
-        assert Draft202012Validator({"type": "string", "pattern": pattern}).is_valid(
-            self._ARABIC_INDIC_DATE
-        ) is False
-        assert Draft202012Validator({"type": "string", "pattern": pattern}).is_valid(
-            "2026-07-17"
-        ) is True
+        assert (
+            Draft202012Validator({"type": "string", "pattern": pattern}).is_valid(
+                self._ARABIC_INDIC_DATE
+            )
+            is False
+        )
+        assert (
+            Draft202012Validator({"type": "string", "pattern": pattern}).is_valid("2026-07-17")
+            is True
+        )
 
 
 class TestIntegerParityDivergencePinned:

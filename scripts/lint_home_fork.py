@@ -114,6 +114,37 @@ def sha256_file(path: Path) -> Optional[str]:
         return None
 
 
+def _plutil_recovered_plist(plist_path: Path) -> Optional[Any]:
+    """Recover a plist `plistlib` rejects but macOS's own parser accepts.
+
+    Root cause seen in production (2026-08-07, Pro): a `<!-- ... -->` comment
+    body containing a literal `--` (e.g. documenting a `--apply`/`--cleanup`
+    flag) is invalid per the strict XML spec that Expat enforces, but
+    `plutil`/CoreFoundation tolerate it — the exact same plist launchd itself
+    loads and runs fine (`plutil -lint` reports these files OK). Without this
+    fallback the census silently loses coverage on the affected plist's
+    payload — an under-match blind spot on the very guard meant to catch
+    home-fork drift. Re-serializing through `plutil -convert xml1 -o -`
+    drops comments and normalizes the file so plistlib can read the result;
+    a plist plutil ALSO rejects (binary garbage, truly malformed) still
+    returns None here, unchanged from the pre-fallback behavior.
+    """
+    try:
+        proc = subprocess.run(
+            ["plutil", "-convert", "xml1", "-o", "-", str(plist_path)],
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        return plistlib.loads(proc.stdout)
+    except Exception:  # noqa: BLE001 — genuinely unrecoverable, caller reports it
+        return None
+
+
 def _git_stdout(repo_root: Path, *args: str) -> Optional[bytes]:
     """stdout of a git command as BYTES, or None on any failure.
 
@@ -259,6 +290,7 @@ def check_pairs(
     home: Path,
     label: str,
     notices: Optional[list[str]] = None,
+    skipped: Optional[list[str]] = None,
 ) -> list[str]:
     """The --check arm: sha256 live vs repo twin for machine-applicable pairs.
 
@@ -274,6 +306,20 @@ def check_pairs(
     moved, and only call it a HOME-fork when the LIVE copy is the stale one.
     A stale checkout goes to `notices` instead: real, differently owned, and
     on M5 not even fixable (pulling that checkout races ~45 live worktrees).
+
+    `skipped` collects the pairs this machine CLAIMS (machines: all/<label>)
+    whose live copy is not on disk. They are not breaches — nothing can drift
+    when nothing is running — but they are not coverage either, and silence
+    made them read as coverage. Measured 2026-08-06: `--check` reported
+    "109 declared pair(s) ... clean" on the Pro while three of the ten
+    wa-mirror pairs were never evaluated, including BOTH files the promotion
+    PR existed for (their live copies had been moved to an attic hours
+    earlier). The verdict was true; the conclusion a reader draws from it —
+    "the promoted files are verified" — was not.
+
+    A pair scoped to another machine is deliberately NOT collected here: that
+    is legitimate non-applicability, not a blind spot, and reporting it would
+    bury the real signal in fleet-wide noise on every run.
     """
     breaches: list[str] = []
     for pair in pairs:
@@ -282,11 +328,54 @@ def check_pairs(
         live = expand_home(pair["live"], home)
         repo = repo_root / pair["repo"]
         if not live.exists():
-            continue  # this machine does not run that copy — not a breach
+            # Not a breach — but say so, or "clean" reads as "checked".
+            if skipped is not None:
+                skipped.append(f"{pair['live']} (declared for {label}, not on disk)")
+            continue
         if not repo.exists():
+            # ABSENCE is a proxy too. W106b cured the DIVERGENCE path — ask
+            # origin/main which side is stale — but left this branch asserting
+            # the harsher claim ("no source of truth") from the checkout alone.
+            # A checkout that simply trails a merge is then accused of a breach
+            # it does not have, in a message that is factually false, and the
+            # remedy it prints ("declare the pair") is a no-op because the pair
+            # IS declared. Measured live on M5 2026-08-08, minutes after #3777
+            # merged: a correctly declared, correctly synced pair read as
+            # NO-REPO-TWIN because that checkout is 170 commits behind by
+            # design (pulling it races ~45 live worktrees).
+            upstream = origin_main_sha(repo_root, pair["repo"])
+            if upstream is None:
+                # Genuinely unsourced — or unattributable (no remote, shallow
+                # CI clone). Either way keep the loud verdict: "could not
+                # attribute" is never "clean" (W84).
+                breaches.append(
+                    f"NO-REPO-TWIN: {pair['live']} executes live but {pair['repo']} "
+                    f"is not in the repo — the live copy has no source of truth"
+                )
+                continue
+            if sha256_file(live) == upstream:
+                behind = commits_behind_origin(repo_root)
+                trail = f" ({behind} commits behind)" if behind else ""
+                if notices is not None:
+                    notices.append(
+                        f"CHECKOUT-STALE: {pair['repo']} is absent from this "
+                        f"checkout{trail} but present on origin/main, and the "
+                        f"LIVE copy {pair['live']} already matches it. The live "
+                        f"copy HAS a source of truth — update the checkout, "
+                        f"change nothing live."
+                    )
+                    continue
+                # No notices sink: keep it visible rather than dropping a real
+                # finding, but say which side actually moved.
+                breaches.append(
+                    f"DIVERGED: {pair['repo']} is absent from this checkout — "
+                    f"the CHECKOUT is the stale side, update it, do not touch live"
+                )
+                continue
             breaches.append(
-                f"NO-REPO-TWIN: {pair['live']} executes live but {pair['repo']} "
-                f"is not in the repo — the live copy has no source of truth"
+                f"DIVERGED: {pair['live']} != origin/main:{pair['repo']} (absent "
+                f"from this checkout) — the LIVE copy is the stale side; realign "
+                f"it from origin/main, never from this checkout"
             )
             continue
         live_sha, repo_sha = sha256_file(live), sha256_file(repo)
@@ -437,10 +526,12 @@ def discover_undeclared(
             try:
                 payload = plistlib.loads(plist_path.read_bytes())
             except Exception as exc:  # noqa: BLE001 — fail-visible, not fail-open
-                errors.append(
-                    f"plist unreadable/unparseable ({type(exc).__name__}): {plist_path}"
-                )
-                continue
+                payload = _plutil_recovered_plist(plist_path)
+                if payload is None:
+                    errors.append(
+                        f"plist unreadable/unparseable ({type(exc).__name__}): {plist_path}"
+                    )
+                    continue
             if not isinstance(payload, dict):
                 errors.append(f"plist root is not a dict: {plist_path}")
                 continue
@@ -547,6 +638,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     undeclared: list[str] = []
     errors: list[str] = []
     stale_checkout: list[str] = []
+    skipped_pairs: list[str] = []
 
     if run_check:
         # Refresh the reference BEFORE anyone is blamed against it. A failure
@@ -568,7 +660,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                     f"acted on from this run"
                 )
         breaches = check_pairs(
-            pairs, args.repo_root, args.home, label, notices=stale_checkout
+            pairs,
+            args.repo_root,
+            args.home,
+            label,
+            notices=stale_checkout,
+            skipped=skipped_pairs,
         )
         if args.strict_checkout:
             breaches += stale_checkout
@@ -606,6 +703,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     "machine": label,
                     "check_breaches": breaches,
                     "check_stale_checkout": stale_checkout,
+                    "check_skipped_live_absent": skipped_pairs,
                     "discover_undeclared": undeclared,
                     "errors": errors,
                     "pairs_declared": len(pairs),
@@ -629,7 +727,24 @@ def main(argv: Optional[list[str]] = None) -> int:
                     f"because this checkout trails origin/main (--strict-checkout to fail on it)"
                 )
             else:
-                print("  clean — every live copy matches its repo twin")
+                verified = len(
+                    [p for p in pairs if pair_applies(p, label)]
+                ) - len(skipped_pairs)
+                print(
+                    f"  clean — {verified} live copy/copies match their repo twin"
+                    if skipped_pairs
+                    else "  clean — every live copy matches its repo twin"
+                )
+        if skipped_pairs:
+            # Never touches the exit code: a diagnostic that can fail a build is
+            # not a diagnostic. It exists so "clean" is not read as "checked".
+            shown = skipped_pairs[:10]
+            print(
+                f"  {len(skipped_pairs)} pair(s) NOT checked — live copy absent on "
+                f"this machine (showing {len(shown)} of {len(skipped_pairs)}):"
+            )
+            for s in shown:
+                print(f"    ? {s}")
     if run_discover:
         print(f"[discover] undeclared HOME-executed payloads: {len(undeclared)}")
         for f in undeclared:

@@ -14,6 +14,7 @@ overwrite hand-written corrections with machine output.
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -267,3 +268,165 @@ def test_stamping_reports_unusable_entries_instead_of_swallowing_them(tmp_path):
     lst = tmp_path / "list.txt"
     lst.write_text(f"{tmp_path / 'ghost.it.mdx'}\n", encoding="utf-8")
     assert ta.stamp_baseline(lst) == 2
+
+
+# ── Orphan detection (2026-08-07) ───────────────────────────────────────────
+#
+# discover_articles() derives every translation target as
+# <slug>.mdx -> <slug>.<lang>.mdx IN THE SAME DIRECTORY. If an English
+# article's category folder changes, a translation left behind next to the
+# now-absent source becomes permanently invisible to this organ: never
+# fresh, never stale, never counted. One real instance was found live: the
+# disk census of id+it translation files was 1593 while discover_articles()
+# x {id,it} visits only 1592 slots — the gap is
+# immigration/driving-license-bali-foreigners-2026.id.mdx, whose English
+# source and .it sibling both now live under lifestyle/.
+#
+# This pass costs nothing (pure filesystem check) and must never change what
+# gets translated — it is a report, not a gate.
+
+def _mktree(tmp_path: Path) -> Path:
+    root = tmp_path / "articles"
+    root.mkdir()
+    return root
+
+
+def test_orphan_with_no_sibling_source_is_reported(tmp_path, monkeypatch):
+    """GUILT: a translation whose <slug>.mdx is missing from the same directory."""
+    root = _mktree(tmp_path)
+    cat = root / "immigration"
+    cat.mkdir()
+    _write(cat / "foo.it.mdx", FM, "orphaned translation\n")
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    orphans = ta.discover_orphan_translations()
+    assert [o.name for o in orphans] == ["foo.it.mdx"]
+
+
+def test_the_real_orphan_is_caught_by_name():
+    """GUILT, on the live corpus: the exact file this finding is about."""
+    orphans = ta.discover_orphan_translations(category="immigration")
+    names = [o.name for o in orphans]
+    assert "driving-license-bali-foreigners-2026.id.mdx" in names
+
+
+def test_translation_with_its_sibling_source_is_not_an_orphan(tmp_path, monkeypatch):
+    """INNOCENCE: the normal case — <slug>.mdx and <slug>.id.mdx together."""
+    root = _mktree(tmp_path)
+    cat = root / "immigration"
+    cat.mkdir()
+    _write(cat / "guide.mdx", FM, BODY)
+    _write(cat / "guide.id.mdx", FM, "Terjemahan.\n")
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    assert ta.discover_orphan_translations() == []
+
+
+def test_english_source_with_no_translation_yet_is_not_an_orphan(tmp_path, monkeypatch):
+    """INNOCENCE: an absent translation is the existing, legitimate 'absent'
+    verdict — flagging it as an orphan would be an over-match on the
+    opposite side (Family #3, cicatrix-superscar.md)."""
+    root = _mktree(tmp_path)
+    cat = root / "immigration"
+    cat.mkdir()
+    _write(cat / "guide.mdx", FM, BODY)
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    assert ta.discover_orphan_translations() == []
+
+
+def test_all_four_language_suffixes_are_covered(tmp_path, monkeypatch):
+    """fr/ru have the identical blind spot — the check must not skip them."""
+    root = _mktree(tmp_path)
+    cat = root / "lifestyle"
+    cat.mkdir()
+    for lang in ("id", "it", "ru", "fr"):
+        _write(cat / f"orphan.{lang}.mdx", FM, f"lang {lang}\n")
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    orphans = {o.name for o in ta.discover_orphan_translations()}
+    assert orphans == {"orphan.id.mdx", "orphan.it.mdx", "orphan.ru.mdx", "orphan.fr.mdx"}
+
+
+def test_category_filter_scopes_the_scan(tmp_path, monkeypatch):
+    root = _mktree(tmp_path)
+    a = root / "immigration"
+    a.mkdir()
+    b = root / "lifestyle"
+    b.mkdir()
+    _write(a / "x.it.mdx", FM, "a\n")
+    _write(b / "y.it.mdx", FM, "b\n")
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    assert [o.name for o in ta.discover_orphan_translations("immigration")] == ["x.it.mdx"]
+    assert [o.name for o in ta.discover_orphan_translations("lifestyle")] == ["y.it.mdx"]
+
+
+def test_sync_conflict_files_are_never_flagged_as_orphans(tmp_path, monkeypatch):
+    root = _mktree(tmp_path)
+    cat = root / "immigration"
+    cat.mkdir()
+    _write(cat / "guide.it.sync-conflict-20260101.mdx", FM, "conflict copy\n")
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    assert ta.discover_orphan_translations() == []
+
+
+def test_fr_and_ru_orphans_never_reach_the_translate_write_path(tmp_path, monkeypatch):
+    """A fr/ru orphan is REPORTED but must not change `targets` or trigger a
+    translation. discover_articles() only ever walks English (unsuffixed)
+    sources, so an orphan can never enter the write path by construction —
+    prove it: a tree containing ONLY an orphan yields zero English articles
+    (nothing to translate) while the orphan is still visible via
+    discover_orphan_translations(), and the file is untouched."""
+    root = _mktree(tmp_path)
+    cat = root / "lifestyle"
+    cat.mkdir()
+    ghost = cat / "ghost.fr.mdx"
+    _write(ghost, FM, "orphan fr\n")
+    before = ghost.read_text()
+    monkeypatch.setattr(ta, "ARTICLES_DIR", root)
+    monkeypatch.setattr(ta, "call_ollama", lambda *a, **k: pytest.fail("model called"))
+
+    assert ta.discover_articles() == []  # nothing for the translate loop to see
+    orphans = ta.discover_orphan_translations()
+    assert [o.name for o in orphans] == ["ghost.fr.mdx"]
+    assert ghost.read_text() == before  # untouched
+
+
+def test_dry_run_exits_zero_with_a_real_orphan_present():
+    """EXIT 0 requirement, end to end on the live corpus: a pre-existing
+    orphan condition must never turn an hourly cron run red — that would be
+    a NEW problem (cicatrix-superscar.md Family #2), not a cure for one."""
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS_DIR / "translate-articles.py"),
+         "--dry-run", "--category", "immigration"],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "ORPHAN" in proc.stdout
+    assert "driving-license-bali-foreigners-2026.id.mdx" in proc.stdout
+
+
+# ── mouth main-dirt fix (2026-08-07): NUZANTARA_REPO_ROOT override ──────────
+#
+# scripts/translate-articles-cron-wrapper.sh points this env var at an
+# isolated worktree so the hourly cron never writes into the tracked main
+# checkout. Guilt+innocence per cicatrix-superscar.md Family #3 (a guard/
+# config-resolution function with no innocence case is half a fix).
+
+def test_repo_root_honors_the_env_var_when_set(tmp_path, monkeypatch):
+    """[guilt] NUZANTARA_REPO_ROOT, when present, wins over the file-derived
+    default — this is the entire mechanism the wrapper relies on."""
+    monkeypatch.setenv("NUZANTARA_REPO_ROOT", str(tmp_path))
+    assert ta._repo_root() == tmp_path
+
+
+def test_repo_root_falls_back_to_file_derived_root_when_unset(monkeypatch):
+    """[innocence] a manual/ad-hoc run with the env var unset must resolve
+    exactly as it always has — the fallback is not a new behavior."""
+    monkeypatch.delenv("NUZANTARA_REPO_ROOT", raising=False)
+    assert ta._repo_root() == SCRIPTS_DIR.parent
+
+
+def test_repo_root_ignores_an_empty_string_env_var(monkeypatch):
+    """[innocence] an exported-but-empty NUZANTARA_REPO_ROOT (e.g. a wrapper
+    bug that sets `NUZANTARA_REPO_ROOT=`) must not resolve to Path(""),
+    which would silently point ARTICLES_DIR at the cwd instead of failing
+    loud or falling back."""
+    monkeypatch.setenv("NUZANTARA_REPO_ROOT", "")
+    assert ta._repo_root() == SCRIPTS_DIR.parent

@@ -97,7 +97,7 @@ export default function VisaMatchResultPage({
         <p style={{ lineHeight: 1.6 }}>{data.reason}</p>
         {/* TODO(Task 12): fire visaWaClick telemetry with source=wizard_abstained */}
         <HandoffWaLink
-          phone={process.env.NEXT_PUBLIC_WA_PHONE ?? "+6285156005858"}
+          phone={process.env.NEXT_PUBLIC_WA_PHONE ?? "+628213454721"}
           nationality={data.nationality}
           purpose={data.purpose}
           durationMonths={data.duration_months}

@@ -484,47 +484,23 @@ jobs:
         run: npm install --no-fund
 
       - name: npm audit
-        # --omit=dev: audit only what we ship to production, not the test
-        # toolchain. All current high/critical advisories are in devDependencies
-        # (vitest / @vitest/coverage-v8 "UI server arbitrary file read", vite,
-        # esbuild) — exploitable only when running `vitest --ui` locally, never
-        # in CI or prod. Without --omit=dev these dev-only advisories failed the
-        # gate on EVERY PR repo-wide. Production-dependency soglia stays at high.
+        # The gate itself lives in scripts/ci/npm_audit_gate.py so it can carry
+        # a guilt+innocence corpus instead of being a guard nobody can execute
+        # (same shape as scripts/ci/hotzone_changed_files.sh, W102). The waiver
+        # set — and, for each entry, WHY it is unreachable — is documented at
+        # the top of that file. Waivers are scoped to a dependency PATH, so the
+        # same advisory arriving on a path we never vetted still fails.
         #
-        # Temporary waiver (2026-07-24, owner-approved, REMOVE when patched
-        # versions ship): 3 advisories with NO patched release available —
-        # every installed version is already the latest published:
-        #   GHSA-frvp-7c67-39w9  @hono/node-server path traversal (Windows-only %5C)
-        #   GHSA-9mqv-5hh9-4cgg  @hono/node-server WebSocket aborted-handshake mem-leak
-        #   GHSA-c96f-x56v-gq3h  find-my-way HTTP2 DDoS
-        # Reachability: @hono/node-server enters via @modelcontextprotocol/sdk
-        # (used for its optional HTTP transport; our MCP servers run stdio) and
-        # find-my-way via @prisma/dev (local dev tooling). Audit runs JSON mode
-        # and fails only on high/critical advisories NOT in the waiver set.
+        # --omit=dev: audit only what we ship to production, not the test
+        # toolchain. Dev-only advisories (vitest / @vitest/coverage-v8 "UI
+        # server arbitrary file read", vite, esbuild) are exploitable only when
+        # running `vitest --ui` locally, never in CI or prod; without --omit=dev
+        # they failed the gate on EVERY PR repo-wide. Production-dependency
+        # threshold stays at high.
         run: |
+          python3 scripts/ci/test_npm_audit_gate.py
           npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
-          python3 - "$RUNNER_TEMP/audit.json" <<'PY'
-          import json, sys
-          WAIVE = {"GHSA-frvp-7c67-39w9", "GHSA-9mqv-5hh9-4cgg", "GHSA-c96f-x56v-gq3h"}
-          data = json.load(open(sys.argv[1]))
-          bad = []
-          for name, vuln in (data.get("vulnerabilities") or {}).items():
-              if vuln.get("severity") not in ("high", "critical"):
-                  continue
-              ids = {
-                  str(x.get("url", "")).rsplit("/", 1)[-1]
-                  for x in vuln.get("via", [])
-                  if isinstance(x, dict)
-              }
-              if not ids <= WAIVE:
-                  bad.append((name, vuln.get("severity"), sorted(ids)))
-          if bad:
-              print("npm audit: non-waived high/critical vulnerabilities found:")
-              for row in bad:
-                  print("  ", row)
-              sys.exit(1)
-          print("npm audit: only waived advisories present — gate OK")
-          PY
+          python3 scripts/ci/npm_audit_gate.py "$RUNNER_TEMP/audit.json"
         continue-on-error: false
 
       - name: Run tests (with coverage)
@@ -571,6 +547,47 @@ jobs:
           cd packages/core
           npx vitest --run
 
+      # wa-mirror's vitest suite had NEVER run in CI — 8 test files, 0 gates.
+      # The bridge is the organ that mirrors client WhatsApp lines, and the alert
+      # policy it now carries (announce the failure to recover, never the
+      # disconnection — apps/wa-mirror/bridge/down-alarm.ts) is exactly the kind
+      # of rule that decays silently: a mute watchdog looks identical to a healthy
+      # one. Built, never armed (cicatrix-superscar #2), and W108's lesson is that
+      # the defect only surfaces once the test runs on EVERY PR.
+      #
+      # Same reasoning as the packages/core step above for WHERE this lives: a
+      # step of the already-required `(mouth, true)` leg, because branch
+      # protection pins required contexts by NAME (W69).
+      #
+      # The declared limit of the first version of this step ("runs 2 of the 8
+      # files, because apps/wa-mirror is not an npm workspace and has NO
+      # lockfile") is CLOSED: the lockfile now exists in the repo, so this
+      # installs from it and runs the whole suite. Measured before arming, on two
+      # machines: `npm ci` exits 0 from a pristine tree and all 8 files pass —
+      # 127 tests, 325ms on Pro, 1.1s on M5. The 6 files that used to "fail" were
+      # never broken; they were importing baileys / pino / libphonenumber-js from
+      # a tree that did not have them.
+      #
+      # `npm ci` and not `npm install`: ci fails loudly when the lock and the
+      # manifest disagree, which is the check that keeps the committed lock
+      # honest (W98 — a lock that drifts from its manifest is how a forbidden
+      # version reaches production with every gate green).
+      #
+      # DECLARED LIMIT, unchanged by this step: Dependabot's npm ecosystem is
+      # pointed at "/" only, which resolves the WORKSPACE tree — wa-mirror is not
+      # a workspace, so this lock is not watched by it. `npm audit` on the tree
+      # that runs in production reports 3 high + 1 low, all transitive under
+      # @whiskeysockets/baileys@7.0.0-rc13 (protobufjs, sharp, ws) plus a
+      # Windows-only dev-server issue in esbuild. Committing the lock does not
+      # add that exposure — the same tree was already live and unmeasurable; it
+      # makes it visible. Coverage and the RC bump are on the W81 ledger.
+      - name: Run wa-mirror bridge suite (installs from its own lockfile)
+        if: matrix.app == 'mouth'
+        run: |
+          cd apps/wa-mirror
+          npm ci
+          npx vitest run
+
       - name: Upload coverage
         if: ${{ matrix.coverage && env.HAS_CODECOV_TOKEN == 'true' }}
         uses: codecov/codecov-action@v7
@@ -588,56 +605,6 @@ jobs:
         with:
           name: frontend-${{ matrix.app }}-coverage
           path: apps/${{ matrix.app }}/coverage/
-
-  wa-dashboard-tests:
-    name: WA Dashboard Tests
-    runs-on: ubuntu-latest
-    env:
-      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: apps/wa-dashboard/package.json
-
-      - name: Install WA Dashboard dependencies
-        run: |
-          cd apps/wa-dashboard
-          npm install --no-fund
-
-      - name: Type-check WA Dashboard
-        run: |
-          cd apps/wa-dashboard
-          npm run typecheck
-
-      - name: Run WA Dashboard coverage gate
-        run: |
-          cd apps/wa-dashboard
-          npm run test:coverage
-
-      - name: Upload WA Dashboard coverage to Codecov
-        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: apps/wa-dashboard/coverage/lcov.info
-          flags: wa-dashboard
-          name: wa-dashboard-coverage
-
-      - name: Upload WA Dashboard coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: wa-dashboard-coverage
-          path: apps/wa-dashboard/coverage/
 
   packages-core-tests:
     name: Shared Core Package Tests
@@ -881,7 +848,6 @@ jobs:
       - mcp-tests
       - evaluator-critical-tests
       - frontend-tests
-      - wa-dashboard-tests
       - packages-core-tests
       - e2e-tests
     if: always()
@@ -901,7 +867,6 @@ jobs:
           MCP_RESULT: ${{ needs.mcp-tests.result }}
           EVALUATOR_RESULT: ${{ needs.evaluator-critical-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
-          WA_DASHBOARD_RESULT: ${{ needs.wa-dashboard-tests.result }}
           PACKAGES_CORE_RESULT: ${{ needs.packages-core-tests.result }}
           E2E_RESULT: ${{ needs.e2e-tests.result }}
         with:
@@ -922,7 +887,6 @@ jobs:
               "MCP server": process.env.MCP_RESULT,
               "Evaluator critical": process.env.EVALUATOR_RESULT,
               "Frontend matrix": process.env.FRONTEND_RESULT,
-              "WA Dashboard": process.env.WA_DASHBOARD_RESULT,
               "Shared core package": process.env.PACKAGES_CORE_RESULT,
               "E2E page-load smoke": process.env.E2E_RESULT,
             };
