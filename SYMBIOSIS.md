@@ -180,6 +180,9 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 
    **Fase DEV (attuale — fino al go-live prod):** il vincolo "zero-cloud assoluto / mirror Pro-bound" e' **sospeso operativamente** per non bloccare lo sviluppo. In sviluppo si possono usare strumenti cloud (incluso l'IDE Antigravity, agenti cloud, code-indexing) su tutto il repo — **codice, frontend, backend, schema, research** — perche' il dato che circola e' codice e dati di test/sintetici, non il book clienti reale in produzione. Decisione di Zero: «dobbiamo lavorare; quando saremo pronti in prod ci lavoriamo». Resta comunque vietato esportare deliberatamente in chiaro PII REALE di clienti veri (snapshot DB prod, dump WhatsApp reali) verso un terzo — quello e' un atto, non un effetto-collaterale di sviluppo. La frontiera-output (Art. 67-68) NON e' sospesa nemmeno in DEV.
 
+   > **⚠️ POLITICA PRESCRITTIVA, NON STATO ATTUALE — i presenti indicativi qui sotto dicono cosa
+   > FAREMO sempre, non cosa risulta già registrato: vedi il punto 3.**
+   >
    > ## ⚖️ IL CONSENSO SI RACCOGLIE SEMPRE. IL CLIENTE ACCETTA LE CONDIZIONI.
    >
    > ## IL TRANSITO DI PII SU CLOUD ESTERO **NON È** UN CANCELLO SULLA SCELTA DEL FORNITORE.
@@ -199,19 +202,27 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
    >    singolo trasferimento**: adequacy → safeguard vincolante (DPA/SCC) → consenso esplicito.
    >    Dove un safeguard c'è, la base è quello e il consenso lo **accompagna**, non lo sostituisce.
    >    La regola operativa resta quella di `CLAUDE.md` §14: **DPA _e_ consenso**.
-   > 2. **Non autorizza il _processing_ cloud di PII.** Copre il transito/storage e l'inferenza del
-   >    fornitore sul TESTO che il cliente ci manda in chat. Il processing dei documenti-identità
-   >    resta locale-sovrano sul Pro: `cloud_vision_gate` resta fail-closed, il mirror OSINT/WhatsApp
-   >    raw resta Pro-bound.
-   > 3. **Non chiude il gap operativo.** Decidere di raccogliere il consenso non è averlo: mancano
-   >    la clausola a contratto, la registrazione della prova per-cliente, il meccanismo di **revoca**
-   >    e l'enforcement. «Esiste ≠ armato» (superscar #2) vale anche per un controllo legale — finché
-   >    non è armato **questo riquadro descrive una politica, non uno stato del sistema**. Lavoro
-   >    tracciato in PENDING-ARMS, non dichiarato fatto.
+   > 2. **Non autorizza NIENTE di nuovo verso il cloud.** Toglie un'obiezione alla scelta del
+   >    fornitore; non è un permesso, e non allarga di un byte ciò che esce. Il confine resta quello
+   >    che il codice ENFORCA: `cloud_vision_gate` fail-closed su documenti-identità e immagini,
+   >    mirror OSINT/WhatsApp raw Pro-bound. Il testo che il cliente digita in chat raggiunge già il
+   >    fornitore LLM attraverso il gateway — **è un fatto del sistema in esercizio, non qualcosa che
+   >    questo riquadro concede**, e resta soggetto alla cascata del punto 1 come ogni altro
+   >    trasferimento. Chi legge questo blocco come una licenza a spostare PII su una superficie
+   >    nuova lo sta leggendo al contrario.
+   > 3. **Non chiude il gap operativo, e non è una dichiarazione di conformità.** Decidere di
+   >    raccogliere il consenso non è averlo: mancano la clausola a contratto, la registrazione
+   >    della prova per-cliente, il meccanismo di **revoca** e l'enforcement; e lo stato del DPA non
+   >    è registrato da nessuna parte in questo repo. «Esiste ≠ armato» (superscar #2) vale anche
+   >    per un controllo legale — finché non è armato, **questo riquadro descrive una politica, non
+   >    uno stato del sistema**, e il traffico cloud che oggi passa sul percorso chat è un **rischio
+   >    accettato dal titolare** (Legge 5), non una base giuridica dimostrata. Lavoro tracciato in
+   >    PENDING-ARMS, non dichiarato fatto.
    >
    > **Cosa non cambia in nessun caso:** la frontiera-OUTPUT del capoverso principale. Nessun log,
-   > memoria, report, skill o artefatto condiviso trascrive PII in chiaro. Il consenso legittima che
-   > un fornitore riceva il dato; non rende lecito spargerlo in un log. Art. 67-68 non si consente via.
+   > memoria, report, skill o artefatto condiviso trascrive PII in chiaro. **Nessuna base dell'Art. 56
+   > — né safeguard né consenso — rende lecito trascrivere PII in chiaro in un log:** sono due domande
+   > distinte, e la seconda non si consente via (Art. 67-68).
    >
    > **Corollario operativo, ed è il motivo per cui questo blocco esiste** (errore di una sessione,
    > 2026-08-09): «vede domande dei clienti» **NON** è un argomento per escludere un fornitore. Il
