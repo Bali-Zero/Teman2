@@ -136,21 +136,27 @@ NO kid Identifier regression on main — the pattern accepts `prod-2026-07-1` fi
    (anti-rollback pre-gate PASS: seq 5>4 · chain `1f0f7b0d…` · PRODUCTION · engine 1.0.0)
    → `would_insert_and_activate=true rule_pack_id=4159265d-… payload_sha256=ebc19f5c…`.
 
-**Operator-checkpoint (Zero — Legge 5 business go for the IRREVERSIBLE write):**
-3. **Two-login `--yes` activate** — `activate_pack.py <signed.json> --actor
-   session.voa-seq5-tree --reason seq5-shadow-activation-260809 --current-sequence 4
-   --current-payload-sha256 1f0f7b0d189d0d9adecb08afa158f1f221ef698340a65b029beb0fc21f410e49
-   --yes`, with TWO distinct DB identities in env (`VISA_ENGINE_PACK_WRITER_DATABASE_URL`
-   + `VISA_ENGINE_ACTIVATION_DATABASE_URL`); `_assert_production_separation` hard-refuses
-   same-principal or superuser sessions. Ephemeral ceremony roles
-   (`visa_pack_writer_ceremony_260809` in `visa_pack_writer` / `visa_activation_ceremony_260809`
-   in `visa_activation_executor`, invariant `no-pack-writer-activation-combination`) minted
-   via fly superuser on `nuzantara-postgres` (from Pro) + dropped same session (prod-004
-   precedent). This is the single Zero-gated step remaining.
-4. **Prove-live** (session, after activation): SHADOW binding resolves to seq-5
-   (`rule_pack_id 4159265d-53e8-5b25-ab5a-fa4f5b25a2d1`) on next evaluate; the 2 corrected
-   branches answer correctly; EVALUATE_MODE stays SHADOW (`VISA_ENGINE_EVALUATE_MODE`
-   untouched — ENFORCE remains NO-GO).
+**Operator-checkpoint (Zero — Legge 5) → GRANTED + EXECUTED 2026-08-09:**
+Zero authorized activation this session ("Sì, attiva seq-5 (SHADOW)" via checkpoint).
+3. **Two-login `--yes` activate — DONE.** Ran on Pro (`fly proxy 15432:5432` →
+   `nuzantara-postgres` haproxy). TWO ephemeral LOGIN roles minted via stdin→psql
+   (pw never in argv, cicatrix #4): `visa_pack_writer_ceremony_260809` (in `visa_pack_writer`)
+   + `visa_activation_ceremony_260809` (in `visa_activation_executor`, invariant
+   `no-pack-writer-activation-combination`), passed to `activate_pack.py --yes` as the two
+   DSN env vars; `_assert_production_separation` passed (distinct non-superuser principals);
+   roles DROPPED same session via EXIT trap. **Result:** `rule_pack_id=4159265d-… ·
+   activation_id=560839f3-a71d-42ef-bdec-246579630884 · sequence=5 · payload_sha256=ebc19f5c…`.
+4. **Prove-live — CONFIRMED at DB + runtime-code level.** The runtime's active-pack
+   selection (`repository.load_active_rule_pack` AND its twin `shadow._resolve_active_pack_binding`)
+   is `WHERE legal_period @> now() AND system_period @> now() ORDER BY created_at DESC LIMIT 1` —
+   NOT single-active: multiple PRODUCTION activations are open by design (seq 1/3/4/5 all
+   in_force; the docstring acknowledges overlapping `legal_period`s), and the NEWEST
+   `created_at` wins. seq-5's activation (`created_at 2026-08-09 13:27:38Z`) is the newest →
+   **served.** No import-time cache, no TTL wrapper on the binding (`shadow.py:77` "re-read
+   fresh on every call") → live immediately, no restart. EVALUATE_MODE stays SHADOW
+   (engine result shadow-logged, users still see CURATED) — ENFORCE remains NO-GO. Frontend
+   `balizero.com/visa-oracle` 200, backend `/health` healthy (v100-qdrant, postgres connected).
+   The Bali Zero team now runs the 38-scheda manual SHADOW test against the corrected tree.
 
 **NOT a blocker for this SHADOW activation** (corrected 2026-08-09 — earlier draft
 over-flagged it): the enforce-gate doc's DB findings (migration 264 unapplied,
