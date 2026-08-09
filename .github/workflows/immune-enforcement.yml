@@ -70,6 +70,8 @@ jobs:
             case "$f" in
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
+              scripts/agent_start.py|\
+              scripts/tests/test_agent_start.py|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
               scripts/lint_plist_keepalive.py|\
@@ -239,6 +241,7 @@ jobs:
           python -m pip install --quiet pytest
           fail=0
           for t in \
+            scripts/tests/test_agent_start.py \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \

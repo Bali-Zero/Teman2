@@ -54,6 +54,22 @@ from typing import Iterable
 # Constants
 # ---------------------------------------------------------------------------
 
+# The file whose presence identifies a directory as THIS repo's main checkout.
+# Same signature the two worktree hooks use (`infra/claude-hooks/`), on purpose:
+# tools that must agree on "where is the main checkout" do not each invent a test.
+ROOT_SIGNATURE = "scripts/agent_start.py"
+REPO_ROOT_ENV = "NUZ_REPO_ROOT"
+
+
+def _carries_root_signature(root: Path) -> bool:
+    """True iff `root` looks like the nuzantara main checkout."""
+    try:
+        return (root / ROOT_SIGNATURE).is_file()
+    except OSError:
+        # An unreadable/absurd path is "not the repo", never a crash.
+        return False
+
+
 def _derive_repo_root() -> Path:
     """The MAIN checkout, never the worktree this script happens to be sitting in.
 
@@ -72,10 +88,55 @@ def _derive_repo_root() -> Path:
 
     Signature-guarded: a derived root that does not carry `scripts/agent_start.py` is
     refused, so a cwd that has wandered into some OTHER git repo can never silently
-    retarget the broker. On any failure we fall back to the old script-relative answer —
-    unchanged behaviour when git is unavailable — and the nesting refusal below is the
-    backstop that keeps the fallback honest.
+    retarget the broker.
+
+    The signature guard used to protect ONLY the git-derived answer, while the
+    fallback `return script_dir` was bare — and that is the half that bit us
+    (2026-08-08, m5). On m5 the main checkout is deliberately never pulled (W106b),
+    so the way to run CURRENT code is `git show origin/main:<script> > /tmp/x.py`.
+    Do that here and `script_dir` becomes `/` (parents[1] of `/tmp/x.py`), git says
+    "not a git repository", the bare fallback returns `/`, `WORKTREES_DIR` becomes
+    `/.worktrees` — and `--list` prints "(no active worktrees under .worktrees/)"
+    while real worktrees sit there. It does not error. **An empty inventory read as
+    cleanliness is the calm liar (W84)**, and the organ lying is the worktree broker,
+    i.e. a sibling-race safety guard (#5).
+
+    So every candidate is signature-checked, in the precedence the other three
+    tools in this family already use (`infra/claude-hooks/README.md`):
+
+      1. `NUZ_REPO_ROOT`  — explicit override; the SAME name `proprioception.py`
+         and both worktree hooks read, so the out-of-tree escape hatch finally
+         carries over to this script instead of stopping at the other two.
+      2. `git rev-parse --git-common-dir` — answers with the MAIN repo from inside
+         a linked worktree, which is the W105 reason this beats the script's own
+         location.
+      3. the script's own directory — the ordinary in-repo case.
+      4. `~/nuzantara` — machine-agnostic (Pro `/Users/nuzantara`, m5
+         `/Users/balizero`), the same last resort the hooks use. This is what makes
+         a `/tmp` copy work rather than merely fail politely.
+
+    If NOTHING carries the signature we RAISE. Refusing to answer is the only
+    honest option left: any Path we could return here produces a confident,
+    empty, wrong inventory. An explicit `NUZ_REPO_ROOT` that fails the signature
+    is named in the error rather than silently skipped — a wrong override that
+    degrades to a different repo is exactly the retarget the guard exists to stop.
     """
+    env_root = os.environ.get(REPO_ROOT_ENV, "").strip()
+    if env_root:
+        explicit = Path(env_root).expanduser()
+        if _carries_root_signature(explicit):
+            return explicit
+        # Deliberately terminal, not "try the next candidate": someone NAMED a
+        # root. Falling through would run the broker against a different repo
+        # than the one asked for, which is the exact retarget the signature
+        # guard exists to prevent — and it would do it silently.
+        raise SystemExit(
+            f"ERROR: {REPO_ROOT_ENV}={explicit} does not carry {ROOT_SIGNATURE} — "
+            "that is not the nuzantara main checkout. Fix or unset it; refusing to "
+            "silently fall back to a different root than the one you named."
+        )
+
+    candidates: list[tuple[str, Path]] = []
     script_dir = Path(__file__).resolve().parents[1]
     try:
         out = subprocess.run(
@@ -83,13 +144,28 @@ def _derive_repo_root() -> Path:
             cwd=str(script_dir), capture_output=True, text=True, timeout=5,
         )
         if out.returncode == 0 and out.stdout.strip():
-            common = Path(out.stdout.strip())
-            root = common.parent if common.name == ".git" else common.parent
-            if (root / "scripts" / "agent_start.py").is_file():
-                return root
+            # `--git-common-dir` is `<root>/.git` for a normal checkout and for a
+            # linked worktree alike; the parent is the main checkout either way.
+            candidates.append(("git --git-common-dir", Path(out.stdout.strip()).parent))
     except Exception:
         pass
-    return script_dir
+
+    candidates.append(("script location", script_dir))
+    candidates.append(("~/nuzantara", Path.home() / "nuzantara"))
+
+    tried: list[str] = []
+    for label, cand in candidates:
+        if _carries_root_signature(cand):
+            return cand
+        tried.append(f"{label}={cand}")
+
+    raise SystemExit(
+        "ERROR: cannot locate the nuzantara main checkout — every candidate lacks "
+        f"the {ROOT_SIGNATURE} signature. Tried: " + "; ".join(tried) + ". "
+        f"Set {REPO_ROOT_ENV}=/path/to/nuzantara and re-run. Refusing to guess: a "
+        "guessed root reports an EMPTY worktree inventory, which reads as 'nothing "
+        "to clean up' when the truth is 'I looked in the wrong place'."
+    )
 
 
 REPO_ROOT = _derive_repo_root()
@@ -1113,6 +1189,18 @@ def _branch_is_merged(branch: str, base: str = "main") -> bool:
         return False
 
 
+def _rev_exists(rev: str) -> bool:
+    """True iff `rev` resolves in this repo (a branch that was deleted does not).
+
+    `_branch_is_merged` conflates "base gone" with "not merged" — both arrive as
+    False. That conflation is invisible in the verdict but decides the ERROR
+    MESSAGE, and a message that names the wrong cause sends the reader off to
+    fix something that is not broken (W106: cure and diagnosis expire together).
+    """
+    proc = _run_git(["rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"], check=False)
+    return proc.returncode == 0
+
+
 def _remove_worktree(worktree: Path, branch: str, *, delete_branch: bool) -> None:
     """Remove worktree via `git worktree remove` and optionally delete branch."""
     _run_git(["worktree", "remove", "--force", str(worktree)])
@@ -1159,17 +1247,45 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
         )
 
     merged = _branch_is_merged(meta.branch, base=base)
-    if not merged and wt.is_dir() and base == "main":
+    proven_by = "ancestor of base" if merged else ""
+    if not merged and wt.is_dir():
         # W88: the ancestor proxy says "unmerged" for every squash-merged
         # branch. Fall back to the blob-per-file content check the cleanup
         # reaper uses. Gated on wt.is_dir() — with the checkout gone the
         # content check degenerates to True and would delete an unproven
         # branch (keep the fail-safe direction).
+        #
+        # NOT gated on `base == "main"` any more (2026-08-08). That gate meant a
+        # stacked branch — recorded base `feature/x`, since squash-merged and
+        # DELETED — skipped the content check entirely and was refused, even with
+        # every one of its files already byte-identical on origin/main. The harm
+        # is not the friction: the message's own way out is `--force`, which
+        # deletes unconditionally AND skips the uncommitted-WIP check above. An
+        # over-strict guard that pushes you to the nuclear option has made things
+        # less safe, not more (W105). Content-on-origin/main is a SUFFICIENT proof
+        # of safety whatever the recorded base was — the work is upstream, so
+        # deleting the branch loses nothing — and `_branch_in_origin_main`
+        # fail-safes to False on any git error or missing ref.
         merged = _branch_in_origin_main(wt)
+        if merged:
+            proven_by = "content already on origin/main"
     if not merged and not force:
+        if not _rev_exists(base):
+            reason = (
+                f"its recorded base branch {base} no longer exists, and its content "
+                "is not (yet) on origin/main"
+            )
+        else:
+            reason = f"it is not merged into {base}, by ancestry or by content"
         raise SystemExit(
-            f"ERROR: branch {meta.branch} not merged into {base}. "
-            "Open a PR + merge it, or pass --force to delete unconditionally."
+            f"ERROR: refusing to delete branch {meta.branch}: {reason}. "
+            "Open a PR + merge it, or pass --force to delete unconditionally "
+            "(--force also skips the uncommitted-WIP check above)."
+        )
+    if merged and proven_by:
+        logger.info(
+            "release merged-check passed task_id=%s branch=%s proof=%s",
+            task_id, meta.branch, proven_by,
         )
 
     try:
