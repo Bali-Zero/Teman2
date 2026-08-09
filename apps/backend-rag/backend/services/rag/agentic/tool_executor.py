@@ -58,47 +58,16 @@ def _strip_reserved_args(arguments: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in arguments.items() if not k.startswith(_RESERVED_ARG_PREFIX)}
 
 
-# P0-DENY (2026-07-25): the string returned by every denial-shaped branch
-# below is a tool OBSERVATION handed straight back to the LLM, which then
-# paraphrases it to whoever is asking. For an authenticated/team caller
-# (`agent_role` resolved) that is useful — "you don't have permission to
-# call X, try Y". For a NO-PRINCIPAL caller (client / unknown WA sender /
-# public blog-ask — `agent_role is None`) it turned the assistant into a
-# probing oracle: a synthetic client-role caller asked a production bot
-# "quanti clienti attivi abbiamo adesso?" and the bot narrated back that a
-# CRM database exists and that an authorization control blocked the call.
-# The DATA never leaked (SENSITIVE_TOOLS correctly denied), but the DENIAL
-# did. This constant is the fixed, non-diagnostic string every anonymous
-# caller gets instead — it names no tool, no control, no internal system,
-# so the model has nothing interesting to narrate.
-_ANONYMOUS_DENIAL_OBSERVATION = "This capability is not available in this conversation."
+# Every denial/error observation is handed back to the model. Keep it fixed
+# and non-diagnostic for every surface: no tool name, policy detail, argument,
+# principal, raw exception, or internal-system clue may be reflected.
+_DENIAL_OBSERVATION = "This capability is not available in this conversation."
+_TOOL_ERROR_OBSERVATION = "The requested tool could not be completed."
 
 
-def _denial_observation(agent_role: Any | None, detail: str) -> str:
-    """Render a denial-shaped tool observation, audience-aware.
-
-    `detail` is always the full, informative reason (never pre-redacted by
-    the caller). With a resolved `agent_role` (authenticated/team caller)
-    this returns the same `"Tool execution denied: {detail}"` shape every
-    call site returned before this fix — byte-identical, so the team
-    assistant does not regress. With `agent_role=None` (no principal) it
-    returns the fixed neutral string above, dropping `detail` entirely.
-
-    Applied uniformly to EVERY denial-shaped return in `execute_tool`
-    (not just the primary is_denied branch) so a future code path can't
-    silently reopen the leak in one of the others — this repo has been
-    bitten before by a fix applied to 1 of N equivalent paths (cicatrix
-    #3, guard-over/under-match family).
-
-    Server-side fidelity is preserved: `metrics_collector.record_tool_call`
-    and a `logger.warning`/`logger.info` call at every denial-shaped site
-    (including `is_denied`, which previously had none) still log the full
-    reason, PII-free — only the string handed back to the LLM is redacted
-    here.
-    """
-    if agent_role is None:
-        return _ANONYMOUS_DENIAL_OBSERVATION
-    return f"Tool execution denied: {detail}"
+def _denial_observation(_agent_role: Any | None, _detail: str) -> str:
+    """Return one non-diagnostic observation for every denied call."""
+    return _DENIAL_OBSERVATION
 
 
 # Module-level singletons — set by service_initializer.py at app startup.
@@ -159,11 +128,13 @@ def parse_native_function_call(function_call_part: Any) -> ToolCall | None:
             logger.warning("🔧 [Native Function Call] Empty tool name detected (ignoring)")
             return None
 
-        logger.info("🔧 [Native Function Call] Detected: %s with args: %s", tool_name, arguments)
+        logger.info("🔧 [Native Function Call] Detected: %s", tool_name)
         return ToolCall(tool_name=tool_name, arguments=arguments)
 
-    except (AttributeError, TypeError, ValueError) as e:
-        logger.warning("Failed to parse native function call: %s", e, exc_info=True)
+    except (AttributeError, TypeError, ValueError):
+        # Exception messages from SDK argument conversion can echo raw model
+        # arguments, so this parser log intentionally carries no payload.
+        logger.warning("Failed to parse native function call")
         return None
 
 
@@ -187,7 +158,7 @@ def parse_tool_call_regex(text: str) -> ToolCall | None:
     Note:
         This parser is fragile and deprecated. Prefer native function calling.
     """
-    logger.debug(f"[FALLBACK Regex Parser] Parsing text (first 500 chars): {text[:500]}...")
+    logger.debug("[FALLBACK Regex Parser] Parsing model output")
 
     match = re.search(r"ACTION:\s*(\w+)\((.*)\)", text)
     if match:
@@ -209,7 +180,7 @@ def parse_tool_call_regex(text: str) -> ToolCall | None:
                 else:
                     args = {}
 
-            logger.info("🔧 [Regex Fallback] Parsed: %s with args: %s", tool_name, args)
+            logger.info("🔧 [Regex Fallback] Parsed: %s", tool_name)
             return ToolCall(tool_name=tool_name, arguments=args)
         except (ValueError, KeyError, AttributeError):
             return None
@@ -259,6 +230,7 @@ async def execute_tool(
     agent_role: Any | None = None,
     confirmation_emitter: Any | None = None,
     caller_profile: dict[str, Any] | None = None,
+    is_whatsapp: bool = False,
 ) -> tuple[str, float]:
     """
     Execute tool with rate limiting and RBAC authorization.
@@ -291,6 +263,10 @@ async def execute_tool(
             the authorizer ever see a server-controlled field mixed into
             LLM-supplied args). Only `team_crm_tools.py`'s tools read it;
             every other tool's `**kwargs` silently absorbs it as a no-op.
+        is_whatsapp: Trusted server-derived WA surface marker. It closes the
+            client/unknown case where ``caller_profile`` is None. After all
+            LLM-supplied reserved keys are stripped, the executor injects it
+            as ``_is_whatsapp`` for tool-local data minimization.
 
     Returns:
         Tuple of (tool execution result as string, execution duration in seconds)
@@ -321,7 +297,7 @@ async def execute_tool(
     # encodes this ordering explicitly.
     if tool_name not in tool_map:
         metrics_collector.record_tool_call(tool_name, "unknown")
-        return f"Error: Unknown tool '{tool_name}'", time.time() - start_time
+        return _TOOL_ERROR_OBSERVATION, time.time() - start_time
 
     tool = tool_map[tool_name]
 
@@ -340,6 +316,8 @@ async def execute_tool(
         agent_role=agent_role,
         tool_name=tool_name,
         args=arguments,
+        caller_profile=caller_profile,
+        is_whatsapp=is_whatsapp,
     )
     if auth_result.is_denied:
         metrics_collector.record_tool_call(tool_name, "denied")
@@ -353,12 +331,7 @@ async def execute_tool(
         # WhatsApp path it's `whatsapp_<phone>`, which is PII (UU PDP /
         # SYMBIOSIS Law 2); `agent_role is not None` is a safe role-shape
         # boolean, not an identifier.
-        logger.warning(
-            "tool_authz: denied %s (principal_present=%s): %s",
-            tool_name,
-            agent_role is not None,
-            auth_result.reason,
-        )
+        logger.warning("tool_authz: denied tool=%s", tool_name)
         return (
             _denial_observation(agent_role, auth_result.reason),
             time.time() - start_time,
@@ -396,9 +369,9 @@ async def execute_tool(
         except ConfirmationRedisDown as exc:
             metrics_collector.record_tool_call(tool_name, "denied")
             logger.warning(
-                "tool_authz: confirmation Redis down for %s: %s",
+                "tool_authz: confirmation failed tool=%s error_type=%s",
                 tool_name,
-                exc,
+                type(exc).__name__,
             )
             return (
                 _denial_observation(
@@ -448,6 +421,8 @@ async def execute_tool(
             arguments["_user_id"] = user_id
         if caller_profile:
             arguments["_caller_profile"] = caller_profile
+        if is_whatsapp:
+            arguments["_is_whatsapp"] = True
         result = await tool.execute(**arguments)
         duration = time.time() - start_time
 
@@ -456,8 +431,12 @@ async def execute_tool(
         logger.debug(f"🔧 [Tool] {tool_name} completed in {duration:.3f}s")
 
         return result, duration
-    except (ValueError, RuntimeError, KeyError, TypeError, AttributeError) as e:
+    except (ValueError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
         duration = time.time() - start_time
         metrics_collector.record_tool_call(tool_name, "error")
-        logger.error("Tool execution failed: %s", e, exc_info=True)
-        return f"Error executing {tool_name}: {e!s}", duration
+        logger.error(
+            "Tool execution failed tool=%s error_type=%s",
+            tool_name,
+            type(exc).__name__,
+        )
+        return _TOOL_ERROR_OBSERVATION, duration

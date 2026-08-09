@@ -76,14 +76,12 @@ class OrchestratorStreamingManager:
         Returns:
             Dict con error event structure
         """
+        # Keep diagnostics server-side. The SSE boundary exposes only the
+        # generic, caller-safe message; no exception class, correlation token,
+        # or timestamp is nested in client data.
         return {
             "type": "error",
-            "data": {
-                "error_type": error_type,
-                "message": message,
-                "correlation_id": correlation_id,
-                "timestamp": time.time(),
-            },
+            "data": {"message": message},
             "timestamp": time.time(),
         }
 
@@ -122,14 +120,12 @@ class OrchestratorStreamingManager:
             try:
                 validated_event = StreamEvent(**raw_event)
                 return validated_event.model_dump(exclude_none=True)
-            except ValidationError as e:
+            except ValidationError as exc:
                 logger.error(
-                    "❌ [Stream] Event validation failed: %s",
-                    e,
+                    "❌ [Stream] Event validation failed error_count=%d",
+                    len(exc.errors()),
                     extra={
                         "correlation_id": correlation_id,
-                        "validation_errors": str(e.errors()),
-                        "raw_event": str(raw_event)[:200],
                     },
                 )
                 metrics_collector.stream_event_validation_failed_total.inc()
@@ -176,32 +172,20 @@ class OrchestratorStreamingManager:
                 # Yield validated event
                 yield event
 
-            except Exception as e:
+            except Exception as exc:
                 event_error_count += 1
-                # Use error classification for better error handling
-                from backend.app.core.error_classification import (
-                    ErrorClassifier,
-                    get_error_context,
-                )
-
-                _error_category, _error_severity = ErrorClassifier.classify_error(e)
-                error_context = get_error_context(
-                    e,
-                    correlation_id=correlation_id,
-                    user_id=user_id,
-                    event_error_count=event_error_count,
-                )
-
-                logger.exception(
-                    "❌ [Stream] Unexpected error processing event",
-                    extra=error_context,
+                logger.error(
+                    "❌ [Stream] Unexpected error processing event error_type=%s count=%d",
+                    type(exc).__name__,
+                    event_error_count,
+                    extra={"correlation_id": correlation_id},
                 )
                 metrics_collector.stream_event_processing_error_total.inc()
 
                 if event_error_count >= self._max_event_errors:
                     yield self.create_error_event(
                         "processing_error",
-                        f"Stream aborted: {e!s}",
+                        "Unable to process the streamed response.",
                         correlation_id,
                     )
                     break

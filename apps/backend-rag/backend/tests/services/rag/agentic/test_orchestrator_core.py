@@ -97,6 +97,31 @@ async def test_extract_entities_and_kg_context_merges_entity_and_graph_summary()
 
 
 @pytest.mark.asyncio
+async def test_extract_entities_skips_all_kg_calls_for_trusted_whatsapp() -> None:
+    """WA may classify locally but cannot trigger legacy or LangGraph KG work."""
+    core = make_core()
+    core.entity_extractor = SimpleNamespace(
+        extract_entities=AsyncMock(return_value={"visa_types": ["KITAS"]}),
+    )
+    core.kg_retrieval = SimpleNamespace(
+        get_context_for_query=AsyncMock(return_value=None),
+    )
+    kg_query = AsyncMock(return_value={"workflow": {"type": "private"}})
+    core.kg_langgraph_orchestrator = SimpleNamespace(app=object(), query=kg_query)
+
+    entities, prompt_context, workflow = await core.extract_entities_and_kg_context(
+        "public WA question",
+        is_whatsapp=True,
+    )
+
+    assert entities == {"visa_types": ["KITAS"]}
+    assert "KNOWN ENTITIES" in prompt_context
+    assert workflow is None
+    core.kg_retrieval.get_context_for_query.assert_not_awaited()
+    kg_query.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_execute_react_loop_wraps_reasoning_engine_result() -> None:
     state = AgentState(query="question")
     usage = TokenUsage(prompt_tokens=3, completion_tokens=4, cost_usd=0.0)
@@ -127,10 +152,12 @@ async def test_execute_react_loop_wraps_reasoning_engine_result() -> None:
 
 
 @pytest.mark.asyncio
-async def test_prepare_query_context_falls_back_when_context_loading_fails() -> None:
+async def test_prepare_query_context_falls_back_when_context_loading_fails(caplog) -> None:
     core = make_core()
     core.context_manager = SimpleNamespace(
-        get_full_context=AsyncMock(side_effect=RuntimeError("context down")),
+        get_full_context=AsyncMock(
+            side_effect=RuntimeError("SYNTHETIC_CONTEXT_EXCEPTION_CANARY"),
+        ),
     )
     core.extract_entities_and_kg_context = AsyncMock(
         return_value=({"entities": []}, "kg context", None),
@@ -147,6 +174,10 @@ async def test_prepare_query_context_falls_back_when_context_loading_fails() -> 
     assert entities == {"entities": []}
     assert kg_context == "kg context"
     assert workflow is None
+    assert "SYNTHETIC_CONTEXT_EXCEPTION_CANARY" not in caplog.text
+    assert "user-1" not in caplog.text
+    assert "error_type=RuntimeError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -261,7 +292,9 @@ async def test_prepare_react_execution_stamps_agent_role_and_channel(monkeypatch
     core.prompt_builder = SimpleNamespace(
         build_system_prompt=lambda **kwargs: f"PROMPT:{kwargs['additional_context']}",
     )
-    monkeypatch.setattr(orchestrator_core, "build_channel_context", lambda channel: f"{channel}:ctx")
+    monkeypatch.setattr(
+        orchestrator_core, "build_channel_context", lambda channel: f"{channel}:ctx"
+    )
 
     model_tier, deep_think, prepared_state, prompt = await core.prepare_react_execution(
         query="question",
@@ -271,10 +304,17 @@ async def test_prepare_react_execution_stamps_agent_role_and_channel(monkeypatch
         kg_context_str="KG",
         channel="whatsapp",
         agent_role="ops",
+        profile={"role": "team", "id": "synthetic-team"},
+        is_whatsapp=True,
     )
 
     assert model_tier == "flash"
     assert deep_think is False
     assert prepared_state is state
     assert prepared_state.agent_role == "ops"
+    assert prepared_state.caller_profile == {
+        "role": "team",
+        "id": "synthetic-team",
+    }
+    assert prepared_state.is_whatsapp is True
     assert prompt == "PROMPT:KG\n\nwhatsapp:ctx"

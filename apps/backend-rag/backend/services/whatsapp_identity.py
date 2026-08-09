@@ -105,11 +105,7 @@ def normalize_phone(raw: str | None) -> str | None:
 
 def _owner_numbers() -> set[str]:
     raw = os.getenv("WHATSAPP_OWNER_NUMBERS", _DEFAULT_OWNER_NUMBERS)
-    return {
-        norm
-        for norm in (normalize_phone(part) for part in raw.split(","))
-        if norm
-    }
+    return {norm for norm in (normalize_phone(part) for part in raw.split(",")) if norm}
 
 
 def _team_numbers() -> dict[str, str]:
@@ -174,9 +170,17 @@ async def resolve_sender_identity(
         asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT a subclass
         OSError,
         TimeoutError,
-    ):
-        logger.warning("Sender identity lookup failed for phone=%s", phone, exc_info=True)
-    except Exception:
-        logger.exception("Sender identity resolution failed for phone=%s", phone)
+    ) as exc:
+        # Phone numbers and exception payloads can contain PII. Keep only the
+        # failure class so operations can distinguish expected lookup errors.
+        logger.warning(
+            "Sender identity lookup failed (error_type=%s)",
+            type(exc).__name__,
+        )
+    except Exception as exc:
+        logger.error(
+            "Sender identity resolution failed (error_type=%s)",
+            type(exc).__name__,
+        )
 
     return {"role": "unknown"}

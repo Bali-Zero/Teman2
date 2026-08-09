@@ -38,6 +38,7 @@ from backend.services.agents.team_agent_config import (
     build_agent_context,
     get_agent_role,
 )
+from backend.services.pii.violation_store import hash_subject
 from backend.services.rag.agentic import AgenticRAGOrchestrator
 from backend.services.rag.agentic._memory_identity import derive_wa_memory_subject
 from backend.services.rag.evaluation import ABTestManager, MetricsTracker
@@ -114,12 +115,10 @@ def clean_image_generation_response(text: str) -> str:
         # Skip lines with pollinations URLs (any subdomain)
         if (
             "pollinations" in line_lower
-            or ("image" in line_lower
-            and "http" in line_lower)
+            or ("image" in line_lower and "http" in line_lower)
             or re.search(r"!\[.*?\]\(.*?\)", line, re.IGNORECASE)
             or "![" in line
-            or ("](" in line
-            and "http" in line)
+            or ("](" in line and "http" in line)
             or line.strip().startswith("[Visualizza")
             or re.search(
                 r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)",
@@ -210,7 +209,7 @@ async def _process_query_traced(
             "user_id_hash": hashlib.sha256(
                 (authenticated_user_id or "").encode("utf-8"),
             ).hexdigest()[:16],
-            "session_id": session_id,
+            "session_id_hash": hash_subject(session_id),
             "query_id": query_id,
             "ab_variants": ab_variants,
             "route": "/api/agentic-rag/query",
@@ -503,12 +502,15 @@ async def query_agentic_rag(
     **AUTHENTICATION OPTIONAL**: Supports both logged-in and anonymous users.
     For anonymous users, uses session_id for tracking.
 
-    **A/B TESTING**: Automatically assigns users to retrieval strategy variants
-    and records performance metrics for comparison.
+    **A/B TESTING**: Automatically assigns non-WA users to retrieval strategy
+    variants and records performance metrics for comparison. Trusted WA ingress
+    stays outside this persistence lane.
     """
-    trusted_profile = await _resolve_trusted_wa_profile(
-        is_wa_inbox_bot, request.user_id, db_pool
-    )
+    # Only the dependency's literal boolean grant is authoritative. This also
+    # keeps direct non-FastAPI callers from treating a truthy Depends sentinel
+    # as the trusted WA surface.
+    is_wa_inbox_bot = is_wa_inbox_bot is True
+    trusted_profile = await _resolve_trusted_wa_profile(is_wa_inbox_bot, request.user_id, db_pool)
 
     # W-1 follow-up to P0-MEM (#3036), 2026-07-27: per-sender pseudonymous
     # memory subject for the trusted WA bot. Independent of `trusted_profile`
@@ -534,43 +536,65 @@ async def query_agentic_rag(
             f"anonymous_{request.session_id[:12] if request.session_id else 'guest'}"
         )
 
-    # DIAGNOSTIC: Log identity info
     logger.info(
-        f"🔍 Sync query: user={authenticated_user_id} (authenticated: {current_user is not None})",
+        "🔍 Sync query user_hash=%s authenticated=%s",
+        hash_subject(authenticated_user_id),
+        current_user is not None,
     )
 
-    # A/B TESTING: Assign variants and get configurations
-    ab_manager = get_ab_test_manager()
+    # A/B TESTING: trusted WA is an L0 surface and must not enter experiment
+    # assignment, preview, or metrics persistence. Non-WA behavior is unchanged.
     query_id = str(uuid.uuid4())
+    ab_manager: ABTestManager | None = None
+    ab_variants: dict[str, str] = {}
+    hybrid_config: dict[str, Any] = {}
+    rerank_config: dict[str, Any] = {}
+    expansion_config: dict[str, Any] = {}
 
-    # Assign variants for each experiment
-    ab_variants = {
-        "hybrid_vs_dense": ab_manager.assign_variant(authenticated_user_id, "hybrid_vs_dense"),
-        "reranking_on_off": ab_manager.assign_variant(authenticated_user_id, "reranking_on_off"),
-        "query_expansion": ab_manager.assign_variant(authenticated_user_id, "query_expansion"),
-    }
+    if not is_wa_inbox_bot:
+        ab_manager = get_ab_test_manager()
 
-    # Get variant configurations
-    hybrid_config = ab_manager.get_variant_config("hybrid_vs_dense", ab_variants["hybrid_vs_dense"])
-    rerank_config = ab_manager.get_variant_config(
-        "reranking_on_off",
-        ab_variants["reranking_on_off"],
-    )
-    expansion_config = ab_manager.get_variant_config(
-        "query_expansion",
-        ab_variants["query_expansion"],
-    )
+        # Assign variants for each experiment
+        ab_variants = {
+            "hybrid_vs_dense": ab_manager.assign_variant(
+                authenticated_user_id,
+                "hybrid_vs_dense",
+            ),
+            "reranking_on_off": ab_manager.assign_variant(
+                authenticated_user_id,
+                "reranking_on_off",
+            ),
+            "query_expansion": ab_manager.assign_variant(
+                authenticated_user_id,
+                "query_expansion",
+            ),
+        }
 
-    logger.info(
-        f"🧪 A/B Test variants for {authenticated_user_id}: "
-        f"hybrid={ab_variants['hybrid_vs_dense']}, "
-        f"rerank={ab_variants['reranking_on_off']}, "
-        f"expansion={ab_variants['query_expansion']}",
-    )
+        # Get variant configurations
+        hybrid_config = ab_manager.get_variant_config(
+            "hybrid_vs_dense",
+            ab_variants["hybrid_vs_dense"],
+        )
+        rerank_config = ab_manager.get_variant_config(
+            "reranking_on_off",
+            ab_variants["reranking_on_off"],
+        )
+        expansion_config = ab_manager.get_variant_config(
+            "query_expansion",
+            ab_variants["query_expansion"],
+        )
+
+        logger.info(
+            "🧪 A/B Test variants user_hash=%s hybrid=%s rerank=%s expansion=%s",
+            hash_subject(authenticated_user_id),
+            ab_variants["hybrid_vs_dense"],
+            ab_variants["reranking_on_off"],
+            ab_variants["query_expansion"],
+        )
 
     # Langfuse POC: idempotent init, no-op when disabled or keys missing.
     # See backend/core/observability.py + apps/backend-rag/README.md (Langfuse POC).
-    if _lf_enabled():
+    if not is_wa_inbox_bot and _lf_enabled():
         init_observability(service_name="nuzantara-rag")
 
     try:
@@ -588,9 +612,17 @@ async def query_agentic_rag(
             )
 
         # Priority 2: Try to retrieve from database if no frontend history
-        elif authenticated_user_id and (request.conversation_id or request.session_id):
+        elif (
+            not is_wa_inbox_bot
+            and authenticated_user_id
+            and (request.conversation_id or request.session_id)
+        ):
             logger.info(
-                f"🔍 Retrieving conversation history from DB: conversation_id={request.conversation_id}, session_id={request.session_id}, user_id={authenticated_user_id}",
+                "🔍 Retrieving conversation history from DB "
+                "has_conversation_id=%s session_hash=%s user_hash=%s",
+                request.conversation_id is not None,
+                hash_subject(request.session_id),
+                hash_subject(authenticated_user_id),
             )
             conversation_history = await get_conversation_history_for_agentic(
                 conversation_id=request.conversation_id,
@@ -604,6 +636,12 @@ async def query_agentic_rag(
             "query": request.query,
             "user_id": authenticated_user_id,  # SECURITY: Use authenticated user_id
             "session_id": request.session_id,
+            # Trusted server-derived surface marker. Never use
+            # request.channel here: AgenticQueryRequest documents that field
+            # as untrusted caller metadata. The dedicated bot credential is
+            # the authority, including for client/unknown WA senders whose
+            # trusted_profile correctly remains None.
+            "is_whatsapp": is_wa_inbox_bot,
         }
         if conversation_history:
             query_kwargs["conversation_history"] = conversation_history
@@ -629,39 +667,43 @@ async def query_agentic_rag(
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so
         # this span becomes the parent of the full LLM chain.
-        result = await _process_query_traced(
-            orchestrator=orchestrator,
-            query_kwargs=query_kwargs,
-            authenticated_user_id=authenticated_user_id,
-            session_id=request.session_id,
-            query_id=query_id,
-            ab_variants=ab_variants,
-        )
+        if is_wa_inbox_bot:
+            result = await orchestrator.process_query(**query_kwargs)
+        else:
+            result = await _process_query_traced(
+                orchestrator=orchestrator,
+                query_kwargs=query_kwargs,
+                authenticated_user_id=authenticated_user_id,
+                session_id=request.session_id,
+                query_id=query_id,
+                ab_variants=ab_variants,
+            )
 
         # Calculate response time
         response_time = time.time() - query_start_time
 
-        # A/B TESTING: Record metrics
-        metrics_to_record = {
-            "response_time": response_time,
-            "evidence_score": result.confidence_score
-            if hasattr(result, "confidence_score")
-            else 0.0,
-        }
+        if ab_manager is not None:
+            # A/B TESTING: Record metrics for non-WA callers only.
+            metrics_to_record = {
+                "response_time": response_time,
+                "evidence_score": result.confidence_score
+                if hasattr(result, "confidence_score")
+                else 0.0,
+            }
 
-        # Record metrics for each experiment
-        await ab_manager.metrics_tracker.record_query_metrics(
-            query_id=query_id,
-            user_id=authenticated_user_id,
-            experiment="hybrid_vs_dense",
-            variant=ab_variants["hybrid_vs_dense"],
-            metrics=metrics_to_record,
-            metadata={
-                "query": request.query[:100],
-                "route_used": result.route_used,
-                "document_count": result.document_count,
-            },
-        )
+            await ab_manager.metrics_tracker.record_query_metrics(
+                query_id=query_id,
+                user_id=authenticated_user_id,
+                experiment="hybrid_vs_dense",
+                variant=ab_variants["hybrid_vs_dense"],
+                metrics=metrics_to_record,
+                metadata={
+                    "query_hash": hashlib.sha256(request.query.encode("utf-8")).hexdigest()[:16],
+                    "query_length": len(request.query),
+                    "route_used": result.route_used,
+                    "document_count": result.document_count,
+                },
+            )
 
         # CoreResult is a Pydantic model, access via attributes
         # Prepare detected entities for response
@@ -672,6 +714,31 @@ async def query_agentic_rag(
                     for entity in entities:
                         detected_entities_list.append({"type": entity_type, "value": entity})
 
+        debug_info: dict[str, Any] = {
+            "model": result.model_used,
+            "cache_hit": result.cache_hit,
+        }
+        ab_test_payload: dict[str, Any] | None = None
+        if ab_manager is not None:
+            debug_info["ab_config"] = {
+                "hybrid": hybrid_config,
+                # HONESTY FIX (2026-07-18): `rerank_config` is the A/B
+                # experiment's INTENDED variant (e.g. "with_rerank" ->
+                # {"use_reranking": True}) from a random per-user split —
+                # it is never actually wired into orchestrator.process_query
+                # and does NOT reflect whether reranking really ran.
+                # `reranker_actually_enabled` is the real global switch.
+                "rerank": {
+                    **rerank_config,
+                    "reranker_actually_enabled": settings.enable_reranker,
+                },
+                "expansion": expansion_config,
+            }
+            ab_test_payload = {
+                "query_id": query_id,
+                "variants": ab_variants,
+            }
+
         return AgenticQueryResponse(
             answer=result.answer,
             sources=result.sources,
@@ -680,33 +747,8 @@ async def query_agentic_rag(
             route_used=result.route_used,
             tools_called=len(result.tools_called),
             total_steps=len(result.tools_called),
-            debug_info={
-                "model": result.model_used,
-                "cache_hit": result.cache_hit,
-                "ab_config": {
-                    "hybrid": hybrid_config,
-                    # HONESTY FIX (2026-07-18): `rerank_config` is the A/B
-                    # experiment's INTENDED variant (e.g. "with_rerank" ->
-                    # {"use_reranking": True}) from a random per-user split —
-                    # it is never actually wired into orchestrator.process_query
-                    # and does NOT reflect whether reranking really ran.
-                    # search_service._init_reranker() used to hardcode
-                    # enabled=True regardless of settings.enable_reranker,
-                    # so a query could show "with_rerank" here while the
-                    # cross-encoder silently failed to import and returned
-                    # zero scores. `reranker_actually_enabled` is the real,
-                    # global on/off switch (see settings.enable_reranker).
-                    "rerank": {
-                        **rerank_config,
-                        "reranker_actually_enabled": settings.enable_reranker,
-                    },
-                    "expansion": expansion_config,
-                },
-            },
-            ab_test={
-                "query_id": query_id,
-                "variants": ab_variants,
-            },
+            debug_info=debug_info,
+            ab_test=ab_test_payload,
             # ABSTAIN fields
             abstain=result.abstain,
             abstain_reason=result.abstain_reason,
@@ -716,17 +758,15 @@ async def query_agentic_rag(
             reasoning=result.reasoning,
             detected_entities=detected_entities_list if detected_entities_list else None,
         )
-    except Exception as e:
-        import traceback
-
-        tb = traceback.format_exc()
-        logger.error(f"❌ Error in query_agentic_rag: {e!s}\n{tb}")
-        # Temporarily include traceback in response for debugging
-        # Generic error message for production
+    except Exception as exc:
+        logger.error(
+            "Error in query_agentic_rag error_type=%s",
+            type(exc).__name__,
+        )
         raise HTTPException(
             status_code=500,
             detail="Internal Server Error: The request could not be processed.",
-        ) from e
+        ) from None
 
 
 async def get_conversation_history_for_agentic(
@@ -749,7 +789,9 @@ async def get_conversation_history_for_agentic(
     """
     if not db_pool or not user_id:
         logger.debug(
-            f"⚠️ Cannot retrieve conversation history: db_pool={db_pool is not None}, user_id={user_id}",
+            "⚠️ Cannot retrieve conversation history db_pool=%s user_hash=%s",
+            db_pool is not None,
+            hash_subject(user_id),
         )
         return []
 
@@ -761,8 +803,8 @@ async def get_conversation_history_for_agentic(
             # If user_id doesn't look like an email, try to get email from team_members
             if "@" not in user_email:
                 logger.debug(
-                    "🔍 user_id '%s' doesn't look like email, trying to find email...",
-                    user_id,
+                    "🔍 Non-email user identifier; resolving user_hash=%s",
+                    hash_subject(user_id),
                 )
                 email_row = await conn.fetchrow(
                     """
@@ -774,9 +816,15 @@ async def get_conversation_history_for_agentic(
                 )
                 if email_row and email_row.get("email"):
                     user_email = email_row["email"]
-                    logger.info("✅ Found email for user_id '%s': %s", user_id, user_email)
+                    logger.info(
+                        "✅ Resolved email for user_hash=%s",
+                        hash_subject(user_id),
+                    )
                 else:
-                    logger.warning("⚠️ Could not find email for user_id '%s', using as-is", user_id)
+                    logger.warning(
+                        "⚠️ Could not resolve email for user_hash=%s; using identifier",
+                        hash_subject(user_id),
+                    )
 
             # Try conversation_id first, then session_id, then most recent
             if conversation_id:
@@ -824,8 +872,11 @@ async def get_conversation_history_for_agentic(
             logger.debug("📚 No conversation history found")
             return []
 
-    except Exception as e:
-        logger.warning("⚠️ Failed to retrieve conversation history: %s", e)
+    except Exception as exc:
+        logger.warning(
+            "⚠️ Failed to retrieve conversation history error_type=%s",
+            type(exc).__name__,
+        )
         return []
 
 
@@ -858,7 +909,9 @@ async def stream_agentic_rag(
         )
 
     logger.info(
-        f"📡 Chat Stream: user={authenticated_user_id} (authenticated: {current_user is not None})",
+        "📡 Chat Stream user_hash=%s authenticated=%s",
+        hash_subject(authenticated_user_id),
+        current_user is not None,
     )
     # Get correlation ID from request state (set by RequestTracingMiddleware)
     correlation_id = (
@@ -867,8 +920,7 @@ async def stream_agentic_rag(
         or http_request.headers.get("X-Correlation-ID", "unknown")
     )
 
-    # Safe query hash for logging (first 50 chars + hash)
-    query_preview = request_body.query[:50] if request_body.query else ""
+    # Safe query fingerprint for diagnostics; raw text never enters logs/spans.
     query_hash = hashlib.sha256(
         request_body.query.encode() if request_body.query else b"",
     ).hexdigest()[:8]
@@ -876,11 +928,13 @@ async def stream_agentic_rag(
     # Log request start
     start_time = time.time()
     logger.info(
-        f"📥 SSE stream request started: correlation_id={correlation_id}, "
-        f"query_preview='{query_preview}...', query_hash={query_hash}, "
-        f"query_length={len(request_body.query) if request_body.query else 0}, "
-        f"user_id={authenticated_user_id[:8] + '...' if authenticated_user_id and len(authenticated_user_id) > 8 else authenticated_user_id}, "
-        f"session_id={request_body.session_id}",
+        "📥 SSE stream request started correlation_id=%s query_hash=%s "
+        "query_length=%s user_hash=%s session_hash=%s",
+        correlation_id,
+        query_hash,
+        len(request_body.query) if request_body.query else 0,
+        hash_subject(authenticated_user_id),
+        hash_subject(request_body.session_id),
     )
 
     # TRACING: Record span for streaming request (completes before response streams)
@@ -888,10 +942,10 @@ async def stream_agentic_rag(
     with trace_span(
         "agentic_rag.stream",
         {
-            "user_id": authenticated_user_id or "anonymous",
+            "user_id_hash": hash_subject(authenticated_user_id) or "anonymous",
             "query_length": len(request_body.query) if request_body.query else 0,
             "query_hash": query_hash,
-            "session_id": request_body.session_id or "none",
+            "session_id_hash": hash_subject(request_body.session_id) or "none",
             "correlation_id": correlation_id,
             "has_conversation_history": bool(request_body.conversation_history),
             "endpoint": "/api/agentic-rag/stream",
@@ -900,7 +954,8 @@ async def stream_agentic_rag(
         add_span_event(
             "stream_request_received",
             {
-                "query_preview": query_preview[:30] if query_preview else "",
+                "query_hash": query_hash,
+                "query_length": len(request_body.query) if request_body.query else 0,
             },
         )
 
@@ -955,9 +1010,13 @@ async def stream_agentic_rag(
                 request_body.conversation_id or request_body.session_id
             ):
                 logger.info(
-                    f"🔍 Retrieving conversation history from DB: conversation_id={request_body.conversation_id}, "
-                    f"session_id={request_body.session_id}, user_id={authenticated_user_id} "
-                    f"(correlation_id={correlation_id})",
+                    "🔍 Retrieving conversation history from DB "
+                    "has_conversation_id=%s session_hash=%s user_hash=%s "
+                    "correlation_id=%s",
+                    request_body.conversation_id is not None,
+                    hash_subject(request_body.session_id),
+                    hash_subject(authenticated_user_id),
+                    correlation_id,
                 )
                 try:
                     conversation_history = await get_conversation_history_for_agentic(
@@ -970,17 +1029,15 @@ async def stream_agentic_rag(
                         f"💬 Retrieved {len(conversation_history)} messages from database "
                         f"(correlation_id={correlation_id})",
                     )
-                except Exception as e:
-                    logger.warning("Failed to load history: %s", e)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to load history error_type=%s",
+                        type(exc).__name__,
+                    )
                     # Yield error but continue
                     error_event = {
                         "type": "error",
-                        "data": {
-                            "error_type": "history_load_failed",
-                            "message": "Could not load conversation history",
-                            "non_fatal": True,
-                            "correlation_id": correlation_id,
-                        },
+                        "data": {"message": "Unable to load conversation history."},
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
@@ -1020,12 +1077,7 @@ async def stream_agentic_rag(
                         if error_count >= max_errors:
                             error_event = {
                                 "type": "error",
-                                "data": {
-                                    "error_type": "too_many_errors",
-                                    "message": "Stream aborted due to too many errors",
-                                    "fatal": True,
-                                    "correlation_id": correlation_id,
-                                },
+                                "data": {"message": "Unable to complete the streamed response."},
                             }
                             yield f"data: {json.dumps(error_event)}\n\n"
                             break
@@ -1036,12 +1088,7 @@ async def stream_agentic_rag(
                         if error_count >= max_errors:
                             error_event = {
                                 "type": "error",
-                                "data": {
-                                    "error_type": "too_many_errors",
-                                    "message": "Stream aborted due to too many errors",
-                                    "fatal": True,
-                                    "correlation_id": correlation_id,
-                                },
+                                "data": {"message": "Unable to complete the streamed response."},
                             }
                             yield f"data: {json.dumps(error_event)}\n\n"
                             break
@@ -1050,6 +1097,13 @@ async def stream_agentic_rag(
                     # Post-process token events to clean image generation URLs
                     if event.get("type") == "token" and isinstance(event.get("data"), str):
                         event["data"] = clean_image_generation_response(event["data"])
+                    elif event.get("type") == "error":
+                        # The public SSE boundary never forwards provider/tool
+                        # exception details or class names supplied upstream.
+                        event = {
+                            "type": "error",
+                            "data": {"message": "Unable to complete the streamed response."},
+                        }
 
                     # Serialize and yield
                     event_json = json.dumps(event)
@@ -1091,32 +1145,28 @@ async def stream_agentic_rag(
                     ):
                         final_answer_received = True
 
-                except json.JSONEncodeError as e:
+                except json.JSONEncodeError as exc:
                     error_count += 1
-                    logger.error("JSON serialization failed: %s", e)
+                    logger.error(
+                        "JSON serialization failed error_type=%s",
+                        type(exc).__name__,
+                    )
                     error_event = {
                         "type": "error",
-                        "data": {
-                            "error_type": "serialization_error",
-                            "message": "Failed to serialize event",
-                            "non_fatal": True,
-                            "correlation_id": correlation_id,
-                        },
+                        "data": {"message": "Unable to process a stream event."},
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
 
-                except Exception as e:
+                except Exception as exc:
                     error_count += 1
-                    logger.exception("Error processing stream event: %s", e)
+                    logger.error(
+                        "Error processing stream event error_type=%s",
+                        type(exc).__name__,
+                    )
                     error_event = {
                         "type": "error",
-                        "data": {
-                            "error_type": "processing_error",
-                            "message": str(e),
-                            "non_fatal": error_count < max_errors,
-                            "correlation_id": correlation_id,
-                        },
+                        "data": {"message": "Unable to process a stream event."},
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
@@ -1135,16 +1185,14 @@ async def stream_agentic_rag(
             yield f"data: {json.dumps(final_status)}\n\n"
             events_yielded += 1
 
-        except Exception as e:
-            logger.exception("Fatal error in stream: %s", e)
+        except Exception as exc:
+            logger.error(
+                "Fatal error in stream error_type=%s",
+                type(exc).__name__,
+            )
             fatal_error_event = {
                 "type": "error",
-                "data": {
-                    "error_type": "fatal_error",
-                    "message": f"Stream failed: {e!s}",
-                    "fatal": True,
-                    "correlation_id": correlation_id,
-                },
+                "data": {"message": "Unable to complete the streamed response."},
             }
             yield f"data: {json.dumps(fatal_error_event)}\n\n"
             events_yielded += 1
@@ -1186,11 +1234,14 @@ async def stream_agentic_rag(
                     persisted = conversation_id is not None
                     if persisted:
                         logger.info(
-                            f"💾 Conversation persisted: conversation_id={conversation_id}, "
-                            f"session_id={request_body.session_id}",
+                            "💾 Conversation persisted session_hash=%s",
+                            hash_subject(request_body.session_id),
                         )
                 except Exception as persist_error:
-                    logger.warning("⚠️ Failed to persist conversation: %s", persist_error)
+                    logger.warning(
+                        "⚠️ Failed to persist conversation error_type=%s",
+                        type(persist_error).__name__,
+                    )
                     persisted = False
 
             # Yield final metadata with persistence info
@@ -1201,7 +1252,7 @@ async def stream_agentic_rag(
                         "conversation_id": conversation_id,
                         "persisted": persisted,
                         "execution_time": duration,
-                        "session_id": request_body.session_id,
+                        "session_id_hash": hash_subject(request_body.session_id),
                     },
                 }
                 yield f"data: {json.dumps(persistence_event)}\n\n"
@@ -1331,8 +1382,8 @@ async def stream_workspace_agent(
     agent_role: AgentRole | None = get_agent_role(user_email)
     if not agent_role:
         logger.warning(
-            "🚫 workspace-stream denied: %s is not a registered team agent",
-            user_email,
+            "workspace-stream denied reason=unregistered_team_agent user_hash=%s",
+            hash_subject(user_email),
         )
         raise HTTPException(
             status_code=403,
@@ -1363,17 +1414,22 @@ async def stream_workspace_agent(
     )
 
     # 6) Correlation + logging
-    correlation_id = (
+    raw_correlation_id = (
         getattr(http_request.state, "correlation_id", None)
         or getattr(http_request.state, "request_id", None)
         or http_request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
     )
+    correlation_id = f"corr_{hash_subject(str(raw_correlation_id)) or uuid.uuid4().hex[:16]}"
     query_hash = hashlib.sha256(request_body.query.encode()).hexdigest()[:8]
+    user_hash = hash_subject(user_email) or "unknown"
     start_time = time.time()
     logger.info(
-        f"📡 Workspace agent stream: user={user_email} role={agent_role.role_id} "
-        f"scope={agent_role.client_scope} correlation_id={correlation_id} "
-        f"query_hash={query_hash}",
+        "Workspace agent stream user_hash=%s role=%s scope=%s correlation_id=%s query_hash=%s",
+        user_hash,
+        agent_role.role_id,
+        agent_role.client_scope,
+        correlation_id,
+        query_hash,
     )
 
     # 7) Session id default — namespace by email so each agent has own thread
@@ -1408,8 +1464,12 @@ async def stream_workspace_agent(
                         user_id=user_email,
                         db_pool=db_pool,
                     )
-                except Exception as e:
-                    logger.warning("workspace-stream: failed to load history: %s", e)
+                except Exception as exc:
+                    logger.warning(
+                        "workspace-stream history unavailable error_type=%s correlation_id=%s",
+                        type(exc).__name__,
+                        correlation_id,
+                    )
 
             if await http_request.is_disconnected():
                 logger.warning(
@@ -1444,6 +1504,27 @@ async def stream_workspace_agent(
                 if event.get("type") == "token" and isinstance(event.get("data"), str):
                     event["data"] = clean_image_generation_response(event["data"])
 
+                # Upstream error payloads are not a trusted observability
+                # surface: exception messages may contain queries, session
+                # identifiers, or provider internals. Preserve the event
+                # shape while replacing its data with an allowlisted body.
+                if event.get("type") == "error":
+                    upstream_data = event.get("data")
+                    fatal = bool(
+                        upstream_data.get("fatal", False)
+                        if isinstance(upstream_data, dict)
+                        else False
+                    )
+                    event = {
+                        "type": "error",
+                        "data": {
+                            "error_type": "upstream_error",
+                            "message": "Unable to complete the workspace stream.",
+                            "fatal": fatal,
+                            "correlation_id": correlation_id,
+                        },
+                    }
+
                 yield f"data: {json.dumps(event)}\n\n"
                 events_yielded += 1
 
@@ -1470,10 +1551,14 @@ async def stream_workspace_agent(
             )
             events_yielded += 1
 
-        except Exception as e:
-            logger.exception("workspace-stream fatal error: %s", e)
+        except Exception as exc:
+            logger.error(
+                "workspace-stream fatal error error_type=%s correlation_id=%s",
+                type(exc).__name__,
+                correlation_id,
+            )
             yield (
-                f"data: {json.dumps({'type': 'error', 'data': {'error_type': 'fatal_error', 'message': str(e), 'fatal': True, 'correlation_id': correlation_id}})}\n\n"
+                f"data: {json.dumps({'type': 'error', 'data': {'error_type': 'fatal_error', 'message': 'Unable to complete the workspace stream.', 'fatal': True, 'correlation_id': correlation_id}})}\n\n"
             )
             events_yielded += 1
         finally:
@@ -1512,21 +1597,29 @@ async def stream_workspace_agent(
                     persisted = conversation_id_persisted is not None
                 except Exception as persist_error:
                     logger.warning(
-                        "workspace-stream: failed to persist conversation: %s",
-                        persist_error,
+                        "workspace-stream persistence unavailable error_type=%s correlation_id=%s",
+                        type(persist_error).__name__,
+                        correlation_id,
                     )
                     persisted = False
 
                 if persisted:
                     yield (
-                        f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id_persisted, 'persisted': True, 'execution_time': duration, 'session_id': session_id}})}\n\n"
+                        f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id_persisted, 'persisted': True, 'execution_time': duration, 'session_id_hash': hash_subject(session_id)}})}\n\n"
                     )
                     events_yielded += 1
 
             logger.info(
-                f"✅ workspace-stream done: user={user_email} role={agent_role.role_id} "
-                f"duration={duration:.2f}s events_yielded={events_yielded} "
-                f"final_answer_received={final_answer_received} persisted={persisted}",
+                "workspace-stream done user_hash=%s role=%s duration=%.2fs "
+                "events_yielded=%s final_answer_received=%s persisted=%s "
+                "correlation_id=%s",
+                user_hash,
+                agent_role.role_id,
+                duration,
+                events_yielded,
+                final_answer_received,
+                persisted,
+                correlation_id,
             )
 
     return StreamingResponse(

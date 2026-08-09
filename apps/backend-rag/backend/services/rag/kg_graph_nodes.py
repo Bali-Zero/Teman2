@@ -112,7 +112,10 @@ async def understand_query_node(
     Returns:
         Updated state with intent and extracted_entities populated
     """
-    logger.info(f"🔍 [Understand Query] Processing: {state['query'][:100]}...")
+    logger.info(
+        "🔍 [Understand Query] Processing query_length=%d",
+        len(state["query"]),
+    )
 
     query_lower = state["query"].lower()
 
@@ -203,19 +206,21 @@ Return ONLY a JSON object:
             f"Entities: {len(state['extracted_entities'])}, "
             f"Citizenship: {state['user_context'].get('citizenship')}",
         )
-    except ValidationError as e:
+    except ValidationError as exc:
         logger.error(
-            "❌ [Understand Query] LLM output validation failed: %s. Falling back to domain hints.",
-            e,
+            "❌ [Understand Query] LLM output validation failed error_type=%s; "
+            "falling back to domain hints",
+            type(exc).__name__,
         )
         state["intent"] = domain_hints.get("intent", "general")
         state["domain"] = domain_hints.get("domain", "general")
         state["extracted_entities"] = domain_hints.get("entities", [])
         logger.info(f"⚠️ [Understand Query] Using fallback classification: {state['domain']}")
-    except (asyncio.TimeoutError, Exception) as e:
+    except (asyncio.TimeoutError, Exception) as exc:
         logger.error(
-            f"⚠️ [Understand Query] LLM structured call failed ({type(e).__name__}: {e}), "
-            f"using fast-path domain detection",
+            "⚠️ [Understand Query] LLM structured call failed error_type=%s; "
+            "using fast-path domain detection",
+            type(exc).__name__,
         )
         state["intent"] = domain_hints.get("intent", "general")
         state["domain"] = domain_hints.get("domain", "general")

@@ -37,6 +37,7 @@ from backend.app.utils.tracing import (
     set_span_status,
     trace_span,
 )
+from backend.services.agents.tool_authorizer import SENSITIVE_TOOLS
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic._reasoning_evidence import (
     compute_evidence_score,
@@ -84,6 +85,10 @@ from backend.services.rag.agentic.tool_executor import (
 from backend.services.tools.definitions import AgentState, AgentStep
 
 logger = logging.getLogger(__name__)
+
+_GENERIC_CHAT_ERROR = "Unable to process request."
+_GENERIC_TOOL_ERROR = "The requested tool could not be completed."
+_GENERIC_SENSITIVE_OBSERVATION = "Authorized operation completed."
 
 # Trusted tools bypass evidence scoring — tool output IS the evidence
 _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
@@ -311,6 +316,8 @@ class ReasoningEngine:
         _scoped_gemini_tools = filter_gemini_tools_for_caller(
             getattr(llm_gateway, "gemini_tools", None),
             getattr(state, "caller_profile", None),
+            getattr(state, "agent_role", None),
+            is_whatsapp=getattr(state, "is_whatsapp", False),
         )
 
         # ==================== REACT LOOP ====================
@@ -318,7 +325,6 @@ class ReasoningEngine:
         with trace_span(
             "react.execute_loop",
             {
-                "user_id": user_id,
                 "max_steps": state.max_steps,
                 "query_length": len(query),
             },
@@ -372,9 +378,12 @@ class ReasoningEngine:
                         asyncio.TimeoutError,
                         ValueError,
                         RuntimeError,
-                    ) as e:
-                        logger.error("Error during chat interaction: %s", e, exc_info=True)
-                        set_span_status("error", str(e))
+                    ) as exc:
+                        logger.error(
+                            "Chat interaction failed error_type=%s",
+                            type(exc).__name__,
+                        )
+                        set_span_status("error", _GENERIC_CHAT_ERROR)
                         break
 
                     # Parse for tool calls - native first, regex fallback.
@@ -403,7 +412,7 @@ class ReasoningEngine:
                                 set_span_attribute("tool_name", tc.tool_name)
                                 add_span_event(
                                     "tool.call",
-                                    {"tool": tc.tool_name, "args": str(tc.arguments)[:200]},
+                                    {"tool": tc.tool_name},
                                 )
 
                                 logger.info(
@@ -411,9 +420,7 @@ class ReasoningEngine:
                                     extra={
                                         "context": {
                                             "tool": tc.tool_name,
-                                            "arguments": tc.arguments,
                                             "step": state.current_step + step_idx,
-                                            "user_id": user_id,
                                         },
                                     },
                                 )
@@ -436,11 +443,16 @@ class ReasoningEngine:
                                     # OrchestratorCore.process_query_core.
                                     # None everywhere else (complete no-op).
                                     caller_profile=getattr(state, "caller_profile", None),
+                                    is_whatsapp=getattr(state, "is_whatsapp", False),
                                 )
                                 return tc, result, duration
-                            except Exception as e:
-                                logger.error(f"Error executing tool {tc.tool_name}: {e}")
-                                return tc, f"Error: {e!s}", 0.0
+                            except Exception as exc:
+                                logger.error(
+                                    "Tool execution failed tool=%s error_type=%s",
+                                    tc.tool_name,
+                                    type(exc).__name__,
+                                )
+                                return tc, _GENERIC_TOOL_ERROR, 0.0
 
                         # Run all tools in parallel
                         results = await asyncio.gather(
@@ -738,8 +750,8 @@ class ReasoningEngine:
                     tier1_duration = time.time() - tier1_start_time
                     emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                     logger.error(
-                        f"Failed to regenerate Tier 1 answer: {type(e).__name__}",
-                        exc_info=True,
+                        "Failed to regenerate Tier 1 answer error_type=%s",
+                        type(e).__name__,
                     )
                     state.final_answer = self._get_localized_stub("abstain", language)
         elif state.skip_rag and evidence_score < generation_threshold:
@@ -828,8 +840,8 @@ class ReasoningEngine:
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
-                            exc_info=True,
+                            "Failed to generate Tier 1 fallback answer error_type=%s",
+                            type(e).__name__,
                         )
                         # Fallback to ABSTAIN if LLM fails
                         state.final_answer = self._get_localized_stub("abstain", language)
@@ -837,10 +849,7 @@ class ReasoningEngine:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
                 warning_note = ""
-                if (
-                    evidence_score >= generation_threshold
-                    and evidence_score < 0.5
-                ):
+                if evidence_score >= generation_threshold and evidence_score < 0.5:
                     warning_note = (
                         "\n\nWARNING: Evidence is moderate. Use precautionary language "
                         "(e.g., 'Based on available information...', 'It appears that...'). "
@@ -881,8 +890,11 @@ Make it feel natural and helpful, not forced.
                     asyncio.TimeoutError,
                     ValueError,
                     RuntimeError,
-                ):
-                    logger.error("Failed to generate final answer", exc_info=True)
+                ) as exc:
+                    logger.error(
+                        "Failed to generate final answer error_type=%s",
+                        type(exc).__name__,
+                    )
                     state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
         elif not state.final_answer:
             # No context gathered at all
@@ -910,8 +922,11 @@ Make it feel natural and helpful, not forced.
                     asyncio.TimeoutError,
                     ValueError,
                     RuntimeError,
-                ):
-                    logger.error("Failed to generate answer for general task", exc_info=True)
+                ) as exc:
+                    logger.error(
+                        "Failed to generate answer for general task error_type=%s",
+                        type(exc).__name__,
+                    )
                     state.final_answer = self._get_localized_stub("error", language)
             else:
                 # No context gathered - apply same Tier 1 vs ABSTAIN logic
@@ -973,8 +988,8 @@ Make it feel natural and helpful, not forced.
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
-                            exc_info=True,
+                            "Failed to generate Tier 1 fallback answer error_type=%s",
+                            type(e).__name__,
                         )
                         state.final_answer = self._get_localized_stub("abstain", language)
 
@@ -1031,12 +1046,12 @@ Make it feel natural and helpful, not forced.
                     elif verification_score < 0.7 and state.context_gathered:
                         verification = processed.get("verification", {})
                         logger.warning(
-                            f"🛡️ [Pipeline] REJECTED draft (Score: {verification.get('score', 0)}). "
-                            f"Reason: {verification.get('reasoning', 'unknown')}",
+                            "🛡️ [Pipeline] REJECTED draft (Score: %s)",
+                            verification.get("score", 0),
                         )
                         add_span_event(
                             "pipeline.self_correction",
-                            {"reason": verification.get("reasoning", "unknown")},
+                            {"score": verification.get("score", 0)},
                         )
 
                         # SELF-CORRECTION — see build_rephrase_prompt for why
@@ -1123,9 +1138,12 @@ Make it feel natural and helpful, not forced.
                     set_span_attribute("citation_count", processed.get("citation_count", 0))
                     set_span_status("ok")
 
-                except (ValueError, RuntimeError, KeyError) as e:
-                    logger.error("❌ [Pipeline] Processing failed: %s", e, exc_info=True)
-                    set_span_status("error", str(e))
+                except (ValueError, RuntimeError, KeyError) as exc:
+                    logger.error(
+                        "❌ [Pipeline] Processing failed error_type=%s",
+                        type(exc).__name__,
+                    )
+                    set_span_status("error", _GENERIC_CHAT_ERROR)
                     # Fallback to basic post-processing
                     state.final_answer = post_process_response(state.final_answer, query)
 
@@ -1165,10 +1183,12 @@ Make it feel natural and helpful, not forced.
         # T-VIS (W0 safety pre-arm, 2026-07-25): same per-request narrowing
         # as execute_react_loop — see that function's comment for the full
         # rationale. Computed once for this request from the trusted
-        # `state.caller_profile`.
+        # `state.caller_profile` or authenticated workspace `agent_role`.
         _scoped_gemini_tools = filter_gemini_tools_for_caller(
             getattr(llm_gateway, "gemini_tools", None),
             getattr(state, "caller_profile", None),
+            getattr(state, "agent_role", None),
+            is_whatsapp=getattr(state, "is_whatsapp", False),
         )
 
         # ==================== REACT LOOP ====================
@@ -1206,9 +1226,15 @@ Make it feel natural and helpful, not forced.
                 asyncio.TimeoutError,
                 ValueError,
                 RuntimeError,
-            ) as e:
-                logger.error("Error during chat interaction: %s", e, exc_info=True)
-                yield {"type": "error", "data": {"message": str(e)}}
+            ) as exc:
+                logger.error(
+                    "Chat interaction failed error_type=%s",
+                    type(exc).__name__,
+                )
+                yield {
+                    "type": "error",
+                    "data": {"message": _GENERIC_CHAT_ERROR},
+                }
                 break
 
             # Parse for tool calls (native first, regex fallback). Streaming
@@ -1223,20 +1249,34 @@ Make it feel natural and helpful, not forced.
                 # Yield tool call event
                 yield {
                     "type": "tool_call",
-                    "data": {"tool": tool_call.tool_name, "args": tool_call.arguments},
+                    "data": {"tool": tool_call.tool_name},
                 }
 
                 logger.info(f"🔧 [Agent Stream] Calling tool: {tool_call.tool_name}")
-                tool_result, tool_duration = await execute_tool(
-                    tool_map=self.tool_map,
-                    tool_name=tool_call.tool_name,
-                    arguments=tool_call.arguments,
-                    user_id=user_id,
-                    tool_execution_counter=tool_execution_counter,
-                    # VASSAL Phase 2: see parallel call in execute_react_loop
-                    # (non-streaming). Same forwarding pattern.
-                    agent_role=getattr(state, "agent_role", None),
-                )
+                try:
+                    tool_result, tool_duration = await execute_tool(
+                        tool_map=self.tool_map,
+                        tool_name=tool_call.tool_name,
+                        arguments=tool_call.arguments,
+                        user_id=user_id,
+                        tool_execution_counter=tool_execution_counter,
+                        # VASSAL Phase 2: see parallel call in execute_react_loop
+                        # (non-streaming). Same forwarding pattern.
+                        agent_role=getattr(state, "agent_role", None),
+                        caller_profile=getattr(state, "caller_profile", None),
+                        is_whatsapp=getattr(state, "is_whatsapp", False),
+                    )
+                except (ValueError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
+                    logger.error(
+                        "Tool execution failed tool=%s error_type=%s",
+                        tool_call.tool_name,
+                        type(exc).__name__,
+                    )
+                    yield {
+                        "type": "error",
+                        "data": {"message": _GENERIC_CHAT_ERROR},
+                    }
+                    break
                 tool_call.execution_time = tool_duration
 
                 # Handle citation from vector_search
@@ -1279,7 +1319,13 @@ Make it feel natural and helpful, not forced.
                 # Yield observation event
                 yield {
                     "type": "observation",
-                    "data": tool_result[:500] if len(tool_result) > 500 else tool_result,
+                    "data": (
+                        _GENERIC_SENSITIVE_OBSERVATION
+                        if tool_call.tool_name in SENSITIVE_TOOLS
+                        else tool_result[:500]
+                        if len(tool_result) > 500
+                        else tool_result
+                    ),
                 }
 
                 # Early exit optimization (simple queries only — complex may need KG).
@@ -1461,8 +1507,8 @@ Make it feel natural and helpful, not forced.
                     tier1_duration = time.time() - tier1_start_time
                     emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                     logger.error(
-                        f"Failed to regenerate Tier 1 answer: {type(e).__name__}",
-                        exc_info=True,
+                        "Failed to regenerate Tier 1 answer error_type=%s",
+                        type(e).__name__,
                     )
                     state.final_answer = self._get_localized_stub("abstain", language)
         elif state.skip_rag and evidence_score < generation_threshold:
@@ -1545,18 +1591,15 @@ Make it feel natural and helpful, not forced.
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
-                            exc_info=True,
+                            "Failed to generate Tier 1 fallback answer error_type=%s",
+                            type(e).__name__,
                         )
                         state.final_answer = self._get_localized_stub("abstain", language)
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
                 warning_note = ""
-                if (
-                    evidence_score >= generation_threshold
-                    and evidence_score < 0.5
-                ):
+                if evidence_score >= generation_threshold and evidence_score < 0.5:
                     warning_note = (
                         "\n\nWARNING: Evidence is moderate. Use precautionary language "
                         "(e.g., 'Based on available information...', 'It appears that...'). "
@@ -1614,8 +1657,11 @@ Make it feel natural and helpful, not forced.
                     asyncio.TimeoutError,
                     ValueError,
                     RuntimeError,
-                ):
-                    logger.error("Failed to generate answer for general task", exc_info=True)
+                ) as exc:
+                    logger.error(
+                        "Failed to generate answer for general task error_type=%s",
+                        type(exc).__name__,
+                    )
                     state.final_answer = self._get_localized_stub("error", language)
             else:
                 # No context gathered - apply same Tier 1 vs ABSTAIN logic
@@ -1671,8 +1717,8 @@ Make it feel natural and helpful, not forced.
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
-                            exc_info=True,
+                            "Failed to generate Tier 1 fallback answer error_type=%s",
+                            type(e).__name__,
                         )
                         state.final_answer = self._get_localized_stub("abstain", language)
 
@@ -1696,8 +1742,11 @@ Make it feel natural and helpful, not forced.
                 state.final_answer = processed["response"]
                 if "citations" in processed:
                     state.sources = processed["citations"]
-            except (ValueError, RuntimeError, KeyError) as e:
-                logger.error("❌ [Pipeline Stream] Processing failed: %s", e)
+            except (ValueError, RuntimeError, KeyError) as exc:
+                logger.error(
+                    "❌ [Pipeline Stream] Processing failed error_type=%s",
+                    type(exc).__name__,
+                )
                 state.final_answer = post_process_response(state.final_answer, query)
 
         # Stream final answer token by token

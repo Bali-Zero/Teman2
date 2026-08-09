@@ -13,6 +13,7 @@ Uses:
 """
 
 import json
+import logging
 
 # Set env vars before importing module under test
 import os
@@ -464,6 +465,32 @@ class TestBuildContext:
         assert result["client_name"] == "Test User"
 
     @pytest.mark.asyncio
+    async def test_db_read_failure_log_is_phone_exception_and_traceback_free(
+        self,
+        mock_db_pool,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        phone_canary = "628000000101"
+        exception_canary = "PII_CANARY_CONTEXT_READ_EXCEPTION_a45b"
+        pool, conn = mock_db_pool
+        conn.fetchrow.side_effect = RuntimeError(exception_canary)
+
+        with (
+            patch(
+                "backend.services.whatsapp_identity.resolve_sender_identity",
+                new_callable=AsyncMock,
+                return_value={"role": "unknown"},
+            ),
+            caplog.at_level(logging.WARNING, logger="backend.services.whatsapp_context_builder"),
+        ):
+            await build_context(phone_canary, "Synthetic", "Hello", pool)
+
+        assert phone_canary not in caplog.text
+        assert exception_canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
+
+    @pytest.mark.asyncio
     async def test_db_write_failure_graceful(self, mock_db_pool, sample_conversation_row) -> None:
         """Database write failure for profile update is non-fatal."""
         pool, conn = mock_db_pool
@@ -479,6 +506,58 @@ class TestBuildContext:
         )
 
         assert result["client_name"] == "Marco Rossi"
+
+    @pytest.mark.asyncio
+    async def test_db_write_failure_log_is_phone_exception_and_traceback_free(
+        self,
+        mock_db_pool,
+        sample_conversation_row,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        phone_canary = "628000000202"
+        exception_canary = "PII_CANARY_CONTEXT_WRITE_EXCEPTION_b56c"
+        pool, conn = mock_db_pool
+        conn.fetchrow.return_value = sample_conversation_row
+        conn.execute.side_effect = RuntimeError(exception_canary)
+
+        with (
+            patch(
+                "backend.services.whatsapp_identity.resolve_sender_identity",
+                new_callable=AsyncMock,
+                return_value={"role": "unknown"},
+            ),
+            caplog.at_level(logging.WARNING, logger="backend.services.whatsapp_context_builder"),
+        ):
+            await build_context(phone_canary, "Synthetic", "Hello", pool)
+
+        assert phone_canary not in caplog.text
+        assert exception_canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_identity_wrapper_failure_log_is_phone_exception_and_traceback_free(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        phone_canary = "628000000303"
+        exception_canary = "PII_CANARY_CONTEXT_IDENTITY_EXCEPTION_c67d"
+
+        with (
+            patch(
+                "backend.services.whatsapp_identity.resolve_sender_identity",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError(exception_canary),
+            ),
+            caplog.at_level(logging.ERROR, logger="backend.services.whatsapp_context_builder"),
+        ):
+            result = await build_context(phone_canary, "Synthetic", "Hello", None)
+
+        assert result["sender_identity"] == {"role": "unknown"}
+        assert phone_canary not in caplog.text
+        assert exception_canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
 
     @pytest.mark.asyncio
     async def test_profile_preserves_existing_data(self, mock_db_pool) -> None:

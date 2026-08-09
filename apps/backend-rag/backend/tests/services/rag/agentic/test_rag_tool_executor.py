@@ -36,6 +36,8 @@ class AllowAuthorizer:
         agent_role: Any,
         tool_name: str,
         args: dict[str, Any],
+        caller_profile: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ) -> SimpleNamespace:
         self.calls.append(
             {
@@ -43,6 +45,8 @@ class AllowAuthorizer:
                 "agent_role": agent_role,
                 "tool_name": tool_name,
                 "args": args.copy(),
+                "caller_profile": caller_profile,
+                "is_whatsapp": is_whatsapp,
             },
         )
         return SimpleNamespace(
@@ -87,6 +91,11 @@ class FakeTool:
     async def execute(self, **kwargs: Any) -> str:
         self.calls.append(kwargs)
         return self.result
+
+
+class RaisingTool:
+    async def execute(self, **_kwargs: Any) -> str:
+        raise RuntimeError("PII_CANARY_TOOL_EXCEPTION_9d31")
 
 
 class FakeConfirmationService:
@@ -164,7 +173,7 @@ async def test_execute_tool_short_circuits_unknown_before_authorization(
         user_id="owner@example.test",
     )
 
-    assert result == "Error: Unknown tool 'missing'"
+    assert result == "The requested tool could not be completed."
     assert authorizer.calls == []
     assert reset_tool_executor.calls == [("missing", "unknown")]
 
@@ -189,6 +198,43 @@ async def test_execute_tool_authorizes_then_injects_user_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_forwards_wa_profile_to_authorization_chokepoint() -> None:
+    authorizer = AllowAuthorizer()
+    tool_executor.configure_tool_executor(authorizer)
+    tool = FakeTool()
+    profile = {"role": "team", "email": "synthetic@balizero.test"}
+
+    await tool_executor.execute_tool(
+        tool_map={"safe_tool": tool},
+        tool_name="safe_tool",
+        arguments={"query": "hello"},
+        caller_profile=profile,
+    )
+
+    assert authorizer.calls[0]["caller_profile"] is profile
+    assert authorizer.calls[0]["is_whatsapp"] is False
+    assert "_is_whatsapp" not in tool.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_forwards_trusted_wa_marker_and_strips_forged_value() -> None:
+    authorizer = AllowAuthorizer()
+    tool_executor.configure_tool_executor(authorizer)
+    tool = FakeTool()
+
+    await tool_executor.execute_tool(
+        tool_map={"vector_search": tool},
+        tool_name="vector_search",
+        arguments={"query": "hello", "_is_whatsapp": False},
+        is_whatsapp=True,
+    )
+
+    assert authorizer.calls[0]["is_whatsapp"] is True
+    assert authorizer.calls[0]["args"] == {"query": "hello"}
+    assert tool.calls == [{"query": "hello", "_is_whatsapp": True}]
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_denies_without_running_tool(
     reset_tool_executor: FakeMetricsCollector,
 ) -> None:
@@ -208,7 +254,7 @@ async def test_execute_tool_denies_without_running_tool(
         agent_role=A_PRINCIPAL,
     )
 
-    assert result == "Tool execution denied: role not allowed"
+    assert result == "This capability is not available in this conversation."
     assert tool.calls == []
     assert reset_tool_executor.calls == [("admin_tool", "denied")]
 
@@ -277,12 +323,32 @@ async def test_execute_tool_denies_anonymous_caller_logs_full_reason_pii_free(
     records = [r for r in caplog.records if "tool_authz" in r.getMessage()]
     assert records, "expected a tool_authz audit line for the denied call"
     msg = records[-1].getMessage()
-    assert "This action needs an authenticated Bali Zero staff account." in msg
+    assert "This action needs an authenticated Bali Zero staff account." not in msg
     assert "crm_query" in msg
-    assert "principal_present=False" in msg
     assert "@" not in msg
     assert "6281234567890" not in msg
     assert "whatsapp_" not in msg
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_denial_never_logs_or_observes_reason_canary(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    reason_canary = "PII_CANARY_DENIAL_REASON_4ac7"
+    tool_executor.configure_tool_executor(DenyAuthorizer(deny_reason=reason_canary))
+
+    with caplog.at_level("WARNING", logger="backend.services.rag.agentic.tool_executor"):
+        result, _duration = await tool_executor.execute_tool(
+            tool_map={"crm_query": FakeTool()},
+            tool_name="crm_query",
+            arguments={"query": "PII_CANARY_ARG_8b52"},
+            agent_role=A_PRINCIPAL,
+            caller_profile={"role": "team"},
+        )
+
+    assert reason_canary not in caplog.text
+    assert reason_canary not in result
+    assert "PII_CANARY_ARG_8b52" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -302,7 +368,7 @@ async def test_execute_tool_fails_closed_when_confirmation_service_missing(
         agent_role=A_PRINCIPAL,
     )
 
-    assert "confirmation service unavailable" in result
+    assert result == "This capability is not available in this conversation."
     assert reset_tool_executor.calls == [("dangerous", "denied")]
 
 
@@ -345,8 +411,7 @@ async def test_execute_tool_confirmation_redis_down_audience_aware(
         arguments={"target": "client"},
         agent_role=A_PRINCIPAL,
     )
-    assert "confirmation system unavailable" in result_principal
-    assert "Redis down" in result_principal
+    assert result_principal == "This capability is not available in this conversation."
 
     result_anonymous, _ = await tool_executor.execute_tool(
         tool_map={"dangerous": FakeTool()},
@@ -380,7 +445,7 @@ async def test_execute_tool_confirmation_timeout_audience_aware(
         arguments={"target": "client"},
         agent_role=A_PRINCIPAL,
     )
-    assert "did not confirm" in result_principal
+    assert result_principal == "This capability is not available in this conversation."
 
     result_anonymous, _ = await tool_executor.execute_tool(
         tool_map={"dangerous": FakeTool()},
@@ -414,7 +479,7 @@ async def test_execute_tool_confirmation_rejected_audience_aware(
         arguments={"target": "client"},
         agent_role=A_PRINCIPAL,
     )
-    assert "user rejected" in result_principal
+    assert result_principal == "This capability is not available in this conversation."
 
     result_anonymous, _ = await tool_executor.execute_tool(
         tool_map={"dangerous": FakeTool()},
@@ -498,3 +563,22 @@ async def test_execute_tool_enforces_per_query_limit(
 
     assert counter == {"count": 11}
     assert reset_tool_executor.calls == [("safe_tool", "rate_limited")]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_exception_is_generic_and_traceback_free(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    tool_executor.configure_tool_executor(AllowAuthorizer())
+
+    with caplog.at_level("ERROR", logger="backend.services.rag.agentic.tool_executor"):
+        result, _duration = await tool_executor.execute_tool(
+            tool_map={"safe_tool": RaisingTool()},
+            tool_name="safe_tool",
+            arguments={"query": "PII_CANARY_TOOL_ARG_1b77"},
+        )
+
+    assert result == "The requested tool could not be completed."
+    assert "PII_CANARY_TOOL_EXCEPTION_9d31" not in caplog.text
+    assert "PII_CANARY_TOOL_ARG_1b77" not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)

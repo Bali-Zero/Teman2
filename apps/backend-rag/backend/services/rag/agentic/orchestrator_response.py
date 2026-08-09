@@ -106,8 +106,8 @@ class OrchestratorResponseBuilder:
 
         if abstain_threshold != EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.debug(
-                "abstain_gate: query=%r domain_threshold=%.2f score=%.2f abstain=%s",
-                query_str[:60],
+                "abstain_gate: query_length=%d domain_threshold=%.2f score=%.2f abstain=%s",
+                len(query_str),
                 abstain_threshold,
                 evidence_score,
                 abstain,

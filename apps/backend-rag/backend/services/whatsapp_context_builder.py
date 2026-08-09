@@ -260,8 +260,11 @@ async def build_context(
                     if meta:
                         client_profile = meta
 
-        except Exception as e:
-            logger.warning("Failed to load context for %s: %s", phone, e)
+        except Exception as exc:
+            logger.warning(
+                "Failed to load WhatsApp context (error_type=%s)",
+                type(exc).__name__,
+            )
 
     # Resolve sender identity (owner / team / CRM client / unknown) so the
     # reply pipeline can stop treating Zero, the team, and known clients as
@@ -270,8 +273,11 @@ async def build_context(
         from backend.services.whatsapp_identity import resolve_sender_identity
 
         sender_identity = await resolve_sender_identity(phone, db_pool)
-    except Exception:
-        logger.exception("Sender identity resolution crashed for %s", phone)
+    except Exception as exc:
+        logger.error(
+            "Sender identity resolution failed (error_type=%s)",
+            type(exc).__name__,
+        )
         sender_identity = {"role": "unknown"}
 
     # Detect language from current message + history
@@ -328,8 +334,11 @@ async def build_context(
                         existing_row_id,
                     )
                 # If no existing row, it will be created when we save the conversation later
-        except Exception as e:
-            logger.warning("Failed to save profile for %s: %s", phone, e)
+        except Exception as exc:
+            logger.warning(
+                "Failed to save WhatsApp profile (error_type=%s)",
+                type(exc).__name__,
+            )
 
     return {
         "client_name": sender_name,

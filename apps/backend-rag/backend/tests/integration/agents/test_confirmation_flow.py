@@ -200,7 +200,7 @@ class TestConfirmationFlowIntegration:
         await reject_task
 
         assert not tool.execute_called, "tool must NOT execute after rejection"
-        assert "rejected" in result.lower()
+        assert result == "This capability is not available in this conversation."
 
     @pytest.mark.asyncio
     async def test_no_confirmation_service_fails_closed(
@@ -223,7 +223,7 @@ class TestConfirmationFlowIntegration:
             agent_role=ROLE_VISA_SPECIALIST,
         )
         assert not tool.execute_called
-        assert "unavailable" in result.lower() or "denied" in result.lower()
+        assert result == "This capability is not available in this conversation."
 
     @pytest.mark.asyncio
     async def test_admin_no_confirmation_needed(

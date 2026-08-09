@@ -19,6 +19,9 @@ from backend.services.tools.definitions import AgentState
 
 
 class FakeStreamingManager:
+    def __init__(self) -> None:
+        self.processed_user_ids: list[str | None] = []
+
     def create_done_event(self, *, execution_time: float, route_used: str, **kwargs) -> dict:
         return {
             "type": "done",
@@ -44,7 +47,8 @@ class FakeStreamingManager:
             },
         }
 
-    async def process_event_stream(self, *, event_generator, **_kwargs):
+    async def process_event_stream(self, *, event_generator, **kwargs):
+        self.processed_user_ids.append(kwargs.get("user_id"))
         async for event in event_generator:
             yield event
 
@@ -208,8 +212,10 @@ class _RawReactReasoningEngine:
     def __init__(self, outcome: str) -> None:
         self.outcome = outcome
         self.tool_map: dict = {}
+        self.last_kwargs: dict = {}
 
-    async def execute_react_loop_stream(self, **_kwargs):
+    async def execute_react_loop_stream(self, **kwargs):
+        self.last_kwargs = kwargs
         yield {"type": "token", "data": "raw-token"}
         if self.outcome == "error":
             raise RuntimeError("raw stream failed")
@@ -240,6 +246,101 @@ class _RawReactCore:
         state.evidence_score = 0.8
         state.trusted_tools_used = True
         return ("gemini-parent", False, state, "system prompt")
+
+
+@pytest.mark.asyncio
+async def test_trusted_wa_stream_uses_only_profile_and_bounded_history() -> None:
+    """Streaming WA skips context, KG and analytics side effects entirely."""
+    core = _RawReactCore("complete")
+    core.db_pool = object()
+    core.prepare_query_context = AsyncMock(return_value=({}, [], {}, "", None))
+    core.context_manager = SimpleNamespace(
+        enrich_user_context=AsyncMock(return_value={"memory_facts": ["private"]}),
+    )
+    core.extract_entities_and_kg_context = AsyncMock(return_value=({}, "", None))
+    original_prepare_react = core.prepare_react_execution
+    core.prepare_react_execution = AsyncMock(wraps=original_prepare_react)
+    streaming_manager = FakeStreamingManager()
+    streaming_core = OrchestratorStreamingCore(
+        core=core,
+        streaming_manager=streaming_manager,
+    )
+    trusted_profile = {"role": "team", "id": "synthetic-team"}
+    bounded_history = [{"role": "user", "content": "bounded history"}]
+
+    with patch(
+        "backend.db.repositories.query_analytics_repository.QueryAnalyticsRepository",
+    ) as analytics_repo:
+        events = [
+            event
+            async for event in streaming_core.stream_query_core(
+                query="RAW_STREAM_QUERY_CANARY",
+                user_id="RAW_STREAM_USER_CANARY",
+                conversation_history=bounded_history,
+                session_id="RAW_STREAM_SESSION_CANARY",
+                images=None,
+                tool_execution_counter={"count": 0},
+                correlation_id="synthetic-correlation",
+                profile=trusted_profile,
+                is_whatsapp=True,
+            )
+        ]
+
+    assert any(event["type"] == "done" for event in events)
+    core.prepare_query_context.assert_not_awaited()
+    core.context_manager.enrich_user_context.assert_not_awaited()
+    core.extract_entities_and_kg_context.assert_not_awaited()
+    analytics_repo.assert_not_called()
+    prepare_kwargs = core.prepare_react_execution.await_args.kwargs
+    assert prepare_kwargs["user_context"] == {"profile": trusted_profile}
+    assert prepare_kwargs["history"] == bounded_history
+    assert core.reasoning_engine.last_kwargs["user_id"] == "anonymous"
+    assert set(streaming_manager.processed_user_ids) == {"anonymous"}
+
+
+@pytest.mark.asyncio
+async def test_trusted_wa_stream_ignores_preloaded_memory_context() -> None:
+    """Even a supplied fast-path context cannot re-enable WA enrichment."""
+    core = _RawReactCore("complete")
+    core.prepare_query_context = AsyncMock(return_value=({}, [], {}, "", None))
+    core.context_manager = SimpleNamespace(
+        enrich_user_context=AsyncMock(return_value={"memory_facts": ["private"]}),
+    )
+    core.extract_entities_and_kg_context = AsyncMock(return_value=({}, "", None))
+    original_prepare_react = core.prepare_react_execution
+    core.prepare_react_execution = AsyncMock(wraps=original_prepare_react)
+    streaming_core = OrchestratorStreamingCore(
+        core=core,
+        streaming_manager=FakeStreamingManager(),
+    )
+    trusted_profile = {"role": "team", "id": "synthetic-team"}
+
+    events = [
+        event
+        async for event in streaming_core.stream_query_core(
+            query="synthetic public question",
+            user_id="synthetic-wa-user",
+            conversation_history=[],
+            session_id=None,
+            images=None,
+            tool_execution_counter={"count": 0},
+            correlation_id="synthetic-correlation",
+            initial_user_context={
+                "profile": {"id": "untrusted-preload"},
+                "memory_facts": ["must not transit"],
+            },
+            profile=trusted_profile,
+            is_whatsapp=True,
+        )
+    ]
+
+    assert any(event["type"] == "done" for event in events)
+    core.prepare_query_context.assert_not_awaited()
+    core.context_manager.enrich_user_context.assert_not_awaited()
+    core.extract_entities_and_kg_context.assert_not_awaited()
+    prepare_kwargs = core.prepare_react_execution.await_args.kwargs
+    assert prepare_kwargs["user_context"] == {"profile": trusted_profile}
+    assert prepare_kwargs["history"] == []
 
 
 @pytest.mark.asyncio
@@ -321,6 +422,7 @@ class FakeCoreForCrmPrefetch:
 
     def __init__(self, tool_map: dict) -> None:
         self.reasoning_engine = FakeReasoningEngine(tool_map)
+        self.prepare_kwargs = None
 
     async def prepare_query_context(self, **_kwargs):
         return ({"user_id": "u"}, [], {}, "", None)
@@ -328,7 +430,8 @@ class FakeCoreForCrmPrefetch:
     async def check_gates_and_cache(self, **_kwargs):
         return None
 
-    async def prepare_react_execution(self, **_kwargs):
+    async def prepare_react_execution(self, **kwargs):
+        self.prepare_kwargs = kwargs
         raise _StopAfterCrmPrefetch
 
 
@@ -387,3 +490,86 @@ async def test_crm_prefetch_fires_for_authenticated_staff_caller() -> None:
     )
 
     crm_tool.execute.assert_called_once_with(query_type="client_stats")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("profile", "is_whatsapp"),
+    [
+        ({"role": "client", "id": "synthetic-client"}, False),
+        (None, True),
+    ],
+)
+async def test_crm_prefetch_skips_non_workspace_surfaces_and_forwards_state(
+    profile,
+    is_whatsapp,
+) -> None:
+    crm_tool = SimpleNamespace(execute=AsyncMock(return_value="42 active clients"))
+    fake_core = FakeCoreForCrmPrefetch(tool_map={"crm_query": crm_tool})
+    streaming_core = OrchestratorStreamingCore(
+        core=fake_core,
+        streaming_manager=FakeStreamingManager(),
+    )
+
+    await _drain_until_crm_prefetch(
+        streaming_core,
+        query="quanti clienti attivi abbiamo",
+        user_id="synthetic-user",
+        conversation_history=None,
+        session_id=None,
+        images=None,
+        tool_execution_counter={"count": 0},
+        correlation_id="cid-surface-state",
+        agent_role=SimpleNamespace(role_id="admin"),
+        profile=profile,
+        is_whatsapp=is_whatsapp,
+    )
+
+    crm_tool.execute.assert_not_called()
+    assert fake_core.prepare_kwargs["profile"] is profile
+    assert fake_core.prepare_kwargs["is_whatsapp"] is is_whatsapp
+
+
+@pytest.mark.asyncio
+async def test_react_stream_failure_is_generic_in_sse_and_logs(caplog) -> None:
+    exception_canary = "SYNTHETIC_STREAM_EXCEPTION_CANARY_3c19"
+
+    class ExplodingReasoningEngine:
+        tool_map: dict = {}
+
+        async def execute_react_loop_stream(self, **_kwargs):
+            raise RuntimeError(exception_canary)
+            yield  # pragma: no cover - makes this an async generator
+
+    class ExplodingCore(_RawReactCore):
+        def __init__(self) -> None:
+            super().__init__("complete")
+            self.reasoning_engine = ExplodingReasoningEngine()
+
+    streaming_core = OrchestratorStreamingCore(
+        core=ExplodingCore(),
+        streaming_manager=FakeStreamingManager(),
+    )
+
+    with caplog.at_level(
+        "ERROR",
+        logger="backend.services.rag.agentic.orchestrator_streaming_core",
+    ):
+        events = [
+            event
+            async for event in streaming_core.stream_query_core(
+                query="synthetic public query",
+                user_id="synthetic-public-user",
+                conversation_history=None,
+                session_id="synthetic-session",
+                images=None,
+                tool_execution_counter={"count": 0},
+                correlation_id="contract-correlation",
+            )
+        ]
+
+    error_event = next(event for event in events if event["type"] == "error")
+    assert error_event["data"]["message"] == "Unable to complete the streamed response."
+    assert exception_canary not in repr(events)
+    assert exception_canary not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)

@@ -12,10 +12,8 @@ Phase 2 scope (VASSAL_PLAN_V7 §7 Week 2 — "Strada B"):
     * Default-deny via `team_agent_config.is_tool_allowed`
     * Blocked-tools enforcement
     * Audit logging on every decision (allow + deny)
-    * Backwards-compatible passthrough when `agent_role=None`
-      (legacy /stream endpoint and any caller without an authenticated
-      team agent — the orchestrator must remain functional for blog and
-      marketing flows)
+    * Backwards-compatible passthrough when `agent_role=None` for ordinary
+      tools; all seven PII-bearing internal tools are denied before it
     * Scaffolding (NOT enforced) for `client_scope` and `requires_confirmation`
       — see "Scaffolding rationale" below
 
@@ -67,7 +65,8 @@ from backend.services.pii.violation_store import hash_subject
 logger = logging.getLogger(__name__)
 
 # Tools that touch client/staff PII and must NEVER pass through the
-# legacy agent_role=None path (TOURNIQUET, Zero GO 2026-07-21 — see
+# legacy agent_role=None path or any WhatsApp caller profile (TOURNIQUET,
+# Zero GO 2026-07-21 — see
 # memory `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`).
 # The module docstring's "zero CRM tools" claim stopped being true once
 # `create_agentic_rag` (agentic/__init__.py) registered CRMTool (name
@@ -81,7 +80,39 @@ logger = logging.getLogger(__name__)
 # search_term (the schema default) matches every record, dumping all staff
 # PII (email/pin/religion/notes/...) for 19 team members to any no-principal
 # caller (blog/ask, WA-unknown).
-SENSITIVE_TOOLS = frozenset({"crm_query", "timesheet", "team_knowledge"})
+SENSITIVE_TOOLS = frozenset(
+    {
+        "crm_query",
+        "timesheet",
+        "team_knowledge",
+        "team_my_clients",
+        "team_my_practices",
+        "team_my_deadlines",
+        "team_practice_detail",
+    }
+)
+
+# WhatsApp capability ceiling (L0). This is an allowlist, not a denylist:
+# any future tool added to the shared agentic registry stays unavailable on
+# WhatsApp until it is explicitly reviewed and added here. The trusted
+# ``is_whatsapp`` marker is derived by the server from the dedicated WA bot
+# credential; it never comes from the request body/channel field.
+WA_L0_ALLOWED_TOOLS = frozenset({"vector_search", "get_pricing", "calculator"})
+
+# ``vector_search`` is safe on WhatsApp only across public/low-PII corpora.
+# Pricing must use ``get_pricing`` (the canonical PricingTool), never the
+# legacy pricing vector collection. Training conversations are excluded
+# because the PDP plan classifies them high risk for residual PII.
+WA_L0_VECTOR_COLLECTIONS = frozenset(
+    {
+        "visa_oracle",
+        "legal_unified",
+        "kbli_2025_final",
+        "tax_genius",
+        "immigration_circulars",
+        "balizero_news",
+    }
+)
 
 
 def _truncate(value: Any, max_len: int = 40) -> str:
@@ -142,10 +173,9 @@ class AuthResult:
 
     Attributes:
         decision: One of ALLOWED / DENIED / NEEDS_CONFIRMATION.
-        reason: Human-readable explanation. Echoed back to the LLM as the
-            tool observation when DENIED, so it should be informative
-            enough for the model to decide what to do next ("you don't
-            have permission to call X, try Y instead").
+        reason: Internal authorization explanation. Callers must render a
+            fixed generic observation and never echo this value to the LLM,
+            logs, spans, or streaming events.
         args: Possibly mutated tool arguments. Phase 2 returns args
             unchanged. Phase 3+ may inject server-controlled fields
             (e.g. `_force_assigned_to=user_email`) when scope filters
@@ -202,6 +232,8 @@ class ToolAuthorizer:
         agent_role: AgentRole | None,
         tool_name: str,
         args: dict[str, Any],
+        caller_profile: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ) -> AuthResult:
         """
         Authorize a tool call.
@@ -221,25 +253,45 @@ class ToolAuthorizer:
                 backward compatibility — see module docstring).
             tool_name: Name of the tool the LLM wants to call.
             args: Tool arguments parsed from the LLM's function call.
+            caller_profile: Server-derived audience profile. A non-None value
+                is not surface authority, but it does identify a client-like
+                caller that must never execute internal tools, even if an
+                inconsistent privileged ``agent_role`` is also present.
+            is_whatsapp: The sole trusted server-derived WhatsApp surface
+                marker. Never derive this from an HTTP body field.
 
         Returns:
             AuthResult describing the decision. Caller MUST inspect
             `result.is_allowed` and use `result.args` (possibly mutated)
             instead of the original `args` dict.
         """
-        # ── Sensitive-tool deny (TOURNIQUET, 2026-07-21) ──────────────────
-        # PII-bearing tools are denied for no-principal callers BEFORE the
-        # legacy passthrough below, regardless of agent_role. This closes
-        # the public blog/ask + WA-unknown ReAct vector without touching
-        # the passthrough's behavior for every other tool.
-        if tool_name in SENSITIVE_TOOLS and agent_role is None:
-            reason = "This action needs an authenticated Bali Zero staff account."
+        # ── WhatsApp L0 allowlist ─────────────────────────────────────────
+        # Only the trusted server-side surface marker applies the exact WA
+        # capability ceiling. ``caller_profile`` is audience context, not a
+        # substitute for channel authority.
+        if is_whatsapp and tool_name not in WA_L0_ALLOWED_TOOLS:
+            reason = "This capability is not available in this conversation."
             self._audit(
                 "deny",
                 user_email,
                 agent_role,
                 tool_name,
-                "sensitive tool requires authenticated staff principal",
+                "tool unavailable on WhatsApp L0",
+            )
+            return AuthResult.deny(reason, args)
+
+        # ── Sensitive-tool deny (TOURNIQUET, 2026-07-21) ──────────────────
+        # PII-bearing tools are denied for every profiled client-like caller
+        # and for no-principal callers BEFORE the legacy passthrough below.
+        # The profile takes precedence over contradictory privileged roles.
+        if tool_name in SENSITIVE_TOOLS and (caller_profile is not None or agent_role is None):
+            reason = "This capability is not available in this conversation."
+            self._audit(
+                "deny",
+                user_email,
+                agent_role,
+                tool_name,
+                "internal tool unavailable on this surface",
             )
             return AuthResult.deny(reason, args)
 
@@ -397,7 +449,7 @@ class ToolAuthorizer:
         user_email: str | None,
         agent_role: AgentRole | None,
         tool_name: str,
-        reason: str,
+        _reason: str,
     ) -> None:
         """
         Structured audit log line for every decision.
@@ -406,8 +458,9 @@ class ToolAuthorizer:
         grep/parse. The "tool_authz" prefix is unique to this module.
 
         Phase 3 adds `needs_confirmation` as a third decision value
-        alongside `allow` and `deny`. The format string is unchanged so
-        existing log shipper grep patterns keep working.
+        alongside `allow` and `deny`. ``_reason`` is deliberately excluded:
+        confirmation previews can be derived from model-supplied arguments
+        and therefore must not enter logs.
 
         `user=` is a pseudonymised token (`_principal_token`), never the raw
         `user_email` — see that function's docstring. This fires on EVERY
@@ -421,13 +474,12 @@ class ToolAuthorizer:
         # is WARNING because both are exceptional outcomes worth surfacing.
         log_fn = logger.info if action == "allow" else logger.warning
         log_fn(
-            "tool_authz decision=%s user=%s role=%s scope=%s tool=%s reason=%s",
+            "tool_authz decision=%s user=%s role=%s scope=%s tool=%s",
             action,
             _principal_token(user_email),
             role_id,
             scope,
             tool_name,
-            reason,
         )
 
 

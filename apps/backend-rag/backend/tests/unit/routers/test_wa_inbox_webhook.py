@@ -155,9 +155,7 @@ async def test_status_callback_never_touches_last_customer_at() -> None:
             {"id": 100, "status": "sent"},  # existing ledger row lookup
         ]
     )
-    await whatsapp_chat._apply_status_callback(
-        conn, {"id": "wamid.A", "status": "delivered"}
-    )
+    await whatsapp_chat._apply_status_callback(conn, {"id": "wamid.A", "status": "delivered"})
 
     # Status advanced to delivered on the ledger row...
     assert any(
@@ -181,9 +179,7 @@ async def test_status_callback_does_not_regress() -> None:
 @pytest.mark.asyncio
 async def test_orphan_status_staged_in_pending() -> None:
     conn = RecordingConn(fetchrow_results=[None])  # ledger lookup → unknown wamid
-    await whatsapp_chat._apply_status_callback(
-        conn, {"id": "wamid.ORPHAN", "status": "read"}
-    )
+    await whatsapp_chat._apply_status_callback(conn, {"id": "wamid.ORPHAN", "status": "read"})
 
     assert any("INSERT INTO wa_status_pending" in s for s, _ in conn.executed)
     assert not any("UPDATE meta_inbox_messages" in s for s, _ in conn.executed)
@@ -201,8 +197,7 @@ async def test_failed_status_records_error() -> None:
         },
     )
     assert any(
-        "status = 'failed'" in s and "Message undeliverable" in str(a)
-        for s, a in conn.executed
+        "status = 'failed'" in s and "Message undeliverable" in str(a) for s, a in conn.executed
     )
 
 
@@ -411,9 +406,7 @@ async def test_scope_target_phone_number_id_handled(monkeypatch: pytest.MonkeyPa
         handled.append(msg)
 
     monkeypatch.setattr(whatsapp_chat, "_handle_meta_inbox_message", _fake_handle)
-    monkeypatch.setattr(
-        whatsapp_chat, "_resolve_webhook_id", AsyncMock(return_value=None)
-    )
+    monkeypatch.setattr(whatsapp_chat, "_resolve_webhook_id", AsyncMock(return_value=None))
 
     conn = RecordingConn()
     pool = MagicMock()
@@ -422,6 +415,11 @@ async def test_scope_target_phone_number_id_handled(monkeypatch: pytest.MonkeyPa
     acquire_cm.__aexit__ = AsyncMock(return_value=False)
     pool.acquire = MagicMock(return_value=acquire_cm)
     monkeypatch.setattr(whatsapp_chat, "_get_db_pool", lambda r: pool)
+    mark_processed = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "backend.services.channels.inbound_webhook_repo.mark_processed",
+        mark_processed,
+    )
 
     payload = {
         "object": "whatsapp_business_account",
@@ -445,3 +443,53 @@ async def test_scope_target_phone_number_id_handled(monkeypatch: pytest.MonkeyPa
 
     assert len(handled) == 1
     assert handled[0]["id"] == "wamid.TARGET"
+    mark_processed.assert_awaited_once_with(
+        pool,
+        channel="whatsapp",
+        dedup_key="wamid.TARGET",
+    )
+
+
+@pytest.mark.asyncio
+async def test_meta_inbox_fast_failure_leaves_recovery_row_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _fail_before_enqueue(*_args: Any, **_kwargs: Any) -> None:
+        raise RuntimeError("synthetic durable enqueue failure")
+
+    monkeypatch.setattr(whatsapp_chat, "_handle_meta_inbox_message", _fail_before_enqueue)
+    monkeypatch.setattr(whatsapp_chat, "_resolve_webhook_id", AsyncMock(return_value=None))
+
+    conn = RecordingConn()
+    pool = MagicMock()
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire = MagicMock(return_value=acquire_cm)
+    monkeypatch.setattr(whatsapp_chat, "_get_db_pool", lambda _request: pool)
+    mark_processed = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "backend.services.channels.inbound_webhook_repo.mark_processed",
+        mark_processed,
+    )
+    payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "WABA",
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {
+                            "metadata": {"phone_number_id": META_INBOX_PHONE_NUMBER_ID},
+                            "messages": [_msg(wamid="wamid.RETRY_ME")],
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+    await whatsapp_chat.process_meta_inbox_payload(payload, MagicMock())
+
+    mark_processed.assert_not_awaited()

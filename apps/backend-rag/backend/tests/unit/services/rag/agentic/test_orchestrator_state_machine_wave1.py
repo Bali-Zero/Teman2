@@ -400,12 +400,13 @@ class TestToolExecution:
 
     @pytest.mark.asyncio
     async def test_tool_execution_error_does_not_break_loop(self, engine):
-        """R8 + I-R8: tool raise → observation = 'Error: ...', loop continues (not break)."""
+        """R8 + I-R8: tool errors become generic observations and the loop continues."""
         state = AgentState(query="q", max_steps=2, current_step=0, intent_type="simple")
         fake_tool = ToolCall(tool_name="calculator", arguments={})
+        raw_exception_canary = "SYNTHETIC_RAW_EXCEPTION_CANARY"
 
         async def boom(*args, **kwargs):
-            raise RuntimeError("tool crashed")
+            raise RuntimeError(raw_exception_canary)
 
         gateway = _mk_gateway(
             send_message_side_effect=lambda *a, **k: _llm_response(
@@ -438,12 +439,18 @@ class TestToolExecution:
         ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
-        # I-R8: observation was replaced with an "Error: ..." string from the wrapper
+        # I-R8: the observation is generic and cannot echo the exception text.
         error_steps = [
-            s for s in result_state.steps if s.observation and s.observation.startswith("Error:")
+            s
+            for s in result_state.steps
+            if s.observation == "The requested tool could not be completed."
         ]
         assert len(error_steps) >= 1, (
-            f"expected at least one Error: observation in steps; got {[s.observation for s in result_state.steps]}"
+            "expected at least one generic error observation in steps; "
+            f"got {[s.observation for s in result_state.steps]}"
+        )
+        assert all(
+            raw_exception_canary not in (step.observation or "") for step in result_state.steps
         )
         # Loop did not abort — either ran to max_steps or generated final answer after
         assert result_state.final_answer is not None

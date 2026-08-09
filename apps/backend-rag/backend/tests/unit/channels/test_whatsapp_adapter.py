@@ -268,6 +268,52 @@ class TestWhatsAppAdapter:
         assert msg.metadata["message_id"] == "wamid.HBgLNjI4MTIzNDU2"
         assert msg.metadata["message_type"] == "text"
 
+    async def test_receive_message_logs_no_raw_payload_fields(
+        self,
+        adapter: WhatsAppChannelAdapter,
+        caplog,
+    ) -> None:
+        phone_canary = "WA_ADAPTER_PHONE_CANARY"
+        name_canary = "WA_ADAPTER_NAME_CANARY"
+        query_canary = "WA_ADAPTER_QUERY_CANARY"
+        message_id_canary = "WA_ADAPTER_MESSAGE_ID_CANARY"
+        webhook = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "contacts": [{"profile": {"name": name_canary}}],
+                                "messages": [
+                                    {
+                                        "from": phone_canary,
+                                        "id": message_id_canary,
+                                        "type": "text",
+                                        "text": {"body": query_canary},
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        }
+
+        with caplog.at_level(
+            "INFO",
+            logger="backend.channels.whatsapp.adapter",
+        ):
+            message = await adapter.receive_message(webhook)
+
+        assert message.text == query_canary
+        for canary in (
+            phone_canary,
+            name_canary,
+            query_canary,
+            message_id_canary,
+        ):
+            assert canary not in caplog.text
+
     async def test_receive_message_no_messages(
         self,
         adapter: WhatsAppChannelAdapter,
@@ -455,7 +501,7 @@ class TestWhatsAppAdapter:
 
         async def empty_stream():
             return
-            yield  # noqa: unreachable
+            yield  # pragma: no cover - preserve async-generator shape
 
         await adapter.stream_response("123", empty_stream())
         # No message should be sent for empty stream

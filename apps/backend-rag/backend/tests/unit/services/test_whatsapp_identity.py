@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -138,9 +139,7 @@ class TestResolveSenderIdentity:
 
     @pytest.mark.asyncio
     async def test_team_member_resolved_with_name(self, monkeypatch):
-        monkeypatch.setenv(
-            "WHATSAPP_TEAM_NUMBERS", "+628213454725:Adit,628213454723:Sahira"
-        )
+        monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "+628213454725:Adit,628213454723:Sahira")
         identity = await resolve_sender_identity("628213454723", None)
         assert identity == {"role": "team", "team_member": "Sahira"}
 
@@ -273,8 +272,14 @@ class TestResolveSenderIdentity:
     async def test_team_db_lookup_miss_falls_through_to_client(self):
         pool = _FakePool(
             team_members=[],
-            clients=[{"id": 7, "full_name": "Some Client", "status": "active",
-                       "phone": "+62 811-100-5000"}],
+            clients=[
+                {
+                    "id": 7,
+                    "full_name": "Some Client",
+                    "status": "active",
+                    "phone": "+62 811-100-5000",
+                }
+            ],
         )
         identity = await resolve_sender_identity("+62 811-100-5000", pool)
         assert identity == {
@@ -314,15 +319,35 @@ class TestResolveSenderIdentity:
     @pytest.mark.asyncio
     async def test_db_error_fails_safe_to_unknown(self):
         pool = _FakePool(error=asyncpg.PostgresError("boom"))
-        assert (await resolve_sender_identity("+62 813-555-0003", pool)) == {
-            "role": "unknown"
-        }
+        assert (await resolve_sender_identity("+62 813-555-0003", pool)) == {"role": "unknown"}
+
+    @pytest.mark.asyncio
+    async def test_expected_lookup_failure_never_logs_phone_canary(self, caplog):
+        phone_canary = "+1 202-555-0199"
+        pool = _FakePool(error=asyncpg.PostgresError("synthetic lookup failure"))
+
+        with caplog.at_level(logging.WARNING, logger="backend.services.whatsapp_identity"):
+            identity = await resolve_sender_identity(phone_canary, pool)
+
+        assert identity == {"role": "unknown"}
+        assert phone_canary not in caplog.text
+        assert "12025550199" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_unexpected_lookup_failure_never_logs_phone_canary(self, caplog):
+        phone_canary = "+1 202-555-0188"
+        pool = _FakePool(error=RuntimeError("synthetic unexpected failure"))
+
+        with caplog.at_level(logging.ERROR, logger="backend.services.whatsapp_identity"):
+            identity = await resolve_sender_identity(phone_canary, pool)
+
+        assert identity == {"role": "unknown"}
+        assert phone_canary not in caplog.text
+        assert "12025550188" not in caplog.text
 
     @pytest.mark.asyncio
     async def test_no_pool_no_match_is_unknown(self):
-        assert (await resolve_sender_identity("+62 813-555-0004", None)) == {
-            "role": "unknown"
-        }
+        assert (await resolve_sender_identity("+62 813-555-0004", None)) == {"role": "unknown"}
 
     @pytest.mark.asyncio
     async def test_empty_phone_is_unknown(self):

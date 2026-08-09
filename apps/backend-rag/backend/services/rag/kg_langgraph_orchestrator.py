@@ -108,8 +108,8 @@ def get_llm_for_reasoning() -> Any:
             return _cached_reasoning_llm
         except Exception as exc:  # ImportError, missing langchain-core, etc.
             logger.warning(
-                "Claude OAuth LLM unavailable (%s); falling back to OpenAI.",
-                exc,
+                "Claude OAuth LLM unavailable error_type=%s; falling back to OpenAI.",
+                type(exc).__name__,
             )
 
     if openai_key and ChatOpenAI is not None:
@@ -554,10 +554,11 @@ async def compile_kg_workflow(
             await checkpointer.setup()
             logger.info("✅ [Compile] PostgreSQL checkpointer initialized")
             kg_checkpoint_operations_total.labels(operation="setup").inc()
-        except Exception as e:
+        except Exception as exc:
             logger.warning(
-                f"⚠️ [Compile] PostgresSaver setup failed ({type(e).__name__}: {e}), "
-                f"compiling without checkpointer (no state persistence)",
+                "⚠️ [Compile] PostgresSaver setup failed error_type=%s; "
+                "compiling without checkpointer (no state persistence)",
+                type(exc).__name__,
             )
             checkpointer = None
 
@@ -662,7 +663,7 @@ class KGLangGraphOrchestrator:
         # Execute workflow
         config = {"configurable": {"thread_id": thread_id or f"kg_query_{hash(query)}"}}
 
-        logger.info(f"🚀 [Query] Starting KG exploration: {query[:100]}...")
+        logger.info("🚀 [Query] Starting KG exploration query_length=%d", len(query))
 
         try:
             final_state = await self.app.ainvoke(initial_state, config=config)
@@ -684,7 +685,7 @@ class KGLangGraphOrchestrator:
             logger.info("✅ [Query] KG exploration complete, intent=%s", intent_label)
 
             return final_state
-        except Exception as e:
+        except Exception as exc:
             # Track error metrics and return empty result (don't crash the caller)
             raw_intent = initial_state.get("intent", "unknown")
             valid_intents = {
@@ -698,8 +699,16 @@ class KGLangGraphOrchestrator:
             }
             intent_label = raw_intent if raw_intent in valid_intents else "unknown"
             kg_langgraph_queries_total.labels(status="error", intent=intent_label).inc()
-            logger.error("❌ [Query] KG exploration failed: %s", e, exc_info=True)
-            return {"workflow": None, "error": str(e)}
+            error_type = type(exc).__name__
+            logger.error(
+                "❌ [Query] KG exploration failed error_type=%s",
+                error_type,
+            )
+            return {
+                "workflow": None,
+                "error": "kg_query_failed",
+                "error_type": error_type,
+            }
 
     async def get_visual_graph(self, subgraph: str | None = None) -> str:
         """

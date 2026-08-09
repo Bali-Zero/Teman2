@@ -188,7 +188,14 @@ async def test_fast_path_marks_inbound_webhook_processed(mock_db_pool):
             request=request,
         )
 
-    mock_process.assert_awaited_once()
+    mock_process.assert_awaited_once_with(
+        phone="6281234567890",
+        message_text="Hello",
+        sender_name="Test User",
+        message_id="wamid.TEST_MARK",
+        request=request,
+        trusted_whatsapp_ingress=True,
+    )
     mock_mark_processed.assert_awaited_once_with(
         mock_db_pool,
         channel="whatsapp",

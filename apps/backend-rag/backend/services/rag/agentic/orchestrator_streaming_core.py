@@ -19,6 +19,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from backend.app.utils.tracing import add_span_event
+from backend.services.pii.violation_store import hash_subject
 from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 from backend.services.rag.agentic.orchestrator_streaming import OrchestratorStreamingManager
 from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
@@ -66,6 +67,8 @@ class OrchestratorStreamingCore:
         initial_user_context: dict[str, Any] | None = None,
         channel: str | None = None,
         agent_role: Any | None = None,  # VASSAL Phase 2: AgentRole | None
+        profile: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ) -> AsyncGenerator[dict, None]:
         """
         Core streaming query processing logic.
@@ -79,6 +82,9 @@ class OrchestratorStreamingCore:
             tool_execution_counter: Tool execution counter dict
             correlation_id: Correlation ID for tracing
             initial_user_context: Optional pre-loaded basic context (Profile/History)
+            profile: Optional trusted server-derived caller profile. This is
+                audience context, not WhatsApp authority.
+            is_whatsapp: Sole trusted server-derived WhatsApp surface marker.
 
         Yields:
             Stream events (dict)
@@ -105,7 +111,14 @@ class OrchestratorStreamingCore:
 
         langgraph_workflow = None
 
-        if initial_user_context:
+        if is_whatsapp:
+            # Trusted WA L0 never consumes a preloaded memory context and
+            # never sends query/user/session data through context or KG
+            # enrichment. Preserve only the bounded history already supplied
+            # by the bot; the trusted profile is merged below.
+            user_context = {}
+            optimized_history = list(conversation_history or [])
+        elif initial_user_context:
             # FAST PATH: Using pre-loaded basic context
             # We need to enrich it with Memory + Entities + LangGraph (Heavy Lifting)
             user_context = initial_user_context
@@ -164,6 +177,11 @@ class OrchestratorStreamingCore:
                 conversation_history=conversation_history,
                 session_id=session_id,
             )
+
+        user_context = dict(user_context or {})
+        if profile is not None:
+            user_context["profile"] = profile
+        caller_profile = profile if profile is not None else user_context.get("profile")
 
         # Yield metadata for extracted entities
         if any(extracted_entities.values()):
@@ -229,7 +247,12 @@ class OrchestratorStreamingCore:
         # upstream; see orchestrator.stream_query docstring). Skip the CRM
         # prefetch entirely for no-principal callers: the query still falls
         # through to normal RAG, it just doesn't get CRM numbers injected.
-        if agent_role is not None and any(kw in query_lower for kw in _crm_keywords):
+        if (
+            not is_whatsapp
+            and caller_profile is None
+            and agent_role is not None
+            and any(kw in query_lower for kw in _crm_keywords)
+        ):
             # OrchestratorCore has no `tool_map`; the {name: tool} dict lives on
             # its reasoning_engine (ReasoningEngine.tool_map). Accessing
             # self.core.tool_map raised AttributeError on every CRM-keyword query
@@ -265,8 +288,11 @@ class OrchestratorStreamingCore:
                         logger.info(
                             f"🚀 [CRM Pre-call] Injected {len(crm_result)} bytes of CRM data into context"
                         )
-                except Exception as e:
-                    logger.warning("[CRM Pre-call] Failed: %s", e)
+                except Exception as exc:
+                    logger.warning(
+                        "[CRM Pre-call] Failed error_type=%s",
+                        type(exc).__name__,
+                    )
 
         # 3. Prepare ReAct execution (common logic)
         # If CRM pre-call returned data, mark as trusted (skip evidence check)
@@ -287,6 +313,8 @@ class OrchestratorStreamingCore:
             kg_context_str=kg_context_str,  # Pass pre-fetched KG context
             channel=channel,
             agent_role=agent_role,  # VASSAL Phase 2 — stamps state.agent_role
+            profile=caller_profile,
+            is_whatsapp=is_whatsapp,
         )
 
         # If CRM pre-call has data, mark state so evidence check is skipped
@@ -302,14 +330,21 @@ class OrchestratorStreamingCore:
             system_instruction=system_prompt,
         )
 
+        # The raw WA transport identity is not model/event metadata. The
+        # current query remains the main LLM input by design.
+        execution_user_id = "anonymous" if is_whatsapp else (user_id or "anonymous")
+
         # 5. Execute ReAct loop streaming
-        logger.info("🧠 [Stream] Processing query with ReAct loop for user %s", user_id)
+        logger.info(
+            "🧠 [Stream] Processing query with ReAct loop user_hash=%s",
+            hash_subject(user_id),
+        )
 
         add_span_event(
             "react.stream.start",
             {
                 "model_tier": model_tier,
-                "user_id": user_id,
+                "user_id_hash": hash_subject(user_id),
             },
         )
 
@@ -327,7 +362,7 @@ class OrchestratorStreamingCore:
                 initial_prompt=wrap_query_with_language_instruction(query) + crm_precall_context,
                 system_prompt=system_prompt,
                 query=query,
-                user_id=user_id or "anonymous",
+                user_id=execution_user_id,
                 model_tier=model_tier,
                 tool_execution_counter=tool_execution_counter,
                 images=images,
@@ -348,7 +383,7 @@ class OrchestratorStreamingCore:
                 async for event in self.streaming_manager.process_event_stream(
                     event_generator=self._single_event_generator(raw_event),
                     correlation_id=correlation_id,
-                    user_id=user_id,
+                    user_id=execution_user_id,
                 ):
                     yield event
 
@@ -410,7 +445,7 @@ class OrchestratorStreamingCore:
                     QueryAnalyticsRepository,
                 )
 
-                if self.core.db_pool:
+                if not is_whatsapp and self.core.db_pool:
                     repo = QueryAnalyticsRepository(self.core.db_pool)
                     await repo.log_query(
                         query_text=query,
@@ -424,15 +459,18 @@ class OrchestratorStreamingCore:
                     )
             except Exception as analytics_err:
                 logger.warning(
-                    "Failed to log streaming query analytics (non-critical): %s",
-                    analytics_err,
+                    "Failed to log streaming query analytics error_type=%s",
+                    type(analytics_err).__name__,
                 )
 
-        except Exception as e:
-            logger.error("❌ [Stream] ReAct loop failed: %s", e, exc_info=True)
+        except Exception as exc:
+            logger.error(
+                "[Stream] ReAct loop failed error_type=%s",
+                type(exc).__name__,
+            )
             yield self.streaming_manager.create_error_event(
                 error_type="react_loop_error",
-                message=str(e),
+                message="Unable to complete the streamed response.",
                 correlation_id=correlation_id,
             )
         finally:
@@ -444,8 +482,8 @@ class OrchestratorStreamingCore:
                 self._mark_react_stream_unfinalized()
             except Exception as marker_error:
                 logger.warning(
-                    "[FinalizationSpine] stream gap marker failed: %s",
-                    marker_error,
+                    "[FinalizationSpine] stream gap marker failed error_type=%s",
+                    type(marker_error).__name__,
                 )
 
     @staticmethod

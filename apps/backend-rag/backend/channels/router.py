@@ -73,7 +73,13 @@ class ChannelRouter:
         self.adapters[channel_name] = adapter
         logger.info("✅ Registered channel adapter: %s", channel_name)
 
-    async def route_message(self, channel: str, raw_event: dict) -> None:
+    async def route_message(
+        self,
+        channel: str,
+        raw_event: dict,
+        *,
+        trusted_whatsapp_ingress: bool = False,
+    ) -> None:
         """
         Main routing logic.
 
@@ -96,11 +102,21 @@ class ChannelRouter:
             await router.route_message("telegram", telegram_update)
 
             # WhatsApp webhook
-            await router.route_message("whatsapp", whatsapp_event)
+            await router.route_message(
+                "whatsapp",
+                whatsapp_event,
+                trusted_whatsapp_ingress=True,
+            )
 
             # Web API request
             await router.route_message("web", web_request_dict)
         """
+        is_trusted_whatsapp = trusted_whatsapp_ingress is True
+        if (channel == "whatsapp") != is_trusted_whatsapp:
+            raise ValueError(
+                "WhatsApp routes require a server-trusted WhatsApp ingress marker",
+            )
+
         # 1. Get channel adapter
         adapter = self.adapters.get(channel)
         if not adapter:
@@ -118,16 +134,26 @@ class ChannelRouter:
                 logger.debug("Adapter returned None (echo/skip) for %s", channel)
                 return
 
-            logger.info(
-                f"📨 Received message from {message.channel} "
-                f"(user={message.user_id}, text_length={len(message.text)})",
-            )
+            if is_trusted_whatsapp:
+                logger.info(
+                    "📨 Received trusted WhatsApp message (text_length=%d)",
+                    len(message.text),
+                )
+            else:
+                logger.info(
+                    f"📨 Received message from {message.channel} "
+                    f"(user={message.user_id}, text_length={len(message.text)})",
+                )
 
             # 2.5 Deduplication check BEFORE persist (prevents duplicate DB rows)
-            if message_deduplicator and await message_deduplicator.is_duplicate(
-                channel,
-                message.user_id,
-                message.text,
+            if (
+                not is_trusted_whatsapp
+                and message_deduplicator
+                and await message_deduplicator.is_duplicate(
+                    channel,
+                    message.user_id,
+                    message.text,
+                )
             ):
                 logger.warning(
                     f"🔁 Duplicate message dropped: channel={channel}, user={message.user_id}",
@@ -135,17 +161,19 @@ class ChannelRouter:
                 return
 
             # 3. Persist inbound message to conversation history (UU PDP: audit trail)
-            await self._persist_message(
-                channel=channel,
-                direction="inbound",
-                sender_id=message.user_id,
-                content=message.text,
-                metadata=message.metadata,
-                session_id=message.session_id,
-            )
+            if not is_trusted_whatsapp:
+                await self._persist_message(
+                    channel=channel,
+                    direction="inbound",
+                    sender_id=message.user_id,
+                    content=message.text,
+                    metadata=message.metadata,
+                    session_id=message.session_id,
+                )
 
             # 3.5 Omnichannel: resolve identity, classify, thread
-            await self._enrich_with_routing(message, channel)
+            if not is_trusted_whatsapp:
+                await self._enrich_with_routing(message, channel)
 
             # 4. Extract channel-specific ID (chat_id, phone_number, etc.)
             channel_id = self._extract_channel_id(message.metadata)
@@ -163,10 +191,19 @@ class ChannelRouter:
             }
 
             # 7. Process through conversation engine
-            response_stream = self.conversation_engine.process_message(
-                message=message,
-                channel_config=channel_config,
-            )
+            if is_trusted_whatsapp:
+                response_stream = self.conversation_engine.process_message(
+                    message=message,
+                    channel_config=channel_config,
+                    trusted_whatsapp_ingress=True,
+                )
+            else:
+                # Preserve the pre-existing call contract for every non-WA
+                # adapter; only the server-trusted lane receives the marker.
+                response_stream = self.conversation_engine.process_message(
+                    message=message,
+                    channel_config=channel_config,
+                )
 
             # 8. Stream response via adapter, teeing the outbound text so the
             # bot's reply lands in the same audit trail as the inbound message
@@ -178,7 +215,7 @@ class ChannelRouter:
 
             # 8.5 Persist outbound reply (parity with step 3 inbound persist)
             final_text = outbound_tracker["final"] or outbound_tracker["tokens"]
-            if final_text:
+            if final_text and not is_trusted_whatsapp:
                 await self._persist_message(
                     channel=channel,
                     direction="outbound",
@@ -191,7 +228,13 @@ class ChannelRouter:
             logger.info("✅ Successfully routed and processed message from %s", channel)
 
         except Exception as e:
-            logger.error("❌ Error routing message from %s: %s", channel, e, exc_info=True)
+            if is_trusted_whatsapp:
+                logger.error(
+                    "❌ Trusted WhatsApp routing failed (error_type=%s)",
+                    type(e).__name__,
+                )
+            else:
+                logger.error("❌ Error routing message from %s: %s", channel, e, exc_info=True)
             raise
 
     @staticmethod

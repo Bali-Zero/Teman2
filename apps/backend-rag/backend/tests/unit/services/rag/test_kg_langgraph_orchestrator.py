@@ -577,6 +577,35 @@ class TestKGLangGraphOrchestrator:
         assert "error" in result
 
     @pytest.mark.asyncio
+    async def test_query_logs_and_error_payload_never_reflect_raw_values(self, caplog) -> None:
+        """KG diagnostics retain error type without query/exception/traceback data."""
+        from backend.services.rag.kg_langgraph_orchestrator import KGLangGraphOrchestrator
+
+        query_canary = "RAW_KG_QUERY_CANARY passport RAW_ID_CANARY"
+        exception_canary = "RAW_KG_EXCEPTION_CANARY"
+        orch = KGLangGraphOrchestrator(MagicMock())
+        mock_app = AsyncMock()
+        mock_app.ainvoke = AsyncMock(side_effect=RuntimeError(exception_canary))
+        orch.app = mock_app
+
+        with caplog.at_level(
+            "INFO",
+            logger="backend.services.rag.kg_langgraph_orchestrator",
+        ):
+            result = await orch.query(query_canary)
+
+        assert result == {
+            "workflow": None,
+            "error": "kg_query_failed",
+            "error_type": "RuntimeError",
+        }
+        assert query_canary not in caplog.text
+        assert "RAW_ID_CANARY" not in caplog.text
+        assert exception_canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
+
+    @pytest.mark.asyncio
     async def test_query_with_thread_id(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import KGLangGraphOrchestrator
 

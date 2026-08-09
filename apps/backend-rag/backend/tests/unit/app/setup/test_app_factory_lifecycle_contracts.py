@@ -28,6 +28,33 @@ def _close_created_coroutine(coroutine: Any) -> MagicMock:
     return task
 
 
+def _whatsapp_recovery_payload(phone_number_id: str) -> dict[str, Any]:
+    return {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "WABA",
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {
+                            "metadata": {"phone_number_id": phone_number_id},
+                            "messages": [
+                                {
+                                    "id": "wamid.RECOVERY_CANARY",
+                                    "from": "synthetic-phone",
+                                    "type": "text",
+                                    "text": {"body": "public question"},
+                                }
+                            ],
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+
 def _configure_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[SimpleNamespace, dict[str, Any]]:
@@ -160,13 +187,9 @@ async def test_lifespan_critical_service_failure_sets_failed_state_and_stops_sta
     if failure_mode == "import":
         monkeypatch.setitem(sys.modules, "backend.app.setup.service_initializer", None)
     elif failure_mode == "runtime":
-        calls["initialize_services"].side_effect = RuntimeError(
-            "database is unavailable"
-        )
+        calls["initialize_services"].side_effect = RuntimeError("database is unavailable")
     else:
-        calls["initialize_services"].side_effect = ValueError(
-            "service configuration is invalid"
-        )
+        calls["initialize_services"].side_effect = ValueError("service configuration is invalid")
 
     async with app_factory.lifespan(app):
         await app.state._init_task
@@ -265,6 +288,160 @@ async def test_webhook_failure_is_non_critical(
         assert not hasattr(app.state, "webhook_processor")
 
     calls["webhook_start"].assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_official_whatsapp_recovery_reuses_ledger_and_never_channel_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from backend.app.routers import whatsapp_chat
+
+    ledger_handler = AsyncMock(return_value=["wamid.RECOVERY_CANARY"])
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "_process_meta_inbox_payload_with_pool",
+        ledger_handler,
+        raising=False,
+    )
+    channel_router = SimpleNamespace(
+        route_message=AsyncMock(side_effect=AssertionError("ConversationEngine reached"))
+    )
+    db_pool = object()
+    app = SimpleNamespace(state=SimpleNamespace(db_pool=db_pool, channel_router=channel_router))
+
+    await app_factory._recover_whatsapp_webhook(
+        app,
+        _whatsapp_recovery_payload(whatsapp_chat.META_INBOX_PHONE_NUMBER_ID),
+    )
+
+    ledger_handler.assert_awaited_once()
+    assert ledger_handler.await_args.args[1] is db_pool
+    channel_router.route_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_official_whatsapp_recovery_failure_stays_retryable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from backend.app.routers import whatsapp_chat
+
+    ledger_handler = AsyncMock(side_effect=RuntimeError("durable enqueue failed"))
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "_process_meta_inbox_payload_with_pool",
+        ledger_handler,
+        raising=False,
+    )
+    channel_router = SimpleNamespace(route_message=AsyncMock())
+    app = SimpleNamespace(state=SimpleNamespace(db_pool=object(), channel_router=channel_router))
+
+    with pytest.raises(RuntimeError, match="durable enqueue failed"):
+        await app_factory._recover_whatsapp_webhook(
+            app,
+            _whatsapp_recovery_payload(whatsapp_chat.META_INBOX_PHONE_NUMBER_ID),
+        )
+
+    channel_router.route_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_non_official_whatsapp_recovery_uses_server_owned_channel_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from backend.app.routers import whatsapp_chat
+
+    ledger_handler = AsyncMock()
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "_process_meta_inbox_payload_with_pool",
+        ledger_handler,
+        raising=False,
+    )
+    channel_router = SimpleNamespace(route_message=AsyncMock())
+    app = SimpleNamespace(state=SimpleNamespace(db_pool=object(), channel_router=channel_router))
+    payload = _whatsapp_recovery_payload("NON_OFFICIAL_PHONE_ID")
+
+    await app_factory._recover_whatsapp_webhook(app, payload)
+
+    ledger_handler.assert_not_awaited()
+    channel_router.route_message.assert_awaited_once_with(
+        "whatsapp",
+        payload,
+        trusted_whatsapp_ingress=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_mixed_whatsapp_recovery_partitions_official_from_legacy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Official changes never transit the generic channel recovery lane."""
+    from backend.app.routers import whatsapp_chat
+
+    official = _whatsapp_recovery_payload(whatsapp_chat.META_INBOX_PHONE_NUMBER_ID)
+    official_change = official["entry"][0]["changes"][0]
+    legacy = _whatsapp_recovery_payload("NON_OFFICIAL_PHONE_ID")
+    legacy_change = legacy["entry"][0]["changes"][0]
+    legacy_change["value"]["messages"][0]["id"] = "wamid.LEGACY_CANARY"
+    mixed_payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "WABA",
+                "changes": [official_change, legacy_change],
+            },
+        ],
+    }
+
+    ledger_handler = AsyncMock(return_value=["wamid.RECOVERY_CANARY"])
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "_process_meta_inbox_payload_with_pool",
+        ledger_handler,
+        raising=False,
+    )
+    channel_router = SimpleNamespace(route_message=AsyncMock())
+    app = SimpleNamespace(
+        state=SimpleNamespace(db_pool=object(), channel_router=channel_router),
+    )
+
+    await app_factory._recover_whatsapp_webhook(app, mixed_payload)
+
+    official_replay = ledger_handler.await_args.args[0]
+    legacy_replay = channel_router.route_message.await_args.args[1]
+    assert official_replay["entry"][0]["changes"] == [official_change]
+    assert legacy_replay["entry"][0]["changes"] == [legacy_change]
+    assert official_change not in legacy_replay["entry"][0]["changes"]
+    channel_router.route_message.assert_awaited_once_with(
+        "whatsapp",
+        legacy_replay,
+        trusted_whatsapp_ingress=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_recovery_without_phone_number_id_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from backend.app.routers import whatsapp_chat
+
+    ledger_handler = AsyncMock()
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "_process_meta_inbox_payload_with_pool",
+        ledger_handler,
+        raising=False,
+    )
+    channel_router = SimpleNamespace(route_message=AsyncMock())
+    app = SimpleNamespace(state=SimpleNamespace(db_pool=object(), channel_router=channel_router))
+    payload = _whatsapp_recovery_payload("MISSING")
+    del payload["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"]
+
+    with pytest.raises(ValueError, match="phone_number_id"):
+        await app_factory._recover_whatsapp_webhook(app, payload)
+
+    ledger_handler.assert_not_awaited()
+    channel_router.route_message.assert_not_awaited()
 
 
 @pytest.mark.asyncio

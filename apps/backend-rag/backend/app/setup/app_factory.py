@@ -52,6 +52,80 @@ async def _safe_stop(name: str, coro) -> None:
         logger.warning("⚠️ %s stop() error: %s", name, e)
 
 
+def _partition_whatsapp_recovery_payload(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Split verified WhatsApp recovery data by server phone-number scope.
+
+    The persisted payload came from the HMAC-verified Meta webhook. Only
+    ``value.metadata.phone_number_id`` decides whether a change belongs to the
+    official inbox ledger or the legacy Business-number lane. Missing scope is
+    rejected rather than allowed to fall through to an agentic route.
+    """
+    from backend.app.routers.whatsapp_chat import META_INBOX_PHONE_NUMBER_ID
+
+    official_entries: list[dict[str, Any]] = []
+    legacy_entries: list[dict[str, Any]] = []
+
+    for raw_entry in payload.get("entry") or []:
+        if not isinstance(raw_entry, dict):
+            raise ValueError("invalid WhatsApp recovery entry")
+
+        official_changes: list[dict[str, Any]] = []
+        legacy_changes: list[dict[str, Any]] = []
+        for raw_change in raw_entry.get("changes") or []:
+            if not isinstance(raw_change, dict) or raw_change.get("field") != "messages":
+                continue
+            value = raw_change.get("value") or {}
+            metadata = value.get("metadata") or {}
+            phone_number_id = metadata.get("phone_number_id")
+            if phone_number_id is None or not str(phone_number_id).strip():
+                raise ValueError("WhatsApp recovery payload missing phone_number_id")
+            if str(phone_number_id) == META_INBOX_PHONE_NUMBER_ID:
+                official_changes.append(raw_change)
+            else:
+                legacy_changes.append(raw_change)
+
+        entry_base = {key: value for key, value in raw_entry.items() if key != "changes"}
+        if official_changes:
+            official_entries.append({**entry_base, "changes": official_changes})
+        if legacy_changes:
+            legacy_entries.append({**entry_base, "changes": legacy_changes})
+
+    if not official_entries and not legacy_entries:
+        raise ValueError("WhatsApp recovery payload has no scoped message changes")
+
+    payload_base = {key: value for key, value in payload.items() if key != "entry"}
+    official_payload = {**payload_base, "entry": official_entries} if official_entries else None
+    legacy_payload = {**payload_base, "entry": legacy_entries} if legacy_entries else None
+    return official_payload, legacy_payload
+
+
+async def _recover_whatsapp_webhook(app: FastAPI, payload: dict[str, Any]) -> None:
+    """Replay WhatsApp work without crossing the official/legacy boundary."""
+    official_payload, legacy_payload = _partition_whatsapp_recovery_payload(payload)
+
+    if official_payload is not None:
+        from backend.app.routers.whatsapp_chat import (
+            _process_meta_inbox_payload_with_pool,
+        )
+
+        db_pool = getattr(app.state, "db_pool", None)
+        if db_pool is None:
+            raise RuntimeError("database unavailable for WhatsApp ledger recovery")
+        await _process_meta_inbox_payload_with_pool(official_payload, db_pool)
+
+    if legacy_payload is not None:
+        channel_router = getattr(app.state, "channel_router", None)
+        if channel_router is None:
+            raise RuntimeError("ChannelRouter unavailable for WhatsApp recovery")
+        await channel_router.route_message(
+            "whatsapp",
+            legacy_payload,
+            trusted_whatsapp_ingress=True,
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -295,7 +369,7 @@ async def lifespan(app: FastAPI):
                 webhook_processor = WebhookProcessor(
                     db_pool=app.state.db_pool,
                     handlers={
-                        "whatsapp": lambda p: _route_via_channel_router("whatsapp", p),
+                        "whatsapp": lambda p: _recover_whatsapp_webhook(app, p),
                         "telegram": lambda p: _route_via_channel_router("telegram", p),
                         "instagram": lambda p: _route_via_channel_router("instagram", p),
                         "twitter": lambda p: _route_via_channel_router("twitter", p),

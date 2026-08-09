@@ -53,6 +53,8 @@ class ConversationEngine:
         self,
         message: ChannelMessage,
         channel_config: dict[str, Any],
+        *,
+        trusted_whatsapp_ingress: bool = False,
     ) -> AsyncIterator[ChannelResponse]:
         """
         Process a message through the RAG pipeline.
@@ -73,14 +75,21 @@ class ConversationEngine:
                 await channel_adapter.send_response(chat_id, response)
         """
         start_time = time.time()
-        logger.info(
-            f"🔄 Processing message from {message.channel} "
-            f"(user={message.user_id}, session={message.session_id})",
-        )
+        is_trusted_whatsapp = trusted_whatsapp_ingress is True
+        if is_trusted_whatsapp:
+            logger.info("🔄 Processing trusted WhatsApp message")
+        else:
+            logger.info(
+                f"🔄 Processing message from {message.channel} "
+                f"(user={message.user_id}, session={message.session_id})",
+            )
 
         try:
             # 1. Load conversation context
-            context = await self._load_context(message.session_id)
+            if is_trusted_whatsapp:
+                context: dict[str, Any] = {"history": [], "user_state": {}}
+            else:
+                context = await self._load_context(message.session_id)
 
             # 2. Build conversation history. The router persists the inbound
             # row BEFORE this point (audit-first), so on a Redis cache miss
@@ -90,14 +99,14 @@ class ConversationEngine:
 
             # 2.3. Cross-channel memory: inject thread history from other channels
             thread_id = message.metadata.get("thread_id")
-            if thread_id:
+            if thread_id and not is_trusted_whatsapp:
                 cross_channel_context = await self._load_cross_channel_context(thread_id)
                 if cross_channel_context:
                     conversation_history = cross_channel_context + conversation_history
 
             # 2.5. Agent Mesh: inject team member context into conversation
             query_text = message.text
-            agent_ctx = message.metadata.get("agent_mesh")
+            agent_ctx = message.metadata.get("agent_mesh") if not is_trusted_whatsapp else None
             if agent_ctx:
                 agent_name = message.metadata.get("agent_name", "Team Member")
                 agent_role = message.metadata.get("agent_role_display", "")
@@ -138,6 +147,7 @@ class ConversationEngine:
                 conversation_history=conversation_history,
                 images=message.media,
                 channel=message.channel,
+                is_whatsapp=is_trusted_whatsapp,
             ):
                 # Convert orchestrator events → ChannelResponse
                 response = self._convert_event_to_response(event)
@@ -146,19 +156,37 @@ class ConversationEngine:
 
             # 4. Save updated context
             duration = time.time() - start_time
-            await self._save_context(message.session_id, context)
+            if not is_trusted_whatsapp:
+                await self._save_context(message.session_id, context)
 
-            logger.info(
-                f"✅ Message processed in {duration:.2f}s "
-                f"(channel={message.channel}, user={message.user_id})",
-            )
+            if is_trusted_whatsapp:
+                logger.info("✅ Trusted WhatsApp message processed in %.2fs", duration)
+            else:
+                logger.info(
+                    f"✅ Message processed in {duration:.2f}s "
+                    f"(channel={message.channel}, user={message.user_id})",
+                )
 
         except Exception as e:
-            logger.error(f"❌ Error processing message from {message.channel}: {e}", exc_info=True)
+            if is_trusted_whatsapp:
+                logger.error(
+                    "❌ Trusted WhatsApp processing failed (error_type=%s)",
+                    type(e).__name__,
+                )
+                error_metadata = {
+                    "event_type": "error",
+                    "error": "processing_failed",
+                }
+            else:
+                logger.error(
+                    f"❌ Error processing message from {message.channel}: {e}",
+                    exc_info=True,
+                )
+                error_metadata = {"event_type": "error", "error": str(e)}
             # Yield error response
             yield ChannelResponse(
                 text="Mi dispiace, si è verificato un errore. Riprova tra poco.",
-                metadata={"event_type": "error", "error": str(e)},
+                metadata=error_metadata,
             )
 
     def _convert_event_to_response(self, event: dict) -> ChannelResponse | None:

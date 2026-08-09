@@ -3,6 +3,7 @@ Comprehensive test coverage for tool_executor.py
 Target: Maximum coverage for all code paths - Security Critical
 """
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -77,6 +78,22 @@ class TestParseNativeFunctionCall:
         assert result.tool_name == "vector_search"
         assert result.arguments == {"query": "test", "collection": "test_collection"}
 
+    def test_native_parser_never_logs_raw_argument_canary(self, caplog):
+        argument_canary = "PII_CANARY_NATIVE_ARGS_7f5c1"
+        obj = MagicMock()
+        obj.function_call.name = "vector_search"
+        obj.function_call.args = {"query": argument_canary}
+
+        with caplog.at_level(
+            logging.INFO,
+            logger="backend.services.rag.agentic.tool_executor",
+        ):
+            result = parse_native_function_call(obj)
+
+        assert result is not None
+        assert result.arguments == {"query": argument_canary}
+        assert argument_canary not in caplog.text
+
     def test_successful_parsing_empty_args(self):
         """Test successful parsing with empty arguments"""
         obj = MagicMock()
@@ -139,6 +156,20 @@ class TestParseToolCallRegex:
         assert result is not None
         assert result.tool_name == "vector_search"
         assert result.arguments["query"] == "test query"
+
+    def test_regex_parser_never_logs_raw_model_text_canary(self, caplog):
+        model_text_canary = "PII_CANARY_MODEL_TEXT_d9a42"
+        text = f'ACTION: vector_search("{model_text_canary}")'
+
+        with caplog.at_level(
+            logging.DEBUG,
+            logger="backend.services.rag.agentic.tool_executor",
+        ):
+            result = parse_tool_call_regex(text)
+
+        assert result is not None
+        assert result.arguments == {"query": model_text_canary}
+        assert model_text_canary not in caplog.text
 
     def test_web_search_with_single_query_arg(self):
         """Test parsing web_search with single query argument"""
@@ -277,7 +308,7 @@ class TestExecuteTool:
         """Test unknown tool returns error message"""
         tool_map = {"known_tool": MockTool("known_tool")}
         result, duration = await execute_tool(tool_map, "unknown_tool", {})
-        assert "Error: Unknown tool 'unknown_tool'" in result
+        assert result == "The requested tool could not be completed."
         assert isinstance(duration, float)
         assert duration >= 0
 
@@ -336,20 +367,19 @@ class TestExecuteTool:
     async def test_caller_profile_injection(self):
         """WA team-assistant Phase 2 (2026-07-20): caller_profile is injected
         as `_caller_profile`, mirroring the `_user_id` injection above."""
-        tool = MockTool("test_tool")
-        tool_map = {"test_tool": tool}
+        tool = MockTool("calculator")
+        tool_map = {"calculator": tool}
         execute_spy = AsyncMock(return_value="success")
         tool.execute = execute_spy
 
         profile = {"role": "team", "email": "member@balizero.com"}
-        await execute_tool(
-            tool_map, "test_tool", {"arg1": "value1"}, caller_profile=profile
-        )
+        await execute_tool(tool_map, "calculator", {"arg1": "value1"}, caller_profile=profile)
 
         execute_spy.assert_called_once()
         call_kwargs = execute_spy.call_args[1]
         assert call_kwargs["arg1"] == "value1"
         assert call_kwargs["_caller_profile"] == profile
+        assert "_is_whatsapp" not in call_kwargs
 
     @pytest.mark.asyncio
     async def test_no_caller_profile_injection_when_none(self):
@@ -358,26 +388,23 @@ class TestExecuteTool:
         execute_spy = AsyncMock(return_value="success")
         tool.execute = execute_spy
 
-        await execute_tool(
-            tool_map, "test_tool", {"arg1": "value1"}, caller_profile=None
-        )
+        await execute_tool(tool_map, "test_tool", {"arg1": "value1"}, caller_profile=None)
 
         call_kwargs = execute_spy.call_args[1]
         assert "_caller_profile" not in call_kwargs
 
     @pytest.mark.asyncio
     async def test_no_caller_profile_injection_when_empty_dict(self):
-        tool = MockTool("test_tool")
-        tool_map = {"test_tool": tool}
+        tool = MockTool("calculator")
+        tool_map = {"calculator": tool}
         execute_spy = AsyncMock(return_value="success")
         tool.execute = execute_spy
 
-        await execute_tool(
-            tool_map, "test_tool", {"arg1": "value1"}, caller_profile={}
-        )
+        await execute_tool(tool_map, "calculator", {"arg1": "value1"}, caller_profile={})
 
         call_kwargs = execute_spy.call_args[1]
         assert "_caller_profile" not in call_kwargs
+        assert "_is_whatsapp" not in call_kwargs
 
     @pytest.mark.asyncio
     async def test_llm_injected_caller_profile_is_stripped_when_server_has_none(self):
@@ -424,16 +451,14 @@ class TestExecuteTool:
         server has a real one to inject (e.g. a genuine team member's
         request), the server's value must be what reaches the tool —
         never the forged one, and never a merge of both."""
-        tool = MockTool("test_tool")
-        tool_map = {"test_tool": tool}
+        tool = MockTool("calculator")
+        tool_map = {"calculator": tool}
         execute_spy = AsyncMock(return_value="success")
         tool.execute = execute_spy
 
         forged_args = {"arg1": "value1", "_caller_profile": {"role": "creator"}}
         real_profile = {"role": "team", "email": "member@balizero.com"}
-        await execute_tool(
-            tool_map, "test_tool", forged_args, caller_profile=real_profile
-        )
+        await execute_tool(tool_map, "calculator", forged_args, caller_profile=real_profile)
 
         call_kwargs = execute_spy.call_args[1]
         assert call_kwargs["_caller_profile"] == real_profile
@@ -496,8 +521,8 @@ class TestExecuteTool:
 
         result, duration = await execute_tool(tool_map, "test_tool", {})
 
-        assert "Error executing test_tool" in result
-        assert "Invalid value" in result
+        assert result == "The requested tool could not be completed."
+        assert "Invalid value" not in result
         assert isinstance(duration, float)
 
     @pytest.mark.asyncio
@@ -509,8 +534,8 @@ class TestExecuteTool:
 
         result, duration = await execute_tool(tool_map, "test_tool", {})
 
-        assert "Error executing test_tool" in result
-        assert "Runtime error" in result
+        assert result == "The requested tool could not be completed."
+        assert "Runtime error" not in result
 
     @pytest.mark.asyncio
     async def test_key_error_handling(self):
@@ -521,7 +546,7 @@ class TestExecuteTool:
 
         result, duration = await execute_tool(tool_map, "test_tool", {})
 
-        assert "Error executing test_tool" in result
+        assert result == "The requested tool could not be completed."
 
     @pytest.mark.asyncio
     async def test_type_error_handling(self):
@@ -532,8 +557,8 @@ class TestExecuteTool:
 
         result, duration = await execute_tool(tool_map, "test_tool", {})
 
-        assert "Error executing test_tool" in result
-        assert "Type error" in result
+        assert result == "The requested tool could not be completed."
+        assert "Type error" not in result
 
     @pytest.mark.asyncio
     async def test_attribute_error_handling(self):
@@ -544,8 +569,8 @@ class TestExecuteTool:
 
         result, duration = await execute_tool(tool_map, "test_tool", {})
 
-        assert "Error executing test_tool" in result
-        assert "Attribute error" in result
+        assert result == "The requested tool could not be completed."
+        assert "Attribute error" not in result
 
     @pytest.mark.asyncio
     async def test_no_counter_provided(self):

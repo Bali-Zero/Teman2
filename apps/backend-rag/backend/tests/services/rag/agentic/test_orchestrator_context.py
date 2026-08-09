@@ -88,6 +88,46 @@ async def test_prepare_query_context_gracefully_falls_back_on_context_failure() 
 
 
 @pytest.mark.asyncio
+async def test_prepare_query_context_failure_never_logs_or_traces_raw_values(caplog) -> None:
+    """Fallback diagnostics expose only a stable type/static span status."""
+    exception_canary = "RAW_CONTEXT_EXCEPTION_CANARY"
+    user_canary = "RAW_CONTEXT_USER_CANARY"
+    query_canary = "RAW_CONTEXT_QUERY_CANARY"
+    session_canary = "RAW_CONTEXT_SESSION_CANARY"
+    memory_handler = AsyncMock()
+    memory_handler.get_memory_orchestrator.side_effect = RuntimeError(exception_canary)
+    manager = OrchestratorContextManager(
+        db_pool=object(),
+        memory_handler=memory_handler,
+        context_window_manager=AsyncMock(),
+    )
+
+    with (
+        patch(
+            "backend.services.rag.agentic.orchestrator_context.set_span_status",
+        ) as set_span_status,
+        caplog.at_level(
+            "ERROR",
+            logger="backend.services.rag.agentic.orchestrator_context",
+        ),
+    ):
+        context_data = await manager.prepare_query_context(
+            user_id=user_canary,
+            query=query_canary,
+            session_id=session_canary,
+        )
+
+    assert context_data["profile"] == {}
+    rendered_span_calls = repr(set_span_status.call_args_list)
+    for canary in (exception_canary, user_canary, query_canary, session_canary):
+        assert canary not in caplog.text
+        assert canary not in rendered_span_calls
+    assert "error_type=RuntimeError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+    set_span_status.assert_called_with("ERROR", "context_load_failed")
+
+
+@pytest.mark.asyncio
 async def test_get_full_context_returns_context_and_optimized_history() -> None:
     manager = OrchestratorContextManager(
         db_pool=object(),

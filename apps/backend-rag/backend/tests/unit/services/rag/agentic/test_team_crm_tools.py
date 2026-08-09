@@ -22,6 +22,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from backend.services.agents.team_agent_config import ROLE_ADMIN, AgentRole
 from backend.services.rag.agentic import team_crm_tools as tcm
 
 # ---------------------------------------------------------------------------
@@ -100,18 +101,14 @@ class TestResolveTeamCrmScope:
         assert scope.email == "membera@balizero.com"
 
     def test_team_email_lowercased(self):
-        scope = tcm.resolve_team_crm_scope(
-            {"role": "team", "email": "MemberA@Balizero.COM"}
-        )
+        scope = tcm.resolve_team_crm_scope({"role": "team", "email": "MemberA@Balizero.COM"})
         assert scope.email == "membera@balizero.com"
 
     def test_team_admin_email_promotes_to_admin_scope(self, monkeypatch):
         # asya@balizero.com is a CRM_EXTRA_ADMIN_EMAILS entry — a "team"
         # role sender whose DB-resolved email happens to be an admin email
         # must get admin scope, not filtered scope.
-        scope = tcm.resolve_team_crm_scope(
-            {"role": "team", "email": "asya@balizero.com"}
-        )
+        scope = tcm.resolve_team_crm_scope({"role": "team", "email": "asya@balizero.com"})
         assert scope is not None
         assert scope.is_admin is True
 
@@ -207,9 +204,7 @@ async def test_innocence_flag_off_never_touches_db_even_for_team(make_tool, monk
 async def test_innocence_team_without_email_never_touches_db(make_tool):
     pool, conn = _make_pool([])
     tool = make_tool(pool)
-    result = await tool.execute(
-        _caller_profile=TEAM_PROFILE_NO_EMAIL, **_required_kwargs(tool)
-    )
+    result = await tool.execute(_caller_profile=TEAM_PROFILE_NO_EMAIL, **_required_kwargs(tool))
     payload = json.loads(result)
     assert payload["available"] is False
     conn.fetch.assert_not_called()
@@ -223,9 +218,7 @@ async def test_innocence_team_without_email_never_touches_db(make_tool):
 class TestTeamMyClientsTool:
     @pytest.mark.asyncio
     async def test_guilt_team_scope_filters_by_assigned_to(self):
-        pool, conn = _make_pool(
-            [{"id": 1, "full_name": "Client Alpha", "practice_count": 2}]
-        )
+        pool, conn = _make_pool([{"id": 1, "full_name": "Client Alpha", "practice_count": 2}])
         tool = tcm.TeamMyClientsTool(pool)
         result = await tool.execute(_caller_profile=TEAM_PROFILE_A)
         payload = json.loads(result)
@@ -361,9 +354,7 @@ class TestTeamPracticeDetailTool:
             ]
         )
         tool = tcm.TeamPracticeDetailTool(pool)
-        result = await tool.execute(
-            client_name="Alpha", _caller_profile=TEAM_PROFILE_A
-        )
+        result = await tool.execute(client_name="Alpha", _caller_profile=TEAM_PROFILE_A)
         payload = json.loads(result)
         assert payload["available"] is True
         assert len(payload["practices"]) == 1
@@ -377,9 +368,7 @@ class TestTeamPracticeDetailTool:
         fake DB), which is the actual scope-escape-proof property."""
         pool, conn = _make_pool([])  # a real DB scoped to A would find nothing for B's client
         tool = tcm.TeamPracticeDetailTool(pool)
-        result = await tool.execute(
-            client_name="Client Beta", _caller_profile=TEAM_PROFILE_A
-        )
+        result = await tool.execute(client_name="Client Beta", _caller_profile=TEAM_PROFILE_A)
         payload = json.loads(result)
         assert payload["available"] is True
         assert payload["practices"] == []
@@ -445,66 +434,194 @@ def test_create_team_crm_tools_returns_four_tools():
 # ---------------------------------------------------------------------------
 # filter_gemini_tools_for_caller — T-VIS (W0 safety pre-arm, 2026-07-25).
 #
-# The moment WA_TEAM_CRM_TOOLS_ENABLED is armed, create_agentic_rag()
-# appends these 4 tools' Gemini function declarations to the ORCHESTRATOR-
-# WIDE tools list — every caller, including anonymous WhatsApp clients,
-# would otherwise see the team-tool *schemas* even though execute() already
-# denies them at call time. This function strips those declarations from
-# the per-request payload sent to Gemini for any non-team/creator caller,
-# using the SAME trusted profile dict execute()'s _scope_from_kwargs reads.
-# Matches by exact tool name membership in TEAM_CRM_TOOL_NAMES — never a
-# substring — so no unrelated tool can accidentally be dropped.
+# This function strips every sensitive/internal declaration from the
+# per-request payload sent to Gemini for client/unknown callers. That includes
+# the four flag-gated team CRM tools plus the always-registered crm_query,
+# timesheet, and team_knowledge tools. Only the trusted ``is_whatsapp`` marker
+# activates the exact WA L0 allowlist; a non-WA audience profile keeps ordinary
+# tools. Authenticated workspace roles still use canonical RBAC.
 # ---------------------------------------------------------------------------
 
 _FULL_GEMINI_TOOLS = [
-    {"name": "vector_search", "description": "d"},
+    {
+        "name": "vector_search",
+        "description": (
+            "Search all collections, including training_conversations_hybrid "
+            "and bali_zero_pricing_hybrid"
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "collection": {
+                    "type": "STRING",
+                    "enum": [
+                        "visa_oracle",
+                        "legal_unified",
+                        "kbli_2025_final",
+                        "tax_genius",
+                        "bali_zero_pricing_hybrid",
+                        "training_conversations_hybrid",
+                        "immigration_circulars",
+                        "balizero_news",
+                    ],
+                }
+            },
+        },
+    },
     {"name": "crm_query", "description": "d"},
+    {"name": "timesheet", "description": "d"},
+    {"name": "team_knowledge", "description": "d"},
     {"name": "get_pricing", "description": "d"},
+    {"name": "calculator", "description": "d"},
+    {"name": "vision_analysis", "description": "d"},
+    {"name": "generate_image", "description": "d"},
+    {"name": "web_search", "description": "d"},
+    {"name": "knowledge_graph_search", "description": "d"},
     {"name": "team_my_clients", "description": "d"},
     {"name": "team_my_practices", "description": "d"},
     {"name": "team_my_deadlines", "description": "d"},
     {"name": "team_practice_detail", "description": "d"},
 ]
 
+_WA_L0_TOOL_NAMES = {"vector_search", "get_pricing", "calculator"}
+_WA_L0_VECTOR_COLLECTIONS = {
+    "visa_oracle",
+    "legal_unified",
+    "kbli_2025_final",
+    "tax_genius",
+    "immigration_circulars",
+    "balizero_news",
+}
+
+_INTERNAL_GEMINI_TOOL_NAMES = tcm.TEAM_CRM_TOOL_NAMES | frozenset(
+    {"crm_query", "timesheet", "team_knowledge"}
+)
+
 
 class TestFilterGeminiToolsForCaller:
-    # --- GUILT: team-tool declarations must be stripped for non-team callers ---
+    @pytest.mark.parametrize(
+        ("profile", "agent_role"),
+        [
+            (None, None),
+            (None, ROLE_ADMIN),
+            (CLIENT_PROFILE, None),
+            (TEAM_PROFILE_A, ROLE_ADMIN),
+            (ADMIN_PROFILE_CREATOR, ROLE_ADMIN),
+        ],
+    )
+    def test_trusted_whatsapp_surface_exposes_exact_l0_allowlist(
+        self,
+        profile,
+        agent_role,
+    ):
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS,
+            profile,
+            agent_role=agent_role,
+            is_whatsapp=True,
+        )
+        assert {tool["name"] for tool in filtered} == _WA_L0_TOOL_NAMES
+
+    def test_whatsapp_vector_schema_contains_only_public_low_pii_collections(self):
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS,
+            None,
+            agent_role=ROLE_ADMIN,
+            is_whatsapp=True,
+        )
+        vector = next(tool for tool in filtered if tool["name"] == "vector_search")
+        collection_schema = vector["parameters"]["properties"]["collection"]
+        assert set(collection_schema["enum"]) == _WA_L0_VECTOR_COLLECTIONS
+        rendered = json.dumps(vector)
+        assert "training_conversations_hybrid" not in rendered
+        assert "bali_zero_pricing_hybrid" not in rendered
+
+        original = _FULL_GEMINI_TOOLS[0]
+        assert "training_conversations_hybrid" in json.dumps(original)
+        assert "bali_zero_pricing_hybrid" in json.dumps(original)
+
+    # --- GUILT: internal declarations must be stripped for non-team callers ---
 
     def test_guilt_client_profile_strips_all_team_tool_names(self):
         filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, CLIENT_PROFILE)
         names = {t["name"] for t in filtered}
-        assert names.isdisjoint(tcm.TEAM_CRM_TOOL_NAMES)
+        assert names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
 
     def test_guilt_none_profile_strips_all_team_tool_names(self):
         filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, UNKNOWN_PROFILE)
         names = {t["name"] for t in filtered}
-        assert names.isdisjoint(tcm.TEAM_CRM_TOOL_NAMES)
+        assert names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
 
     def test_guilt_unknown_role_strips_all_team_tool_names(self):
+        filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, {"role": "unknown"})
+        names = {t["name"] for t in filtered}
+        assert names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
+
+    # --- GUILT: every non-None profile hides internal tools ---
+
+    @pytest.mark.parametrize("profile", [ADMIN_PROFILE_CREATOR, TEAM_PROFILE_A])
+    def test_guilt_wa_team_or_creator_profile_strips_internal_tools(self, profile):
         filtered = tcm.filter_gemini_tools_for_caller(
-            _FULL_GEMINI_TOOLS, {"role": "unknown"}
+            _FULL_GEMINI_TOOLS,
+            profile,
+        )
+        names = {tool["name"] for tool in filtered}
+        assert names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
+
+    def test_innocence_workspace_agent_role_keeps_every_tool(self):
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS,
+            None,
+            agent_role=ROLE_ADMIN,
+        )
+        assert filtered == _FULL_GEMINI_TOOLS
+
+    def test_workspace_role_sees_only_canonical_allowlist(self):
+        restricted_role = AgentRole(
+            role_id="synthetic_restricted",
+            display_name="Synthetic",
+            language="en",
+            system_context="synthetic",
+            allowed_read_tools=["vector_search", "team_knowledge"],
+        )
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS,
+            None,
+            agent_role=restricted_role,
+        )
+        assert {tool["name"] for tool in filtered} == {
+            "vector_search",
+            "team_knowledge",
+        }
+
+    @pytest.mark.parametrize(
+        "profile",
+        [CLIENT_PROFILE, TEAM_PROFILE_A, ADMIN_PROFILE_CREATOR, {"role": "unknown"}],
+    )
+    def test_guilt_wa_profile_is_not_overridden_by_admin_role(self, profile):
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS,
+            profile,
+            agent_role=ROLE_ADMIN,
         )
         names = {t["name"] for t in filtered}
-        assert names.isdisjoint(tcm.TEAM_CRM_TOOL_NAMES)
-
-    # --- INNOCENCE: team/creator callers keep the full list unchanged ---
-
-    def test_innocence_creator_profile_keeps_every_tool(self):
-        filtered = tcm.filter_gemini_tools_for_caller(
-            _FULL_GEMINI_TOOLS, ADMIN_PROFILE_CREATOR
-        )
-        assert filtered == _FULL_GEMINI_TOOLS
-
-    def test_innocence_team_profile_keeps_every_tool(self):
-        filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, TEAM_PROFILE_A)
-        assert filtered == _FULL_GEMINI_TOOLS
+        assert names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
+        assert "web_search" in names
 
     # --- INNOCENCE: non-team tools are never collateral-dropped ---
 
     def test_innocence_non_team_tools_survive_client_filter(self):
         filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, CLIENT_PROFILE)
         names = {t["name"] for t in filtered}
-        assert names == {"vector_search", "crm_query", "get_pricing"}
+        assert names == {
+            tool["name"]
+            for tool in _FULL_GEMINI_TOOLS
+            if tool["name"] not in _INTERNAL_GEMINI_TOOL_NAMES
+        }
+        assert next(tool for tool in filtered if tool["name"] == "web_search") == {
+            "name": "web_search",
+            "description": "d",
+        }
 
     # --- Edge cases ---
 
@@ -518,11 +635,15 @@ class TestFilterGeminiToolsForCaller:
         raise on None input."""
         assert tcm.filter_gemini_tools_for_caller(None, CLIENT_PROFILE) == []
 
-    def test_flag_off_scenario_is_a_no_op_for_any_profile(self):
-        """When the flag is off, the tools list passed in never contains
-        team names in the first place (create_agentic_rag never appended
-        them) — filtering must be a pure no-op, not accidentally strip
-        something else."""
+    def test_flag_off_still_hides_always_registered_sensitive_tools(self):
+        """The default-off flag removes the four team CRM tools, but generic
+        sensitive tools remain in the shared registry and still need request
+        scoping for a client."""
         no_team_tools = [t for t in _FULL_GEMINI_TOOLS if t["name"] not in tcm.TEAM_CRM_TOOL_NAMES]
         filtered = tcm.filter_gemini_tools_for_caller(no_team_tools, CLIENT_PROFILE)
-        assert filtered == no_team_tools
+        names = {t["name"] for t in filtered}
+        assert names == {
+            tool["name"]
+            for tool in no_team_tools
+            if tool["name"] not in _INTERNAL_GEMINI_TOOL_NAMES
+        }

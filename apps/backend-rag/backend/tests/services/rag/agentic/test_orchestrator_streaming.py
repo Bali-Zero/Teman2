@@ -36,7 +36,7 @@ async def _events(items: list[Any]):
         yield item
 
 
-def test_create_error_event_includes_traceable_payload() -> None:
+def test_create_error_event_exposes_only_generic_message() -> None:
     manager = OrchestratorStreamingManager()
 
     event = manager.create_error_event(
@@ -46,10 +46,7 @@ def test_create_error_event_includes_traceable_payload() -> None:
     )
 
     assert event["type"] == "error"
-    assert event["data"]["error_type"] == "validation"
-    assert event["data"]["message"] == "Malformed event"
-    assert event["data"]["correlation_id"] == "corr-1"
-    assert isinstance(event["data"]["timestamp"], float)
+    assert event["data"] == {"message": "Malformed event"}
     assert isinstance(event["timestamp"], float)
 
 
@@ -90,9 +87,55 @@ async def test_process_event_stream_aborts_after_malformed_events(metrics: _Metr
 
     assert len(events) == 1
     assert events[0]["type"] == "error"
-    assert events[0]["data"]["error_type"] == "too_many_errors"
+    assert events[0]["data"] == {"message": "Stream aborted due to too many malformed events"}
     assert metrics.stream_event_none_total.count == 1
     assert metrics.stream_event_invalid_type_total.count == 1
+
+
+def test_validation_failure_does_not_log_raw_event(
+    metrics: _Metrics,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    manager = OrchestratorStreamingManager()
+    raw_event_canary = "SYNTHETIC_RAW_STREAM_EVENT_CANARY_1c4a"
+
+    assert manager.validate_event({"type": [], "data": raw_event_canary}, "corr") is None
+
+    assert raw_event_canary not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_processing_exception_is_generic_in_log_and_sse(
+    metrics: _Metrics,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    manager = OrchestratorStreamingManager(max_event_errors=1)
+    exception_canary = "SYNTHETIC_RAW_STREAM_EXCEPTION_CANARY_77b2"
+    user_canary = "SYNTHETIC_RAW_STREAM_USER_CANARY_3a0d"
+
+    def fail_validation(_raw_event: Any, _correlation_id: str) -> None:
+        raise RuntimeError(exception_canary)
+
+    monkeypatch.setattr(manager, "validate_event", fail_validation)
+    events = [
+        event
+        async for event in manager.process_event_stream(
+            _events([{"type": "token", "data": "unused"}]),
+            correlation_id="corr-safe",
+            user_id=user_canary,
+        )
+    ]
+
+    assert events == [
+        {
+            "type": "error",
+            "data": {"message": "Unable to process the streamed response."},
+            "timestamp": events[0]["timestamp"],
+        }
+    ]
+    assert exception_canary not in caplog.text
+    assert user_canary not in caplog.text
 
 
 def test_status_done_and_metadata_event_factories() -> None:

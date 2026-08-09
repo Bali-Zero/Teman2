@@ -651,7 +651,10 @@ class IntentClassifier:
                 return result
 
             # Fast heuristic fallback: short messages → Fast
-            logger.info(f"🏷️ [IntentClassifier] Fallback classification for: '{message[:50]}...'")
+            logger.info(
+                "🏷️ [IntentClassifier] Fallback classification message_length=%d",
+                len(message),
+            )
 
             # Smarter fallback: only classify as casual if short AND no business keywords
             if len(message) < 50 and not any(kw in message_lower for kw in BUSINESS_KEYWORDS):

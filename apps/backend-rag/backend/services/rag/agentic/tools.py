@@ -19,12 +19,14 @@ The LLM decides which collection to search based on the tool description.
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
 import httpx
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.services.agents.tool_authorizer import WA_L0_VECTOR_COLLECTIONS
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.vision_rag import VisionRAGService
 from backend.services.tools.definitions import BaseTool
@@ -67,6 +69,580 @@ AVAILABLE_COLLECTIONS = [
     "immigration_circulars",  # Kemnaker/Imigrasi circulars
     "balizero_news",  # BaliZero intel articles: immigration, tax, bali news, business regulations
 ]
+
+_WA_URL_RE = re.compile(r"https?://[^\s)\]}>\"']+", re.IGNORECASE)
+
+_WA_ID_METADATA_PREFIXES = (
+    ("doc",),
+    ("document",),
+    ("file",),
+    ("drive",),
+    ("drive", "document"),
+    ("drive", "file"),
+    ("google", "drive"),
+    ("google", "drive", "document"),
+    ("google", "drive", "file"),
+    ("internal",),
+    ("source",),
+    ("source", "document"),
+    ("source", "file"),
+    ("source", "metadata"),
+    ("metadata",),
+    ("internal", "document"),
+    ("internal", "file"),
+)
+_WA_URL_METADATA_PREFIXES = (
+    (),
+    ("doc",),
+    ("document",),
+    ("file",),
+    ("source",),
+    ("drive",),
+    ("google", "drive"),
+    ("internal",),
+    ("internal", "source"),
+    ("internal", "metadata"),
+    ("metadata",),
+)
+
+
+def _wa_rag_metadata_label_words() -> tuple[tuple[str, ...], ...]:
+    """Return canonical metadata labels before separator/case normalization."""
+    labels = {
+        ("source",),
+        ("metadata",),
+        ("source", "metadata"),
+        ("source", "metadata", "inline"),
+        ("internal", "metadata"),
+        ("internal", "source"),
+        ("internal", "source", "metadata"),
+        ("internal", "copy"),
+        ("collection",),
+        ("collection", "id"),
+        ("collection", "name"),
+        ("source", "collection"),
+        ("internal", "collection"),
+        ("google", "drive"),
+        ("drive", "file"),
+    }
+    labels.update(prefix + ("id",) for prefix in _WA_ID_METADATA_PREFIXES)
+    labels.update(prefix + ("url",) for prefix in _WA_URL_METADATA_PREFIXES)
+    return tuple(sorted(labels, key=lambda words: (-len(words), words)))
+
+
+def _wa_metadata_label_pattern(labels: tuple[tuple[str, ...], ...]) -> str:
+    """Build one bounded pattern for snake/kebab/space/camel label variants."""
+    token_separator = r"[\s_-]*"
+    variants = (token_separator.join(re.escape(word) for word in words) for words in labels)
+    return "|".join(sorted(variants, key=len, reverse=True))
+
+
+_WA_RAG_METADATA_LABEL_WORDS = _wa_rag_metadata_label_words()
+_WA_RAG_METADATA_LABEL_PATTERN = _wa_metadata_label_pattern(_WA_RAG_METADATA_LABEL_WORDS)
+_WA_RAG_TECHNICAL_LABEL_WORDS = tuple(
+    words for words in _WA_RAG_METADATA_LABEL_WORDS if len(words) > 1
+)
+_WA_RAG_TECHNICAL_LABEL_PATTERN = _wa_metadata_label_pattern(_WA_RAG_TECHNICAL_LABEL_WORDS)
+_WA_RAG_METADATA_CANONICAL_LABELS = frozenset(
+    "".join(words) for words in _WA_RAG_METADATA_LABEL_WORDS
+)
+_WA_RAG_SINGLE_WORD_METADATA_CANONICAL_LABELS = frozenset(
+    "".join(words) for words in _WA_RAG_METADATA_LABEL_WORDS if len(words) == 1
+)
+
+# Structural parsing canonicalizes a complete candidate before accepting it as
+# metadata. These two patterns remain only as a compatibility fallback for
+# legacy inline, undecorated markers such as "Public rule. Internal copy: ...".
+_WA_RAG_EXPLICIT_METADATA_MARKER_RE = re.compile(
+    rf"(?<![A-Za-z0-9_-])(?i:(?:{_WA_RAG_METADATA_LABEL_PATTERN}))"
+    rf"[ \t]*(?:->|[:=])[ \t]*"
+)
+_WA_RAG_TECHNICAL_DASH_MARKER_RE = re.compile(
+    rf"(?<![A-Za-z0-9_-])(?i:(?:{_WA_RAG_TECHNICAL_LABEL_PATTERN}))"
+    rf"[ \t]*-[ \t]*"
+)
+_WA_RAG_HTML_TAG_RE = re.compile(r"</?[A-Za-z][^<>]*>")
+_WA_RAG_LEADING_SCAFFOLD_RE = re.compile(r"^[ \t]*(?:\[\d+\]|\d+[.)])[ \t]*")
+_WA_RAG_NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
+_WA_RAG_STRONG_METADATA_DELIMITER_RE = re.compile(r"(?i:<br\s*/?>)|->|[:=]")
+_WA_RAG_DASH_METADATA_DELIMITER_RE = re.compile(r"-")
+_WA_RAG_WHITESPACE_METADATA_DELIMITER_RE = re.compile(r"[ \t]+")
+_WA_RAG_HTML_TABLE_RE = re.compile(r"(?is)<table\b[^>]*>.*?</table\s*>")
+_WA_RAG_HTML_THEAD_RE = re.compile(r"(?is)<thead\b[^>]*>.*?</thead\s*>")
+_WA_RAG_HTML_ROW_RE = re.compile(r"(?is)<tr\b[^>]*>.*?</tr\s*>")
+_WA_RAG_HTML_CELL_RE = re.compile(r"(?is)<(?P<tag>th|td)\b[^>]*>(?P<body>.*?)</(?P=tag)\s*>")
+_WA_RAG_MARKDOWN_ALIGNMENT_CELL_RE = re.compile(r"^[ \t]*:?-{3,}:?[ \t]*$")
+_WA_INTERNAL_TITLE_MARKERS = (
+    "internal",
+    "collection",
+    "chunk",
+    "doc_id",
+    "document id",
+    "file_id",
+    "file id",
+)
+
+
+def _canonicalize_wa_rag_metadata_candidate(value: str) -> str:
+    """Normalize decoration away while retaining exact label semantics."""
+    without_scaffolding = _WA_RAG_LEADING_SCAFFOLD_RE.sub("", value)
+    without_tags = _WA_RAG_HTML_TAG_RE.sub("", without_scaffolding)
+    return _WA_RAG_NON_ALNUM_RE.sub("", without_tags.lower())
+
+
+def _is_wa_rag_metadata_label(value: str) -> bool:
+    """Return whether a complete decorated value is one canonical label."""
+    return _canonicalize_wa_rag_metadata_candidate(value) in _WA_RAG_METADATA_CANONICAL_LABELS
+
+
+def _wa_rag_delimiter_is_outside_html_tag(segment: str, start: int) -> bool:
+    """Ignore punctuation inside an HTML tag while parsing label delimiters."""
+    last_open = segment.rfind("<", 0, start + 1)
+    last_close = segment.rfind(">", 0, start + 1)
+    return last_open <= last_close
+
+
+def _looks_like_wa_rag_metadata_value(value: str) -> bool:
+    """Recognize identifier-shaped values for the ambiguous whitespace grammar."""
+    without_tags = _WA_RAG_HTML_TAG_RE.sub("", value).lstrip()
+    if not without_tags:
+        return False
+    if without_tags.startswith(("http://", "https://", "{", "[")):
+        return True
+
+    first_token = without_tags.split(maxsplit=1)[0].strip("*`'\"[](){}<>#,;:=")
+    if not first_token:
+        return False
+    if first_token.startswith(("http://", "https://")):
+        return True
+    if "_" in first_token or "/" in first_token or "\\" in first_token:
+        return True
+    if any(character.isdigit() for character in first_token):
+        return True
+    uppercase_count = sum(character.isupper() for character in first_token)
+    lowercase_count = sum(character.islower() for character in first_token)
+    return len(first_token) >= 12 and uppercase_count >= 2 and lowercase_count >= 2
+
+
+def _find_delimited_wa_rag_metadata_marker_end(
+    segment: str,
+    delimiter_pattern: re.Pattern[str],
+    *,
+    require_identifier_value: bool,
+    protect_unspaced_single_label: bool = False,
+) -> int | None:
+    """Return the longest exact label candidate for one delimiter class."""
+    candidates: list[tuple[int, int]] = []
+    for delimiter in delimiter_pattern.finditer(segment):
+        delimiter_text = delimiter.group(0).lower()
+        if not delimiter_text.startswith("<br") and not _wa_rag_delimiter_is_outside_html_tag(
+            segment, delimiter.start()
+        ):
+            continue
+        canonical_candidate = _canonicalize_wa_rag_metadata_candidate(segment[: delimiter.start()])
+        if canonical_candidate not in _WA_RAG_METADATA_CANONICAL_LABELS:
+            continue
+        value = segment[delimiter.end() :]
+        value_is_identifier = _looks_like_wa_rag_metadata_value(value)
+        if require_identifier_value and not value_is_identifier:
+            continue
+        if (
+            protect_unspaced_single_label
+            and canonical_candidate in _WA_RAG_SINGLE_WORD_METADATA_CANONICAL_LABELS
+            and delimiter.start() > 0
+            and not segment[delimiter.start() - 1].isspace()
+            and delimiter.end() < len(segment)
+            and not segment[delimiter.end()].isspace()
+            and not value_is_identifier
+        ):
+            continue
+        candidates.append((delimiter.start(), delimiter.end()))
+
+    if not candidates:
+        return None
+    return max(candidates, key=lambda candidate: candidate[0])[1]
+
+
+def _find_structural_wa_rag_metadata_marker(
+    raw_line: str,
+    cursor: int,
+) -> tuple[int, int] | None:
+    """Find exact-canonical metadata at a line, pipe, or semicolon boundary."""
+    boundary_starts = (0, *(match.start() for match in re.finditer(r"[|;]", raw_line)))
+    for marker_start in boundary_starts:
+        if marker_start < cursor:
+            continue
+
+        content_start = marker_start
+        if marker_start < len(raw_line) and raw_line[marker_start] in "|;":
+            content_start += 1
+        next_boundary = re.search(r"[|;]", raw_line[content_start:])
+        segment_end = (
+            len(raw_line) if next_boundary is None else content_start + next_boundary.start()
+        )
+        segment = raw_line[content_start:segment_end]
+
+        strong_marker_end = _find_delimited_wa_rag_metadata_marker_end(
+            segment,
+            _WA_RAG_STRONG_METADATA_DELIMITER_RE,
+            require_identifier_value=False,
+        )
+        if strong_marker_end is not None:
+            return marker_start, content_start + strong_marker_end
+
+        dash_marker_end = _find_delimited_wa_rag_metadata_marker_end(
+            segment,
+            _WA_RAG_DASH_METADATA_DELIMITER_RE,
+            require_identifier_value=False,
+            protect_unspaced_single_label=True,
+        )
+        if dash_marker_end is not None:
+            return marker_start, content_start + dash_marker_end
+
+        whitespace_marker_end = _find_delimited_wa_rag_metadata_marker_end(
+            segment,
+            _WA_RAG_WHITESPACE_METADATA_DELIMITER_RE,
+            require_identifier_value=True,
+        )
+        if whitespace_marker_end is not None:
+            return marker_start, content_start + whitespace_marker_end
+
+    return None
+
+
+def _find_wa_rag_metadata_marker(
+    raw_line: str,
+    cursor: int,
+) -> tuple[int, int] | None:
+    """Return the earliest complete metadata label+delimiter marker."""
+    matches = [
+        marker.span()
+        for pattern in (
+            _WA_RAG_EXPLICIT_METADATA_MARKER_RE,
+            _WA_RAG_TECHNICAL_DASH_MARKER_RE,
+        )
+        if (marker := pattern.search(raw_line, cursor)) is not None
+    ]
+    structural_marker = _find_structural_wa_rag_metadata_marker(raw_line, cursor)
+    if structural_marker is not None:
+        matches.append(structural_marker)
+    if not matches:
+        return None
+    return min(matches, key=lambda marker: (marker[0], -marker[1]))
+
+
+def _minimize_wa_rag_line(raw_line: str) -> str:
+    """Remove inline and structural metadata from one non-table line."""
+    # A marker begins a metadata segment. Its value runs to the next
+    # structural pipe/semicolon or the end of the line. Iterating lets us
+    # retain public segments on either side without ever retaining a partial
+    # snake/kebab/camel label.
+    public_segments: list[str] = []
+    cursor = 0
+    while marker := _find_wa_rag_metadata_marker(raw_line, cursor):
+        marker_start, marker_end = marker
+        prefix = raw_line[cursor:marker_start].rstrip(" |;,:\t")
+        if prefix.strip():
+            public_segments.append(prefix.strip())
+
+        segment_boundary = re.search(r"[|;]", raw_line[marker_end:])
+        if segment_boundary is None:
+            cursor = len(raw_line)
+            break
+        # Keep the structural boundary under the next search cursor so a
+        # following dash/whitespace-only metadata segment is recognized.
+        cursor = marker_end + segment_boundary.start()
+    else:
+        remainder = raw_line[cursor:].strip(" |;,:\t")
+        if remainder:
+            public_segments.append(remainder)
+
+    return _WA_URL_RE.sub("", " ".join(public_segments)).strip()
+
+
+def _with_original_cell_padding(raw_cell: str, public_cell: str) -> str:
+    """Put sanitized cell content back without changing table spacing."""
+    leading = raw_cell[: len(raw_cell) - len(raw_cell.lstrip())]
+    trailing = raw_cell[len(raw_cell.rstrip()) :]
+    return f"{leading}{public_cell}{trailing}"
+
+
+def _parse_wa_rag_markdown_table_row(
+    raw_line: str,
+) -> tuple[list[str], list[str], bool, bool] | None:
+    """Return raw Markdown pipe-row parts and logical cells when structural."""
+    if "|" not in raw_line:
+        return None
+
+    parts = re.split(r"(?<!\\)\|", raw_line)
+    has_leading_pipe = re.match(r"^[ \t]*\|", raw_line) is not None
+    has_trailing_pipe = re.search(r"\|[ \t]*$", raw_line) is not None
+    first_cell = 1 if has_leading_pipe else 0
+    last_cell = len(parts) - 1 if has_trailing_pipe else len(parts)
+    cells = parts[first_cell:last_cell]
+    if len(cells) < 2:
+        return None
+
+    has_metadata_cell = any(_is_wa_rag_metadata_label(cell) for cell in cells)
+    if not (has_leading_pipe and has_trailing_pipe) and not has_metadata_cell:
+        return None
+    return parts, cells, has_leading_pipe, has_trailing_pipe
+
+
+def _render_wa_rag_markdown_table_row(
+    parts: list[str],
+    cells: list[str],
+    has_leading_pipe: bool,
+    has_trailing_pipe: bool,
+) -> str:
+    """Render selected raw cells while retaining outer pipes and whitespace."""
+    leading = f"{parts[0]}|" if has_leading_pipe else ""
+    trailing = f"|{parts[-1]}" if has_trailing_pipe else ""
+    return f"{leading}{'|'.join(cells)}{trailing}"
+
+
+def _is_wa_rag_markdown_alignment_row(cells: list[str]) -> bool:
+    """Return whether every cell is a Markdown table alignment marker."""
+    return bool(cells) and all(_WA_RAG_MARKDOWN_ALIGNMENT_CELL_RE.fullmatch(cell) for cell in cells)
+
+
+def _sanitize_wa_rag_markdown_table_row(raw_line: str) -> str | None:
+    """Remove canonical label/value cell pairs from a Markdown pipe row."""
+    parsed_row = _parse_wa_rag_markdown_table_row(raw_line)
+    if parsed_row is None:
+        return None
+    parts, cells, has_leading_pipe, has_trailing_pipe = parsed_row
+
+    # Alignment markers carry no content and must retain their colon syntax.
+    if _is_wa_rag_markdown_alignment_row(cells):
+        return raw_line
+
+    public_cells: list[str] = []
+    cell_index = 0
+    while cell_index < len(cells):
+        raw_cell = cells[cell_index]
+        if _is_wa_rag_metadata_label(raw_cell):
+            # A structural metadata label cell owns the following value cell.
+            cell_index += 1
+            if cell_index < len(cells) and not _is_wa_rag_metadata_label(cells[cell_index]):
+                cell_index += 1
+            continue
+
+        minimized_cell = _minimize_wa_rag_line(raw_cell.strip())
+        if minimized_cell:
+            public_cells.append(
+                raw_cell
+                if minimized_cell == raw_cell.strip()
+                else _with_original_cell_padding(raw_cell, minimized_cell)
+            )
+        cell_index += 1
+
+    if not public_cells:
+        return ""
+
+    return _render_wa_rag_markdown_table_row(
+        parts,
+        public_cells,
+        has_leading_pipe,
+        has_trailing_pipe,
+    )
+
+
+def _sanitize_wa_rag_markdown_table_block(
+    raw_lines: list[str],
+    start: int,
+) -> tuple[list[str], int] | None:
+    """Remove metadata-owned columns from one complete Markdown table block."""
+    if start + 1 >= len(raw_lines):
+        return None
+    parsed_header = _parse_wa_rag_markdown_table_row(raw_lines[start])
+    parsed_alignment = _parse_wa_rag_markdown_table_row(raw_lines[start + 1])
+    if parsed_header is None or parsed_alignment is None:
+        return None
+
+    header_cells = parsed_header[1]
+    alignment_cells = parsed_alignment[1]
+    if len(header_cells) != len(alignment_cells) or not _is_wa_rag_markdown_alignment_row(
+        alignment_cells
+    ):
+        return None
+
+    block_end = start + 2
+    while block_end < len(raw_lines):
+        parsed_row = _parse_wa_rag_markdown_table_row(raw_lines[block_end])
+        if parsed_row is None:
+            break
+        block_end += 1
+
+    private_columns = {
+        cell_index
+        for cell_index, header_cell in enumerate(header_cells)
+        if _is_wa_rag_metadata_label(header_cell)
+    }
+    if not private_columns:
+        return raw_lines[start:block_end], block_end
+
+    public_columns = [
+        cell_index for cell_index in range(len(header_cells)) if cell_index not in private_columns
+    ]
+    if not public_columns:
+        return [], block_end
+
+    sanitized_lines: list[str] = []
+    for raw_line in raw_lines[start:block_end]:
+        parsed_row = _parse_wa_rag_markdown_table_row(raw_line)
+        if parsed_row is None:
+            continue
+        parts, cells, has_leading_pipe, has_trailing_pipe = parsed_row
+        public_cells = [cells[index] for index in public_columns if index < len(cells)]
+        if public_cells:
+            sanitized_lines.append(
+                _render_wa_rag_markdown_table_row(
+                    parts,
+                    public_cells,
+                    has_leading_pipe,
+                    has_trailing_pipe,
+                )
+            )
+    return sanitized_lines, block_end
+
+
+def _sanitize_wa_rag_html_table_row(raw_row: str) -> str:
+    """Remove canonical label/value cell pairs from one simple HTML row."""
+    cells = list(_WA_RAG_HTML_CELL_RE.finditer(raw_row))
+    if not cells or not any(_is_wa_rag_metadata_label(cell.group("body")) for cell in cells):
+        return raw_row
+
+    public_cells: list[str] = []
+    cell_index = 0
+    while cell_index < len(cells):
+        cell = cells[cell_index]
+        if _is_wa_rag_metadata_label(cell.group("body")):
+            cell_index += 1
+            if cell_index < len(cells) and not _is_wa_rag_metadata_label(
+                cells[cell_index].group("body")
+            ):
+                cell_index += 1
+            continue
+        public_cells.append(cell.group(0))
+        cell_index += 1
+
+    if not public_cells:
+        return ""
+    return f"{raw_row[: cells[0].start()]}{''.join(public_cells)}{raw_row[cells[-1].end() :]}"
+
+
+def _sanitize_wa_rag_html_table(raw_table: str) -> str:
+    """Strip metadata pairs or metadata-owned columns from a simple HTML table."""
+    rows = list(_WA_RAG_HTML_ROW_RE.finditer(raw_table))
+    thead_ranges = [
+        (section.start(), section.end()) for section in _WA_RAG_HTML_THEAD_RE.finditer(raw_table)
+    ]
+
+    def is_structural_header_row(row: re.Match[str]) -> bool:
+        cells = list(_WA_RAG_HTML_CELL_RE.finditer(row.group(0)))
+        in_thead = any(start <= row.start() < end for start, end in thead_ranges)
+        return bool(cells) and (
+            in_thead or all(cell.group("tag").lower() == "th" for cell in cells)
+        )
+
+    header_row = next(
+        (row for row in rows if is_structural_header_row(row)),
+        None,
+    )
+    if header_row is not None and len(rows) > 1:
+        header_cells = list(_WA_RAG_HTML_CELL_RE.finditer(header_row.group(0)))
+        private_columns = {
+            cell_index
+            for cell_index, cell in enumerate(header_cells)
+            if cell.group("tag").lower() == "th" and _is_wa_rag_metadata_label(cell.group("body"))
+        }
+        if private_columns:
+            public_columns = [
+                cell_index
+                for cell_index in range(len(header_cells))
+                if cell_index not in private_columns
+            ]
+            if not public_columns:
+                return ""
+
+            def remove_private_columns(row_match: re.Match[str]) -> str:
+                raw_row = row_match.group(0)
+                cells = list(_WA_RAG_HTML_CELL_RE.finditer(raw_row))
+                public_cells = [
+                    cell.group(0)
+                    for cell_index, cell in enumerate(cells)
+                    if cell_index in public_columns
+                ]
+                if not public_cells:
+                    return ""
+                return (
+                    f"{raw_row[: cells[0].start()]}"
+                    f"{''.join(public_cells)}"
+                    f"{raw_row[cells[-1].end() :]}"
+                )
+
+            return _WA_RAG_HTML_ROW_RE.sub(remove_private_columns, raw_table)
+
+    sanitized_table = _WA_RAG_HTML_ROW_RE.sub(
+        lambda row: _sanitize_wa_rag_html_table_row(row.group(0)),
+        raw_table,
+    )
+    if (
+        _WA_RAG_HTML_ROW_RE.search(sanitized_table) is None
+        and not _WA_RAG_HTML_TAG_RE.sub("", sanitized_table).strip()
+    ):
+        return ""
+    return sanitized_table
+
+
+def _sanitize_wa_rag_html_tables(value: str) -> str:
+    """Apply the bounded row/cell parser to simple HTML tables in a result."""
+    return _WA_RAG_HTML_TABLE_RE.sub(
+        lambda table: _sanitize_wa_rag_html_table(table.group(0)),
+        value,
+    )
+
+
+def _minimize_wa_rag_text(value: Any) -> str:
+    """Remove transport/source metadata before WA model observation.
+
+    The retrieved legal prose remains intact, including semantic regulation
+    names/citations. Raw URLs and explicit RAG scaffolding do not cross the
+    tool-result boundary.
+    """
+    minimized_lines: list[str] = []
+    table_sanitized_value = _sanitize_wa_rag_html_tables(str(value or ""))
+    raw_lines = table_sanitized_value.splitlines()
+    line_index = 0
+    while line_index < len(raw_lines):
+        table_block = _sanitize_wa_rag_markdown_table_block(raw_lines, line_index)
+        if table_block is not None:
+            sanitized_table_lines, line_index = table_block
+            minimized_lines.extend(line for line in sanitized_table_lines if line.strip())
+            continue
+
+        raw_line = raw_lines[line_index]
+        line_index += 1
+        markdown_row = _sanitize_wa_rag_markdown_table_row(raw_line)
+        public_line = (
+            _WA_URL_RE.sub("", markdown_row).rstrip()
+            if markdown_row is not None
+            else _minimize_wa_rag_line(raw_line)
+        )
+        if public_line.strip():
+            minimized_lines.append(public_line)
+
+    return "\n".join(minimized_lines).strip()
+
+
+def _public_wa_title(value: Any) -> str:
+    """Return a minimal public title, never an internal source label."""
+    title = _minimize_wa_rag_text(value)
+    lowered = title.lower()
+    if not title or any(marker in lowered for marker in _WA_INTERNAL_TITLE_MARKERS):
+        return "Public legal reference"
+    return title
 
 
 class VectorSearchTool(BaseTool):
@@ -135,18 +711,42 @@ class VectorSearchTool(BaseTool):
         If collection is specified: search only that collection.
         If collection is None: federated search across ALL collections.
         """
+        is_whatsapp = kwargs.get("_is_whatsapp") is True
+        requested_collection_trace = (
+            ("wa_explicit" if is_whatsapp and collection else "wa_federated")
+            if is_whatsapp
+            else (collection or "federated_all")
+        )
+
         with trace_span(
             "tool.vector_search",
             {
                 "query_length": len(query),
-                "requested_collection": collection or "federated_all",
+                "requested_collection": requested_collection_trace,
                 "top_k": top_k,
             },
         ):
             top_k = int(top_k) if top_k else 8
 
             # Determine which collections to search
-            if collection:
+            if is_whatsapp and collection not in (None, ""):
+                if collection not in WA_L0_VECTOR_COLLECTIONS:
+                    logger.warning("WA vector search denied unavailable collection")
+                    return json.dumps(
+                        {
+                            "content": "This knowledge source is not available in this conversation.",
+                            "sources": [],
+                        }
+                    )
+                target_collections = [collection]
+                logger.info("WA vector search selected one public collection")
+            elif is_whatsapp:
+                target_collections = sorted(WA_L0_VECTOR_COLLECTIONS)
+                logger.info(
+                    "WA federated vector search across %d public collections",
+                    len(target_collections),
+                )
+            elif collection:
                 # LLM specified a collection - trust its judgment
                 target_collections = [collection]
                 logger.info("🔍 [Vector Search] LLM selected collection: %s", collection)
@@ -157,7 +757,10 @@ class VectorSearchTool(BaseTool):
                     f"🌐 [Federated Search] Searching all {len(target_collections)} collections",
                 )
 
-            set_span_attribute("collections_searched", str(target_collections))
+            set_span_attribute(
+                "collections_searched",
+                "wa_public_safe_set" if is_whatsapp else len(target_collections),
+            )
 
             all_chunks = []
             seen_content = set()
@@ -199,10 +802,22 @@ class VectorSearchTool(BaseTool):
                             )
                         return target_col, res.get("results", [])
                 except asyncio.TimeoutError:
-                    logger.warning("⏱️ Search timeout for collection %s", target_col)
+                    if is_whatsapp:
+                        logger.warning("WhatsApp vector search timed out")
+                    else:
+                        logger.warning("Vector search timed out")
                     return target_col, []
-                except Exception as e:
-                    logger.warning("Search failed for %s: %s", target_col, e)
+                except Exception as exc:
+                    if is_whatsapp:
+                        logger.warning(
+                            "WhatsApp vector search failed error_type=%s",
+                            type(exc).__name__,
+                        )
+                    else:
+                        logger.warning(
+                            "Vector search failed error_type=%s",
+                            type(exc).__name__,
+                        )
                     return target_col, []
 
             if use_hybrid:
@@ -210,10 +825,7 @@ class VectorSearchTool(BaseTool):
 
             # Structured concurrency (Python 3.11+); _search_collection swallows exceptions.
             async with asyncio.TaskGroup() as tg:
-                col_tasks = [
-                    tg.create_task(_search_collection(col))
-                    for col in target_collections
-                ]
+                col_tasks = [tg.create_task(_search_collection(col)) for col in target_collections]
             search_results = [t.result() for t in col_tasks]
 
             # Process and deduplicate results
@@ -262,23 +874,36 @@ class VectorSearchTool(BaseTool):
                     or metadata.get("id", "")
                 )
 
-                # Include document ID in formatted text if available
-                id_prefix = f"ID: {doc_id}\n" if doc_id else ""
-                formatted_texts.append(
-                    f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}",
-                )
+                if is_whatsapp:
+                    # WA L0 minimization happens before reasoning turns this
+                    # result into the model observation. No raw URL, file/doc
+                    # id, collection/source name, score, or RAG snippet
+                    # metadata enters the model context or SSE observation.
+                    public_title = _public_wa_title(title)
+                    public_text = _minimize_wa_rag_text(text)
+                    public_parts = [public_title]
+                    if public_text:
+                        public_parts.append(public_text)
+                    formatted_texts.append("\n".join(public_parts))
+                    sources_metadata.append({"title": public_title})
+                else:
+                    # Include document ID in formatted text if available
+                    id_prefix = f"ID: {doc_id}\n" if doc_id else ""
+                    formatted_texts.append(
+                        f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}",
+                    )
 
-                sources_metadata.append(
-                    {
-                        "id": i + 1,
-                        "title": title,
-                        "url": metadata.get("url", ""),
-                        "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
-                        "collection": source_col,
-                        "doc_id": doc_id,
-                        "snippet": text[:500],
-                    },
-                )
+                    sources_metadata.append(
+                        {
+                            "id": i + 1,
+                            "title": title,
+                            "url": metadata.get("url", ""),
+                            "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
+                            "collection": source_col,
+                            "doc_id": doc_id,
+                            "snippet": text[:500],
+                        },
+                    )
 
             content_str = "\n\n".join(formatted_texts)
             set_span_status("ok")
@@ -318,8 +943,8 @@ class CalculatorTool(BaseTool):
 
             try:
                 result = safe_evaluate(expression)
-            except SafeMathError as e:
-                return f"Error in mathematical expression: {e}"
+            except SafeMathError:
+                return "Error: unable to evaluate the mathematical expression."
 
             # Format nicely
             if isinstance(result, float):
@@ -329,8 +954,8 @@ class CalculatorTool(BaseTool):
                 f"Result: {result:,}" if isinstance(result, (int, float)) else f"Result: {result}"
             )
 
-        except Exception as e:
-            return f"Calculation error: {e}"
+        except Exception:
+            return "Error: unable to evaluate the mathematical expression."
 
 
 class VisionTool(BaseTool):
@@ -458,12 +1083,12 @@ class PricingTool(BaseTool):
             else:
                 result = self.pricing_service.get_pricing(service_type)
             return str(result)
-        except Exception as e:
-            logger.error("Pricing lookup failed: %s", e)
+        except Exception as exc:
+            logger.error("Pricing lookup failed error_type=%s", type(exc).__name__)
             return str(
                 {
                     "error": True,
-                    "message": f"Pricing lookup failed: {e}",
+                    "message": "Pricing lookup could not be completed.",
                     "action": "DO NOT guess prices — redirect to support",
                 }
             )
@@ -997,7 +1622,6 @@ class TimeSheetTool(BaseTool):
 
         except Exception as e:
             return json.dumps({"error": str(e)})
-
 
 
 # W0 safety pre-arm (S1, 2026-07-25): defensive bounds for the LLM-supplied

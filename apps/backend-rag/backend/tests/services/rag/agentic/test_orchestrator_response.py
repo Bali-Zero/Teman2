@@ -41,6 +41,38 @@ def test_build_core_result_maps_state_metadata_and_abstain_reason() -> None:
     assert result.reasoning == "reasoned"
 
 
+def test_domain_abstain_log_never_contains_raw_query(monkeypatch, caplog) -> None:
+    query_canary = "ABSTAIN_RAW_QUERY_CANARY_51ad"
+    state = AgentState(query=query_canary)
+    state.final_answer = "Insufficient public evidence."
+    state.verification_score = 0.2
+    state.evidence_score = 0.1
+    usage = TokenUsage(prompt_tokens=1, completion_tokens=1, cost_usd=0.0)
+    monkeypatch.setattr(
+        "backend.services.rag.agentic._abstain_policy.build_abstain_policy",
+        lambda _query: SimpleNamespace(label_threshold=0.25),
+    )
+
+    with caplog.at_level(
+        "DEBUG",
+        logger="backend.services.rag.agentic.orchestrator_response",
+    ):
+        OrchestratorResponseBuilder().build_core_result(
+            state=state,
+            sources=[],
+            extracted_entities={},
+            model_used="test-model",
+            token_usage=usage,
+            timings={"total": 0.1},
+            start_time=0.0,
+            workflow={},
+            reasoning="",
+        )
+
+    assert query_canary not in caplog.text
+    assert "query_length=" in caplog.text
+
+
 def test_build_gate_response_uses_trusted_defaults(monkeypatch) -> None:
     monkeypatch.setattr("time.time", lambda: 101.5)
 
@@ -81,7 +113,9 @@ def test_build_clarification_response_preserves_entities(monkeypatch) -> None:
     ("reason", "expected_model"),
     [("medical", "out-of-domain-medical"), ("politics", "out-of-domain-politics")],
 )
-def test_build_out_of_domain_response_blocks_with_warning(monkeypatch, reason, expected_model) -> None:
+def test_build_out_of_domain_response_blocks_with_warning(
+    monkeypatch, reason, expected_model
+) -> None:
     monkeypatch.setattr("time.time", lambda: 4.0)
 
     result = OrchestratorResponseBuilder().build_out_of_domain_response(

@@ -113,6 +113,21 @@ class TestIntentClassifier:
         assert "suggested_ai" in result
 
     @pytest.mark.asyncio
+    async def test_fallback_log_never_contains_raw_message(self, intent_classifier, caplog):
+        """Fallback routing diagnostics expose shape, never the query text."""
+        query_canary = "SYNTHETIC_FALLBACK_QUERY_CANARY_8f31"
+
+        with caplog.at_level(
+            "INFO",
+            logger="backend.services.classification.intent_classifier",
+        ):
+            result = await intent_classifier.classify_intent(query_canary)
+
+        assert result["category"] in ["casual", "business_simple"]
+        assert query_canary not in caplog.text
+        assert "message_length=" in caplog.text
+
+    @pytest.mark.asyncio
     async def test_classify_error_handling(self, intent_classifier):
         """Test error handling"""
         # Force an error by passing None

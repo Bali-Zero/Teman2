@@ -15,6 +15,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 # Add backend to path
 backend_path = Path(__file__).parent.parent.parent.parent.parent
@@ -741,7 +742,7 @@ class TestStreamEventComplete:
 
     def test_stream_event_validation_required_fields(self):
         """Test StreamEvent requires type and data"""
-        with pytest.raises(Exception):  # Pydantic validation error
+        with pytest.raises(ValidationError):
             StreamEvent()  # Missing required fields
 
     def test_stream_event_optional_fields(self):
@@ -781,10 +782,7 @@ class TestCreateErrorEvent:
         )
 
         assert event["type"] == "error"
-        assert event["data"]["error_type"] == "test_error"
-        assert event["data"]["message"] == "Test message"
-        assert event["data"]["correlation_id"] == "test-123"
-        assert "timestamp" in event["data"]
+        assert event["data"] == {"message": "Test message"}
         assert "timestamp" in event
 
     def test_create_error_event_timestamps(self, orchestrator):
@@ -795,7 +793,5 @@ class TestCreateErrorEvent:
             correlation_id="test",
         )
 
-        assert isinstance(event["data"]["timestamp"], float)
         assert isinstance(event["timestamp"], float)
-        assert event["data"]["timestamp"] > 0
         assert event["timestamp"] > 0

@@ -274,6 +274,78 @@ def _legacy_bytes(result: CoreResult) -> bytes:
 
 
 @pytest.mark.asyncio
+async def test_trusted_wa_react_skips_background_analytics_and_kg_expansion(orch) -> None:
+    """A successful WA ReAct answer has no hidden analytics or KG side effects."""
+    core = orch.core
+    core.db_pool = object()
+    core.prepare_query_context = AsyncMock(
+        side_effect=AssertionError("WA reached context preparation"),
+    )
+    core._query_planner = MagicMock()
+    core._surface_router = MagicMock()
+    core._specialized_router = MagicMock()
+    core._inject_curated_qa_grounding = AsyncMock(
+        side_effect=AssertionError("WA reached automatic curated grounding"),
+    )
+    core._kg_auto_expansion = MagicMock()
+    core._log_query_analytics = AsyncMock(
+        side_effect=AssertionError("WA reached query analytics"),
+    )
+    core.metrics_manager.record_rag_metrics = MagicMock(
+        side_effect=AssertionError("WA reached aggregate RAG analytics"),
+    )
+    core.metrics_manager.record_token_usage = MagicMock(
+        side_effect=AssertionError("WA reached aggregate token analytics"),
+    )
+    core.metrics_manager.log_query_completion = MagicMock(
+        side_effect=AssertionError("WA reached completion analytics"),
+    )
+
+    result = await core.process_query_core(
+        query="RAW_WA_QUERY_CANARY",
+        user_id="RAW_WA_USER_CANARY",
+        conversation_history=[{"role": "user", "content": "bounded history"}],
+        start_time=0.0,
+        session_id="RAW_WA_SESSION_CANARY",
+        profile={"role": "team", "id": "synthetic-team"},
+        is_whatsapp=True,
+    )
+
+    assert result.analytics_receipt is AnalyticsReceiptStatus.SKIPPED
+    core.prepare_query_context.assert_not_awaited()
+    core._query_planner.plan.assert_not_called()
+    core._surface_router.decide.assert_not_called()
+    core._specialized_router.detect_autonomous_research.assert_not_called()
+    core._inject_curated_qa_grounding.assert_not_awaited()
+    core._kg_auto_expansion.expand_from_response.assert_not_called()
+    core._log_query_analytics.assert_not_awaited()
+    core.metrics_manager.record_rag_metrics.assert_not_called()
+    core.metrics_manager.record_token_usage.assert_not_called()
+    core.metrics_manager.log_query_completion.assert_not_called()
+    assert core.prompt_builder.build_system_prompt.call_args.kwargs["user_id"] == "anonymous"
+    assert core.reasoning_engine.execute_react_loop.await_args.kwargs["user_id"] == "anonymous"
+
+
+@pytest.mark.asyncio
+async def test_non_wa_react_keeps_aggregate_and_completion_metrics(orch) -> None:
+    """The L0 WA gate must not alter ordinary ReAct analytics behavior."""
+    core = orch.core
+
+    await core.process_query_core(
+        query="ordinary non-WA public question",
+        user_id="ordinary-user",
+        conversation_history=[],
+        start_time=0.0,
+        session_id="ordinary-session",
+        is_whatsapp=False,
+    )
+
+    core.metrics_manager.record_rag_metrics.assert_called_once()
+    core.metrics_manager.record_token_usage.assert_called_once()
+    core.metrics_manager.log_query_completion.assert_called_once()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "producer",
     ["gate", "faq", "semantic_cache", "multi_agent", "specialized_router", "kg", "react"],

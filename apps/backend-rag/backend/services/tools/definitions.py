@@ -120,10 +120,14 @@ class AgentState:
     # (from `user_context["profile"]`, itself V1's identity-resolved,
     # router-trust-gated field), read by reasoning.py at each execute_tool
     # call site and forwarded as `_caller_profile` so team_crm_tools.py's
-    # tools can self-scope without ever trusting an LLM-supplied arg. None
-    # for every caller except the WA bot's team/creator senders (complete
-    # no-op elsewhere — mirrors `agent_role`'s additive contract).
+    # tools can self-scope without ever trusting an LLM-supplied arg. It is
+    # audience context, not WhatsApp surface authority; only ``is_whatsapp``
+    # activates the WA L0 ceiling.
     caller_profile: dict[str, Any] | None = None
+    # Trusted channel boundary, set only from the dedicated WA-bot credential
+    # on the sync /query path. Unlike caller_profile, this stays True for
+    # client/unknown senders whose audience profile is intentionally None.
+    is_whatsapp: bool = False
 
 
 class BaseTool(ABC):

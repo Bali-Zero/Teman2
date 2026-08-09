@@ -8,6 +8,7 @@ X-Hub-Signature-256 HMAC verification.
 import hashlib
 import hmac
 import json
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -306,6 +307,25 @@ def test_whatsapp_webhook_no_contacts(client):
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
+
+
+def test_whatsapp_webhook_missing_phone_number_id_never_enters_legacy_agentic(client):
+    """A malformed signed Meta change is quarantined, never treated as legacy WA."""
+    payload = _make_webhook_payload(message_id="wamid.MISSING_PNID")
+    del payload["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"]
+
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.process_whatsapp_message_and_mark_processed",
+            new_callable=AsyncMock,
+        ) as legacy_process,
+    ):
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json=payload)
+
+    assert response.status_code == 200
+    legacy_process.assert_not_awaited()
 
 
 def test_whatsapp_webhook_invalid_payload(client):
@@ -770,6 +790,101 @@ async def test_process_whatsapp_message_corrects_openclaw_villa_kbli_reply():
     assert "55193" in sent_text
     assert "KBLI 2020/PP28" in sent_text
     assert "usa questo per Airbnb" not in sent_text
+
+
+@pytest.mark.asyncio
+async def test_legacy_meta_trusted_ingress_gates_before_enrichment_sinks():
+    """Trusted legacy Meta ingress reaches only the L0 orchestrator lane."""
+    from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+    class NeverCache(dict):
+        def get(self, *args: Any, **kwargs: Any) -> Any:
+            raise AssertionError("trusted WA reached conversation cache")
+
+        def __setitem__(self, key: Any, value: Any) -> None:
+            raise AssertionError("trusted WA reached conversation cache")
+
+    mock_request = MagicMock()
+    mock_triage_service = MagicMock()
+    mock_triage_service.is_allowed.return_value = True
+    mock_triage_service.should_escalate = AsyncMock(
+        side_effect=AssertionError("trusted WA reached triage enrichment"),
+    )
+
+    mock_wa_service = MagicMock()
+    mock_wa_service.mark_message_read = AsyncMock(
+        side_effect=AssertionError("trusted WA reached read-receipt side effect"),
+    )
+    mock_wa_service.send_message = AsyncMock()
+    mock_wa_service.chunk_message.side_effect = lambda text, max_length: [text]
+
+    mock_orchestrator = MagicMock()
+    mock_orchestrator.process_query = AsyncMock(
+        return_value=SimpleNamespace(answer="Public answer")
+    )
+    get_orchestrator = AsyncMock(return_value=mock_orchestrator)
+    never_onboarding = MagicMock(side_effect=AssertionError("trusted WA reached onboarding"))
+    never_openclaw = AsyncMock(side_effect=AssertionError("trusted WA reached OpenClaw"))
+    never_telegram = AsyncMock(side_effect=AssertionError("trusted WA reached Telegram"))
+    never_db = MagicMock(side_effect=AssertionError("trusted WA reached database lookup"))
+    never_persist = AsyncMock(side_effect=AssertionError("trusted WA reached persistence"))
+    never_context = AsyncMock(side_effect=AssertionError("trusted WA reached context builder"))
+
+    with (
+        patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+        patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
+        patch(
+            "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+            new=never_onboarding,
+        ),
+        patch(
+            "backend.services.whatsapp_context_builder.build_context",
+            new=never_context,
+        ),
+        patch(
+            "backend.app.routers.whatsapp_chat.ask_openclaw_whatsapp",
+            new=never_openclaw,
+        ),
+        patch("backend.app.dependencies.get_orchestrator", new=get_orchestrator),
+        patch("backend.app.routers.whatsapp_chat.notify_human_telegram", new=never_telegram),
+        patch("backend.app.routers.whatsapp_chat.notify_zero_conversation_log", new=never_telegram),
+        patch("backend.app.routers.whatsapp_chat._save_conversation", new=never_persist),
+        patch("backend.app.routers.whatsapp_chat._persist_audit_messages", new=never_persist),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", new=never_db),
+        patch("backend.app.routers.whatsapp_chat._conversation_cache", new=NeverCache()),
+    ):
+        await process_whatsapp_message(
+            phone="6281234567890",
+            message_text="What are the public requirements?",
+            sender_name="Test Client",
+            message_id="wamid.LEGACY_TRUSTED_MARKER",
+            request=mock_request,
+            trusted_whatsapp_ingress=True,
+        )
+
+    get_orchestrator.assert_awaited_once_with(mock_request)
+    mock_orchestrator.process_query.assert_awaited_once()
+    assert mock_orchestrator.process_query.await_args.kwargs == {
+        "query": "What are the public requirements?",
+        "user_id": "whatsapp_l0",
+        "session_id": None,
+        "conversation_history": [],
+        "max_steps": 2,
+        "is_whatsapp": True,
+    }
+    mock_wa_service.send_message.assert_awaited_once_with(
+        phone="6281234567890",
+        text="Public answer",
+        reply_to_message_id="wamid.LEGACY_TRUSTED_MARKER",
+    )
+    mock_triage_service.should_escalate.assert_not_awaited()
+    mock_wa_service.mark_message_read.assert_not_awaited()
+    never_onboarding.assert_not_called()
+    never_openclaw.assert_not_awaited()
+    never_telegram.assert_not_awaited()
+    never_db.assert_not_called()
+    never_persist.assert_not_awaited()
+    never_context.assert_not_awaited()
 
 
 @pytest.mark.asyncio

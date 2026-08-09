@@ -240,6 +240,8 @@ async def process_whatsapp_message(
     sender_name: str | None,
     message_id: str,
     request: Request,
+    *,
+    trusted_whatsapp_ingress: bool = False,
 ) -> Any:
     """
     Background task to process WhatsApp message.
@@ -252,6 +254,49 @@ async def process_whatsapp_message(
     5. Handle [ESCALATE] markers
     6. Save conversation + updated profile
     """
+    # The HMAC-verified Meta lane is an L0 public-question surface. Gate it
+    # before read receipts, triage, onboarding, OpenClaw, Telegram, database
+    # context, or conversation caches can observe the request. Only the
+    # current query reaches the main orchestrator; delivery still needs the
+    # phone number but the RAG identity is deliberately neutral.
+    if trusted_whatsapp_ingress is True:
+        if not whatsapp_triage_service.is_allowed(phone):
+            logger.info("Ignored trusted WhatsApp message from non-allowed sender")
+            return
+
+        from backend.app.dependencies import get_orchestrator
+
+        orchestrator = await get_orchestrator(request)
+        rag_result = await orchestrator.process_query(
+            query=message_text,
+            user_id="whatsapp_l0",
+            session_id=None,
+            conversation_history=[],
+            max_steps=2,
+            is_whatsapp=True,
+        )
+        response_text = (
+            rag_result.answer.strip()
+            if rag_result and hasattr(rag_result, "answer") and rag_result.answer
+            else "Scusa, qualcosa è andato storto 😅 Riprova!"
+        )
+        guarded_response = sanitize_whatsapp_kbli_reply(
+            message_text=message_text,
+            reply=response_text,
+            detected_language=None,
+        )
+        chunks = whatsapp_service.chunk_message(guarded_response.reply, max_length=4000)
+        for index, chunk in enumerate(chunks):
+            await whatsapp_service.send_message(
+                phone=phone,
+                text=chunk,
+                reply_to_message_id=message_id if index == 0 else None,
+            )
+            if index < len(chunks) - 1:
+                await asyncio.sleep(0.5)
+        logger.info("Trusted WhatsApp L0 response delivered (chunks=%d)", len(chunks))
+        return
+
     try:
         # Mark message as read
         await whatsapp_service.mark_message_read(message_id)
@@ -499,13 +544,13 @@ async def process_whatsapp_message(
                 client_profile=ctx["client_profile"],
                 is_first_message=ctx["is_first_message"],
                 detected_language=ctx["detected_language"],
-                time_of_day=ctx["time_of_day"],
+                _time_of_day=ctx["time_of_day"],
             )
 
             # --- DIRECT RAG: Query with Gemini 2.5 Flash ---
             from backend.app.dependencies import get_orchestrator
 
-            orchestrator = get_orchestrator(request)
+            orchestrator = await get_orchestrator(request)
             wa_user_id = f"whatsapp_{phone}"
             session_id = f"wa_session_{phone}"
 
@@ -538,6 +583,7 @@ async def process_whatsapp_message(
                 session_id=session_id,
                 conversation_history=enhanced_history,
                 max_steps=2,
+                is_whatsapp=True,
             )
 
             # Extract response from RAG
@@ -679,6 +725,7 @@ async def process_whatsapp_message_and_mark_processed(
         sender_name=sender_name,
         message_id=message_id,
         request=request,
+        trusted_whatsapp_ingress=True,
     )
 
     db_pool = _get_db_pool(request)
@@ -695,8 +742,7 @@ async def process_whatsapp_message_and_mark_processed(
         )
     except Exception as exc:
         logger.warning(
-            "WhatsApp webhook: failed to mark inbound row processed "
-            "(message_id=%s): %s",
+            "WhatsApp webhook: failed to mark inbound row processed (message_id=%s): %s",
             message_id,
             exc,
         )
@@ -1042,7 +1088,9 @@ async def _handle_meta_inbox_message(
         except Exception:
             # Best-effort (C5): a failed read-receipt must never break
             # ingestion or the already-enqueued bot reply.
-            logger.warning("meta-inbox: mark_message_read failed for wamid=%s", wamid, exc_info=True)
+            logger.warning(
+                "meta-inbox: mark_message_read failed for wamid=%s", wamid, exc_info=True
+            )
 
 
 async def _resolve_webhook_id(conn: Any, wamid: str) -> int | None:
@@ -1117,57 +1165,89 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
                     published += 1
         logger.info(
             "meta-inbox media handoff: found=%d published=%d (PULL: no download on Fly)",
-            len(official), published,
+            len(official),
+            published,
         )
     except Exception as exc:
         logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
 
 
-async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
-    """Background task: drive the meta-inbox ledger for the target number only.
+async def _process_meta_inbox_payload_with_pool(
+    raw_payload: dict[str, Any],
+    db_pool: Any,
+) -> list[str]:
+    """Durably ingest an official Meta payload and propagate any failure.
 
-    Runs AFTER the webhook has persisted to inbound_webhooks and ACKed 200, so
-    it never delays the Meta ACK. Scoped strictly to
-    META_INBOX_PHONE_NUMBER_ID; any other number is ignored here (it stays on
-    the existing inline triage flow).
+    The raising variant is the single recovery-safe ledger writer. Its SQL is
+    already idempotent on ``meta_message_id``; replay after a crash between
+    enqueue and acknowledgement cannot create a second outbox intent.
+    """
+    webhook = WhatsAppWebhook(**raw_payload)
+    handled_message_ids: list[str] = []
+
+    async with db_pool.acquire() as conn:
+        for entry in webhook.entry:
+            for change in entry.changes:
+                if change.field != "messages":
+                    continue
+                if _change_phone_number_id(change) != META_INBOX_PHONE_NUMBER_ID:
+                    continue
+
+                value = change.value
+
+                # STATUS branch (delivery receipts) — never touches window.
+                for status_obj in value.get("statuses", []):
+                    await _apply_status_callback(conn, status_obj)
+
+                # MESSAGE branch (inbound customer messages).
+                contacts = value.get("contacts", [])
+                sender_name = None
+                if contacts:
+                    sender_name = contacts[0].get("profile", {}).get("name")
+
+                for msg in value.get("messages", []):
+                    wamid = msg.get("id")
+                    webhook_id = await _resolve_webhook_id(conn, wamid) if wamid else None
+                    await _handle_meta_inbox_message(conn, msg, sender_name, webhook_id)
+                    if wamid:
+                        handled_message_ids.append(str(wamid))
+
+    return handled_message_ids
+
+
+async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
+    """Fast-path official ledger ingestion, acknowledged only after enqueue.
+
+    Failures leave ``inbound_webhooks.processed_at`` unset so the durable
+    worker can replay the same idempotent ledger writer.
     """
     db_pool = _get_db_pool(request)
     if db_pool is None:
         return
 
     try:
-        webhook = WhatsAppWebhook(**raw_payload)
+        handled_message_ids = await _process_meta_inbox_payload_with_pool(raw_payload, db_pool)
     except Exception as exc:
-        logger.warning("meta-inbox: payload parse failed: %s", exc)
+        logger.error(
+            "meta-inbox: durable processing failed (error_type=%s)",
+            type(exc).__name__,
+        )
         return
 
-    try:
-        async with db_pool.acquire() as conn:
-            for entry in webhook.entry:
-                for change in entry.changes:
-                    if change.field != "messages":
-                        continue
-                    if _change_phone_number_id(change) != META_INBOX_PHONE_NUMBER_ID:
-                        continue
+    from backend.services.channels import inbound_webhook_repo
 
-                    value = change.value
-
-                    # STATUS branch (delivery receipts) — never touches window.
-                    for status_obj in value.get("statuses", []):
-                        await _apply_status_callback(conn, status_obj)
-
-                    # MESSAGE branch (inbound customer messages).
-                    contacts = value.get("contacts", [])
-                    sender_name = None
-                    if contacts:
-                        sender_name = contacts[0].get("profile", {}).get("name")
-
-                    for msg in value.get("messages", []):
-                        wamid = msg.get("id")
-                        webhook_id = await _resolve_webhook_id(conn, wamid) if wamid else None
-                        await _handle_meta_inbox_message(conn, msg, sender_name, webhook_id)
-    except Exception as exc:
-        logger.error("meta-inbox: processing failed: %s", exc, exc_info=True)
+    for message_id in dict.fromkeys(handled_message_ids):
+        try:
+            await inbound_webhook_repo.mark_processed(
+                db_pool,
+                channel="whatsapp",
+                dedup_key=message_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "meta-inbox: durable acknowledgement failed (error_type=%s)",
+                type(exc).__name__,
+            )
 
 
 @router.get("")
@@ -1313,8 +1393,7 @@ async def whatsapp_webhook(
     # 200 is never delayed). The target number does NOT use the inline triage
     # flow below — its bot replies are generated by the wa_outbox worker.
     meta_inbox_in_payload = any(
-        change.field == "messages"
-        and _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID
+        change.field == "messages" and _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID
         for entry in webhook.entry
         for change in entry.changes
     )
@@ -1339,9 +1418,20 @@ async def whatsapp_webhook(
                 logger.debug(f"Ignoring non-message change: {change.field}")
                 continue
 
+            phone_number_id = _change_phone_number_id(change)
+
             # Target Business number → handled by the meta-inbox task above.
             # Do NOT run the inline triage flow for it (would double-reply).
-            if _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID:
+            if phone_number_id == META_INBOX_PHONE_NUMBER_ID:
+                continue
+
+            # Meta message changes must identify the receiving Business number.
+            # Missing authority metadata is persisted for inspection/retry but
+            # must never fall through to an agentic reply lane.
+            if not phone_number_id:
+                logger.warning(
+                    "WhatsApp webhook quarantined message change without phone_number_id"
+                )
                 continue
 
             value = change.value

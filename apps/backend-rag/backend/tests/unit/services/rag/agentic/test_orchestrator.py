@@ -351,10 +351,7 @@ class TestOrchestratorMethods:
             correlation_id="test-corr-123",
         )
         assert error_event["type"] == "error"
-        assert error_event["data"]["error_type"] == "validation"
-        assert error_event["data"]["message"] == "Invalid query"
-        assert error_event["data"]["correlation_id"] == "test-corr-123"
-        assert "timestamp" in error_event["data"]
+        assert error_event["data"] == {"message": "Invalid query"}
         assert "timestamp" in error_event
 
     @pytest.mark.asyncio
@@ -3083,10 +3080,20 @@ class TestOrchestratorInitialize:
         assert orchestrator._initialized is True
 
     @pytest.mark.asyncio
-    async def test_initialize_memory_failure_graceful(self, orchestrator):
+    async def test_initialize_memory_failure_graceful(self, orchestrator, caplog):
         """If MemoryOrchestrator init fails, initialize() should still succeed."""
+        error_canary = "SYNTHETIC_INITIALIZE_EXCEPTION_CANARY_51cb"
         orchestrator.memory_handler.get_memory_orchestrator = AsyncMock(
-            side_effect=RuntimeError("DB unavailable")
+            side_effect=RuntimeError(error_canary)
         )
-        await orchestrator.initialize()
+        with caplog.at_level(
+            "INFO",
+            logger="backend.services.rag.agentic.orchestrator",
+        ):
+            await orchestrator.initialize()
+
         assert orchestrator._initialized is True
+        assert error_canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert "failed:" not in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)

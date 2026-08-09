@@ -11,12 +11,12 @@ self-correction / final-answer generation), so the tools branch in
 they are out of scope for this test and untouched by the fix.
 
 Guilt/innocence:
-- GUILT: a client/unresolved caller (`state.caller_profile is None`) must
-  never see the team-tool declarations in the `gemini_tools` kwarg sent to
-  Gemini.
-- INNOCENCE: a team/creator caller must see the FULL declaration list,
-  unchanged — the filter must not accidentally narrow a legitimate caller's
-  toolset.
+- GUILT: a client/unresolved caller without a trusted workspace agent role
+  must never see sensitive/internal declarations in the `gemini_tools` kwarg.
+- GUILT: every WhatsApp profile, including team/creator, is L0 and cannot
+  receive any internal declaration even if an AgentRole is also present.
+- INNOCENCE: a server-derived workspace role (profile=None) receives only
+  declarations allowed by canonical RBAC.
 
 No real client data — fixture tool declarations are fabricated.
 """
@@ -27,6 +27,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from backend.services.agents.team_agent_config import ROLE_ADMIN, AgentRole
+from backend.services.agents.tool_authorizer import SENSITIVE_TOOLS
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.team_crm_tools import TEAM_CRM_TOOL_NAMES
 from backend.services.tools.definitions import AgentState
@@ -34,11 +36,16 @@ from backend.services.tools.definitions import AgentState
 _FULL_GEMINI_TOOLS = [
     {"name": "vector_search", "description": "d"},
     {"name": "crm_query", "description": "d"},
+    {"name": "timesheet", "description": "d"},
+    {"name": "team_knowledge", "description": "d"},
+    {"name": "get_pricing", "description": "d"},
     {"name": "team_my_clients", "description": "d"},
     {"name": "team_my_practices", "description": "d"},
     {"name": "team_my_deadlines", "description": "d"},
     {"name": "team_practice_detail", "description": "d"},
 ]
+
+_INTERNAL_GEMINI_TOOL_NAMES = TEAM_CRM_TOOL_NAMES | SENSITIVE_TOOLS
 
 
 def _make_llm_gateway(response_text: str = "Final Answer: done") -> AsyncMock:
@@ -89,12 +96,11 @@ class TestExecuteReactLoopGeminiToolsScoping:
         )
 
         sent_names = _first_call_gemini_tool_names(gw)
-        assert sent_names.isdisjoint(TEAM_CRM_TOOL_NAMES)
-        # And the non-team tools must have survived the filter.
-        assert {"vector_search", "crm_query"}.issubset(sent_names)
+        assert sent_names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
+        assert sent_names == {"vector_search", "get_pricing"}
 
     @pytest.mark.asyncio
-    async def test_innocence_team_caller_sees_full_tool_declarations(self, engine):
+    async def test_guilt_wa_team_caller_never_sees_internal_declarations(self, engine):
         gw = _make_llm_gateway()
         state = AgentState(query="hi", max_steps=1)
         state.caller_profile = {"role": "team", "email": "member@balizero.com"}
@@ -112,13 +118,14 @@ class TestExecuteReactLoopGeminiToolsScoping:
         )
 
         sent_names = _first_call_gemini_tool_names(gw)
-        assert sent_names == {t["name"] for t in _FULL_GEMINI_TOOLS}
+        assert sent_names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
 
     @pytest.mark.asyncio
-    async def test_innocence_creator_caller_sees_full_tool_declarations(self, engine):
+    async def test_innocence_workspace_agent_role_sees_full_tool_declarations(self, engine):
         gw = _make_llm_gateway()
         state = AgentState(query="hi", max_steps=1)
-        state.caller_profile = {"role": "creator"}
+        state.caller_profile = None
+        state.agent_role = ROLE_ADMIN
 
         await engine.execute_react_loop(
             state=state,
@@ -134,6 +141,58 @@ class TestExecuteReactLoopGeminiToolsScoping:
 
         sent_names = _first_call_gemini_tool_names(gw)
         assert sent_names == {t["name"] for t in _FULL_GEMINI_TOOLS}
+
+    @pytest.mark.asyncio
+    async def test_guilt_wa_creator_with_admin_role_never_sees_internal_declarations(self, engine):
+        gw = _make_llm_gateway()
+        state = AgentState(query="hi", max_steps=1)
+        state.caller_profile = {"role": "creator"}
+        state.agent_role = ROLE_ADMIN
+
+        await engine.execute_react_loop(
+            state=state,
+            llm_gateway=gw,
+            chat=MagicMock(),
+            initial_prompt="hi",
+            system_prompt="sys",
+            query="hi",
+            user_id="u",
+            model_tier=0,
+            tool_execution_counter={"count": 0},
+        )
+
+        sent_names = _first_call_gemini_tool_names(gw)
+        assert sent_names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
+
+    @pytest.mark.asyncio
+    async def test_workspace_role_receives_only_canonical_allowlist(self, engine):
+        gw = _make_llm_gateway()
+        state = AgentState(query="hi", max_steps=1)
+        state.caller_profile = None
+        state.agent_role = AgentRole(
+            role_id="synthetic_restricted",
+            display_name="Synthetic",
+            language="en",
+            system_context="synthetic",
+            allowed_read_tools=["vector_search", "team_knowledge"],
+        )
+
+        await engine.execute_react_loop(
+            state=state,
+            llm_gateway=gw,
+            chat=MagicMock(),
+            initial_prompt="hi",
+            system_prompt="sys",
+            query="hi",
+            user_id="u",
+            model_tier=0,
+            tool_execution_counter={"count": 0},
+        )
+
+        assert _first_call_gemini_tool_names(gw) == {
+            "vector_search",
+            "team_knowledge",
+        }
 
     @pytest.mark.asyncio
     async def test_no_caller_profile_attribute_defaults_to_client_scoping(self, engine):
@@ -158,7 +217,7 @@ class TestExecuteReactLoopGeminiToolsScoping:
         )
 
         sent_names = _first_call_gemini_tool_names(gw)
-        assert sent_names.isdisjoint(TEAM_CRM_TOOL_NAMES)
+        assert sent_names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
 
 
 class TestExecuteReactLoopStreamGeminiToolsScoping:
@@ -182,10 +241,10 @@ class TestExecuteReactLoopStreamGeminiToolsScoping:
             pass
 
         sent_names = _first_call_gemini_tool_names(gw)
-        assert sent_names.isdisjoint(TEAM_CRM_TOOL_NAMES)
+        assert sent_names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
 
     @pytest.mark.asyncio
-    async def test_innocence_team_caller_sees_full_tool_declarations(self, engine):
+    async def test_guilt_wa_team_caller_never_sees_internal_declarations(self, engine):
         gw = _make_llm_gateway()
         state = AgentState(query="hi", max_steps=1)
         state.caller_profile = {"role": "team", "email": "member@balizero.com"}
@@ -204,17 +263,39 @@ class TestExecuteReactLoopStreamGeminiToolsScoping:
             pass
 
         sent_names = _first_call_gemini_tool_names(gw)
+        assert sent_names.isdisjoint(_INTERNAL_GEMINI_TOOL_NAMES)
+
+    @pytest.mark.asyncio
+    async def test_innocence_workspace_agent_role_sees_full_tool_declarations(self, engine):
+        gw = _make_llm_gateway()
+        state = AgentState(query="hi", max_steps=1)
+        state.caller_profile = None
+        state.agent_role = ROLE_ADMIN
+
+        async for _event in engine.execute_react_loop_stream(
+            state=state,
+            llm_gateway=gw,
+            chat=MagicMock(),
+            initial_prompt="hi",
+            system_prompt="sys",
+            query="hi",
+            user_id="u",
+            model_tier=0,
+            tool_execution_counter={"count": 0},
+        ):
+            pass
+
+        sent_names = _first_call_gemini_tool_names(gw)
         assert sent_names == {t["name"] for t in _FULL_GEMINI_TOOLS}
 
 
-class TestFlagOffIsANoOp:
-    """When WA_TEAM_CRM_TOOLS_ENABLED is off (shipped default), the shared
-    `gemini_tools` list never contains team names in the first place — the
-    filter wired into reasoning.py must be a pure no-op for that shape,
-    regardless of caller_profile."""
+class TestFlagOffStillScopesGenericSensitiveTools:
+    """The default-off flag removes the four team CRM tools only. Generic
+    sensitive tools are always registered and must remain hidden from a
+    client/unknown request."""
 
     @pytest.mark.asyncio
-    async def test_non_team_gemini_tools_list_is_unaffected_by_filter(self, engine):
+    async def test_client_cannot_see_generic_sensitive_tools(self, engine):
         gw = _make_llm_gateway()
         no_team_tools = [t for t in _FULL_GEMINI_TOOLS if t["name"] not in TEAM_CRM_TOOL_NAMES]
         gw.gemini_tools = no_team_tools
@@ -235,4 +316,5 @@ class TestFlagOffIsANoOp:
         )
 
         sent_names = _first_call_gemini_tool_names(gw)
-        assert sent_names == {t["name"] for t in no_team_tools}
+        assert sent_names.isdisjoint(SENSITIVE_TOOLS)
+        assert sent_names == {"vector_search", "get_pricing"}

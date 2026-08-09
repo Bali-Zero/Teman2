@@ -429,6 +429,29 @@ class TestUnderstandQueryNode:
         result = await understand_query_node(state, llm)
         assert result["intent"] == "company_setup"
 
+    @pytest.mark.asyncio
+    async def test_query_and_exception_canaries_are_absent_from_logs(self, caplog) -> None:
+        """The KG node records only structural diagnostics and error type."""
+        from backend.services.rag.kg_graph_nodes import understand_query_node
+
+        query_canary = "RAW_KG_NODE_QUERY_CANARY passport RAW_NODE_ID_CANARY"
+        exception_canary = "RAW_KG_NODE_EXCEPTION_CANARY"
+        state = _make_state(query=query_canary)
+        llm = self._structured_llm(side_effect=RuntimeError(exception_canary))
+
+        with caplog.at_level(
+            "INFO",
+            logger="backend.services.rag.kg_graph_nodes",
+        ):
+            result = await understand_query_node(state, llm)
+
+        assert result["intent"] == "general"
+        assert query_canary not in caplog.text
+        assert "RAW_NODE_ID_CANARY" not in caplog.text
+        assert exception_canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
+
 
 # ============================================================================
 # resolve_entities_node

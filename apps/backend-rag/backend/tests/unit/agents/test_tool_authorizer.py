@@ -314,7 +314,7 @@ class TestAuthorizeDecisions:
 
 class TestSensitiveToolTourniquet:
     """
-    Public CRM/PII exposure tourniquet: crm_query/timesheet/team_knowledge
+    Public CRM/PII exposure tourniquet: all seven internal tools
     must be denied for agent_role=None (blog/ask, WA-unknown), even though
     every OTHER tool keeps the legacy passthrough. See memory
     `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`.
@@ -324,7 +324,17 @@ class TestSensitiveToolTourniquet:
 
     def test_sensitive_tools_frozenset_exact_values(self) -> None:
         """Guard the exact-match contract — no substring surprises later."""
-        assert SENSITIVE_TOOLS == frozenset({"crm_query", "timesheet", "team_knowledge"})
+        assert SENSITIVE_TOOLS == frozenset(
+            {
+                "crm_query",
+                "timesheet",
+                "team_knowledge",
+                "team_my_clients",
+                "team_my_practices",
+                "team_my_deadlines",
+                "team_practice_detail",
+            }
+        )
 
     # ── GUILT: no-principal caller must be denied ──────────────────────
 
@@ -341,7 +351,7 @@ class TestSensitiveToolTourniquet:
             args={"query_type": "client_stats"},
         )
         assert r.is_denied
-        assert "authenticated" in r.reason.lower()
+        assert r.reason == "This capability is not available in this conversation."
 
     @pytest.mark.asyncio
     async def test_timesheet_denied_for_no_principal(
@@ -356,7 +366,7 @@ class TestSensitiveToolTourniquet:
             args={"action": "clock_in", "email": "anyone@balizero.com"},
         )
         assert r.is_denied
-        assert "authenticated" in r.reason.lower()
+        assert r.reason == "This capability is not available in this conversation."
 
     @pytest.mark.asyncio
     async def test_team_knowledge_denied_for_no_principal(
@@ -372,7 +382,7 @@ class TestSensitiveToolTourniquet:
             args={"query_type": "search_by_name"},
         )
         assert r.is_denied
-        assert "authenticated" in r.reason.lower()
+        assert r.reason == "This capability is not available in this conversation."
 
     @pytest.mark.asyncio
     async def test_sensitive_deny_audited(self, authorizer: ToolAuthorizer, caplog) -> None:
@@ -423,6 +433,97 @@ class TestSensitiveToolTourniquet:
             args={"query_type": "client_stats"},
         )
         assert r.is_allowed
+
+
+class TestWhatsAppL0CapabilityCeiling:
+    """Trusted WA surface is an exact allowlist, regardless of principal."""
+
+    _ALLOWED = frozenset({"vector_search", "get_pricing", "calculator"})
+    _FORBIDDEN = frozenset(
+        {
+            "crm_query",
+            "timesheet",
+            "team_knowledge",
+            "team_my_clients",
+            "team_my_practices",
+            "team_my_deadlines",
+            "team_practice_detail",
+            "vision_analysis",
+            "generate_image",
+            "web_search",
+            "knowledge_graph_search",
+        }
+    )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("tool_name", sorted(_FORBIDDEN))
+    @pytest.mark.parametrize("agent_role", [None, ROLE_ADMIN])
+    async def test_trusted_wa_marker_denies_every_non_l0_tool(
+        self,
+        authorizer: ToolAuthorizer,
+        tool_name: str,
+        agent_role,
+    ) -> None:
+        result = await authorizer.authorize(
+            user_email=None,
+            agent_role=agent_role,
+            tool_name=tool_name,
+            args={},
+            caller_profile=None,
+            is_whatsapp=True,
+        )
+        assert result.is_denied
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("tool_name", sorted(_ALLOWED))
+    @pytest.mark.parametrize("agent_role", [None, ROLE_ADMIN])
+    async def test_trusted_wa_marker_allows_exact_l0_tools(
+        self,
+        authorizer: ToolAuthorizer,
+        tool_name: str,
+        agent_role,
+    ) -> None:
+        result = await authorizer.authorize(
+            user_email=None,
+            agent_role=agent_role,
+            tool_name=tool_name,
+            args={},
+            caller_profile=None,
+            is_whatsapp=True,
+        )
+        assert result.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_non_wa_profile_keeps_ordinary_web_search(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        result = await authorizer.authorize(
+            user_email="synthetic-client@example.test",
+            agent_role=None,
+            tool_name="web_search",
+            args={"query": "public regulation"},
+            caller_profile={"role": "client"},
+            is_whatsapp=False,
+        )
+        assert result.is_allowed
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("tool_name", sorted(SENSITIVE_TOOLS))
+    async def test_non_wa_profile_denies_sensitive_even_with_admin_role(
+        self,
+        authorizer: ToolAuthorizer,
+        tool_name: str,
+    ) -> None:
+        result = await authorizer.authorize(
+            user_email="synthetic-client@example.test",
+            agent_role=ROLE_ADMIN,
+            tool_name=tool_name,
+            args={},
+            caller_profile={"role": "client"},
+            is_whatsapp=False,
+        )
+        assert result.is_denied
 
     @pytest.mark.asyncio
     async def test_timesheet_allowed_for_authenticated_staff(
@@ -609,9 +710,7 @@ class TestPrincipalPseudonymisation:
     WA_PHONE = "620000000000"
 
     @pytest.mark.asyncio
-    async def test_wa_phone_not_in_log_on_allow(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_wa_phone_not_in_log_on_allow(self, authorizer: ToolAuthorizer, caplog) -> None:
         """GUILT (allow path — the high-volume one, easiest to forget)."""
         with caplog.at_level("INFO", logger="backend.services.agents.tool_authorizer"):
             await authorizer.authorize(
@@ -629,9 +728,7 @@ class TestPrincipalPseudonymisation:
         assert f"user=h:{hash_subject(self.WA_USER)}" in msg
 
     @pytest.mark.asyncio
-    async def test_wa_phone_not_in_log_on_deny(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_wa_phone_not_in_log_on_deny(self, authorizer: ToolAuthorizer, caplog) -> None:
         """GUILT (deny path — SENSITIVE_TOOLS tourniquet, agent_role=None)."""
         with caplog.at_level("WARNING", logger="backend.services.agents.tool_authorizer"):
             await authorizer.authorize(
@@ -677,9 +774,7 @@ class TestPrincipalPseudonymisation:
                 assert f"user=h:{hash_subject(p)}" in msg
 
     @pytest.mark.asyncio
-    async def test_anonymous_stays_anonymous(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_anonymous_stays_anonymous(self, authorizer: ToolAuthorizer, caplog) -> None:
         """A genuinely absent principal must stay the literal 'anonymous' —
         never hashed, so it's still visibly distinct from a redacted one."""
         with caplog.at_level("INFO", logger="backend.services.agents.tool_authorizer"):
@@ -694,9 +789,7 @@ class TestPrincipalPseudonymisation:
         assert "user=anonymous" in msg
 
     @pytest.mark.asyncio
-    async def test_stable_and_distinct_tokens(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_stable_and_distinct_tokens(self, authorizer: ToolAuthorizer, caplog) -> None:
         """STABILITY: same principal -> same token twice; different
         principals -> different tokens. An operator holding a known
         identifier reproduces the token via hash_subject(identifier)."""
@@ -793,8 +886,7 @@ class TestExecuteToolIntegration:
             tool_execution_counter=None,
             agent_role=ROLE_VISA_SPECIALIST,
         )
-        assert "denied" in result.lower()
-        assert "execute_plan" in result
+        assert result == "This capability is not available in this conversation."
         assert tool.execute_called is False, "denied tool must not reach tool.execute()"
 
     @pytest.mark.asyncio
@@ -816,7 +908,7 @@ class TestExecuteToolIntegration:
 
     @pytest.mark.asyncio
     async def test_unknown_tool_short_circuits_before_authz(self) -> None:
-        """tool_name not in tool_map → 'Unknown tool' error, no authz call needed."""
+        """Unknown tools fail generically before authorization."""
         tool_map = {"vector_search": _NoopTool()}
 
         result, _ = await execute_tool(
@@ -827,7 +919,7 @@ class TestExecuteToolIntegration:
             tool_execution_counter=None,
             agent_role=ROLE_VISA_SPECIALIST,
         )
-        assert "Unknown tool" in result
+        assert result == "The requested tool could not be completed."
 
     @pytest.mark.asyncio
     async def test_user_id_injected_into_args_after_authz(self) -> None:

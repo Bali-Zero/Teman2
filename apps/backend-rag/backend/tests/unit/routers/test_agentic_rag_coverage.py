@@ -7,6 +7,7 @@ Covers: clean_image_generation_response, get_ab_test_manager,
 """
 
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -356,9 +357,7 @@ class TestQueryAgenticRagRerankHonesty:
         return manager
 
     @pytest.mark.asyncio
-    async def test_reports_actual_state_false_even_when_ab_says_with_rerank(
-        self, monkeypatch
-    ):
+    async def test_reports_actual_state_false_even_when_ab_says_with_rerank(self, monkeypatch):
         """Guilt: A/B bucket says 'with_rerank' but the real global switch
         is off — debug_info must surface the real state, not just the A/B
         intent."""
@@ -367,9 +366,7 @@ class TestQueryAgenticRagRerankHonesty:
         orchestrator = AsyncMock()
         orchestrator.process_query = AsyncMock(return_value=self._mock_result())
 
-        monkeypatch.setattr(
-            router_module, "get_ab_test_manager", lambda: self._mock_ab_manager()
-        )
+        monkeypatch.setattr(router_module, "get_ab_test_manager", lambda: self._mock_ab_manager())
         monkeypatch.setattr(router_module, "_lf_enabled", lambda: False)
         monkeypatch.setattr(router_module.settings, "enable_reranker", False)
 
@@ -394,9 +391,7 @@ class TestQueryAgenticRagRerankHonesty:
         orchestrator = AsyncMock()
         orchestrator.process_query = AsyncMock(return_value=self._mock_result())
 
-        monkeypatch.setattr(
-            router_module, "get_ab_test_manager", lambda: self._mock_ab_manager()
-        )
+        monkeypatch.setattr(router_module, "get_ab_test_manager", lambda: self._mock_ab_manager())
         monkeypatch.setattr(router_module, "_lf_enabled", lambda: False)
         monkeypatch.setattr(router_module.settings, "enable_reranker", True)
 
@@ -409,3 +404,301 @@ class TestQueryAgenticRagRerankHonesty:
         )
 
         assert response.debug_info["ab_config"]["rerank"]["reranker_actually_enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_trusted_wa_skips_ab_assignment_metrics_and_preview(self, monkeypatch):
+        """Trusted WA must bypass experiments and request-level trace wrappers."""
+        from backend.app.routers import agentic_rag as router_module
+
+        orchestrator = AsyncMock()
+        orchestrator.process_query = AsyncMock(return_value=self._mock_result())
+        ab_factory = MagicMock(side_effect=AssertionError("WA reached A/B manager"))
+        init_observability = MagicMock(
+            side_effect=AssertionError("WA initialized request observability"),
+        )
+        traced_query = AsyncMock(
+            side_effect=AssertionError("WA reached request trace wrapper"),
+        )
+
+        monkeypatch.setattr(router_module, "get_ab_test_manager", ab_factory)
+        monkeypatch.setattr(router_module, "_lf_enabled", lambda: True)
+        monkeypatch.setattr(router_module, "init_observability", init_observability)
+        monkeypatch.setattr(router_module, "_process_query_traced", traced_query)
+        monkeypatch.setattr(
+            router_module,
+            "_resolve_trusted_wa_profile",
+            AsyncMock(return_value=None),
+        )
+        monkeypatch.setattr(
+            router_module,
+            "_derive_wa_memory_subject_for_request",
+            lambda *_args: None,
+        )
+        monkeypatch.setattr(router_module.settings, "wa_bot_agent_role_enabled", False)
+
+        response = await router_module.query_agentic_rag(
+            request=router_module.AgenticQueryRequest(
+                query="What is a public KITAS requirement?",
+                user_id="whatsapp_SYNTHETIC_PHONE_CANARY_8d11",
+            ),
+            current_user=None,
+            orchestrator=orchestrator,
+            db_pool=None,
+            is_wa_inbox_bot=True,
+        )
+
+        ab_factory.assert_not_called()
+        init_observability.assert_not_called()
+        traced_query.assert_not_awaited()
+        orchestrator.process_query.assert_awaited_once()
+        assert response.ab_test is None
+        assert "ab_config" not in response.debug_info
+
+    @pytest.mark.asyncio
+    async def test_trusted_wa_never_loads_database_conversation_history(self, monkeypatch):
+        """Only bounded history supplied by the WA ingress may reach the core."""
+        from backend.app.routers import agentic_rag as router_module
+
+        orchestrator = AsyncMock()
+        orchestrator.process_query = AsyncMock(return_value=self._mock_result())
+        ab_factory = MagicMock(return_value=self._mock_ab_manager())
+        history_loader = AsyncMock(side_effect=AssertionError("WA reached history DB"))
+
+        monkeypatch.setattr(router_module, "get_ab_test_manager", ab_factory)
+        monkeypatch.setattr(
+            router_module,
+            "get_conversation_history_for_agentic",
+            history_loader,
+        )
+        monkeypatch.setattr(router_module, "_lf_enabled", lambda: False)
+        monkeypatch.setattr(
+            router_module,
+            "_resolve_trusted_wa_profile",
+            AsyncMock(return_value=None),
+        )
+        monkeypatch.setattr(
+            router_module,
+            "_derive_wa_memory_subject_for_request",
+            lambda *_args: None,
+        )
+        monkeypatch.setattr(router_module.settings, "wa_bot_agent_role_enabled", False)
+
+        await router_module.query_agentic_rag(
+            request=router_module.AgenticQueryRequest(
+                query="What is a public KITAS requirement?",
+                session_id="SYNTHETIC_SESSION_CANARY_58aa",
+                user_id="whatsapp_SYNTHETIC_PHONE_CANARY_8d11",
+            ),
+            current_user=None,
+            orchestrator=orchestrator,
+            db_pool=MagicMock(),
+            is_wa_inbox_bot=True,
+        )
+
+        ab_factory.assert_not_called()
+        history_loader.assert_not_awaited()
+        query_kwargs = orchestrator.process_query.await_args.kwargs
+        assert "conversation_history" not in query_kwargs
+
+    @pytest.mark.asyncio
+    async def test_trusted_wa_sync_failure_never_logs_raw_canaries(
+        self,
+        monkeypatch,
+        caplog,
+    ):
+        from fastapi import HTTPException
+
+        from backend.app.routers import agentic_rag as router_module
+
+        user_canary = "SYNTHETIC_USER_CANARY_0f91@example.test"
+        session_canary = "SYNTHETIC_SESSION_CANARY_b441"
+        query_canary = "SYNTHETIC_QUERY_CANARY_34aa"
+        error_canary = "SYNTHETIC_SYNC_EXCEPTION_CANARY_a091"
+        orchestrator = SimpleNamespace(
+            process_query=AsyncMock(side_effect=RuntimeError(error_canary)),
+        )
+
+        monkeypatch.setattr(
+            router_module,
+            "get_ab_test_manager",
+            lambda: self._mock_ab_manager(),
+        )
+        monkeypatch.setattr(router_module, "_lf_enabled", lambda: False)
+        monkeypatch.setattr(
+            router_module,
+            "_resolve_trusted_wa_profile",
+            AsyncMock(return_value=None),
+        )
+        monkeypatch.setattr(
+            router_module,
+            "_derive_wa_memory_subject_for_request",
+            lambda *_args: None,
+        )
+        monkeypatch.setattr(router_module.settings, "wa_bot_agent_role_enabled", False)
+
+        request = router_module.AgenticQueryRequest(
+            query=query_canary,
+            session_id=session_canary,
+            user_id="whatsapp_SYNTHETIC_PHONE_CANARY_5f11",
+        )
+        with caplog.at_level("INFO", logger=router_module.logger.name):
+            with pytest.raises(HTTPException) as exc_info:
+                await router_module.query_agentic_rag(
+                    request=request,
+                    current_user={"email": user_canary},
+                    orchestrator=orchestrator,
+                    db_pool=None,
+                    is_wa_inbox_bot=True,
+                )
+
+        assert exc_info.value.detail == (
+            "Internal Server Error: The request could not be processed."
+        )
+        for canary in (user_canary, session_canary, query_canary, error_canary):
+            assert canary not in caplog.text
+        assert "error_type=RuntimeError" in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_public_stream_body_channel_never_grants_wa_and_errors_are_generic(
+    monkeypatch,
+    caplog,
+) -> None:
+    from backend.app.routers import agentic_rag as router_module
+
+    user_canary = "SYNTHETIC_STREAM_USER_CANARY_013a@example.test"
+    session_canary = "SYNTHETIC_STREAM_SESSION_CANARY_73be"
+    query_canary = "SYNTHETIC_STREAM_QUERY_CANARY_9ac2"
+    error_canary = "SYNTHETIC_STREAM_EXCEPTION_CANARY_f2d4"
+    forwarded = {}
+
+    async def exploding_stream(**kwargs):
+        forwarded.update(kwargs)
+        raise RuntimeError(error_canary)
+        yield  # pragma: no cover - makes this an async generator
+
+    orchestrator = SimpleNamespace(stream_query=exploding_stream)
+    http_request = MagicMock()
+    http_request.state.correlation_id = "synthetic-correlation"
+    http_request.state.request_id = None
+    http_request.headers = {}
+    http_request.is_disconnected = AsyncMock(return_value=False)
+    request = router_module.AgenticQueryRequest(
+        query=query_canary,
+        session_id=session_canary,
+        channel="whatsapp",
+    )
+
+    with (
+        caplog.at_level("INFO", logger=router_module.logger.name),
+        monkeypatch.context() as patch_context,
+    ):
+        trace_span = MagicMock()
+        trace_span.return_value.__enter__.return_value = None
+        trace_span.return_value.__exit__.return_value = False
+        add_span_event = MagicMock()
+        patch_context.setattr(router_module, "trace_span", trace_span)
+        patch_context.setattr(router_module, "add_span_event", add_span_event)
+        response = await router_module.stream_agentic_rag(
+            request_body=request,
+            http_request=http_request,
+            current_user={"email": user_canary},
+            orchestrator=orchestrator,
+            db_pool=None,
+        )
+        chunks = [chunk async for chunk in response.body_iterator]
+
+    rendered_sse = "".join(
+        chunk.decode("utf-8") if isinstance(chunk, bytes) else chunk for chunk in chunks
+    )
+    assert forwarded["channel"] == "whatsapp"
+    assert "is_whatsapp" not in forwarded
+    assert "profile" not in forwarded
+    for canary in (user_canary, session_canary, query_canary, error_canary):
+        assert canary not in caplog.text
+        assert canary not in rendered_sse
+        assert canary not in repr(trace_span.call_args_list)
+        assert canary not in repr(add_span_event.call_args_list)
+    assert "Unable to complete the streamed response." in rendered_sse
+    assert "error_type=RuntimeError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_workspace_stream_never_emits_or_logs_raw_identity_session_or_errors(
+    monkeypatch,
+    caplog,
+) -> None:
+    """Authenticated workspace streaming keeps observability metadata opaque."""
+    from backend.app.routers import agentic_rag as router_module
+
+    email_canary = "SYNTHETIC_WORKSPACE_EMAIL_CANARY@example.test"
+    session_canary = "SYNTHETIC_WORKSPACE_SESSION_CANARY_0ba1"
+    query_canary = "SYNTHETIC_WORKSPACE_QUERY_CANARY_e4d2"
+    error_canary = "SYNTHETIC_WORKSPACE_EXCEPTION_CANARY_2a17"
+    correlation_canary = "SYNTHETIC_WORKSPACE_CORRELATION_CANARY_9c51"
+    forwarded: dict = {}
+
+    async def leaking_stream(**kwargs):
+        forwarded.update(kwargs)
+        yield {
+            "type": "error",
+            "data": {
+                "message": error_canary,
+                "session_id": session_canary,
+            },
+        }
+        raise RuntimeError(error_canary)
+
+    role = SimpleNamespace(role_id="support", client_scope="all")
+    monkeypatch.setattr(router_module, "get_agent_role", lambda _email: role)
+    monkeypatch.setattr(
+        router_module,
+        "build_agent_context",
+        lambda **_kwargs: {
+            "agent_name": "Synthetic Agent",
+            "agent_role_display": "Support",
+            "agent_system_context": "Use ordinary workspace tools.",
+            "agent_client_scope": "all",
+            "agent_email": email_canary,
+        },
+    )
+
+    http_request = MagicMock()
+    http_request.state.correlation_id = correlation_canary
+    http_request.state.request_id = None
+    http_request.headers = {}
+    http_request.is_disconnected = AsyncMock(return_value=False)
+    request = router_module.WorkspaceQueryRequest(
+        query=query_canary,
+        session_id=session_canary,
+    )
+
+    with caplog.at_level("INFO", logger=router_module.logger.name):
+        response = await router_module.stream_workspace_agent(
+            request_body=request,
+            http_request=http_request,
+            current_user={"email": email_canary},
+            orchestrator=SimpleNamespace(stream_query=leaking_stream),
+            db_pool=None,
+        )
+        chunks = [chunk async for chunk in response.body_iterator]
+
+    rendered_sse = "".join(
+        chunk.decode("utf-8") if isinstance(chunk, bytes) else chunk for chunk in chunks
+    )
+    for canary in (
+        email_canary,
+        session_canary,
+        query_canary,
+        error_canary,
+        correlation_canary,
+    ):
+        assert canary not in caplog.text
+        assert canary not in rendered_sse
+    assert "Unable to complete the workspace stream." in rendered_sse
+    assert "error_type=RuntimeError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+    assert forwarded["channel"] == "workspace"
+    assert forwarded.get("is_whatsapp", False) is False

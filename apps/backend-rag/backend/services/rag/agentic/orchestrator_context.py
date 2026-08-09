@@ -79,14 +79,13 @@ class OrchestratorContextManager:
 
                 return context_data
 
-            except Exception as e:
+            except Exception as exc:
                 # Fallback graceful: ritorna un contesto base vuoto per non far fallire l'intera RAG query
                 logger.error(
-                    "Errore critico durante il caricamento del contesto: %s",
-                    e,
-                    exc_info=True,
+                    "Context loading failed error_type=%s",
+                    type(exc).__name__,
                 )
-                set_span_status("ERROR", str(e))
+                set_span_status("ERROR", "context_load_failed")
                 return {
                     "profile": {},
                     "history": conversation_history or [],
@@ -164,8 +163,11 @@ class OrchestratorContextManager:
                     f"📊 [Context] Summarized {len(messages_to_summarize)} messages → {len(optimized)} items",
                 )
                 return optimized
-            except Exception as e:
-                logger.warning("⚠️ [Context] Summarization failed, using trimmed: %s", e)
+            except Exception as exc:
+                logger.warning(
+                    "⚠️ [Context] Summarization failed error_type=%s; using trimmed",
+                    type(exc).__name__,
+                )
                 return recent_messages
 
         return trim_result.get("trimmed_messages", history)
@@ -202,6 +204,9 @@ class OrchestratorContextManager:
             )
             # Merge enriched data into existing context, preserving pre-loaded fields
             return {**enriched, **{k: v for k, v in user_context.items() if v is not None}}
-        except Exception as e:
-            logger.warning("⚠️ [Context] enrich_user_context failed: %s", e)
+        except Exception as exc:
+            logger.warning(
+                "⚠️ [Context] enrich_user_context failed error_type=%s",
+                type(exc).__name__,
+            )
             return user_context

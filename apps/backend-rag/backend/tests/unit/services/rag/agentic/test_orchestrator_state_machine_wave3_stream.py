@@ -258,7 +258,12 @@ class TestStreamToolExecution:
         takes `tool_calls[0]` only. Second tool is ignored.
         """
         state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
-        tc_a = ToolCall(tool_name="calculator", arguments={"op": "a"})
+        profile = {"role": "team", "email": "synthetic@balizero.test"}
+        state.caller_profile = profile
+        tc_a = ToolCall(
+            tool_name="calculator",
+            arguments={"op": "PII_CANARY_STREAM_ARG_a734"},
+        )
         tc_b = ToolCall(tool_name="calculator", arguments={"op": "b"})
 
         gateway = _mk_gateway(
@@ -298,22 +303,21 @@ class TestStreamToolExecution:
         kwargs = execute_tool_mock.await_args.kwargs
         assert kwargs["tool_name"] == "calculator"
         # arguments of the FIRST tool only
-        assert kwargs["arguments"] == {"op": "a"}
+        assert kwargs["arguments"] == {"op": "PII_CANARY_STREAM_ARG_a734"}
+        assert kwargs["caller_profile"] is profile
 
         # tool_call event fires before observation
         types = _event_types(events)
         assert "tool_call" in types
         assert "observation" in types
         assert types.index("tool_call") < types.index("observation")
+        tool_call_event = next(event for event in events if event["type"] == "tool_call")
+        assert tool_call_event["data"] == {"tool": "calculator"}
+        assert "PII_CANARY_STREAM_ARG_a734" not in repr(events)
 
     @pytest.mark.asyncio
-    async def test_tool_raise_propagates_through_generator(self, engine):
-        """I-S3 + S7: a tool implementation raise is NOT wrapped in streaming.
-        The async generator raises, and events already yielded survive.
-
-        Contrast with sync (I-R8) where `_exec_tool_wrapper` converts the
-        raise into `f"Error: {e}"` observation and the loop continues.
-        """
+    async def test_tool_raise_yields_generic_error_without_canary(self, engine, caplog):
+        """A tool-path failure is contained as a generic SSE error."""
         state = AgentState(query="q", max_steps=2, current_step=0, intent_type="simple")
         tc = ToolCall(tool_name="calculator", arguments={})
 
@@ -325,7 +329,7 @@ class TestStreamToolExecution:
         )
 
         async def _boom(*a, **k):
-            raise RuntimeError("tool impl exploded")
+            raise RuntimeError("PII_CANARY_STREAM_TOOL_EXCEPTION_189c")
 
         events_collected: list[dict] = []
         with (
@@ -342,7 +346,10 @@ class TestStreamToolExecution:
                 return_value="ENGLISH",
             ),
         ):
-            with pytest.raises(RuntimeError, match="tool impl exploded"):
+            with caplog.at_level(
+                "ERROR",
+                logger="backend.services.rag.agentic.reasoning",
+            ):
                 async for ev in engine.execute_react_loop_stream(
                     state=state,
                     llm_gateway=gateway,
@@ -356,14 +363,64 @@ class TestStreamToolExecution:
                 ):
                     events_collected.append(ev)
 
-        # thinking + tool_call were already yielded BEFORE execute_tool raised
         types = _event_types(events_collected)
         assert "thinking" in types
         assert "tool_call" in types
-        # No observation/evidence/token — the generator died mid-flight
         assert "observation" not in types
-        assert "evidence_score" not in types
-        assert "token" not in types
+        assert "error" in types
+        error_event = next(event for event in events_collected if event["type"] == "error")
+        assert error_event["data"] == {"message": "Unable to process request."}
+        assert "RuntimeError" not in repr(events_collected)
+        assert "PII_CANARY_STREAM_TOOL_EXCEPTION_189c" not in repr(events_collected)
+        assert "PII_CANARY_STREAM_TOOL_EXCEPTION_189c" not in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_sensitive_tool_observation_sse_is_fixed_and_has_no_payload(self, engine):
+        """Internal PII remains in authorized state but never crosses the SSE boundary."""
+        state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
+        state.skip_rag = True
+        tool_call = ToolCall(tool_name="crm_query", arguments={})
+        raw_result = "CANARY_CLIENT_NAME_8f21 CANARY_CLIENT_ID_91aa CANARY_PRIVATE_NOTES_33dc"
+        gateway = _mk_gateway(
+            send_message_side_effect=lambda *a, **k: _llm_response(
+                "calling internal tool",
+                candidates=[MagicMock()],
+            ),
+        )
+
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([tool_call], "native"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=(raw_result, 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
+        ):
+            events = await _run_stream(engine, gateway, state)
+
+        observation = next(event for event in events if event["type"] == "observation")
+        assert observation == {
+            "type": "observation",
+            "data": "Authorized operation completed.",
+        }
+        assert raw_result not in repr(events)
+        assert state.steps[0].observation == raw_result
 
 
 # ============================================================================
@@ -511,7 +568,7 @@ class TestStreamErrorEvents:
     """
 
     @pytest.mark.asyncio
-    async def test_step1_send_message_raise_yields_error_event(self, engine):
+    async def test_step1_send_message_raise_yields_error_event(self, engine, caplog):
         """S4 + I-S9: step-1 ResourceExhausted → error event + loop break.
 
         Post-loop fallbacks still fire (evidence=0, trusted=False, no context,
@@ -529,7 +586,7 @@ class TestStreamErrorEvents:
         async def _raise_then_raise(*a, **k):
             # Both the loop call AND the Tier1 fallback call raise
             call_count["i"] += 1
-            raise ResourceExhausted("quota over")
+            raise ResourceExhausted("PII_CANARY_CHAT_EXCEPTION_9c44")
 
         gateway = _mk_gateway(send_message_side_effect=_raise_then_raise)
 
@@ -551,7 +608,11 @@ class TestStreamErrorEvents:
                 return_value=False,
             ),
         ):
-            events = await _run_stream(engine, gateway, state)
+            with caplog.at_level(
+                "ERROR",
+                logger="backend.services.rag.agentic.reasoning",
+            ):
+                events = await _run_stream(engine, gateway, state)
 
         types = _event_types(events)
         # S4: error event was emitted
@@ -561,6 +622,12 @@ class TestStreamErrorEvents:
         assert "evidence_score" in types
         # Order: error before evidence_score
         assert types.index("error") < types.index("evidence_score")
+        error_event = next(event for event in events if event["type"] == "error")
+        assert error_event["data"] == {"message": "Unable to process request."}
+        assert "ResourceExhausted" not in repr(events)
+        assert "PII_CANARY_CHAT_EXCEPTION_9c44" not in repr(events)
+        assert "PII_CANARY_CHAT_EXCEPTION_9c44" not in caplog.text
+        assert all(record.exc_info is None for record in caplog.records)
         # final_answer resolved via stub fallback (I-R2 preserved cross-path)
         assert state.final_answer is not None and len(state.final_answer) > 0
 

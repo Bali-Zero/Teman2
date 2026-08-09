@@ -22,11 +22,14 @@ import logging
 import os
 import time
 import uuid
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from backend.services.memory.orchestrator import MemoryOrchestrator
 
+from langsmith import tracing_context
+from openinference.instrumentation import suppress_tracing
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
@@ -40,6 +43,7 @@ from backend.services.misc.context_window_manager import ContextWindowManager
 from backend.services.misc.emotional_attunement import EmotionalAttunementService
 from backend.services.misc.followup_service import FollowupService
 from backend.services.misc.golden_answer_service import GoldenAnswerService
+from backend.services.pii.violation_store import hash_subject
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.rag.agentic.llm_gateway import LLMGateway
 from backend.services.rag.agentic.memory_handler import MemoryHandler
@@ -217,13 +221,15 @@ class AgenticRAGOrchestrator:
                 logger.info(
                     "✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)",
                 )
-            except ImportError as e:
-                logger.warning("⚠️ KG LangGraph Orchestrator not available: %s", e)
-            except Exception as e:
+            except ImportError as exc:
+                logger.warning(
+                    "KG LangGraph Orchestrator unavailable error_type=%s",
+                    type(exc).__name__,
+                )
+            except Exception as exc:
                 logger.error(
-                    "❌ Failed to initialize KG LangGraph Orchestrator: %s",
-                    e,
-                    exc_info=True,
+                    "KG LangGraph Orchestrator initialization failed error_type=%s",
+                    type(exc).__name__,
                 )
         else:
             if not db_pool:
@@ -309,37 +315,55 @@ class AgenticRAGOrchestrator:
             return
 
         init_start = time.perf_counter()
-        results: dict[str, str] = {}
+        component_status: dict[str, str] = {
+            "memory": "pending",
+            "kg_langgraph": "disabled",
+        }
 
         async def _init_memory() -> None:
             try:
                 t0 = time.perf_counter()
                 await self.memory_handler.get_memory_orchestrator()
                 elapsed = (time.perf_counter() - t0) * 1000
-                results["memory"] = f"ok ({elapsed:.0f}ms)"
-            except Exception as e:
-                results["memory"] = f"failed: {e}"
-                logger.warning("⚠️ MemoryOrchestrator eager init failed: %s", e)
+                component_status["memory"] = "ok"
+                logger.debug("MemoryOrchestrator eager init completed duration_ms=%.0f", elapsed)
+            except Exception as exc:
+                component_status["memory"] = "failed"
+                logger.warning(
+                    "MemoryOrchestrator eager init failed error_type=%s",
+                    type(exc).__name__,
+                )
 
         async def _init_kg_langgraph() -> None:
             if self.kg_langgraph_orchestrator and hasattr(
                 self.kg_langgraph_orchestrator, "initialize"
             ):
+                component_status["kg_langgraph"] = "pending"
                 try:
                     t0 = time.perf_counter()
                     await self.kg_langgraph_orchestrator.initialize()
                     elapsed = (time.perf_counter() - t0) * 1000
-                    results["kg_langgraph"] = f"ok ({elapsed:.0f}ms)"
-                except Exception as e:
-                    results["kg_langgraph"] = f"failed: {e}"
-                    logger.warning("⚠️ KG LangGraph eager init failed: %s", e)
+                    component_status["kg_langgraph"] = "ok"
+                    logger.debug("KG LangGraph eager init completed duration_ms=%.0f", elapsed)
+                except Exception as exc:
+                    component_status["kg_langgraph"] = "failed"
+                    logger.warning(
+                        "KG LangGraph eager init failed error_type=%s",
+                        type(exc).__name__,
+                    )
 
         # Run independent async initializations in parallel
         await asyncio.gather(_init_memory(), _init_kg_langgraph(), return_exceptions=True)
 
         self._initialized = True
         total_ms = (time.perf_counter() - init_start) * 1000
-        logger.info(f"🚀 Orchestrator async initialize: {total_ms:.0f}ms — {results}")
+        logger.info(
+            "Orchestrator async initialize completed duration_ms=%.0f "
+            "memory_status=%s kg_langgraph_status=%s",
+            total_ms,
+            component_status["memory"],
+            component_status["kg_langgraph"],
+        )
 
     async def process_query(
         self,
@@ -352,6 +376,7 @@ class AgenticRAGOrchestrator:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        is_whatsapp: bool = False,
     ) -> CoreResult:
         """
         Process query with full RAG pipeline - Delegates to OrchestratorCore.
@@ -389,28 +414,48 @@ class AgenticRAGOrchestrator:
                 value at both ends, never re-derived. None (every caller
                 except the trusted WA bot with the salt provisioned) is a
                 complete no-op.
+            is_whatsapp: Trusted server-derived WA surface marker from the
+                dedicated bot credential. False for workspace/blog callers.
 
         Returns:
             CoreResult with answer, sources, and metadata
         """
         start_time = start_time or time.time()
 
-        # Ensure async components are warmed up (no-op after first call)
-        if not self._initialized:
+        # A cold trusted-WA request must not warm memory or KG as an implicit
+        # side effect. The next ordinary caller still performs the unchanged
+        # eager initialization path.
+        if not self._initialized and not is_whatsapp:
             await self.initialize()
 
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}
 
+        # LangSmith's @traceable decorators serialize function inputs/outputs,
+        # while globally installed OpenInference hooks may capture LLM text.
+        # Trusted WA must keep both collectors disabled around the full core
+        # call. Ordinary callers retain the existing tracing contexts.
+        langsmith_scope = tracing_context(enabled=False) if is_whatsapp else nullcontext()
+        openinference_scope = suppress_tracing() if is_whatsapp else nullcontext()
+        otel_scope = (
+            nullcontext()
+            if is_whatsapp
+            else trace_span(
+                "orchestrator.process_query",
+                {
+                    "user_id_hash": hash_subject(user_id) or "anonymous",
+                    "query_length": len(query),
+                    "session_id_hash": hash_subject(session_id) or "none",
+                    "has_history": bool(conversation_history),
+                },
+            )
+        )
+
         # 🔍 TRACING: Parent span for entire query processing
-        with trace_span(
-            "orchestrator.process_query",
-            {
-                "user_id": user_id or "anonymous",
-                "query_length": len(query),
-                "session_id": session_id or "none",
-                "has_history": bool(conversation_history),
-            },
+        with (
+            langsmith_scope,
+            openinference_scope,
+            otel_scope,
         ):
             # Delegate to OrchestratorCore
             logger.debug("Delegating process_query to OrchestratorCore")
@@ -425,6 +470,7 @@ class AgenticRAGOrchestrator:
                 max_steps=max_steps,
                 agent_role=agent_role,
                 memory_subject=memory_subject,
+                is_whatsapp=is_whatsapp,
             )
 
             # 🧠 MEMORY PERSISTENCE: Save facts in background (Sync Path Fix)
@@ -440,7 +486,7 @@ class AgenticRAGOrchestrator:
             # regardless; this outer gate just avoids dispatching a task that
             # would immediately no-op.
             effective_subject = memory_subject or user_id
-            if effective_subject and effective_subject != "anonymous":
+            if not is_whatsapp and effective_subject and effective_subject != "anonymous":
                 try:
                     self.memory_handler.create_save_task(
                         user_id=user_id,
@@ -451,10 +497,14 @@ class AgenticRAGOrchestrator:
                         memory_subject=memory_subject,
                     )
                     logger.debug(
-                        "🧠 [Sync] Dispatched memory save task for %s", effective_subject
+                        "🧠 [Sync] Dispatched memory save task subject_hash=%s",
+                        hash_subject(effective_subject),
                     )
                 except Exception as mem_err:
-                    logger.warning("⚠️ [Sync] Failed to dispatch memory save: %s", mem_err)
+                    logger.warning(
+                        "[Sync] Failed to dispatch memory save error_type=%s",
+                        type(mem_err).__name__,
+                    )
 
             return result
 
@@ -464,15 +514,14 @@ class AgenticRAGOrchestrator:
         message: str,
         correlation_id: str,
     ) -> dict[str, Any]:
-        """Create standardized error event."""
+        """Create a caller-safe error event.
+
+        Diagnostic type/correlation stay server-side; the SSE payload exposes
+        only the already-generic message.
+        """
         return {
             "type": "error",
-            "data": {
-                "error_type": error_type,
-                "message": message,
-                "correlation_id": correlation_id,
-                "timestamp": time.time(),
-            },
+            "data": {"message": message},
             "timestamp": time.time(),
         }
 
@@ -522,6 +571,8 @@ class AgenticRAGOrchestrator:
         images: list[dict] | None = None,
         channel: str | None = None,
         agent_role: Any | None = None,  # VASSAL Phase 2: AgentRole | None
+        profile: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ):
         """
         Stream query with comprehensive error handling. Delegates to OrchestratorStreamingCore.
@@ -531,21 +582,32 @@ class AgenticRAGOrchestrator:
         downstream tool_authorizer can enforce per-role tool RBAC. None
         for legacy /stream callers — handled by the authorizer's own
         backward-compat passthrough.
+
+        ``profile`` and ``is_whatsapp`` are optional trusted in-process state.
+        The public HTTP stream router never derives or forwards either from
+        its caller-controlled ``channel`` field.
         """
         # Initialize required arguments for stream_query_core
         tool_execution_counter: dict[str, int] = {"count": 0}
         correlation_id: str = str(uuid.uuid4())
 
-        # Forward to the refactored Streaming Core
-        async for event in self.streaming_core.stream_query_core(
-            query=query,
-            user_id=user_id,
-            conversation_history=conversation_history,
-            session_id=session_id,
-            images=images,
-            tool_execution_counter=tool_execution_counter,
-            correlation_id=correlation_id,
-            channel=channel,
-            agent_role=agent_role,  # VASSAL Phase 2 — propagate to react loop
-        ):
-            yield event
+        langsmith_scope = tracing_context(enabled=False) if is_whatsapp else nullcontext()
+        openinference_scope = suppress_tracing() if is_whatsapp else nullcontext()
+
+        # Forward to the refactored Streaming Core while preserving the same
+        # trusted-WA telemetry boundary as the sync path.
+        with langsmith_scope, openinference_scope:
+            async for event in self.streaming_core.stream_query_core(
+                query=query,
+                user_id=user_id,
+                conversation_history=conversation_history,
+                session_id=session_id,
+                images=images,
+                tool_execution_counter=tool_execution_counter,
+                correlation_id=correlation_id,
+                channel=channel,
+                agent_role=agent_role,  # VASSAL Phase 2 — propagate to react loop
+                profile=profile,
+                is_whatsapp=is_whatsapp,
+            ):
+                yield event

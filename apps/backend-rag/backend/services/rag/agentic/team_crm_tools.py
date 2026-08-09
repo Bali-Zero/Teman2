@@ -1,4 +1,4 @@
-"""WA team-assistant Phase 2 — CRM-scoped read-only tools per team member.
+"""Legacy CRM-scoped read-only tool implementation.
 
 Zero's GO (2026-07-20, ruling captured in memory
 `decision_wa_team_assistant_phase2_crm_go_2026_07_20.md`): a Bali Zero team
@@ -29,16 +29,14 @@ Design (V2a, per the ruling — read this before changing scope):
   email/assigned_to/scope field an LLM could set. This closes the same
   class of bug the 2026-07-20 adversarial-review fix on V1 closed
   (`agentic_rag.py` — caller-supplied identity must never be trusted).
-* **Hard-absence when the flag is off.** `create_agentic_rag()`
-  (`backend/services/rag/agentic/__init__.py`) only appends these tools to
-  the orchestrator's fixed tool list when `WA_TEAM_CRM_TOOLS_ENABLED` is
-  truthy — the flag is read ONCE at orchestrator-construction time, so
-  when it's off (the shipped default) these tools do not exist anywhere
-  in the Gemini function-declaration schema, for ANY caller. When the flag
-  is on, `execute()` still self-gates on `profile.role` before touching
-  the database — a client/unknown sender's `_caller_profile` is `None`
-  (V1's innocence contract), so the tool returns a static "not available"
-  string with zero DB access.
+* **Default-off and not armable on WhatsApp.** `create_agentic_rag()`
+  (`backend/services/rag/agentic/__init__.py`) only constructs these tools
+  when `WA_TEAM_CRM_TOOLS_ENABLED` is truthy. That legacy flag remains
+  false by default and is not an authorization grant. The declaration
+  filter and execution authorizer deny all seven internal tools to every
+  caller carrying a WhatsApp profile, including team/creator profiles and
+  inconsistent privileged roles. The implementation remains available for
+  authenticated workspace policy and a future separately reviewed rollout.
 * **No PII in logs.** Every log line here uses `client_id` / row counts,
   never `full_name`/email — UU PDP boundary (CLAUDE.md §14).
 """
@@ -47,6 +45,7 @@ from __future__ import annotations
 
 import json
 import os
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -54,14 +53,19 @@ import asyncpg
 
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.logging_utils import get_logger
+from backend.services.agents.team_agent_config import AgentRole, is_tool_allowed
+from backend.services.agents.tool_authorizer import (
+    SENSITIVE_TOOLS,
+    WA_L0_ALLOWED_TOOLS,
+    WA_L0_VECTOR_COLLECTIONS,
+)
 from backend.services.tools.definitions import BaseTool
 
 logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# Feature flag — default OFF (rollout plan: flag OFF -> deploy -> prove-live
-# with Zero + 1 pilot member -> flag ON via Fly secret, operator step).
-# Mirrors the exact pattern of WA_INBOX_BOT_AUTOREPLY in wa_inbox_bot.py.
+# Legacy construction flag — default OFF. This is not an authorization grant:
+# WhatsApp remains L0 at both declaration and execution chokepoints.
 # ---------------------------------------------------------------------------
 
 
@@ -69,8 +73,8 @@ def is_team_crm_tools_enabled() -> bool:
     """True only when the Fly secret WA_TEAM_CRM_TOOLS_ENABLED is truthy.
 
     Read once at orchestrator-construction time (see `create_agentic_rag`
-    in `__init__.py`) — NOT re-read per request. Arm with:
-    ``fly secrets set WA_TEAM_CRM_TOOLS_ENABLED=true -a nuzantara-rag``.
+    in `__init__.py`) — NOT re-read per request. It must remain false for
+    the WhatsApp L0 surface; setting it alone cannot bypass authorization.
     """
     return os.getenv("WA_TEAM_CRM_TOOLS_ENABLED", "false").strip().lower() in (
         "1",
@@ -158,34 +162,28 @@ def is_team_or_creator_profile(profile: dict[str, Any] | None) -> bool:
 def filter_gemini_tools_for_caller(
     gemini_tools: list[dict[str, Any]] | None,
     profile: dict[str, Any] | None,
+    agent_role: AgentRole | None = None,
+    is_whatsapp: bool = False,
 ) -> list[dict[str, Any]]:
     """Per-request Gemini function-declaration filter (T-VIS, W0 safety
     pre-arm, 2026-07-25).
 
-    The moment WA_TEAM_CRM_TOOLS_ENABLED is armed, `create_agentic_rag()`
-    (`__init__.py`) appends these 4 tools' declarations to the ORCHESTRATOR-
-    WIDE `gemini_tools` list, which is computed ONCE at construction time
-    (`orchestrator.py.__init__` -> `AgenticRAGOrchestrator.gemini_tools` ->
-    `llm_gateway.set_gemini_tools`) and shared across every concurrent
-    request. Without this filter, EVERY caller — including anonymous
-    WhatsApp clients — would see the team-tool *schemas* in the LLM
-    function-declaration payload even though `execute()` already denies
-    them at call time (`_scope_from_kwargs`). Schema-visibility alone lets a
-    client-facing model be induced to call (or merely learn the existence
-    and shape of) an internal team tool — denying at execution time is not
-    the same as absence.
+    The orchestrator-wide declaration list contains always-registered
+    sensitive tools (``crm_query``, ``timesheet``, ``team_knowledge``) and,
+    when its default-off flag is armed, four team CRM tools. Without this
+    per-request filter, client/unknown callers can see those internal schemas
+    even when execution authorization later denies them.
 
-    This function narrows the declarations sent to Gemini for THIS request
-    to the caller's audience, using the SAME trusted, server-resolved
-    `profile` dict `execute()` itself reads (never a client-settable
-    field — see `orchestrator_core.py`'s
-    `state.caller_profile = user_context.get("profile")`). It is called
-    fresh per request (see `reasoning.py`'s `execute_react_loop` /
-    `execute_react_loop_stream`), never memoized, so there is no cache to
-    key on audience mode.
+    Only the trusted ``is_whatsapp`` marker identifies the WhatsApp surface,
+    which is deliberately L0. A non-None ``profile`` is audience context: it
+    hides the seven internal declarations, but leaves ordinary non-WA tools
+    visible. The only surface that may see internal declarations is an
+    authenticated workspace request (``profile is None`` plus a real
+    ``AgentRole``), and even there the role allowlist is applied per tool.
 
-    Matches by EXACT tool `name` membership in `TEAM_CRM_TOOL_NAMES` — never
-    a substring — so no unrelated tool can be accidentally dropped
+    Matches by EXACT tool `name` membership in
+    ``SENSITIVE_GEMINI_TOOL_NAMES`` — never a substring — so no unrelated
+    tool can be accidentally dropped
     (cicatrix-superscar.md family #3: guard-over-match by substring is a
     recurring scar class in this repo).
 
@@ -197,16 +195,45 @@ def filter_gemini_tools_for_caller(
         gemini_tools: The orchestrator-wide declarations
             (`llm_gateway.gemini_tools`). `None` is treated as `[]`.
         profile: The server-resolved caller profile (`state.caller_profile`).
+        agent_role: The authenticated workspace role (`state.agent_role`).
+        is_whatsapp: Trusted server-derived WA surface marker. Required for
+            client/unknown senders, whose resolved profile is intentionally
+            None; never derive it from a request body ``channel`` value.
 
     Returns:
-        `gemini_tools` unchanged for a team/creator caller; with every
-        `TEAM_CRM_TOOL_NAMES` entry removed for anyone else. Always a list
-        (never `None`), even when `gemini_tools` is `None`.
+        A caller-scoped copy. WhatsApp and no-principal callers never see an
+        internal declaration. Authenticated workspace callers see only tools
+        allowed by their server-derived role. Always a list.
     """
     tools = gemini_tools or []
-    if is_team_or_creator_profile(profile):
-        return tools
-    return [t for t in tools if t.get("name") not in TEAM_CRM_TOOL_NAMES]
+
+    if is_whatsapp:
+        scoped = [deepcopy(t) for t in tools if t.get("name") in WA_L0_ALLOWED_TOOLS]
+        for declaration in scoped:
+            if declaration.get("name") != "vector_search":
+                continue
+            # Per-request copy: never mutate LLMGateway's shared declaration
+            # list, which is reused concurrently across surfaces.
+            declaration["description"] = (
+                "Search the public Bali Zero knowledge base for verified legal, "
+                "immigration, tax, KBLI, circular, and news information. Omit "
+                "collection for a federated search across the available public corpora."
+            )
+            parameters = declaration.setdefault("parameters", {})
+            properties = parameters.setdefault("properties", {})
+            collection_schema = properties.setdefault("collection", {})
+            collection_schema["enum"] = sorted(WA_L0_VECTOR_COLLECTIONS)
+            collection_schema["description"] = (
+                "Optional public knowledge collection. Omit for safe federated search."
+            )
+        return scoped
+
+    if profile is not None:
+        return [t for t in tools if t.get("name") not in SENSITIVE_GEMINI_TOOL_NAMES]
+
+    if not isinstance(agent_role, AgentRole):
+        return [t for t in tools if t.get("name") not in SENSITIVE_GEMINI_TOOL_NAMES]
+    return [t for t in tools if is_tool_allowed(agent_role, str(t.get("name", "")))]
 
 
 def _scope_from_kwargs(kwargs: dict[str, Any]) -> TeamCrmScope | None:
@@ -693,3 +720,5 @@ TEAM_CRM_TOOL_NAMES: frozenset[str] = frozenset(
         "team_practice_detail",
     }
 )
+
+SENSITIVE_GEMINI_TOOL_NAMES: frozenset[str] = SENSITIVE_TOOLS

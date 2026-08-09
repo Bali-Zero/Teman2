@@ -5,7 +5,7 @@ Author: Claude Sonnet
 Date: 2026-02-10
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -129,6 +129,131 @@ async def test_route_message_success(channel_router):
     channel_id, status = mock_adapter.send_status_update_calls[0]
     assert channel_id == "123456"
     assert status == "processing"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "route_channel",
+        "normalized_channel",
+        "trusted_whatsapp_ingress",
+        "expected_trusted_whatsapp",
+    ),
+    [
+        ("whatsapp", "whatsapp", True, True),
+        ("instagram", "whatsapp", False, False),
+        ("telegram", "telegram", False, False),
+    ],
+)
+async def test_route_authority_not_message_body_controls_whatsapp_l0(
+    route_channel: str,
+    normalized_channel: str,
+    trusted_whatsapp_ingress: bool,
+    expected_trusted_whatsapp: bool,
+) -> None:
+    """Only the server-selected adapter key may arm WhatsApp's L0 lane."""
+    calls: list[dict] = []
+
+    class CapturingEngine:
+        async def process_message(self, **kwargs):
+            calls.append(kwargs)
+            yield ChannelResponse(text="ok", metadata={"event_type": "answer"})
+
+    router = ChannelRouter(CapturingEngine())
+    adapter = MockChannel({"channel_name": route_channel})
+
+    async def receive_message(_raw_event):
+        return ChannelMessage(
+            user_id="synthetic-user",
+            session_id="synthetic-session",
+            text="public question",
+            metadata={"phone": "synthetic-phone"},
+            channel=normalized_channel,
+        )
+
+    adapter.receive_message = receive_message
+    router.register_adapter(route_channel, adapter)
+    router._persist_message = AsyncMock(
+        side_effect=AssertionError("persistence reached") if expected_trusted_whatsapp else None
+    )
+    router._enrich_with_routing = AsyncMock()
+    deduplicator = MagicMock()
+    deduplicator.is_duplicate = AsyncMock(
+        side_effect=AssertionError("dedup received trusted WhatsApp data")
+        if expected_trusted_whatsapp
+        else None,
+        return_value=False,
+    )
+
+    with patch("backend.channels.router.message_deduplicator", deduplicator):
+        await router.route_message(
+            route_channel,
+            {"channel": "whatsapp"},
+            trusted_whatsapp_ingress=trusted_whatsapp_ingress,
+        )
+
+    assert calls[0].get("trusted_whatsapp_ingress", False) is expected_trusted_whatsapp
+    if expected_trusted_whatsapp:
+        router._enrich_with_routing.assert_not_awaited()
+        router._persist_message.assert_not_awaited()
+        deduplicator.is_duplicate.assert_not_awaited()
+    else:
+        router._enrich_with_routing.assert_awaited_once()
+        deduplicator.is_duplicate.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_route_without_server_trust_fails_closed() -> None:
+    class UnreachableEngine:
+        def process_message(self, **_kwargs):
+            raise AssertionError("ConversationEngine reached")
+
+    router = ChannelRouter(UnreachableEngine())
+    router.register_adapter("whatsapp", MockChannel({"channel_name": "whatsapp"}))
+
+    with pytest.raises(ValueError, match="trusted WhatsApp ingress"):
+        await router.route_message("whatsapp", {"channel": "whatsapp"})
+
+
+@pytest.mark.asyncio
+async def test_trusted_whatsapp_route_logs_no_raw_identifiers_or_errors(caplog) -> None:
+    user_canary = "WHATSAPP_USER_LOG_CANARY"
+    session_canary = "WHATSAPP_SESSION_LOG_CANARY"
+    query_canary = "WHATSAPP_QUERY_LOG_CANARY"
+    error_canary = "WHATSAPP_ROUTER_ERROR_CANARY"
+
+    class ExplodingEngine:
+        async def process_message(self, **_kwargs):
+            raise RuntimeError(error_canary)
+            yield  # pragma: no cover - preserve async-generator shape
+
+    router = ChannelRouter(ExplodingEngine())
+    adapter = MockChannel({"channel_name": "whatsapp"})
+
+    async def receive_message(_raw_event):
+        return ChannelMessage(
+            user_id=user_canary,
+            session_id=session_canary,
+            text=query_canary,
+            metadata={"phone": user_canary},
+            channel="whatsapp",
+        )
+
+    adapter.receive_message = receive_message
+    router.register_adapter("whatsapp", adapter)
+
+    with caplog.at_level("INFO", logger="backend.channels.router"):
+        with pytest.raises(RuntimeError, match=error_canary):
+            await router.route_message(
+                "whatsapp",
+                {"text": query_canary},
+                trusted_whatsapp_ingress=True,
+            )
+
+    for canary in (user_canary, session_canary, query_canary, error_canary):
+        assert canary not in caplog.text
+    assert "error_type=RuntimeError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
 
 
 @pytest.mark.asyncio

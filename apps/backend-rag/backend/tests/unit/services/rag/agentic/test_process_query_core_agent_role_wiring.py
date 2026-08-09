@@ -210,3 +210,115 @@ async def test_agent_role_and_profile_are_independently_stamped(
         "email": "adit@balizero.com",
     }
     assert state.agent_role is ROLE_EXECUTIVE_CONSULTANT
+
+
+@pytest.mark.asyncio
+async def test_trusted_whatsapp_surface_is_stamped_onto_state(
+    wired_core: OrchestratorCore,
+) -> None:
+    """The server-derived surface marker reaches both declaration and execution policy."""
+    state = AgentState(query="q")
+    wired_core.routing_manager = SimpleNamespace(
+        route_query=AsyncMock(return_value=("flash", False, state)),
+    )
+    wired_core.prompt_builder.build_system_prompt = MagicMock(side_effect=_StopAfterRouting)
+
+    with pytest.raises(_StopAfterRouting):
+        await wired_core.process_query_core(
+            query="what is a KITAS",
+            user_id="synthetic-wa-subject",
+            conversation_history=None,
+            start_time=0.0,
+            is_whatsapp=True,
+        )
+
+    assert state.is_whatsapp is True
+
+
+@pytest.mark.asyncio
+async def test_trusted_whatsapp_skips_context_enrichment_and_automatic_kg(
+    wired_core: OrchestratorCore,
+) -> None:
+    """WA L0 reaches neither memory context nor any pre-tool KG decision."""
+    state = AgentState(query="q")
+    trusted_profile = {"role": "team", "id": "synthetic-team-profile"}
+    bounded_history = [{"role": "user", "content": "RAW_WA_HISTORY_CANARY"}]
+    original_prepare = wired_core.prepare_query_context
+    wired_core.prepare_query_context = AsyncMock(wraps=original_prepare)
+    wired_core.context_manager.get_full_context = AsyncMock(return_value=({}, []))
+    wired_core.kg_retrieval = SimpleNamespace(
+        get_context_for_query=AsyncMock(return_value=None),
+    )
+    kg_query = AsyncMock(return_value=None)
+    wired_core.kg_langgraph_orchestrator = SimpleNamespace(app=object(), query=kg_query)
+    surface_decide = MagicMock(return_value=SimpleNamespace(is_kg_surface=False))
+    wired_core._surface_router = SimpleNamespace(decide=surface_decide)
+    planner = SimpleNamespace(plan=MagicMock())
+    wired_core._query_planner = planner
+    wired_core.routing_manager = SimpleNamespace(
+        route_query=AsyncMock(return_value=("flash", False, state)),
+    )
+    wired_core.prompt_builder.build_system_prompt = MagicMock(side_effect=_StopAfterRouting)
+
+    with (
+        patch("backend.services.rag.agentic.orchestrator_core.spawn") as spawn_mock,
+        pytest.raises(_StopAfterRouting),
+    ):
+        await wired_core.process_query_core(
+            query="RAW_WA_QUERY_CANARY",
+            user_id="RAW_WA_USER_CANARY",
+            conversation_history=bounded_history,
+            start_time=0.0,
+            session_id="RAW_WA_SESSION_CANARY",
+            profile=trusted_profile,
+            agent_role=ROLE_EXECUTIVE_CONSULTANT,
+            is_whatsapp=True,
+        )
+
+    wired_core.prepare_query_context.assert_not_awaited()
+    wired_core.context_manager.get_full_context.assert_not_awaited()
+    wired_core.kg_retrieval.get_context_for_query.assert_not_awaited()
+    kg_query.assert_not_awaited()
+    surface_decide.assert_not_called()
+    planner.plan.assert_not_called()
+    spawn_mock.assert_not_called()
+    prompt_kwargs = wired_core.prompt_builder.build_system_prompt.call_args.kwargs
+    assert prompt_kwargs["context"] == {"profile": trusted_profile}
+    assert prompt_kwargs["conversation_history"] == bounded_history
+    assert state.is_whatsapp is True
+
+
+@pytest.mark.asyncio
+async def test_non_whatsapp_still_loads_context_and_runs_automatic_kg(
+    wired_core: OrchestratorCore,
+) -> None:
+    """The L0 bypass is authority-scoped; ordinary callers retain the old path."""
+    state = AgentState(query="q")
+    wired_core.context_manager.get_full_context = AsyncMock(return_value=({}, []))
+    kg_context = SimpleNamespace(
+        graph_summary="public graph summary",
+        entities_found=[],
+        relationships=[],
+    )
+    wired_core.kg_retrieval = SimpleNamespace(
+        get_context_for_query=AsyncMock(return_value=kg_context),
+    )
+    wired_core.routing_manager = SimpleNamespace(
+        route_query=AsyncMock(return_value=("flash", False, state)),
+    )
+    wired_core.prompt_builder.build_system_prompt = MagicMock(side_effect=_StopAfterRouting)
+
+    with pytest.raises(_StopAfterRouting):
+        await wired_core.process_query_core(
+            query="public non-WA query",
+            user_id="synthetic-web-user",
+            conversation_history=None,
+            start_time=0.0,
+            is_whatsapp=False,
+        )
+
+    wired_core.context_manager.get_full_context.assert_awaited_once()
+    wired_core.kg_retrieval.get_context_for_query.assert_awaited_once_with(
+        "public non-WA query",
+        max_depth=1,
+    )

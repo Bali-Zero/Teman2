@@ -29,6 +29,7 @@ from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyt
 from backend.prompts.channel_overlays import build_channel_context
 from backend.services.common.background import spawn
 from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.pii.violation_store import hash_subject
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.rag.agentic.llm_gateway import LLMGateway
 from backend.services.rag.agentic.memory_handler import MemoryHandler
@@ -296,8 +297,11 @@ class OrchestratorCore:
             try:
                 self._kg_auto_expansion = KGAutoExpansion(db_pool=db_pool)
                 logger.info("✅ [GraphRAG v6] KGAutoExpansion ready (quarantine pattern)")
-            except Exception as e:
-                logger.warning("⚠️ [GraphRAG v6] KGAutoExpansion init skipped: %s", e)
+            except Exception as exc:
+                logger.warning(
+                    "⚠️ [GraphRAG v6] KGAutoExpansion init skipped error_type=%s",
+                    type(exc).__name__,
+                )
 
         # Phase 6: Multi-Agent Coordinator (lazy-initialized)
         self._multi_agent_coordinator: MultiAgentCoordinator | None = None
@@ -308,8 +312,11 @@ class OrchestratorCore:
                     db_pool=db_pool,
                 )
                 logger.info("✅ [Phase 6] MultiAgentCoordinator ready")
-            except Exception as e:
-                logger.warning("⚠️ [Phase 6] MultiAgentCoordinator init skipped: %s", e)
+            except Exception as exc:
+                logger.warning(
+                    "⚠️ [Phase 6] MultiAgentCoordinator init skipped error_type=%s",
+                    type(exc).__name__,
+                )
 
         # R5 Phase 5: SurfaceRouter KG fast-path
         # Post-init injectable (service_initializer sets core._surface_router = surface_router).
@@ -370,8 +377,9 @@ class OrchestratorCore:
         # _inject_curated_qa_grounding: "if not domain ... return").
         if classified_domain is None:
             logger.debug(
-                "FAQ Cache SKIPPED (no classified domain): %s...",
-                query[:60],
+                "FAQ Cache SKIPPED (no classified domain) query_hash=%s query_length=%d",
+                hash_subject(query),
+                len(query),
             )
             from backend.app.metrics import faq_cache_misses_total
 
@@ -395,12 +403,11 @@ class OrchestratorCore:
                         cached = legacy
                     else:
                         logger.warning(
-                            "⚠️ FAQ Cache domain-mismatch averted: query "
-                            "classified as %r but legacy-key hit carries "
-                            "domain=%r for '%.60s' — treating as MISS.",
+                            "⚠️ FAQ Cache domain-mismatch averted: "
+                            "classified_domain=%r stored_domain=%r query_hash=%s",
                             classified_domain,
                             stored_domain,
-                            query,
+                            hash_subject(query),
                         )
                         try:
                             from backend.app.metrics import (
@@ -416,7 +423,11 @@ class OrchestratorCore:
 
             if cached:
                 # Cache HIT! Return instant response
-                logger.info(f"✅ FAQ Cache HIT: {query[:60]}... (< 1ms)")
+                logger.info(
+                    "✅ FAQ Cache HIT query_hash=%s query_length=%d (< 1ms)",
+                    hash_subject(query),
+                    len(query),
+                )
 
                 # Record metrics
                 from backend.app.metrics import faq_cache_hits_total
@@ -440,7 +451,11 @@ class OrchestratorCore:
                     tools_called=[],
                 )
             # Cache MISS - continue to semantic cache / full processing
-            logger.debug(f"FAQ Cache MISS: {query[:60]}...")
+            logger.debug(
+                "FAQ Cache MISS query_hash=%s query_length=%d",
+                hash_subject(query),
+                len(query),
+            )
 
             # Record metrics
             from backend.app.metrics import faq_cache_misses_total
@@ -449,8 +464,8 @@ class OrchestratorCore:
 
             return None
 
-        except Exception as e:
-            logger.warning("⚠️ FAQ Cache error: %s", e)
+        except Exception as exc:
+            logger.warning("⚠️ FAQ Cache error error_type=%s", type(exc).__name__)
 
             # Record error metric
             try:
@@ -499,7 +514,10 @@ class OrchestratorCore:
                         if raw:
                             query_embedding = np.array(raw, dtype=np.float32)
                     except Exception as emb_err:
-                        logger.debug("Embedding for semantic cache skipped: %s", emb_err)
+                        logger.debug(
+                            "Embedding for semantic cache skipped error_type=%s",
+                            type(emb_err).__name__,
+                        )
 
                 cached = await self.semantic_cache.get_cached_result(query, query_embedding)
                 if cached:
@@ -531,9 +549,9 @@ class OrchestratorCore:
                 from backend.app.metrics import semantic_cache_misses_total
 
                 semantic_cache_misses_total.inc()
-            except (KeyError, ValueError, RuntimeError) as e:
-                logger.warning("Cache lookup failed: %s", e, exc_info=True)
-                set_span_status("error", str(e))
+            except (KeyError, ValueError, RuntimeError) as exc:
+                logger.warning("Cache lookup failed error_type=%s", type(exc).__name__)
+                set_span_status("error", "cache_lookup_failed")
 
                 from backend.app.metrics import semantic_cache_errors_total
 
@@ -684,10 +702,10 @@ class OrchestratorCore:
                 "\n\n--- CURATED KNOWLEDGE (high-priority, pre-vetted evidence) ---\n"
                 + "\n\n".join(blocks)
             )
-        except Exception as e:
+        except Exception as exc:
             logger.warning(
-                "⚠️ [CuratedQA] Grounding injection failed (continuing without): %s",
-                e,
+                "⚠️ [CuratedQA] Grounding injection failed error_type=%s",
+                type(exc).__name__,
             )
             return ""
 
@@ -695,6 +713,7 @@ class OrchestratorCore:
         self,
         query: str,
         user_context: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ) -> tuple[dict[str, Any], str, dict | None]:
         """
         Estrae entities e KG context per query.
@@ -720,8 +739,12 @@ class OrchestratorCore:
             with trace_span("entity.extraction", {"query_length": len(query)}):
                 entities = await self.entity_extractor.extract_entities(query)
                 if any(entities.values()):
-                    logger.info("🔍 [Entity Extraction] Extracted entities: %s", entities)
-                    set_span_attribute("entities_found", str(entities))
+                    entity_type_count = sum(bool(value) for value in entities.values())
+                    logger.info(
+                        "🔍 [Entity Extraction] Extracted %d entity type(s)",
+                        entity_type_count,
+                    )
+                    set_span_attribute("entity_types_found", entity_type_count)
                 set_span_status("ok")
                 return entities
 
@@ -738,8 +761,11 @@ class OrchestratorCore:
                         f"{len(kg_context.relationships)} relationships to context",
                     )
                 return kg_context
-            except Exception as e:
-                logger.warning("⚠️ [KG Legacy] Failed to get graph context: %s", e)
+            except Exception as exc:
+                logger.warning(
+                    "⚠️ [KG Legacy] Failed to get graph context error_type=%s",
+                    type(exc).__name__,
+                )
                 return None
 
         async def _fetch_langgraph_workflow_task() -> None:
@@ -777,32 +803,42 @@ class OrchestratorCore:
                         set_span_status("ok")
 
                     return result
-            except Exception as e:
+            except Exception as exc:
                 logger.warning(
-                    "⚠️ [KG LangGraph] Failed to synthesize workflow: %s",
-                    e,
-                    exc_info=True,
+                    "⚠️ [KG LangGraph] Failed to synthesize workflow error_type=%s",
+                    type(exc).__name__,
                 )
-                set_span_status("error", str(e))
+                set_span_status("error", "kg_workflow_failed")
                 return None
 
-        # Execute all three tasks in parallel
+        # WhatsApp L0 may still use the local entity shape when this shared
+        # helper is called directly, but it must never fan the raw query out
+        # to either KG implementation. The main sync/stream WA paths bypass
+        # this helper entirely; this guard closes the shared fallback too.
         entity_start = time.time()
         kg_start = time.time()
         langgraph_start = time.time()
 
-        extracted_entities, kg_context, langgraph_result = await asyncio.gather(
-            _extract_entities_task(),
-            _fetch_kg_context_task(),
-            _fetch_langgraph_workflow_task(),
-            return_exceptions=True,  # Don't fail if one task fails
-        )
+        if is_whatsapp:
+            extracted_entities = await _extract_entities_task()
+            kg_context = None
+            langgraph_result = None
+        else:
+            extracted_entities, kg_context, langgraph_result = await asyncio.gather(
+                _extract_entities_task(),
+                _fetch_kg_context_task(),
+                _fetch_langgraph_workflow_task(),
+                return_exceptions=True,  # Don't fail if one task fails
+            )
 
         parallel_time = time.time() - start_time
 
         # Handle entity extraction result
         if isinstance(extracted_entities, Exception):
-            logger.error("❌ Entity extraction failed: %s", extracted_entities)
+            logger.error(
+                "❌ Entity extraction failed error_type=%s",
+                type(extracted_entities).__name__,
+            )
             extracted_entities = {}
         else:
             entity_time = time.time() - entity_start
@@ -810,7 +846,7 @@ class OrchestratorCore:
 
         # Handle KG context result (legacy)
         if isinstance(kg_context, Exception):
-            logger.error("❌ KG retrieval failed: %s", kg_context)
+            logger.error("❌ KG retrieval failed error_type=%s", type(kg_context).__name__)
             kg_context = None
         elif kg_context:
             kg_time = time.time() - kg_start
@@ -818,7 +854,10 @@ class OrchestratorCore:
 
         # Handle LangGraph result (Phase 3)
         if isinstance(langgraph_result, Exception):
-            logger.error("❌ KG LangGraph failed: %s", langgraph_result)
+            logger.error(
+                "❌ KG LangGraph failed error_type=%s",
+                type(langgraph_result).__name__,
+            )
             langgraph_result = None
         elif langgraph_result:
             langgraph_time = time.time() - langgraph_start
@@ -971,8 +1010,11 @@ class OrchestratorCore:
                 confidence=workflow.get("confidence", 0.0),
                 execution_time_ms=execution_time_ms,
             )
-        except Exception as e:
-            logger.warning("Failed to track workflow analytics: %s", e)
+        except Exception as exc:
+            logger.warning(
+                "Failed to track workflow analytics error_type=%s",
+                type(exc).__name__,
+            )
 
     # ------------------------------------------------------------------
     # R5 Phase 5: KG fast-path
@@ -996,7 +1038,10 @@ class OrchestratorCore:
         try:
             decision = self._surface_router.decide(query)
         except Exception as exc:
-            logger.warning("⚠️ [R5 KG] SurfaceRouter.decide failed: %s", exc)
+            logger.warning(
+                "⚠️ [R5 KG] SurfaceRouter.decide failed error_type=%s",
+                type(exc).__name__,
+            )
             return None
 
         if not decision.is_kg_surface:
@@ -1020,7 +1065,9 @@ class OrchestratorCore:
             )
         except Exception as exc:
             logger.warning(
-                "⚠️ [R5 KG] KGLangGraphOrchestrator.query failed: %s — falling through to ReAct", exc
+                "⚠️ [R5 KG] KGLangGraphOrchestrator.query failed error_type=%s; "
+                "falling through to ReAct",
+                type(exc).__name__,
             )
             return None
 
@@ -1085,7 +1132,7 @@ class OrchestratorCore:
             "react.loop",
             {
                 "model_tier": model_tier,
-                "user_id": user_id,
+                "user_id_hash": hash_subject(user_id) or "anonymous",
                 "query_length": len(query),
             },
         ):
@@ -1117,19 +1164,20 @@ class OrchestratorCore:
                 return state, model_used_name, token_usage, loop_duration
             except (RuntimeError, ValueError, TimeoutError) as react_error:
                 # Specific error types from ReAct loop execution
-                logger.error("❌ ReAct loop failed: %s", react_error, exc_info=True)
-                set_span_status("error", str(react_error))
+                logger.error(
+                    "❌ ReAct loop failed error_type=%s",
+                    type(react_error).__name__,
+                )
+                set_span_status("error", "react_loop_failed")
                 raise
             except Exception as unexpected_error:
-                # Catch-all for unexpected errors with detailed logging
+                # Catch-all remains diagnostic without reflecting prompt data.
                 logger.critical(
-                    "🚨 Unexpected error in ReAct loop: %s",
-                    unexpected_error,
-                    exc_info=True,
-                    extra={"error_type": type(unexpected_error).__name__},
+                    "🚨 Unexpected error in ReAct loop error_type=%s",
+                    type(unexpected_error).__name__,
                 )
                 set_span_status("error", f"unexpected:{type(unexpected_error).__name__}")
-                raise RuntimeError(f"ReAct loop failed: {unexpected_error}") from unexpected_error
+                raise RuntimeError("ReAct loop failed") from None
 
     async def finalize_result(
         self,
@@ -1155,10 +1203,17 @@ class OrchestratorCore:
         user_id: str | None,
         session_id: str | None,
         claim_analytics: _FinalizationAnalyticsClaim,
+        is_whatsapp: bool = False,
     ) -> AnalyticsReceiptStatus:
         """Consume one invocation-local capability and return its receipt."""
         if not claim_analytics():
             raise RuntimeError("finalization analytics capability already consumed or invalid")
+
+        # Trusted WA L0 never persists raw query/user/session analytics. This
+        # check happens before producer-specific receipt handling and before
+        # any repository coroutine is built or scheduled.
+        if is_whatsapp:
+            return AnalyticsReceiptStatus.SKIPPED
 
         # ReAct already awaited the canonical repository call. Its receipt is
         # accepted only from the private ReAct producer context, never public
@@ -1212,10 +1267,10 @@ class OrchestratorCore:
             except Exception:
                 analytics_work.close()
                 raise
-        except Exception:
+        except Exception as exc:
             logger.warning(
-                "Finalization analytics scheduling failed before background execution",
-                exc_info=True,
+                "Finalization analytics scheduling failed error_type=%s",
+                type(exc).__name__,
             )
             return AnalyticsReceiptStatus.FAILED
         return AnalyticsReceiptStatus.SCHEDULED
@@ -1228,6 +1283,7 @@ class OrchestratorCore:
         user_id: str | None,
         session_id: str | None,
         claim_analytics: _FinalizationAnalyticsClaim,
+        is_whatsapp: bool = False,
     ) -> CoreResult:
         """Finalize one canonical execution with its single-use authority."""
         analytics_receipt = self._claim_execution_analytics_receipt(
@@ -1235,6 +1291,7 @@ class OrchestratorCore:
             query=query,
             user_id=user_id,
             session_id=session_id,
+            is_whatsapp=is_whatsapp,
             claim_analytics=claim_analytics,
         )
         return finalize_core_result(
@@ -1257,6 +1314,7 @@ class OrchestratorCore:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        is_whatsapp: bool = False,
     ) -> CoreResult:
         """Run the core pipeline and cross the shared finalization boundary."""
         analytics_claimed = False
@@ -1282,12 +1340,14 @@ class OrchestratorCore:
             max_steps=max_steps,
             agent_role=agent_role,
             memory_subject=memory_subject,
+            is_whatsapp=is_whatsapp,
         )
         return self._finalize_process_context(
             context,
             query=query,
             user_id=user_id,
             session_id=session_id,
+            is_whatsapp=is_whatsapp,
             claim_analytics=_claim_finalization_analytics_once,
         )
 
@@ -1303,6 +1363,7 @@ class OrchestratorCore:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        is_whatsapp: bool = False,
     ) -> FinalizationContext:
         """
         Unfinalized implementation; only ``process_query_core`` may call it.
@@ -1323,11 +1384,9 @@ class OrchestratorCore:
             start_time: Timestamp di inizio
             session_id: Optional session ID
             tool_execution_counter: Optional tool execution counter
-            profile: Optional caller-supplied profile override (WA
-                team-assistant V1). Merged on top of whatever
-                prepare_query_context()'s DB-keyed lookup found — the
-                caller's fields win on key conflicts. None (every caller
-                except the WA bot today) is a complete no-op.
+            profile: Optional server-trusted profile override. WA places it
+                onto an otherwise neutral context without a DB/context lookup;
+                non-WA callers retain the ordinary merge behavior.
             agent_role: T4 unified principal (2026-07-25). The caller's
                 `AgentRole` (from `team_agent_config`), stamped onto
                 `state.agent_role` below — the SAME field
@@ -1337,14 +1396,9 @@ class OrchestratorCore:
                 except an authenticated/trusted principal) is a complete
                 no-op — the authorizer's own backward-compat passthrough
                 fires exactly as before this parameter existed.
-            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Server-
-                derived per-sender pseudonymous subject for the trusted
-                WhatsApp bot (`_memory_identity.derive_wa_memory_subject`).
-                Forwarded to `prepare_query_context` for the FACTS read, and
-                further down to the memory SAVE at the end of this method —
-                one value, two chokepoints, never re-derived. None (every
-                caller except the trusted WA bot with the salt provisioned)
-                is a complete no-op.
+            memory_subject: Backward-compatible context identity for non-WA
+                callers. Trusted WA ignores it because its L0 path performs
+                neither context/memory reads nor memory persistence.
 
         Returns:
             CoreResult completo
@@ -1352,21 +1406,30 @@ class OrchestratorCore:
         if tool_execution_counter is None:
             tool_execution_counter = {"count": 0}
 
-        # 1. Load context and Extract Entities/KG in PARALLEL
-        # This reduces TTFT by overlapping DB calls with NLP/Graph calls
-        (
-            user_context,
-            optimized_history,
-            extracted_entities,
-            system_context_for_prompt,
-            langgraph_workflow,
-        ) = await self.prepare_query_context(
-            query=query,
-            user_id=user_id,
-            conversation_history=conversation_history,
-            session_id=session_id,
-            memory_subject=memory_subject,
-        )
+        # WA L0 is deliberately neutral: the server-trusted profile and the
+        # already-bounded caller history may reach the main LLM, while raw
+        # query/user/session values never transit through memory/context or
+        # automatic KG enrichment. Ordinary callers retain the full path.
+        if is_whatsapp:
+            user_context: dict[str, Any] = {}
+            optimized_history = list(conversation_history or [])
+            extracted_entities: dict[str, Any] = {}
+            system_context_for_prompt = ""
+            langgraph_workflow = None
+        else:
+            (
+                user_context,
+                optimized_history,
+                extracted_entities,
+                system_context_for_prompt,
+                langgraph_workflow,
+            ) = await self.prepare_query_context(
+                query=query,
+                user_id=user_id,
+                conversation_history=conversation_history,
+                session_id=session_id,
+                memory_subject=memory_subject,
+            )
 
         # 1a2. WA team-assistant V1: merge a caller-supplied profile override
         # on top of the DB-keyed profile lookup above. For WA senders,
@@ -1382,7 +1445,7 @@ class OrchestratorCore:
         # Active mode: produces QueryPlan consumed by CRAG Router.
         # Shadow mode: logs plan but doesn't route (backward-compatible).
         query_plan = None
-        if self._query_planner:
+        if not is_whatsapp and self._query_planner:
             if _USE_QUERY_PLANNER:
                 query_plan = self._query_planner.plan(query, user_context)
                 # 1c. [SOTA 2026] CRAG Router — conditional tier activation
@@ -1425,7 +1488,7 @@ class OrchestratorCore:
         # of "skip cache read AND write" is the READ below; both checks are
         # skipped outright for a team/creator sender rather than merely
         # excluded from a write that doesn't happen inline here.
-        _team_mode = is_team_or_creator_profile(user_context.get("profile"))
+        _team_mode = is_whatsapp or is_team_or_creator_profile(user_context.get("profile"))
 
         # 3. Check FAQ cache (exact match, < 1ms)
         faq_cached_result = (
@@ -1466,7 +1529,11 @@ class OrchestratorCore:
         # through the full ReAct loop + abstain gate below; this only shapes
         # the evidence the LLM reasons over. Defensive by design (see
         # _inject_curated_qa_grounding docstring) — never raises.
-        curated_qa_context = await self._inject_curated_qa_grounding(query, extracted_entities)
+        curated_qa_context = (
+            ""
+            if is_whatsapp
+            else await self._inject_curated_qa_grounding(query, extracted_entities)
+        )
         if curated_qa_context:
             system_context_for_prompt += curated_qa_context
 
@@ -1475,7 +1542,8 @@ class OrchestratorCore:
         # answered with no sources, could not abstain, and fabricated a fee in
         # prod). When enabled, everything below is unchanged.
         if (
-            _MULTI_AGENT_COORDINATOR_ENABLED
+            not is_whatsapp
+            and _MULTI_AGENT_COORDINATOR_ENABLED
             and self._multi_agent_coordinator
             and requires_multi_agent(query)
         ):
@@ -1498,13 +1566,16 @@ class OrchestratorCore:
                         ),
                         producer_origin=ProducerOrigin.MULTI_AGENT_COORDINATOR,
                     )
-            except Exception as e:
-                logger.warning("⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: %s", e)
+            except Exception as exc:
+                logger.warning(
+                    "⚠️ [Phase 6] Multi-agent failed error_type=%s; falling back to ReAct",
+                    type(exc).__name__,
+                )
 
         # 3b.5. SpecializedServiceRouter — complex query fast-path
         # Routes to AutonomousResearch, CrossOracleSynthesis, or ClientJourney
         # before entering the heavy ReAct pipeline.
-        if self._specialized_router:
+        if not is_whatsapp and self._specialized_router:
             intent_category = extracted_entities.get("intent_category", "")
             ssr_result = None
             if self._specialized_router.detect_autonomous_research(query, intent_category):
@@ -1530,11 +1601,15 @@ class OrchestratorCore:
                 )
 
         # 3b.6. R5 Phase 5: KG fast-path — entity/relationship queries bypass Qdrant ReAct loop
-        kg_fast_result = await self._try_kg_fast_path(
-            query=query,
-            user_context=user_context,
-            extracted_entities=extracted_entities,
-            start_time=start_time,
+        kg_fast_result = (
+            None
+            if is_whatsapp
+            else await self._try_kg_fast_path(
+                query=query,
+                user_context=user_context,
+                extracted_entities=extracted_entities,
+                start_time=start_time,
+            )
         )
         if kg_fast_result:
             logger.info("✅ [R5 KG] Fast-path returned answer (skipping ReAct loop)")
@@ -1566,6 +1641,11 @@ class OrchestratorCore:
         # team/creator senders (complete no-op elsewhere).
         state.caller_profile = user_context.get("profile")
 
+        # Trusted WA surface survives identity resolution: client/unknown
+        # senders deliberately have no caller_profile but still require the
+        # exact L0 declaration/execution/data-minimization policy.
+        state.is_whatsapp = is_whatsapp
+
         # T4 unified principal (2026-07-25): stamp the request-scoped
         # AgentRole onto the state the same way `_prepare_react_loop` does
         # for the workspace-stream path. reasoning.py reads this via
@@ -1578,9 +1658,13 @@ class OrchestratorCore:
         # this line existed.
         state.agent_role = agent_role
 
+        # The current query still reaches the main LLM, but WA's raw transport
+        # identity must not become prompt/reasoning metadata.
+        execution_user_id = "anonymous" if is_whatsapp else (user_id or "anonymous")
+
         # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(
-            user_id=user_id or "anonymous",
+            user_id=execution_user_id,
             context=user_context,
             query=query,
             additional_context=system_context_for_prompt,
@@ -1601,7 +1685,7 @@ class OrchestratorCore:
             chat=chat,
             system_prompt=system_prompt,
             query=query,
-            user_id=user_id or "anonymous",
+            user_id=execution_user_id,
             model_tier=model_tier,
             tool_execution_counter=tool_execution_counter,
         )
@@ -1641,29 +1725,31 @@ class OrchestratorCore:
             f"\U0001f4c4 [Retrieval] Chunks retrieved: {len(sources)} from {source_collections}",
         )
 
-        # 9. Record metrics
-        self.metrics_manager.record_rag_metrics(
-            state=state,
-            collections_used=collections_used,
-            tool_execution_count=tool_execution_counter["count"],
-            context_used=context_used,
-            execution_time=timings["total"],
-            sources=sources,
-        )
-        self.metrics_manager.record_token_usage(
-            model_used=model_used_name,
-            token_usage=token_usage,
-        )
-        self.metrics_manager.log_query_completion(
-            user_id=user_id,
-            query=query,
-            model_used=model_used_name,
-            execution_time=timings["total"],
-            state=state,
-            collections_used=collections_used,
-            tool_execution_count=tool_execution_counter["count"],
-            token_usage=token_usage,
-        )
+        # 9. Record metrics. Trusted WA is excluded from every analytics
+        # sink, including aggregate Prometheus counters, not only raw logs.
+        if not is_whatsapp:
+            self.metrics_manager.record_rag_metrics(
+                state=state,
+                collections_used=collections_used,
+                tool_execution_count=tool_execution_counter["count"],
+                context_used=context_used,
+                execution_time=timings["total"],
+                sources=sources,
+            )
+            self.metrics_manager.record_token_usage(
+                model_used=model_used_name,
+                token_usage=token_usage,
+            )
+            self.metrics_manager.log_query_completion(
+                user_id=user_id,
+                query=query,
+                model_used=model_used_name,
+                execution_time=timings["total"],
+                state=state,
+                collections_used=collections_used,
+                tool_execution_count=tool_execution_counter["count"],
+                token_usage=token_usage,
+            )
 
         # 11. Build and return response (with KG LangGraph workflow if available)
         # Extract reasoning from langgraph_result if available
@@ -1748,7 +1834,12 @@ class OrchestratorCore:
         # 14. [GraphRAG v6] KG Auto-Expansion (fire-and-forget)
         # Extract from SOURCE CHUNKS, not from LLM response — avoids feedback loop.
         evidence_score_val = getattr(state, "evidence_score", evidence_score)
-        if self._kg_auto_expansion and evidence_score_val and evidence_score_val > 0.6:
+        if (
+            not is_whatsapp
+            and self._kg_auto_expansion
+            and evidence_score_val
+            and evidence_score_val > 0.6
+        ):
             # Collect source chunk texts from tool results
             source_chunks_text = self._extract_source_chunks_text(state)
             source_chunk_ids = [
@@ -1767,16 +1858,20 @@ class OrchestratorCore:
         # Canonical ReAct analytics write. This predates the finalization
         # spine and remains awaited; recording it after the response policy
         # makes ``response_generated`` reflect the actual abstain decision.
-        analytics_receipt = await self._log_query_analytics(
-            query=query,
-            user_id=user_id,
-            session_id=session_id,
-            collections_used=collections_used,
-            sources=sources,
-            model_used=model_used_name,
-            token_usage=token_usage,
-            timings=timings,
-            response_generated=bool(result.answer) and not result.abstain,
+        analytics_receipt = (
+            AnalyticsReceiptStatus.SKIPPED
+            if is_whatsapp
+            else await self._log_query_analytics(
+                query=query,
+                user_id=user_id,
+                session_id=session_id,
+                collections_used=collections_used,
+                sources=sources,
+                model_used=model_used_name,
+                token_usage=token_usage,
+                timings=timings,
+                response_generated=bool(result.answer) and not result.abstain,
+            )
         )
 
         return FinalizationContext(
@@ -1824,8 +1919,11 @@ class OrchestratorCore:
                     decision.skip_rag,
                     decision.collections,
                 )
-        except Exception as e:
-            logger.debug("⚠️ [GraphRAG v6 SHADOW] Planner error: %s", e)
+        except Exception as exc:
+            logger.debug(
+                "⚠️ [GraphRAG v6 SHADOW] Planner error_type=%s",
+                type(exc).__name__,
+            )
 
     async def _run_grading_gates(
         self,
@@ -1921,8 +2019,11 @@ class OrchestratorCore:
                             "decision": verified.decision.value,
                             "score": verified.score,
                         }
-                    except Exception as e:
-                        logger.debug("[Grading] LLM hallucination verify failed: %s", e)
+                    except Exception as exc:
+                        logger.debug(
+                            "[Grading] LLM hallucination verify failed error_type=%s",
+                            type(exc).__name__,
+                        )
 
             # --- Gate 3: Pricing check (strict, only if pricing in answer) ---
             if contains_pricing(answer):
@@ -1967,8 +2068,11 @@ class OrchestratorCore:
                     )
                     state.evidence_score = min(state.evidence_score or 0.5, 0.14)
 
-        except Exception as e:
-            logger.warning("[Grading] Gate execution error (non-blocking): %s", e)
+        except Exception as exc:
+            logger.warning(
+                "[Grading] Gate execution error_type=%s (non-blocking)",
+                type(exc).__name__,
+            )
 
         return results
 
@@ -2042,8 +2146,11 @@ class OrchestratorCore:
                 logger.warning("Query analytics returned no receipt (non-critical)")
                 return AnalyticsReceiptStatus.FAILED
             return AnalyticsReceiptStatus.WRITTEN
-        except Exception as e:
-            logger.warning("Failed to log query analytics (non-critical): %s", e)
+        except Exception as exc:
+            logger.warning(
+                "Failed to log query analytics error_type=%s (non-critical)",
+                type(exc).__name__,
+            )
             return AnalyticsReceiptStatus.FAILED
 
     # ========== COMMON METHODS FOR STREAMING AND NON-STREAMING ==========
@@ -2055,6 +2162,7 @@ class OrchestratorCore:
         conversation_history: list[dict] | None,
         session_id: str | None = None,
         memory_subject: str | None = None,
+        is_whatsapp: bool = False,
     ) -> tuple[dict[str, Any], list[dict], dict[str, Any], str, dict | None]:
         """
         Common context preparation for both streaming and non-streaming.
@@ -2070,6 +2178,9 @@ class OrchestratorCore:
             Tuple of (user_context, optimized_history, extracted_entities, kg_context_str, workflow)
         """
 
+        if is_whatsapp:
+            return {}, list(conversation_history or []), {}, "", None
+
         # Definisci i task da eseguire in parallelo
         async def _load_context() -> Any:
             return await self.context_manager.get_full_context(
@@ -2083,14 +2194,18 @@ class OrchestratorCore:
         # First load context to get user_context for LangGraph
         try:
             user_context, optimized_history = await _load_context()
-        except Exception as e:
-            logger.error("❌ Context loading failed: %s", e, exc_info=True)
+        except Exception as exc:
+            logger.error("❌ Context loading failed error_type=%s", type(exc).__name__)
             user_context = {}
             optimized_history = []
 
         # Then run entity/KG extraction with user_context
         async def _extract_entities_kg_with_context() -> Any:
-            return await self.extract_entities_and_kg_context(query, user_context=user_context)
+            return await self.extract_entities_and_kg_context(
+                query,
+                user_context=user_context,
+                is_whatsapp=is_whatsapp,
+            )
 
         workflow = None
         try:
@@ -2099,8 +2214,8 @@ class OrchestratorCore:
                 system_context_for_prompt,
                 workflow,
             ) = await _extract_entities_kg_with_context()
-        except Exception as e:
-            logger.error("❌ KG extraction failed: %s", e, exc_info=True)
+        except Exception as exc:
+            logger.error("❌ KG extraction failed error_type=%s", type(exc).__name__)
             extracted_entities = {}
             system_context_for_prompt = ""
 
@@ -2161,6 +2276,8 @@ class OrchestratorCore:
         kg_context_str: str = "",  # New argument to pass pre-fetched KG context
         channel: str | None = None,  # Channel overlay for response formatting
         agent_role: Any | None = None,  # VASSAL Phase 2: AgentRole | None
+        profile: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ) -> tuple[str, bool, AgentState, str]:
         """
         Common ReAct loop preparation.
@@ -2186,11 +2303,19 @@ class OrchestratorCore:
         # reasoning.py reads this via `getattr(state, "agent_role", None)`
         # at every execute_tool call site and forwards it to the authorizer.
         state.agent_role = agent_role
+        # The profile is audience context; only the separately supplied,
+        # trusted marker activates WhatsApp L0 in declaration and execution
+        # chokepoints.
+        state.caller_profile = profile
+        state.is_whatsapp = is_whatsapp
 
         # Use pre-fetched KG context if available, otherwise fetch it (fallback)
         system_context_for_prompt = kg_context_str
-        if not system_context_for_prompt:
-            _, system_context_for_prompt, _ = await self.extract_entities_and_kg_context(query)
+        if not system_context_for_prompt and not is_whatsapp:
+            _, system_context_for_prompt, _ = await self.extract_entities_and_kg_context(
+                query,
+                is_whatsapp=is_whatsapp,
+            )
 
         # Build system prompt - handle None user_context
         safe_user_context = user_context or {}
@@ -2212,13 +2337,12 @@ class OrchestratorCore:
 
         # 🔍 DEBUG: Log full context breakdown
         logger.debug("🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")
-        logger.debug("🔍 Query: %s", query)
+        logger.debug("🔍 Query length: %s", len(query))
         logger.debug(f"🔍 System prompt length: {len(system_prompt)} chars")
         logger.debug(f"🔍 KG context length: {len(system_context_for_prompt)} chars")
         logger.debug(f"🔍 User context facts: {len(safe_user_context.get('facts', []))} facts")
         logger.debug(f"🔍 Conversation history: {len(history)} messages")
         logger.debug("🔍 Deep think mode: %s", deep_think_mode)
-        logger.debug(f"🔍 First 1000 chars of KG context:\n{system_context_for_prompt[:1000]}...")
         logger.debug("🔍 ===== END CONTEXT BREAKDOWN =====")
 
         return model_tier, deep_think_mode, state, system_prompt
@@ -2233,6 +2357,8 @@ class OrchestratorCore:
         kg_context_str: str = "",
         channel: str | None = None,
         agent_role: Any | None = None,  # VASSAL Phase 2
+        profile: dict[str, Any] | None = None,
+        is_whatsapp: bool = False,
     ) -> tuple[str, bool, AgentState, str]:
         """
         Prepare ReAct execution (alias for _prepare_react_loop for streaming compatibility).
@@ -2249,4 +2375,6 @@ class OrchestratorCore:
             kg_context_str=kg_context_str,
             channel=channel,
             agent_role=agent_role,
+            profile=profile,
+            is_whatsapp=is_whatsapp,
         )
