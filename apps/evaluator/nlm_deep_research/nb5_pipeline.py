@@ -275,6 +275,7 @@ class NB5Pipeline:
             if not preflight_ok:
                 self._phase = PipelinePhase.HALTED
                 summary["halted_at"] = "preflight"
+                summary["halt_reason"] = getattr(self, "_halt_reason", None)
                 return summary
 
             if not self.circuit_breakers.nlm.should_allow_request():
@@ -386,6 +387,10 @@ class NB5Pipeline:
         is_sunday = now_wita.weekday() == 6
         if is_sunday and not self.dry_run and not self.force:
             logger.info("Sunday — NB-5 pipeline skipped")
+            # Intentional calendar skip, not a failure. Without this marker
+            # run_verdict.verdict() reads the bare False as a dead run and the
+            # wrapper fires a P0 saying FAILED — measured live 2026-08-09.
+            self._halt_reason = "skip:sunday"
             return False
         checks.append(("not_sunday", not is_sunday or self.dry_run or self.force))
 

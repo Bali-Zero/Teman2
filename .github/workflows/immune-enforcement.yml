@@ -216,6 +216,7 @@ jobs:
               apps/evaluator/nlm_deep_research/nb8_pipeline.py|\
               apps/evaluator/nlm_deep_research/nb10_pipeline.py|\
               apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
+              apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml|\
               .github/workflows/*.yml|\
@@ -492,6 +493,25 @@ jobs:
           # run_peraturan_ingestion.sh runs from crontab with NO wrapper, so an
           # unconditional deferral would have made it mute.
           bash scripts/test_cron_single_voice.sh
+
+      - name: Pipeline run-verdict corpora (a deliberate skip is not a failure)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # test_run_verdict.py landed with #3742 and was named in the path filter
+          # above but executed by NO workflow — 0 pytest invocations across
+          # .github/workflows. That is why #3742's own gap survived: it taught
+          # verdict() that a calendar skip exits 0 and wired the marker into ONE
+          # of the eight pipelines, and the corpus that would have said so never
+          # ran (W108 — an unarmed test is decorative).
+          #
+          # Measured live on Pro 2026-08-09, both runs correct, one shouting:
+          #   nb2 (marked)   -> WRAPPER_RC=0, zero sends
+          #   nb3 (unmarked) -> exit 1 + P0 "NB-3 ... pipeline FAILED (exit 1)"
+          python -m pip install --quiet pytest
+          PYTHONPATH=. python -m pytest \
+            apps/evaluator/nlm_deep_research/tests/test_run_verdict.py \
+            apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py \
+            -q
 
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
         if: steps.paths.outputs.relevant == 'true'
