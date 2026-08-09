@@ -79,6 +79,7 @@ class MagicLinkService:
                   AND role = 'client'
                   AND active = true
                   AND portal_access = true
+                  AND linked_client_id IS NOT NULL
                 """,
                 normalized,
             )
@@ -136,10 +137,10 @@ class MagicLinkService:
         """
         Validate + consume a magic-link token.
 
-        Returns the registered portal user (id/email/name/role) on success, or
-        None if the token is unknown, already used, or expired. The match + the
-        single-use mark happen in one transaction with `FOR UPDATE` to prevent a
-        double-spend race.
+        Returns the registered portal user and its authoritative client binding
+        on success, or None if the token is unknown, already used, or expired.
+        The match + the single-use mark happen in one transaction with
+        `FOR UPDATE` to prevent a double-spend race.
         """
         if not raw_token:
             return None
@@ -176,12 +177,14 @@ class MagicLinkService:
                 # verify time — access may have been revoked since the request).
                 user = await conn.fetchrow(
                     """
-                    SELECT id, email, COALESCE(full_name, name) AS name, role
+                    SELECT id, email, COALESCE(full_name, name) AS name, role,
+                           linked_client_id, portal_access
                     FROM team_members
                     WHERE LOWER(email) = LOWER($1)
                       AND role = 'client'
                       AND active = true
                       AND portal_access = true
+                      AND linked_client_id IS NOT NULL
                     """,
                     row["email"],
                 )
@@ -195,4 +198,6 @@ class MagicLinkService:
                     "email": user["email"],
                     "name": user["name"],
                     "role": user["role"],
+                    "client_id": user["linked_client_id"],
+                    "portal_access": user["portal_access"],
                 }

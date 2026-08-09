@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -102,6 +102,20 @@ class TestHTTPExceptionHandler:
         response = await http_exception_handler(mock_request, exc)
 
         assert response.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_http_exception_log_redacts_magic_link_token(self, mock_request):
+        raw_token = "synthetic-magic-link-token"
+        mock_request.url.path = f"/api/auth/verify-magic/{raw_token}"
+        mock_request.state.correlation_id = "test-id"
+        exc = HTTPException(status_code=400, detail="Bad request")
+
+        with patch("backend.app.setup.exception_handlers.logger") as mock_logger:
+            response = await http_exception_handler(mock_request, exc)
+
+        assert response.status_code == 400
+        assert "/api/auth/verify-magic/[REDACTED]" in str(mock_logger.warning.call_args)
+        assert raw_token not in str(mock_logger.warning.call_args)
 
 
 class TestStarletteHTTPExceptionHandler:

@@ -61,7 +61,7 @@ export default function FamilyError({
               </a>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/portal/messages">
+              <Link href="/portal/messages" prefetch={false}>
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Chat with your team
               </Link>
@@ -69,7 +69,7 @@ export default function FamilyError({
           </>
         ) : (
           <Button asChild variant="outline">
-            <Link href="/portal/messages">
+            <Link href="/portal/messages" prefetch={false}>
               <MessageSquare className="mr-2 h-4 w-4" />
               Chat with your team
             </Link>

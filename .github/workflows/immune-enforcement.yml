@@ -61,15 +61,17 @@ jobs:
           RELEVANT=false
           # NOTE on the `.github/workflows/*` entries at the end of this list:
           # test_ci_service_images_use_mirror.py scans EVERY workflow file, so its
-          # SUBJECTS have to trigger this job too. Listing only immune-enforcement.yml
-          # left that guard armed against the one file nobody would ever un-mirror —
-          # a test in the run-loop whose subject never wakes the job is armed to
-          # nothing. The glob supersedes the old literal entry, which shellcheck
-          # correctly flagged as dead (SC2222); it was removed, not kept as decor.
+          # SUBJECTS have to trigger this job too. Runtime Truth also keeps the
+          # immune workflow as an exact self-trigger: removing or narrowing these
+          # globs must not make a change to the required workflow auto-skip its
+          # own contracts. The exact entry is therefore a deliberate overlap.
           while IFS= read -r f; do
             case "$f" in
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
+              scripts/agent_start.py|\
+              scripts/tests/test_agent_start.py|\
+              scripts/tests/test_proprioception_run_wrap_exit_code.py|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
               scripts/lint_plist_keepalive.py|\
@@ -119,6 +121,7 @@ jobs:
               scripts/tests/test_lint_tcc_desktop_paths.py|\
               infra/tcc-desktop-paths/allowlist.txt|\
               scripts/launchd_liveness_detector.py|\
+              scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
               scripts/tests/test_launchd_liveness_marker_freshness.py|\
               scripts/tests/test_launchd_liveness_stale_exit_recovery.py|\
@@ -159,10 +162,12 @@ jobs:
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
+              scripts/lib/heartbeat.sh|\
               scripts/wr2-cron-wrapper.sh|\
               scripts/test_wr2_wrapper_alert.sh|\
               infra/openclaw/wr2/wr2-script-wrapper.sh|\
               scripts/test_wr2_script_wrapper_alert.sh|\
+              scripts/test_wr2_wrapper_pg_proxy_heartbeat.sh|\
               scripts/cron-wrapper.sh|\
               scripts/cron-state.sh|\
               scripts/test_cron_state_alert.sh|\
@@ -184,6 +189,8 @@ jobs:
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
+              scripts/runtime_truth_ci_gauntlet.py|\
+              scripts/tests/test_runtime_truth_ci_gauntlet.py|\
               scripts/drive_token_watchdog.py|\
               scripts/tests/test_drive_watchdog_fly_path.py|\
               scripts/tests/test_drive_watchdog_tier_ratchet.py|\
@@ -201,7 +208,19 @@ jobs:
               infra/asset-lint/public-asset-refs-config.json|\
               scripts/tests/test_intake_dsn_guard_covers_every_var.py|\
               apps/backend-rag/backend/tests/conftest.py|\
+              apps/evaluator/nlm_deep_research/run_verdict.py|\
+              apps/evaluator/nlm_deep_research/pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb3_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb4_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb5_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb6_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb7_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb8_pipeline.py|\
+              apps/evaluator/nlm_deep_research/nb10_pipeline.py|\
+              apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
+              apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
+              .github/workflows/immune-enforcement.yml|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
                 RELEVANT=true
@@ -236,9 +255,10 @@ jobs:
       - name: Unit tests (guilt + innocence per tool)
         if: steps.paths.outputs.relevant == 'true'
         run: |
-          python -m pip install --quiet pytest
+          python -m pip install --quiet pytest PyYAML==6.0.3
           fail=0
           for t in \
+            scripts/tests/test_agent_start.py \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
@@ -292,6 +312,26 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: Runtime Truth meta-contract (external to runner)
+        # Deliberately unconditional inside the required job. This is the
+        # fail-closed observer for the path detector and the conditional heavy
+        # runner below; gating it on that detector would let a false-negative
+        # detector self-disarm both layers while `antidotes` stayed green.
+        env:
+          HOME: ${{ runner.temp }}/runtime-truth-home
+          TMPDIR: ${{ runner.temp }}/runtime-truth-tmp
+        run: |
+          mkdir -p "$HOME" "$TMPDIR"
+          python -m pip install --quiet pytest PyYAML==6.0.3 httpx==0.28.1
+          python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
+
+      - name: Runtime Truth CI gauntlet (four incident contracts)
+        if: steps.paths.outputs.relevant == 'true'
+        env:
+          HOME: ${{ runner.temp }}/runtime-truth-home
+          TMPDIR: ${{ runner.temp }}/runtime-truth-tmp
+        run: python scripts/runtime_truth_ci_gauntlet.py
 
       - name: apps/zantara-media suite has a runner (replaces the garuda alert pin)
         if: steps.paths.outputs.relevant == 'true'
@@ -456,6 +496,25 @@ jobs:
           # run_peraturan_ingestion.sh runs from crontab with NO wrapper, so an
           # unconditional deferral would have made it mute.
           bash scripts/test_cron_single_voice.sh
+
+      - name: Pipeline run-verdict corpora (a deliberate skip is not a failure)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # test_run_verdict.py landed with #3742 and was named in the path filter
+          # above but executed by NO workflow — 0 pytest invocations across
+          # .github/workflows. That is why #3742's own gap survived: it taught
+          # verdict() that a calendar skip exits 0 and wired the marker into ONE
+          # of the eight pipelines, and the corpus that would have said so never
+          # ran (W108 — an unarmed test is decorative).
+          #
+          # Measured live on Pro 2026-08-09, both runs correct, one shouting:
+          #   nb2 (marked)   -> WRAPPER_RC=0, zero sends
+          #   nb3 (unmarked) -> exit 1 + P0 "NB-3 ... pipeline FAILED (exit 1)"
+          python -m pip install --quiet pytest
+          PYTHONPATH=. python -m pytest \
+            apps/evaluator/nlm_deep_research/tests/test_run_verdict.py \
+            apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py \
+            -q
 
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
         if: steps.paths.outputs.relevant == 'true'

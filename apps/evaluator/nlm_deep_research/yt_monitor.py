@@ -21,6 +21,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -257,7 +258,7 @@ def ingest_video(notebook_id: str, video_url: str, dry_run: bool = False) -> boo
             _enqueue_to_intel_lake(video_url, notebook_id)
             return True
         else:
-            logger.error("nlm ingest failed: %s", result.stderr[:200])
+            logger.error("nlm ingest failed: %s", nlm_error_reason(result))
             return False
     except subprocess.TimeoutExpired:
         logger.error("nlm ingest timeout for %s", video_url)

@@ -527,13 +527,14 @@ export default function ClientAnalyticsPage() {
   }, [fetchData]);
 
   // Memoized calculations
+  const byNationality = overview?.by_nationality;
   const nationalityData = useMemo(() => {
-    if (!overview?.by_nationality) return [];
-    return Object.entries(overview.by_nationality)
+    if (!byNationality) return [];
+    return Object.entries(byNationality)
       .map(([nationality, count]) => ({ nationality, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, viewMode === "mobile" ? 5 : 8);
-  }, [overview?.by_nationality, viewMode]);
+  }, [byNationality, viewMode]);
 
   const revenueSparkline = useMemo(() => {
     return trend.map((t) => t.revenue);

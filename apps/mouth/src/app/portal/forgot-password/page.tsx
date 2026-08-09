@@ -54,7 +54,7 @@ function ForgotPasswordInner() {
           {t("portal.forgot_password.title")}
         </h1>
         <p className="text-sm text-[var(--tx-secondary)] mb-8">
-          {t("portal.forgot_password.sent")}
+          {t("portal.forgot_password.instructions")}
         </p>
         <a
           href={mailto}

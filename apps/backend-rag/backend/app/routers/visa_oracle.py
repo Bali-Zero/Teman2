@@ -990,7 +990,7 @@ async def chat(
                 token,
                 _settings.jwt_secret_key,
                 algorithms=[_settings.jwt_algorithm],
-                options={"verify_exp": True},
+                options={"verify_exp": True, "require_exp": True},
             )
         except JWTError:
             raise HTTPException(status_code=401, detail="Invalid or expired token")

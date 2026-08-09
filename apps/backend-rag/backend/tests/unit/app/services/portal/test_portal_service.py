@@ -268,14 +268,6 @@ class TestPortalServiceHelpers:
         exc.sqlstate = "42P01"
         assert PortalService._is_undefined_table_error(exc) is True
 
-    @pytest.mark.skip(reason="_status_to_progress method removed/renamed in PortalService")
-    def test_status_to_progress(self, portal_service):
-        """Status correctly mapped to progress percentage."""
-        assert portal_service._status_to_progress("inquiry") == 10
-        assert portal_service._status_to_progress("waiting_documents") == 30
-        assert portal_service._status_to_progress("completed") == 100
-        assert portal_service._status_to_progress("unknown_status") == 0
-
     def test_get_tax_status_compliant(self, portal_service):
         """Tax status is compliant with no deadline."""
         assert portal_service._get_tax_status(None) == "compliant"

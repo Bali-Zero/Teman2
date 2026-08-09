@@ -261,6 +261,7 @@
       "errors": {
         "invalid_credentials": "Wrong email or PIN. Please try again.",
         "account_locked": "Account locked for security. Contact team@balizero.com.",
+        "portal_unavailable": "Portal access is not available for this account. Contact team@balizero.com.",
         "rate_limited": "Too many attempts. Retry in {{seconds}} seconds.",
         "invalid_2fa": "Invalid 2FA code.",
         "network_error": "Connection lost. Check your network and retry.",
@@ -271,7 +272,7 @@
     },
     "forgot_password": {
       "title": "Recover access",
-      "sent": "We received your request. Our team will contact you."
+      "instructions": "Contact our team to recover access. No request has been sent yet."
     }
   },
   "book": {
