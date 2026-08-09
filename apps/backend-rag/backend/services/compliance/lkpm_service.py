@@ -5,10 +5,13 @@ No AI here — pure arithmetic, DB queries, and calendar math.
 """
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import asyncpg
+import httpx
 
 from backend.app.models.lkpm import (
     DataSource,
@@ -39,6 +42,10 @@ QUARTER_DEADLINES = {
     "Q3": (10, 15),  # October 15
     "Q4": (1, 15),  # January 15 next year
 }
+
+
+class LKPMDraftLockedError(RuntimeError):
+    """Raised when a client tries to replace an approved/final LKPM report."""
 
 
 class LKPMService:
@@ -153,6 +160,23 @@ class LKPMService:
     # ------------------------------------------------------------------
     # Draft Generation
     # ------------------------------------------------------------------
+
+    async def resolve_portal_client_id(self, user_id: str) -> int | None:
+        """Resolve an active portal principal to its server-owned client scope."""
+        async with self.db_pool.acquire() as conn:
+            client_id = await conn.fetchval(
+                """
+                SELECT linked_client_id
+                FROM team_members
+                WHERE id::text = $1
+                  AND role = 'client'
+                  AND active = TRUE
+                  AND portal_access = TRUE
+                  AND linked_client_id IS NOT NULL
+                """,
+                user_id,
+            )
+        return int(client_id) if client_id is not None else None
 
     async def generate_draft(self, client_id: int, quarter: str, year: int) -> LKPMDraft:
         """
@@ -332,6 +356,102 @@ class LKPMService:
             )
         return [dict(r) for r in rows]
 
+    @staticmethod
+    def _extract_drive_file_id(value: str | None) -> str | None:
+        """Resolve a stored Drive URL to an internal file ID server-side."""
+        if not value:
+            return None
+
+        parsed = urlparse(value)
+        if parsed.hostname not in {"drive.google.com", "docs.google.com"}:
+            return None
+
+        path_match = re.search(r"/(?:file/d|document/d)/([A-Za-z0-9_-]+)", parsed.path)
+        if path_match:
+            return path_match.group(1)
+
+        query_id = parse_qs(parsed.query).get("id", [None])[0]
+        if isinstance(query_id, str) and re.fullmatch(r"[A-Za-z0-9_-]+", query_id):
+            return query_id
+        return None
+
+    async def download_receipt_for_portal_client(
+        self,
+        client_id: int,
+        receipt_id: int,
+    ) -> dict[str, Any] | None:
+        """Download a tenant-owned LKPM receipt without exposing Drive metadata."""
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT re.file_drive_id, re.file_drive_url, re.file_name
+                FROM lkpm_receipts re
+                JOIN lkpm_reports r ON r.id = re.lkpm_report_id
+                WHERE re.id = $1
+                  AND EXISTS (
+                      SELECT 1
+                      FROM client_company_links ccl
+                      WHERE ccl.company_id = r.company_id
+                        AND ccl.client_id = $2
+                        AND ccl.status = 'active'
+                  )
+                LIMIT 1
+                """,
+                receipt_id,
+                client_id,
+            )
+
+        if not row:
+            return None
+
+        file_id = row["file_drive_id"] or self._extract_drive_file_id(row["file_drive_url"])
+        if not file_id:
+            return None
+
+        from backend.services.integrations.google_drive_service import GoogleDriveService
+
+        drive_service = GoogleDriveService(self.db_pool)
+        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+        if not access_token:
+            raise RuntimeError("Receipt storage is not connected")
+
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            metadata_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name,size"},
+                headers=headers,
+            )
+            if metadata_response.status_code == 404:
+                return None
+            if metadata_response.status_code != 200:
+                logger.error(
+                    "LKPM receipt metadata fetch failed: status=%s",
+                    metadata_response.status_code,
+                )
+                raise RuntimeError("Failed to fetch receipt metadata")
+
+            metadata = metadata_response.json()
+            download_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers=headers,
+            )
+            if download_response.status_code == 404:
+                return None
+            if download_response.status_code != 200:
+                logger.error(
+                    "LKPM receipt download failed: status=%s",
+                    download_response.status_code,
+                )
+                raise RuntimeError("Failed to download receipt")
+
+        return {
+            "content": download_response.content,
+            "file_name": metadata.get("name") or row["file_name"] or "lkpm-receipt.pdf",
+            "mime_type": metadata.get("mimeType") or "application/pdf",
+        }
+
     async def submit_form_data(self, submission: LKPMClientSubmission) -> LKPMDraft:
         """Process client form submission into a draft."""
         logger.info(
@@ -343,6 +463,10 @@ class LKPMService:
         await self._ensure_client_config(submission.client_id)
 
         draft = self.data_collector.collect_from_form(submission)
+        # The collector historically omitted this optional field. Preserve the
+        # server-validated company scope so downstream ownership checks use the
+        # authoritative company relationship rather than a caller-supplied id.
+        draft.company_id = submission.company_id
 
         # Calculate cumulative
         cumulative = await self._calculate_cumulative(
@@ -365,6 +489,71 @@ class LKPMService:
         draft_id = await self._save_draft(draft)
         draft.id = draft_id
         return draft
+
+    async def submit_form_data_for_client(
+        self,
+        submission: LKPMClientSubmission,
+        *,
+        authenticated_client_id: int,
+    ) -> LKPMDraft:
+        """Submit form data within an authenticated portal client's tenant.
+
+        Both tenant identifiers are rebuilt from server-owned relationships.
+        ``submission.client_id`` is deliberately ignored. When no company is
+        requested, the client's primary active company is selected.
+        """
+        return await self._submit_form_data_for_validated_target(
+            submission,
+            target_client_id=authenticated_client_id,
+        )
+
+    async def submit_form_data_for_admin(
+        self,
+        submission: LKPMClientSubmission,
+    ) -> LKPMDraft:
+        """Submit for an admin-selected tenant after server-side validation.
+
+        The caller-provided ids are selectors, never proof of authorization or
+        ownership. The router establishes the CRM-admin role and this method
+        requires an active client/company relationship before any write.
+        """
+        return await self._submit_form_data_for_validated_target(
+            submission,
+            target_client_id=submission.client_id,
+        )
+
+    async def _submit_form_data_for_validated_target(
+        self,
+        submission: LKPMClientSubmission,
+        *,
+        target_client_id: int,
+    ) -> LKPMDraft:
+        """Rebuild submission tenancy from an active client/company link."""
+        async with self.db_pool.acquire() as conn:
+            company_id = await conn.fetchval(
+                """
+                SELECT ccl.company_id
+                FROM client_company_links AS ccl
+                WHERE ccl.client_id = $1
+                  AND ccl.status = 'active'
+                  AND ($2::integer IS NULL OR ccl.company_id = $2)
+                ORDER BY ccl.is_primary DESC NULLS LAST, ccl.company_id
+                LIMIT 1
+                """,
+                target_client_id,
+                submission.company_id,
+            )
+
+        if company_id is None:
+            raise LookupError("LKPM submission target not found")
+
+        scoped_submission = submission.model_copy(
+            update={
+                "client_id": target_client_id,
+                "company_id": int(company_id),
+            },
+        )
+        return await self.submit_form_data(scoped_submission)
 
     async def sync_jurnal(self, client_id: int, quarter: str, year: int) -> LKPMDraft:
         """Pull data from Jurnal.id and create/update draft."""
@@ -489,28 +678,66 @@ class LKPMService:
     # Submission Tracking
     # ------------------------------------------------------------------
 
-    async def approve_draft(self, draft_id: int) -> dict[str, Any]:
-        """Mark draft as approved by client."""
+    async def approve_draft_for_actor(
+        self,
+        draft_id: int,
+        *,
+        authenticated_client_id: int | None,
+        is_admin: bool,
+    ) -> dict[str, Any]:
+        """Atomically approve a draft only for its owner or a CRM admin.
+
+        The guarded update deliberately returns the same not-found result for
+        absent and cross-tenant draft ids. ``company_id`` is authoritative;
+        the ``client_id`` fallback is limited to legacy rows with no company.
+        """
+        if not is_admin and authenticated_client_id is None:
+            raise LookupError("LKPM draft not found")
+
         async with self.db_pool.acquire() as conn:
-            await conn.execute(
+            updated = await conn.fetchrow(
                 """
-                UPDATE lkpm_reports SET
-                    client_approved = TRUE,
+                UPDATE lkpm_reports AS r
+                SET client_approved = TRUE,
                     client_approved_at = NOW(),
                     status = $1,
                     updated_at = NOW()
-                WHERE id = $2
+                WHERE r.id = $2
+                  AND r.status IN ('validated', 'client_review', 'approved')
+                  AND r.oss_submitted = FALSE
+                  AND (
+                    $3::boolean
+                    OR (
+                      $4::integer IS NOT NULL
+                      AND (
+                        r.company_id IN (
+                          SELECT ccl.company_id
+                          FROM client_company_links AS ccl
+                          WHERE ccl.client_id = $4
+                            AND ccl.status = 'active'
+                        )
+                        OR (r.company_id IS NULL AND r.client_id = $4)
+                      )
+                    )
+                  )
+                RETURNING r.id
                 """,
                 LKPMStatus.APPROVED.value,
                 draft_id,
+                is_admin,
+                authenticated_client_id,
             )
-        logger.info("Draft %s approved by client", draft_id)
+
+        if updated is None:
+            raise LookupError("LKPM draft not found")
+
+        logger.info("Draft %s approved through authorized LKPM mutation", draft_id)
         return {"success": True, "draft_id": draft_id, "status": "approved"}
 
     async def mark_submitted(self, draft_id: int, submitted_by: str) -> dict[str, Any]:
         """Mark LKPM as submitted to OSS."""
         async with self.db_pool.acquire() as conn:
-            await conn.execute(
+            updated = await conn.fetchrow(
                 """
                 UPDATE lkpm_reports SET
                     oss_submitted = TRUE,
@@ -519,11 +746,14 @@ class LKPMService:
                     status = $2,
                     updated_at = NOW()
                 WHERE id = $3
+                RETURNING id
                 """,
                 submitted_by,
                 LKPMStatus.SUBMITTED.value,
                 draft_id,
             )
+        if updated is None:
+            raise LookupError("LKPM draft not found")
         logger.info("Draft %s marked as submitted by %s", draft_id, submitted_by)
         return {"success": True, "draft_id": draft_id, "status": "submitted"}
 
@@ -535,18 +765,21 @@ class LKPMService:
     ) -> dict[str, Any]:
         """Store OSS receipt information."""
         async with self.db_pool.acquire() as conn:
-            await conn.execute(
+            updated = await conn.fetchrow(
                 """
                 UPDATE lkpm_reports SET
                     oss_receipt_number = $1,
                     oss_receipt_file_url = $2,
                     updated_at = NOW()
                 WHERE id = $3
+                RETURNING id
                 """,
                 receipt_number,
                 receipt_file_url,
                 draft_id,
             )
+        if updated is None:
+            raise LookupError("LKPM draft not found")
         logger.info("Receipt uploaded for draft %s: %s", draft_id, receipt_number)
         return {"success": True, "draft_id": draft_id, "receipt_number": receipt_number}
 
@@ -798,7 +1031,14 @@ class LKPMService:
                     data_source = EXCLUDED.data_source,
                     has_ai_categorized_items = EXCLUDED.has_ai_categorized_items,
                     ai_categorized_count = EXCLUDED.ai_categorized_count,
+                    validation_status = 'pending',
+                    validation_alerts = '[]'::jsonb,
+                    validated_at = NULL,
+                    validated_by = NULL,
                     updated_at = NOW()
+                WHERE lkpm_reports.status NOT IN ('approved', 'submitted', 'archived')
+                  AND lkpm_reports.client_approved = FALSE
+                  AND lkpm_reports.oss_submitted = FALSE
                 RETURNING id
                 """,
                 draft.client_id,
@@ -833,6 +1073,10 @@ class LKPMService:
                 draft.data_source.value,
                 draft.has_ai_categorized_items,
                 draft.ai_categorized_count,
+            )
+        if row is None:
+            raise LKPMDraftLockedError(
+                "Approved or submitted LKPM reports cannot be replaced",
             )
         return row["id"]
 

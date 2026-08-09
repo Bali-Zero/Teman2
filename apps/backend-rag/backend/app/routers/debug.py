@@ -76,7 +76,7 @@ def verify_debug_access(
                 token,
                 settings.jwt_secret_key,
                 algorithms=["HS256"],
-                options={"verify_exp": settings.jwt_enforce_expiry},
+                options={"verify_exp": True, "require_exp": True},
             )
             # Reject non-access tokens (refresh tokens carry type != "access").
             token_type = payload.get("type")

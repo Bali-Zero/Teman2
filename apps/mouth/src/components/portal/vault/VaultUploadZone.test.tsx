@@ -4,13 +4,17 @@ import { render, screen, fireEvent } from "@testing-library/react";
 // Mock useVaultUpload — control its returned state per test.
 const mockUpload = vi.fn();
 const mockReset = vi.fn();
+const mockRetry = vi.fn();
 let mockState: { status: string; [k: string]: unknown } = { status: "idle" };
+let mockCanRetry = false;
 
 vi.mock("@/hooks/useVaultUpload", () => ({
   useVaultUpload: () => ({
     state: mockState,
     upload: mockUpload,
     reset: mockReset,
+    retry: mockRetry,
+    canRetry: mockCanRetry,
   }),
 }));
 
@@ -20,7 +24,9 @@ describe("VaultUploadZone", () => {
   beforeEach(() => {
     mockUpload.mockReset();
     mockReset.mockReset();
+    mockRetry.mockReset();
     mockState = { status: "idle" };
+    mockCanRetry = false;
   });
 
   it("toggles drag-over state on drag events", () => {
@@ -52,6 +58,18 @@ describe("VaultUploadZone", () => {
     });
   });
 
+  it("advertises exactly the formats and cap enforced by the backend", () => {
+    render(<VaultUploadZone />);
+    const input = screen.getByLabelText(
+      "Choose file to upload",
+    ) as HTMLInputElement;
+    expect(input).toHaveAttribute("accept", ".pdf,.jpg,.jpeg,.png,.docx");
+    expect(input).toHaveAttribute("aria-describedby", "vault-upload-formats");
+    expect(
+      screen.getByText("PDF, JPG, PNG, or DOCX up to 10 MB"),
+    ).toBeInTheDocument();
+  });
+
   it("forwards the typed purpose to upload()", () => {
     render(<VaultUploadZone practiceId={42} />);
     const purposeInput = screen.getByLabelText(
@@ -76,13 +94,25 @@ describe("VaultUploadZone", () => {
     mockState = { status: "error", message: "Upload failed (413)" };
     render(<VaultUploadZone />);
     expect(screen.getByRole("alert")).toHaveTextContent(/Upload failed/i);
+    expect(
+      screen.queryByRole("button", { name: "Retry upload" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("retries the retained upload from a retryable error", () => {
+    mockState = { status: "error", message: "Network error" };
+    mockCanRetry = true;
+    render(<VaultUploadZone />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry upload" }));
+
+    expect(mockRetry).toHaveBeenCalledTimes(1);
   });
 
   it("renders done state with uploaded filename", () => {
     mockState = {
       status: "done",
       file: { name: "ok.pdf" },
-      processing: { virus_clean: true },
     };
     render(<VaultUploadZone />);
     expect(screen.getByRole("status")).toHaveTextContent(/Uploaded: ok\.pdf/i);

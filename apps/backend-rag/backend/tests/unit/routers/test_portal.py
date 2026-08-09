@@ -23,11 +23,13 @@ Authentication: Uses get_current_client which requires role='client' + linked_cl
 """
 
 from datetime import datetime, timezone
+from io import BytesIO
 from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pypdf import PdfWriter
 
 from backend.app.routers.portal import (
     get_current_client,
@@ -38,6 +40,14 @@ from backend.app.routers.portal import (
 # ============================================
 # FIXTURES
 # ============================================
+
+
+def _synthetic_pdf() -> bytes:
+    payload = BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    writer.write(payload)
+    return payload.getvalue()
 
 
 @pytest.fixture
@@ -107,17 +117,13 @@ class TestDashboard:
         response = client.get("/api/portal/dashboard")
         assert response.status_code == 500
 
-    def test_dashboard_client_not_found_returns_404_not_500(
-        self, client, mock_portal_service
-    ):
+    def test_dashboard_client_not_found_returns_404_not_500(self, client, mock_portal_service):
         """BUG C: if the portal account is linked to a soft-deleted client,
         get_dashboard raises ValueError('Client X not found'). That is a
         not-found condition (the client row is gone / soft-deleted), NOT an
         internal error — it must surface as 404, not a 500 that crashes the
         whole dashboard."""
-        mock_portal_service.get_dashboard.side_effect = ValueError(
-            "Client 42 not found"
-        )
+        mock_portal_service.get_dashboard.side_effect = ValueError("Client 42 not found")
 
         response = client.get("/api/portal/dashboard")
         assert response.status_code == 404
@@ -302,14 +308,14 @@ class TestDocuments:
         assert response.status_code == 400
 
     def test_upload_document_too_large(self, client):
-        """Upload exceeding 10MB returns 400."""
+        """Upload exceeding 10MB returns 413."""
         large_content = b"x" * (10 * 1024 * 1024 + 1)
         response = client.post(
             "/api/portal/documents/upload",
             data={"document_type": "passport"},
             files={"file": ("big.pdf", large_content, "application/pdf")},
         )
-        assert response.status_code == 400
+        assert response.status_code == 413
 
     def test_upload_document_success(self, client, mock_portal_service):
         """Successful document upload."""
@@ -321,7 +327,7 @@ class TestDocuments:
         response = client.post(
             "/api/portal/documents/upload",
             data={"document_type": "passport"},
-            files={"file": ("passport.pdf", b"PDF_CONTENT", "application/pdf")},
+            files={"file": ("passport.pdf", _synthetic_pdf(), "application/pdf")},
         )
 
         assert response.status_code == 200
@@ -356,7 +362,7 @@ class TestDocuments:
         response = client.post(
             "/api/portal/documents/upload",
             data={"document_type": "passport", "document_purpose": "  KITAS renewal  "},
-            files={"file": ("passport.pdf", b"PDF_CONTENT", "application/pdf")},
+            files={"file": ("passport.pdf", _synthetic_pdf(), "application/pdf")},
         )
 
         assert response.status_code == 200
@@ -452,9 +458,7 @@ class TestMessages:
         assert data["success"] is True
         assert data["message"] == "Message sent"
 
-    def test_send_message_accepts_camel_case_practice_id(
-        self, client, mock_portal_service
-    ):
+    def test_send_message_accepts_camel_case_practice_id(self, client, mock_portal_service):
         """Browser payloads use camelCase, but service expects snake_case."""
         mock_portal_service.send_message.return_value = {
             "id": 5,
@@ -469,19 +473,30 @@ class TestMessages:
 
         assert response.status_code == 200
         mock_portal_service.send_message.assert_awaited_once()
-        assert (
-            mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
-        )
+        assert mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
 
     def test_mark_message_read(self, client, mock_portal_service):
         """Mark message as read."""
-        mock_portal_service.mark_message_read.return_value = None
+        mock_portal_service.mark_message_read.return_value = {"success": True}
 
         response = client.post("/api/portal/messages/5/read")
 
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
+
+    def test_mark_message_read_not_found_is_non_enumerable(
+        self,
+        client,
+        mock_portal_service,
+    ):
+        """Unknown and foreign message identifiers share the same 404 contract."""
+        mock_portal_service.mark_message_read.return_value = {"success": False}
+
+        response = client.post("/api/portal/messages/404/read")
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Message not found"
 
 
 # ============================================
@@ -520,6 +535,20 @@ class TestSettings:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
+
+    def test_update_preferences_rejects_unsupported_language(
+        self,
+        client,
+        mock_portal_service,
+    ):
+        """Only languages supported by the client portal can be persisted."""
+        response = client.patch(
+            "/api/portal/settings",
+            json={"language": "fr"},
+        )
+
+        assert response.status_code == 422
+        mock_portal_service.update_preferences.assert_not_awaited()
 
     def test_update_preferences_no_changes(self, client):
         """Empty update returns no-change message."""

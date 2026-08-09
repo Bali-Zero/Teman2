@@ -3,8 +3,8 @@
 import { useCallback, useState } from "react";
 import useSWR, { type SWRResponse } from "swr";
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/error-handler";
 import {
-  isMigrationMissingMessage,
   NotificationPrefs,
   type NotificationPrefsInput,
 } from "@/lib/schemas/settings";
@@ -12,23 +12,20 @@ import {
 const ENDPOINT = "/api/portal/notifications/prefs";
 
 /**
- * Classifies a thrown error as "migration 110 missing" (BE 503) vs. a
- * normal failure. The shared ApiClient throws a plain `Error` with the
- * FastAPI `detail` as its message, so we pattern-match on that.
+ * Classifies the endpoint's client-safe unavailable response by HTTP status.
+ * Never infer backend schema state from error text: those implementation
+ * details do not belong in the browser contract.
  */
-function isMigrationMissingError(err: unknown): boolean {
-  if (err instanceof Error) {
-    return isMigrationMissingMessage(err.message);
-  }
-  return false;
+function isTemporarilyUnavailableError(err: unknown): boolean {
+  return err instanceof ApiError && err.statusCode === 503;
 }
 
 export interface UseNotificationPrefsResult {
-  /** Parsed prefs on success; `null` when migration is missing. */
+  /** Parsed prefs on success; `null` while the endpoint is unavailable. */
   data: NotificationPrefs | null;
-  /** True when the BE signalled the 503 migration-missing error. */
+  /** True when the endpoint is temporarily unavailable (HTTP 503). */
   migrationMissing: boolean;
-  /** Any non-migration-missing error from SWR (e.g. 401, 500). */
+  /** Any non-availability error from SWR (e.g. 401, 500). */
   error: Error | undefined;
   /** SWR loading flag. */
   isLoading: boolean;
@@ -36,7 +33,7 @@ export interface UseNotificationPrefsResult {
   mutate: SWRResponse<NotificationPrefs | null, Error>["mutate"];
   /**
    * PUT the prefs back to the BE. Returns the updated prefs on success.
-   * Throws on non-migration errors. When the BE returns 503 the hook
+   * Throws on non-availability errors. When the BE returns 503 the hook
    * swallows it, flips `migrationMissing = true`, and returns `null`.
    */
   updatePrefs: (
@@ -52,14 +49,9 @@ export interface UseNotificationPrefsResult {
  * Endpoint lives at
  * `apps/backend-rag/backend/app/routers/portal_notification_prefs.py`.
  *
- * Schema drift surfaces as SWR `error`. The BE 503 "migration 110
- * missing" case is trapped and exposed via `migrationMissing` so the
- * portal UI can show a graceful "feature coming soon" state rather than
- * blow up with a hard error.
- *
- * Note: the GET handler itself silently returns BE defaults
- * (`_default_prefs`) on DB read failure — only PUT raises 503 — but we
- * cover both sides for safety in case that changes.
+ * A client-safe HTTP 503 is trapped and exposed via the legacy
+ * `migrationMissing` flag so existing consumers can render an unavailable
+ * state without exposing backend details or fake preference values.
  */
 export function useNotificationPrefs(): UseNotificationPrefsResult {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -73,7 +65,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
         setMigrationMissing(false);
         return NotificationPrefs.parse(raw);
       } catch (err) {
-        if (isMigrationMissingError(err)) {
+        if (isTemporarilyUnavailableError(err)) {
           setMigrationMissing(true);
           return null;
         }
@@ -83,9 +75,9 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     {
       revalidateOnFocus: true,
       dedupingInterval: 5_000,
-      shouldRetryOnError: (err: { status?: number } | Error) => {
-        if (isMigrationMissingError(err)) return false;
-        const status = (err as { status?: number })?.status ?? 0;
+      shouldRetryOnError: (err: Error) => {
+        if (isTemporarilyUnavailableError(err)) return false;
+        const status = (err as { statusCode?: number })?.statusCode ?? 0;
         return status >= 500;
       },
     },
@@ -103,7 +95,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
         await swr.mutate(parsed, { revalidate: false });
         return parsed;
       } catch (err) {
-        if (isMigrationMissingError(err)) {
+        if (isTemporarilyUnavailableError(err)) {
           setMigrationMissing(true);
           await swr.mutate(null, { revalidate: false });
           return null;

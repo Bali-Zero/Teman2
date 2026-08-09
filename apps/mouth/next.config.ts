@@ -156,7 +156,9 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Add security headers
+        // Add security headers shared by every application surface.
+        // The portal CSP is intentionally scoped below: a global policy must
+        // not block dependencies required by independent surfaces such as Prime.
         source: "/:path*",
         headers: [
           {
@@ -183,10 +185,17 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
+        ],
+      },
+      {
+        // Enforce the client-safe policy only on portal documents. Other app
+        // surfaces have distinct runtime dependencies and require their own CSP.
+        source: "/portal/:path*",
+        headers: [
           {
-            key: "Content-Security-Policy-Report-Only",
+            key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://nuzantara-rag.fly.dev wss://nuzantara-rag.fly.dev https://127.0.0.1:8090 https://*.sentry.io https://www.google-analytics.com; frame-src 'none'; object-src 'none'; base-uri 'self'",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://nuzantara-rag.fly.dev wss://nuzantara-rag.fly.dev https://*.sentry.io https://www.google-analytics.com; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

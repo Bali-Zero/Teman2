@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockRequest } = vi.hoisted(() => ({
   mockRequest: vi.fn(),
@@ -40,6 +40,10 @@ async function renderLoaded() {
 }
 
 describe("NotificationsSettingsPage (WS3 day pass)", () => {
+  beforeEach(() => {
+    mockRequest.mockReset();
+  });
+
   it("renders the day masthead: copper rule + Cormorant serif in --tx-pure", async () => {
     const { container } = await renderLoaded();
 
@@ -88,11 +92,38 @@ describe("NotificationsSettingsPage (WS3 day pass)", () => {
     expect(container.innerHTML).not.toContain("--neon-");
   });
 
-  it("shows the destructive alert when prefs cannot be loaded", async () => {
-    mockRequest.mockRejectedValue(new Error("boom"));
+  it("suppresses raw read errors and retries the real query", async () => {
+    mockRequest.mockRejectedValue(
+      new Error("relation notification_prefs failed at internal-host"),
+    );
     renderWithClient(<NotificationsSettingsPage />);
     expect(
       await screen.findByText("Unable to load preferences"),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/notification_prefs|internal-host/i)).toBeNull();
+
+    mockRequest.mockResolvedValueOnce({
+      email_enabled: true,
+      wa_enabled: false,
+      wa_phone: null,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Email")).toBeInTheDocument();
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it("suppresses raw mutation errors and preserves a retryable form", async () => {
+    await renderLoaded();
+    mockRequest.mockRejectedValueOnce(
+      new Error("duplicate key at notification_prefs on internal-host"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not save your preferences. Your saved choices have not been changed.",
+    );
+    expect(screen.queryByText(/duplicate key|internal-host/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 });

@@ -498,9 +498,9 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_hours: int = 1  # S03: reduced from 24h to 1h
-    jwt_enforce_expiry: bool = False  # S03: Phase 1 audit mode, flip to True for Phase 2
-
-    enable_token_revocation: bool = False  # S03-S2: Redis-backed token revocation
+    # Emergency availability lever. Production keeps this enabled; disabling it
+    # explicitly trades session revocation for authentication availability.
+    enable_token_revocation: bool = True
 
     @field_validator("jwt_secret_key", mode="before")
     @classmethod
