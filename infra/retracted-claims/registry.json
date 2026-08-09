@@ -61,7 +61,7 @@
   "claims": [
     {
       "id": "kim-2025-17x-error-amplification-as-cause",
-      "pattern": "\\b17[.,]2\\s*(-|\\s)?\\s*[×x]|(?=.*\\b4[.,]4\\s*(-|\\s)?\\s*[×x])(?=.*(decentraliz|centraliz|peer[ -]?to[ -]?peer|\\bindependent\\b|error[ -]?amplif|error[ -]?propagat|error[ -]?cascad|error[ -]?compound|error[ -]?snowball))(?=.*(never|forbid|must ?not|therefore|\\bwhy\\b|\\breason\\b|banned|confirm|prohibit|hand[ -]?off))",
+      "pattern": "\\b17[.,]2\\s*(-|\\s)?\\s*[×x]|(?=.*\\b4[.,]4\\s*(-|\\s)?\\s*[×x])(?=.*(?:\\bKim\\b|2512[.,]08296)|(?=.*(?:decentraliz|centraliz|peer[ -]?to[ -]?peer|\\bindependent\\b|error[ -]?amplif|error[ -]?propagat|error[ -]?cascad|error[ -]?compound|error[ -]?snowball))(?=.*(?:never|forbid|must ?not|therefore|\\bwhy\\b|\\breason\\b|banned|confirm|prohibit|hand[ -]?off)))",
       "context_pattern": "error|amplif|peer|topolog|coordinat|Kim|2512\\.08296|Independent|Decentralized|swarm|Google|sub-?agents?|agents?|talk|hand-?off|handoff|never",
       "context_window": 3,
       "source": "arXiv:2512.08296v3 (Kim et al., Towards a Science of Scaling Agent Systems)",

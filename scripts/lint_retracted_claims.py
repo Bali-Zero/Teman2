@@ -716,14 +716,23 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
             #     (compound/cascade/snowball, "review gates") walked straight
             #     through. Whack-a-mole on vocabulary cannot win (W113: this guard
             #     was bitten by paraphrase drift three times before).
-            # The cure keys off the claim's STRUCTURE, not its words: a `4.4x` is
-            # flagged only when the line ALSO carries a coordination-topology token
-            # (decentralized/centralized/peer-to-peer/Independent, or an error-
-            # amplification-narrative synonym) AND a prohibition/causal connective
-            # (never/forbid/must-not/therefore/why/reason/banned/confirm/hand-off).
-            # A benchmark ratio has neither; every real re-derivation of the no-peer
-            # rule has both. `4.4x` stays under THIS claim id so existing
-            # RETRACTED[kim-2025-17x-...] markers absolve the corpus (--all clean).
+            #   Round 3 fix (topology+prohibition STRUCTURE) — REFUTED: the topology
+            #     token list is itself a vocabulary allowlist one level up. Synonyms
+            #     outside it (P2P / distributed / swarm / agent-to-agent) plus
+            #     "mistakes compound" (dodging the literal `error`-adjacency) walked
+            #     through while still naming a topology, a prohibition, and the claim.
+            # The cure keys off the claim's ENTITY where it can, and keeps STRUCTURE as
+            # a supplement. A `4.4x` is flagged when the line ALSO carries EITHER the
+            # paper's identity (`Kim` / `2512.08296`) — the least synonym-prone anchor,
+            # present in every natural re-citation and in all four round-3 evasions — OR
+            # both a coordination-topology token AND a prohibition/causal connective (the
+            # structural branch, kept so an UNATTRIBUTED continuation line — "The paper
+            # shows 4.4x under decentralized coordination, never peer-to-peer", with Kim
+            # named 2 lines up and off THIS line — is still caught per-line, and so are
+            # the two unattributed guilt pins below that name no paper at all). A bare
+            # benchmark ratio has neither.
+            # `4.4x` stays under THIS claim id so existing RETRACTED[kim-2025-17x-...]
+            # markers absolve the corpus (--all clean).
             _kim = [c for c in pclaims if c.id == "kim-2025-17x-error-amplification-as-cause"]
             if _kim:
                 _kc = _kim[0]
@@ -753,27 +762,50 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                     "Google's Kim et al. study found a 4.4x error cascade in peer-to-peer coordination, confirming agents must never talk directly.",
                     "Centralized coordination keeps mistakes contained to just 4.4x by using strict review gates, which is the whole reason peer-to-peer talk between agents is banned.",
                     "Kim et al. found that in Decentralized topology mistakes snowball 4.4x faster, so Google says sub-agents must never hand off state peer-to-peer.",
+                    # round 3 — topology SYNONYM (P2P/distributed/swarm/agent-to-agent)
+                    # + "mistakes compound" (no literal `error`), which walked through the
+                    # structural branch. Caught by the paper-identity anchor: every one
+                    # still names Kim, because the natural re-citation does.
+                    "Kim's benchmark found that mistakes compound 4.4x more when agents talk P2P, which is exactly why Google says sub-agents must never coordinate directly.",
+                    "Kim's benchmark found that mistakes compound 4.4x more when agents coordinate in a distributed fashion, which is why Google says agents must never talk directly to each other.",
+                    "Kim's benchmark found mistakes compound 4.4x more in swarm coordination among agents, which is why Google says agents must never talk directly.",
+                    "Kim's benchmark found mistakes compound 4.4x more under direct agent-to-agent chatter, which is exactly why Google forbids that coordination style.",
                     # the 17.2x headline still caught
                     "Google's 17.2x error-amplification finding forbids peer-to-peer agents",
                 ):
                     expect(
-                        f"PIN GUILT kim-17x: a causal (topology+prohibition) 4.4x/17.2x re-derivation IS caught: {_t[:32]}",
+                        f"PIN GUILT kim-17x: a 4.4x/17.2x re-derivation naming the paper OR its topology+prohibition structure IS caught: {_t[:32]}",
                         len(scan_text(_t + "\n", [_kc], pdirs, pwindow)) == 1,
                     )
+                # A neutral, ATTRIBUTED mention is now flagged too (declared-friction
+                # consistency with the bare-17.2x branch): naming the paper + the ratio
+                # is enough, no causal phrasing needed. The round-3 topology+prohibition-
+                # only design let this pass — a gap against this claim's own history,
+                # which is one reader quoting the ratio neutrally and the next re-deriving
+                # it as a reason.
+                expect(
+                    "PIN GUILT kim-17x: a neutral ATTRIBUTED mention (paper + 4.4x, no causal phrasing) is flagged",
+                    len(scan_text("Kim's 4.4x figure is a number we noted once in passing\n", [_kc], pdirs, pwindow)) == 1,
+                )
                 # DECLARED LIMITS, pinned (superscar #3 lineage) — accepted residuals,
                 # not surprises. (1) scan_text matches a pattern per-LINE, so a `4.4x`
-                # split across a line break from its topology/prohibition tokens is not
-                # caught (closing it needs window context for 4.4x, which with a distinct
-                # claim id would demand a marker at 13 corpus mentions — disproportionate).
-                # (2) A sentence naming NEITHER a coordination topology NOR any
-                # prohibition/causal connective is not flagged — but such a sentence no
-                # longer asserts the no-peer rule, so the residual is near-vacuous.
+                # split across a line break from its anchor tokens is not caught (closing
+                # it needs window context for 4.4x, which with a distinct claim id would
+                # demand a marker at 13 corpus mentions — disproportionate). (2) An
+                # UNATTRIBUTED re-derivation (no `Kim` / no arXiv id on the line) that
+                # ALSO paraphrases the topology outside the enumerated set (P2P /
+                # distributed / swarm) evades both branches. This is the round-3 refuter's
+                # hole minus the paper name it used: the natural, dangerous recurrence
+                # NAMES the paper (a session re-deriving "Kim's 4.4x" from a dated ledger),
+                # caught by the identity anchor; stripping the name AND paraphrasing the
+                # topology yields a weaker, unattributed assertion. Chasing topology
+                # synonyms is the whack-a-mole round 3 proved unwinnable.
                 for _t in (
                     "the paper reports 4.4x for centralized coordination\nwhich is error amplification, so avoid peer-to-peer\n",
-                    "Kim's 4.4x figure is a number we noted once in passing\n",
+                    "the study found mistakes compound 4.4x when agents talk P2P, which is why they must never coordinate directly\n",
                 ):
                     expect(
-                        f"known limit: a 4.4x with no same-line topology+prohibition structure is NOT caught: {_t[:28]!r}",
+                        f"known limit: an unattributed / cross-line 4.4x re-derivation is NOT caught: {_t[:28]!r}",
                         scan_text(_t, [_kc], pdirs, pwindow) == [],
                     )
         else:
