@@ -176,9 +176,9 @@ L'autonomia non e' mai totale. Le decisioni strutturali (architettura, dati sens
 Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 
 1. **CLI-only per LLM.** `claude --print`, `gemini --print`, subprocess. Mai API HTTP Anthropic/Google/OpenAI. DeepSeek API e' l'unica eccezione.
-2. **PII/OSINT non trascritti in chiaro — regime a due fasi (DEV/PROD, ricalibrato 2026-06-23 da Zero).** La frontiera non e' "un LLM non puo' vedere contesto operativo": la frontiera e' che nessun LLM, agente, skill, memoria, report, log, alert, HGT payload, notebook, artefatto pubblico o output condiviso deve trascrivere o persistere in chiaro dati cliente o OSINT (nomi, telefoni, email, passport/KTP/NPWP, chat private, credenziali, raw intelligence). Il processing autorizzato puo' usare contesto operativo quando serve; l'output deve parlare in forma astratta, redatta o referenziata (`client_id`, hash, placeholder). **Questa frontiera-output e' non-negoziabile in ogni fase** (UU PDP Art. 67-68: divulgazione/uso illecito di dati personali = reato penale, fino 6 anni / IDR 6 mld, ×10 per persone giuridiche Art. 70).
+2. **PII/OSINT non trascritti in chiaro — politica interna di sicurezza e minimizzazione, con regime a due fasi (DEV/PROD, ricalibrato 2026-06-23 da Zero).** La frontiera non e' "un LLM non puo' vedere contesto operativo": la frontiera e' che nessun LLM, agente, skill, memoria, report, log, alert, HGT payload, notebook, artefatto pubblico o output condiviso deve trascrivere o persistere in chiaro dati cliente o OSINT (nomi, telefoni, email, passport/KTP/NPWP, chat private, credenziali, raw intelligence). Il processing autorizzato puo' usare contesto operativo quando serve; l'output deve parlare in forma astratta, redatta o referenziata (`client_id`, hash, placeholder). **Questa frontiera-output e' una politica interna piu' rigorosa, non-negoziabile in ogni fase**, coerente con i doveri del titolare di adottare misure di sicurezza, mantenere la riservatezza e prevenire processing/accessi non autorizzati (UU PDP Artt. 35-39). Non presume che ogni comparsa di cleartext integri automaticamente i reati degli Artt. 65/67, che richiedono gli elementi di divulgazione o uso intenzionale e illecito; l'Art. 68 riguarda invece la creazione o falsificazione di dati personali e non e' la base di questa regola.
 
-   **Fase DEV (attuale — fino al go-live prod):** il vincolo "zero-cloud assoluto / mirror Pro-bound" e' **sospeso operativamente** per non bloccare lo sviluppo. In sviluppo si possono usare strumenti cloud (incluso l'IDE Antigravity, agenti cloud, code-indexing) su tutto il repo — **codice, frontend, backend, schema, research** — perche' il dato che circola e' codice e dati di test/sintetici, non il book clienti reale in produzione. Decisione di Zero: «dobbiamo lavorare; quando saremo pronti in prod ci lavoriamo». Resta comunque vietato esportare deliberatamente in chiaro PII REALE di clienti veri (snapshot DB prod, dump WhatsApp reali) verso un terzo — quello e' un atto, non un effetto-collaterale di sviluppo. La frontiera-output (Art. 67-68) NON e' sospesa nemmeno in DEV.
+   **Fase DEV (attuale — fino al go-live prod):** il vincolo "zero-cloud assoluto / mirror Pro-bound" e' **sospeso operativamente** per non bloccare lo sviluppo. In sviluppo si possono usare strumenti cloud (incluso l'IDE Antigravity, agenti cloud, code-indexing) su tutto il repo — **codice, frontend, backend, schema, research** — perche' il dato che circola e' codice e dati di test/sintetici, non il book clienti reale in produzione. Decisione di Zero: «dobbiamo lavorare; quando saremo pronti in prod ci lavoriamo». Resta comunque vietato esportare deliberatamente in chiaro PII REALE di clienti veri (snapshot DB prod, dump WhatsApp reali) verso un terzo — quello e' un atto, non un effetto-collaterale di sviluppo. La politica interna di sicurezza e minimizzazione della frontiera-output NON e' sospesa nemmeno in DEV.
 
    > **⚠️ POLITICA PRESCRITTIVA, NON STATO ATTUALE — i presenti indicativi qui sotto dicono cosa
    > FAREMO sempre, non cosa risulta già registrato: vedi il punto 3.**
@@ -202,37 +202,42 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
    >    singolo trasferimento**: adequacy → safeguard vincolante (DPA/SCC) → consenso esplicito.
    >    Dove un safeguard c'è, la base è quello e il consenso lo **accompagna**, non lo sostituisce.
    >    La regola operativa resta quella di `CLAUDE.md` §14: **DPA _e_ consenso**.
-   > 2. **Non autorizza NIENTE di nuovo verso il cloud.** Toglie un'obiezione alla scelta del
-   >    fornitore; non è un permesso, e non allarga di un byte ciò che esce. Il confine resta quello
-   >    che il codice ENFORCA: `cloud_vision_gate` fail-closed su documenti-identità e immagini,
-   >    mirror OSINT/WhatsApp raw Pro-bound. Il testo che il cliente digita in chat raggiunge già il
-   >    fornitore LLM attraverso il gateway — **è un fatto del sistema in esercizio, non qualcosa che
-   >    questo riquadro concede**, e resta soggetto alla cascata del punto 1 come ogni altro
-   >    trasferimento. Chi legge questo blocco come una licenza a spostare PII su una superficie
-   >    nuova lo sta leggendo al contrario.
+   > 2. **L'inferenza cloud sul testo chat è processing di PII, non semplice transito.** Quando il
+   >    testo contiene dati personali del cliente, inviarlo a un fornitore LLM estero è sia
+   >    processing sia trasferimento e richiede, **prima dell'invio**, una base dimostrabile nella
+   >    cascata del punto 1. `cloud_vision_gate` governa soltanto i fallback OCR/vision su documenti
+   >    e immagini: non autorizza, classifica o blocca il testo chat. Il fatto che il gateway abbia
+   >    già inviato domande a un provider descrive il percorso tecnico, non ne dimostra la base
+   >    giuridica e non concede una nuova superficie cloud.
    > 3. **Non chiude il gap operativo, e non è una dichiarazione di conformità.** Decidere di
    >    raccogliere il consenso non è averlo: mancano la clausola a contratto, la registrazione
    >    della prova per-cliente, il meccanismo di **revoca** e l'enforcement; e lo stato del DPA non
-   >    è registrato da nessuna parte in questo repo. «Esiste ≠ armato» (superscar #2) vale anche
-   >    per un controllo legale — finché non è armato, **questo riquadro descrive una politica, non
-   >    uno stato del sistema**, e il traffico cloud che oggi passa sul percorso chat è un **rischio
-   >    accettato dal titolare** (Legge 5), non una base giuridica dimostrata. Lavoro tracciato in
+   >    è registrato da nessuna parte in questo repo. Non esiste oggi un controllo ingress comune
+   >    che colleghi il testo cliente alla prova della base Art. 56 prima della chiamata al provider.
+   >    Finché tale base non è dimostrabile per il singolo trasferimento, la condotta sicura richiesta
+   >    è **fail-closed**: il testo con PII cliente resta locale/off-cloud oppure la richiesta viene
+   >    bloccata e il sistema si astiene. Il gateway corrente non applica ancora questa decisione
+   >    per-cliente: è un
+   >    gap di enforcement aperto, non un «rischio accettato» che possa valere come base giuridica.
+   >    «Esiste ≠ armato» (superscar #2) vale anche per un controllo legale. Lavoro tracciato in
    >    PENDING-ARMS, non dichiarato fatto.
    >
    > **Cosa non cambia in nessun caso:** la frontiera-OUTPUT del capoverso principale. Nessun log,
-   > memoria, report, skill o artefatto condiviso trascrive PII in chiaro. **Nessuna base dell'Art. 56
-   > — né safeguard né consenso — rende lecito trascrivere PII in chiaro in un log:** sono due domande
-   > distinte, e la seconda non si consente via (Art. 67-68).
+   > memoria, report, skill o artefatto condiviso trascrive PII in chiaro. È una politica interna di
+   > sicurezza e minimizzazione, sostenuta dai doveri del titolare negli Artt. 35-39. Una base
+   > dell'Art. 56 risponde alla domanda sul trasferimento estero e non disattiva questa regola
+   > interna. Gli Artt. 65/67 restano rilevanti quando ricorrono divulgazione o uso intenzionale e
+   > illecito; l'Art. 68 disciplina la falsificazione e non va usato come divieto assoluto di log.
    >
    > **Corollario operativo, ed è il motivo per cui questo blocco esiste** (errore di una sessione,
    > 2026-08-09): «vede domande dei clienti» **NON** è un argomento per escludere un fornitore. Il
-   > gateway manda già quelle domande a Google e a OpenAI. Chi lo usa per squalificare un vendor
-   > (cinese o altro) sta applicando lo standard in modo asimmetrico e **prova troppo** — squalifica
-   > ciò che facciamo da sempre. Un vendor si sceglie su qualità, costo, latenza e accoppiamento
-   > tecnico, misurati; le regole vendor-specifiche restano quelle scritte in `CLAUDE.md §5`, e non
-   > sono questa.
+   > gateway ha già mandato quelle domande a Google e a OpenAI. Chi lo usa per squalificare un vendor
+   > (cinese o altro) sta applicando lo standard in modo asimmetrico; il fatto storico non prova però
+   > la liceità del percorso corrente. Una volta dimostrata la base Art. 56 — oppure mantenuto il
+   > testo PII off-cloud — un vendor si sceglie su qualità, costo, latenza e accoppiamento tecnico,
+   > misurati; le regole vendor-specifiche restano quelle scritte in `CLAUDE.md §5`, e non sono questa.
 
-   **Fase PROD (al go-live — da ri-armare):** la frontiera PII torna **assoluta** sul percorso che tocca dati cliente reali. Il riarmo e' un task esplicito di pre-produzione, non automatico — vedi memory `decision_law2_dev_phase_recalibration_2026_06_23`. La base giuridica del transito cloud in PROD (alleggerimento 2026-06-20): UU PDP **non** impone data-localization per agenzie private di servizi (obbligo onshore solo per banche POJK 11/2022 e crypto POJK 27/2024); il transito/storage di PII cliente su cloud estero (Drive/Fly USA) e' **lecito** sotto Art. 56 con una base valida — cascata: adequacy (USA non ce l'ha) → **safeguard vincolante** (Google Workspace DPA / SCC) → **consenso esplicito** del cliente; interim notifica KOMDIGI (MOCI Reg 20/2016 + GR 71/2019). Quindi in PROD: **il processing PII resta locale-sovrano sul Pro** (cloud_vision_gate fail-closed gia' lo enforce), **il transito-storage su cloud richiede DPA + consenso** — la raccolta sistematica del consenso e' DECISA (riquadro sopra, Zero 2026-08-09), ma clausola contrattuale, prova per-cliente, revoca ed enforcement sono ANCORA DA ARMARE, e lo stato del Workspace DPA e' da verificare e registrare: finche' non lo sono, il gap operativo resta aperto (PENDING-ARMS). Il mirror OSINT/WhatsApp raw resta Pro-bound **per scelta operativa** (riduce l'onere-della-prova Art. 56), non per divieto assoluto.
+   **Fase PROD (al go-live — da ri-armare):** la frontiera PII torna **assoluta** sul percorso che tocca dati cliente reali. Il riarmo e' un task esplicito di pre-produzione, non automatico — vedi memory `decision_law2_dev_phase_recalibration_2026_06_23`. La base giuridica del transito cloud in PROD (alleggerimento 2026-06-20): UU PDP **non** impone data-localization per agenzie private di servizi (obbligo onshore solo per banche POJK 11/2022 e crypto POJK 27/2024); il transito/storage di PII cliente su cloud estero (Drive/Fly USA) richiede una base valida sotto Art. 56 — cascata: adequacy (USA non ce l'ha) → **safeguard adeguato e vincolante** (Google Workspace DPA / SCC) → **consenso esplicito** soltanto se i primi due livelli non sono soddisfatti; interim notifica KOMDIGI (MOCI Reg 20/2016 + GR 71/2019). L'OCR/vision di documenti e immagini resta locale per default e `cloud_vision_gate` applica il fail-closed soltanto a quella superficie. **Non copre la chat:** l'inferenza cloud su testo contenente PII è processing e trasferimento. Finché la base Art. 56 non è dimostrabile prima dell'invio, la modalità sicura richiesta è locale/off-cloud o astensione; il gateway chat non dispone ancora del controllo per-cliente necessario, quindi il gap resta aperto e non viene dichiarato conforme. La raccolta sistematica del consenso e' DECISA (riquadro sopra, Zero 2026-08-09), ma clausola contrattuale, prova per-cliente, revoca ed enforcement sono ANCORA DA ARMARE, e lo stato del Workspace DPA e' da verificare e registrare (PENDING-ARMS). Il mirror OSINT/WhatsApp raw resta Pro-bound **per scelta operativa** (riduce l'onere-della-prova Art. 56), non per divieto assoluto.
 
 3. **Event-driven, durabilità per canale.** Nessun polling, nessun orchestratore centrale. Ogni canale evento ha la propria strategia di durabilità, scelta in base al consumer:
 
