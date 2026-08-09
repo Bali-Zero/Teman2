@@ -22,6 +22,24 @@ from middleware.hybrid_auth import (
     create_default_user_context,
 )
 
+from backend.services.pii.violation_store import hash_subject
+
+
+@pytest.fixture(autouse=True)
+def available_revocation_store():
+    """Make successful JWT tests use an available, empty revocation store."""
+    async_client = MagicMock()
+    async_client.exists = AsyncMock(return_value=0)
+    async_client.get = AsyncMock(return_value=None)
+    manager = MagicMock()
+    manager.get_async_client.return_value = async_client
+
+    with patch(
+        "backend.core.redis_manager.RedisManager.get_instance",
+        return_value=manager,
+    ):
+        yield
+
 
 @pytest.fixture
 def mock_app():
@@ -152,6 +170,8 @@ async def test_dispatch_public(middleware, mock_request):
         assert call_args[1]["extra"]["endpoint"] == "/api/auth/login"
         assert call_args[1]["extra"]["method"] == "GET"
         assert call_args[1]["extra"]["event_type"] == "public_endpoint_access"
+        assert call_args[1]["extra"]["client_ip"] == hash_subject("127.0.0.1")
+        assert "127.0.0.1" not in str(call_args)
 
 
 @pytest.mark.asyncio
@@ -329,11 +349,22 @@ async def test_auth_cookie_valid(middleware, mock_request):
 
     with (
         patch("middleware.hybrid_auth.validate_csrf", return_value=True),
-        patch.object(middleware, "authenticate_jwt_token", return_value={"email": "test"}),
+        patch.object(
+            middleware,
+            "authenticate_jwt_token",
+            return_value={"email": "client@example.com", "role": "client"},
+        ),
+        patch("middleware.hybrid_auth.logger") as mock_logger,
     ):
         user = await middleware.authenticate_request(mock_request)
-        assert user["email"] == "test"
+        assert user["email"] == "client@example.com"
         assert user["auth_method"] == "jwt_cookie"
+        assert "client@example.com" not in str(mock_logger.info.call_args_list)
+        call = mock_logger.info.call_args
+        assert call.args[0] % call.args[1:] == (
+            f"Cookie JWT authenticated: role=client from {hash_subject('127.0.0.1')}"
+        )
+        assert "127.0.0.1" not in call.args[0] % call.args[1:]
 
 
 @pytest.mark.asyncio
@@ -363,10 +394,23 @@ async def test_auth_header_valid(middleware, mock_request):
     mock_request.headers = {"Authorization": "Bearer valid-jwt"}
     middleware.api_auth_bypass_db = False
 
-    with patch.object(middleware, "authenticate_jwt", return_value={"email": "test"}):
+    with (
+        patch.object(
+            middleware,
+            "authenticate_jwt",
+            return_value={"email": "client@example.com", "role": "client"},
+        ),
+        patch("middleware.hybrid_auth.logger") as mock_logger,
+    ):
         user = await middleware.authenticate_request(mock_request)
-        assert user["email"] == "test"
+        assert user["email"] == "client@example.com"
         assert user["auth_method"] == "jwt_header"
+        assert "client@example.com" not in str(mock_logger.info.call_args_list)
+        call = mock_logger.info.call_args
+        assert call.args[0] % call.args[1:] == (
+            f"Header JWT authenticated: role=client from {hash_subject('127.0.0.1')}"
+        )
+        assert "127.0.0.1" not in call.args[0] % call.args[1:]
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,5 @@
 "use client";
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useDebouncedCallback } from "./useDebouncedCallback";

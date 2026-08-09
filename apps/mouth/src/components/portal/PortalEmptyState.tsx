@@ -64,6 +64,7 @@ export function PortalEmptyState({
       {cta && (
         <Link
           href={cta.href}
+          prefetch={false}
           className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
           style={{
             /* WS3: small copper text reads the AA daylight step (slice-1

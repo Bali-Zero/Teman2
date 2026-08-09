@@ -3,13 +3,11 @@ import { Sparkles, Info } from "lucide-react";
 import type { DashboardRecap } from "@/lib/api/portal/portal.types";
 
 /**
- * PracticeRecapCard — the "highly AI-smart with recaps" hero (FASE 3, §3.5).
+ * PracticeRecapCard — the client record recap hero (FASE 3, §3.5).
  *
- * Shows the facts-locked, prose-polished recap that the backend composes from
- * audited structured fields (open_actions + deadlines + unread). The numbers and
- * dates are deterministic; the LLM only warms the tone. A permanent disclaimer
- * makes the AI provenance and non-legal-advice status unmissable (cures the
- * DeepSeek "hallucinated lawyer" liability — AP3).
+ * Shows the facts-locked recap that the backend composes from audited structured
+ * fields (open_actions + deadlines + unread). The client request path is fully
+ * deterministic, and a permanent non-legal-advice disclaimer remains visible.
  *
  * Theme-aware: reads on the light client surface and the dark backoffice alike.
  */
@@ -84,7 +82,7 @@ export function PracticeRecapCard({
         {recap.text}
       </p>
 
-      {/* Permanent disclaimer — AI provenance + not-legal-advice, never hidden */}
+      {/* Permanent not-legal-advice disclaimer, never hidden */}
       <p
         className="mt-3 flex items-start gap-1.5 text-[11px] leading-snug"
         style={{ color: "var(--bz-text-3)" }}

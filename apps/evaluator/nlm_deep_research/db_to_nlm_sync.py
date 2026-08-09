@@ -52,6 +52,7 @@ from apps.evaluator.nlm_deep_research.db_nlm_templates import (
     render_tax_compliance,
     render_team_activity,
 )
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -437,7 +438,7 @@ def _nlm_source_add(
             timeout=timeout,
         )
         if result.returncode != 0:
-            logger.error("nlm source add failed: %s", result.stderr.strip())
+            logger.error("nlm source add failed: %s", nlm_error_reason(result))
             return None
 
         output = result.stdout.strip()
@@ -497,7 +498,7 @@ def _nlm_source_delete(
             cmd, capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode != 0:
-            logger.warning("nlm source delete failed: %s", result.stderr.strip())
+            logger.warning("nlm source delete failed: %s", nlm_error_reason(result))
             return False
         logger.info("Source deleted: %s", source_id)
         return True

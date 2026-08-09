@@ -300,6 +300,36 @@ describe("proxy catch-all route — backend URL normalization", () => {
   });
 });
 
+describe("proxy catch-all route — public error redaction", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does not expose upstream errors or internal target URLs", async () => {
+    process.env.NUZANTARA_API_URL =
+      "https://private-backend.example.internal:8000";
+    vi.mocked(global.fetch).mockRejectedValue(
+      new Error("connect ECONNREFUSED 10.0.0.42:8000"),
+    );
+    const req = new MockNextRequest("http://localhost/api/portal/dashboard", {
+      method: "GET",
+    });
+
+    const response = await GET(req as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(payload).toEqual({
+      error: "Proxy error",
+      message: "Service temporarily unavailable",
+    });
+    expect(JSON.stringify(payload)).not.toContain("private-backend");
+    expect(JSON.stringify(payload)).not.toContain("10.0.0.42");
+    expect(JSON.stringify(payload)).not.toContain("ECONNREFUSED");
+  });
+});
+
 describe("proxy catch-all route — public Visa Oracle boundary", () => {
   beforeEach(() => {
     vi.mocked(global.fetch).mockResolvedValue(

@@ -16,6 +16,16 @@ if str(backend_path) not in sys.path:
 from backend.app.routers.websocket import ConnectionManager, get_current_user_ws
 
 
+@pytest.fixture(autouse=True)
+def available_ws_session():
+    """Valid WebSocket tests use an available, non-revoked session."""
+    with patch(
+        "backend.app.routers.websocket.is_session_revoked",
+        AsyncMock(return_value=False),
+    ):
+        yield
+
+
 class TestConnectionManager:
     """Tests for ConnectionManager"""
 
@@ -126,7 +136,7 @@ class TestWebSocketAuth:
         """Test getting current user with valid token"""
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.return_value = {"sub": "user123"}
+        mock_jwt.decode.return_value = {"sub": "user123", "type": "access"}
 
         user_id = await get_current_user_ws("valid_token")
         assert user_id == "user123"
@@ -138,7 +148,7 @@ class TestWebSocketAuth:
         """Test getting current user with userId in payload"""
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.return_value = {"userId": "user456"}
+        mock_jwt.decode.return_value = {"userId": "user456", "type": "access"}
 
         user_id = await get_current_user_ws("valid_token")
         assert user_id == "user456"
@@ -164,7 +174,7 @@ class TestWebSocketAuth:
         """Test getting current user with no user ID in payload"""
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.return_value = {}
+        mock_jwt.decode.return_value = {"type": "access"}
 
         user_id = await get_current_user_ws("token")
         assert user_id is None

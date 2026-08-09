@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 /**
  * Security tab — placeholder-heavy by design.
  *
- * Only the "revoke all other sessions" action hits a real endpoint
+ * Only the "revoke all sessions" action hits a real endpoint
  * (`POST /api/auth/revoke-all`, exists today). Password change and 2FA
  * are intentionally rendered as informational panels because the BE does
  * not expose `/me/password` or `/me/2fa` endpoints yet (see Task 4.2
@@ -15,6 +16,7 @@ import { logger } from "@/lib/logger";
  * with real forms — do NOT fake the flow in the meantime.
  */
 export function SecuritySettings() {
+  const router = useRouter();
   const [revoking, setRevoking] = useState(false);
   const [result, setResult] = useState<"" | "ok" | "error">("");
 
@@ -23,7 +25,9 @@ export function SecuritySettings() {
     setResult("");
     try {
       await api.post("/api/auth/revoke-all", {});
+      api.clearToken();
       setResult("ok");
+      router.replace("/portal/login-upgraded");
     } catch (err) {
       logger.error(
         "SecuritySettings: revoke-all failed",
@@ -54,7 +58,8 @@ export function SecuritySettings() {
           Active sessions
         </h3>
         <p className="text-sm text-[var(--bz-text-2)] mb-3">
-          If you suspect unauthorized access, log out all other devices now.
+          If you suspect unauthorized access, log out every device, including
+          this one.
         </p>
         <button
           type="button"
@@ -62,11 +67,11 @@ export function SecuritySettings() {
           disabled={revoking}
           className="text-xs uppercase tracking-[2px] text-[var(--bz-copper-text)] hover:underline disabled:opacity-50"
         >
-          {revoking ? "Logging out…" : "Log out all other sessions"}
+          {revoking ? "Logging out…" : "Log out all sessions"}
         </button>
         {result === "ok" && (
           <p role="status" className="text-xs text-[var(--state-success)] mt-2">
-            All other sessions revoked.
+            All sessions revoked. Redirecting to sign in…
           </p>
         )}
         {result === "error" && (

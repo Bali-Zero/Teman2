@@ -15,6 +15,7 @@ from backend.app.utils.logging_utils import get_logger
 from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
 from backend.services.portal._rbac import ClientContext, require_client_access
+from backend.services.portal.qa_document_sink import QADocumentSinkClient
 
 logger = get_logger(__name__)
 
@@ -42,45 +43,40 @@ class PortalBillingMixin:
         """
         Get all invoices for a client with summary statistics.
 
-        Reads from the `invoices` table (primary) joined with practices for context.
-        Falls back to practices.documents JSONB if invoices table doesn't exist.
+        Reads from the `invoices` table joined with practices for context.
+        Database failures propagate to the router so clients never see a false
+        empty-account state.
 
         Returns format expected by frontend BillingResponse type:
             - invoices: list of invoice dicts
             - summary: {total_invoiced, total_paid, total_pending, count}
         """
         async with self.pool.acquire() as conn:
-            # Try invoices table first (primary source)
-            try:
-                rows = await conn.fetch(
-                    """
-                    SELECT
-                        i.id,
-                        i.invoice_number,
-                        i.amount_idr,
-                        i.invoice_source,
-                        i.drive_file_id,
-                        i.drive_web_link,
-                        i.email_sent_to_client,
-                        i.generated_at,
-                        i.created_at,
-                        i.practice_id,
-                        pt.name AS practice_name,
-                        pt.category AS practice_category,
-                        p.payment_status,
-                        p.quoted_price
-                    FROM invoices i
-                    JOIN practices p ON p.id = i.practice_id
-                    JOIN practice_types pt ON pt.id = p.practice_type_id
-                    WHERE i.client_id = $1
-                    ORDER BY i.created_at DESC
-                    """,
-                    client_id,
-                )
-            except Exception as e:
-                # invoices table may not exist — fallback to practices JSONB
-                logger.warning("invoices table query failed, falling back to JSONB: %s", e)
-                rows = []
+            rows = await conn.fetch(
+                """
+                SELECT
+                    i.id,
+                    i.invoice_number,
+                    i.amount_idr,
+                    i.invoice_source,
+                    i.drive_file_id,
+                    i.drive_web_link,
+                    i.email_sent_to_client,
+                    i.generated_at,
+                    i.created_at,
+                    i.practice_id,
+                    pt.name AS practice_name,
+                    pt.category AS practice_category,
+                    p.payment_status,
+                    p.quoted_price
+                FROM invoices i
+                JOIN practices p ON p.id = i.practice_id
+                JOIN practice_types pt ON pt.id = p.practice_type_id
+                WHERE i.client_id = $1
+                ORDER BY i.created_at DESC
+                """,
+                client_id,
+            )
 
         invoices = []
         total_invoiced = 0.0
@@ -131,22 +127,13 @@ class PortalBillingMixin:
         *,
         current_user: ClientContext,
     ) -> dict[str, str] | None:
-        """Get Drive download URL for an invoice PDF. Returns None if not found."""
+        """Get the portal proxy URL for an owned invoice PDF."""
         async with self.pool.acquire() as conn:
-            try:
-                row = await conn.fetchrow(
-                    "SELECT drive_web_link, drive_file_id FROM invoices WHERE id = $1 AND client_id = $2",
-                    invoice_id,
-                    client_id,
-                )
-            except (asyncpg.PostgresError, asyncpg.InterfaceError, ConnectionError) as db_exc:
-                logger.warning(
-                    "billing: get_invoice_pdf_url DB error for client=%s invoice=%s: %s",
-                    client_id,
-                    invoice_id,
-                    db_exc,
-                )
-                return None
+            row = await conn.fetchrow(
+                "SELECT drive_web_link, drive_file_id FROM invoices WHERE id = $1 AND client_id = $2",
+                invoice_id,
+                client_id,
+            )
 
         if not row or (not row["drive_web_link"] and not row["drive_file_id"]):
             return None
@@ -180,6 +167,17 @@ class PortalBillingMixin:
         file_id = row["drive_file_id"] or (extractor(row["drive_web_link"]) if extractor else None)
         if not file_id:
             return None
+
+        qa_sink = QADocumentSinkClient.from_environment()
+        if qa_sink is not None:
+            content = await qa_sink.download(file_id)
+            if content is None:
+                return None
+            return {
+                "content": content,
+                "file_name": f"{row['invoice_number']}.pdf",
+                "mime_type": "application/pdf",
+            }
 
         from backend.services.integrations.google_drive_service import GoogleDriveService
 
@@ -303,9 +301,7 @@ class PortalBillingMixin:
                                     phone_core(safe_fields.get("phone")),
                                     phone_core(safe_fields.get("whatsapp")),
                                     phone_core(_val(_old, "phone") if _old else None),
-                                    phone_core(
-                                        _val(_old, "phone_normalized") if _old else None
-                                    ),
+                                    phone_core(_val(_old, "phone_normalized") if _old else None),
                                     phone_core(_val(_old, "whatsapp") if _old else None),
                                 )
                                 if c is not None
@@ -343,7 +339,7 @@ class PortalBillingMixin:
                         INSERT INTO notification_alerts
                             (client_id, alert_type, status, message, email_subject)
                         VALUES ($1, 'portal_profile_update', 'sent', $2, $3)
-                        ON CONFLICT ON CONSTRAINT uq_notification_alert_daily DO NOTHING
+                        ON CONFLICT (client_id, alert_type, created_date) DO NOTHING
                         """,
                         client_id,
                         f"Client updated their profile: {fields_label}",

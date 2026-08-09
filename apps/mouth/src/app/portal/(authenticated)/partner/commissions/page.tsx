@@ -13,14 +13,15 @@
  * (was bg-white/10 neutral pill for every state). No hardcoded hexes.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatIDR } from "@balizero/core/utils";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import {
   getMyCommissions,
-  type PartnerCommission,
+  type PartnerSelfCommission,
   type CommissionStatus,
 } from "@/lib/api/partners/partners";
+import { PartnerLoadError } from "../PartnerLoadError";
 
 const STATUS_LABELS: Record<string, string> = {
   accrued: "Accrued",
@@ -73,29 +74,40 @@ function fmtDate(s: string | undefined | null): string {
 }
 
 export default function PartnerCommissionsPage() {
-  const [commissions, setCommissions] = useState<PartnerCommission[]>([]);
+  const [commissions, setCommissions] = useState<PartnerSelfCommission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const [activeFilter, setActiveFilter] = useState<CommissionStatus | "all">(
     "all",
   );
 
-  useEffect(() => {
-    getMyCommissions()
-      .then((data) => setCommissions(Array.isArray(data) ? data : []))
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e)),
-      )
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    setUnavailable(false);
+    try {
+      const data = await getMyCommissions();
+      if (!Array.isArray(data)) throw new Error("Invalid commissions response");
+      setCommissions(data);
+    } catch {
+      setCommissions([]);
+      setUnavailable(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (loading)
     return <div className="p-6 text-[var(--tx-secondary)]">Loading...</div>;
-  if (error)
+  if (unavailable)
     return (
-      <div className="p-6" style={{ color: "var(--state-danger)" }}>
-        Error: {error}
-      </div>
+      <PartnerLoadError
+        title="Commissions are temporarily unavailable"
+        onRetry={load}
+      />
     );
 
   const filtered =
@@ -181,9 +193,9 @@ export default function PartnerCommissionsPage() {
                   <td className="px-4 py-2">
                     {c.practice_type_name ?? c.client_name ?? "—"}
                   </td>
-                  <td className="px-4 py-2">{fmt(c.gross_amount)}</td>
-                  <td className="px-4 py-2">{fmt(c.withholding_amount)}</td>
-                  <td className="px-4 py-2">{fmt(c.net_amount)}</td>
+                  <td className="px-4 py-2">{fmt(c.gross_amount_idr)}</td>
+                  <td className="px-4 py-2">{fmt(c.withholding_amount_idr)}</td>
+                  <td className="px-4 py-2">{fmt(c.net_amount_idr)}</td>
                   <td className="px-4 py-2">
                     <StatusBadge status={c.status} />
                   </td>

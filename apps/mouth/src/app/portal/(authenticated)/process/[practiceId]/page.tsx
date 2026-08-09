@@ -39,6 +39,7 @@ export default function PracticeDetailPage({ params }: Props) {
       <main className="max-w-3xl mx-auto px-4 py-6">
         <Link
           href="/portal/process"
+          prefetch={false}
           className="inline-flex items-center gap-1 text-xs text-[var(--bz-copper-text,var(--tx-secondary))] hover:text-[var(--tx-pure)] mb-6 uppercase tracking-[2px]"
         >
           <ArrowLeft className="w-3 h-3" aria-hidden />
