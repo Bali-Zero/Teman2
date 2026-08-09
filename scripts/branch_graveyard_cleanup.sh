@@ -14,9 +14,25 @@
 #                                content_on_main().
 #   3. Zombie claude/*        : claude/* branch, >30d, content NOT on main -> report
 #   4. Stale others           : any branch, >90d, content NOT on main -> report
+#   5. PR-merged (gh headRefOid) : categories 1+2 both miss a branch whenever the
+#                                squash-merge landed AND main independently touched
+#                                the same files afterwards — the per-file blob
+#                                comparison then reports a genuine-looking diff for
+#                                reasons that have nothing to do with the branch
+#                                (measured 2026-08-03: 39/39 real squash-merges fell
+#                                through 1-4, report was 0/0/0/0 over a 39-branch
+#                                backlog). Category 5 asks GitHub directly instead of
+#                                inferring from tree state: `gh pr list --state merged`
+#                                gives each merged PR's headRefOid: a branch tip whose
+#                                sha matches is proven merged regardless of what main
+#                                did to those files afterward. REPORT-ONLY (never
+#                                --apply-deleted) until it has run clean for a cycle —
+#                                the correctness argument is sound but the tool is new.
 #
 # Defaults to DRY-RUN. Use --apply to delete categories 1 AND 2 (both verified
-# safe by CONTENT). NEVER deletes category 3 or 4 without explicit human review.
+# safe by CONTENT). NEVER deletes category 3, 4, or 5 without explicit human review
+# (5 is gh-dependent and unproven in production; degrades to "no match" if `gh` is
+# missing/unauthenticated — never blocks or breaks categories 1-4).
 #
 # Output: formatted Markdown report on stdout + optional --output <file>
 #
@@ -104,12 +120,15 @@ MAIN_SHA=$(git rev-parse "$MAIN_REF")
 BRANCHES_TSV="/tmp/branch_cleanup_branches.$$"
 MERGED_TSV="/tmp/branch_cleanup_merged.$$"
 CONTENT_TSV="/tmp/branch_cleanup_content.$$"
+PRMERGED_TSV="/tmp/branch_cleanup_prmerged.$$"
 ZOMBIE_TSV="/tmp/branch_cleanup_zombie.$$"
 STALE_TSV="/tmp/branch_cleanup_stale.$$"
+MERGED_PRS_TSV="/tmp/branch_cleanup_gh_prs.$$"
 REPORT_TMP="/tmp/branch_cleanup_report.$$"
 
 cleanup_tmp() {
-    rm -f "$BRANCHES_TSV" "$MERGED_TSV" "$CONTENT_TSV" "$ZOMBIE_TSV" "$STALE_TSV" "$REPORT_TMP"
+    rm -f "$BRANCHES_TSV" "$MERGED_TSV" "$CONTENT_TSV" "$PRMERGED_TSV" "$ZOMBIE_TSV" \
+          "$STALE_TSV" "$MERGED_PRS_TSV" "$REPORT_TMP"
 }
 trap cleanup_tmp EXIT
 
@@ -122,6 +141,41 @@ git for-each-ref \
 | awk -F'\t' -v main="$REMOTE/$MAIN_BRANCH" -v bare="$REMOTE" '
     $1 != main && $1 != bare && $1 !~ /\/HEAD$/ { print }
 ' > "$BRANCHES_TSV"
+
+# === Merged-PR lookup via gh (category 5 source of truth) ===
+# One API call, not one per branch (rate-limit friendly). Degrades to an empty
+# file — and therefore zero category-5 matches, never a script failure — if `gh`
+# is missing or unauthenticated; categories 1-4 are entirely unaffected.
+GH_PR_FETCH_LIMIT=500
+: > "$MERGED_PRS_TSV"
+if command -v gh >/dev/null 2>&1; then
+    gh pr list --state merged --limit "$GH_PR_FETCH_LIMIT" \
+        --json headRefName,headRefOid,number \
+        --jq '.[] | [.headRefName, .headRefOid, .number] | @tsv' \
+        > "$MERGED_PRS_TSV" 2>/dev/null || : > "$MERGED_PRS_TSV"
+fi
+GH_PR_FETCH_COUNT=$(wc -l < "$MERGED_PRS_TSV" | tr -d ' ')
+echo "[branch_cleanup] gh: fetched $GH_PR_FETCH_COUNT merged PR(s) for category-5 lookup" >&2
+if [[ "$GH_PR_FETCH_COUNT" -eq "$GH_PR_FETCH_LIMIT" ]]; then
+    # Superscar #7/#2 anti-silent-cap: never let a truncated fetch read as
+    # complete. This repo has thousands of historical merged PRs — a hit on
+    # the limit means category 5 only covers the MOST RECENT merges (by
+    # design intent — "recent squash-merges", per the ledger line this cures)
+    # and stays silent about anything older that a stale branch might match.
+    echo "[branch_cleanup] WARN: hit the $GH_PR_FETCH_LIMIT-PR fetch cap — category 5 only covers the most recent merges, not the full history" >&2
+fi
+
+# Returns the PR number on stdout (0 args -> nothing) if `short` has a MERGED PR
+# whose headRefOid is (a prefix of) `sha` — i.e. GitHub itself confirms this
+# exact branch tip was merged, independent of what main's tree looks like now.
+pr_merged_match() {
+    local short="$1" sha="$2"
+    [[ ! -s "$MERGED_PRS_TSV" ]] && return 1
+    awk -F'\t' -v ref="$short" -v sha="$sha" '
+        $1 == ref && index($2, sha) == 1 { print $3; found=1; exit }
+        END { exit !found }
+    ' "$MERGED_PRS_TSV"
+}
 
 # === Content-on-main check (MANDATORY — superscar #1/#9 antidote) ===
 #
@@ -167,6 +221,7 @@ content_on_main() {
 # === Classify ===
 : > "$MERGED_TSV"
 : > "$CONTENT_TSV"
+: > "$PRMERGED_TSV"
 : > "$ZOMBIE_TSV"
 : > "$STALE_TSV"
 
@@ -186,6 +241,12 @@ while IFS=$'\t' read -r branch ts sha; do
         printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$CONTENT_TSV"
         continue
     fi
+    # Both tree-based checks missed it — ask GitHub directly whether this exact
+    # branch tip belongs to a merged PR (category 5, see header comment).
+    if pr_merged_match "$short" "$sha" >/dev/null 2>&1; then
+        printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$PRMERGED_TSV"
+        continue
+    fi
     # claude/* zombies
     if [[ "$short" == claude/* ]] && (( age_days >= CLAUDE_AGE_DAYS )); then
         printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$ZOMBIE_TSV"
@@ -198,7 +259,7 @@ while IFS=$'\t' read -r branch ts sha; do
 done < "$BRANCHES_TSV"
 
 # === Sort each category by age descending (in-place) ===
-for f in "$MERGED_TSV" "$CONTENT_TSV" "$ZOMBIE_TSV" "$STALE_TSV"; do
+for f in "$MERGED_TSV" "$CONTENT_TSV" "$PRMERGED_TSV" "$ZOMBIE_TSV" "$STALE_TSV"; do
     if [[ -s "$f" ]]; then
         sort -t$'\t' -k2 -n -r -o "$f" "$f"
     fi
@@ -206,6 +267,7 @@ done
 
 MERGED_COUNT=$(wc -l < "$MERGED_TSV" | tr -d ' ')
 CONTENT_COUNT=$(wc -l < "$CONTENT_TSV" | tr -d ' ')
+PRMERGED_COUNT=$(wc -l < "$PRMERGED_TSV" | tr -d ' ')
 ZOMBIE_COUNT=$(wc -l < "$ZOMBIE_TSV" | tr -d ' ')
 STALE_COUNT=$(wc -l < "$STALE_TSV" | tr -d ' ')
 
@@ -237,12 +299,14 @@ emit_section() {
     echo "Summary:"
     echo "- Merged & deletable (SHA ancestor of main): $MERGED_COUNT"
     echo "- Content-on-main & deletable (squash/rework, verified by diff): $CONTENT_COUNT"
+    echo "- PR-merged (gh headRefOid match, categories 1+2 missed it) — REPORT ONLY: $PRMERGED_COUNT"
     echo "- Zombie claude/* (>${CLAUDE_AGE_DAYS}d, content NOT on main): $ZOMBIE_COUNT"
     echo "- Stale others (>${STALE_AGE_DAYS}d, content NOT on main): $STALE_COUNT"
     echo ""
 
     emit_section "Merged & deletable (SHA ancestor of main, safe to remove)" "$MERGED_TSV" "merged,"
     emit_section "Content-on-main & deletable (squash/rework — diff vs main is empty or pure-deletion, safe to remove)" "$CONTENT_TSV" "last commit"
+    emit_section "PR-merged (gh confirms headRefOid on a MERGED PR; categories 1+2 missed it) — REPORT ONLY, not yet in --apply" "$PRMERGED_TSV" "last commit"
     emit_section "Zombie claude/* (>${CLAUDE_AGE_DAYS}d, content NOT on main) — REPORT ONLY" "$ZOMBIE_TSV" "last commit"
     emit_section "Stale others (>${STALE_AGE_DAYS}d, content NOT on main) — REPORT ONLY" "$STALE_TSV" "last commit"
 } > "$REPORT_TMP"

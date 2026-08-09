@@ -23,10 +23,22 @@ DAMAR_CHAT_ID = 1813875994
 # Owner (Zero) chat_id — first in TELEGRAM_APPROVAL_CHAT_ID
 OWNER_CHAT_ID = None  # Will be set from env at runtime
 
-# Notification map persistence
-NOTIFICATION_MAP_FILE = Path("/tmp/staging/notification_map.json")
 # Max age for notification mappings
 MAP_MAX_AGE_DAYS = 7
+
+
+def _notification_map_file() -> Path:
+    """Resolve the notification map path under the Intel staging base dir.
+
+    Resolved per-call (not cached at import time) so it lands on the `/data`
+    Fly volume in production and `/tmp/staging` in dev, same pattern as the
+    other staging-dir call sites in this file. A bare `/tmp` path here does
+    not survive a container restart, which silently empties the map that lets
+    a Telegram `/cover` caption find its article — after which `_match_article()`
+    falls through to the Priority-2 branch that used the caption's id verbatim,
+    the arbitrary-write chain closed by #3505.
+    """
+    return Path(settings.get_intel_staging_base_dir) / "notification_map.json"
 
 
 class IntelCoverHandler:
@@ -39,8 +51,9 @@ class IntelCoverHandler:
     def _load_map(self) -> None:
         """Load notification map from disk."""
         try:
-            if NOTIFICATION_MAP_FILE.exists():
-                data = json.loads(NOTIFICATION_MAP_FILE.read_text())
+            map_file = _notification_map_file()
+            if map_file.exists():
+                data = json.loads(map_file.read_text())
                 # Prune old entries
                 cutoff = (datetime.now(timezone.utc) - timedelta(days=MAP_MAX_AGE_DAYS)).isoformat()
                 self._notification_map = {
@@ -54,8 +67,9 @@ class IntelCoverHandler:
     def _save_map(self) -> None:
         """Persist notification map to disk."""
         try:
-            NOTIFICATION_MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
-            NOTIFICATION_MAP_FILE.write_text(
+            map_file = _notification_map_file()
+            map_file.parent.mkdir(parents=True, exist_ok=True)
+            map_file.write_text(
                 json.dumps(self._notification_map, indent=2, ensure_ascii=False),
             )
         except Exception as e:
