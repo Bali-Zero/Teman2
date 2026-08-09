@@ -228,7 +228,46 @@ VERDICT_SKIP = "skip-backend"
 # the allowlist table's v6 section for the replay method, the per-entry
 # innocence measurement, and why the `.gitignore` entry is deliberately
 # root-EXACT rather than by basename.
-ALLOWLIST_VERSION = 6
+# v7 (2026-08-10, round-3 queue-acceleration replay): widened `scripts/tests`
+# to also admit `.sh` (was `.py`-only — the one real `.sh` file there,
+# `test_prepush_failclosed.sh`, used to be the documented exception; a
+# basename-only grep across `apps/backend-rag/backend/` for all 17 real
+# `.sh` files in that directory found zero hits, same import-chain argument
+# as the v3 `.py` rule); added a top-level `scripts` (.md) rule (36 real
+# `.md` files, directory-anchored grep for `scripts/*.md` across
+# `apps/backend-rag/backend/` returned zero hits — the basename-only
+# variant of that check false-positived on generic filenames like
+# `README.md`/`CLAUDE.md`/`AGENTS.md` that independently exist elsewhere in
+# the tree, which is why the DIRECTORY-ANCHORED grep, not the basename one,
+# is this entry's innocence evidence, same lesson as the v5 `.agents/` /
+# `scripts/ci/` anchoring); added two root-EXACT entries (same shape as the
+# v6 `.gitignore` precedent) for `apps/wa-mirror/package.json` and
+# `apps/wa-mirror/package-lock.json` (zero backend references to either
+# exact filename — the wa-mirror TREE stays unlisted, still forces full);
+# added a root-EXACT entry for `apps/organism/organism/organs_registry.yaml`
+# (zero backend references; independently validated in CI on every PR by
+# `.github/workflows/organ-conformance.yml`'s sentinel-pattern job, which
+# runs `check_organ_conformance.py` + `check_baseline_ratchet.py` +
+# `organism.tools.validate_organs_registry` regardless of this classifier's
+# local verdict). Also added `.husky/pre-commit` to
+# NEVER_INNOCENT_EXACT_PATHS — the sibling hook to `.husky/pre-push`, same
+# class (a git hook whose own logic must never silently skip the
+# verification it enforces).
+#
+# INVESTIGATED AND REJECTED (v7): a blanket `scripts/**.sh` covering
+# root-level `scripts/*.sh` as well. The innocence check FAILED, concretely:
+# `apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py::test_run_script_uses_installed_bridge_app_dir`
+# does `(repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text()`
+# and asserts on two specific substrings in that file's content — a
+# root-level `scripts/*.sh` file that, if edited to drop or reintroduce
+# either substring, changes `pytest backend/tests/`'s outcome. A
+# recursive `scripts/**.sh` rule would have silently skipped the one local
+# test that catches that regression. Root-level `scripts/*.sh` (and any
+# nested `.sh` outside `scripts/tests/` and the pre-existing `scripts/ci/`)
+# therefore stays unknown -> full, unchanged — see
+# test_guilt_root_scripts_shell_script_still_forces_full_v7 in the test
+# corpus, which pins exactly this file as the reason.
+ALLOWLIST_VERSION = 7
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -241,6 +280,9 @@ NEVER_INNOCENT_EXACT_PATHS: frozenset[str] = frozenset(
         ".husky/pre-push",
         "scripts/prepush_classify.py",
         ".github/workflows/tests.yml",
+        # v7: sibling hook to .husky/pre-push, same class — a git hook whose
+        # own logic must never silently skip the verification it enforces.
+        ".husky/pre-commit",
     }
 )
 
@@ -313,24 +355,37 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         .github/actions/**) is admitted by this rule —
 #                         the prefix is workflows/ specifically, not .github
 #                         wholesale.
-#   scripts/tests/**       v3 (task #43): scoped to `.py` ONLY. The 235-file
-#                         suite audited in task #16 — tests OF the repo's
-#                         ops/immune-system scripts, verified structurally
-#                         unreachable from `pytest backend/tests/` (module
-#                         docstring, "v3 EXTENSION"). `conftest.py` under
-#                         this directory still forces full regardless (the
+#   scripts/tests/**       v3 (task #43): scoped to `.py` ONLY, ORIGINALLY.
+#                         The 235-file suite audited in task #16 — tests OF
+#                         the repo's ops/immune-system scripts, verified
+#                         structurally unreachable from
+#                         `pytest backend/tests/` (module docstring, "v3
+#                         EXTENSION"). `conftest.py` under this directory
+#                         still forces full regardless (the
 #                         directory-independent NEVER_INNOCENT_BASENAMES
 #                         net, checked before this loop).
 #                         `scripts/tests/__init__.py` is verified empty and
 #                         admitted by this suffix rule like any other .py
 #                         file here — deliberate, not an oversight.
 #                         `scripts/tests/fixtures/` is verified to contain
-#                         only .md fixture data (no .py), so this scoping
-#                         does not admit anything from it. The 1 real .sh
-#                         file verified living in this SAME directory
-#                         (test_prepush_failclosed.sh) is correctly
-#                         EXCLUDED by suffix scoping — falls to
-#                         "unknown -> full" like any other .sh change would.
+#                         only .md fixture data (no .py); it is NOT admitted
+#                         by this entry (wrong suffix) but IS admitted by
+#                         the separate v7 `scripts` (.md) entry below, on
+#                         the same directory-anchored innocence evidence.
+#                         v7 (2026-08-10): WIDENED to `.py` AND `.sh`. The 1
+#                         real .sh file living in this SAME directory
+#                         (test_prepush_failclosed.sh, plus 16 siblings that
+#                         accumulated in this directory since v3) used to be
+#                         documented here as correctly excluded by suffix
+#                         scoping — that changed: a basename-only grep for
+#                         all 17 real .sh files here across
+#                         `apps/backend-rag/backend/` (tests and modules)
+#                         found zero hits, same "structurally unreachable"
+#                         argument v3 already established for the .py
+#                         files in this same directory (different
+#                         collection root, no import chain from
+#                         `backend/tests/`). Pinned by
+#                         test_innocence_scripts_tests_shell_script_now_skips_v7.
 #   apps/mouth/src/**     v4 (2026-07-27): scoped to `.ts`/`.tsx`/`.css`
 #                         ONLY. The frontend was the last high-traffic tree
 #                         with no entry, so every frontend-only PR paid the
@@ -506,6 +561,71 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                       "unknown -> full" rather than inheriting a blessing
 #                       measured on a JSON data file.
 #
+#   v7 (2026-08-10) — round-3 queue-acceleration replay of 60 recently-merged
+#   PRs found ~28 avoidable FULL suites/week from paths that are innocent but
+#   not yet listed. Four classes added, each independently innocence-verified
+#   against `apps/backend-rag/backend/` (directory-anchored grep for
+#   directory-shaped entries, exact-basename grep for the two root-EXACT file
+#   entries):
+#
+#   scripts               Scoped to `.md` ONLY. 36 real .md files under
+#                         scripts/ (READMEs, PANDUAN-*, RESUME-HERE, the
+#                         docs_audit test fixtures under scripts/tests/).
+#                         Innocence MEASURED with the v5 directory-anchored
+#                         method: zero matches for the pattern
+#                         `scripts/[^"'\`]*\.md` anywhere under
+#                         `apps/backend-rag/backend/`. A basename-only sweep
+#                         (grepping each of the 36 filenames bare) is
+#                         DELIBERATELY NOT used as evidence here — it
+#                         false-positives on generic filenames
+#                         (README.md/CLAUDE.md/AGENTS.md/INDEX.md) that
+#                         exist independently, under their OWN unrelated
+#                         paths, all over apps/backend-rag/backend/ — the
+#                         same guard-over-match failure mode
+#                         cicatrix-superscar.md #3 warns a *test* of
+#                         innocence against, not just the guard itself.
+#   apps/wa-mirror/package.json       Root-EXACT (same shape as the v6
+#   apps/wa-mirror/package-lock.json  `.gitignore` entry: prefix == the full
+#                         file path, suffix == its own extension). TWO
+#                         separate entries, each admitting exactly one file
+#                         — the wa-mirror TREE (bridge/, scripts/, src) stays
+#                         OFF the allowlist and keeps forcing full; only its
+#                         npm dependency manifest and lockfile are innocent
+#                         w.r.t. `pytest backend/tests/`. Innocence MEASURED:
+#                         zero matches for `wa-mirror/package(-lock)?\.json`
+#                         anywhere under apps/backend-rag/backend/, and zero
+#                         matches for the bare basename `package-lock.json`
+#                         (the few pre-existing `apps/wa-mirror` hits in that
+#                         tree are the wa_mirror_messages router, the
+#                         173_wa_mirror_team_sessions.sql migration, and
+#                         event_bus.py — all about the DB-side `wa_mirror`
+#                         table/event contract, none of them reference the
+#                         npm package files).
+#   apps/organism/organism/organs_registry.yaml  Root-EXACT, same shape.
+#                         Zero matches for `organs_registry` anywhere under
+#                         apps/backend-rag/backend/ — this repo's ONE
+#                         instance of that filename (verified: `find . -iname
+#                         organs_registry.yaml` returns exactly this path).
+#                         Independently validated on every PR regardless of
+#                         this classifier's verdict, by
+#                         `.github/workflows/organ-conformance.yml` (sentinel
+#                         pattern — always triggers, no top-level
+#                         pull_request paths filter): `check_organ_
+#                         conformance.py`, `check_baseline_ratchet.py`, and
+#                         `organism.tools.validate_organs_registry` all run
+#                         against this exact file on every push/PR.
+#
+#   INVESTIGATED AND REJECTED (v7): a blanket `scripts` (.sh) entry covering
+#   root-level scripts/*.sh (143 real files). The "must be none" innocence
+#   bar FAILED on a concrete counter-example —
+#   `test_openclaw_whatsapp_bridge_script.py::test_run_script_uses_installed_bridge_app_dir`
+#   read_text()s `scripts/run_openclaw_whatsapp_bridge.sh` and asserts on two
+#   substrings in its content, so an edit to that file changes
+#   `pytest backend/tests/`'s outcome. Root-level scripts/*.sh (outside the
+#   pre-existing `scripts/ci/` and the widened `scripts/tests/` entries
+#   above) stays unknown -> full — see
+#   test_guilt_root_scripts_shell_script_still_forces_full_v7.
+#
 # Deliberately NOT `.claude/**` wholesale: `.claude/hooks/` (control-plane —
 # contains codex-spalla-trigger.sh, verified on disk), `.claude/scripts/`,
 # `.claude/settings.json` + `.claude/settings.local.json` (+ .bak-*
@@ -529,7 +649,7 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (".claude/agents", (".md",)),
     ("infra/launchagents", (".plist", ".sh")),
     (".github/workflows", (".yml",)),
-    ("scripts/tests", (".py",)),
+    ("scripts/tests", (".py", ".sh")),  # v7: widened from .py-only
     ("apps/mouth/src", (".ts", ".tsx", ".css")),
     (".agents/skills", (".md",)),
     ("scripts/ci", (".sh",)),
@@ -538,6 +658,12 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # are tracked, one of them inside apps/backend-rag/backend/data/.
     (".gitignore", (".gitignore",)),
     ("infra/home-fork", (".json",)),
+    # v7 — see the "v7 (2026-08-10)" table section above for innocence
+    # evidence on each of the 4 entries below.
+    ("scripts", (".md",)),
+    ("apps/wa-mirror/package.json", (".json",)),
+    ("apps/wa-mirror/package-lock.json", (".json",)),
+    ("apps/organism/organism/organs_registry.yaml", (".yaml",)),
 )
 
 
