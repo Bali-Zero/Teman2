@@ -3113,8 +3113,8 @@
       "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"]
     },
     {
-      "rule_id": "el.e33e.age-55-59-disputed-band",
-      "stage": "ELIGIBILITY",
+      "rule_id": "hf.e33e.age-55-59-disputed-band",
+      "stage": "HARD_FILTER",
       "scope": "PRODUCTS",
       "priority": 100,
       "valid_period": {
@@ -3125,82 +3125,26 @@
         "op": "all",
         "args": [
           {
-            "op": "all",
-            "args": [
-              {
-                "op": "intersects",
-                "fact": "intent.purposes",
-                "values": ["RETIREMENT"]
-              },
-              {
-                "op": "between",
-                "fact": "derived.age_years",
-                "lower": 55,
-                "upper": 59
-              }
-            ]
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["RETIREMENT"]
           },
           {
-            "op": "all",
-            "args": [
-              {
-                "op": "intersects",
-                "fact": "intent.purposes",
-                "values": ["RETIREMENT"]
-              },
-              {
-                "op": "gte",
-                "fact": "derived.age_years",
-                "value": 55
-              },
-              {
-                "op": "all",
-                "args": [
-                  {
-                    "op": "gte",
-                    "fact": "secondhome.bank_deposit_usd",
-                    "value": 50000
-                  },
-                  {
-                    "op": "eq",
-                    "fact": "secondhome.bank_deposit_at_state_bank",
-                    "value": true
-                  },
-                  {
-                    "op": "eq",
-                    "fact": "secondhome.bank_deposit_in_own_name",
-                    "value": true
-                  }
-                ]
-              },
-              {
-                "op": "gte",
-                "fact": "secondhome.passive_monthly_income_usd",
-                "value": 3000
-              }
-            ]
+            "op": "between",
+            "fact": "derived.age_years",
+            "lower": 55,
+            "upper": 59
           }
         ]
       },
       "effect": {
-        "type": "SUPPORT",
-        "reason_code": "E33E_AGE_55_59_ADVISOR_CHECK",
-        "covered_purposes": ["FAMILY", "RETIREMENT", "SECOND_HOME", "TOURISM"]
+        "type": "EXCLUDE",
+        "reason_code": "E33E_AGE_55_59_DISPUTED_BAND"
       },
       "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "derived.age_years",
-        "intent.purposes",
-        "secondhome.bank_deposit_at_state_bank",
-        "secondhome.bank_deposit_in_own_name",
-        "secondhome.bank_deposit_usd",
-        "secondhome.passive_monthly_income_usd"
-      ],
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
-      "explanation_key": "explain.el.e33e.age-55-59-disputed-band",
+      "required_facts": ["derived.age_years", "intent.purposes"],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
+      "explanation_key": "explain.hf.e33e.age-55-59-disputed-band",
       "safety_critical": false,
       "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"]
     },
@@ -3463,8 +3407,8 @@
       "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"]
     },
     {
-      "rule_id": "el.e33f.age-under-55",
-      "stage": "ELIGIBILITY",
+      "rule_id": "hf.e33f.age-under-55",
+      "stage": "HARD_FILTER",
       "scope": "PRODUCTS",
       "priority": 100,
       "valid_period": {
@@ -3475,64 +3419,25 @@
         "op": "all",
         "args": [
           {
-            "op": "all",
-            "args": [
-              {
-                "op": "intersects",
-                "fact": "intent.purposes",
-                "values": ["RETIREMENT"]
-              },
-              {
-                "op": "lt",
-                "fact": "derived.age_years",
-                "value": 55
-              }
-            ]
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["RETIREMENT"]
           },
           {
-            "op": "all",
-            "args": [
-              {
-                "op": "intersects",
-                "fact": "intent.purposes",
-                "values": ["RETIREMENT"]
-              },
-              {
-                "op": "gte",
-                "fact": "secondhome.passive_monthly_income_usd",
-                "value": 3000
-              },
-              {
-                "op": "eq",
-                "fact": "family.sponsor_confirmed",
-                "value": true
-              }
-            ]
+            "op": "lt",
+            "fact": "derived.age_years",
+            "value": 55
           }
         ]
       },
       "effect": {
-        "type": "SUPPORT",
-        "reason_code": "E33F_AGE_UNDER_55_ADVISOR_CHECK",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS",
-          "FAMILY",
-          "RETIREMENT",
-          "TOURISM"
-        ]
+        "type": "EXCLUDE",
+        "reason_code": "E33F_AGE_UNDER_55"
       },
       "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "derived.age_years",
-        "family.sponsor_confirmed",
-        "intent.purposes",
-        "secondhome.passive_monthly_income_usd"
-      ],
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
-      "explanation_key": "explain.el.e33f.age-under-55",
+      "required_facts": ["derived.age_years", "intent.purposes"],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+      "explanation_key": "explain.hf.e33f.age-under-55",
       "safety_critical": false,
       "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"]
     },
@@ -4464,280 +4369,6 @@
       "explanation_key": "explain.el.e23-jabatan-kbli-match",
       "safety_critical": false,
       "product_version_ids": ["e1d761e9-56c5-57c3-9c01-986d3c333157"]
-    },
-    {
-      "rule_id": "el.e23u-employment-support",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-07-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["EMPLOYMENT"]
-          },
-          {
-            "fact": "work.indonesian_work_sponsor_confirmed",
-            "op": "eq",
-            "value": true
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "work.indonesian_work_sponsor_confirmed"
-      ],
-      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
-      "explanation_key": "explain.el.e23u-employment-support",
-      "safety_critical": false,
-      "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"]
-    },
-    {
-      "rule_id": "el.e23u-diplomat-sponsor",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-07-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["EMPLOYMENT"]
-          },
-          {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["EMPLOYMENT"]
-              },
-              {
-                "fact": "work.indonesian_work_sponsor_confirmed",
-                "op": "eq",
-                "value": true
-              }
-            ]
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "REQUIRED_DIPLOMAT_SPONSOR",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "work.indonesian_work_sponsor_confirmed"
-      ],
-      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
-      "explanation_key": "explain.el.e23u-diplomat-sponsor",
-      "safety_critical": false,
-      "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"]
-    },
-    {
-      "rule_id": "el.e23u-domestic-helper-role",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-07-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["EMPLOYMENT"]
-          },
-          {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["EMPLOYMENT"]
-              },
-              {
-                "fact": "work.indonesian_work_sponsor_confirmed",
-                "op": "eq",
-                "value": true
-              }
-            ]
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "RESTRICTED_TO_DOMESTIC_HELPER",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "work.indonesian_work_sponsor_confirmed"
-      ],
-      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
-      "explanation_key": "explain.el.e23u-domestic-helper-role",
-      "safety_critical": false,
-      "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"]
-    },
-    {
-      "rule_id": "el.e23v-employment-support",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-07-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["EMPLOYMENT"]
-          },
-          {
-            "fact": "work.indonesian_work_sponsor_confirmed",
-            "op": "eq",
-            "value": true
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "work.indonesian_work_sponsor_confirmed"
-      ],
-      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
-      "explanation_key": "explain.el.e23v-employment-support",
-      "safety_critical": false,
-      "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"]
-    },
-    {
-      "rule_id": "el.e23v-kdei-sponsor",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-07-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["EMPLOYMENT"]
-          },
-          {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["EMPLOYMENT"]
-              },
-              {
-                "fact": "work.indonesian_work_sponsor_confirmed",
-                "op": "eq",
-                "value": true
-              }
-            ]
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "REQUIRED_KDEI_SPONSOR",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "work.indonesian_work_sponsor_confirmed"
-      ],
-      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
-      "explanation_key": "explain.el.e23v-kdei-sponsor",
-      "safety_critical": false,
-      "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"]
-    },
-    {
-      "rule_id": "el.e23v-rptka-verification",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-07-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["EMPLOYMENT"]
-          },
-          {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["EMPLOYMENT"]
-              },
-              {
-                "fact": "work.indonesian_work_sponsor_confirmed",
-                "op": "eq",
-                "value": true
-              }
-            ]
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "REQUIRED_RPTKA_APPROVAL",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "work.indonesian_work_sponsor_confirmed"
-      ],
-      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
-      "explanation_key": "explain.el.e23v-rptka-verification",
-      "safety_critical": false,
-      "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"]
     },
     {
       "rule_id": "el.e31a-spouse-wni-support",
@@ -5956,8 +5587,8 @@
       "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"]
     },
     {
-      "rule_id": "el.e31j-dependency-age",
-      "stage": "ELIGIBILITY",
+      "rule_id": "hf.e31j-dependency-age",
+      "stage": "HARD_FILTER",
       "scope": "PRODUCTS",
       "priority": 100,
       "valid_period": {
@@ -5968,63 +5599,34 @@
         "op": "all",
         "args": [
           {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["FAMILY"]
-              },
-              {
-                "fact": "family.relation_to_sponsor",
-                "op": "eq",
-                "value": "SIBLING"
-              },
-              {
-                "fact": "derived.age_years",
-                "op": "gte",
-                "value": 18
-              }
-            ]
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": ["FAMILY"]
           },
           {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["FAMILY"]
-              },
-              {
-                "fact": "family.relation_to_sponsor",
-                "op": "eq",
-                "value": "SIBLING"
-              },
-              {
-                "fact": "family.sponsor_status_code",
-                "op": "known"
-              }
-            ]
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "SIBLING"
+          },
+          {
+            "fact": "derived.age_years",
+            "op": "gte",
+            "value": 18
           }
         ]
       },
       "effect": {
-        "type": "SUPPORT",
-        "reason_code": "E31J_DEPENDENCY_AGE_ADVISOR_CHECK",
-        "covered_purposes": ["FAMILY"]
+        "type": "EXCLUDE",
+        "reason_code": "E31J_DEPENDENCY_AGE"
       },
-      "on_unknown": "NO_EFFECT",
+      "on_unknown": "NEEDS_INPUT",
       "required_facts": [
         "derived.age_years",
         "family.relation_to_sponsor",
-        "family.sponsor_status_code",
         "intent.purposes"
       ],
-      "source_refs": [
-        "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
-      "explanation_key": "explain.el.e31j-dependency-age",
+      "source_refs": ["2d090f3a-5a93-5181-b3d1-253d87a1a17c"],
+      "explanation_key": "explain.hf.e31j-dependency-age",
       "safety_critical": false,
       "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"]
     },
@@ -7183,8 +6785,8 @@
       "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
-      "rule_id": "el.d12-long-stay-review",
-      "stage": "ELIGIBILITY",
+      "rule_id": "hf.d12-long-stay-review",
+      "stage": "HARD_FILTER",
       "scope": "PRODUCTS",
       "priority": 100,
       "valid_period": {
@@ -7192,43 +6794,21 @@
         "to": null
       },
       "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.stay_days",
-            "op": "gt",
-            "value": 365
-          },
-          {
-            "op": "all",
-            "args": [
-              {
-                "fact": "intent.purposes",
-                "op": "intersects",
-                "values": ["INVESTMENT"]
-              },
-              {
-                "fact": "intent.stay_days",
-                "op": "lte",
-                "value": 180
-              }
-            ]
-          }
-        ]
+        "fact": "intent.stay_days",
+        "op": "gt",
+        "value": 365
       },
       "effect": {
-        "type": "SUPPORT",
-        "reason_code": "D12_CUMULATIVE_STAY_ADVISOR_CHECK",
-        "covered_purposes": ["INVESTMENT"]
+        "type": "EXCLUDE",
+        "reason_code": "D12_STAY_EXCEEDS_PRODUCT_MAX"
       },
       "on_unknown": "NEEDS_INPUT",
-      "required_facts": ["intent.purposes", "intent.stay_days"],
+      "required_facts": ["intent.stay_days"],
       "source_refs": [
         "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
-        "e3572ad2-08a9-55bd-b818-353b3e9db715",
         "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
       ],
-      "explanation_key": "explain.el.d12-long-stay-review",
+      "explanation_key": "explain.hf.d12-long-stay-review",
       "safety_critical": false,
       "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
@@ -7922,8 +7502,8 @@
       "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"]
     },
     {
-      "rule_id": "hr.e30a-minor-consent",
-      "stage": "HUMAN_REVIEW",
+      "rule_id": "el.e30a-minor-consent",
+      "stage": "ELIGIBILITY",
       "scope": "PRODUCTS",
       "priority": 100,
       "valid_period": {
@@ -7934,25 +7514,60 @@
         "op": "all",
         "args": [
           {
-            "fact": "intent.purposes",
-            "op": "intersects",
-            "values": ["STUDY"]
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": ["STUDY"]
+              },
+              {
+                "fact": "derived.is_minor",
+                "op": "eq",
+                "value": true
+              }
+            ]
           },
           {
-            "fact": "derived.is_minor",
-            "op": "eq",
-            "value": true
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": ["STUDY"]
+              },
+              {
+                "fact": "study.admission_confirmed",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "fact": "study.sponsor_confirmed",
+                "op": "eq",
+                "value": true
+              }
+            ]
           }
         ]
       },
       "effect": {
-        "type": "REQUIRE_REVIEW",
-        "reason_code": "MINOR_CONSENT_GUARDIAN"
+        "type": "SUPPORT",
+        "reason_code": "MINOR_CONSENT_GUARDIAN",
+        "covered_purposes": ["STUDY"]
       },
       "on_unknown": "NEEDS_INPUT",
-      "required_facts": ["intent.purposes", "derived.is_minor"],
-      "source_refs": ["38242587-f4da-5c31-b0ea-662f7fdc475c"],
-      "explanation_key": "explain.hr.e30a-minor-consent",
+      "required_facts": [
+        "derived.is_minor",
+        "intent.purposes",
+        "study.admission_confirmed",
+        "study.sponsor_confirmed"
+      ],
+      "source_refs": [
+        "38242587-f4da-5c31-b0ea-662f7fdc475c",
+        "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24",
+        "e3572ad2-08a9-55bd-b818-353b3e9db715"
+      ],
+      "explanation_key": "explain.el.e30a-minor-consent",
       "safety_critical": false,
       "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"]
     },
