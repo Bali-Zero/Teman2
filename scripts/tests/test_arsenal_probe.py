@@ -1579,7 +1579,7 @@ def test_main_output_never_empty_even_with_every_seat_dead(tmp_path, monkeypatch
     code = ap.main([])
     out, err = capsys.readouterr()
     assert (out + err).strip() != ""
-    assert "0 of 7 seats OK" in out
+    assert f"0 of {len(ap.ALL_SEATS)} seats OK" in out
 
 
 def test_main_header_printed_even_if_every_probe_crashes(tmp_path, monkeypatch, capsys):
@@ -1595,7 +1595,7 @@ def test_main_header_printed_even_if_every_probe_crashes(tmp_path, monkeypatch, 
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, boom)
     code = ap.main([])
     err = capsys.readouterr().err
-    assert "probing 7 seat(s)" in err
+    assert f"probing {len(ap.ALL_SEATS)} seat(s)" in err
 
 
 def test_render_table_includes_n_of_m_seats_ok_line():

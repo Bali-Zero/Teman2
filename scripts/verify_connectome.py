@@ -152,6 +152,15 @@ def plist_intentionally_disabled(label: str) -> str | None:
 
     Nobody saw it: both of its P0s were dropped `p0_overflow`, so the false alarm
     was invisible AND the channel was proven unable to carry a true one.
+
+    TWO IDIOMS as well as two places (added 2026-08-09, hours after the above went
+    live and left exactly one label still REGRESSED). A retirement is recorded
+    EITHER by renaming the plist with a marker suffix OR by moving the untouched
+    plist into a marker-named directory — `com.balizero.nextdns-tamper-detect.weekly`
+    was retired by PR #3891 with "bootout + plist moved to `.retired-2026-08-09/`",
+    where the file still carries its exact name. Covering one idiom does not halve
+    the false alarms; it only changes WHICH deliberate retirement is mistaken for a
+    silent death (W107).
     """
     if not label.startswith("com."):
         return None
@@ -164,6 +173,36 @@ def plist_intentionally_disabled(label: str) -> str | None:
         for f in sorted(directory.glob(f"{prefix}*")):
             if _asserts_retirement(f.name[len(prefix):]):
                 return f.name
+
+    # TWO IDIOMS, not one (found by PROVE-LIVE of the suffix cure above, same day).
+    # The suffix rename is only how SOME retirements are recorded. The other way this
+    # organism retires a LaunchAgent is to MOVE the untouched plist into a dated
+    # directory: PR #3891 retired `com.balizero.nextdns-tamper-detect.weekly` with
+    # "bootout + plist moved to `.retired-2026-08-09/`", so on disk the file is still
+    # named exactly `<label>.plist` and `glob("<label>.plist.*")` cannot see it. The
+    # first cure shipped, went live on Pro, and left that label as the one remaining
+    # REGRESSED — a guardian still alarming every morning on a deliberate retirement,
+    # which is the exact disease the first cure existed to end (W116). Curing one
+    # idiom of two does not halve the noise; it only changes WHICH intentional
+    # retirement is mistaken for a regression (W107).
+    #
+    # The directory NAME is judged by the same marker vocabulary as a suffix, never
+    # the path as a whole: a label may itself contain "retired", and `infra/launchagents`
+    # holds a legitimate `wrappers/` subdirectory that must never read as a firebreak
+    # (W105 — the entity, not the form). Immediate children only: a recursive walk of
+    # an unknown tree would be both a cost and a surprise, and every retirement idiom
+    # measured on this fleet is exactly one level deep.
+    for directory in (LAUNCHAGENTS_DIR, REPO_LAUNCHAGENTS_DIR):
+        if not directory.is_dir():
+            continue
+        for sub in sorted(p for p in directory.iterdir() if p.is_dir()):
+            if not _asserts_retirement(sub.name):
+                continue
+            if (sub / f"{label}.plist").exists():
+                return f"{sub.name}/{label}.plist"
+            for f in sorted(sub.glob(f"{prefix}*")):
+                if _asserts_retirement(f.name[len(prefix):]):
+                    return f"{sub.name}/{f.name}"
     return None
 
 
