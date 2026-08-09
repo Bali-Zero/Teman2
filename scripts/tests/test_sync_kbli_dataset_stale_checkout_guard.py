@@ -26,8 +26,6 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "scripts" / "sync_kbli_dataset.sh"
 LIB = REPO / "scripts" / "lib" / "kbli_fleet_notice.sh"
