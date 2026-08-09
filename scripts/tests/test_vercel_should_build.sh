@@ -188,6 +188,32 @@ VERCEL_GIT_COMMIT_REF=docs/ledger VERCEL_GIT_PREVIOUS_SHA="$PREV" \
   run BUILD "second deploy, frontend delta"
 
 echo
+echo "=== NO-ORIGIN CONTAINER: Vercel's clone has no usable origin at all (measured 2026-08-10)"
+# The live failure was not an unreachable origin but a MISSING one: `fatal: 'origin' does not
+# appear to be a git repository` on every first deployment, so the fail-open bought a full
+# build each time. These cases delete the remote AND the tracking ref, so a SKIP can only come
+# from the URL-fallback fetch (SHOULD_BUILD_FETCH_URL stands in for the constructed GitHub URL).
+git -C "$WORK" checkout -q -b docs/noorigin main
+commit "research/operations/no-origin-note.md" "docs only, container without origin"
+git -C "$WORK" update-ref -d refs/remotes/origin/main
+git -C "$WORK" remote remove origin
+VERCEL_GIT_COMMIT_REF=docs/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
+  run SKIP "no origin remote, URL fallback resolves -> docs-only skips"
+
+git -C "$WORK" checkout -q -b feat/noorigin main
+commit "apps/mouth/app/no-origin.tsx" "frontend, container without origin"
+VERCEL_GIT_COMMIT_REF=feat/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
+  run BUILD "no origin remote, URL fallback resolves, frontend delta (guilt)"
+
+git -C "$WORK" checkout -q -b docs/nourl main
+commit "docs/no-url.md" "docs only, and nothing fetchable at all"
+VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$ROOT/does-not-exist.git" \
+  run BUILD "no origin remote and dead URL -> BUILD (fail-open)"
+
+git -C "$WORK" remote add origin "$UPSTREAM"
+git -C "$WORK" fetch -q origin main:refs/remotes/origin/main
+
+echo
 echo "=== THE EXIT CONTRACT: nothing may leave this script with a status other than 0 or 1"
 # Vercel reads exit 0 as skip and exit 1 as build. Every OTHER status fails the deployment
 # outright — which is what happened on 2026-07-29, 9 deployments in ERROR, because a missing
