@@ -141,10 +141,18 @@ TG_NOTIFY_PY="${WR2_TG_NOTIFY_PY:-${SOURCE_REPO}/scripts/tg_notify.py}"
 tg_notify_or_fallback() {
   local tier="$1" key="$2" fallback_key="$3" text="$4"
   if [[ -f "$TG_NOTIFY_PY" ]]; then
-    if python3 "$TG_NOTIFY_PY" --tier "$tier" --source wr2-deploy-pull \
-        --dedup-key "$key" -- "$text" >>"$LOG" 2>&1; then
-      return 0
-    fi
+    # Absolute interpreter, never `python3` from PATH: this self-heal runs when
+    # the deploy clone is already sick, and the alarm must not share a failure
+    # mode with what it reports (W108).
+    local _py
+    for _py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+      [[ -x "$_py" ]] || continue
+      if "$_py" "$TG_NOTIFY_PY" --tier "$tier" --source wr2-deploy-pull \
+          --dedup-key "$key" -- "$text" >>"$LOG" 2>&1; then
+        return 0
+      fi
+      break
+    done
     log "WARN: tg_notify.py failed (tier=${tier} key=${key}), falling back to send_telegram"
   fi
   send_telegram "$fallback_key" "$text"
