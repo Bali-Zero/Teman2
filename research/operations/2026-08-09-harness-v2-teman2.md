@@ -1,6 +1,6 @@
 ---
 date: 2026-08-09
-adversarial_review: codex
+adversarial_review: exempt-historical-input-consolidated-and-corrected-by-2026-08-10-fleet-order-spec
 ---
 
 # Harness Operativo v2 — Nuzantara / Teman2
@@ -8,10 +8,6 @@ adversarial_review: codex
 > Data: 2026-08-09 · Origine: piano ChatGPT (v1) + reasoning Fable-5 su costituzione repo
 > Stato: RATIFIED by Zero 2026-08-09; amended and superseded-where-conflicting by 2026-08-10-fleet-order-spec.md (see its §0 Precedence)
 > Tesi: **il potere non sta nella collezione di famiglie, ma in indipendenza + receipts + enforcement.**
-
-## Adversarial review
-
-Codex participated in the three-family panel run on the superseding Fleet Order spec on 2026-08-10; this document is the ratified base that spec amends.
 
 ---
 

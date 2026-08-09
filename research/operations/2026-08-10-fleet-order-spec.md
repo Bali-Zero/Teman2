@@ -3,7 +3,7 @@ title: "THE FLEET ORDER — binding spec for the Nuzantara LLM fleet (conductor:
 date: 2026-08-10
 author: Fable 5 interactive session (M5) — conductor, per Zero's mandate 2026-08-10
 status: v1.3 — panel-amended (GLM 6 findings · Gemini 8 · Codex 12 · Kimi ABSENT quota-dead; panel = 3 external families, quorum met) + Zero account-estate resolution (3 MAX + 1 Team Premium, no A4) → landing PR
-adversarial_review: codex
+adversarial_review: glm-5.2
 supersedes: nothing — CONSOLIDATES harness-v2-teman2-2026-08-09.md + FLOTTA-LLM-ruoli-categorici + quattro-gruppi-e-continuita + FLEET_TOPOLOGY v1.1, and CORRECTS them against repo ground truth verified on disk 2026-08-10
 ratification: Zero ratified the harness/roster/continuity design 2026-08-09 and delegated this spec's authority 2026-08-10 ("hai potere di scrivere la tua spec per questo nuovo ORDINE")
 landing_path: research/operations/2026-08-10-fleet-order-spec.md
@@ -355,6 +355,15 @@ diffs route to Codex/Gemini; activity 2 and activity 3 are mutually exclusive pe
   neither becomes load-bearing before PROBE-1-residual numbers exist.
 - `~/.claude-zero-team` is presumed a legacy duplicate of AZ — verified at cswap arming, not
   before.
+
+## Adversarial review
+
+Seat: `glm-5.2` (z.ai, first-call refuter — R1 frontmatter seat; full panel was 3 external
+families, see §10 immediately below for the complete composition and disposition record).
+Surviving objections after conductor re-judgment: **1 REJECTED** (Gemini#6 — proposed remap
+contradicted Zero's 2026-07-22 profile ruling), **1 resolved as clarification-not-contradiction**
+(Gemini#2/Codex#12 merge) — of 26 findings raised, 24 accepted as inline amendments and 0 remain
+unresolved as open objections.
 
 # 10. Panel record (2026-08-10)
 
