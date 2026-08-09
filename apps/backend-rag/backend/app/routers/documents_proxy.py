@@ -268,6 +268,156 @@ async def _get_drive_access_token() -> str:
     return token
 
 
+# Half two of `_assert_file_is_ours`, scoped down for a WRITE instead of a read.
+#
+# `_FOLDER_REGISTERED_SQL` answers "is this file ours" against ANY client/company
+# — correct for the read proxy, where the caller already holds a row that put it
+# there. It is the wrong question at write time: the write endpoints below let a
+# caller with access to client A submit a bare Drive `file_id` with no proof it
+# was ever theirs, and "ours" would happily authorise a file that belongs to
+# client B. These two queries add the missing WHERE — same shape, scoped to the
+# ONE client/company the caller is actually writing to (PENDING-ARMS 2026-08-01,
+# "the registry is self-authorising for a caller who can WRITE").
+_CLIENT_OWNS_FOLDER_SQL = """
+    SELECT 1 FROM clients
+     WHERE id = $1
+       AND (google_drive_folder_id = ANY($2::text[]) OR drive_folder_id = ANY($2::text[]))
+"""
+
+_COMPANY_OWNS_FOLDER_SQL = """
+    SELECT 1 FROM companies
+     WHERE id = $1
+       AND (google_drive_folder_id = ANY($2::text[]) OR tax_dept_folder_id = ANY($2::text[]))
+"""
+
+
+async def _assert_file_descends_from_owner(
+    file_id: str,
+    conn: Any,
+    *,
+    owner_sql: str,
+    owner_id: int,
+) -> None:
+    """Refuse to authorise `file_id` unless it (or an ancestor folder, within the
+    same hop/lookup budget as the read guard) resolves to the folder registered
+    for THIS SPECIFIC owner row — never "any client/company CRM already holds".
+
+    Takes an ALREADY-OPEN connection, not a pool: every call site invokes this
+    from inside its own `pool.acquire()` block (same shape as
+    `verify_client_access(client_id, current_user, conn, ...)` in the same
+    files). Re-acquiring a second connection from the same bounded pool while
+    the caller's connection sits idle across a Drive HTTP round-trip is a real
+    deadlock at pool saturation, not just added latency: at `max_size`
+    concurrent requests each holding an outer connection, every nested acquire
+    blocks forever waiting for a connection only a `release()` — which never
+    happens, because the holder is itself blocked — can free.
+
+    Runs its own metadata fetch + hop-walk rather than reusing
+    `_assert_folder_ancestry_is_ours`: that helper's DB predicate is fixed to
+    "any registered folder" and is shared, tested, security-critical code on
+    the hot read path — narrowing it in place risks the read guard regressing
+    to reject legitimate cross-client Drive-browser/upload flows it exists to
+    allow. Write traffic is comparatively rare, so the extra Drive round-trip
+    here costs nothing that matters.
+    """
+    _assert_file_id_shape(file_id)
+    access_token = await _get_drive_access_token()
+
+    async def _owned(folder_ids: list[str]) -> bool:
+        return await conn.fetchrow(owner_sql, owner_id, folder_ids) is not None
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            meta_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": _METADATA_FIELDS},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError:
+            # Same fail-closed posture as `_drive_parent_fetcher`: a transport
+            # error is never permission, and must not surface as a raw 500.
+            logger.warning(
+                "[PROXY-WRITE] denied: file %s metadata fetch raised a transport error",
+                file_id,
+            )
+            raise HTTPException(
+                status_code=403, detail="Drive file could not be verified"
+            ) from None
+        if meta_response.status_code != 200:
+            # Same fail-closed posture as `_drive_parent_fetcher`: an API error
+            # or a file the service account cannot see is never permission.
+            logger.warning(
+                "[PROXY-WRITE] denied: file %s metadata fetch returned %s",
+                file_id,
+                meta_response.status_code,
+            )
+            raise HTTPException(
+                status_code=403, detail="Drive file could not be verified"
+            )
+
+        parents = meta_response.json().get("parents") or []
+        if parents and await _owned(parents):
+            return
+
+        fetch_parents = _drive_parent_fetcher(client, access_token)
+        frontier = [p for p in parents if p]
+        seen: set[str] = set()
+        lookups = 0
+
+        for _hop in range(_MAX_ANCESTOR_HOPS):
+            if not frontier or lookups >= _MAX_ANCESTOR_LOOKUPS:
+                break
+            grandparents: list[str] = []
+            for folder_id in frontier:
+                if folder_id in seen or lookups >= _MAX_ANCESTOR_LOOKUPS:
+                    continue
+                seen.add(folder_id)
+                lookups += 1
+                grandparents.extend(await fetch_parents(folder_id))
+            frontier = [f for f in grandparents if f and f not in seen]
+            if not frontier:
+                break
+            if await _owned(frontier):
+                return
+
+    logger.warning(
+        "[PROXY-WRITE] denied: file %s does not descend from owner_id=%s within "
+        "%d hops",
+        file_id,
+        owner_id,
+        _MAX_ANCESTOR_HOPS,
+    )
+    raise HTTPException(
+        status_code=403,
+        detail="Drive file is not in this client's own folder tree",
+    )
+
+
+async def assert_drive_file_belongs_to_client(
+    file_id: str, client_id: int, conn: Any
+) -> None:
+    """Write-time guard for `POST .../clients/{client_id}/documents` (+ bulk
+    twin) and `PATCH .../clients/{client_id}/documents/{doc_id}`: refuse a
+    `file_id` that does not descend from THIS client's own registered Drive
+    folder. Takes the caller's ALREADY-OPEN connection — see
+    `_assert_file_descends_from_owner`'s docstring for why."""
+    await _assert_file_descends_from_owner(
+        file_id, conn, owner_sql=_CLIENT_OWNS_FOLDER_SQL, owner_id=client_id
+    )
+
+
+async def assert_drive_file_belongs_to_company(
+    file_id: str, company_id: int, conn: Any
+) -> None:
+    """Write-time guard for `POST .../companies/{company_id}/documents`: refuse
+    a `file_id` that does not descend from THIS company's own registered Drive
+    folder. Takes the caller's ALREADY-OPEN connection — see
+    `_assert_file_descends_from_owner`'s docstring for why."""
+    await _assert_file_descends_from_owner(
+        file_id, conn, owner_sql=_COMPANY_OWNS_FOLDER_SQL, owner_id=company_id
+    )
+
+
 @router.get("/proxy/{file_id}")
 async def proxy_drive_file(
     file_id: str,
