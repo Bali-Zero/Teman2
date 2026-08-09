@@ -398,7 +398,10 @@ jobs:
   detect-secrets:
     name: Detect Secrets
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Run 31312661093 measured 19m34s in the scan alone and was cancelled at
+    # the 20m job limit after every gating step had succeeded. Keep this gate
+    # blocking, but give runner variance enough headroom to report its verdict.
+    timeout-minutes: 30
     # Re-enabled as a blocking gate now that:
     # 1. .secrets.baseline has been triaged: 920 findings auto-marked as
     #    false positives via scripts/detect_secrets_auto_triage.py (path
