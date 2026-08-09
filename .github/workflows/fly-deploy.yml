@@ -5,7 +5,13 @@ on:
     branches: [main]
     paths:
       - "apps/backend-rag/**"
-      - "!apps/backend-rag/**/*.md"
+      # Docs-class .md only. A blanket "!**/*.md" would also skip runtime-read
+      # markdown baked into the image (training-data/*.md — Dockerfile COPY,
+      # consumed by conversation_trainer), stranding merged content undeployed.
+      - "!apps/backend-rag/docs/**"
+      - "!apps/backend-rag/**/README.md"
+      - "!apps/backend-rag/AGENTS.md"
+      - "!apps/backend-rag/CLAUDE.md"
       - "!apps/backend-rag/**/tests/**"
       - "!apps/backend-rag/**/test_*.py"
       - "!apps/backend-rag/**/*_test.py"
