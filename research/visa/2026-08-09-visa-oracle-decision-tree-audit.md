@@ -1,6 +1,7 @@
 ---
 date: 2026-08-09
 domain: visa
+adversarial_review: codex # gpt-5.6-sol, R1 round 2026-08-09: 20 objections, verdict BLOCKER. Retractions and corrections below are its result.
 client_case: none (Visa Oracle V2 decision-tree audit)
 sources:
   - rulepack-prod-004.source.json (seq-4, active SHADOW since 2026-08-08)
@@ -45,14 +46,34 @@ real. Static count: 25 purpose-only rules, 38 discriminating.
 | **TOURISM** | 0 | single-entry → SUPPORTED B1,C1; multi-entry → D1 review (D1 was cured with an entry_pattern gate) | ✅ CORRECT |
 | **MEDICAL / OTHER** | — | no product covers them → NEEDS_INPUT | ⚪ COVERAGE GAP (business: does Bali Zero serve these lines?) |
 
-## Safety defect (false-SUPPORTED — the dangerous class)
+## Minor handling (RETRACTED as a "safety defect" — corrected 2026-08-09)
 
-**minor-without-guardian**: prod-004 has NO GLOBAL age gate. Only `hr.e30a-minor-consent`
-(PRODUCTS/E30A, gated on STUDY). A 15-year-old traveling alone for TOURISM
-(sponsor_confirmed=False) → auto-SUPPORTED B1,C1. Proven fix: GLOBAL rule
-`review.minor-without-guardian` (is_minor AND sponsor_confirmed==false →
-REQUIRE_REVIEW/MINOR_WITHOUT_CONFIRMED_GUARDIAN). Verified: persona 15 → HUMAN_REVIEW,
-adult persona 01 → still SUPPORTED (innocence). Shipped in the prod-005 draft.
+> **RETRACTION.** An earlier revision of this section called this a false-SUPPORTED
+> **safety defect**: "a 15-year-old travelling alone for TOURISM → auto-SUPPORTED B1,C1",
+> with the seq-5 rule as its "proven fix". That was measured on the **raw `evaluate()`**
+> in the offline harness — the evaluator layer — and does **not** describe the served
+> runtime. The public evaluation path calls `_apply_minor_privacy_hold`
+> (`evaluate_path.py:902`, invoked at `:1459`), which abstains for every KNOWN minor
+> before a response is built. **No real applicant was ever auto-SUPPORTED as a minor by
+> the live surface.** Auditing a layer and reporting it as the product's behaviour is the
+> error; the claim is withdrawn.
+
+What the pack-level rule in seq-5 (`review.minor-without-guardian`) actually is:
+**defence in depth at the RulePack layer** for a case the runtime adapter already covers.
+It is not harmful and it keeps the pack self-sufficient if the adapter is ever bypassed,
+but it closed no live hole.
+
+**Naming is also wrong and should be corrected in a later pack.** The rule keys on
+`family.sponsor_confirmed`, which is a *sponsor* fact (family/work sponsorship), **not**
+guardian identity or consent. `_apply_minor_privacy_hold`'s own docstring states the
+contract "has no guardian-identity/consent fact" — so a rule called
+`minor-without-guardian` emitting `MINOR_WITHOUT_CONFIRMED_GUARDIAN` asserts a fact the
+vocabulary cannot express. Fixing it properly needs an interview/contract expansion (a
+real guardian fact), not a rename.
+
+Harness evidence, stated for what it is: on the evaluator layer, persona 15 flips
+SUPPORTED → HUMAN_REVIEW and adult persona 01 is unchanged (innocence). That is a true
+statement about `evaluate()`, and only about `evaluate()`.
 
 ## Root cause of the spurious masks (superscar W107, incomplete-cure)
 
@@ -95,7 +116,10 @@ current tree is possible NOW, with the 2 known holes above still open until seq-
 **Mechanical (session already did): DONE** — prod-005.source.json drafted +
 harness-verified (`rulepack-prod-005.source.json`, seq=5, 113 rules; compiles clean;
 exactly 2 personas flip 09_investor→SUPPORTED E28A / 15_minor→HUMAN_REVIEW,
-guilt/innocence PASS). Reproducible via `build_seq5_full.py`.
+guilt/innocence PASS — on the EVALUATOR layer; see the minor-handling retraction above for
+what that does and does not say about the served runtime). Built by a session scratchpad
+script (`build_seq5_full.py`), which is **not committed to this repo** — the reproducible
+artifact is the checked-in `rulepack-prod-005.source.json` plus `compile_pack.py`.
 
 **Two ceremony-blocking chain bugs caught + fixed (2026-08-09, pre-signature):** the
 initial draft `deepcopy`-ed prod-004 and carried two fields that would have failed the
@@ -110,10 +134,14 @@ activation preconditions re-verified GREEN (unique id · seq 5>4 · prev==prod-0
 
 **⚠️ KID CORRECTION (2026-08-09 — the real signing key id, proven against live prod-004):**
 The production signing kid is **`prod-2026-07-1`** (letter-first) — NOT `2026-07-prod-1`.
-The earlier `2026-07-prod-1` was a transcription/transposition that propagated from an
-ILLUSTRATIVE docstring example (`bundle.py:253`, inside `StaticTrustStore.from_env`'s
-`.. code-block:: json`) and the M5 key FILENAME (`2026-07-prod-1.ed25519.pem`) — the file
-name uses a date-first convention that does NOT equal the kid it holds. Proven the hard way:
+Two date-first strings exist nearby and are easy to mistake for the kid: the ILLUSTRATIVE
+docstring example at `bundle.py:253` (inside `StaticTrustStore.from_env`'s
+`.. code-block:: json`, which still shows the invalid `2026-07-prod-1`) and the M5 key
+FILENAME `2026-07-prod-1.ed25519.pem` — a filename convention that does NOT equal the kid
+the file holds. *How* the wrong value entered this runbook is not established here (the
+visaoracle skill records earlier ceremony ids that began with a digit, failed the pattern,
+and were relabelled — a different history than "copied from the docstring"); what IS
+established is the syntax and the live value. Proven the hard way:
 signing with `--kid 2026-07-prod-1` is REJECTED (digit-first fails the `Identifier` pattern
 `^[A-Za-z]…`), and `RulePack.model_validate(prod-004.signed.json)` shows the LIVE bundle's
 `protected.kid == 'prod-2026-07-1'`. A GATE probe verified prod-004's Ed25519 signature with
@@ -146,23 +174,48 @@ Zero authorized activation this session ("Sì, attiva seq-5 (SHADOW)" via checkp
    DSN env vars; `_assert_production_separation` passed (distinct non-superuser principals);
    roles DROPPED same session via EXIT trap. **Result:** `rule_pack_id=4159265d-… ·
    activation_id=560839f3-a71d-42ef-bdec-246579630884 · sequence=5 · payload_sha256=ebc19f5c…`.
-4. **Prove-live — CONFIRMED at DB + runtime-code level.** The runtime's active-pack
-   selection (`repository.load_active_rule_pack` AND its twin `shadow._resolve_active_pack_binding`)
-   is `WHERE legal_period @> now() AND system_period @> now() ORDER BY created_at DESC LIMIT 1` —
-   NOT single-active: multiple PRODUCTION activations are open by design (seq 1/3/4/5 all
-   in_force; the docstring acknowledges overlapping `legal_period`s), and the NEWEST
-   `created_at` wins. seq-5's activation (`created_at 2026-08-09 13:27:38Z`) is the newest →
-   **served.** No import-time cache, no TTL wrapper on the binding (`shadow.py:77` "re-read
-   fresh on every call") → live immediately, no restart. EVALUATE_MODE stays SHADOW
-   (engine result shadow-logged, users still see CURATED) — ENFORCE remains NO-GO. Frontend
-   `balizero.com/visa-oracle` 200, backend `/health` healthy (v100-qdrant, postgres connected).
-   The Bali Zero team now runs the 38-scheda manual SHADOW test against the corrected tree.
+4. **Post-activation verification — seq-5 is the single active pack.** The runtime's
+   active-pack selection (`repository.load_active_rule_pack` and its documented twin
+   `shadow._resolve_active_pack_binding`) filters on **BOTH** bitemporal clocks:
+   `WHERE legal_period @> $effective_at AND system_period @> $observed_at ORDER BY created_at
+   DESC LIMIT 1`. Measured against prod with that exact predicate: **exactly one row —
+   seq-5** (`4159265d-…`). Per-row: seq 1/3/4 have `legal_period @> now()` **but their
+   `system_period` is CLOSED**; only seq-5 has both open.
 
-**NOT a blocker for this SHADOW activation** (corrected 2026-08-09 — earlier draft
-over-flagged it): the enforce-gate doc's DB findings (migration 264 unapplied,
-`visa_activation_executor` holds direct grants, `backend_rag_v2` can insert activation
-rows, no `visa_ledger_owner`) are explicitly **"latent while mode is SHADOW"** and are
-**hard ENFORCE blockers only**. prod-004 (seq-4) was activated in SHADOW with these
-exact conditions present, so seq-5 activates the same way. ENFORCE stays NO-GO, so they
-do not gate anything on the current path. They remain a separate operator[credential]
-DB-hardening prerequisite for any future ENFORCE decision (Zero + privacy owner + DPIA).
+   > **CORRECTION (same day, caught by the R1 adversarial review).** An earlier revision of
+   > this section claimed "multiple PRODUCTION activations are open by design … the newest
+   > `created_at` wins". That was **wrong**, and it was wrong because the probe behind it
+   > queried `legal_period` ALONE — omitting the `system_period` filter the runtime actually
+   > applies — and then an explanation was invented to fit the flawed measurement. The schema
+   > forbids what that sentence asserted: `250_visa_engine_core.sql` carries a GiST exclusion
+   > constraint over both periods, and the activation writer
+   > (`253_visa_activation_writer_hardening.sql`) closes covered open activations before
+   > inserting. `ORDER BY created_at DESC LIMIT 1` is **defensive**, not a selection policy —
+   > treating it as "newest wins" would invite tolerating a ledger-integrity violation.
+   > The prior `CURRENT_STATE.md` wording ("seq-4 was the single open activation") was
+   > therefore CORRECT and is reinstated; this document's earlier "imprecise" label on it is
+   > withdrawn.
+
+   **Scope of what this proves:** a DB fact (which activation is bitemporally current) plus
+   the source of the selection query. It is **not** a runtime receipt: no evaluation response
+   or audit row has yet been observed naming `sequence 5` / activation `560839f3-…`. That
+   end-to-end proof is the remaining prove-live step. The binding is read per request (the
+   resolver queries the DB on every call and holds no module-level cache), so no restart is
+   expected to be needed. EVALUATE_MODE stays SHADOW (engine result shadow-logged, users still
+   see CURATED) — ENFORCE remains NO-GO. Frontend `balizero.com/visa-oracle` 200, backend
+   `/health` healthy (v100-qdrant, postgres connected).
+
+**DB hardening status — re-measured, an earlier claim here was stale.** A prior revision
+repeated `docs/runbooks/visa-oracle-privacy-enforce-gate.md`'s 2026-08-06 snapshot
+("no `visa_ledger_owner`", migration 264 unapplied). **Measured live on 2026-08-09 (read-only,
+`pg_roles`): all six capability roles EXIST** as NOLOGIN — `visa_pack_writer`,
+`visa_activation_executor`, `visa_ledger_owner`, `visa_policy_writer`,
+`visa_retention_executor`, `visa_privacy_operator`. The DB was hardened AFTER that snapshot,
+so the enforce-gate doc is itself stale on this point; repeating it here without re-measuring
+was the mistake.
+
+What is NOT claimed: that the remaining privilege-separation items are irrelevant. They did
+not prevent this activation — the ceremony ran under two distinct, non-superuser ephemeral
+principals and `_assert_production_separation` passed — but "did not block this ceremony" is
+not "not a prerequisite". Activation-ledger integrity and privilege separation remain live
+prerequisites for any ENFORCE decision (Zero + privacy owner + DPIA), which stays NO-GO.

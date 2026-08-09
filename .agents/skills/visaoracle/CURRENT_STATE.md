@@ -59,14 +59,18 @@ each is a distinct, explicit action requiring its own Zero go-ahead.
 > `bundle.py` docstring example + the M5 key FILENAME `2026-07-prod-1.ed25519.pem`
 > (filename ≠ kid). Proven against the live prod-004 signature; there is NO kid
 > Identifier regression on main.
-> **Selection-model correction (measured):** the prod-004 note above calling seq-4
-> "the single open activation" was imprecise — the runtime query
-> (`repository.load_active_rule_pack` and its twin `shadow._resolve_active_pack_binding`)
-> is `legal_period @> now() AND system_period @> now() ORDER BY created_at DESC LIMIT 1`;
-> multiple PRODUCTION activations are open BY DESIGN (seq 1/3/4/5 all in_force — the
-> docstring acknowledges overlapping `legal_period`s) and the NEWEST `created_at` wins.
-> seq-5 (`created_at 2026-08-09 13:27:38Z`) is newest → served, fresh per-request, no
-> cache. Content: 113 rules (= prod-004 112 + GLOBAL `review.minor-without-guardian`
+> **Single-active model CONFIRMED (an earlier revision of this block got it wrong).** A
+> first draft here claimed "multiple PRODUCTION activations are open BY DESIGN … the newest
+> `created_at` wins" and called the prod-004 note's "single open activation" imprecise.
+> **That was wrong and is retracted** — it came from a probe that filtered `legal_period`
+> ALONE, omitting the `system_period` clause the runtime applies. Re-measured with the
+> runtime's real predicate (`legal_period @> now() AND system_period @> now()`): **exactly
+> ONE active row — seq-5**; seq 1/3/4 have an open `legal_period` but a **CLOSED**
+> `system_period`. The schema enforces this (GiST exclusion over both periods,
+> `250_visa_engine_core.sql`; the writer closes covered activations,
+> `253_visa_activation_writer_hardening.sql`), and `ORDER BY created_at DESC LIMIT 1` is
+> DEFENSIVE, not a selection policy. The prod-004 note above stands as written.
+> Content: 113 rules (= prod-004 112 + GLOBAL `review.minor-without-guardian`
 > safety gate; plus the 5 D12 investment review rules now gated on
 > `investment.pt_pma_committed != true` so a committed investor concludes E28A instead
 > of a business-visit review). **EVALUATE_MODE stays SHADOW; ENFORCE remains NO-GO.**
