@@ -735,7 +735,7 @@ async function render(
 function assertPublicHtml(response) {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-  assert.match(response.headers.get("cache-control"), /^public,/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
   assert.match(
     response.headers.get("content-security-policy") ?? "",
     /default-src 'self'/,
@@ -795,10 +795,7 @@ test("magazine front page renders editorial priority, five domains, coverage, an
   assert.match(html, /Partial coverage/);
   assert.match(html, /Last verified/i);
   assert.match(html, /09:25 WITA/i);
-  assert.match(
-    html,
-    /<meta[^>]+name="robots"[^>]+content="index, follow"/i,
-  );
+  assert.match(html, /<meta[^>]+name="robots"[^>]+content="index, follow"/i);
   assert.doesNotMatch(html, /Source systems/);
   assert.doesNotMatch(html, /This quarantined title must never render/);
   assertNoInternalIdentifiers(html);
@@ -810,6 +807,10 @@ test("signed-in non-members cannot enter internal rooms", async () => {
     assertInternalHtml(response);
     const html = await response.text();
     assert.match(html, /Workspace access required/i);
+    assert.match(
+      html,
+      /<meta[^>]+name="robots"[^>]+content="noindex, nofollow"/i,
+    );
     assert.doesNotMatch(html, /Bali Zero intelligence desk/i);
     assert.doesNotMatch(html, /Bali Zero control plane/i);
   }
@@ -845,9 +846,7 @@ test("story page separates analysis from claim evidence and exposes current revi
 
   assert.match(html, /Bali visa files move to a stricter evidence standard/);
   assert.match(html, /Why it matters/);
-  assert.match(html, /Contributing systems/);
-  assert.match(html, /Intel Lake/);
-  assert.match(html, /Notebook Insight/);
+  assert.doesNotMatch(html, /Contributing systems|Intel Lake|Notebook Insight/);
   assert.match(html, /Claims and evidence/);
   assert.match(html, /The reviewed workflow requires supporting evidence/);
   assert.match(html, /Directorate General of Immigration/);
@@ -1025,7 +1024,7 @@ test("worker security wrapper mutates protected HTML only", async () => {
       headers: { "content-type": "text/html; charset=utf-8", etag: "issue-2" },
     }),
   );
-  assert.match(htmlResponse.headers.get("cache-control"), /^public,/);
+  assert.equal(htmlResponse.headers.get("cache-control"), "no-store");
   assert.match(
     htmlResponse.headers.get("content-security-policy") ?? "",
     /frame-ancestors 'none'/,
@@ -1038,7 +1037,21 @@ test("worker security wrapper mutates protected HTML only", async () => {
       headers: { "content-type": "text/html; charset=utf-8" },
     }),
   );
-  assert.equal(internalResponse.headers.get("cache-control"), "private, no-store");
+  assert.equal(
+    internalResponse.headers.get("cache-control"),
+    "private, no-store",
+  );
+
+  const futureInternalResponse = secureProtectedHtmlResponse(
+    new Request("https://magazine.example/account"),
+    new Response("<main>Account</main>", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
+  );
+  assert.equal(
+    futureInternalResponse.headers.get("cache-control"),
+    "private, no-store",
+  );
 
   const jsonResponse = new Response('{"ok":true}', {
     headers: {

@@ -9,6 +9,9 @@ import { createOperationsRepository } from "@/lib/server/operations-repository";
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function OperationsPage() {
   await requireChatGPTUser("/operations");
@@ -39,3 +42,4 @@ export default async function OperationsPage() {
     </MagazineShell>
   );
 }
+import type { Metadata } from "next";

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -12,6 +13,9 @@ import { createResearchRepository } from "@/lib/server/research-repository";
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 function displaySelection(values: readonly string[]): string {
   return values.length > 0 ? values.join(" · ") : "None selected";

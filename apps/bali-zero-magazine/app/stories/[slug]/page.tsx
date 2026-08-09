@@ -127,22 +127,6 @@ export default async function StoryPage({ params }: StoryPageProps) {
               <p>{detail.story.whyItMatters}</p>
             </section>
           </div>
-          <aside
-            className="story-contributors"
-            aria-labelledby="contributors-title"
-          >
-            <p className="section-label">Provenance</p>
-            <h2 id="contributors-title">Contributing systems</h2>
-            {detail.contributors.length > 0 ? (
-              <ul>
-                {detail.contributors.map((contributor) => (
-                  <li key={contributor}>{contributor}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>No contributor label is cleared for publication.</p>
-            )}
-          </aside>
         </div>
 
         <section className="visual-provenance" aria-labelledby="visual-title">

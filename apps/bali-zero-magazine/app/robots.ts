@@ -4,7 +4,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/stories/", "/editions/"],
+      allow: ["/", "/stories/", "/editions/", "/api/story-media/"],
       disallow: ["/research", "/operations", "/api/"],
     },
     host: "https://bali-zero-magazine.antonellosiano.chatgpt.site",

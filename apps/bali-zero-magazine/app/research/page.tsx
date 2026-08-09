@@ -14,6 +14,9 @@ import {
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function ResearchPage() {
   await requireChatGPTUser("/research");
@@ -45,3 +48,4 @@ export default async function ResearchPage() {
     </MagazineShell>
   );
 }
+import type { Metadata } from "next";

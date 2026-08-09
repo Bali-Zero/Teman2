@@ -192,7 +192,7 @@ test("public story media route serves only approved published media without expo
   const response = await getStoryMedia(handler, story.slug, bindings, false);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("content-type"), "image/png");
-  assert.match(response.headers.get("cache-control"), /^public,/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal((await response.text()).includes(metadata.sha256), false);
   assert.equal(
     (await getStoryMedia(handler, "missing-story", bindings)).status,

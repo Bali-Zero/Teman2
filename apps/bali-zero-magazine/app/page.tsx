@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
+
 import { FrontPage } from "@/components/front-page";
 import { MagazineShell } from "@/components/magazine-shell";
 import { readCurrentFrontPage } from "@/lib/server/magazine-read-model";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   const page = await readCurrentFrontPage();

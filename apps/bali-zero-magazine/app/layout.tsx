@@ -8,9 +8,6 @@ export const metadata: Metadata = {
   title: "Bali Zero Magazine",
   description:
     "Verified intelligence on immigration, investment, tax, property, and compliance in Bali.",
-  alternates: {
-    canonical: "/",
-  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

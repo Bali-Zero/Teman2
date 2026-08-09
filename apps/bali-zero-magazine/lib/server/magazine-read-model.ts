@@ -124,7 +124,6 @@ export type StoryDetailView = Readonly<{
   eventOccurredAt: string | null;
   updatedAt: string;
   verifiedAt: string | null;
-  contributors: readonly string[];
   claims: readonly ClaimView[];
   currentVisibility: "Visible now";
   imageProvenance: ImageProvenanceView | null;
@@ -505,23 +504,10 @@ export async function readStoryDetail(
     const row = await createPublicationRepository(db).getCurrentStory(slug);
     if (row === null) return null;
 
-    const [contributorsResult, claimsResult, evidenceResult, asset, metadata] =
-      await Promise.all([
-        db
-          .prepare(
-            `/* magazine:story-contributors */
-             SELECT DISTINCT system.display_name
-             FROM story_versions version,
-                  json_each(version.contributing_system_ids_json) contributor
-             JOIN source_systems system ON system.system_id = contributor.value
-             WHERE version.story_id = ? AND version.version = ?
-             ORDER BY system.display_name`,
-          )
-          .bind(row.story_id, row.version)
-          .all<{ display_name: string }>(),
-        db
-          .prepare(
-            `/* magazine:story-claims */
+    const [claimsResult, evidenceResult, asset, metadata] = await Promise.all([
+      db
+        .prepare(
+          `/* magazine:story-claims */
              SELECT claim_id, claim_kind, normalized_text, numeric_value,
                     numeric_unit, as_of
              FROM story_claims
@@ -529,12 +515,12 @@ export async function readStoryDetail(
                AND publication_state = 'published'
              ORDER BY CASE claim_kind WHEN 'fact' THEN 0 WHEN 'numeric' THEN 1 ELSE 2 END,
                       claim_id`,
-          )
-          .bind(row.story_id, row.version)
-          .all<ClaimRow>(),
-        db
-          .prepare(
-            `/* magazine:story-evidence */
+        )
+        .bind(row.story_id, row.version)
+        .all<ClaimRow>(),
+      db
+        .prepare(
+          `/* magazine:story-evidence */
              SELECT link.claim_id, evidence.publisher,
                     evidence.document_citation, evidence.canonical_url,
                     evidence.source_type, evidence.published_at,
@@ -545,17 +531,17 @@ export async function readStoryDetail(
              WHERE link.story_id = ? AND link.version = ?
                AND link.publication_state = 'published'
              ORDER BY link.claim_id, evidence.publisher`,
-          )
-          .bind(row.story_id, row.version)
-          .all<EvidenceRow>(),
-        readApprovedAsset(db, row.story_id, row.version),
-        readStorySectionAndVerification(
-          db,
-          row.story_id,
-          row.version,
-          row.domain,
-        ),
-      ]);
+        )
+        .bind(row.story_id, row.version)
+        .all<EvidenceRow>(),
+      readApprovedAsset(db, row.story_id, row.version),
+      readStorySectionAndVerification(
+        db,
+        row.story_id,
+        row.version,
+        row.domain,
+      ),
+    ]);
     const evidence = evidenceResult.results ?? [];
     const claims = (claimsResult.results ?? []).map<ClaimView>((claim) => ({
       kind: claim.claim_kind,
@@ -584,9 +570,6 @@ export async function readStoryDetail(
       eventOccurredAt: row.event_occurred_at,
       updatedAt: row.updated_at,
       verifiedAt: metadata.verifiedAt,
-      contributors: (contributorsResult.results ?? []).map(
-        (item) => item.display_name,
-      ),
       claims,
       currentVisibility: "Visible now",
       imageProvenance: asset,
