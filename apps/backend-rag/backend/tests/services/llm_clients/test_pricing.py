@@ -115,9 +115,15 @@ def test_create_token_usage_zero_tokens() -> None:
 
 
 def test_get_model_pricing_exact_match() -> None:
-    """Exact model name returns correct pricing dict."""
+    """Exact model name returns the correct rates.
+
+    Asserts the RATES, not the dict's shape: rows legitimately carry optional
+    keys (`cached_input` since 2026-08-09), and an equality check on the whole
+    dict fails on every future rate the table learns to express.
+    """
     pricing: dict[str, float] = get_model_pricing("gemini-2.5-flash")
-    assert pricing == {"input": 0.075, "output": 0.30}
+    assert pricing["input"] == 0.075
+    assert pricing["output"] == 0.30
 
 
 def test_get_model_pricing_returns_copy() -> None:

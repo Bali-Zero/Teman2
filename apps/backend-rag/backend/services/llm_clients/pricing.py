@@ -56,15 +56,42 @@ class TokenUsage:
 # Pricing per 1 million tokens (USD)
 # Updated: S04 LLM Solidification
 # Source: https://ai.google.dev/pricing, https://openai.com/pricing, https://openrouter.ai/models
+#
+# ``cached_input`` is the per-1M rate Google bills for prompt tokens served from
+# context cache. Implicit caching is ON BY DEFAULT for every Gemini 2.5+ model
+# (eligibility threshold 4,096 tokens on 3.5-flash / 3.1-pro, 2,048 on 2.5), so
+# these rates apply to real traffic with no code opting in — which is exactly why
+# omitting them made the ledger overstate the bill. Verified verbatim against
+# https://ai.google.dev/gemini-api/docs/pricing on 2026-08-09.
+# A model WITHOUT a ``cached_input`` key is billed cached tokens at the full input
+# rate: conservative by construction, never under-bills.
 LLM_PRICING: dict[str, dict[str, float]] = {
     # ── Active Gemini Models (primary + fallback) ──
     "gemini-3.5-flash": {
         "input": 1.50,
         "output": 9.00,
+        "cached_input": 0.15,
     },
     "gemini-2.5-flash": {
         "input": 0.075,
         "output": 0.30,
+        "cached_input": 0.03,
+    },
+    # ── Gemini Flash-Lite tier (candidate verifier/cheap lane, 2026-08-09) ──
+    "gemini-3.5-flash-lite": {
+        "input": 0.30,
+        "output": 2.50,
+        "cached_input": 0.03,
+    },
+    "gemini-3.1-flash-lite": {
+        "input": 0.25,
+        "output": 1.50,
+        "cached_input": 0.025,
+    },
+    "gemini-2.5-flash-lite": {
+        "input": 0.10,
+        "output": 0.40,
+        "cached_input": 0.01,
     },
     # ── Legacy Gemini (kept for cost tracking of old logs) ──
     "gemini-3-flash-preview": {
@@ -112,45 +139,91 @@ LLM_PRICING: dict[str, dict[str, float]] = {
 }
 
 
+def extract_gemini_usage(usage_metadata: object) -> tuple[int, int, int, int]:
+    """Pull (prompt, completion, cached, thinking) tokens off a google-genai response.
+
+    ONE reader for every Gemini call site. Four hand-rolled getattr chains is how
+    two of these fields stayed invisible to the ledger for a month: the recorder
+    accepted ``cache_hit_tokens`` and nobody passed it, and ``thoughts_token_count``
+    was never read at all.
+
+    Field names verified against google-genai 2.7.0
+    (``types.GenerateContentResponseUsageMetadata``) on 2026-08-09. Returns zeros
+    for a missing/None metadata object rather than raising — cost accounting must
+    never break a chat response.
+    """
+    if not usage_metadata:
+        return 0, 0, 0, 0
+    return (
+        getattr(usage_metadata, "prompt_token_count", 0) or 0,
+        getattr(usage_metadata, "candidates_token_count", 0) or 0,
+        getattr(usage_metadata, "cached_content_token_count", 0) or 0,
+        getattr(usage_metadata, "thoughts_token_count", 0) or 0,
+    )
+
+
+def resolve_pricing(model: str) -> dict[str, float]:
+    """Resolve a model slug to its price row.
+
+    Partial matches pick the LONGEST matching key, never the first one the dict
+    happens to yield. With both ``gemini-3.5-flash`` ($1.50) and
+    ``gemini-3.5-flash-lite`` ($0.30) in the table, insertion-order matching
+    would bill any suffixed lite slug (e.g. ``gemini-3.5-flash-lite-preview``)
+    at the parent's rate — a 5x over-charge from a substring standing in for an
+    entity (superscar #3).
+    """
+    model_key = model.lower().strip()
+
+    pricing = LLM_PRICING.get(model_key)
+    if pricing is not None:
+        return pricing
+
+    candidates = [k for k in LLM_PRICING if k != "unknown" and (k in model_key or model_key in k)]
+    if candidates:
+        return LLM_PRICING[max(candidates, key=len)]
+
+    logger.warning("Unknown model pricing: %s, using default rates", model)
+    return LLM_PRICING["unknown"]
+
+
 def calculate_cost(
     prompt_tokens: int,
     completion_tokens: int,
     model: str,
+    cached_tokens: int = 0,
+    thinking_tokens: int = 0,
 ) -> float:
     """
     Calculate the cost in USD for a given token usage.
 
     Args:
-        prompt_tokens: Number of input tokens
-        completion_tokens: Number of output tokens
+        prompt_tokens: Total input tokens as reported by the provider. On Gemini
+            this ALREADY INCLUDES any cache hit, so ``cached_tokens`` is treated
+            as a subset and billed at the discounted rate instead of the full one.
+        completion_tokens: Number of visible output tokens
         model: Model name (must match key in LLM_PRICING)
+        cached_tokens: Prompt tokens served from context cache
+            (``usage_metadata.cached_content_token_count``). Billed at
+            ``cached_input`` when the model declares one, else at the full input
+            rate. Clamped to ``prompt_tokens``.
+        thinking_tokens: Reasoning tokens (``usage_metadata.thoughts_token_count``).
+            Gemini reports these SEPARATELY from ``candidates_token_count`` and
+            bills them at the OUTPUT rate — omitting them under-counts the bill.
 
     Returns:
         Cost in USD (float, 6 decimal precision)
     """
-    # Normalize model name (handle variations)
-    model_key = model.lower().strip()
+    pricing = resolve_pricing(model)
 
-    # Try exact match first
-    pricing = LLM_PRICING.get(model_key)
+    cached = max(0, min(cached_tokens, prompt_tokens))
+    fresh_input = prompt_tokens - cached
+    cached_rate = pricing.get("cached_input", pricing["input"])
 
-    # Try partial match for model families
-    if pricing is None:
-        for key in LLM_PRICING:
-            if key in model_key or model_key in key:
-                pricing = LLM_PRICING[key]
-                break
+    input_cost = (fresh_input / 1_000_000) * pricing["input"]
+    cached_cost = (cached / 1_000_000) * cached_rate
+    output_cost = ((completion_tokens + max(0, thinking_tokens)) / 1_000_000) * pricing["output"]
 
-    # Fallback to unknown pricing
-    if pricing is None:
-        pricing = LLM_PRICING["unknown"]
-        logger.warning("Unknown model pricing: %s, using default rates", model)
-
-    # Calculate cost (pricing is per 1M tokens)
-    input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
-    output_cost = (completion_tokens / 1_000_000) * pricing["output"]
-
-    return round(input_cost + output_cost, 6)
+    return round(input_cost + cached_cost + output_cost, 6)
 
 
 def create_token_usage(
@@ -189,18 +262,9 @@ def get_model_pricing(model: str) -> dict[str, float]:
     Returns:
         Dict with 'input' and 'output' prices per 1M tokens
     """
-    model_key = model.lower().strip()
-
-    # Try exact match
-    if model_key in LLM_PRICING:
-        return LLM_PRICING[model_key].copy()
-
-    # Try partial match
-    for key in LLM_PRICING:
-        if key in model_key or model_key in key:
-            return LLM_PRICING[key].copy()
-
-    return LLM_PRICING["unknown"].copy()
+    # Same longest-match resolution as calculate_cost — two functions that answer
+    # "what does this model cost" must not disagree on which row wins.
+    return resolve_pricing(model).copy()
 
 
 def list_available_models() -> list[str]:
