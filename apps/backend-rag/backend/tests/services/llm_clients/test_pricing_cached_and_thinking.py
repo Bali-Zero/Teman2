@@ -22,6 +22,7 @@ import pytest
 from backend.services.llm_clients.pricing import (
     LLM_PRICING,
     calculate_cost,
+    create_token_usage,
     extract_gemini_usage,
     get_model_pricing,
     resolve_pricing,
@@ -161,3 +162,87 @@ def test_unknown_model_still_falls_back_and_is_not_matched_by_substring():
     """INNOCENCE: `unknown` is excluded from partial matching, so a real slug
     can never be silently priced by the fallback row through a substring fluke."""
     assert resolve_pricing("some-model-nobody-registered") is LLM_PRICING["unknown"]
+
+
+# ── an abbreviation that fits several models identifies none of them ────────
+
+
+@pytest.mark.parametrize(
+    ("slug", "matches"),
+    [
+        ("gemini-3.5", "gemini-3.5-flash and gemini-3.5-flash-lite"),
+        ("gemini", "every gemini row"),
+        ("flash", "every flash row — it used to land on DeepSeek's table"),
+    ],
+)
+def test_ambiguous_abbreviation_refuses_to_guess(slug, matches):
+    """GUILT: a truncated slug must not be silently priced by whichever row
+    the match loop happens to prefer.
+
+    Longest-match is right when the TABLE KEY sits inside the slug (a real
+    model wearing a suffix), and wrong in the other direction: taking the
+    longest of {gemini-3.5-flash, gemini-3.5-flash-lite} for the abbreviation
+    `gemini-3.5` picked the CHEAPER child and under-billed, while `flash`
+    reached across providers entirely. Found by adversarial review (Codex,
+    2026-08-09) on the very change that introduced longest-match.
+    """
+    assert resolve_pricing(slug) is LLM_PRICING["unknown"], matches
+
+
+def test_unambiguous_abbreviation_still_resolves():
+    """INNOCENCE: refusing ambiguity must not break the one-row abbreviation.
+
+    `deepseek-chat` names exactly one key (`deepseek/deepseek-chat`), and
+    test_pricing.py::test_calculate_cost_partial_match depends on it.
+    """
+    assert resolve_pricing("deepseek-chat") is LLM_PRICING["deepseek/deepseek-chat"]
+
+
+def test_official_paid_tier_rates_for_every_gemini_row_we_route_to():
+    """TRIPWIRE: rates verified verbatim against ai.google.dev/gemini-api/docs/pricing.
+
+    `gemini-2.5-flash` shipped for months at 0.075/0.30 — a rate from two
+    generations back, 4x under on input and 8.33x under on output — and the
+    old unit test asserted the wrong numbers, so the table and its test agreed
+    with each other and with nothing else. Anchor on the price list.
+    """
+    expected = {
+        "gemini-3.5-flash": (1.50, 9.00, 0.15),
+        "gemini-3.6-flash": (1.50, 7.50, 0.15),
+        "gemini-2.5-flash": (0.30, 2.50, 0.03),
+        "gemini-3.5-flash-lite": (0.30, 2.50, 0.03),
+        "gemini-3.1-flash-lite": (0.25, 1.50, 0.025),
+        "gemini-2.5-flash-lite": (0.10, 0.40, 0.01),
+    }
+    for slug, (inp, out, cached) in expected.items():
+        row = LLM_PRICING[slug]
+        assert (row["input"], row["output"], row["cached_input"]) == (inp, out, cached), slug
+
+
+# ── one call, one price: the ledger and the spend cap must agree ────────────
+
+
+def test_create_token_usage_prices_cache_and_thinking_like_the_ledger():
+    """GUILT: `TokenUsage.cost_usd` feeds the gateway's per-request spend cap.
+
+    While the ledger row saw the cache discount and the thinking tokens, this
+    object saw neither — the same call carried two different prices depending
+    on who asked.
+    """
+    usage = create_token_usage(
+        prompt_tokens=10_000,
+        completion_tokens=100,
+        model=MODEL,
+        cached_tokens=8_000,
+        thinking_tokens=400,
+    )
+    assert usage.cost_usd == pytest.approx(
+        calculate_cost(10_000, 100, MODEL, cached_tokens=8_000, thinking_tokens=400),
+    )
+
+
+def test_create_token_usage_without_the_new_counters_is_unchanged():
+    """INNOCENCE: the OpenRouter fallback call site passes neither counter."""
+    assert create_token_usage(10_000, 100, MODEL).cost_usd == pytest.approx(
+        calculate_cost(10_000, 100, MODEL),
+    )

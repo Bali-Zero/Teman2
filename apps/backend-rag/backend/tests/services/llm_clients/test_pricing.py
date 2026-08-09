@@ -18,13 +18,15 @@ from backend.services.llm_clients.pricing import (
 
 def test_calculate_cost_known_model() -> None:
     """calculate_cost returns correct USD for a known model."""
-    # gemini-2.5-flash: input=0.075, output=0.30 per 1M tokens
+    # gemini-2.5-flash: input=0.30, output=2.50 per 1M tokens (official paid
+    # tier; the 0.075/0.30 this test asserted until 2026-08-09 was a rate from
+    # two generations back, and the test locked the wrong table in place).
     cost: float = calculate_cost(
         prompt_tokens=1_000_000,
         completion_tokens=1_000_000,
         model="gemini-2.5-flash",
     )
-    assert cost == pytest.approx(0.075 + 0.30, abs=1e-6)
+    assert cost == pytest.approx(0.30 + 2.50, abs=1e-6)
 
 
 def test_calculate_cost_zero_tokens() -> None:
@@ -122,8 +124,8 @@ def test_get_model_pricing_exact_match() -> None:
     dict fails on every future rate the table learns to express.
     """
     pricing: dict[str, float] = get_model_pricing("gemini-2.5-flash")
-    assert pricing["input"] == 0.075
-    assert pricing["output"] == 0.30
+    assert pricing["input"] == 0.30
+    assert pricing["output"] == 2.50
 
 
 def test_get_model_pricing_returns_copy() -> None:

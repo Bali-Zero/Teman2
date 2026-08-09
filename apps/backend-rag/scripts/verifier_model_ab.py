@@ -1,13 +1,19 @@
 """Verifier model A/B harness (self-correction latency, increment-1 evidence).
 
 Compares candidate verifier models against the current default
-(`gemini-3.5-flash`) on the SAME (query, answer, context) triples: mean
-latency per model + verdict-agreement at the 0.7 pass/fail gate
-(`VerificationResult.is_valid`, see verification_service.py). This is the
-evidence increment-2 needs to decide whether to flip `VERIFIER_MODEL` (env)
-to a faster judge — see `self-correction-speed-design.md` for the full plan.
-Reasoning.py's self-correction LOGIC is untouched by this script; it only
-calls the verifier in isolation.
+(`gemini-3.5-flash`) on the SAME cases: mean latency, verdict-agreement at the
+0.7 pass/fail gate (`VerificationResult.is_valid`, see verification_service.py),
+and — since 2026-08-09 — the two error types measured against KNOWN ground
+truth. This is the evidence increment-2 needs to decide whether to flip
+`VERIFIER_MODEL` (env) to a faster judge — see `self-correction-speed-design.md`
+for the full plan. Reasoning.py's self-correction LOGIC is untouched by this
+script; it only calls the verifier in isolation.
+
+Each curated triple yields a faithful case AND corrupted twins (see
+`build_labelled_cases`). Agreement with the incumbent measures similarity, not
+correctness — two models can agree while both being wrong — so the number that
+decides a model swap is **FALSE-ACCEPT**: a corrupted draft the candidate waved
+through. Positives alone can never show it.
 
 Triples come from `data/curated_qa/*.jsonl` (pre-vetted, non-`client_specific`
 rows only) when present, topped up with a small bundled synthetic sample —
@@ -24,8 +30,13 @@ CRM/WhatsApp data):
     PYTHONPATH=. python scripts/verifier_model_ab.py --n 10
 
 A candidate model name the API doesn't recognize fails per-triple (caught,
-logged, skipped) rather than crashing the run — expect `ok=0/N` for a
+logged, skipped) rather than crashing the run — expect `verdicts=0/N` for a
 rejected model name, not a traceback.
+
+Read `verdicts=`, not `returned=`. `verify_response()` swallows its own API
+errors and hands back a degraded placeholder, so a run where every call failed
+still "returns" N times; only `verdicts=` counts judgments that actually
+happened, and agreement is computed from those alone.
 """
 
 from __future__ import annotations
@@ -35,6 +46,7 @@ import asyncio
 import glob
 import json
 import logging
+import re
 import statistics
 import time
 from pathlib import Path
@@ -42,6 +54,9 @@ from pathlib import Path
 from backend.services.rag.verification_service import VerificationService
 
 logger = logging.getLogger("verifier_model_ab")
+
+# (query, draft_answer, context_chunks, should_accept, kind)
+Case = tuple[str, str, list[str], bool, str]
 
 # Baseline first — everything else is compared against it.
 CANDIDATE_MODELS = [
@@ -166,20 +181,120 @@ def build_triples(n: int) -> list[tuple[str, str, list[str]]]:
     return triples[:n]
 
 
+# ── negative cases: the only way to see a FALSE ACCEPT ──────────────────────
+#
+# Every curated triple is a POSITIVE: a vetted answer checked against itself,
+# which a healthy verifier accepts. Run on positives alone, this harness can
+# only ever observe false REJECTS and agreement — so "switch models only if
+# the candidate never accepts something the incumbent rejects" was a rule no
+# amount of running it could test (adversarial review, Codex, 2026-08-09).
+#
+# A negative keeps the ORIGINAL vetted answer as context and hands the verifier
+# a corrupted draft. The draft now contradicts its own grounding, so accepting
+# it IS the failure the verifier exists to prevent. Mutations are deterministic
+# — a rerun must be comparable to the run before it, and a seeded RNG would
+# make "the candidate looked worse" indistinguishable from "it drew a harder
+# sample".
+
+# A number is only worth corrupting if changing it changes a FACT. The first
+# draft mutated any digit at all, and on real curated answers that first digit
+# is often a list enumerator: turning "(1) LKPM" into "(7) LKPM" produced a
+# "corrupted" draft the verifier was RIGHT to accept, and the harness scored
+# that correct behaviour as a false accept. Measured on the first run: of 33
+# corruptions, the ones that fired on enumerators inflated the incumbent's
+# false-accept count. The probe had the disease it was measuring.
+#
+# So the number must carry semantic weight: a currency, a magnitude word, a
+# unit, a month, or a percent sign next to it. Fewer negatives, but every
+# negative is a real contradiction of its own context.
+_UNIT_BEFORE = r"(?:IDR|Rp\.?|USD|\$|EUR|€|article|artikel|pasal|no\.?)\s*"
+# `\b` closes only the WORD alternatives: after "%" there is no word boundary
+# (both "%" and the following space are non-word characters), so a trailing
+# \b on the whole group silently dropped every percentage.
+_UNIT_AFTER = (
+    r"\s*(?:%|(?:billion|million|miliar|juta|ribu|thousand|"
+    r"year|years|tahun|month|months|bulan|day|days|hari|week|weeks|"
+    r"January|February|March|April|May|June|July|August|September|October|"
+    r"November|December|"
+    r"Januari|Februari|Maret|Mei|Juni|Juli|Agustus|Oktober|Desember)\b)"
+)
+_NUMBER_RE = re.compile(
+    rf"(?:{_UNIT_BEFORE})(\d[\d.,]*\d|\d)|(\d[\d.,]*\d|\d)(?={_UNIT_AFTER})",
+    re.IGNORECASE,
+)
+
+_INVENTED_CLAIM = (
+    " In addition, Ministerial Regulation 41/2023 Article 7 requires a "
+    "supplementary deposit of IDR 750 million before the application is "
+    "accepted."
+)
+
+
+def corrupt_number(answer: str) -> str | None:
+    """Change the first SEMANTICALLY WEIGHTED number to a clearly different one.
+
+    The realistic hallucination shape for this business: right structure, wrong
+    figure — a capital threshold, a validity period, a filing date, a fee.
+
+    Returns None when the answer carries no such number, so the caller skips it
+    rather than emitting a "negative" that is really faithful. Skipping is the
+    safe direction: a missing negative under-counts a model's failures, while a
+    bogus negative invents failures that are not there — and the second is the
+    one that would get a working model rejected.
+    """
+    m = _NUMBER_RE.search(answer)
+    if not m:
+        return None
+    # Whichever alternative matched (unit-before or unit-after).
+    group = 1 if m.group(1) is not None else 2
+    original = m.group(group)
+    digits = original.replace(",", "").replace(".", "")
+    if not digits or set(digits) == {"0"}:
+        return None
+    mutated = original.replace(digits[0], "7", 1) if digits[0] != "7" else original + "0"
+    if mutated == original:
+        return None
+    return answer[: m.start(group)] + mutated + answer[m.end(group) :]
+
+
+def corrupt_with_invented_requirement(answer: str) -> str:
+    """Append a fabricated regulation + obligation absent from the context."""
+    return answer.rstrip() + _INVENTED_CLAIM
+
+
+def build_labelled_cases(n: int) -> list[Case]:
+    """Positives from curated_qa, plus one corrupted twin per positive.
+
+    Returns ``(query, draft, context, should_accept, kind)``. Context is always
+    the vetted answer: what changes between a positive and its twin is only
+    the draft under test, so a verdict difference isolates the corruption.
+    """
+    cases: list[Case] = []
+    for query, answer, context in build_triples(n):
+        cases.append((query, answer, context, True, "faithful"))
+        swapped = corrupt_number(answer)
+        if swapped:
+            cases.append((query, swapped, context, False, "wrong-number"))
+        cases.append(
+            (query, corrupt_with_invented_requirement(answer), context, False, "invented-rule"),
+        )
+    return cases
+
+
 async def run_model(
     service: VerificationService,
     model: str,
-    triples: list[tuple[str, str, list[str]]],
+    cases: list[Case],
 ) -> dict:
     service.model_name = model
     latencies: list[float] = []
     verdicts: list[bool | None] = []
-    for query, answer, context in triples:
+    for query, answer, context, _should_accept, _kind in cases:
         t0 = time.perf_counter()
         try:
             result = await service.verify_response(query, answer, context)
         except Exception as e:  # offline diagnostic: keep going, don't crash the run
-            logger.warning("model=%s rejected/failed on a triple: %s", model, e)
+            logger.warning("model=%s rejected/failed on a case: %s", model, e)
             verdicts.append(None)
             continue
         latencies.append(time.perf_counter() - t0)
@@ -188,23 +303,81 @@ async def run_model(
         # never lets it gate self-correction.
         verdicts.append(result.is_valid if result.verdict_available else None)
     mean_latency = statistics.mean(latencies) if latencies else float("nan")
-    return {"model": model, "mean_latency_s": mean_latency, "verdicts": verdicts, "n_ok": len(latencies)}
+    # Two DIFFERENT counts, deliberately not collapsed into one.
+    # verify_response() catches its own API errors and returns a degraded
+    # result, so "the call did not raise" says nothing about whether a verdict
+    # was produced: counting returns alone reported ok=25/25 on a run where
+    # every single verdict was unavailable (a transient 403 on the API key,
+    # 2026-08-09). A counter that measures survival cannot fail.
+    return {
+        "model": model,
+        "mean_latency_s": mean_latency,
+        "verdicts": verdicts,
+        "n_returned": len(latencies),
+        "n_verdict": sum(1 for v in verdicts if v is not None),
+    }
+
+
+def score_against_truth(cases: list[Case], verdicts: list[bool | None]) -> dict:
+    """Split the verdicts into the two errors that are NOT interchangeable.
+
+    A false REJECT costs a rewrite. A false ACCEPT ships an unfaithful answer
+    to a client, which is the whole reason the verifier exists — so they are
+    reported separately and never averaged into one "accuracy".
+    """
+    false_accept: list[str] = []
+    false_reject = 0
+    graded = 0
+    for (_q, _a, _c, should_accept, kind), verdict in zip(cases, verdicts, strict=False):
+        if verdict is None:
+            continue
+        graded += 1
+        if verdict and not should_accept:
+            false_accept.append(kind)
+        elif not verdict and should_accept:
+            false_reject += 1
+    return {"graded": graded, "false_accept": false_accept, "false_reject": false_reject}
 
 
 async def main(n: int) -> None:
-    triples = build_triples(n)
-    logger.info("Running verifier A/B on %d (query, answer, context) triples — NO client PII", len(triples))
+    cases = build_labelled_cases(n)
+    n_pos = sum(1 for c in cases if c[3])
+    logger.info(
+        "Running verifier A/B on %d cases (%d faithful, %d corrupted) — NO client PII",
+        len(cases),
+        n_pos,
+        len(cases) - n_pos,
+    )
 
     service = VerificationService()
     results: dict[str, dict] = {}
     for model in CANDIDATE_MODELS:
         print(f"\n=== {model} ===")
-        res = await run_model(service, model, triples)
+        res = await run_model(service, model, cases)
         results[model] = res
-        print(f"  ok={res['n_ok']}/{len(triples)}  mean_latency={res['mean_latency_s']:.2f}s")
+        print(
+            f"  verdicts={res['n_verdict']}/{len(cases)}  "
+            f"(returned={res['n_returned']})  mean_latency={res['mean_latency_s']:.2f}s",
+        )
+        if res["n_verdict"] < res["n_returned"]:
+            print(
+                f"  ⚠️  {res['n_returned'] - res['n_verdict']} call(s) came back WITHOUT a "
+                "verdict — the verifier degraded (check its log for the error type).",
+            )
+        truth = score_against_truth(cases, res["verdicts"])
+        res["truth"] = truth
+        fa = truth["false_accept"]
+        detail = ""
+        if fa:
+            kinds = ", ".join(f"{k}×{fa.count(k)}" for k in sorted(set(fa)))
+            detail = f" [{kinds}]"
+        print(
+            f"  FALSE-ACCEPT={len(fa)}{detail}  false-reject={truth['false_reject']}  "
+            f"(graded={truth['graded']})",
+        )
 
     baseline = results.get("gemini-3.5-flash")
-    if not baseline or baseline["n_ok"] == 0:
+    if not baseline or baseline["n_verdict"] == 0:
         print("\nBaseline gemini-3.5-flash produced zero usable verdicts — cannot compute agreement.")
         return
 
@@ -230,6 +403,12 @@ async def main(n: int) -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--n", type=int, default=10, help="number of (query, answer, context) triples to sample")
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=10,
+        help="number of SOURCE triples to sample; each yields up to 3 cases "
+        "(1 faithful + 2 corrupted), so --n 25 runs up to 75 calls per model",
+    )
     args = parser.parse_args()
     asyncio.run(main(args.n))

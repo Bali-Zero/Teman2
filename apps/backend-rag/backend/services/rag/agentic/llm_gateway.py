@@ -988,6 +988,10 @@ class LLMGateway:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 model=model_name,
+                # Same counters the ledger row above just recorded: the spend
+                # cap and the ledger must price one call one way.
+                cached_tokens=cached_tokens,
+                thinking_tokens=thinking_tokens,
             )
             return text_content, response, token_usage
 
@@ -1066,6 +1070,10 @@ class LLMGateway:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 model=model_name,
+                # Same counters the ledger row above just recorded: the spend
+                # cap and the ledger must price one call one way.
+                cached_tokens=cached_tokens,
+                thinking_tokens=thinking_tokens,
             )
 
             # Log token usage for monitoring
