@@ -2,7 +2,7 @@
 date: 2026-08-10
 domain: operations
 topic: system-wide work-queue acceleration — round 3 of the pr-queue-acceleration series
-adversarial_review: "cross-family, 2 seats — Codex gpt-5.6-terra (read-only sandbox, verified files live) + GLM claude-glm (agentic file reads); both verdicts folded in below; convergent first-move: L3 measurement-only"
+adversarial_review: codex
 sources:
   - research/operations/2026-07-19-pr-queue-acceleration-research.md (round 1)
   - research/operations/2026-07-19-pr-queue-acceleration-round2-zero-cost.md (round 2)
@@ -86,7 +86,7 @@ which is the difference between burst backlogs (54-min queue waits measured) and
 8. **L6 fail-open triad**: STALE — current tests.yml already fixed (E2E fails loudly, Test
    Summary reads `needs.*.result`). Verified live by the refuter.
 
-## 4. Method notes (for the next round)
+## Adversarial review — method notes for the next round
 
 - The refuter pass earned its cost: it killed one lever (L6 stale), split another (L1),
   re-costed two (L2 wrapper, L4 queue-depth), and dropped an unsafe allowlist entry (L5) —
