@@ -220,6 +220,34 @@ def test_cron_sensor_reads_job_alias_path(monkeypatch):
     assert reading.status == "green"
 
 
+def test_cron_sensor_nlm_deep_research_alias_reads_run_nb2_pipeline_receipt(monkeypatch):
+    """nlm_deep_research was disabled 2026-08-07 (duplicate of run_nb2_pipeline,
+    cure #3726). Its alias must track the surviving job's receipt, not the
+    frozen state file of the retired cron."""
+    import time
+
+    from cell.sensors import cron_sensor as cron_sensor_module
+    from cell.sensors.cron_sensor import CronSensor
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        alias_target = os.path.join(tmpdir, "run_nb2_pipeline.last.json")
+        with open(alias_target, "w") as f:
+            json.dump({"job": "run_nb2_pipeline", "ts": int(time.time()), "status": "ok"}, f)
+
+        monkeypatch.setattr(
+            cron_sensor_module,
+            "_JOB_STATE_ALIASES",
+            {"nlm_deep_research": [alias_target]},
+        )
+
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"nlm_deep_research": 24.0})
+        reading = sensor.read()
+        job = next(j for j in reading.jobs if j.name == "nlm_deep_research")
+
+    assert job.status == "green"
+    assert reading.status == "green"
+
+
 def test_cron_sensor_reads_t4_monitor_current_job_name():
     import time
 
