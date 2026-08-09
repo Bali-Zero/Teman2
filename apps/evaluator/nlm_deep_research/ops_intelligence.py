@@ -24,6 +24,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ def _query_notebook(notebook_id: str, query: str, timeout: int = NLM_QUERY_TIMEO
             capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode != 0:
-            logger.error("nlm query failed for %s: %s", notebook_id, result.stderr.strip())
+            logger.error("nlm query failed for %s: %s", notebook_id, nlm_error_reason(result))
             return None
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
