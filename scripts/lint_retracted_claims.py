@@ -699,64 +699,83 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                     bare = scan_text(probe + "\n> RETRACTED — see registry.\n", [c], pdirs, pwindow)
                     expect(f"PROD GUILT `{c.id}` bare directive (no correction stated) -> still flagged", len(bare) == 1)
 
-            # REGRESSION PIN (2026-08-09, unblocking #3837; hardened after a
-            # cross-family adversarial round). The kim-17x pattern matched a bare
+            # REGRESSION PIN (2026-08-09, unblocking #3837; hardened over two
+            # cross-family adversarial rounds). The kim-17x pattern matched a bare
             # `4.4x` (the Centralized figure the retracted sentence pairs with
-            # Independent's 17.2x) alongside the headline. Paired with the
-            # deliberately-broad context list (`agents?`/`never`/`error`/`Google`),
-            # a bare `4.4x` false-positived on ANY ratio: a ReDoS timing row in a
-            # ledger, "0.0049s -> 0.0216s (4.4x for 2x input)" with "agents"
-            # nearby, read as a re-citation of a paper about error amplification
-            # (superscar #3: form, not entity). The FIRST fix dropped `4.4x`
-            # outright — REFUTED by a cross-family round: `4.4x` sits verbatim in
-            # the corpus and a real re-citation can cite it WITHOUT `17.2x` and
-            # without ranking phrasing (so the sibling claim misses it too). The
-            # cure keeps `4.4x` under THIS claim (so existing RETRACTED[kim-2025-
-            # 17x-...] markers absolve the corpus) but requires error-amplification
-            # /propagation/rate language WITHIN the line, so a bare timing ratio no
-            # longer matches. Guilt: the causal 4.4x forms the refuter surfaced.
-            # Innocence: the ReDoS ratio. Both go red if the inline-context
-            # requirement on the 4.4x alternative is ever weakened.
+            # Independent's 17.2x) alongside the headline. With the deliberately-
+            # broad context list (`agents?`/`never`/`error`/`Google`), a bare
+            # `4.4x` false-positived on ANY ratio — a ReDoS timing row in a ledger,
+            # "0.0049s -> 0.0216s (4.4x for 2x input)" with "agents" nearby, read
+            # as a re-citation of a paper about error amplification (superscar #3:
+            # form, not entity), which blocked #3837.
+            #   Round 1 fix (drop `4.4x`) — REFUTED: `4.4x` sits verbatim in the
+            #     corpus and a re-citation can use it WITHOUT `17.2x` or ranking
+            #     phrasing, so both this claim and the sibling missed it.
+            #   Round 2 fix (require `error-amplif|propagat|rate` inline) — REFUTED:
+            #     the claim is a CAUSAL NARRATIVE, not a fixed vocabulary; synonyms
+            #     (compound/cascade/snowball, "review gates") walked straight
+            #     through. Whack-a-mole on vocabulary cannot win (W113: this guard
+            #     was bitten by paraphrase drift three times before).
+            # The cure keys off the claim's STRUCTURE, not its words: a `4.4x` is
+            # flagged only when the line ALSO carries a coordination-topology token
+            # (decentralized/centralized/peer-to-peer/Independent, or an error-
+            # amplification-narrative synonym) AND a prohibition/causal connective
+            # (never/forbid/must-not/therefore/why/reason/banned/confirm/hand-off).
+            # A benchmark ratio has neither; every real re-derivation of the no-peer
+            # rule has both. `4.4x` stays under THIS claim id so existing
+            # RETRACTED[kim-2025-17x-...] markers absolve the corpus (--all clean).
             _kim = [c for c in pclaims if c.id == "kim-2025-17x-error-amplification-as-cause"]
             if _kim:
                 _kc = _kim[0]
                 for _t in (
+                    # bare ReDoS timing ratios (the #3837 false positive + a variant)
                     "the suite failed at 96%: 0.0049s -> 0.0216s (4.4x for 2x input, max 3.0x) under agents load",
                     "the redos guard measured a 4.4x slowdown for 2x input under load average 9-11 with agents running",
+                    # a topology word but NO prohibition -> not a re-derivation
+                    "the decentralized message queue handles 4.4x more throughput than the old one",
+                    # topology + a weak 'so' but no real prohibition/causal-ban token
+                    "we saw a 4.4x speedup, so we shipped the centralized cache",
+                    # the 17.2x-plus-arch false friend the existing pattern already tolerates
+                    "postgres-flex 17.2 x86_64 with a 4.4x replication lag improvement",
                 ):
                     expect(
-                        f"PIN INNOCENCE kim-17x: a bare 4.4x ratio (no amplification language) is NOT the claim: {_t[:40]}",
+                        f"PIN INNOCENCE kim-17x: a benchmark 4.4x (no topology+prohibition structure) is NOT the claim: {_t[:32]}",
                         scan_text(_t + "\n", [_kc], pdirs, pwindow) == [],
                     )
                 for _t in (
+                    # round 1 — literal error-amplification vocabulary
                     "Kim et al.'s 4.4x error-amplification factor is why Google recommends agents never coordinate peer-to-peer.",
                     "The paper shows a 4.4x higher error rate under decentralized coordination, confirming subagents should never talk peer-to-peer.",
                     "4.4x error amplification (Kim 2025, arXiv:2512.08296) is the reason sub-agents must not hand off state peer-to-peer.",
                     "Kim et al. found centralized validation bottlenecks contain error amplification to 4.4x; therefore subagents must never communicate peer-to-peer.",
+                    # round 2 — the SAME claim under synonym substitution (compound/cascade/snowball/review gates)
+                    "Kim's benchmark shows errors compound 4.4x under decentralized coordination, which is why Google says agents should never talk peer-to-peer.",
+                    "Google's Kim et al. study found a 4.4x error cascade in peer-to-peer coordination, confirming agents must never talk directly.",
+                    "Centralized coordination keeps mistakes contained to just 4.4x by using strict review gates, which is the whole reason peer-to-peer talk between agents is banned.",
+                    "Kim et al. found that in Decentralized topology mistakes snowball 4.4x faster, so Google says sub-agents must never hand off state peer-to-peer.",
+                    # the 17.2x headline still caught
                     "Google's 17.2x error-amplification finding forbids peer-to-peer agents",
                 ):
                     expect(
-                        f"PIN GUILT kim-17x: a causal amplification re-citation IS caught: {_t[:40]}",
+                        f"PIN GUILT kim-17x: a causal (topology+prohibition) 4.4x/17.2x re-derivation IS caught: {_t[:32]}",
                         len(scan_text(_t + "\n", [_kc], pdirs, pwindow)) == 1,
                     )
-                # DECLARED LIMIT, pinned (superscar #3 lineage): scan_text matches
-                # a claim's pattern per-LINE, so the 4.4x alternative requires its
-                # amplification word on the SAME line. A re-citation that splits
-                # "4.4x" from "error amplification" across a line break is NOT
-                # caught. Closing it needs window-based context for 4.4x, which —
-                # with a distinct claim id — would demand a new marker at 13
-                # existing corpus mentions (disproportionate), and the shared broad
-                # context cannot be tightened for 4.4x without dropping the 17.2x
-                # evasion coverage it is deliberately broad for. The realistic
-                # single-line causal forms above ARE caught; this narrow split is
-                # the accepted residual, pinned so it is a choice, not a surprise.
-                expect(
-                    "known limit: a 4.4x split across lines from its amplification word is NOT caught",
-                    scan_text(
-                        "the paper reports 4.4x for centralized coordination\nwhich is error amplification, so avoid peer-to-peer\n",
-                        [_kc], pdirs, pwindow,
-                    ) == [],
-                )
+                # DECLARED LIMITS, pinned (superscar #3 lineage) — accepted residuals,
+                # not surprises. (1) scan_text matches a pattern per-LINE, so a `4.4x`
+                # split across a line break from its topology/prohibition tokens is not
+                # caught (closing it needs window context for 4.4x, which with a distinct
+                # claim id would demand a marker at 13 corpus mentions — disproportionate).
+                # (2) A sentence naming NEITHER a coordination topology NOR any
+                # prohibition/causal connective is not flagged — but such a sentence no
+                # longer asserts the no-peer rule, so the residual is near-vacuous.
+                for _t in (
+                    "the paper reports 4.4x for centralized coordination\nwhich is error amplification, so avoid peer-to-peer\n",
+                    "Kim's 4.4x figure is a number we noted once in passing\n",
+                ):
+                    expect(
+                        f"known limit: a 4.4x with no same-line topology+prohibition structure is NOT caught: {_t[:28]!r}",
+                        scan_text(_t, [_kc], pdirs, pwindow) == [],
+                    )
         else:
             print(
                 f"SELFTEST NOTE - production registry not found at {prod_path}: SKIPPING the "
