@@ -657,6 +657,18 @@
       "repo": "scripts/lib/claude_seat.sh",
       "_note": "NEW 2026-08-08, shipped with the promotion above. Sourceable OAuth-seat helper: resolves the claude binary absolutely (~/.local/bin is on neither the login-shell nor the cron PATH) and rotates the numbered seats, EXTRACTING the refusal classifier from cron-agent.sh rather than copying it — two tools that must agree on 'did this seat refuse' do not get two answers. Deliberately has no bare-keychain fallback: that rung answered 0 of 905 attempts and cannot work in a non-GUI session. Delivered next to ~/scripts/cron-agent.sh, which is the wrapper it extracts from in the delivered layout.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.wr2.external-bench.monthly.plist",
+      "repo": "infra/launchagents/com.balizero.wr2.external-bench.monthly.plist",
+      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Was undeclared while both its wrapper (~/scripts/wr2-external-bench-run.sh, promoted 2026-08-08) and this schedule lived on Pro alone — the two ARE the same superscar #1 finding, only the wrapper got closed first. Fixed in the same commit: the XML comment's 'Per agent spec at ~/.claude/agents/wr2-external-bench.md' was stale documentation, not a runtime path — the wrapper cd's into ${HOME}/nuzantara before invoking claude and passes the spec path as a RELATIVE --append-system-prompt reference, so it always resolved against the repo checkout's .claude/agents/, never against ~/.claude/agents/ (attic'd 2026-08-08). Nothing was broken at runtime; the comment now says what the code actually does.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
+      "repo": "infra/launchagents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
+      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Same shape and same day as the external-bench.monthly pair above: wrapper (~/scripts/wr2-ig-metrics-analyst-run.sh) was promoted 2026-08-08, this schedule was left behind. Same comment-staleness fix applied — the spec-path reference resolves against the repo checkout, not the attic'd ~/.claude/agents/.",
+      "machines": ["pro"]
     }
   ],
   "allow": [
