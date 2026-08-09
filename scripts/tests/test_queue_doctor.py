@@ -18,6 +18,7 @@ import os
 import stat
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -125,3 +126,46 @@ def test_lock_held_by_dead_pid_reads_stale_and_warns_hands_off(tmp_path: Path) -
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "STALE" in proc.stdout
     assert "do NOT rm the lockdir by hand" in proc.stdout
+
+
+def test_lock_pid_read_failure_is_cannot_verify(tmp_path: Path) -> None:
+    lock = tmp_path / "suite.lock"
+    lock.mkdir()
+    (lock / "pid").mkdir()  # opening a directory as a file raises OSError
+
+    proc = _run_doctor(tmp_path, gh_body=_HEALTHY_GH, ssh_body=_HEALTHY_SSH, lock=lock)
+
+    assert proc.returncode == 4, proc.stdout + proc.stderr
+    assert "CANNOT-VERIFY" in proc.stdout
+    assert "could not read holder pid" in proc.stdout
+    assert "STALE" not in proc.stdout
+
+
+def test_lock_stat_failure_is_cannot_verify(tmp_path: Path) -> None:
+    lock = tmp_path / "suite.lock"
+    lock.mkdir()
+    fifo = tmp_path / "holder-pid.fifo"
+    os.mkfifo(fifo)
+    (lock / "pid").symlink_to(fifo)
+    writer_errors: list[BaseException] = []
+
+    def remove_lock_before_stat() -> None:
+        try:
+            with fifo.open("w", encoding="utf-8") as fh:
+                (lock / "pid").unlink()
+                lock.rmdir()
+                fh.write(str(os.getpid()))
+        except BaseException as exc:  # pragma: no cover - asserted below
+            writer_errors.append(exc)
+
+    writer = threading.Thread(target=remove_lock_before_stat, daemon=True)
+    writer.start()
+    proc = _run_doctor(tmp_path, gh_body=_HEALTHY_GH, ssh_body=_HEALTHY_SSH, lock=lock)
+    writer.join(timeout=5)
+
+    assert not writer.is_alive(), "FIFO writer did not finish"
+    assert not writer_errors, writer_errors
+    assert proc.returncode == 4, proc.stdout + proc.stderr
+    assert "CANNOT-VERIFY" in proc.stdout
+    assert "could not stat lock directory" in proc.stdout
+    assert "held for -1 min" not in proc.stdout
