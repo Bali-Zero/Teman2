@@ -105,24 +105,65 @@ def is_healthy(declared: str) -> bool:
 
 LAUNCHAGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 
+#: Where a retirement is *declared* rather than merely performed. The live dir
+#: records what happened to the file; the repo records what we MEANT.
+REPO_LAUNCHAGENTS_DIR = Path(__file__).resolve().parent.parent / "infra" / "launchagents"
+
+#: Suffix fragments that ASSERT an intentional retirement.
+#:
+#: `bak`/`pre-` are deliberately NOT here. A backup is not a retirement: a job
+#: that was backed up and then LOST looks exactly like `<label>.plist.bak-*`
+#: with no active plist, and treating that as a firebreak would mask a genuine
+#: silent death — the one thing this function promises never to do (W94: the
+#: fix of an over-match births the under-match twin). The bare `.bak` suffix
+#: below predates this list and is kept as-is; narrowing it is a separate
+#: question with its own measurement to do.
+RETIREMENT_MARKERS = ("disabled", "superseded", "retired", "archived")
+
+
+def _asserts_retirement(suffix: str) -> bool:
+    """Judge the SUFFIX, never the whole filename.
+
+    The label is part of the filename, so `com.balizero.retired-feeder.plist.example`
+    would read as a retirement under a whole-name test — a template excusing a job
+    that was never installed. Every predicate is a place where a form can lie about
+    an entity (W105); this one is asked about the part that carries the assertion.
+    """
+    low = suffix.lower()
+    return any(m in low for m in RETIREMENT_MARKERS) or low == "bak"
+
 
 def plist_intentionally_disabled(label: str) -> str | None:
-    """If a LaunchAgent plist for `label` exists ONLY in a disabled/renamed form
-    (e.g. *.plist.disabled-W81-*, *.disabled-*), the edge is a deliberate firebreak,
-    not a regression. Returns the disabled filename if so, else None.
+    """If a LaunchAgent plist for `label` exists ONLY in a retired/renamed form,
+    the edge is a deliberate firebreak, not a regression. Returns the filename.
 
-    An active plist == exactly '<label>.plist'. Anything else carrying the label as a
-    prefix (disabled-*, superseded-*, .bak) is an intentional non-arming. An
-    active-but-dead plist still has '<label>.plist' present → returns None → it still
-    REGRESSES (a genuine silent death is never masked).
+    An active plist == exactly '<label>.plist'. An active-but-dead plist still has
+    '<label>.plist' present → returns None → it still REGRESSES (a genuine silent
+    death is never masked).
+
+    TWO PLACES, because a retirement can be recorded in either (2026-08-09).
+    `com.balizero.wr2.newsletter` was retired on 2026-07-15 — superseded by a Fly
+    daily task — and the retirement was declared IN THE REPO
+    (`…plist.disabled-2026-07-15-superseded-by-fly-daily-task`), while the live dir
+    kept only `…plist.bak-tcc-20260716` from the July TCC move. Looking solely at
+    `~/Library/LaunchAgents` therefore read a deliberate retirement as a regression,
+    and `verify-connectome` — the guardian of the guardians — alarmed every morning
+    at 07:30 on the CORRECT state (W116).
+
+    Nobody saw it: both of its P0s were dropped `p0_overflow`, so the false alarm
+    was invisible AND the channel was proven unable to carry a true one.
     """
-    if not label.startswith("com.") or not LAUNCHAGENTS_DIR.is_dir():
+    if not label.startswith("com."):
         return None
-    if (LAUNCHAGENTS_DIR / f"{label}.plist").exists():
+    if LAUNCHAGENTS_DIR.is_dir() and (LAUNCHAGENTS_DIR / f"{label}.plist").exists():
         return None
-    for f in LAUNCHAGENTS_DIR.glob(f"{label}.plist.*"):
-        if "disabled" in f.name or "superseded" in f.name or f.name.endswith(".bak"):
-            return f.name
+    prefix = f"{label}.plist."
+    for directory in (LAUNCHAGENTS_DIR, REPO_LAUNCHAGENTS_DIR):
+        if not directory.is_dir():
+            continue
+        for f in sorted(directory.glob(f"{prefix}*")):
+            if _asserts_retirement(f.name[len(prefix):]):
+                return f.name
     return None
 
 
