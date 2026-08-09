@@ -22,7 +22,7 @@ export async function GET(
       actorKeySecret: bindings.ACTOR_KEY_SECRET ?? "",
       roleAllowlist: roles,
     });
-    if (!authorize(viewer, "magazine:read", roles).allowed) return denied(401);
+    if (!authorize(viewer, "internal:read", roles).allowed) return denied(401);
   } catch {
     return denied(401);
   }
