@@ -115,15 +115,23 @@ def probe_prepush_lock() -> None:
     try:
         with open(pid_path, encoding="utf-8") as fh:
             holder_pid = fh.read().strip()
-    except OSError:
-        pass
+    except OSError as exc:
+        _cannot_verify(
+            "pre-push lock",
+            f"could not read holder pid {pid_path}: {type(exc).__name__}: {str(exc)[:160]}",
+        )
+        return
     age_min = -1.0
     try:
         age_min = (
             _dt.datetime.now() - _dt.datetime.fromtimestamp(os.stat(LOCK).st_mtime)
         ).total_seconds() / 60
-    except OSError:
-        pass
+    except OSError as exc:
+        _cannot_verify(
+            "pre-push lock",
+            f"could not stat lock directory {LOCK}: {type(exc).__name__}: {str(exc)[:160]}",
+        )
+        return
     alive = False
     if holder_pid.isdigit():
         try:
