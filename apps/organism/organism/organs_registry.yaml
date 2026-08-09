@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 5785e7c57f0c1931bd0e800185903ce93ec972f32dece2808ca4135d26254ada
+checksum: 5742f25d24112e95461883bc6b1547b18c51f598453e8723e24c87128b65a98c
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1342,6 +1342,32 @@ organs:
   recovery_params:
     host: pro
     label: com.balizero.wr2.reflexion.weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: wr2.ig_metrics_analyst_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh
+  dependencies:
+  - wr2.reflexion_weekly
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.ig-metrics-analyst.weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: wr2.external_bench_monthly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2764800
+  owner_module: infra/launchagents/wrappers/wr2-external-bench-run.sh
+  dependencies:
+  - wr2.ig_metrics_analyst_weekly
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.external-bench.monthly
   severity_on_silence: info
   cicatrix_refs: []
 - id: wr2.supervisor_watchdog

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.ig-metrics-analyst.weekly — Phase D follow-up (2026-05-10).
+
+  Closes the WR2 ciclo-vitale loop: AFTER Reflexion (Sunday 02:30) + AFTER
+  ig-scraper.daily has populated engagement_metrics, this LaunchAgent runs
+  the wr2-ig-metrics-analyst spec (the repo's .claude/agents/wr2-ig-metrics-analyst.md
+  — the wrapper cd's into ${HOME}/nuzantara and passes that path as a RELATIVE
+  reference, so it resolves against the repo checkout, never against
+  ~/.claude/agents/, which is attic'd as of 2026-08-08) every Monday 06:07 WITA.
+  Off-minute (07) per CLAUDE.md cron-jitter advice.
+
+  Pre-flight: requires ≥10 published carousels with engagement metrics.
+  If insufficient, writes a stub `_proposed-amendments/<date>-ig-insights-insufficient-data.md`
+  and exits 0. Otherwise spawns Claude Sonnet 4.6 with the agent spec via
+  Anthropic OAuth (no API key — CLAUDE.md global rule).
+
+  Pre-flight gate documented in wrapper script `~/scripts/wr2-ig-metrics-analyst-run.sh`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.ig-metrics-analyst.weekly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/wr2-ig-metrics-analyst-run.sh</string>
+    </array>
+
+    <!-- Monday 06:07 WITA (Asia/Makassar local time) — off the :00 minute mark
+         to spread fleet load per CLAUDE.md cron-jitter advice. AFTER Reflexion
+         (Sunday 02:30) and AFTER 24h of ig-scraper running daily so metrics
+         have been collected from the prior week's publishes. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>7</integer>
+    </dict>
+
+    <!-- Run-to-completion script. Wrapper handles its own logging + Telegram
+         opt-in. No KeepAlive. -->
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2-ig-metrics-analyst.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2-ig-metrics-analyst.launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- ThrottleInterval: avoid tight respawn if wrapper exits 1 within 30s. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>
