@@ -43,7 +43,22 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-08 — keep current)
+## 1. LIVE STATE (last update 2026-08-09 — keep current)
+
+**🟢 2026-08-09 — GOLD FULL-POPULATION LIVE: 314 codes (from 3 pilots), G1-G5 all innocent — but only
+after G2 caught a real production bug and forced a same-day fix.** The morning attempt (314 = 322 minus
+8 phantom codes, see below) applied cleanly but POST-MEASURE found **G2 violated and reproducible**: on
+bare-code queries 3 of 10 sampled gold codes (56101/47721/85312) returned the GOLD point at rank1 with
+the BPS twin ABSENT from the top-5. Root cause: `_get_kbli_payload_from_qdrant`'s exact-code fast-path
+(`kbli_notebook.py`) scrolled Qdrant with `limit:1` and no `order_by` — with two points now sharing one
+`kode_kbli`, the winner was a per-code coin-flip on the two points' unrelated deterministic UUIDs
+(10/10 correlation confirmed empirically), zero relation to score/doc_type. Same-day rollback per a
+pre-declared contract, then the real fix: the filter now POSITIVELY selects `doc_type==kbli_bps` instead
+of excluding gold (#3863, deployed v4057, proven live in-container and on the search surface). Re-apply
+then measured G1-G5 all clean, G2 15/15 including the 3 ex-violators (#3865). Open, orthogonal:
+8 phantom codes in `kbli-gold-content.ts` with no 2025 counterpart (excluded from this apply,
+re-keying decision is `operator[business]`), and the `sektor`/`section` payload field remains unreliable
+(unscoped, tracked separately).
 
 **🟢 2026-08-08 (late evening) — THE INDEXERS CAN NOW RUN WHERE THEIR CREDENTIALS LIVE, AND THE FIRST
 THREE GOLD EDITORIAL POINTS EXIST.** Three PRs, each forced by proving the previous one: #3823
