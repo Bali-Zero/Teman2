@@ -1,7 +1,8 @@
 ---
 date: 2026-08-09
 domain: visa
-adversarial_review: codex # gpt-5.6-sol, R1 round 2026-08-09: 20 objections, verdict BLOCKER. Retractions and corrections below are its result.
+adversarial_review: codex
+adversarial_review_note: "gpt-5.6-sol, R1 round 2026-08-09 — 20 objections, verdict BLOCKER; the retractions and corrections in this document are its result"
 client_case: none (Visa Oracle V2 decision-tree audit)
 sources:
   - rulepack-prod-004.source.json (seq-4, active SHADOW since 2026-08-08)
@@ -45,6 +46,48 @@ real. Static count: 25 purpose-only rules, 38 discriminating.
 | **REMOTE_WORK (E33G)** | 0 | income/local-market discriminating | ✅ LEGITIMATE |
 | **TOURISM** | 0 | single-entry → SUPPORTED B1,C1; multi-entry → D1 review (D1 was cured with an entry_pattern gate) | ✅ CORRECT |
 | **MEDICAL / OTHER** | — | no product covers them → NEEDS_INPUT | ⚪ COVERAGE GAP (business: does Bali Zero serve these lines?) |
+
+## Adversarial review
+
+Seat: **codex** (`gpt-5.6-sol`, medium effort), 2026-08-09, prompted to REFUTE this
+document. 20 objections, verdict **BLOCKER**. Author did not grade the author's own work;
+and per W65 ("even the refuter hallucinates") every objection acted on below was
+independently re-measured before being accepted.
+
+**Survived and acted on** (each is now a retraction/correction in the text above):
+
+1. *"multiple activations open by design, newest `created_at` wins" contradicts the schema.*
+   **CONFIRMED, and the mechanism was mine**: the probe filtered `legal_period` alone,
+   omitting the runtime's `system_period` clause. Re-measured — exactly ONE active row
+   (seq-5); seq 1/3/4 carry a CLOSED `system_period`. Retracted in full.
+2. *The minor "safety defect" audits the evaluator, not the served runtime.* **CONFIRMED**:
+   `_apply_minor_privacy_hold` (`evaluate_path.py:902`, invoked `:1459`) already abstains for
+   known minors. Retracted.
+3. *The rule keys on `family.sponsor_confirmed`, which is not a guardian fact.* **CONFIRMED**
+   from the adapter's own docstring ("no guardian-identity/consent fact"). Naming defect
+   recorded; a real fix needs a contract expansion.
+4. *"no `visa_ledger_owner`" is stale.* **CONFIRMED** — all six capability roles measured
+   present 2026-08-09. The enforce-gate runbook is itself stale on this point.
+5. *"seq-5 is served" is not a prove-live test.* **ACCEPTED** — scope narrowed to a DB fact
+   plus the selection query's source; a runtime receipt naming sequence 5 is still owed.
+6. *`shadow.py:77` miscited for the no-cache claim.* **ACCEPTED** — that line is about
+   `MATCH_MODE`; the citation was dropped and the claim restated from the resolver itself.
+7. *`build_seq5_full.py` is not in the repo.* **ACCEPTED** — it is a session scratchpad;
+   the reproducible artifacts are the checked-in source pack + `compile_pack.py`.
+8. *The kid's causal history is unsupported.* **ACCEPTED** — the syntax facts and the live
+   value are proven; the "copied from the docstring" story is not, and was withdrawn.
+
+**Raised, not resolved here — recorded as open limitations** (they narrow this document's
+claims rather than change a shipped artifact):
+
+- The FAMILY / SECOND_HOME "legitimate" verdicts rest on 1–3 personas each, not on
+  exhaustive coverage; "redundant but harmless" is therefore unproven for unexplored fact
+  patterns. The per-branch table should be read as evidence-so-far, not a truth table.
+- "BUSINESS is not a defect" is an **owner-accepted** position (Zero, after pushback) plus
+  observed reason codes — not a cited design artifact or regulation.
+- The "38 schede testate in prod" line describes work the team is *starting*, not a completed
+  validation; no result table, timestamps or case manifest exists yet. The number equals the
+  pack's product count and should not be read as a test-pass count.
 
 ## Minor handling (RETRACTED as a "safety defect" — corrected 2026-08-09)
 
