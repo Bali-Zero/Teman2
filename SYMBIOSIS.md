@@ -186,7 +186,7 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
    >
    > ## IL TRANSITO DI PII SU CLOUD ESTERO **NON È** UN CANCELLO SULLA SCELTA DEL FORNITORE.
    >
-   > Il «gap aperto: né DPA né consenso presenti» qui sotto è **CHIUSO PER DECISIONE**: il consenso
+   > Il precedente gap «né DPA né consenso presenti» è **CHIUSO PER DECISIONE**: il consenso
    > esplicito del cliente si raccoglie sempre, per contratto, come condizione di servizio. È la terza
    > voce della cascata Art. 56 ed è quella su cui stiamo. Nessuna sessione deve più trattare il
    > transito come un divieto, né ri-aprire la questione.
@@ -204,7 +204,7 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
    > tecnico, misurati; le regole vendor-specifiche restano quelle scritte in `CLAUDE.md §5`, e non
    > sono questa.
 
-   **Fase PROD (al go-live — da ri-armare):** la frontiera PII torna **assoluta** sul percorso che tocca dati cliente reali. Il riarmo e' un task esplicito di pre-produzione, non automatico — vedi memory `decision_law2_dev_phase_recalibration_2026_06_23`. La base giuridica del transito cloud in PROD (alleggerimento 2026-06-20): UU PDP **non** impone data-localization per agenzie private di servizi (obbligo onshore solo per banche POJK 11/2022 e crypto POJK 27/2024); il transito/storage di PII cliente su cloud estero (Drive/Fly USA) e' **lecito** sotto Art. 56 con una base valida — cascata: adequacy (USA non ce l'ha) → **safeguard vincolante** (Google Workspace DPA / SCC) → **consenso esplicito** del cliente; interim notifica KOMDIGI (MOCI Reg 20/2016 + GR 71/2019). Quindi in PROD: **il processing PII resta locale-sovrano sul Pro** (cloud_vision_gate fail-closed gia' lo enforce), **il transito-storage su cloud richiede DPA + consenso** (gap aperto: ne' DPA ne' consenso presenti — vedi memory `unresolved`). Il mirror OSINT/WhatsApp raw resta Pro-bound **per scelta operativa** (riduce l'onere-della-prova Art. 56), non per divieto assoluto.
+   **Fase PROD (al go-live — da ri-armare):** la frontiera PII torna **assoluta** sul percorso che tocca dati cliente reali. Il riarmo e' un task esplicito di pre-produzione, non automatico — vedi memory `decision_law2_dev_phase_recalibration_2026_06_23`. La base giuridica del transito cloud in PROD (alleggerimento 2026-06-20): UU PDP **non** impone data-localization per agenzie private di servizi (obbligo onshore solo per banche POJK 11/2022 e crypto POJK 27/2024); il transito/storage di PII cliente su cloud estero (Drive/Fly USA) e' **lecito** sotto Art. 56 con una base valida — cascata: adequacy (USA non ce l'ha) → **safeguard vincolante** (Google Workspace DPA / SCC) → **consenso esplicito** del cliente; interim notifica KOMDIGI (MOCI Reg 20/2016 + GR 71/2019). Quindi in PROD: **il processing PII resta locale-sovrano sul Pro** (cloud_vision_gate fail-closed gia' lo enforce), **il transito-storage su cloud si fonda sul consenso esplicito del cliente**, raccolto sempre per contratto come condizione di servizio (terza voce della cascata Art. 56; gap chiuso per decisione). Il mirror OSINT/WhatsApp raw resta Pro-bound **per scelta operativa** (riduce l'onere-della-prova Art. 56), non per divieto assoluto.
 
 3. **Event-driven, durabilità per canale.** Nessun polling, nessun orchestratore centrale. Ogni canale evento ha la propria strategia di durabilità, scelta in base al consumer:
 
