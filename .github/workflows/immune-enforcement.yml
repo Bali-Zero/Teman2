@@ -169,6 +169,8 @@ jobs:
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
               scripts/test_cron_single_voice.sh|\
+              scripts/dlq_autopilot.py|\
+              scripts/tests/test_dlq_terminal_speaks_once.py|\
               apps/evaluator/nlm_deep_research/scripts/*|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
@@ -456,6 +458,25 @@ jobs:
           # run_peraturan_ingestion.sh runs from crontab with NO wrapper, so an
           # unconditional deferral would have made it mute.
           bash scripts/test_cron_single_voice.sh
+
+      - name: DLQ terminal speaks once (one stuck job, one P0)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # A job going TERMINAL used to offer TWO p0 records at the same second
+          # — escalate_to_claude_code()'s "Escalated to Claude Code: <job>" and
+          # then the branch's own "TERMINAL: <job> reached N attempts" — both
+          # saying a human must act, for one event. Measured on the live spool
+          # 2026-08-08: dlq-autopilot was the day's loudest producer at 24 of 69
+          # offered records, and 22 of those 24 were eleven identical pairs.
+          # This matters beyond noise: the P0 budget is 12/day and 1248 of 1251
+          # dropped P0s were dropped for overflow, so each duplicate costs a slot
+          # some other organ's first-ever alarm needed.
+          # Guilt AND innocence: the terminal path must emit exactly one alert
+          # AND still name the task file (the information was never duplicated —
+          # the escalation named the file, the terminal line named the recovery
+          # command, so the cure is one message carrying both, not one dropped),
+          # while the ordinary escalation path must keep its own alert.
+          python -m pytest scripts/tests/test_dlq_terminal_speaks_once.py -q
 
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
         if: steps.paths.outputs.relevant == 'true'
