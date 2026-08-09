@@ -105,6 +105,28 @@ CALLED="$FAKE/nuzantara/scripts/CALLED.txt"
 # case and miss the live one (W108 GOTCHA-2: a poor fake measures its poverty).
 cp "$REPO_ROOT/scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py" "$FAKE/scripts/"
 cp "$REPO_ROOT/scripts/intel-lake-outbox-drain/intel_lake_outbox.py" "$FAKE/scripts/" 2>/dev/null || true
+
+# httpx stub. The drain imports httpx at module level for its POST to the Fly
+# backend; `_alert_rejected` never touches it. This job is deliberately hermetic
+# — it installs no third-party packages, precisely so that a dependency gap can
+# never mask a regrowth violation (the split documented at the top of
+# tg-gateway.yml) — so the stub keeps it that way instead of adding an install
+# line. It also removes a false green: with httpx present locally and absent in
+# CI, this corpus passed on the dev machine and failed on the runner, which is
+# the same "the dev box cannot reproduce the red" shape as W108. The stub sits
+# in $FAKE/scripts, which is first on sys.path for the driver below only.
+cat > "$FAKE/scripts/httpx.py" <<'HTTPXSTUB'
+"""Minimal stand-in: imported by the drain, unused by the alert path."""
+
+
+class Client:  # pragma: no cover - never called from _alert_rejected
+    def __init__(self, *a, **k):
+        raise RuntimeError("httpx stub: the alert path must not make HTTP calls")
+
+
+def post(*a, **k):  # pragma: no cover
+    raise RuntimeError("httpx stub: the alert path must not make HTTP calls")
+HTTPXSTUB
 rm -f "$CALLED"
 HOME="$FAKE" python3 - "$FAKE" <<'PYDRIVE' >/dev/null 2>&1
 import importlib.util
@@ -114,8 +136,19 @@ sys.path.insert(0, f"{fake}/scripts")
 spec = importlib.util.spec_from_file_location("d", f"{fake}/scripts/intel-lake-outbox-drain.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
+# Record which httpx actually won the import, so the assertion below can prove
+# this run took the same path a runner without httpx installed would take.
+import httpx
+open(f"{fake}/httpx_origin.txt", "w").write(httpx.__file__ or "<none>")
 m._alert_rejected(7, 3, 10)
 PYDRIVE
+# The stub must SHADOW a real httpx when one is installed, or the local run is
+# not representative of CI and the next false green goes unnoticed.
+if grep -q "^$FAKE/" "$FAKE/httpx_origin.txt" 2>/dev/null; then
+  ok "intel-lake: importa lo stub httpx (corsa identica a un runner senza httpx)"
+else
+  bad "intel-lake: ha importato l'httpx REALE ($(cat "$FAKE/httpx_origin.txt" 2>/dev/null)) — la corsa locale non riproduce la CI"
+fi
 if [ -f "$CALLED" ]; then
   ok "intel-lake: gateway raggiunto dal layout HOME piatto"
   grep -q '^intel-lake-outbox:rejected$' "$CALLED" \
