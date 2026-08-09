@@ -56,6 +56,7 @@ const mdxComponents = {
   AskZantara,
   ConfidenceMeter,
   Checklist,
+  CheckList: Checklist,
   InfoCard,
   GlossaryTerm,
   AnswerBox,

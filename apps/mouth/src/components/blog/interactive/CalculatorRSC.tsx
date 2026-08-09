@@ -73,11 +73,16 @@ function inferFormat(
   value: number,
   currency?: string,
 ): CalculatorResult["format"] {
-  if (currency) {
+  if (normalizeCurrencyCode(currency)) {
     return "currency";
   }
 
   return Math.abs(value) <= 1 ? "percentage" : "number";
+}
+
+function normalizeCurrencyCode(currency?: string): string | undefined {
+  const normalized = currency?.trim().toUpperCase();
+  return normalized && /^[A-Z]{3}$/.test(normalized) ? normalized : undefined;
 }
 
 function normalizeLegacyResult(
@@ -87,15 +92,17 @@ function normalizeLegacyResult(
     return result;
   }
 
-  const currency = result.currency;
+  const currency = normalizeCurrencyCode(result.currency);
   const breakdown = (result.breakdown ?? []).map((item) => {
     const value = item.amount ?? item.value ?? 0;
+
+    const itemCurrency = normalizeCurrencyCode(item.currency) ?? currency;
 
     return {
       label: item.label,
       value,
-      format: item.format ?? inferFormat(value, item.currency ?? currency),
-      currency: item.currency ?? currency,
+      format: item.format ?? inferFormat(value, itemCurrency),
+      currency: itemCurrency,
       description: item.description,
       isTotal: item.isTotal,
       highlight: item.highlight,
@@ -145,16 +152,20 @@ function calculateStaticResults({
 
 function formatValue(result: CalculatorResult): string {
   if (result.format === "currency") {
-    const currency = result.currency ?? "IDR";
+    const currency = normalizeCurrencyCode(result.currency) ?? "IDR";
 
     if (currency === "IDR") {
       return `Rp ${result.value.toLocaleString("id-ID")}`;
     }
 
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-    }).format(result.value);
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+      }).format(result.value);
+    } catch {
+      return result.value.toLocaleString("en-US");
+    }
   }
 
   if (result.format === "percentage") {
