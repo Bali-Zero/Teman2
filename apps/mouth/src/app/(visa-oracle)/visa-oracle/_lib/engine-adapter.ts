@@ -26,6 +26,16 @@ import type {
 
 const text = (en: string, id: string): LocalizedText => ({ en, id });
 
+const SPOUSAL_WORK_ARTICLE_61_COPY = text(
+  "Article 61 of UU 6/2011 allows qualifying mixed-marriage stay-permit holders to work and/or conduct business to support themselves or their family. This assessment does not verify the separate requirements, if any, for employment or self-employment/business.",
+  "Pasal 61 UU 6/2011 memperbolehkan pemegang izin tinggal yang memenuhi kategori perkawinan campur untuk melakukan pekerjaan dan/atau usaha guna memenuhi kebutuhan hidupnya dan/atau keluarganya. Penilaian ini tidak memverifikasi persyaratan terpisah, jika ada, untuk hubungan kerja atau usaha mandiri.",
+);
+
+const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
+  "Article 60(2) of UU 6/2011 requires two years of marriage and a signed Pernyataan Integrasi for a mixed-marriage KITAP. These prerequisites are not verified by this assessment.",
+  "Pasal 60 ayat (2) UU 6/2011 mensyaratkan usia perkawinan mencapai dua tahun dan Pernyataan Integrasi yang ditandatangani untuk KITAP perkawinan campur. Penilaian ini belum memverifikasi kedua prasyarat tersebut.",
+);
+
 const NEXT_STEPS: OutcomeNextSteps = [
   {
     id: "review-decision",
@@ -187,10 +197,10 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "As the applicant is a minor, guardian consent is required.",
     "Karena pemohon masih di bawah umur, diperlukan persetujuan wali.",
   ),
-  SPOUSAL_WORK_KEMENAKER_CAVEAT: text(
-    "A spouse on this permit may work only with the separate Kemenaker authorisation — the permit alone does not carry work rights.",
-    "Pasangan dengan izin ini hanya dapat bekerja dengan otorisasi Kemenaker terpisah — izin ini sendiri tidak memberikan hak kerja.",
-  ),
+  // Keep the old key safe for persisted seq-5 decisions while seq-6 emits
+  // the Article 61-specific key below.
+  SPOUSAL_WORK_KEMENAKER_CAVEAT: SPOUSAL_WORK_ARTICLE_61_COPY,
+  SPOUSAL_WORK_ARTICLE_61_CONTEXT: SPOUSAL_WORK_ARTICLE_61_COPY,
   REQUIRED_RPTKA_APPROVAL: text(
     "Your employer must obtain RPTKA approval before this permit can be issued.",
     "Pemberi kerja Anda harus memperoleh persetujuan RPTKA sebelum izin ini dapat diterbitkan.",
@@ -243,10 +253,11 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "The deposit or property value behind this permit must be maintained for as long as you hold it.",
     "Nilai deposito atau properti yang mendasari izin ini harus dipertahankan selama izin berlaku.",
   ),
-  KITAP_CONVERSION_TWO_YEAR_DOOR: text(
-    "Conversion to KITAP opens after two years on this status.",
-    "Konversi ke KITAP terbuka setelah dua tahun pada status ini.",
-  ),
+  // The alias prevents historical seq-5 decisions from rendering the old,
+  // incorrect "two years on this status" statement.
+  KITAP_CONVERSION_TWO_YEAR_DOOR: KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY,
+  KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED:
+    KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY,
   BRIDGING_SOURCE_STATUS_VERIFY: text(
     "We verify your current immigration status before a bridging route can be filed.",
     "Kami memverifikasi status keimigrasian Anda saat ini sebelum jalur peralihan dapat diajukan.",
