@@ -20,6 +20,7 @@ import pytest
 from scripts.verifier_model_ab import (
     SYNTHETIC_TRIPLES,
     build_labelled_cases,
+    build_triples,
     corrupt_number,
     corrupt_with_invented_requirement,
     score_against_truth,
@@ -122,13 +123,46 @@ def test_every_negative_draft_differs_from_its_own_context():
 
 def test_faithful_cases_are_still_present_and_unmodified():
     """INNOCENCE: adding negatives must not disturb the positives — false
-    REJECT rate is measured on them."""
+    REJECT rate is measured on them.
+
+    The first version asserted `draft in context`, which is NOT a property of
+    a faithful case: it is a property of ONE of the two corpora this harness
+    can draw from. `curated_qa` rows use the vetted answer as its own context
+    (draft IS the context, verbatim); `SYNTHETIC_TRIPLES` positives are genuine
+    PARAPHRASES of a differently-worded context. Locally 20 of the 21
+    `data/curated_qa/*.jsonl` files are untracked, so a dev machine gets the
+    verbatim corpus and CI — which has the one tracked file — tops up from the
+    synthetic ones and got a paraphrase. The test went red in CI and green here
+    for that reason alone, and CI was right.
+
+    "Present and unmodified" is the claim, so assert exactly that, against the
+    source triples: the corruption step must not have touched the positive.
+    """
+    triples = build_triples(4)
     cases = build_labelled_cases(4)
     faithful = [c for c in cases if c[3]]
     assert len(faithful) == 4
-    for _query, draft, context, _should_accept, kind in faithful:
+    for (_q, answer, ctx), (_query, draft, context, _ok, kind) in zip(
+        triples, faithful, strict=True,
+    ):
         assert kind == "faithful"
-        assert draft in context
+        assert draft == answer, "the positive must reach the verifier unmodified"
+        assert context == ctx, "and keep its own grounding"
+
+
+def test_synthetic_positives_are_paraphrases_not_copies_of_their_context():
+    """The synthetic corpus is the ONLY one here whose positives are realistic.
+
+    A verifier scoring 1.0 on an answer that is a byte-for-byte copy of its own
+    context has been asked nothing. Every false-REJECT figure this harness can
+    produce depends on at least one positive being a paraphrase — so if someone
+    "tidies" these into copies, the measurement dies silently and every run
+    still looks fine. Pin it.
+    """
+    assert SYNTHETIC_TRIPLES, "the fallback corpus must not be empty"
+    for _query, answer, context in SYNTHETIC_TRIPLES:
+        assert answer not in context, "a synthetic positive must not be a verbatim copy"
+        assert not any(answer == chunk for chunk in context)
 
 
 # ── the scorer keeps the two errors apart ───────────────────────────────────
