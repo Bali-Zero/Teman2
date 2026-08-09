@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { FrontPageView } from "@/lib/server/magazine-read-model";
 
 import { StoryCard } from "./story-card";
-import { SystemStatusStrip } from "./system-status-strip";
 
 type FrontPageProps = Readonly<{
   page: FrontPageView;
@@ -134,11 +133,6 @@ export function FrontPage({ page, archive = false }: FrontPageProps) {
           </Link>
         </section>
       ) : null}
-
-      <SystemStatusStrip
-        systems={page.sourceSystems}
-        unavailable={page.unavailable}
-      />
     </div>
   );
 }

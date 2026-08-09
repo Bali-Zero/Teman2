@@ -5,7 +5,7 @@ import type {
   EditionPlacementV1,
   StoryVersionV1,
 } from "../contracts/publication.ts";
-import type { Viewer } from "./authorization.ts";
+import type { Permission, Viewer } from "./authorization.ts";
 import { authorize, parseRoleAllowlist } from "./authorization.ts";
 import { isAssetEligible } from "./asset-eligibility.ts";
 import { requireViewer } from "./identity.ts";
@@ -171,7 +171,9 @@ type AssetRow = Readonly<{
   rights_status: string;
 }>;
 
-export async function requireMagazineViewer(): Promise<Viewer | null> {
+export async function requireMagazineViewer(
+  permission: Permission = "magazine:read",
+): Promise<Viewer | null> {
   try {
     const runtime = getMagazineBindings();
     const roleAllowlist = parseRoleAllowlist(runtime.ROLE_ALLOWLIST_JSON);
@@ -179,9 +181,7 @@ export async function requireMagazineViewer(): Promise<Viewer | null> {
       actorKeySecret: runtime.ACTOR_KEY_SECRET ?? "",
       roleAllowlist,
     });
-    return authorize(viewer, "magazine:read", roleAllowlist).allowed
-      ? viewer
-      : null;
+    return authorize(viewer, permission, roleAllowlist).allowed ? viewer : null;
   } catch {
     return null;
   }
@@ -289,8 +289,7 @@ async function readApprovedAsset(
         dlpStatus: "passed",
         sanitizationStatus: "passed",
         perceptualDedupStatus: safe.perceptual_dedup_status as
-          | "unique"
-          | "intentional-reuse",
+          "unique" | "intentional-reuse",
         createdAt: safe.created_at,
       };
 }
@@ -466,60 +465,32 @@ async function readTimeline(
   db: D1DatabaseLike,
   story: PublishedStory,
 ): Promise<readonly StoryTimelineEvent[]> {
-  const [historyResult, visibilityResult] = await Promise.all([
-    db
-      .prepare(
-        `/* magazine:story-history */
-         SELECT version, lifecycle_state, publication_state, published_at
-         FROM story_versions
-         WHERE story_id = ? AND publication_state IN ('published', 'superseded')
-         ORDER BY version`,
-      )
-      .bind(story.story_id)
-      .all<{
-        version: number;
-        lifecycle_state: StoryVersionV1["lifecycle_state"];
-        publication_state: "published" | "superseded";
-        published_at: string | null;
-      }>(),
-    db
-      .prepare(
-        `/* magazine:story-visibility-history */
-         SELECT story_version, desired_quarantined, created_at
-         FROM story_visibility_events
-         WHERE story_id = ?
-         ORDER BY visibility_seq`,
-      )
-      .bind(story.story_id)
-      .all<{
-        story_version: number;
-        desired_quarantined: number;
-        created_at: string;
-      }>(),
-  ]);
+  const historyResult = await db
+    .prepare(
+      `/* magazine:story-history */
+       SELECT version, published_at
+       FROM story_versions
+       WHERE story_id = ? AND publication_state IN ('published', 'superseded')
+       ORDER BY version`,
+    )
+    .bind(story.story_id)
+    .all<{
+      version: number;
+      published_at: string | null;
+    }>();
 
   const versions = historyResult.results ?? [];
   const timeline: StoryTimelineEvent[] = versions.flatMap((item) => {
     if (item.published_at === null) return [];
-    const stateLabel =
-      item.publication_state === "superseded" ? " — currently superseded" : "";
     return [
       {
-        kind: item.lifecycle_state === "amended" ? "amendment" : "publication",
-        label: `Revision published — lifecycle ${item.lifecycle_state}${stateLabel}`,
+        kind: "publication",
+        label: "Revision published",
         occurredAt: item.published_at,
         version: item.version,
       },
     ];
   });
-  for (const event of visibilityResult.results ?? []) {
-    timeline.push({
-      kind: event.desired_quarantined === 1 ? "quarantine" : "restoration",
-      label: event.desired_quarantined === 1 ? "Quarantined" : "Restored",
-      occurredAt: event.created_at,
-      version: event.story_version,
-    });
-  }
   return timeline.sort(
     (left, right) => Date.parse(left.occurredAt) - Date.parse(right.occurredAt),
   );

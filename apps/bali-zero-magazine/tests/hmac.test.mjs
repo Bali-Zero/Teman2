@@ -8,6 +8,7 @@ import {
 } from "../lib/server/hmac.ts";
 import {
   mediaSecurityHeaders,
+  publicMediaSecurityHeaders,
   normalizeHttpsEvidenceUrl,
   privateNoStoreHeaders,
 } from "../lib/server/security.ts";
@@ -412,4 +413,5 @@ test("HMAC security helpers fail closed", () => {
     mediaSecurityHeaders().get("cross-origin-resource-policy"),
     "same-origin",
   );
+  assert.match(publicMediaSecurityHeaders().get("cache-control"), /^public,/);
 });

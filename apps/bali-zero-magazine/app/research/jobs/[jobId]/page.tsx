@@ -23,7 +23,7 @@ export default async function ResearchJobPage({
   const jobId = (await params).jobId;
   if (!/^research-job-[A-Za-z0-9-]{16,80}$/.test(jobId)) notFound();
   await requireChatGPTUser(`/research/jobs/${encodeURIComponent(jobId)}`);
-  const viewer = await requireMagazineViewer();
+  const viewer = await requireMagazineViewer("internal:read");
   if (viewer === null)
     return (
       <MagazineShell eyebrow="Private workspace">

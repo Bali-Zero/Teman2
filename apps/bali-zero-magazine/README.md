@@ -83,6 +83,14 @@ SIWC establishes identity only; it does not prove workspace membership. Use the
 Sites hosting platform's access policy controls for workspace-wide restrictions,
 or enforce explicit server-side membership or allowlist checks.
 
+This app keeps the magazine, story, edition, and story-media routes public. The
+Research and Operations rooms, their JSON APIs, and direct digest media require
+the derived actor key to be present in `ROLE_ALLOWLIST_JSON` as an `analyst` or
+`operator`. An authenticated account that is not in that allowlist remains a
+reader and cannot access internal data. `ACTOR_KEY_SECRET` must be configured
+before privileged memberships are enabled; never store email addresses in the
+allowlist.
+
 Use SIWC for account pages, user-specific dashboards, saved records, and write
 actions tied to the current ChatGPT user. Leave public content anonymous.
 

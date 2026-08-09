@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OperationsPage() {
   await requireChatGPTUser("/operations");
-  const viewer = await requireMagazineViewer();
+  const viewer = await requireMagazineViewer("internal:read");
   if (viewer === null)
     return (
       <MagazineShell eyebrow="Private workspace">

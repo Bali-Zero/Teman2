@@ -87,8 +87,18 @@ export function mediaSecurityHeaders(initial?: HeadersInit): Headers {
   return headers;
 }
 
-export function protectedPageSecurityHeaders(initial?: HeadersInit): Headers {
-  const headers = privateNoStoreHeaders(initial);
+export function publicMediaSecurityHeaders(initial?: HeadersInit): Headers {
+  const headers = new Headers(initial);
+  headers.set(
+    "Cache-Control",
+    "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
+  );
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  return headers;
+}
+
+function pageSecurityHeaders(headers: Headers): Headers {
   headers.set(
     "Content-Security-Policy",
     [
@@ -105,4 +115,18 @@ export function protectedPageSecurityHeaders(initial?: HeadersInit): Headers {
     ].join("; "),
   );
   return headers;
+}
+
+export function protectedPageSecurityHeaders(initial?: HeadersInit): Headers {
+  return pageSecurityHeaders(privateNoStoreHeaders(initial));
+}
+
+export function publicPageSecurityHeaders(initial?: HeadersInit): Headers {
+  const headers = new Headers(initial);
+  headers.set(
+    "Cache-Control",
+    "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
+  );
+  headers.set("X-Content-Type-Options", "nosniff");
+  return pageSecurityHeaders(headers);
 }

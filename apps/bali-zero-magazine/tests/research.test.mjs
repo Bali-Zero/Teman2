@@ -770,7 +770,7 @@ test("human POST rejects reader/operator, cross-origin and free-form payloads", 
   );
 });
 
-test("Reader and Operator can read sanitized findings; only the current owning Analyst can cancel", async () => {
+test("only internal members can read sanitized findings; only the current owning Analyst can cancel", async () => {
   const db = new SqliteD1Database();
   const actorSecret = runtimeBindings(db).ACTOR_KEY_SECRET;
   const analystKey = await hmacSha256Hex(actorSecret, "analyst@balizero.com");
@@ -819,7 +819,13 @@ test("Reader and Operator can read sanitized findings; only the current owning A
           : {}),
       },
     });
-  for (const email of ["reader@balizero.com", "operator@balizero.com"]) {
+  const outsider = await runWithMagazineBindings(runtime, () =>
+    jobsRoute.GET(
+      humanRequest("reader@balizero.com", "/api/research/jobs"),
+    ),
+  );
+  assert.equal(outsider.status, 403);
+  for (const email of ["analyst@balizero.com", "operator@balizero.com"]) {
     const response = await runWithMagazineBindings(runtime, () =>
       jobsRoute.GET(humanRequest(email, "/api/research/jobs")),
     );

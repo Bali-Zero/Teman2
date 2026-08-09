@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { EvidenceDrawer } from "@/components/evidence-drawer";
@@ -9,6 +10,26 @@ export const dynamic = "force-dynamic";
 type StoryPageProps = Readonly<{
   params: Promise<{ slug: string }>;
 }>;
+
+export async function generateMetadata({
+  params,
+}: StoryPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const detail = await readStoryDetail(slug);
+  if (detail === null) return { title: "Story not found | Bali Zero Magazine" };
+  const canonical = `/stories/${encodeURIComponent(slug)}`;
+  return {
+    title: `${detail.story.title} | Bali Zero Magazine`,
+    description: detail.story.deck,
+    alternates: { canonical },
+    openGraph: {
+      title: detail.story.title,
+      description: detail.story.deck,
+      url: canonical,
+      type: "article",
+    },
+  };
+}
 
 function readableTimestamp(value: string | null): string {
   if (value === null) return "Not recorded";

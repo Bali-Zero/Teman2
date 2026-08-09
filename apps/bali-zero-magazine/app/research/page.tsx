@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ResearchPage() {
   await requireChatGPTUser("/research");
-  const viewer = await requireMagazineViewer();
+  const viewer = await requireMagazineViewer("internal:read");
   if (viewer === null)
     return (
       <MagazineShell eyebrow="Private workspace">

@@ -890,6 +890,39 @@ test("human POST allows only a current Operator and rejects open payloads", asyn
   assert.notEqual(stored.actor_key, readerKey);
 });
 
+test("human GET requires current internal membership", async () => {
+  const db = new SqliteD1Database();
+  const baseBindings = runtimeBindings(db);
+  const analystKey = await hmacSha256Hex(
+    baseBindings.ACTOR_KEY_SECRET,
+    "analyst@balizero.com",
+  );
+  const operatorKey = await hmacSha256Hex(
+    baseBindings.ACTOR_KEY_SECRET,
+    "operator@balizero.com",
+  );
+  const bindings = {
+    ...baseBindings,
+    ROLE_ALLOWLIST_JSON: JSON.stringify({
+      version: "roles.operations.read.v1",
+      analysts: [analystKey],
+      operators: [operatorKey],
+    }),
+  };
+  const { GET } = await import(routePaths.human);
+  const invoke = (email) =>
+    runWithMagazineBindings(bindings, () =>
+      GET(
+        new Request("https://magazine.example/api/operations/intents", {
+          headers: { "oai-authenticated-user-email": email },
+        }),
+      ),
+    );
+  assert.equal((await invoke("reader@balizero.com")).status, 403);
+  assert.equal((await invoke("analyst@balizero.com")).status, 200);
+  assert.equal((await invoke("operator@balizero.com")).status, 200);
+});
+
 test("machine claim requires SIWC admission plus a valid HMAC envelope", async () => {
   const db = new SqliteD1Database();
   const baseBindings = runtimeBindings(db);

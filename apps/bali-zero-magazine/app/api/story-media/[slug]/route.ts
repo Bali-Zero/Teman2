@@ -1,9 +1,9 @@
 import { resolvePublishedStoryMedia } from "../../../../lib/server/media.ts";
 import { getMagazineBindings } from "../../../../lib/server/runtime-bindings.ts";
-import { mediaSecurityHeaders } from "../../../../lib/server/security.ts";
+import { publicMediaSecurityHeaders } from "../../../../lib/server/security.ts";
 
 function denied(status: 404): Response {
-  return new Response(null, { status, headers: mediaSecurityHeaders() });
+  return new Response(null, { status, headers: publicMediaSecurityHeaders() });
 }
 
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
     slug,
   );
   if (media === null) return denied(404);
-  const headers = mediaSecurityHeaders({
+  const headers = publicMediaSecurityHeaders({
     "Content-Type": media.mimeType,
     "Content-Length": String(media.bytes.byteLength),
   });

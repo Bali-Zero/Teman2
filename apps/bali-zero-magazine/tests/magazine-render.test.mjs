@@ -732,15 +732,21 @@ async function render(
   );
 }
 
-function assertProtectedHtml(response) {
+function assertPublicHtml(response) {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.match(response.headers.get("cache-control"), /^public,/);
   assert.match(
     response.headers.get("content-security-policy") ?? "",
     /default-src 'self'/,
   );
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+}
+
+function assertInternalHtml(response) {
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
 }
 
 function assertNoInternalIdentifiers(html) {
@@ -761,7 +767,7 @@ function assertNoInternalIdentifiers(html) {
 
 test("magazine front page renders editorial priority, five domains, coverage, and sanitized source status", async () => {
   const response = await render("/");
-  assertProtectedHtml(response);
+  assertPublicHtml(response);
   const html = await response.text();
 
   assert.match(html, /Bali Zero Magazine/);
@@ -786,30 +792,34 @@ test("magazine front page renders editorial priority, five domains, coverage, an
     assert.match(html, new RegExp(`>${encodedSection}<`, "i"));
   }
   assert.match(html, /The Detail Everyone Missed/);
-  assert.match(html, /Source systems/);
-  assert.match(html, /Intel Lake/);
-  assert.match(html, /Notebook Insight/);
   assert.match(html, /Partial coverage/);
-  assert.match(html, /Delayed/);
   assert.match(html, /Last verified/i);
   assert.match(html, /09:25 WITA/i);
   assert.match(
     html,
     /<meta[^>]+name="robots"[^>]+content="index, follow"/i,
   );
-  assert.ok(
-    html.indexOf("The Morning File") < html.indexOf("Source systems"),
-    "editorial issue must precede system controls",
-  );
+  assert.doesNotMatch(html, /Source systems/);
   assert.doesNotMatch(html, /This quarantined title must never render/);
   assertNoInternalIdentifiers(html);
+});
+
+test("signed-in non-members cannot enter internal rooms", async () => {
+  for (const pathname of ["/research", "/operations"]) {
+    const response = await render(pathname);
+    assertInternalHtml(response);
+    const html = await response.text();
+    assert.match(html, /Workspace access required/i);
+    assert.doesNotMatch(html, /Bali Zero intelligence desk/i);
+    assert.doesNotMatch(html, /Bali Zero control plane/i);
+  }
 });
 
 test("magazine front page omits Breaking and explains quiet and empty publication modes", async () => {
   const quietResponse = await render("/", {
     db: createFixtureDb({ quiet: true }),
   });
-  assertProtectedHtml(quietResponse);
+  assertPublicHtml(quietResponse);
   const quietHtml = await quietResponse.text();
   assert.match(quietHtml, /Quiet edition/);
   assert.match(
@@ -821,16 +831,16 @@ test("magazine front page omits Breaking and explains quiet and empty publicatio
   const emptyResponse = await render("/", {
     db: createFixtureDb({ empty: true }),
   });
-  assertProtectedHtml(emptyResponse);
+  assertPublicHtml(emptyResponse);
   const emptyHtml = await emptyResponse.text();
   assert.match(emptyHtml, /No published edition yet/i);
-  assert.match(emptyHtml, /Source systems/);
+  assert.doesNotMatch(emptyHtml, /Source systems/);
   assertNoInternalIdentifiers(emptyHtml);
 });
 
 test("story page separates analysis from claim evidence and exposes current revision state without IDs", async () => {
   const response = await render("/stories/bali-visa-evidence-standard");
-  assertProtectedHtml(response);
+  assertPublicHtml(response);
   const html = await response.text();
 
   assert.match(html, /Bali visa files move to a stricter evidence standard/);
@@ -857,13 +867,11 @@ test("story page separates analysis from claim evidence and exposes current revi
     "Published",
     "Visual provenance",
     "Bali Zero editorial desk",
-    "Revision published — lifecycle amended",
-    "Revision published — lifecycle superseded — currently superseded",
-    "Quarantined",
-    "Restored",
+    "Revision published",
   ]) {
     assert.match(html, new RegExp(label, "i"));
   }
+  assert.doesNotMatch(html, /Quarantined|Restored|currently superseded/i);
   assert.match(
     html,
     /Unavailable — source packet did not declare an occurrence time/i,
@@ -876,7 +884,7 @@ test("story page separates analysis from claim evidence and exposes current revi
 
 test("edition archive identifies its immutable revision and applies current visibility overlays", async () => {
   const response = await render("/editions/2026-07-18-r2");
-  assertProtectedHtml(response);
+  assertPublicHtml(response);
   const html = await response.text();
 
   assert.match(html, /Edition archive/);
@@ -895,7 +903,7 @@ test("edition archive identifies its immutable revision and applies current visi
 test("contract-valid packets render the explicit cross-section lead without stale Breaking rows", async () => {
   const db = await createIntegrationDb();
   const currentResponse = await render("/", { db });
-  assertProtectedHtml(currentResponse);
+  assertPublicHtml(currentResponse);
   const currentHtml = await currentResponse.text();
 
   assert.match(currentHtml, /Current amended compliance revision/);
@@ -907,7 +915,7 @@ test("contract-valid packets render the explicit cross-section lead without stal
   assert.doesNotMatch(currentHtml, /class="breaking-strip"/);
 
   const archivedResponse = await render("/editions/2026-07-18-r1", { db });
-  assertProtectedHtml(archivedResponse);
+  assertPublicHtml(archivedResponse);
   const archivedHtml = await archivedResponse.text();
   assert.match(
     archivedHtml,
@@ -958,7 +966,7 @@ test("editorial CSS uses the locked Bali Zero palette and Montserrat stack", () 
 test("anonymous readers can read the public magazine without workspace identity", async () => {
   const db = createFixtureDb();
   const response = await render("/", { authenticated: false, db });
-  assertProtectedHtml(response);
+  assertPublicHtml(response);
   const html = await response.text();
   assert.doesNotMatch(html, /Workspace access required/i);
   assert.match(html, /The Morning File/);
@@ -992,7 +1000,7 @@ test("Sites-authenticated readers can read when optional role bindings are absen
       },
     },
   });
-  assertProtectedHtml(response);
+  assertPublicHtml(response);
   const html = await response.text();
   assert.match(html, /The Morning File/);
   assert.doesNotMatch(html, /Workspace access required/i);
@@ -1017,12 +1025,20 @@ test("worker security wrapper mutates protected HTML only", async () => {
       headers: { "content-type": "text/html; charset=utf-8", etag: "issue-2" },
     }),
   );
-  assert.equal(htmlResponse.headers.get("cache-control"), "private, no-store");
+  assert.match(htmlResponse.headers.get("cache-control"), /^public,/);
   assert.match(
     htmlResponse.headers.get("content-security-policy") ?? "",
     /frame-ancestors 'none'/,
   );
   assert.equal(htmlResponse.headers.get("etag"), "issue-2");
+
+  const internalResponse = secureProtectedHtmlResponse(
+    new Request("https://magazine.example/research"),
+    new Response("<main>Research</main>", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
+  );
+  assert.equal(internalResponse.headers.get("cache-control"), "private, no-store");
 
   const jsonResponse = new Response('{"ok":true}', {
     headers: {
