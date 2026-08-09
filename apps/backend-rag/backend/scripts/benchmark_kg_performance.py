@@ -33,7 +33,9 @@ async def benchmark_exact_resolution(pool: asyncpg.Pool, n: int = 50) -> dict:
     """Benchmark exact entity_id lookup."""
     async with pool.acquire() as conn:
         # Get some real entity_ids to test with
-        rows = await conn.fetch("SELECT entity_id FROM kg_nodes ORDER BY RANDOM() LIMIT $1", n)
+        # Use TABLESAMPLE to avoid full-table ORDER BY RANDOM() which forces a full sort
+        # TABLESAMPLE SYSTEM(1) samples pages and is much faster on large tables.
+        rows = await conn.fetch("SELECT entity_id FROM kg_nodes TABLESAMPLE SYSTEM (1) LIMIT $1", n)
         entity_ids = [r["entity_id"] for r in rows]
 
     timings = []
@@ -107,9 +109,8 @@ async def benchmark_bfs_traversal(pool: asyncpg.Pool, n: int = 10) -> dict:
         rows = await conn.fetch(
             """
             SELECT DISTINCT e.source_entity_id
-            FROM kg_edges e
+            FROM kg_edges TABLESAMPLE SYSTEM (1) AS e
             WHERE e.relationship_type IN ('REQUIRES', 'ENABLES', 'PART_OF')
-            ORDER BY RANDOM()
             LIMIT $1
             """,
             n,
