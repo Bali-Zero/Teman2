@@ -296,18 +296,33 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
+          set -o pipefail
           PYTHONPATH=.:../crm-cell pytest \
             backend/tests/ \
             tests/test_sentry_lazy_import.py \
             tests/test_sentry_pii_redaction.py \
             tests/kb/test_politics_hierarchical.py \
-            -q -ra --no-header --durations=10 \
+            -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             --cov=backend \
             --cov-branch \
             --cov-report=xml:coverage.xml \
             --junit-xml=test-results-unit.xml \
-            --tb=short -x
+            --tb=short -x 2>&1 | tee pytest-output.log
+          PYTEST_RC=$?
+          # Measurement-only (round-3 queue-acceleration plan, L3): the
+          # "Run unit tests" step is the confirmed grown step (July→August
+          # median +5.4min). --durations=50 (was 10) + this summary tail
+          # surfaces the slowest tests directly in the run's Job Summary
+          # so the next lever can be picked with evidence, without a
+          # separate artifact download. No test selection/step is changed.
+          {
+            echo '## Slowest test durations (top 50)'
+            echo '```'
+            awk '/slowest durations/,0' pytest-output.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$PYTEST_RC"
 
       - name: Check coverage threshold
         run: |
