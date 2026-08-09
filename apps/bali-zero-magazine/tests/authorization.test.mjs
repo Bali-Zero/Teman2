@@ -32,6 +32,7 @@ test("missing optional role bindings allow authenticated read-only access", asyn
   );
   assert.equal(viewer.role, "reader");
   assert.equal(authorize(viewer, "magazine:read", allowlist).allowed, true);
+  assert.equal(authorize(viewer, "internal:read", allowlist).allowed, false);
   assert.equal(authorize(viewer, "research:create", allowlist).allowed, false);
   assert.equal(authorize(viewer, "ops:create", allowlist).allowed, false);
 });
@@ -114,6 +115,14 @@ test("authorization applies analyst and operator membership by actor key", async
     },
   );
   assert.equal(operator.role, "operator");
+  assert.equal(
+    authorize(operator, "internal:read", {
+      version: "roles.v2",
+      analysts: [],
+      operators: [base.actorKey],
+    }).allowed,
+    true,
+  );
   assert.equal(
     authorize(operator, "ops:create", {
       version: "roles.v2",
