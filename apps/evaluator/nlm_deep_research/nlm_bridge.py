@@ -10,11 +10,49 @@ Usage:
 
 import json
 import logging
+import re
 import subprocess
 import time
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# The `nlm` CLI writes its diagnostics to STDOUT and leaves stderr EMPTY.
+# Measured on Pro 2026-08-09: with an expired session `nlm notebook list`
+# exits 1, writes 0 bytes to stderr, and prints to stdout
+#   ✗ Authentication Error
+#     Authentication expired. Run 'nlm login' in your terminal to re-authenticate.
+# Every call site in this package that logged `result.stderr.strip()` therefore
+# logged NOTHING: ~/logs/cron-tmp/nlm-nb3-pipeline.log carries 68 lines reading
+# "nlm source add failed: " with the reason after the colon simply missing,
+# going back to 2026-05-04. The condition behind them is real and current — NB-3
+# is 7-for-7 failed in August against 22-of-23 succeeded in July — but no reader
+# could tell the new total outage from the old intermittent one, because both
+# print the same empty sentence. Same family as W104 (`redis-cli` exits 0 and
+# puts NOAUTH on stdout): judge the REPLY, not the exit code, and read the
+# stream the tool actually writes to.
+_AUTH_EXPIRED_RE = re.compile(
+    r"authentication (error|expired)|expired.*re-?authenticate|run ['\"]?nlm login",
+    re.IGNORECASE,
+)
+
+
+def nlm_error_reason(result: subprocess.CompletedProcess, limit: int = 200) -> str:
+    """Why an `nlm` invocation failed, from whichever stream carries the reason.
+
+    Order is stderr (some failures do use it), then stdout, then the exit code —
+    so the returned string is never empty and a log line never ends in a colon.
+    An expired session is prefixed so the message names its own cure instead of
+    leaving the reader to find `nlm login` themselves.
+    """
+    stderr = (result.stderr or "").strip()
+    stdout = (result.stdout or "").strip()
+    reason = stderr or stdout or f"nlm exited with code {result.returncode} (no output)"
+    reason = " ".join(reason.split())
+    if _AUTH_EXPIRED_RE.search(reason):
+        reason = f"AUTH_EXPIRED (operator: run `nlm login` on Pro) — {reason}"
+    return reason[:limit]
+
 
 # NLM CLI path — installed via: npm install -g notebooklm-mcp
 NLM_CLI = "nlm"
@@ -43,7 +81,7 @@ def _run_nlm_once(cmd: list, timeout: int, conversation_id: Optional[str]) -> di
         )
 
         if result.returncode != 0:
-            error_msg = result.stderr.strip() or f"nlm exited with code {result.returncode}"
+            error_msg = nlm_error_reason(result)
             return {"status": "error", "error": error_msg, "_retryable": True}
 
         output = result.stdout.strip()

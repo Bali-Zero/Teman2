@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from apps.evaluator.nlm_deep_research.gap_scanner import DOMAIN_TOPICS
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,7 @@ def _trigger_nlm_research(notebook_id: str, query: str, mode: str = "fast", time
             capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode != 0:
-            logger.error("nlm research start failed: %s", result.stderr.strip()[:200])
+            logger.error("nlm research start failed: %s", nlm_error_reason(result))
             return False
         logger.info("Research triggered for notebook %s: %s", notebook_id[:8], query[:60])
         return True
