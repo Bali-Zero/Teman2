@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
-# test_tg_sender_migration.sh — the six senders migrated to the gateway on
-# 2026-08-09 must actually REACH it, not merely contain its name.
+# test_tg_sender_migration.sh — the senders migrated to the gateway must
+# actually REACH it, not merely contain its name.
+#
+# Batch 1 (2026-08-09, #3913): six organs, ~2,350 wake-ups a day.
+# Batch 2 (2026-08-10): post_publish_poller.py (288/day) and
+# runtime-reconcile.sh (48/day). The poller is a special case worth naming: its
+# LaunchAgent passes no TELEGRAM_BOT_TOKEN, so its raw POST returned at the
+# first `if not TELEGRAM_BOT_TOKEN` and the organ was MUTE. Migrating it GIVES
+# it a voice, which is why its tier is `digest` by deliberate choice — five
+# pipeline-degradation alerts do not each deserve a P0 slot.
 #
 # Why this exists. Six organs that between them wake ~2,350 times a day used to
 # POST straight to Telegram: outside the tier router, outside the P0 budget,
@@ -37,6 +45,8 @@ MIGRATED=(
   "scripts/cost_breaker_deadman.sh"
   "scripts/wr2_plist_watchdog.sh"
   "scripts/supervisor_liveness_watchdog.sh"
+  "apps/bali-intel-scraper/scripts/post_publish_poller.py"
+  "scripts/runtime-reconcile.sh"
 )
 
 echo "── struttura (tutti e ${#MIGRATED[@]})"
@@ -177,9 +187,65 @@ printf '%s' "$out" | grep -q 'NOT sent' \
   || bad "intel-lake: senza gateway è muto — $(printf '%s' "$out" | tail -1)"
 mv "$FAKE/nuzantara/scripts/tg_notify.hidden" "$FAKE/nuzantara/scripts/tg_notify.py"
 
+# post_publish_poller resolves the gateway from parents[3] of its own path, so
+# the fake reproduces the REAL tree (apps/bali-intel-scraper/scripts/...) rather
+# than the convenient flat one — otherwise the assertion would exercise the
+# home-relative fallback and leave the branch that actually runs in production
+# unproven.
+POLLER_DIR="$FAKE/nuzantara/apps/bali-intel-scraper/scripts"
+mkdir -p "$POLLER_DIR"
+cp "$REPO_ROOT/apps/bali-intel-scraper/scripts/post_publish_poller.py" "$POLLER_DIR/"
+poller_drive() {
+  HOME="$FAKE" "${1:-python3}" - "$POLLER_DIR" <<'PYPOLL' 2>&1
+import importlib.util
+import sys
+spec = importlib.util.spec_from_file_location("pp", f"{sys.argv[1]}/post_publish_poller.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+m.send_telegram_alert("prova", dedup_key="post-publish:cover-skipped-codex-down")
+PYPOLL
+}
+rm -f "$CALLED"
+poller_drive >/dev/null 2>&1
+if [ -f "$CALLED" ]; then
+  ok "post-publish-poller: gateway raggiunto dal layout reale (parents[3])"
+  grep -qx 'post-publish:cover-skipped-codex-down' "$CALLED" \
+    && ok "post-publish-poller: chiave = post-publish:cover-skipped-codex-down" \
+    || bad "post-publish-poller: chiave inattesa"
+  # digest, not p0 — a deliberate tier choice, so it is asserted and not assumed.
+  grep -qx 'digest' "$CALLED" \
+    && ok "post-publish-poller: tier digest" \
+    || bad "post-publish-poller: tier inatteso (atteso digest)"
+else
+  bad "post-publish-poller: il gateway NON è stato invocato"
+fi
+
+# Gateway gone: it must say it did not speak. This organ was MUTE before the
+# migration, so a silent failure here would restore exactly the state cured.
+mv "$FAKE/nuzantara/scripts/tg_notify.py" "$FAKE/nuzantara/scripts/tg_notify.hidden"
+pollout="$(poller_drive)"
+printf '%s' "$pollout" | grep -q 'NOT sent' \
+  && ok "post-publish-poller: senza gateway lascia traccia (fail-loud)" \
+  || bad "post-publish-poller: senza gateway è muto"
+mv "$FAKE/nuzantara/scripts/tg_notify.hidden" "$FAKE/nuzantara/scripts/tg_notify.py"
+
 # The shell organs: their sender function is self-contained, so it is extracted
 # and run on its own. `$HOME` points at the fake, which is the fallback branch
 # every one of them resolves to when no sibling gateway exists.
+# Extra harness lines a given sender needs to run standalone. runtime-reconcile
+# reads its own cooldown stamp and logs through a `log` helper defined outside
+# the extracted function; without these the harness dies on `set -u` and the
+# organ would be scored mute for the harness's poverty, not its own (W108).
+_extra_env() {
+  case "$1" in
+    runtime-reconcile.sh)
+      echo "ALERT_STAMP=$FAKE/rr_stamp"
+      echo "ALERT_COOLDOWN_SEC=0"
+      echo 'log() { printf "%s\n" "$*" >> "$LOG"; }'
+      ;;
+  esac
+}
+
 run_shell_sender() {
   local rel="$1" fn="$2" expect_key="$3" base
   base="$(basename "$rel")"
@@ -192,6 +258,7 @@ run_shell_sender() {
     echo 'set -uo pipefail'
     echo "LOG_FILE=$FAKE/harness.log"
     echo "LOG=$FAKE/harness.log"
+    _extra_env "$base"
     # Extract the function verbatim, from its opening line to the closing brace
     # in column 1 — running the REAL body, not a paraphrase of it.
     awk "/^${fn}\(\) \{/,/^\}/" "$REPO_ROOT/$rel"
@@ -224,6 +291,7 @@ run_shell_sender "scripts/cost_breaker_deadman.sh" "tg_alert" "cost-breaker-dead
 # only the organs it actually runs.
 run_shell_sender "scripts/intake_review_reader_liveness.sh" "send_telegram" "intake-review-reader:stalled:${HOST}"
 run_shell_sender "scripts/supervisor_liveness_watchdog.sh" "send_telegram" "supervisor-liveness:${HOST}"
+run_shell_sender "scripts/runtime-reconcile.sh" "alert" "runtime-reconcile:invariant-breach"
 
 # ── W108, proven by behaviour instead of by spelling ──────────────────────────
 # A POISONED python3 goes first on PATH. An organ that resolves its interpreter
@@ -251,6 +319,7 @@ poisoned_still_reaches() {
     echo 'set -uo pipefail'
     echo "LOG_FILE=$FAKE/harness.log"
     echo "LOG=$FAKE/harness.log"
+    _extra_env "$base"
     awk "/^${fn}\(\) \{/,/^\}/" "$REPO_ROOT/$rel"
     if [ "$fn" = "telegram_backup" ]; then
       echo "$fn 'probe:key' 'con PATH avvelenato'"
@@ -270,6 +339,7 @@ poisoned_still_reaches "scripts/wr2_plist_watchdog.sh" "_telegram"
 poisoned_still_reaches "scripts/cost_breaker_deadman.sh" "tg_alert"
 poisoned_still_reaches "scripts/intake_review_reader_liveness.sh" "send_telegram"
 poisoned_still_reaches "scripts/supervisor_liveness_watchdog.sh" "send_telegram"
+poisoned_still_reaches "scripts/runtime-reconcile.sh" "alert"
 
 # Same discriminator for the Python organs: sys.executable is absolute by
 # construction, a literal "python3" is not.
@@ -293,6 +363,12 @@ PYPOISON
   && ok "intel-lake: raggiunge il gateway anche col PATH avvelenato" \
   || bad "intel-lake: interprete risolto da PATH (W108)"
 
+rm -f "$CALLED"
+PATH="$POISON:$PATH" poller_drive "$DRIVER_PY" >/dev/null 2>&1
+[ -f "$CALLED" ] \
+  && ok "post-publish-poller: raggiunge il gateway anche col PATH avvelenato" \
+  || bad "post-publish-poller: interprete risolto da PATH (W108)"
+
 # ── fail-loud, per BRANCH ─────────────────────────────────────────────────────
 # Run each shell sender with no gateway anywhere and demand a line in its log.
 # The earlier version grep'd the file for a fail-loud phrase and survived having
@@ -310,6 +386,7 @@ shell_fail_loud() {
     echo 'set -uo pipefail'
     echo "LOG_FILE=$logf"
     echo "LOG=$logf"
+    _extra_env "$base"
     awk "/^${fn}\(\) \{/,/^\}/" "$REPO_ROOT/$rel"
     if [ "$fn" = "telegram_backup" ]; then
       echo "$fn 'probe:key' 'nessun gateway'"
@@ -330,6 +407,7 @@ shell_fail_loud "scripts/wr2_plist_watchdog.sh" "_telegram"
 shell_fail_loud "scripts/cost_breaker_deadman.sh" "tg_alert"
 shell_fail_loud "scripts/intake_review_reader_liveness.sh" "send_telegram"
 shell_fail_loud "scripts/supervisor_liveness_watchdog.sh" "send_telegram"
+shell_fail_loud "scripts/runtime-reconcile.sh" "alert"
 mv "$FAKE/nuzantara/scripts/tg_notify.hidden" "$FAKE/nuzantara/scripts/tg_notify.py"
 
 echo
@@ -338,7 +416,7 @@ echo "── il registro grandfathered si è RIDOTTO"
 # bases block each other with zero shared lines (W109b), which is why this
 # migration ships as one sequential PR per batch and never in parallel.
 count=$(python3 -c "import json;print(len(json.load(open('$REPO_ROOT/infra/tg-gateway/grandfathered.json'))['files']))")
-if [ "$count" -le 148 ]; then ok "registro a $count voci (≤148)"; else bad "registro CRESCIUTO a $count"; fi
+if [ "$count" -le 146 ]; then ok "registro a $count voci (≤146)"; else bad "registro CRESCIUTO a $count"; fi
 
 echo
 echo "════ PASS=$PASS FAIL=$FAIL"

@@ -1,5 +1,5 @@
 {
-  "_doc": "Direct api.telegram.org senders grandfathered at gateway birth (2026-07-06). This list only SHRINKS: migrate a file to scripts/tg_notify.py, then remove it here (or run --prune). New files must use the gateway \u2014 the lint fails CI otherwise. 2026-07-28: the .yml/.yaml cohort below was ADDED, which looks like growth and is not: the founding census never scanned GitHub Actions, so these were day-1 members nobody counted, not new senders. The one-time enrollment is enforced by check_monotone (growth is legal only for a suffix the base register could not see); scan_suffixes exists so no future reader has to guess whether 'no senders here' meant 'nobody looked here'.",
+  "_doc": "Direct api.telegram.org senders grandfathered at gateway birth (2026-07-06). This list only SHRINKS: migrate a file to scripts/tg_notify.py, then remove it here (or run --prune). New files must use the gateway — the lint fails CI otherwise. 2026-07-28: the .yml/.yaml cohort below was ADDED, which looks like growth and is not: the founding census never scanned GitHub Actions, so these were day-1 members nobody counted, not new senders. The one-time enrollment is enforced by check_monotone (growth is legal only for a suffix the base register could not see); scan_suffixes exists so no future reader has to guess whether 'no senders here' meant 'nobody looked here'.",
   "frozen_at": "2026-07-06",
   "scan_suffixes": [
     ".bash",
@@ -68,7 +68,6 @@
     "apps/backend-rag/scripts/run_entity_linker_full.py",
     "apps/backend-rag/scripts/telegram_reviewer.py",
     "apps/backend-rag/setup_telegram_bot.sh",
-    "apps/bali-intel-scraper/scripts/post_publish_poller.py",
     "apps/bali-intel-scraper/scripts/run_intel_pipeline.py",
     "apps/bali-intel-scraper/scripts/telegram_approval.py",
     "apps/cell/cell/effectors/telegram.py",
@@ -146,7 +145,6 @@
     "scripts/post-deploy-verify.sh",
     "scripts/profile-monitor/wrapper.py",
     "scripts/ragas_eval.py",
-    "scripts/runtime-reconcile.sh",
     "scripts/sentry-quota-check.sh",
     "scripts/sota_fase0_final_check.py",
     "scripts/supervisor_autofix_tier2.sh",
