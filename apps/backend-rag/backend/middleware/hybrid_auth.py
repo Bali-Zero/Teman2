@@ -24,6 +24,12 @@ from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry
 from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
 from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
+from backend.app.utils.logging_utils import sanitize_log_path
+from backend.services.pii.violation_store import hash_subject
+from backend.services.security.token_revocation import (
+    RevocationStoreUnavailable,
+    is_session_revoked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -186,12 +192,14 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
         SECURITY: Any authentication error = deny access (fail-closed)
         """
+        log_path = sanitize_log_path(request.url.path)
+
         # Removed sensitive debug logging - headers contain auth tokens
-        logger.debug(f"Middleware dispatching: {request.url.path}")
+        logger.debug("Middleware dispatching: %s", log_path)
 
         # Step 0: Allow CORS preflight requests (OPTIONS) to pass through
         if request.method == "OPTIONS":
-            logger.debug(f"CORS preflight request: {request.url.path}")
+            logger.debug("CORS preflight request: %s", log_path)
             return await call_next(request)
 
         # Step 1: Check if this is a public endpoint
@@ -204,13 +212,14 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             correlation_id = _get_correlation_id(request)
             client_ip = request.client.host if request.client else "unknown"
+            client_reference = hash_subject(client_ip) or "unknown"
             user_agent = request.headers.get("user-agent", "unknown")
             matched_entry = find_entry(path)
 
             privacy_restricted = path in _PII_RESTRICTED_PUBLIC_ENDPOINTS
             access_context: dict[str, Any] = {
                 "event_type": "public_endpoint_access",
-                "endpoint": path,
+                "endpoint": log_path,
                 "method": request.method,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "bypass_reason": matched_entry.reason if matched_entry else "infra",
@@ -221,7 +230,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             if not privacy_restricted:
                 access_context.update(
                     {
-                        "client_ip": client_ip,
+                        "client_ip": client_reference,
                         "user_agent": user_agent[:200],
                         "correlation_id": correlation_id,
                     },
@@ -239,13 +248,13 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 )
 
                 public_endpoint_access_total.labels(
-                    endpoint=request.url.path,
+                    endpoint=log_path,
                     method=request.method,
                 ).inc()
                 if not privacy_restricted:
                     public_endpoint_access_by_ip.labels(
-                        endpoint=request.url.path,
-                        client_ip=client_ip,
+                        endpoint=log_path,
+                        client_ip=client_reference,
                     ).inc()
             except (ImportError, AttributeError) as exc:
                 # Metrics subsystem not wired in this deployment (e.g. tests,
@@ -268,12 +277,13 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 # Auth system failure → fail-closed 503
                 correlation_id = _get_correlation_id(request)
                 client_host = request.client.host if request.client else "unknown"
+                client_reference = hash_subject(client_host) or "unknown"
                 error_type = type(auth_exc).__name__
 
                 logger.critical(
                     f"[{correlation_id}] Auth system failure — ACCESS DENIED: "
                     f"Type={error_type}, "
-                    f"Request={request.method} {request.url.path} from {client_host}",
+                    f"Request={request.method} {log_path} from {client_reference}",
                     exc_info=True,
                 )
 
@@ -285,14 +295,17 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     content={
                         "detail": "Authentication service temporarily unavailable",
                         "correlation_id": correlation_id,
-                        "error_type": error_type,
                     },
                     headers={**cors_headers, "X-Correlation-ID": correlation_id},
                 )
 
             if not auth_result:
+                client_host = request.client.host if request.client else "unknown"
+                client_reference = hash_subject(client_host) or "unknown"
                 logger.debug(
-                    f"Authentication failed for: {request.url.path} from {request.client.host}",
+                    "Authentication failed for: %s from %s",
+                    log_path,
+                    client_reference,
                 )
                 from fastapi.responses import JSONResponse
 
@@ -366,11 +379,13 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         SECURITY: None result = access denied (handled by dispatch)
         """
         client_host = request.client.host if request.client else "unknown"
+        client_reference = hash_subject(client_host) or "unknown"
+        log_path = sanitize_log_path(request.url.path)
 
         # Priority 0: Admin API Key via X-Debug-Key header (for admin/cron endpoints)
         debug_key = request.headers.get("X-Debug-Key")
         if debug_key and settings.admin_api_key and debug_key == settings.admin_api_key:
-            logger.info("Admin key authenticated via X-Debug-Key from %s", client_host)
+            logger.info("Admin key authenticated via X-Debug-Key from %s", client_reference)
             return {
                 "role": "admin",
                 "email": "admin@internal",
@@ -388,7 +403,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         internal_key = request.headers.get("X-Internal-Key")
         configured_internal = getattr(settings, "wa_mirror_internal_key", None)
         if internal_key and configured_internal and internal_key == configured_internal:
-            logger.info("Internal service key authenticated from %s", client_host)
+            logger.info("Internal service key authenticated from %s", client_reference)
             return {
                 "role": "internal",
                 "email": "wa-mirror-internal@balizero.com",
@@ -400,16 +415,18 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         api_key = request.headers.get("X-API-Key")
         if api_key:
             # Log authentication attempt without exposing API key
-            logger.debug("API Key authentication attempt from %s", client_host)
+            logger.debug("API Key authentication attempt from %s", client_reference)
             user_context = self.api_key_auth.validate_api_key(api_key)
             if user_context:
                 logger.info(
-                    f"API Key authenticated: {user_context.get('role', 'unknown')} from {client_host}",
+                    "API Key authenticated: role=%s from %s",
+                    user_context.get("role", "unknown"),
+                    client_reference,
                 )
                 return user_context
             else:
                 # API Key provided but invalid = immediate failure
-                logger.warning("Invalid API Key attempt from %s", client_host)
+                logger.warning("Invalid API Key attempt from %s", client_reference)
                 return None
 
         # Priority 2: Header JWT Authentication (takes precedence over cookie when present)
@@ -419,17 +436,19 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
         if auth_header and auth_header.startswith("Bearer "):
             if not self.api_auth_bypass_db:
-                logger.debug("Header JWT authentication attempt from %s", client_host)
+                logger.debug("Header JWT authentication attempt from %s", client_reference)
                 jwt_user = await self.authenticate_jwt(request)
                 if jwt_user:
                     jwt_user["auth_method"] = "jwt_header"
                     logger.info(
-                        f"Header JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}",
+                        "Header JWT authenticated: role=%s from %s",
+                        jwt_user.get("role", "unknown"),
+                        client_reference,
                     )
                     return jwt_user
                 else:
                     # JWT provided but invalid = immediate failure
-                    logger.debug("Invalid Header JWT from %s", client_host)
+                    logger.debug("Invalid Header JWT from %s", client_reference)
                     return None
             else:
                 logger.warning("JWT authentication bypassed by configuration")
@@ -438,12 +457,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         # Priority 3: Cookie JWT Authentication (fallback for browser clients without Authorization header)
         cookie_token = get_jwt_from_cookie(request)
         if cookie_token:
-            logger.debug("Cookie JWT authentication attempt from %s", client_host)
+            logger.debug("Cookie JWT authentication attempt from %s", client_reference)
 
             # Validate CSRF for state-changing requests (POST, PUT, DELETE, PATCH)
             if settings.csrf_enabled and not is_csrf_exempt(request) and not validate_csrf(request):
                 logger.warning(
-                    f"CSRF validation failed for {request.method} {request.url.path} from {client_host}",
+                    "CSRF validation failed for %s %s from %s",
+                    request.method,
+                    log_path,
+                    client_reference,
                 )
                 return None
 
@@ -451,16 +473,18 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             if jwt_user:
                 jwt_user["auth_method"] = "jwt_cookie"
                 logger.info(
-                    f"Cookie JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}",
+                    "Cookie JWT authenticated: role=%s from %s",
+                    jwt_user.get("role", "unknown"),
+                    client_reference,
                 )
                 return jwt_user
             else:
                 # Cookie JWT provided but invalid = immediate failure
-                logger.warning("Invalid Cookie JWT from %s", client_host)
+                logger.warning("Invalid Cookie JWT from %s", client_reference)
                 return None
 
         # No authentication provided = failure for non-public endpoints
-        logger.debug(f"No authentication provided for protected endpoint: {request.url.path}")
+        logger.debug("No authentication provided for protected endpoint: %s", log_path)
         return None
 
     async def authenticate_jwt_token(self, token: str) -> dict[str, Any] | None:
@@ -476,18 +500,21 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         try:
             from jose import JWTError, jwt
 
-            # Stateless validation using secret key
-            # S03: Two-phase JWT expiry enforcement
+            # Stateless validation using secret key. Expiry is mandatory.
             payload = jwt.decode(
                 token,
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
-                options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+                options={"verify_exp": True, "require_exp": True},
             )
 
             # Validate required fields
             if not payload.get("sub") or not payload.get("email"):
                 logger.warning("JWT missing required claims (sub, email)")
+                return None
+
+            if await is_session_revoked(payload):
+                logger.warning("Rejected revoked cookie JWT session")
                 return None
 
             # Construct user context from token
@@ -502,6 +529,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         except JWTError as e:
             logger.warning("JWT token validation failed: %s", e)
             return None
+        except RevocationStoreUnavailable:
+            raise
         except Exception as e:
             logger.warning("Unexpected JWT token error: %s", e)
             return None
@@ -520,18 +549,21 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             jwt_token = auth_header[7:]  # Remove "Bearer " prefix
 
-            # Stateless validation using secret key
-            # S03: Two-phase JWT expiry enforcement
+            # Stateless validation using secret key. Expiry is mandatory.
             payload = jwt.decode(
                 jwt_token,
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
-                options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+                options={"verify_exp": True, "require_exp": True},
             )
 
             # Validate required fields
             if not payload.get("sub") or not payload.get("email"):
                 logger.warning("JWT missing required claims")
+                return None
+
+            if await is_session_revoked(payload):
+                logger.warning("Rejected revoked header JWT session")
                 return None
 
             # Construct user context from token
@@ -547,6 +579,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         except JWTError as e:
             logger.debug("JWT validation failed: %s", e)
             return None
+        except RevocationStoreUnavailable:
+            raise
         except Exception as e:
             logger.debug("Unexpected JWT error: %s", e)
             return None

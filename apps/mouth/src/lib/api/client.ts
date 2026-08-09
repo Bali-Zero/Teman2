@@ -331,8 +331,10 @@ export class ApiClientBase implements IApiClient {
           // to /login, which mouth's middleware redirects cross-origin to
           // kita.balizero.com/login — breaking the portal session silently.
           const isPortal = currentPath.startsWith("/portal");
-          const loginPath = isPortal ? "/portal/login" : "/login";
-          const alreadyOnLogin = currentPath === loginPath;
+          const loginPath = isPortal ? "/portal/login-upgraded" : "/login";
+          const alreadyOnLogin =
+            currentPath === loginPath ||
+            (isPortal && currentPath === "/portal/login");
           if (!alreadyOnLogin && !currentPath.startsWith("/api/")) {
             logger.warn("Token expired or invalid, redirecting to login", {
               component: "ApiClient",
@@ -340,9 +342,17 @@ export class ApiClientBase implements IApiClient {
               metadata: { currentPath, target: loginPath },
             });
             // Use replace to avoid adding to history
-            window.location.replace(
-              `${loginPath}?expired=true&reason=token_expired`,
-            );
+            const loginParams = new URLSearchParams({
+              expired: "true",
+              reason: "token_expired",
+            });
+            if (isPortal) {
+              loginParams.set(
+                "redirect",
+                `${currentPath}${window.location.search || ""}`,
+              );
+            }
+            window.location.replace(`${loginPath}?${loginParams.toString()}`);
           }
         }
 

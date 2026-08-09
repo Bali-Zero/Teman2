@@ -14,9 +14,13 @@
  * role boundary; the layout redirect is a UX guard only.
  */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { getMe } from "@/lib/api/partners/partners";
+import { ApiError } from "@/lib/api/error-handler";
+import { PartnerLoadError } from "./PartnerLoadError";
+
+type PartnerGateState = "checking" | "allowed" | "unavailable" | "unlinked";
 
 export default function PartnerLayout({
   children,
@@ -24,21 +28,40 @@ export default function PartnerLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const pathname = usePathname();
+  const [state, setState] = useState<PartnerGateState>("checking");
+
+  const checkAccess = useCallback(async () => {
+    setState("checking");
+    try {
+      await getMe();
+      setState("allowed");
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 401) {
+        const search =
+          typeof window === "undefined" ? "" : window.location.search;
+        const destination = `${pathname}${search}`;
+        router.replace(
+          `/portal/login-upgraded?redirect=${encodeURIComponent(destination)}`,
+        );
+        return;
+      }
+      if (
+        error instanceof ApiError &&
+        (error.statusCode === 403 || error.statusCode === 404)
+      ) {
+        setState("unlinked");
+        return;
+      }
+      setState("unavailable");
+    }
+  }, [pathname, router]);
 
   useEffect(() => {
-    getMe()
-      .then(() => {
-        // Confirmed partner role — allow rendering
-        setChecked(true);
-      })
-      .catch(() => {
-        // Non-partner or unauthenticated → redirect to main portal dashboard
-        router.replace("/portal");
-      });
-  }, [router]);
+    void checkAccess();
+  }, [checkAccess]);
 
-  if (!checked) {
+  if (state === "checking") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -50,6 +73,31 @@ export default function PartnerLayout({
             }}
           />
         </div>
+      </div>
+    );
+  }
+
+  if (state === "unavailable") {
+    return <PartnerLoadError onRetry={checkAccess} />;
+  }
+
+  if (state === "unlinked") {
+    return (
+      <div
+        role="alert"
+        className="m-6 rounded-xl border p-6"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
+        <h2 className="font-medium text-[var(--tx-pure)]">
+          Partner access is unavailable
+        </h2>
+        <p className="mt-2 text-sm text-[var(--tx-secondary)]">
+          This account is not linked to an active partner profile. Contact Bali
+          Zero support for help.
+        </p>
       </div>
     );
   }

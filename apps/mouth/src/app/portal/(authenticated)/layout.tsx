@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 // with a partial vi.mock, which would make ApiError undefined under test.
 import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
-import { portalNavigation } from "@/types/navigation";
+import { partnerPortalNavigation, portalNavigation } from "@/types/navigation";
 import { AdminImpersonationProvider } from "@/contexts/AdminImpersonationContext";
 
 // Lazy: bottom nav is mobile-only and below-fold on desktop.
@@ -25,6 +25,15 @@ const PortalBottomNav = dynamic(
   { ssr: false },
 );
 
+function portalLoginHref(pathname: string): string {
+  return `/portal/login-upgraded?redirect=${encodeURIComponent(pathname)}`;
+}
+
+function currentPortalLocation(pathname: string): string {
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  return `${pathname}${search}`;
+}
+
 export default function PortalLayout({
   children,
 }: {
@@ -32,6 +41,8 @@ export default function PortalLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isPartnerPortal =
+    pathname === "/portal/partner" || pathname.startsWith("/portal/partner/");
   const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -40,6 +51,7 @@ export default function PortalLayout({
     name: "",
     email: "",
     avatar: undefined as string | undefined,
+    role: "client",
   });
 
   // The root pre-paint script owns the user's light/dark choice. This layout
@@ -59,10 +71,10 @@ export default function PortalLayout({
   }, []);
 
   // Load user profile
-  // Uses portal-scoped endpoint (/api/portal/profile) because /api/auth/profile
-  // 500s for role=client — see commit history. Falls back to storedProfile name
-  // when available, since portal profile uses fullName (not name).
-  const loadUserProfile = useCallback(async () => {
+  // Client routes use the portal-scoped endpoint because /api/auth/profile
+  // 500s for role=client (see commit history). Partner routes use the auth
+  // profile because they intentionally have no client tenant profile.
+  const loadUserProfile = useCallback(async (): Promise<string | undefined> => {
     try {
       const storedProfile = api.getUserProfile();
       if (storedProfile) {
@@ -73,8 +85,23 @@ export default function PortalLayout({
           name: userName,
           email: storedProfile.email || "",
           avatar: storedProfile.avatar,
+          role: storedProfile.role || "client",
         });
-        return;
+        return storedProfile.role;
+      }
+
+      if (isPartnerPortal) {
+        const authProfile = await api.getProfile();
+        const userName =
+          authProfile.name ||
+          (authProfile.email ? authProfile.email.split("@")[0] : "User");
+        setUser({
+          name: userName,
+          email: authProfile.email || "",
+          avatar: authProfile.avatar,
+          role: authProfile.role || "client",
+        });
+        return authProfile.role;
       }
 
       const portalProfile = await api.portal.getProfile();
@@ -85,15 +112,18 @@ export default function PortalLayout({
         name: userName,
         email: portalProfile.email || "",
         avatar: undefined,
+        role: "client",
       });
+      return "client";
     } catch (error) {
       logger.error(
         "Failed to load profile",
         { component: "PortalLayout", action: "loadUserProfile" },
         error as Error,
       );
+      throw error;
     }
-  }, []);
+  }, [isPartnerPortal]);
 
   // Check authentication and load data
   // Uses cookie-based auth check (not localStorage) for cross-domain SSO support.
@@ -107,24 +137,42 @@ export default function PortalLayout({
       const token = api.getToken();
       if (token) {
         try {
-          await loadUserProfile();
+          const role = await loadUserProfile();
+          if (role === "partner" && !isPartnerPortal) {
+            router.replace("/portal/partner/dashboard");
+            return;
+          }
         } catch (error) {
           // Branch on the HTTP status, never on the message text. This read
           // `error.message.includes("401")`, which is also true of "Practice
           // 4012 not found" — so a 404 could sign a client out of the portal.
           if (error instanceof ApiError && error.statusCode === 401) {
-            router.push("/portal/login");
+            router.replace(portalLoginHref(currentPortalLocation(pathname)));
             return;
           }
-        } finally {
-          setIsLoading(false);
         }
+        setIsLoading(false);
         return;
       }
 
       // No localStorage token — try cookie-based auth (cross-domain SSO).
       // The httpOnly cookie is sent automatically via credentials: "include".
       try {
+        if (isPartnerPortal) {
+          const authProfile = await api.getProfile();
+          if (!authProfile?.email) throw new Error("Invalid auth profile");
+          const userName =
+            authProfile.name || authProfile.email.split("@")[0] || "User";
+          setUser({
+            name: userName,
+            email: authProfile.email,
+            avatar: authProfile.avatar,
+            role: authProfile.role || "client",
+          });
+          setIsLoading(false);
+          return;
+        }
+
         const portalProfile = await api.portal.getProfile();
         if (portalProfile?.email) {
           const userName =
@@ -134,6 +182,7 @@ export default function PortalLayout({
             name: userName,
             email: portalProfile.email || "",
             avatar: undefined,
+            role: "client",
           });
           setIsLoading(false);
           return;
@@ -142,13 +191,13 @@ export default function PortalLayout({
         // Cookie auth also failed — redirect to login
       }
 
-      setIsLoading(false);
-      router.push("/portal/login");
+      router.replace(portalLoginHref(currentPortalLocation(pathname)));
+      return;
     };
 
     const timeoutId = setTimeout(checkAuth, 100);
     return () => clearTimeout(timeoutId);
-  }, [loadUserProfile, router]);
+  }, [isPartnerPortal, loadUserProfile, pathname, router]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -161,7 +210,7 @@ export default function PortalLayout({
         error as Error,
       );
     } finally {
-      router.push("/portal/login");
+      router.replace("/portal/login-upgraded");
     }
   };
 
@@ -236,115 +285,125 @@ export default function PortalLayout({
     );
   }
 
-  return (
-    <AdminImpersonationProvider>
-      <ToastProvider>
-        <a href="#portal-main-content" className="bz-skip-link">
-          Skip to main content
-        </a>
-        <div
-          className="bz-product-my min-h-screen"
-          style={{ background: "var(--bz-base)" }}
-        >
-          {/* Desktop Sidebar */}
-          <div className="hidden md:block">
-            <AppSidebar
-              user={{
-                ...user,
-                role: "client",
-                team: "Client Portal",
-                isOnline: true,
-              }}
-              navigationConfig={portalNavigation}
-              isPortal={true}
-              onLogout={handleLogout}
-            />
-          </div>
-
-          {/* Mobile Sidebar Overlay */}
-          {isMobileMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 bg-black/50 z-40 md:hidden"
-                onClick={() => setIsMobileMenuOpen(false)}
-                aria-hidden="true"
-              />
-              <div
-                ref={mobileSidebarRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Client portal navigation"
-                className="fixed inset-y-0 left-0 z-50 md:hidden"
-              >
-                <AppSidebar
-                  id="workspace-mobile-nav"
-                  user={{
-                    ...user,
-                    role: "client",
-                    team: "Client Portal",
-                    isOnline: true,
-                  }}
-                  navigationConfig={portalNavigation}
-                  isPortal={true}
-                  onLogout={handleLogout}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Main Content */}
-          <div className="md:ml-[216px] min-h-screen flex flex-col">
-            {/* Header */}
-            <PortalHeader
-              userName={user.name}
-              onMobileMenuToggle={handleMobileMenuToggle}
-              isMobileMenuOpen={isMobileMenuOpen}
-              mobileMenuToggleRef={mobileMenuToggleRef}
-            />
-
-            {/* Page Content */}
-            <main
-              id="portal-main-content"
-              tabIndex={-1}
-              className="flex-1 p-[var(--bz-product-page-gap)] pb-28 md:pb-[var(--bz-product-page-gap)]"
-            >
-              <PortalErrorBoundary section="Portal">
-                {children}
-              </PortalErrorBoundary>
-            </main>
-
-            {/* Portal Footer */}
-            <footer
-              className="md:ml-0 px-4 py-3 text-xs text-center border-t"
-              style={{
-                color: "var(--text-secondary)",
-                borderColor: "var(--border)",
-              }}
-            >
-              <span>© {new Date().getFullYear()} Bali Zero</span>
-              <span className="mx-2">·</span>
-              <a
-                href="/privacy"
-                className="hover:underline"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Privacy Policy
-              </a>
-              <span className="mx-2">·</span>
-              <a
-                href="/terms"
-                className="hover:underline"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Terms of Service
-              </a>
-            </footer>
-          </div>
-
-          {/* Mobile Bottom Nav */}
-          <PortalBottomNav />
+  const portalContent = (
+    <ToastProvider>
+      <a href="#portal-main-content" className="bz-skip-link">
+        Skip to main content
+      </a>
+      <div
+        className="bz-product-my min-h-screen"
+        style={{ background: "var(--bz-base)" }}
+      >
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block">
+          <AppSidebar
+            user={{
+              ...user,
+              role: isPartnerPortal ? "partner" : "client",
+              team: isPartnerPortal ? "Partner Portal" : "Client Portal",
+              isOnline: true,
+            }}
+            navigationConfig={
+              isPartnerPortal ? partnerPortalNavigation : portalNavigation
+            }
+            isPortal={true}
+            onLogout={handleLogout}
+          />
         </div>
-      </ToastProvider>
-    </AdminImpersonationProvider>
+
+        {/* Mobile Sidebar Overlay */}
+        {isMobileMenuOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-[60] md:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              ref={mobileSidebarRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${isPartnerPortal ? "Partner" : "Client"} portal navigation`}
+              className="fixed inset-y-0 left-0 z-[70] md:hidden"
+              style={{ width: "var(--bz-sidebar-width, 216px)" }}
+            >
+              <AppSidebar
+                id="workspace-mobile-nav"
+                user={{
+                  ...user,
+                  role: isPartnerPortal ? "partner" : "client",
+                  team: isPartnerPortal ? "Partner Portal" : "Client Portal",
+                  isOnline: true,
+                }}
+                navigationConfig={
+                  isPartnerPortal ? partnerPortalNavigation : portalNavigation
+                }
+                isPortal={true}
+                onLogout={handleLogout}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Main Content */}
+        <div className="md:ml-[216px] min-h-screen flex flex-col">
+          {/* Header */}
+          <PortalHeader
+            userName={user.name}
+            variant={isPartnerPortal ? "partner" : "client"}
+            onMobileMenuToggle={handleMobileMenuToggle}
+            isMobileMenuOpen={isMobileMenuOpen}
+            mobileMenuToggleRef={mobileMenuToggleRef}
+          />
+
+          {/* Page Content */}
+          <main
+            id="portal-main-content"
+            tabIndex={-1}
+            className="flex-1 p-[var(--bz-product-page-gap)] pb-28 md:pb-[var(--bz-product-page-gap)]"
+          >
+            <PortalErrorBoundary section="Portal">
+              {children}
+            </PortalErrorBoundary>
+          </main>
+
+          {/* Portal Footer */}
+          <footer
+            className="md:ml-0 px-4 py-3 text-xs text-center border-t"
+            style={{
+              color: "var(--text-secondary)",
+              borderColor: "var(--border)",
+            }}
+          >
+            <span>© {new Date().getFullYear()} Bali Zero</span>
+            <span className="mx-2">·</span>
+            <a
+              href="/privacy"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Privacy Policy
+            </a>
+            <span className="mx-2">·</span>
+            <a
+              href="/terms"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Terms of Service
+            </a>
+          </footer>
+        </div>
+
+        {/* Mobile Bottom Nav */}
+        <PortalBottomNav variant={isPartnerPortal ? "partner" : "client"} />
+      </div>
+    </ToastProvider>
+  );
+
+  if (isPartnerPortal) return portalContent;
+
+  return (
+    <AdminImpersonationProvider>{portalContent}</AdminImpersonationProvider>
   );
 }

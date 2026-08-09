@@ -1,7 +1,7 @@
 /**
- * Upload size cap. Configurable via NEXT_PUBLIC_VAULT_MAX_SIZE; default 20 MB.
+ * Upload size cap. Configurable via NEXT_PUBLIC_VAULT_MAX_SIZE; default 10 MB.
  */
-const DEFAULT_MAX = 20 * 1024 * 1024;
+const DEFAULT_MAX = 10 * 1024 * 1024;
 const raw = process.env.NEXT_PUBLIC_VAULT_MAX_SIZE;
 const parsed = raw ? Number(raw) : DEFAULT_MAX;
 export const MAX_SIZE_BYTES =
@@ -16,12 +16,11 @@ export const ALLOWED_UPLOAD_MIMES = [
   "application/pdf",
   "image/jpeg",
   "image/png",
-  "image/webp",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/msword",
-  "application/vnd.ms-excel",
 ] as const satisfies readonly string[];
+
+export const UPLOAD_ACCEPT = ".pdf,.jpg,.jpeg,.png,.docx";
+export const UPLOAD_FORMAT_LABEL = "PDF, JPG, PNG, or DOCX up to 10 MB";
 
 export type AllowedUploadMime = (typeof ALLOWED_UPLOAD_MIMES)[number];
 

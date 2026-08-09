@@ -591,6 +591,23 @@ describe("ApiClientBase", () => {
       expect(window.location.replace).not.toHaveBeenCalled();
     });
 
+    it("should preserve a portal deep link when a session expires", async () => {
+      (window as any).location.pathname = "/portal/process";
+      (window as any).location.search = "?view=active";
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 401,
+        headers: new Headers(),
+        json: async () => ({ detail: "Unauthorized" }),
+      } as Response);
+
+      await expect(client.request("/test")).rejects.toThrow();
+
+      expect(window.location.replace).toHaveBeenCalledWith(
+        "/portal/login-upgraded?expired=true&reason=token_expired&redirect=%2Fportal%2Fprocess%3Fview%3Dactive",
+      );
+    });
+
     it("should handle 422 validation errors", async () => {
       vi.mocked(global.fetch).mockResolvedValue({
         ok: false,

@@ -79,6 +79,8 @@ async def test_update_profile_updates_allowed_fields():
     alert_sql = mock_conn.execute.call_args_list[2][0][0]
     assert "notification_alerts" in alert_sql
     assert "portal_profile_update" in alert_sql
+    assert "ON CONFLICT (client_id, alert_type, created_date)" in alert_sql
+    assert "ON CONSTRAINT" not in alert_sql
 
     msg_sql = mock_conn.execute.call_args_list[3][0][0]
     assert "portal_messages" in msg_sql

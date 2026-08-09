@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetMe, mockGetMyReferrals, mockGetMyCommissions } = vi.hoisted(
   () => ({
@@ -40,18 +40,20 @@ const COMMISSIONS = [
   {
     id: "c1",
     status: "paid",
-    net_amount: 1_500_000,
-    gross_amount: 2_000_000,
-    withholding_amount: 500_000,
+    base_amount_idr: 20_000_000,
+    net_amount_idr: 1_500_000,
+    gross_amount_idr: 2_000_000,
+    withholding_amount_idr: 500_000,
     created_at: "2026-07-10T00:00:00Z",
     paid_at: "2026-07-15T00:00:00Z",
   },
   {
     id: "c2",
     status: "accrued",
-    net_amount: 750_000,
-    gross_amount: 1_000_000,
-    withholding_amount: 250_000,
+    base_amount_idr: 10_000_000,
+    net_amount_idr: 750_000,
+    gross_amount_idr: 1_000_000,
+    withholding_amount_idr: 250_000,
     created_at: "2026-07-20T00:00:00Z",
     paid_at: null,
   },
@@ -67,6 +69,12 @@ async function renderLoaded() {
 }
 
 describe("PartnerDashboardPage (WS3 day pass)", () => {
+  beforeEach(() => {
+    mockGetMe.mockReset();
+    mockGetMyReferrals.mockReset();
+    mockGetMyCommissions.mockReset();
+  });
+
   it("renders the day masthead: copper rule + serif headline in --tx-pure", async () => {
     const { container } = await renderLoaded();
 
@@ -124,13 +132,45 @@ describe("PartnerDashboardPage (WS3 day pass)", () => {
     expect(html).not.toContain("text-gray-");
   });
 
-  it("error state reads --state-danger", async () => {
-    mockGetMe.mockRejectedValue(new Error("boom"));
-    mockGetMyReferrals.mockResolvedValue([]);
-    mockGetMyCommissions.mockResolvedValue([]);
+  it("keeps fulfilled sections truthful when one dashboard request fails", async () => {
+    mockGetMe.mockResolvedValue(PARTNER);
+    mockGetMyReferrals.mockRejectedValue(new Error("private referral detail"));
+    mockGetMyCommissions.mockResolvedValue(COMMISSIONS);
 
     render(<PartnerDashboardPage />);
-    const err = await screen.findByText(/Error: boom/);
-    expect(err.style.color).toBe("var(--state-danger)");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Some partner information is temporarily unavailable.",
+    );
+    expect(alert).not.toHaveTextContent("private referral detail");
+    expect(
+      screen.getByText("Referrals are temporarily unavailable."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Paid")).toBeInTheDocument();
+  });
+
+  it("shows a safe full outage and retries all dashboard resources", async () => {
+    mockGetMe
+      .mockRejectedValueOnce(new Error("private profile detail"))
+      .mockResolvedValueOnce(PARTNER);
+    mockGetMyReferrals
+      .mockRejectedValueOnce(new Error("private referral detail"))
+      .mockResolvedValueOnce(REFERRALS);
+    mockGetMyCommissions
+      .mockRejectedValueOnce(new Error("private commission detail"))
+      .mockResolvedValueOnce(COMMISSIONS);
+
+    render(<PartnerDashboardPage />);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Partner information is temporarily unavailable",
+    );
+    expect(alert).not.toHaveTextContent("private");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(
+      await screen.findByText(/Welcome, Made Example/),
+    ).toBeInTheDocument();
+    expect(mockGetMe).toHaveBeenCalledTimes(2);
   });
 });

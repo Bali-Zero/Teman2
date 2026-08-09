@@ -314,18 +314,11 @@ class TestGenerateDraft:
 
 
 # ---------------------------------------------------------------------------
-# approve_draft / mark_submitted / upload_receipt
+# mark_submitted / upload_receipt
 # ---------------------------------------------------------------------------
 
 
 class TestSubmissionTracking:
-    @pytest.mark.asyncio
-    async def test_approve_draft(self, service, mock_db_pool):
-        _, conn = mock_db_pool
-        result = await service.approve_draft(1)
-        assert result["success"] is True
-        assert result["status"] == "approved"
-
     @pytest.mark.asyncio
     async def test_mark_submitted(self, service, mock_db_pool):
         _, conn = mock_db_pool

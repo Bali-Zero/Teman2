@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
+import asyncpg
 import pytest
 
 from backend.app.routers.portal_matters import (
@@ -203,7 +204,7 @@ def test_client_safe_intelligence_withholds_when_multiple_companies_match() -> N
 
 
 @pytest.mark.asyncio
-async def test_list_matters_endpoint_returns_empty_when_table_missing() -> None:
+async def test_list_matters_endpoint_keeps_database_failure_distinct_from_empty() -> None:
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -215,7 +216,7 @@ async def test_list_matters_endpoint_returns_empty_when_table_missing() -> None:
     app.include_router(router)
 
     mock_conn = AsyncMock()
-    mock_conn.fetch.side_effect = Exception("relation 'practices' does not exist")
+    mock_conn.fetch.side_effect = asyncpg.UndefinedTableError("relation 'practices' does not exist")
 
     class _PoolCtx:
         async def __aenter__(self):
@@ -233,8 +234,92 @@ async def test_list_matters_endpoint_returns_empty_when_table_missing() -> None:
 
     client = TestClient(app)
     r = client.get("/api/portal/matters")
-    assert r.status_code == 200
-    assert r.json() == {"matters": []}
+    assert r.status_code == 503
+    assert r.json() == {"detail": "Matters are temporarily unavailable"}
+    assert "practices" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_get_matter_detail_keeps_database_failure_client_safe() -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.dependencies import get_database_pool
+    from backend.app.routers.portal import get_current_client
+    from backend.app.routers.portal_matters import router
+
+    app = FastAPI()
+    app.include_router(router)
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.side_effect = asyncpg.InterfaceError(
+        "connection contains private infrastructure detail"
+    )
+
+    class _PoolCtx:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _Pool:
+        def acquire(self):
+            return _PoolCtx()
+
+    app.dependency_overrides[get_current_client] = lambda: {"client_id": 42}
+    app.dependency_overrides[get_database_pool] = lambda: _Pool()
+
+    client = TestClient(app)
+    r = client.get("/api/portal/matters/9")
+
+    assert r.status_code == 503
+    assert r.json() == {"detail": "Matter details are temporarily unavailable"}
+    assert "private infrastructure" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_get_matter_detail_does_not_hide_intelligence_database_failure() -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.dependencies import get_database_pool
+    from backend.app.routers.portal import get_current_client
+    from backend.app.routers.portal_matters import router
+
+    app = FastAPI()
+    app.include_router(router)
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = _row(
+        id=9,
+        title="Company Setup",
+        category="company",
+    )
+    mock_conn.fetch.side_effect = asyncpg.UndefinedTableError(
+        "relation 'crm_workspace_ai_snapshots' does not exist"
+    )
+
+    class _PoolCtx:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _Pool:
+        def acquire(self):
+            return _PoolCtx()
+
+    app.dependency_overrides[get_current_client] = lambda: {"client_id": 42}
+    app.dependency_overrides[get_database_pool] = lambda: _Pool()
+
+    client = TestClient(app)
+    r = client.get("/api/portal/matters/9")
+
+    assert r.status_code == 503
+    assert r.json() == {"detail": "Matter details are temporarily unavailable"}
+    assert "crm_workspace_ai_snapshots" not in r.text
 
 
 @pytest.mark.asyncio

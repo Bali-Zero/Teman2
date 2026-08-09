@@ -15,7 +15,7 @@
  * hexes.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -33,6 +33,7 @@ import {
   PortalEmptyState,
   PortalListSkeleton,
 } from "@/components/portal";
+import { Button } from "@/components/ui/button";
 
 // Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
 // per concept (--font-serif, wired on <html>); Inter everywhere else.
@@ -61,23 +62,26 @@ export default function CompaniesPage() {
   const { error } = useToast();
   const [companies, setCompanies] = useState<PortalCompany[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
 
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
-  const loadCompanies = async () => {
+  const loadCompanies = useCallback(async () => {
     try {
       setIsLoading(true);
+      setInitialLoadFailed(false);
       const data = await api.portal.getCompanies();
       setCompanies(data);
     } catch (err) {
+      setInitialLoadFailed(true);
       error("Failed to load companies", "Please try again later");
       logger.error("Failed to load portal companies", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [error]);
+
+  useEffect(() => {
+    void loadCompanies();
+  }, [loadCompanies]);
 
   if (isLoading) {
     return (
@@ -93,6 +97,46 @@ export default function CompaniesPage() {
           />
         </section>
         <PortalListSkeleton count={3} />
+      </div>
+    );
+  }
+
+  if (initialLoadFailed && companies.length === 0) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <CompaniesMasthead />
+        <section
+          role="alert"
+          aria-labelledby="companies-load-error-title"
+          className="flex min-h-[40vh] flex-col items-center justify-center rounded-xl border p-8 text-center"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className="mb-4 h-12 w-12"
+            style={{ color: "var(--bz-copper-text)" }}
+          />
+          <h2
+            id="companies-load-error-title"
+            className="text-xl font-semibold"
+            style={{ color: "var(--tx-pure)" }}
+          >
+            Unable to load companies
+          </h2>
+          <p
+            className="mt-2 max-w-sm text-sm"
+            style={{ color: "var(--tx-secondary)" }}
+          >
+            We couldn&apos;t verify your company records. Check your connection
+            and try again.
+          </p>
+          <Button className="mt-5" onClick={() => void loadCompanies()}>
+            Retry
+          </Button>
+        </section>
       </div>
     );
   }

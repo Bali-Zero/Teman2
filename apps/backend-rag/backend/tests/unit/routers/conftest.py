@@ -7,12 +7,10 @@ Provides common fixtures for:
 - FastAPI TestClient factory
 - Common test data
 
-Patches settings and env vars before any imports to prevent
-pydantic validation errors.
+Sets deterministic environment variables before application imports.
 """
 
 import os
-import sys
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,54 +26,6 @@ os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test_whatsapp_verify_token")
 os.environ.setdefault("INSTAGRAM_VERIFY_TOKEN", "test_instagram_verify_token")
-
-# Create a mock settings instance
-_mock_settings = MagicMock()
-_mock_settings.database_url = "postgresql://test:test@localhost:5432/test"
-_mock_settings.google_api_key = "test-google-api-key"
-_mock_settings.environment = "test"
-_mock_settings.log_level = "INFO"
-_mock_settings.API_V1_STR = "/api/v1"
-_mock_settings.PROJECT_NAME = "Nuzantara Prime"
-_mock_settings.api_keys = "test_api_key_1,test_api_key_2"
-_mock_settings.api_auth_enabled = False
-_mock_settings.jwt_secret_key = "test_jwt_secret_key_for_testing_only_min_32_chars_long"
-_mock_settings.jwt_algorithm = "HS256"
-_mock_settings.openai_api_key = "sk-test-key-for-testing-only"
-_mock_settings.qdrant_url = "http://localhost:6333"
-_mock_settings.redis_url = "redis://localhost:6379/0"
-_mock_settings.zantara_allowed_origins = ""
-_mock_settings.otel_enabled = False
-_mock_settings.get_intel_pending_path = "/tmp/intel_pending"
-_mock_settings.intel_pending_path = "/tmp/intel_pending"
-_mock_settings.admin_api_key = None
-_mock_settings.telegram_bot_token = None
-_mock_settings.log_file = None
-_mock_settings.embedding_model = "text-embedding-3-small"
-_mock_settings.embedding_provider = "openai"
-_mock_settings.enable_skill_detection = False
-_mock_settings.enable_collective_memory = False
-_mock_settings.enable_advanced_analytics = False
-_mock_settings.enable_tool_execution = True
-_mock_settings.COMPANY_NAME = "Bali Zero"
-_mock_settings.ollama_url = "http://localhost:11434"
-_mock_settings.intel_scraper_api_key = "test-intel-api-key"
-
-# Patch config module before any imports
-if "backend.app.core.config" not in sys.modules:
-    fake_config = type(sys)("backend.app.core.config")
-    fake_config.settings = _mock_settings
-
-    class FakeSettings:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def __call__(self, *args, **kwargs):
-            return _mock_settings
-
-    fake_config.Settings = FakeSettings
-    sys.modules["backend.app.core.config"] = fake_config
-
 
 # ============================================
 # COMMON FIXTURES
@@ -144,9 +94,8 @@ def disable_auth_middleware():
     """
     Disable HybridAuthMiddleware for tests that use main_cloud.app.
 
-    In the full test suite, backend.app.core.config may be loaded before the
-    unit/routers/conftest patches sys.modules, causing the real settings
-    (api_auth_enabled=True) to be used. This fixture:
+    The real settings model is used so test order cannot replace production
+    config with a reduced fake module. This fixture:
     1. Sets settings.api_auth_enabled = False temporarily
     2. Resets app.middleware_stack = None so the middleware is re-instantiated
        with auth disabled on the next request

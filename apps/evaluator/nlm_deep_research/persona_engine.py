@@ -32,6 +32,7 @@ import time
 import urllib.request
 from pathlib import Path
 from typing import Any
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ def _nlm_source_list(notebook_id: str) -> list[dict[str, str]]:
             capture_output=True, text=True, timeout=60,
         )
         if result.returncode != 0:
-            logger.warning("nlm source list failed for %s: %s", notebook_id, result.stderr.strip())
+            logger.warning("nlm source list failed for %s: %s", notebook_id, nlm_error_reason(result))
             return []
         data = json.loads(result.stdout)
         # Handle multiple response shapes
@@ -116,7 +117,7 @@ def _nlm_source_add(notebook_id: str, title: str, content: str, timeout: int = 9
             capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode != 0:
-            logger.error("nlm source add failed: %s", result.stderr.strip())
+            logger.error("nlm source add failed: %s", nlm_error_reason(result))
             return None
         # Parse source ID from output
         for line in result.stdout.splitlines():
@@ -159,7 +160,7 @@ def _nlm_chat_configure(notebook_id: str, goal: str, custom_prompt: str) -> bool
             cmd += ["--prompt", custom_prompt]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
-            logger.warning("chat configure failed for %s: %s", notebook_id, result.stderr.strip())
+            logger.warning("chat configure failed for %s: %s", notebook_id, nlm_error_reason(result))
             return False
         return True
     except Exception as exc:

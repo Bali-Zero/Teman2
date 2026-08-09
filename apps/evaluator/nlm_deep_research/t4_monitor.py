@@ -21,11 +21,14 @@ import math
 import os
 import re
 import signal
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Optional
+
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 if TYPE_CHECKING:
     from apps.evaluator.nlm_deep_research.t4_state import T4State
@@ -1091,11 +1094,23 @@ class T4Monitor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            _, stderr = await asyncio.wait_for(
+            stdout, stderr = await asyncio.wait_for(
                 proc.communicate(), timeout=timeout_seconds
             )
             if proc.returncode != 0:
-                logger.error("nlm CLI error: %s", stderr.decode()[:200])
+                # stdout was being thrown away here — and stdout is where this
+                # CLI puts the reason (see nlm_error_reason).
+                logger.error(
+                    "nlm CLI error: %s",
+                    nlm_error_reason(
+                        subprocess.CompletedProcess(
+                            cmd,
+                            proc.returncode,
+                            stdout.decode(errors="replace"),
+                            stderr.decode(errors="replace"),
+                        )
+                    ),
+                )
             return proc.returncode == 0
         except asyncio.TimeoutError:
             logger.error(
