@@ -242,7 +242,7 @@ Return a JSON object with this exact structure:
                 max_output_tokens=VERIFIER_MAX_OUTPUT_TOKENS,
                 endpoint="rag.verifier",
             )
-        except LLMStructuredOutputError:
+        except LLMStructuredOutputError as exc:
             # PII boundary (round-2 red-team fix, Codex — UU PDP /
             # SYMBIOSIS Law 2 is ABSOLUTE): LLMStructuredOutputError's
             # message embeds pydantic ValidationError's str(), which
@@ -250,9 +250,16 @@ Return a JSON object with this exact structure:
             # which can itself echo client PII from the verifier prompt
             # (draft_answer/context_chunks). Never log or store the raw
             # exception text.
+            #
+            # `.reason` is the closed-vocabulary cause carried out of band
+            # precisely so this line can say WHICH failure happened without
+            # crossing that boundary. Before it existed, every cause — safety
+            # block, output cap, malformed JSON — logged this same sentence,
+            # and 10 live failures over 7 days could not be told apart.
             logger.warning(
                 "🛡️ [Verifier] Model failed to produce a schema-valid verdict "
-                "— verdict unavailable",
+                "— verdict unavailable (reason=%s)",
+                getattr(exc, "reason", "") or "UNATTRIBUTED",
             )
             return VerificationResult(
                 is_valid=True,
